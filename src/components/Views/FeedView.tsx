@@ -60,7 +60,7 @@ export const FeedView = (props: FeedProps) => {
   })
 
   const recentComments = createAsync(
-    async () => await loadReactionsBy({ by: { kinds: [ReactionKind.Comment] }, limit: 10 })
+    async () => await loadReactionsBy({ by: { kinds: [ReactionKind.Comment] }, limit: 3 })
   )
 
   // context-wise feed
@@ -298,6 +298,17 @@ export const FeedView = (props: FeedProps) => {
               </section>
             </Show>
 
+            <Show when={unrated?.()}>
+              <section class={clsx(styles.asideSection)}>
+                <h4>{t('Be the first to rate')}</h4>
+                <For each={unrated() as Shout[]}>
+                  {(article) => (
+                    <ArticleCard article={article} settings={{ noimage: true, nodate: true }} />
+                  )}
+                </For>
+              </section>
+            </Show>
+
             <section class={clsx(styles.asideSection, styles.pinnedLinks)}>
               <h4>{t('Knowledge base')}</h4>
               <ul class="nodash">
@@ -315,17 +326,6 @@ export const FeedView = (props: FeedProps) => {
                 </li>
               </ul>
             </section>
-
-            <Show when={unrated?.()}>
-              <section class={clsx(styles.asideSection)}>
-                <h4>{t('Be the first to rate')}</h4>
-                <For each={unrated() as Shout[]}>
-                  {(article) => (
-                    <ArticleCard article={article} settings={{ noimage: true, nodate: true }} />
-                  )}
-                </For>
-              </section>
-            </Show>
           </Show>
         </aside>
       </div>
