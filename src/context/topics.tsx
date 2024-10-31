@@ -139,11 +139,10 @@ export const TopicsProvider = (props: { children: JSX.Element }) => {
     setSortedTopics(topics as Topic[])
   })
 
-  const topTopics = createMemo(() => {
-    const topics = Object.values(topicEntities())
-    topics.sort(byTopicStatDesc('shouts'))
-    return topics
-  })
+  const [topTopics, setTopTopics] = createSignal(Object.values(topicEntities()).sort(byTopicStatDesc('shouts')))
+  createEffect(on(topicEntities, (te: Record<string, Topic>) => {
+    setTopTopics(Object.values(te).sort(byTopicStatDesc('shouts')))
+  }))
 
   const addTopics = (...args: Topic[][]) => {
     const allTopics = args.flatMap((topics) => (topics || []).filter(Boolean))
