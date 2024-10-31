@@ -15,7 +15,7 @@ export default gql`
                 cover
                 cover_caption
                 body
-                media { url pic title body artist }
+                media
                 updated_by {
                     id
                     name
