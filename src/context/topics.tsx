@@ -1,15 +1,5 @@
 import { openDB } from 'idb'
-import {
-  Accessor,
-  JSX,
-  createContext,
-  createEffect,
-  createMemo,
-  createSignal,
-  on,
-  onMount,
-  useContext
-} from 'solid-js'
+import { Accessor, JSX, createContext, createEffect, createSignal, on, onMount, useContext } from 'solid-js'
 import { loadTopics } from '~/graphql/api/public'
 import { Topic } from '~/graphql/schema/core.gen'
 import { getRandomItemsFromArray } from '~/utils/random'
@@ -139,10 +129,14 @@ export const TopicsProvider = (props: { children: JSX.Element }) => {
     setSortedTopics(topics as Topic[])
   })
 
-  const [topTopics, setTopTopics] = createSignal(Object.values(topicEntities()).sort(byTopicStatDesc('shouts')))
-  createEffect(on(topicEntities, (te: Record<string, Topic>) => {
-    setTopTopics(Object.values(te).sort(byTopicStatDesc('shouts')))
-  }))
+  const [topTopics, setTopTopics] = createSignal(
+    Object.values(topicEntities()).sort(byTopicStatDesc('shouts'))
+  )
+  createEffect(
+    on(topicEntities, (te: Record<string, Topic>) => {
+      setTopTopics(Object.values(te).sort(byTopicStatDesc('shouts')))
+    })
+  )
 
   const addTopics = (...args: Topic[][]) => {
     const allTopics = args.flatMap((topics) => (topics || []).filter(Boolean))
