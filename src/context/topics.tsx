@@ -129,9 +129,7 @@ export const TopicsProvider = (props: { children: JSX.Element }) => {
     setSortedTopics(topics as Topic[])
   })
 
-  const [topTopics, setTopTopics] = createSignal(
-    Object.values(topicEntities()).sort(byTopicStatDesc('shouts'))
-  )
+  const [topTopics, setTopTopics] = createSignal<Topic[]>([])
   createEffect(
     on(topicEntities, (te: Record<string, Topic>) => {
       setTopTopics(Object.values(te).sort(byTopicStatDesc('shouts')))
