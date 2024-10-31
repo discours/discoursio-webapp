@@ -8,8 +8,9 @@ export default gql`
       layout
       slug
       cover
-      main_topic
+      main_topic { id slug }
       topics {
+        id
         title
         body
         slug

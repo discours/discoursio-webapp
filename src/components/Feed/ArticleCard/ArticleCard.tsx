@@ -86,7 +86,7 @@ const getTitleAndSubtitle = (
 }
 
 const getMainTopicTitle = (article: Shout, lng: string) => {
-  const mainTopicSlug = article.main_topic || ''
+  const mainTopicSlug = article.main_topic?.slug || ''
   const mainTopic = (article.topics || []).find((tpc: Maybe<Topic>) => tpc?.slug === mainTopicSlug)
   const mainTopicTitle =
     mainTopicSlug && lng === 'en' ? mainTopicSlug.replaceAll('-', ' ') : mainTopic?.title || ''

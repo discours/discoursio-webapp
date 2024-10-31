@@ -11,7 +11,7 @@ export default gql`
       layout
       cover
       cover_caption
-      main_topic
+      main_topic { id slug }
       topics {
         id
         title

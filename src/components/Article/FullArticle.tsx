@@ -123,7 +123,7 @@ export const FullArticle = (props: Props) => {
   const media = createMemo<MediaItem[]>(() => JSON.parse(props.article.media || '[]'))
 
   const mainTopic = createMemo(() => {
-    const mainTopicSlug = (props.article.topics?.length || 0) > 0 ? props.article.main_topic : null
+    const mainTopicSlug = (props.article.topics?.length || 0) > 0 ? props.article.main_topic?.slug : null
     const mt = props.article.topics?.find((tpc: Maybe<Topic>) => tpc?.slug === mainTopicSlug)
     if (mt) {
       mt.title = lang() === 'en' ? capitalize(mt.slug.replaceAll('-', ' ')) : mt.title

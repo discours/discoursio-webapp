@@ -12,8 +12,8 @@ export default gql`
         layout
         cover
         # community
-        media
-        main_topic
+        media  { url pic title body artist }
+        main_topic { id slug }
         topics {
           id
           title

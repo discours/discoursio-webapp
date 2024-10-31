@@ -20,7 +20,7 @@ export const Draft = (props: Props) => {
 
   const handlePublishLinkClick = (e: MouseEvent) => {
     e.preventDefault()
-    if (props.shout.main_topic) {
+    if (props.shout.main_topic?.slug) {
       props.onPublish(props.shout)
     } else {
       showSnackbar({ body: t('Please, set the main topic first') })

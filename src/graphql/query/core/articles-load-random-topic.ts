@@ -28,7 +28,7 @@ export default gql`
         cover
         lead
         # community
-        main_topic
+        main_topic { id slug }
         topics {
           id
           title

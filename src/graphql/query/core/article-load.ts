@@ -13,7 +13,7 @@ export default gql`
       cover
       cover_caption
       body
-      media
+      media { url pic title body artist }
       updated_by {
         id
         name
@@ -22,7 +22,7 @@ export default gql`
         created_at
       }
       # community
-      main_topic
+      main_topic { id slug }
       topics {
         id
         title
