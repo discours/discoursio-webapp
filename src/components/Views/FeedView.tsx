@@ -186,7 +186,7 @@ export const FeedView = (props: FeedProps) => {
               <div class={styles.dropdowns}>
                 <DropDown
                   popupProps={{ horizontalAnchor: 'right' }}
-                  options={asOptionsGroup(['all time', 'day', 'week', 'month', 'year']) as Option[]}
+                  options={asOptionsGroup(Object.values(PeriodType)) as Option[]}
                   currentOption={asOption(currentPeriod() || 'all time')}
                   triggerCssClass={styles.periodSwitcher}
                   onChange={(opt: Option) => setCurrentPeriod(opt.title.toLowerCase() as PeriodType)}
