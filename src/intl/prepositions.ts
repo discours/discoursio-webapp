@@ -216,7 +216,9 @@ export const dictionaryAfter = [
 export const processPrepositions = (text: string): string => {
   const prepositionRegexBefore = new RegExp(`(^|\\s)(${dictionaryBefore.join('|')})(\\s|$)`, 'gmi')
   const prepositionRegexAfter = new RegExp(`(\\S+)\\s+(${dictionaryAfter.join('|')})(\\s|$)`, 'gmi')
-
+  if (Array.isArray(text)) {
+    text = text.join('')
+  }
   return text
     .replace(prepositionRegexBefore, (_match, start, word, _end) => {
       return `${start}${word}&nbsp;`
