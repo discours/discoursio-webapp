@@ -199,8 +199,8 @@ export const FeedView = (props: FeedProps) => {
                     ) as OptionGroup,
                     asOptionsGroup(
                       ['all', 'article', ...EXPO_LAYOUTS],
-                      t(layoutFilter() || 'Layouts') as string,
-                      (opt: Option) => setLayoutFilter(opt.value as ExpoLayoutType)
+                      t(layoutsFilter() || 'Layouts') as string,
+                      (opt: Option) => setLayoutsFilter(prev => [...prev, opt.value as ExpoLayoutType | 'article'])
                     ) as OptionGroup
                   ]}
                   currentOption={asOption(props.mode || 'all')}
