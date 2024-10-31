@@ -79,7 +79,10 @@ export default (props: RouteSectionProps<{ shouts: Shout[]; topics: Topic[] }>) 
     // ?period=month - time period filter
     if (searchParams?.period) {
       const period = searchParams?.period || 'month'
-      options.filters = { after: getFromDate(period as PeriodType) }
+      const after = getFromDate(period as PeriodType)
+      if (after) {
+        options.filters = { after }
+      }
     }
     if (!client()) {
       throw new Error('API client not connected')

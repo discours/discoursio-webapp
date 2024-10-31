@@ -68,7 +68,7 @@ export const FeedView = (props: FeedProps) => {
 
   // filters
   const [mode, setMode] = createSignal<FeedMode>(props.mode || 'all')
-  const [layoutFilter, setLayoutFilter] = createSignal<ExpoLayoutType | 'article' | undefined>()
+  const [layoutsFilter, setLayoutsFilter] = createSignal<Array<ExpoLayoutType | 'article'>>([])
   const [currentPeriod, setCurrentPeriod] = createSignal<PeriodType>('all time')
   // loading state
   const [isLoading, setIsLoading] = createSignal(false)
@@ -78,12 +78,17 @@ export const FeedView = (props: FeedProps) => {
   // 1 filter changes quering observer
   createEffect(
     on(
-      [mode, layoutFilter, currentPeriod],
-      ([m, layout, period]) => {
+      [mode, layoutsFilter, currentPeriod],
+      ([m, layouts, period]) => {
         setIsLoading(true)
-        const filters: { layout?: ExpoLayoutType | 'article'; after?: number; featured?: boolean } = {
-          layout,
-          after: getFromDate(period as PeriodType)
+        const filters: { layouts?: Array<ExpoLayoutType | 'article'>; after?: number; featured?: boolean } = {
+          layouts
+        }
+        if (period) {
+          const after = getFromDate(period as PeriodType)
+          if (after) {
+            filters.after = after
+          }
         }
         if (m !== 'all') filters.featured = m === 'featured'
         console.debug('[views.feed] filter changed', filters)
