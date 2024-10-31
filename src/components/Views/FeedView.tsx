@@ -69,7 +69,7 @@ export const FeedView = (props: FeedProps) => {
   // filters
   const [mode, setMode] = createSignal<FeedMode>(props.mode || 'all')
   const [layoutsFilter, setLayoutsFilter] = createSignal<Array<ExpoLayoutType | 'article'>>([])
-  const [currentPeriod, setCurrentPeriod] = createSignal<PeriodType>('all time')
+  const [currentPeriod, setCurrentPeriod] = createSignal<PeriodType>(PeriodType.AllTime)
   // loading state
   const [isLoading, setIsLoading] = createSignal(false)
   const [isRightColumnLoaded, setIsRightColumnLoaded] = createSignal(false)
