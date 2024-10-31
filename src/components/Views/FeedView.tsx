@@ -81,9 +81,10 @@ export const FeedView = (props: FeedProps) => {
       [mode, layoutsFilter, currentPeriod],
       ([m, layouts, period]) => {
         setIsLoading(true)
-        const filters: { layouts?: Array<ExpoLayoutType | 'article'>; after?: number; featured?: boolean } = {
-          layouts
-        }
+        const filters: { layouts?: Array<ExpoLayoutType | 'article'>; after?: number; featured?: boolean } =
+          {
+            layouts
+          }
         if (period) {
           const after = getFromDate(period as PeriodType)
           if (after) {
@@ -200,7 +201,8 @@ export const FeedView = (props: FeedProps) => {
                     asOptionsGroup(
                       ['all', 'article', ...EXPO_LAYOUTS],
                       t(layoutsFilter() || 'Layouts') as string,
-                      (opt: Option) => setLayoutsFilter(prev => [...prev, opt.value as ExpoLayoutType | 'article'])
+                      (opt: Option) =>
+                        setLayoutsFilter((prev) => [...prev, opt.value as ExpoLayoutType | 'article'])
                     ) as OptionGroup
                   ]}
                   currentOption={asOption(props.mode || 'all')}

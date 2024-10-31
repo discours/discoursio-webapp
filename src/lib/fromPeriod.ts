@@ -3,7 +3,7 @@ export enum PeriodType {
   Day = 'day',
   Week = 'week',
   Month = 'month',
-  Year = 'year',
+  Year = 'year'
 }
 
 export const getFromDate = (period: PeriodType) => {
@@ -26,7 +26,7 @@ export const getFromDate = (period: PeriodType) => {
       d = new Date(now.setDate(now.getDate() - 1))
       break
     }
-    case PeriodType.AllTime:
+    // case PeriodType.AllTime:
     default:
       return 0
   }
