@@ -213,13 +213,12 @@ export const dictionaryAfter = [
   'нет'
 ]
 
-export const processPrepositions = (text: string): string => {
+export const processPrepositions = (text: string | string[]): string => {
+  const t: string = Array.isArray(text) ? text.join('') : text
   const prepositionRegexBefore = new RegExp(`(^|\\s)(${dictionaryBefore.join('|')})(\\s|$)`, 'gmi')
   const prepositionRegexAfter = new RegExp(`(\\S+)\\s+(${dictionaryAfter.join('|')})(\\s|$)`, 'gmi')
-  if (Array.isArray(text)) {
-    text = text.join('')
-  }
-  return text
+
+  return t
     .replace(prepositionRegexBefore, (_match, start, word, _end) => {
       return `${start}${word}&nbsp;`
     })
