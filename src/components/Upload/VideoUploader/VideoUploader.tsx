@@ -7,8 +7,8 @@ import { useLocalize } from '~/context/localize'
 import { useSnackbar } from '~/context/ui'
 import { composeMediaItems } from '~/lib/composeMediaItems'
 import { validateUrl } from '~/utils/validate'
+import { MediaItem } from '~/graphql/schema/core.gen'
 
-import { MediaItem } from '~/types/mediaitem'
 import styles from './VideoUploader.module.scss'
 
 type Props = {
@@ -65,7 +65,7 @@ export const VideoUploader = (props: Props) => {
       fallback={
         <For each={props.video}>
           {(mi, index) => (
-            <VideoPlayer onVideoDelete={() => props.onVideoDelete(index())} videoUrl={mi?.url} />
+            <VideoPlayer onVideoDelete={() => props.onVideoDelete(index())} videoUrl={mi?.url || ''} />
           )}
         </For>
       }

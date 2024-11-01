@@ -5,15 +5,14 @@ import { HashNavigation, Manipulation, Navigation, Pagination } from 'swiper/mod
 import { throttle } from 'throttle-debounce'
 
 import { getFileUrl } from '~/lib/getThumbUrl'
-import { MediaItem } from '~/types/mediaitem'
 import { Icon } from '../Icon'
 import { Image } from '../Image'
+import { MediaItem } from '~/graphql/schema/core.gen'
 import { SwiperRef } from './swiper'
 
 import { useSearchParams } from '@solidjs/router'
 import { Lightbox } from '../Lightbox'
 import styles from './Swiper.module.scss'
-
 type Props = {
   images: MediaItem[]
   onImagesAdd?: (value: MediaItem[]) => void
@@ -129,7 +128,10 @@ export const ImageSwiper = (props: Props) => {
                       <div
                         class={clsx(styles.imageThumb)}
                         style={{
-                          'background-image': `url(${getFileUrl(slide.url, { width: 110, height: 75 })})`
+                          'background-image': `url(${getFileUrl(slide.url || '', {
+                            width: 110,
+                            height: 75
+                          })})`
                         }}
                       />
                     </swiper-slide>
@@ -168,7 +170,7 @@ export const ImageSwiper = (props: Props) => {
                   // @ts-ignore
                   <swiper-slide lazy="true" virtual-index={index()} data-hash={index() + 1}>
                     <div class={styles.image} onClick={() => handleImageClick(index())}>
-                      <Image src={slide.url} alt={slide.title} width={800} />
+                      <Image src={slide.url || ''} alt={slide.title || ''} width={800} />
                     </div>
                   </swiper-slide>
                 )}
@@ -204,7 +206,7 @@ export const ImageSwiper = (props: Props) => {
           <div class={styles.source}>{props.images[slideIndex()].source}</div>
         </Show>
         <Show when={props.images[slideIndex()]?.body}>
-          <div class={styles.body} innerHTML={props.images[slideIndex()].body} />
+          <div class={styles.body} innerHTML={props.images[slideIndex()].body || ''} />
         </Show>
       </div>
 

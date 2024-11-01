@@ -18,9 +18,9 @@ import { Popover } from '../Popover'
 import { SwiperRef } from './swiper'
 
 import { useSession } from '~/context/session'
-import { MediaItem } from '~/types/mediaitem'
 import { UploadedFile } from '~/types/upload'
 import styles from './Swiper.module.scss'
+import { MediaItem } from '~/graphql/schema/core.gen'
 
 const MicroEditor = lazy(() => import('../../Editor/MicroEditor'))
 
@@ -181,7 +181,7 @@ export const EditorSwiper = (props: Props) => {
                   // @ts-ignore
                   <swiper-slide lazy="true" virtual-index={index()}>
                     <div class={styles.image}>
-                      <Image src={slide.url} alt={slide.title} width={800} />
+                      <Image src={slide.url || ''} alt={slide.title || ''} width={800} />
 
                       <Popover content={t('Delete')}>
                         {(triggerRef: (el: HTMLElement) => void) => (
@@ -237,7 +237,7 @@ export const EditorSwiper = (props: Props) => {
                       <div
                         class={clsx(styles.imageThumb)}
                         style={{
-                          'background-image': `url(${getFileUrl(slide.url, { width: 110, height: 75 })})`
+                          'background-image': `url(${getFileUrl(slide.url || '', { width: 110, height: 75 })})`
                         }}
                       >
                         <div class={styles.thumbAction}>
@@ -305,18 +305,18 @@ export const EditorSwiper = (props: Props) => {
             type="text"
             class={clsx(styles.input, styles.title)}
             placeholder={t('Enter image title')}
-            value={props.images[slideIndex()]?.title}
+            value={props.images[slideIndex()]?.title || ''}
             onChange={(event) => handleSlideDescriptionChange(slideIndex(), 'title', event.target.value)}
           />
           <input
             type="text"
             class={styles.input}
             placeholder={t('Specify the source and the name of the author')}
-            value={props.images[slideIndex()]?.source}
+            value={props.images[slideIndex()]?.source || ''}
             onChange={(event) => handleSlideDescriptionChange(slideIndex(), 'source', event.target.value)}
           />
           <MicroEditor
-            content={props.images[slideIndex()]?.body}
+            content={props.images[slideIndex()]?.body || ''}
             placeholder={t('Enter image description')}
             onChange={(value) => setSlideBody(value)}
           />

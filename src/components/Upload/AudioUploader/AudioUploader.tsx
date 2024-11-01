@@ -4,7 +4,7 @@ import { isServer } from 'solid-js/web'
 import { DropArea } from '~/components/_shared/DropArea'
 import { useLocalize } from '~/context/localize'
 import { composeMediaItems } from '~/lib/composeMediaItems'
-import { MediaItem } from '~/types/mediaitem'
+import { MediaItem } from '~/graphql/schema/core.gen'
 import { AudioPlayer } from '../../Article/AudioPlayer'
 import styles from './AudioUploader.module.scss'
 

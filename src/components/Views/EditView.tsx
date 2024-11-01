@@ -14,12 +14,11 @@ import { ShoutForm, useEditorContext } from '~/context/editor'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import getMyShoutQuery from '~/graphql/query/core/article-my'
-import type { Shout, Topic } from '~/graphql/schema/core.gen'
+import type { MediaItem, Shout, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { isDesktop } from '~/lib/mediaQuery'
 import { LayoutType } from '~/types/common'
-import { MediaItem } from '~/types/mediaitem'
 import { clone } from '~/utils/clone'
 import { AutoSaveNotice } from '../Editor/AutoSaveNotice'
 import { Panel } from '../Editor/Panel/Panel'
@@ -75,7 +74,7 @@ export const EditView = (props: Props) => {
   const [draft, setDraft] = createSignal<Shout>(props.shout)
   const [mediaItems, setMediaItems] = createSignal<MediaItem[]>([])
 
-  createEffect(() => setMediaItems(JSON.parse(form.media || '[]')))
+  createEffect(() => setMediaItems((form.media || []) as MediaItem[]))
 
   createEffect(
     on(
@@ -103,8 +102,8 @@ export const EditView = (props: Props) => {
               mainTopic: shoutTopics()[0] || '',
               body: shout.body || '',
               coverImageUrl: shout.cover || '',
-              media: shout.media || '',
-              layout: shout.layout
+              media: (shout.media || []) as MediaItem[],
+              layout: shout.layout || ''
             }
             setForm((_: ShoutForm) => draftForm)
             console.debug('draft from props data: ', draftForm)

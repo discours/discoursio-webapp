@@ -3,7 +3,7 @@ import { For, Show, createSignal, lazy } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { Popover } from '~/components/_shared/Popover'
 import { useLocalize } from '~/context/localize'
-import { MediaItem } from '~/types/mediaitem'
+import { MediaItem } from '~/graphql/schema/core.gen'
 import { descFromBody } from '~/utils/meta'
 import { SharePopup, getShareUrl } from '../SharePopup'
 
@@ -72,14 +72,14 @@ export const PlayerPlaylist = (props: Props) => {
                 >
                   <input
                     type="text"
-                    value={mi.title}
+                    value={mi.title || ''}
                     class={styles.title}
                     placeholder={t('Song title')}
                     onChange={(e) => handleMediaItemFieldChange('title', e.target.value)}
                   />
                   <input
                     type="text"
-                    value={mi.artist}
+                    value={mi.artist || ''}
                     class={styles.artist}
                     placeholder={t('Artist')}
                     onChange={(e) => handleMediaItemFieldChange('artist', e.target.value)}
@@ -136,7 +136,7 @@ export const PlayerPlaylist = (props: Props) => {
                         }
                       >
                         <SharePopup
-                          title={mi.title}
+                          title={mi.title || ''}
                           description={descFromBody(props.body || '')}
                           imageUrl={mi.pic || ''}
                           shareUrl={getShareUrl({ pathname: `/${props.articleSlug}` })}
@@ -159,12 +159,12 @@ export const PlayerPlaylist = (props: Props) => {
                   <div class={styles.descriptionBlock}>
                     <Show when={mi.body}>
                       <div class={styles.description}>
-                        <div innerHTML={mi.body} />
+                        <div innerHTML={mi.body || ''} />
                       </div>
                     </Show>
                     <Show when={mi.lyrics}>
                       <div class={styles.lyrics}>
-                        <div innerHTML={mi.lyrics} />
+                        <div innerHTML={mi.lyrics || ''} />
                       </div>
                     </Show>
                   </div>
@@ -172,7 +172,7 @@ export const PlayerPlaylist = (props: Props) => {
               >
                 <div class={styles.descriptionBlock}>
                   <MicroEditor
-                    content={mi.body}
+                    content={mi.body || ''}
                     placeholder={`${t('Description')}...`}
                     onChange={(value: string) => handleMediaItemFieldChange('body', value)}
                   />

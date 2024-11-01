@@ -13,7 +13,7 @@ import { useSnackbar } from '~/context/ui'
 import createShoutMutation from '~/graphql/mutation/core/article-create'
 import deleteShoutMutation from '~/graphql/mutation/core/article-delete'
 import updateShoutMutation from '~/graphql/mutation/core/article-update'
-import { Topic, TopicInput } from '~/graphql/schema/core.gen'
+import { MediaItem, Topic, TopicInput } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
 import { useFeed } from '../context/feed'
 import { useLocalize } from './localize'
@@ -40,7 +40,7 @@ export type ShoutForm = {
   mainTopic?: Topic
   body: string
   coverImageUrl?: string
-  media?: string
+  media?: MediaItem[]
 }
 
 export type EditorContextType = {
@@ -128,7 +128,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
       return false
     }
 
-    const parsedMedia = JSON.parse(form.media || '[]')
+    const parsedMedia = (form.media || []) as MediaItem[]
     if (form.layout === 'video' && !parsedMedia[0]) {
       snackbar?.showSnackbar({
         type: 'error',

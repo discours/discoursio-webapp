@@ -10,7 +10,7 @@ import { ShoutForm, useEditorContext } from '~/context/editor'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import getMyShoutQuery from '~/graphql/query/core/article-my'
-import type { Shout, Topic } from '~/graphql/schema/core.gen'
+import type { MediaItem, Shout, Topic } from '~/graphql/schema/core.gen'
 import { isDesktop } from '~/lib/mediaQuery'
 import { clone } from '~/utils/clone'
 import { PublishSettings } from '../Draft/PublishSettings'
@@ -76,7 +76,7 @@ export const EditSettingsView = (props: Props) => {
               mainTopic: shoutTopics()[0] || '',
               body: shout.body || '',
               coverImageUrl: shout.cover || '',
-              media: shout.media || '',
+              media: (shout.media || []) as MediaItem[],
               layout: shout.layout
             }
             setForm((_) => draftForm)
