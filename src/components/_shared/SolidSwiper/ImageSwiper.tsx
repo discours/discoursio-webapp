@@ -4,10 +4,10 @@ import SwiperCore from 'swiper'
 import { HashNavigation, Manipulation, Navigation, Pagination } from 'swiper/modules'
 import { throttle } from 'throttle-debounce'
 
+import { MediaItem } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { Icon } from '../Icon'
 import { Image } from '../Image'
-import { MediaItem } from '~/graphql/schema/core.gen'
 import { SwiperRef } from './swiper'
 
 import { useSearchParams } from '@solidjs/router'

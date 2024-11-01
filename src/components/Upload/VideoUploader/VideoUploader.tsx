@@ -5,9 +5,9 @@ import { For, Show, createSignal } from 'solid-js'
 import { VideoPlayer } from '~/components/_shared/VideoPlayer'
 import { useLocalize } from '~/context/localize'
 import { useSnackbar } from '~/context/ui'
+import { MediaItem } from '~/graphql/schema/core.gen'
 import { composeMediaItems } from '~/lib/composeMediaItems'
 import { validateUrl } from '~/utils/validate'
-import { MediaItem } from '~/graphql/schema/core.gen'
 
 import styles from './VideoUploader.module.scss'
 

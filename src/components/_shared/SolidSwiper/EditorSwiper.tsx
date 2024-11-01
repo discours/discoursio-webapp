@@ -18,9 +18,9 @@ import { Popover } from '../Popover'
 import { SwiperRef } from './swiper'
 
 import { useSession } from '~/context/session'
+import { MediaItem } from '~/graphql/schema/core.gen'
 import { UploadedFile } from '~/types/upload'
 import styles from './Swiper.module.scss'
-import { MediaItem } from '~/graphql/schema/core.gen'
 
 const MicroEditor = lazy(() => import('../../Editor/MicroEditor'))
 

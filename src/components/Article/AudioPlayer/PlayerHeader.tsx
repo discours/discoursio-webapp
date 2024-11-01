@@ -2,8 +2,8 @@ import { clsx } from 'clsx'
 import { Show, createSignal } from 'solid-js'
 
 import { Icon } from '~/components/_shared/Icon'
-import { useOutsideClickHandler } from '~/lib/useOutsideClickHandler'
 import { MediaItem } from '~/graphql/schema/core.gen'
+import { useOutsideClickHandler } from '~/lib/useOutsideClickHandler'
 import styles from './AudioPlayer.module.scss'
 
 type Props = {
