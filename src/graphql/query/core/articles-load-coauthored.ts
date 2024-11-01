@@ -1,8 +1,8 @@
 import { gql } from '@urql/core'
 
 export default gql`
-  query LoadCoauthoredShoutsQuery($limit: Int, $offset: Int) {
-    load_shouts_coauthored(limit: $limit, offset: $offset) {
+  query LoadCoauthoredShoutsQuery($options: LoadShoutsOptions) {
+    load_shouts_coauthored(options: $options) {
       id
       title
       # lead
@@ -13,17 +13,6 @@ export default gql`
       cover
       cover_caption
       main_topic { id slug }
-      topics {
-        id
-        title
-        body
-        slug
-        stat {
-          shouts
-          authors
-          followers
-        }
-      }
       authors {
         id
         name

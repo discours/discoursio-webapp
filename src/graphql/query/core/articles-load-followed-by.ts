@@ -1,25 +1,14 @@
 import { gql } from '@urql/core'
 
 export default gql`
-  query ShoutsFollowedByUserQuery($slug: String!, $limit: Int!, $offset: Int!) {
-    load_shouts_followed_by(slug: String!, limit: Int, offset: Int) {
+  query ShoutsFollowedByUserQuery($slug: String!, $options: LoadShoutsOptions) {
+    load_shouts_followed_by(slug: $slug, options: $options) {
       title
       subtitle
       layout
       slug
       cover
       main_topic { id slug }
-      topics {
-        id
-        title
-        body
-        slug
-        stat {
-          shouts
-          authors
-          followers
-        }
-      }
       authors {
         id
         name

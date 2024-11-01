@@ -11,12 +11,6 @@ export default gql`
       cover
       # community
       main_topic { id slug }
-      topics {
-        id
-        title
-        body
-        slug
-      }
       authors {
         id
         name

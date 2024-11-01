@@ -5,11 +5,11 @@ import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { useLocalize } from '~/context/localize'
 import { loadShoutsSearch } from '~/graphql/api/public'
-import { QueryLoad_Shouts_SearchArgs, SearchResult } from '~/graphql/schema/core.gen'
+import { LoadShoutsOptions, QueryLoad_Shouts_SearchArgs, SearchResult } from '~/graphql/schema/core.gen'
 
-const fetchSearchResult = async ({ text, limit, offset }: QueryLoad_Shouts_SearchArgs) => {
-  if (!text.trim()) return () => [] as SearchResult[]
-  return await loadShoutsSearch({ text, limit, offset })
+const fetchSearchResult = async (args: QueryLoad_Shouts_SearchArgs) => {
+  if (!args.text.trim()) return () => [] as SearchResult[]
+  return loadShoutsSearch(args.text, args.options as LoadShoutsOptions)
 }
 
 export default () => {
@@ -25,7 +25,7 @@ export default () => {
         console.debug('[routes.search] query:', searchParams.q)
         const searchAction = action(async (text) => {
           if (!text.trim()) return { search: () => [] as SearchResult[], query: text }
-          const search = await fetchSearchResult({ text, limit: 50, offset: 0 })
+          const search = await fetchSearchResult({ text, options: { limit: 50, offset: 0 } })
           return { search, query: text }
         })
         const { search: searchLoader } = await searchAction(searchParams.q)

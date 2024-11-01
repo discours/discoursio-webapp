@@ -15,7 +15,6 @@ import type { Author, Maybe, Shout, Topic } from '~/graphql/schema/core.gen'
 import { processPrepositions } from '~/intl/prepositions'
 import { isCyrillic } from '~/intl/translate'
 import { getFileUrl } from '~/lib/getThumbUrl'
-import { MediaItem } from '~/types/mediaitem'
 import { capitalize } from '~/utils/capitalize'
 import { AuthorBadge } from '../Author/AuthorBadge'
 import { CardTopic } from '../Feed/CardTopic'
@@ -35,6 +34,7 @@ import { AudioPlayer } from './AudioPlayer'
 import { CommentsTree } from './CommentsTree'
 import { RatingControl } from './RatingControl'
 import { SharePopup, getShareUrl } from './SharePopup'
+import { MediaItem } from '~/graphql/schema/core.gen'
 
 import stylesHeader from '../HeaderNav/Header.module.scss'
 import styles from './Article.module.scss'
@@ -87,9 +87,9 @@ export const FullArticle = (props: Props) => {
     if (props.article.layout === 'literature') {
       try {
         if (props.article.media) {
-          const media = JSON.parse(props.article.media)
+          const media = props.article.media as MediaItem[]
           if (media.length > 0) {
-            return processPrepositions(media[0].body)
+            return processPrepositions(media[0].body || '')
           }
         }
       } catch (error) {
@@ -120,7 +120,7 @@ export const FullArticle = (props: Props) => {
     return Array.from(imageElements).map((img) => img.src)
   })
 
-  const media = createMemo<MediaItem[]>(() => JSON.parse(props.article.media || '[]'))
+  const media = createMemo<MediaItem[]>(() => (props.article.media || []) as MediaItem[])
 
   const mainTopic = createMemo(() => {
     const mainTopicSlug = (props.article.topics?.length || 0) > 0 ? props.article.main_topic?.slug : null
@@ -381,7 +381,7 @@ export const FullArticle = (props: Props) => {
           <div class={styles.shoutStatsItem} ref={triggerRef}>
             <SharePopup
               title={props.article.title}
-              description={props.article.description || body() || media()[0]?.body}
+              description={props.article.description || body() || media()[0]?.body || ''}
               imageUrl={props.article.cover || ''}
               shareUrl={shareUrl()}
               containerCssClass={stylesHeader.control}
@@ -543,12 +543,12 @@ export const FullArticle = (props: Props) => {
                     <div class={styles.shoutMediaBody}>
                       <VideoPlayer
                         articleView={true}
-                        videoUrl={m.url}
-                        title={m.title}
-                        description={m.body}
+                        videoUrl={m.url || ''}
+                        title={m.title || ''}
+                        description={m.body || ''}
                       />
                       <Show when={m?.body}>
-                        <div innerHTML={m.body} />
+                        <div innerHTML={m.body || ''} />
                       </Show>
                     </div>
                   )}
@@ -591,7 +591,7 @@ export const FullArticle = (props: Props) => {
 
       <ShareModal
         title={props.article.title}
-        description={props.article.description || body() || media()[0]?.body}
+        description={props.article.description || body() || media()[0]?.body || ''}
         imageUrl={props.article.cover || ''}
         shareUrl={shareUrl()}
       />

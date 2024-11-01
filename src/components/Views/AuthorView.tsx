@@ -193,9 +193,11 @@ export const AuthorView = (props: AuthorViewProps) => {
   const loadMore = async () => {
     saveScrollPosition()
     const authorShoutsFetcher = loadShouts({
-      filters: { author: props.authorSlug },
-      limit: SHOUTS_PER_PAGE,
-      offset: sortedFeed().length || 0 // Offset is based on the current length of sortedFeed
+      options: {
+        filters: { author: props.authorSlug },
+        limit: SHOUTS_PER_PAGE,
+        offset: sortedFeed().length || 0
+      } // Offset is based on the current length of sortedFeed
     })
     const result = await authorShoutsFetcher()
 

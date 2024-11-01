@@ -37,8 +37,10 @@ export const SearchView = (props: Props) => {
       console.log(query())
       const { hasMore, newShouts } = await loadShoutsSearch({
         text: query(),
-        offset: offset(),
-        limit: LOAD_MORE_PAGE_SIZE
+        options: {
+          offset: offset(),
+          limit: LOAD_MORE_PAGE_SIZE
+        }
       })
       setIsLoadMoreButtonVisible(hasMore)
       setOffset(offset() + LOAD_MORE_PAGE_SIZE)

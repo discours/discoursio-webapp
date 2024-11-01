@@ -14,8 +14,8 @@ import { getFileUrl } from '~/lib/getThumbUrl'
 import { descFromBody } from '~/utils/meta'
 
 const fetchTopicShouts = async (slug: string, offset?: number) => {
-  const opts: LoadShoutsOptions = { filters: { topic: slug }, limit: SHOUTS_PER_PAGE, offset }
-  const shoutsLoader = loadShouts(opts)
+  const options: LoadShoutsOptions = { filters: { topic: slug }, limit: SHOUTS_PER_PAGE, offset }
+  const shoutsLoader = loadShouts({ options })
   return await shoutsLoader()
 }
 

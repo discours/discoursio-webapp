@@ -14,7 +14,7 @@ import { useTopics } from '~/context/topics'
 import { loadCoauthoredShouts, loadDiscussedShouts, loadFollowedShouts } from '~/graphql/api/private'
 import { loadShouts } from '~/graphql/api/public'
 import { loadTopics } from '~/graphql/api/public'
-import { LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
+import { LoadShoutsOptions, Shout, ShoutsOrderBy, Topic } from '~/graphql/schema/core.gen'
 import { PeriodType, getFromDate } from '~/lib/fromPeriod'
 
 const privateFeeds = {
@@ -32,7 +32,7 @@ export const route = {
   load: async () => {
     return {
       topics: await fetchTopics(),
-      shouts: await loadShouts({ limit: SHOUTS_PER_PAGE })
+      shouts: await loadShouts({ options: { limit: SHOUTS_PER_PAGE } })
     }
   }
 } satisfies RouteDefinition
@@ -55,15 +55,9 @@ export default (props: RouteSectionProps<{ shouts: Shout[]; topics: Topic[] }>) 
   const mode = createMemo(() => props.params.mode || 'all')
 
   // /feed/:mode/:order: recent | hot | likes
-  const order = createMemo(() => {
-    return (
-      (['recent', 'hot', 'likes'].includes(props.params.order)
-        ? props.params.order === 'hot'
-          ? 'last_comment'
-          : props.params.order
-        : 'created_at') || 'created_at'
-    )
-  })
+  const order = createMemo(() =>
+    props.params.order === 'hot' ? 'last_reacted_at' : props.params.order === 'likes' ? 'rating' : undefined
+  )
 
   // load more feed
   const loadMoreShouts = async (offset?: number) => {
@@ -73,7 +67,7 @@ export default (props: RouteSectionProps<{ shouts: Shout[]; topics: Topic[] }>) 
     const options: LoadShoutsOptions = {
       limit: 20,
       offset,
-      order_by: order()
+      order_by: order() as ShoutsOrderBy
     }
 
     // ?period=month - time period filter
@@ -88,8 +82,8 @@ export default (props: RouteSectionProps<{ shouts: Shout[]; topics: Topic[] }>) 
       throw new Error('API client not connected')
     }
     const shoutsLoader = session()?.access_token
-      ? gqlHandler?.(client() as Client, options)
-      : loadShouts(options)
+      ? gqlHandler?.(client() as Client, { options })
+      : loadShouts({ options })
     const loaded = await shoutsLoader?.()
     loaded && setFeed((prev: Shout[]) => [...prev, ...loaded] as Shout[])
     return (loaded || []) as LoadMoreItems

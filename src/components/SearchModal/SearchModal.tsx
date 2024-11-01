@@ -52,9 +52,11 @@ export const SearchModal = () => {
     setIsLoading(true)
     saveScrollPosition()
     const { hasMore, newShouts } = await loadShoutsSearch({
-      limit: FEED_PAGE_SIZE,
       text: inputValue(),
-      offset: offset()
+      options: {
+        offset: offset(),
+        limit: FEED_PAGE_SIZE
+      }
     })
     setIsLoading(false)
     setOffset(newShouts.length)

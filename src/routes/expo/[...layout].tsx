@@ -15,11 +15,7 @@ import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { byCreated } from '~/utils/sort'
 
 const fetchExpoShouts = async (layouts: string[]) => {
-  const result = await loadShouts({
-    filters: { layouts },
-    limit: SHOUTS_PER_PAGE,
-    offset: 0
-  } as LoadShoutsOptions)
+  const result = await loadShouts({ options: { filters: { layouts }, limit: SHOUTS_PER_PAGE, offset: 0 } })
   return result
 }
 
@@ -50,7 +46,7 @@ export default (props: RouteSectionProps<Shout[]>) => {
     const offset = expoFeed()?.length || 0
     const filters: LoadShoutsFilters = { layouts, featured: true }
     const options: LoadShoutsOptions = { filters, limit, offset }
-    const fetcher = await loadShouts(options)
+    const fetcher = await loadShouts({ options })
     const result = (await fetcher()) || []
     setLoadMoreVisible(Boolean(result?.length))
     if (result && Array.isArray(result)) {
@@ -71,7 +67,7 @@ export default (props: RouteSectionProps<Shout[]>) => {
           limit: SHOUTS_PER_PAGE,
           offset
         }
-        const result = await loadShouts(options)
+        const result = await loadShouts({ options })
         if (result && Array.isArray(result)) {
           setExpoFeed(result)
         } else {

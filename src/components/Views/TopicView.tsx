@@ -83,7 +83,7 @@ export const TopicView = (props: Props) => {
       limit: 10,
       random_limit: 100
     }
-    const topicRandomShoutsFetcher = loadShouts(options)
+    const topicRandomShoutsFetcher = loadShouts({ options })
     const result = await topicRandomShoutsFetcher()
     result && setFavoriteTopArticles(result)
     console.debug('loadFavoriteTopArticles', result)
@@ -99,7 +99,7 @@ export const TopicView = (props: Props) => {
       random_limit: 10
     }
 
-    const reactedTopMonthShoutsFetcher = loadShouts(options)
+    const reactedTopMonthShoutsFetcher = loadShouts({ options })
     const result = await reactedTopMonthShoutsFetcher()
     result && setReactedTopMonthArticles(result)
     console.debug('loadReactedTopMonthArticles', result)
@@ -126,9 +126,7 @@ export const TopicView = (props: Props) => {
     saveScrollPosition()
     const amountBefore = feedByTopic()?.[props.topicSlug]?.length || 0
     const topicShoutsFetcher = loadShouts({
-      filters: { topic: props.topicSlug },
-      limit: SHOUTS_PER_PAGE,
-      offset: amountBefore
+      options: { filters: { topic: props.topicSlug }, limit: SHOUTS_PER_PAGE, offset: amountBefore }
     })
     const result = await topicShoutsFetcher()
     result && addFeed(result)

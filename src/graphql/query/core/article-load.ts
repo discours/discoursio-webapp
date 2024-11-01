@@ -13,7 +13,7 @@ export default gql`
       cover
       cover_caption
       body
-      media
+      media { url pic source artist title body date genre lyrics }
       updated_by {
         id
         name
@@ -22,7 +22,6 @@ export default gql`
         created_at
       }
       # community
-      main_topic { id slug }
       topics {
         id
         title
@@ -47,7 +46,6 @@ export default gql`
       featured_at
       stat {
         viewed
-
         rating
         commented
       }

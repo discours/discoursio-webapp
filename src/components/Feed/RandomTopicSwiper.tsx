@@ -22,9 +22,7 @@ export const RandomTopicSwiper = () => {
       async (topic?: Topic) => {
         if (topic) {
           const shoutsByTopicLoader = loadShouts({
-            filters: { topic: topic.slug, featured: true },
-            limit: 5,
-            offset: 0
+            options: { filters: { topic: topic.slug, featured: true }, limit: 5, offset: 0 }
           })
           const shouts = await shoutsByTopicLoader()
           setRandomTopicArticles(shouts || [])

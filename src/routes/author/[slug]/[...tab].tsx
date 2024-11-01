@@ -64,8 +64,8 @@ import {
 import { getFileUrl } from '~/lib/getThumbUrl'
 
 const fetchAuthorShouts = async (slug: string, offset?: number) => {
-  const opts: LoadShoutsOptions = { filters: { author: slug }, limit: SHOUTS_PER_PAGE, offset }
-  const shoutsLoader = loadShouts(opts)
+  const options: LoadShoutsOptions = { filters: { author: slug }, limit: SHOUTS_PER_PAGE, offset }
+  const shoutsLoader = loadShouts({ options })
   return await shoutsLoader()
 }
 

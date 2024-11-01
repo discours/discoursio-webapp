@@ -1,8 +1,8 @@
 import { gql } from '@urql/core'
 
 export default gql`
-  query LoadBookmarkedShoutsQuery($limit: Int, $offset: Int) {
-    load_shouts_bookmarked(limit: $limit, offset: $offset) {
+  query LoadBookmarkedShoutsQuery($options: LoadShoutsOptions) {
+    load_shouts_bookmarked(options: $options) {
       id
       title
       description

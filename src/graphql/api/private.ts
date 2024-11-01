@@ -3,27 +3,32 @@ import { Client } from '@urql/core'
 import loadShoutsBookmarkedQuery from '~/graphql/query/core/articles-load-bookmarked'
 import loadShoutsCoauthoredQuery from '~/graphql/query/core/articles-load-coauthored'
 import loadShoutsDiscussedQuery from '~/graphql/query/core/articles-load-discussed'
-import loadShoutsFollowedQuery from '~/graphql/query/core/articles-load-followed'
-
-import { QueryLoad_Shouts_FollowedArgs, Shout } from '~/graphql/schema/core.gen'
+import loadShoutsFeedQuery from '~/graphql/query/core/articles-load-feed'
+import {
+  QueryLoad_Shouts_BookmarkedArgs,
+  QueryLoad_Shouts_CoauthoredArgs,
+  QueryLoad_Shouts_DiscussedArgs,
+  QueryLoad_Shouts_FeedArgs,
+  Shout
+} from '~/graphql/schema/core.gen'
 
 export const loadFollowedShouts = (
   signedClient: Client | undefined,
-  options: QueryLoad_Shouts_FollowedArgs
+  { options }: QueryLoad_Shouts_FeedArgs
 ) => {
-  const page = `${options.offset || 0}-${(options?.limit || 0) + (options.offset || 0)}`
+  const page = `${options?.offset || 0}-${(options?.limit || 0) + (options?.offset || 0)}`
   return cache(async () => {
-    const resp = await signedClient?.query(loadShoutsFollowedQuery, { ...options }).toPromise()
-    const result = resp?.data?.load_shouts_followed
+    const resp = await signedClient?.query(loadShoutsFeedQuery, { ...options }).toPromise()
+    const result = resp?.data?.load_shouts_feed
     if (result) return result as Shout[]
-  }, `shouts-followed-${page}`)
+  }, `shouts-feed-${page}`)
 }
 
 export const loadBookmarkedShouts = (
   signedClient: Client | undefined,
-  options: QueryLoad_Shouts_FollowedArgs
+  { options }: QueryLoad_Shouts_BookmarkedArgs
 ) => {
-  const page = `${options.offset || 0}-${(options?.limit || 0) + (options.offset || 0)}`
+  const page = `${options?.offset || 0}-${(options?.limit || 0) + (options?.offset || 0)}`
   return cache(async () => {
     const resp = await signedClient?.query(loadShoutsBookmarkedQuery, { ...options }).toPromise()
     const result = resp?.data?.load_shouts_bookmarked
@@ -33,9 +38,9 @@ export const loadBookmarkedShouts = (
 
 export const loadDiscussedShouts = (
   signedClient: Client | undefined,
-  options: QueryLoad_Shouts_FollowedArgs
+  { options }: QueryLoad_Shouts_DiscussedArgs
 ) => {
-  const page = `${options.offset || 0}-${(options?.limit || 0) + (options.offset || 0)}`
+  const page = `${options?.offset || 0}-${(options?.limit || 0) + (options?.offset || 0)}`
   return cache(async () => {
     const resp = await signedClient?.query(loadShoutsDiscussedQuery, { ...options }).toPromise()
     const result = resp?.data?.load_shouts_discussed
@@ -45,9 +50,9 @@ export const loadDiscussedShouts = (
 
 export const loadCoauthoredShouts = (
   signedClient: Client | undefined,
-  options: QueryLoad_Shouts_FollowedArgs
+  { options }: QueryLoad_Shouts_CoauthoredArgs
 ) => {
-  const page = `${options.offset || 0}-${(options?.limit || 0) + (options.offset || 0)}`
+  const page = `${options?.offset || 0}-${(options?.limit || 0) + (options?.offset || 0)}`
   return cache(async () => {
     const resp = await signedClient?.query(loadShoutsCoauthoredQuery, { ...options }).toPromise()
     const result = resp?.data?.load_shouts_coauthored

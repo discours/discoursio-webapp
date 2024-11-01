@@ -54,7 +54,7 @@ export const FeedView = (props: FeedProps) => {
   const { session } = useSession()
 
   const unrated = createAsync(async () => {
-    const fetcher = loadUnratedShouts({ limit: 5 })
+    const fetcher = loadUnratedShouts({ limit: 5, offset: 0 })
     const result = await fetcher()
     return result
   })
@@ -93,7 +93,7 @@ export const FeedView = (props: FeedProps) => {
         }
         if (m !== 'all') filters.featured = m === 'featured'
         console.debug('[views.feed] filter changed', filters)
-        const shoutsLoader = loadShouts({ filters, limit: FEED_PAGE_SIZE })
+        const shoutsLoader = loadShouts({ options: { filters, limit: FEED_PAGE_SIZE } })
         shoutsLoader().then(addFeed)
       },
       { defer: true }

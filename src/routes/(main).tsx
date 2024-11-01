@@ -3,15 +3,13 @@ import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { SHOUTS_PER_PAGE, useFeed } from '~/context/feed'
 import { loadShouts, loadTopics } from '~/graphql/api/public'
-import { LoadShoutsOptions, Shout } from '~/graphql/schema/core.gen'
+import { LoadShoutsOptions, Shout, ShoutsOrderBy } from '~/graphql/schema/core.gen'
 import { PageLayout } from '../components/_shared/PageLayout'
 import { useLocalize } from '../context/localize'
 
 const featuredLoader = (offset?: number) => {
   return loadShouts({
-    filters: { featured: true },
-    limit: SHOUTS_PER_PAGE,
-    offset
+    options: { filters: { featured: true }, limit: SHOUTS_PER_PAGE, offset }
   })
 }
 
@@ -22,9 +20,7 @@ const fetchAllTopics = async () => {
 
 const fetchHomeTopData = async () => {
   const topCommentedLoader = loadShouts({
-    filters: { featured: true },
-    order_by: 'comments_stat',
-    limit: 10
+    options: { filters: { featured: true }, order_by: 'comments_count' as ShoutsOrderBy, limit: 10 }
   })
 
   const daysago = Date.now() - 30 * 24 * 60 * 60 * 1000
@@ -34,15 +30,17 @@ const fetchHomeTopData = async () => {
       featured: true,
       after
     },
-    order_by: 'rating_stat',
+    order_by: 'rating' as ShoutsOrderBy,
     limit: 10
   }
-  const topMonthLoader = loadShouts({ ...options })
+  const topMonthLoader = loadShouts({ options })
 
   const topRatedLoader = loadShouts({
-    filters: { featured: true },
-    order_by: 'rating_stat',
-    limit: 10
+    options: {
+      filters: { featured: true },
+      order_by: 'rating' as ShoutsOrderBy,
+      limit: 10
+    }
   })
   const topRatedShouts = await topRatedLoader()
   const topMonthShouts = await topMonthLoader()
@@ -54,8 +52,7 @@ export const route = {
   load: async () => {
     const limit = 20
     const featuredLoader = loadShouts({
-      filters: { featured: true },
-      limit
+      options: { filters: { featured: true }, limit }
     })
     return {
       ...(await fetchHomeTopData()),

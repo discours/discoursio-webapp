@@ -1,13 +1,15 @@
 import { gql } from '@urql/core'
 
 export default gql`
-  query LoadUnratedShoutsQuery($limit: Int, $offset: Int) {
-    load_shouts_unrated(limit: $limit, offset: $offset) {
+  query LoadUnratedShoutsQuery($options: LoadShoutsOptions) {
+    load_shouts_unrated(options: $options) {
       id
       title
+      subtitle
       slug
       layout
       cover
+      main_topic { id slug title }
       authors {
         id
         name

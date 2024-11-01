@@ -13,17 +13,6 @@ export default gql`
       cover
       lead
       main_topic { id slug }
-      topics {
-        id
-        title
-        body
-        slug
-        stat {
-          shouts
-          authors
-          followers
-        }
-      }
       authors {
         id
         name

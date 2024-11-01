@@ -1,14 +1,15 @@
 import { gql } from '@urql/core'
 
 export default gql`
-  query LoadShoutsSearchQuery($text: String!, $limit: Int, $offset: Int) {
-    load_shouts_search(text: $text, limit: $limit, offset: $offset) {
+  query LoadShoutsSearchQuery($text: String!, $options: LoadShoutsOptions) {
+    load_shouts_search(text: $text, options: $options) {
       score
       title
       slug
       created_at
       cover
-      topics {
+      main_topic {
+        id
         slug
         title
       }

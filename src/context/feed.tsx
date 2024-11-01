@@ -3,13 +3,7 @@ import { makePersisted } from '@solid-primitives/storage'
 import { Accessor, JSX, Setter, createContext, createSignal, useContext } from 'solid-js'
 import { loadFollowedShouts } from '~/graphql/api/private'
 import { loadShoutsSearch as fetchShoutsSearch, getShout, loadShouts } from '~/graphql/api/public'
-import {
-  Author,
-  LoadShoutsOptions,
-  QueryLoad_Shouts_SearchArgs,
-  Shout,
-  Topic
-} from '~/graphql/schema/core.gen'
+import { Author, LoadShoutsOptions, Shout, ShoutsOrderBy, Topic } from '~/graphql/schema/core.gen'
 import { ExpoLayoutType } from '~/types/common'
 import { byStat } from '../utils/sort'
 import { useSession } from './session'
@@ -37,9 +31,10 @@ type FeedContextType = {
   loadShout: (slug: string) => Promise<void>
   loadShouts: (options: LoadShoutsOptions) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
   loadMyFeed: (options: LoadShoutsOptions) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
-  loadShoutsSearch: (
-    options: QueryLoad_Shouts_SearchArgs
-  ) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
+  loadShoutsSearch: ({
+    text,
+    options
+  }: { text: string; options?: LoadShoutsOptions }) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
   resetSortedFeed: () => void
   seen: Accessor<{ [slug: string]: number }>
   addSeen: (slug: string) => void
@@ -174,7 +169,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   const loadShoutsBy = async (
     options: LoadShoutsOptions
   ): Promise<{ hasMore: boolean; newShouts: Shout[] }> => {
-    const fetcher = await loadShouts(options)
+    const fetcher = await loadShouts({ options })
     const result = (await fetcher()) || []
     const hasMore = result.length !== options.limit + 1 && result.length !== 0
     if (hasMore) result.splice(-1)
@@ -189,7 +184,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   ): Promise<{ hasMore: boolean; newShouts: Shout[] }> => {
     if (!options.limit) options.limit = 0
     options.limit += 1
-    const fetcher = await loadFollowedShouts(client(), options)
+    const fetcher = await loadFollowedShouts(client(), { options })
     const result = (await fetcher()) || []
     const hasMore = result.length === options.limit + 1
     if (hasMore) result.splice(-1)
@@ -198,13 +193,14 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   }
 
   // Load shouts based on the search query and update the articleEntities and sortedFeed state
-  const loadShoutsSearch = async (
-    options: QueryLoad_Shouts_SearchArgs
-  ): Promise<{ hasMore: boolean; newShouts: Shout[] }> => {
-    options.limit = options?.limit || 0 + 1
-    const fetcher = await fetchShoutsSearch(options)
+  const loadShoutsSearch = async ({
+    text,
+    options
+  }: { text: string; options?: LoadShoutsOptions }): Promise<{ hasMore: boolean; newShouts: Shout[] }> => {
+    const limit = (options?.limit || 0) + 1
+    const fetcher = fetchShoutsSearch(text, { ...options, limit })
     const result = (await fetcher()) || []
-    const hasMore = result.length === (options?.limit || 0) + 1
+    const hasMore = result.length === limit
     if (hasMore) result.splice(-1)
     addFeed(result)
     return { hasMore, newShouts: result }
@@ -224,10 +220,10 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
         featured: true,
         after
       },
-      order_by: 'rating_stat',
+      order_by: 'rating' as ShoutsOrderBy,
       limit: 10
     }
-    const fetcher = await loadShouts(options)
+    const fetcher = await loadShouts({ options })
     const result = (await fetcher()) || []
     addFeed(result)
     setTopMonthFeed(result)
@@ -236,10 +232,10 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   const loadTopFeed = async (): Promise<void> => {
     const options: LoadShoutsOptions = {
       filters: { featured: true },
-      order_by: 'featured_filter',
+      // order_by: published_at
       limit: 10
     }
-    const fetcher = await loadShouts(options)
+    const fetcher = await loadShouts({ options })
     const result = (await fetcher()) || []
     addFeed(result)
     setTopFeed(result)

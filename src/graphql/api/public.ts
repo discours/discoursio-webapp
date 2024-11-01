@@ -15,8 +15,10 @@ import {
   LoadShoutsOptions,
   QueryGet_AuthorArgs,
   QueryGet_ShoutArgs,
+  QueryGet_Topic_FollowersArgs,
   QueryLoad_Authors_ByArgs,
   QueryLoad_Reactions_ByArgs,
+  QueryLoad_Shouts_ByArgs,
   QueryLoad_Shouts_SearchArgs,
   QueryLoad_Shouts_UnratedArgs,
   Reaction,
@@ -49,11 +51,12 @@ export const loadAuthorsAll = () => {
   }, 'authors-all')
 }
 
-export const loadShouts = (options: LoadShoutsOptions) => {
-  const page = `${options.offset || 0}-${options.limit + (options.offset || 0)}`
-  const filter = new URLSearchParams(options.filters as Record<string, string>)
+export const loadShouts = (args: QueryLoad_Shouts_ByArgs) => {
+  const { options } = args
+  const page = `${options?.offset || 0}-${(options?.limit || 0) + (options?.offset || 0)}`
+  const filter = new URLSearchParams(options?.filters as Record<string, string>)
   return cache(async () => {
-    const resp = await defaultClient.query(loadShoutsByQuery, { options }).toPromise()
+    const resp = await defaultClient.query(loadShoutsByQuery, args).toPromise()
     const result = resp?.data?.load_shouts_by
     if (result) return result as Shout[]
   }, `shouts-${filter}-${page}`)
@@ -80,7 +83,7 @@ export const getShout = (options: QueryGet_ShoutArgs) => {
   // console.debug('[lib.api] get shout options', options)
   return cache(
     async () => {
-      const resp = await defaultClient.query(getShoutQuery, { ...options }).toPromise()
+      const resp = await defaultClient.query(getShoutQuery, options).toPromise()
       const result = resp?.data?.get_shout
       if (result) return result as Shout
     },
@@ -91,7 +94,7 @@ export const getShout = (options: QueryGet_ShoutArgs) => {
 export const getAuthor = (options: QueryGet_AuthorArgs) => {
   return cache(
     async () => {
-      const resp = await defaultClient.query(getAuthorQuery, { ...options }).toPromise()
+      const resp = await defaultClient.query(getAuthorQuery, options).toPromise()
       const result = resp?.data?.get_author
       if (result) return result as Author
     },
@@ -99,28 +102,34 @@ export const getAuthor = (options: QueryGet_AuthorArgs) => {
   )
 }
 
-export const loadShoutsSearch = (options: QueryLoad_Shouts_SearchArgs) => {
-  const page = `${options.offset || 0}-${(options?.limit || 0) + (options.offset || 0)}`
+export const loadShoutsSearch = (text: string, options: LoadShoutsOptions) => {
+  const page = `${options?.offset || 0}-${(options?.limit || 0) + (options?.offset || 0)}`
   return cache(async () => {
-    const resp = await defaultClient.query(loadShoutsSearchQuery, { ...options }).toPromise()
+    const resp = await defaultClient
+      .query(loadShoutsSearchQuery, { text, options } as QueryLoad_Shouts_SearchArgs)
+      .toPromise()
     const result = resp?.data?.load_shouts_search
     if (result) return result as Shout[]
-  }, `search-${options.text}-${page}`)
+  }, `search-${text}-${page}`)
 }
 
 export const loadFollowersByTopic = (slug: string) => {
   // TODO: paginate topic followers
   return cache(async () => {
-    const resp = await defaultClient.query(loadFollowersByTopicQuery, { slug }).toPromise()
+    const resp = await defaultClient
+      .query(loadFollowersByTopicQuery, { slug } as QueryGet_Topic_FollowersArgs)
+      .toPromise()
     const result = resp?.data?.get_topic_followers
     if (result) return result as Author[]
   }, `topic-${slug}`)
 }
 
-export const loadUnratedShouts = (options: QueryLoad_Shouts_UnratedArgs) => {
-  const page = `${options.offset || 0}-${(options?.limit || 0) + (options.offset || 0)}`
+export const loadUnratedShouts = (options: LoadShoutsOptions) => {
+  const page = `${options?.offset || 0}-${(options?.limit || 0) + (options?.offset || 0)}`
   return cache(async () => {
-    const resp = await defaultClient.query(loadShoutsUnratedQuery, { ...options }).toPromise()
+    const resp = await defaultClient
+      .query(loadShoutsUnratedQuery, { options } as QueryLoad_Shouts_UnratedArgs)
+      .toPromise()
     const result = resp?.data?.load_shouts_unrated
     if (result) return result as Shout[]
   }, `shouts-unrated-${page}`)
