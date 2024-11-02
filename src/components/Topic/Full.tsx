@@ -1,17 +1,15 @@
-import type { Author, Topic } from '~/graphql/schema/core.gen'
+import { type Author, FollowingEntity, type Topic } from '~/graphql/schema/core.gen'
 
 import { clsx } from 'clsx'
 import { Show, createEffect, createSignal, on } from 'solid-js'
 
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
-import { FollowingEntity } from '~/graphql/schema/core.gen'
-import { Button } from '../_shared/Button'
-
 import { capitalize } from '~/utils/capitalize'
+import { FollowingButton } from '../_shared/FollowingButton'
 import { FollowingCounters } from '../_shared/FollowingCounters/FollowingCounters'
 import { Icon } from '../_shared/Icon'
+
 import styles from './Full.module.scss'
 
 type Props = {
@@ -22,8 +20,7 @@ type Props = {
 
 export const FullTopic = (props: Props) => {
   const { t, lang } = useLocalize()
-  const { follows, changeFollowing } = useFollowing()
-  const { requireAuthentication } = useSession()
+  const { follows } = useFollowing()
   const [followed, setFollowed] = createSignal()
   const [title, setTitle] = createSignal('')
 
@@ -50,14 +47,6 @@ export const FullTopic = (props: Props) => {
     }
   })
 
-  const handleFollowClick = (_ev?: MouseEvent | undefined) => {
-    const really = !followed()
-    setFollowed(really)
-    requireAuthentication(() => {
-      changeFollowing(FollowingEntity.Topic, props.topic.slug, really)
-    }, 'follow')
-  }
-
   return (
     <div class={clsx(styles.topicHeader, 'col-md-16 col-lg-12 offset-md-4 offset-lg-6')}>
       <h1>{title()}</h1>
@@ -82,10 +71,10 @@ export const FullTopic = (props: Props) => {
       </div>
 
       <div class={clsx(styles.topicActions)}>
-        <Button
-          variant="primary"
-          onClick={handleFollowClick}
-          value={followed() ? t('Unfollow the topic') : t('Follow the topic')}
+        <FollowingButton
+          entity={FollowingEntity.Topic}
+          slug={props.topic?.slug}
+          isFollowed={Boolean(followed())}
           class={styles.followControl}
         />
         <a class={styles.writeControl} href={`/edit/new/?topicId=${props.topic?.id}`}>

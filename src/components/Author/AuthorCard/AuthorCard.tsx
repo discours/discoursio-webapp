@@ -25,6 +25,7 @@ type Props = {
   author: Author
   followers?: Author[]
   flatFollows?: Array<Author | Topic>
+  showMessageButton?: boolean
 }
 
 export const AuthorCard = (props: Props) => {
@@ -36,7 +37,7 @@ export const AuthorCard = (props: Props) => {
   const [followsFilter, setFollowsFilter] = createSignal<FollowsFilter>('all')
   const [isFollowed, setIsFollowed] = createSignal<boolean>()
   const isProfileOwner = createMemo(() => author()?.slug === props.author.slug)
-  const { follow, unfollow, follows } = useFollowing() // viewer's followings
+  const { follows } = useFollowing() // viewer's followings
   const { hideModal } = useUI()
 
   createEffect(() => {
@@ -71,17 +72,6 @@ export const AuthorCard = (props: Props) => {
       setAuthorSubs(subs || [])
     })
   )
-
-  const [followingLoading, setFollowingLoading] = createSignal(false)
-  const handleFollowClick = () => {
-    requireAuthentication(async () => {
-      setFollowingLoading(true)
-      isFollowed()
-        ? await unfollow(FollowingEntity.Author, props.author.slug)
-        : await follow(FollowingEntity.Author, props.author.slug)
-      setFollowingLoading(false)
-    }, 'follow')
-  }
 
   const FollowersModalView = () => (
     <>
@@ -212,18 +202,20 @@ export const AuthorCard = (props: Props) => {
                 <div class={styles.authorActions}>
                   <Show when={authorSubs()?.length}>
                     <FollowingButton
+                      slug={props.author.slug}
+                      entity={FollowingEntity.Author}
                       isFollowed={Boolean(isFollowed())}
-                      action={handleFollowClick}
                       class={clsx({ [stylesButton.followed]: isFollowed() })}
-                      loading={followingLoading()}
                     />
                   </Show>
-                  <Button
-                    variant={'secondary'}
-                    value={t('Message')}
-                    onClick={initChat}
-                    class={styles.buttonWriteMessage}
-                  />
+                  <Show when={props.showMessageButton}>
+                    <Button
+                      variant={'secondary'}
+                      value={t('Message')}
+                      onClick={initChat}
+                      class={styles.buttonWriteMessage}
+                    />
+                  </Show>
                 </div>
               }
             >

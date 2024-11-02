@@ -120,7 +120,11 @@ export const TopicCard = (props: TopicProps) => {
                   <CheckButton text={t('Follow')} checked={isFollowed()} onClick={handleFollowClick} />
                 }
               >
-                <FollowingButton action={handleFollowClick} isFollowed={isFollowed()} />
+                <FollowingButton
+                  slug={props.topic.slug}
+                  entity={FollowingEntity.Topic}
+                  isFollowed={isFollowed()}
+                />
               </Show>
             </Show>
           </ShowOnlyOnClient>

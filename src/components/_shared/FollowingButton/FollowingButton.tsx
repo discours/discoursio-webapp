@@ -1,6 +1,8 @@
 import { clsx } from 'clsx'
-import { Show, createMemo } from 'solid-js'
+import { Show, createEffect, createSignal, on } from 'solid-js'
+import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
+import { FollowingEntity } from '~/graphql/schema/core.gen'
 import { Button } from '../Button'
 import { CheckButton } from '../CheckButton'
 import { Icon } from '../Icon'
@@ -9,24 +11,32 @@ import stylesButton from '../Button/Button.module.scss'
 import styles from './FollowingButton.module.scss'
 
 type Props = {
+  isFollowed: boolean // initial value
+  entity: FollowingEntity
+  slug: string
   class?: string
-  isFollowed: boolean
   minimize?: boolean
-  action: () => void
   iconButtons?: boolean
-  loading?: boolean
 }
 
 export const FollowingButton = (props: Props) => {
   const { t } = useLocalize()
+  const [inActionText, setInActionText] = createSignal('...')
+  const [caption, setCaption] = createSignal(t('Follow'))
+  const [followed, setFollowed] = createSignal(props.isFollowed)
+  const { followingLoading, changeFollowing } = useFollowing()
 
-  const inActionText = createMemo(() => {
-    return props.isFollowed ? t('Unfollowing...') : t('Following...')
-  })
+  const handleFollowClick = async () => {
+    const newFollowState = await changeFollowing(followed(), props.entity, props.slug)
+    setFollowed(newFollowState)
+  }
 
-  const caption = createMemo(() => {
-    return props.isFollowed ? t('Unfollow') : t('Follow')
-  })
+  createEffect(
+    on(followed, (x) => {
+      setCaption(x ? t('Unfollow') : t('Follow'))
+      setInActionText(x ? t('Unfollowing...') : t('Following...'))
+    })
+  )
 
   return (
     <div class={props.class}>
@@ -35,8 +45,8 @@ export const FollowingButton = (props: Props) => {
         fallback={
           <CheckButton
             text={t('Follow')}
-            checked={props.isFollowed && !props.loading}
-            onClick={props.action}
+            checked={followed() && !followingLoading()}
+            onClick={handleFollowClick}
           />
         }
       >
@@ -47,15 +57,15 @@ export const FollowingButton = (props: Props) => {
               variant={props.iconButtons ? 'secondary' : 'bordered'}
               size="S"
               value={
-                <Show when={props.iconButtons} fallback={props.loading ? inActionText() : caption()}>
+                <Show when={props.iconButtons} fallback={followingLoading() ? inActionText() : caption()}>
                   <Icon name="author-subscribe" class={stylesButton.icon} />
                 </Show>
               }
-              onClick={props.action}
+              onClick={handleFollowClick}
               isSubscribeButton={true}
               class={clsx(styles.actionButton, {
                 [styles.iconed]: props.iconButtons,
-                [stylesButton.followed]: props.isFollowed
+                [stylesButton.followed]: followed()
               })}
             />
           }
@@ -67,7 +77,7 @@ export const FollowingButton = (props: Props) => {
               <Show
                 when={props.iconButtons}
                 fallback={
-                  props.loading ? (
+                  followingLoading() ? (
                     inActionText()
                   ) : (
                     <>
@@ -80,11 +90,11 @@ export const FollowingButton = (props: Props) => {
                 <Icon name="author-unsubscribe" class={stylesButton.icon} />
               </Show>
             }
-            onClick={props.action}
+            onClick={handleFollowClick}
             isSubscribeButton={true}
             class={clsx(styles.actionButton, {
               [styles.iconed]: props.iconButtons,
-              [stylesButton.followed]: props.isFollowed
+              [stylesButton.followed]: followed()
             })}
           />
         </Show>

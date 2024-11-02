@@ -58,12 +58,12 @@ export const TopicsNav = () => {
             {t('Art')}
           </A>
         </li>
-        <li class={styles.item}>
+        {/*<li class={styles.item}>
           <A href="/podcasts">{t('Podcasts')}</A>
         </li>
         <li class={styles.item}>
           <A href="/projects">{t('Special projects')}</A>
-        </li>
+        </li>*/}
         <li class={styles.item}>
           <A href="/topic/interview">#{t('Interview')}</A>
         </li>

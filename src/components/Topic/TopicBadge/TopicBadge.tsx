@@ -4,11 +4,11 @@ import { Show, createEffect, createSignal, on } from 'solid-js'
 import { FollowingButton } from '~/components/_shared/FollowingButton'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
 import { FollowingEntity, Topic } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { mediaMatches } from '~/lib/mediaQuery'
 import { capitalize } from '~/utils/capitalize'
+
 import styles from './TopicBadge.module.scss'
 
 type Props = {
@@ -21,9 +21,8 @@ type Props = {
 export const TopicBadge = (props: Props) => {
   const { t, lang } = useLocalize()
   const [isMobileView, setIsMobileView] = createSignal(false)
-  const { requireAuthentication } = useSession()
   const [isFollowed, setIsFollowed] = createSignal<boolean>()
-  const { follow, unfollow, follows } = useFollowing()
+  const { follows } = useFollowing()
 
   createEffect(
     on([() => follows, () => props.topic], ([flws, tpc]) => {
@@ -33,14 +32,6 @@ export const TopicBadge = (props: Props) => {
       }
     })
   )
-
-  const handleFollowClick = () => {
-    requireAuthentication(() => {
-      isFollowed()
-        ? follow(FollowingEntity.Topic, props.topic.slug)
-        : unfollow(FollowingEntity.Topic, props.topic.slug)
-    }, 'subscribe')
-  }
 
   createEffect(() => {
     setIsMobileView(!mediaMatches.sm)
@@ -84,7 +75,11 @@ export const TopicBadge = (props: Props) => {
           </a>
         </div>
         <div class={styles.actions}>
-          <FollowingButton isFollowed={Boolean(isFollowed())} action={handleFollowClick} />
+          <FollowingButton
+            slug={props.topic.slug}
+            entity={FollowingEntity.Topic}
+            isFollowed={Boolean(isFollowed())}
+          />
         </div>
       </div>
 

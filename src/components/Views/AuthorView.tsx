@@ -54,7 +54,9 @@ export const AuthorView = (props: AuthorViewProps) => {
   const [isBioExpanded, setIsBioExpanded] = createSignal(false)
   const [author, setAuthor] = createSignal<Author>()
   const [followers, setFollowers] = createSignal<Author[]>([] as Author[])
-  const [following, changeFollowing] = createSignal<Array<Author | Topic>>([] as Array<Author | Topic>) // flat AuthorFollowsResult
+  const [followingArray, setFollowingArray] = createSignal<Array<Author | Topic>>(
+    [] as Array<Author | Topic>
+  ) // flat AuthorFollowsResult
   const [showExpandBioControl, setShowExpandBioControl] = createSignal(false)
   const [commented, setCommented] = createSignal<Reaction[]>(props.comments || [])
   const [followersLoaded, setFollowersLoaded] = createSignal(false)
@@ -117,7 +119,7 @@ export const AuthorView = (props: AuthorViewProps) => {
           setAuthor(meData)
           setFollowers(myFollowers() || [])
           setFollowersLoaded(true)
-          changeFollowing([...(myFollows?.topics || []), ...(myFollows?.authors || [])])
+          setFollowingArray([...(myFollows?.topics || []), ...(myFollows?.authors || [])])
           setFollowingsLoaded(true)
         } else if (slug && !author()) {
           await loadAuthor({ slug })
@@ -128,8 +130,8 @@ export const AuthorView = (props: AuthorViewProps) => {
             const followsResp = await client()
               ?.query(getAuthorFollowsQuery, { slug: foundAuthor.slug })
               .toPromise()
-            const follows = followsResp?.data?.get_author_followers || {}
-            changeFollowing([...(follows?.authors || []), ...(follows?.topics || [])])
+            const follows = followsResp?.data?.get_author_follows || {}
+            setFollowingArray([...(follows?.authors || []), ...(follows?.topics || [])])
             setFollowingsLoaded(true)
 
             const followersResp = await client()
@@ -308,7 +310,7 @@ export const AuthorView = (props: AuthorViewProps) => {
               <AuthorCard
                 author={author() as Author}
                 followers={followers() || []}
-                flatFollows={following() || []}
+                flatFollows={followingArray() || []}
               />
             </div>
             <div class={clsx(styles.groupControls, 'row')}>

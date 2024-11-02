@@ -18,6 +18,7 @@ import styles from './Header.module.scss'
 
 type Props = {
   setIsProfilePopupVisible: (value: boolean) => void
+  showInboxButton?: boolean
 }
 
 type IconedButtonProps = {
@@ -245,7 +246,7 @@ export const HeaderAuth = (props: Props) => {
                 </Show>
               }
             >
-              <Show when={!isSaveButtonVisible()}>
+              <Show when={!isSaveButtonVisible() && props.showInboxButton}>
                 <div
                   class={clsx(
                     styles.userControlItem

@@ -25,7 +25,7 @@ import {
   onMount,
   useContext
 } from 'solid-js'
-import { type ModalSource, useSnackbar, useUI } from '~/context/ui'
+import { type ModalSource, useSnackbar } from '~/context/ui'
 import { graphqlClientCreate } from '~/graphql/client'
 import { authApiUrl, authorizerClientId, authorizerRedirectUrl, coreApiUrl } from '../config'
 import { useLocalize } from './localize'
@@ -118,6 +118,7 @@ export const SessionProvider = (props: {
     access_token?: string
     scope?: string
   }>()
+
   const clearSearchParams = () => changeSearchParams({}, { replace: true })
   const [config, setConfig] = createSignal<ConfigType>(defaultConfig)
   const authorizer = createMemo(() => new Authorizer(config()))
@@ -127,7 +128,6 @@ export const SessionProvider = (props: {
   let minuteLater: ReturnType<typeof setTimeout> | null = null
   const [isSessionLoaded, setIsSessionLoaded] = createSignal(false)
   const [authError, setAuthError] = createSignal<string>('')
-  const { showModal } = useUI()
 
   // Handle auth state callback from outside
   onMount(() => {
@@ -262,13 +262,31 @@ export const SessionProvider = (props: {
    * @param callback - The function to execute after authentication.
    * @param modalSource - The source of the authentication modal.
    */
-  const requireAuthentication = (callback: () => void, modalSource: ModalSource) => {
-    setAuthCallback(() => callback)
-    if (!session()) {
-      loadSession()
-      if (!session()) {
-        showModal('auth', modalSource)
+
+  const requireAuthentication = async (
+    callback: (() => Promise<void>) | (() => void),
+    modalSource: ModalSource
+  ) => {
+    console.info('require auth in ', modalSource)
+    try {
+      if (session()?.access_token) {
+        await callback()
+      } else {
+        changeSearchParams(
+          {
+            mode: 'sign-in',
+            m: 'auth'
+          },
+          { replace: true }
+        )
+        return
       }
+    } catch (error) {
+      console.error('Ошибка в requireAuthentication:', error)
+      showSnackbar({
+        type: 'error',
+        body: t('Try again later')
+      })
     }
   }
 

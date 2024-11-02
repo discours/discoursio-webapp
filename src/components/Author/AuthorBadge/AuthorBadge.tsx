@@ -33,7 +33,7 @@ export const AuthorBadge = (props: Props) => {
   const { t, formatDate, lang } = useLocalize()
   const { session, requireAuthentication } = useSession()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
-  const { follow, unfollow, follows } = useFollowing()
+  const { follows } = useFollowing()
   const [isMobileView, setIsMobileView] = createSignal(false)
   const [isFollowed, setIsFollowed] = createSignal<boolean>(
     Boolean(follows?.authors?.some((authorEntity) => Boolean(authorEntity.id === props.author?.id)))
@@ -69,19 +69,6 @@ export const AuthorBadge = (props: Props) => {
     }
 
     return name || ''
-  }
-  const [followingLoading, setFollowingLoading] = createSignal<boolean>(false)
-  const handleFollowClick = () => {
-    console.debug('[AuthorBadge.handleFollowClick] ...')
-    requireAuthentication(async () => {
-      setFollowingLoading(true)
-      console.debug('[AuthorBadge.handleFollowClick] author slug', props.author.slug)
-      const result = isFollowed()
-        ? await unfollow(FollowingEntity.Author, props.author.slug)
-        : await follow(FollowingEntity.Author, props.author.slug)
-      if (result && !result.error) setIsFollowed(!isFollowed())
-      setFollowingLoading(false)
-    }, 'follow')
   }
 
   const handleClick = (_e: MouseEvent) => {
@@ -144,9 +131,9 @@ export const AuthorBadge = (props: Props) => {
       <Show when={props.author.slug !== author()?.slug && !props.nameOnly}>
         <div class={styles.actions}>
           <FollowingButton
-            action={handleFollowClick}
+            entity={FollowingEntity.Author}
+            slug={props.author.slug}
             isFollowed={isFollowed()}
-            loading={followingLoading()}
           />
           <Show when={props.showMessageButton}>
             <Button

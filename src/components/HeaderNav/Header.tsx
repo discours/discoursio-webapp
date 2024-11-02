@@ -292,7 +292,7 @@ export const Header = (props: Props) => {
               </div>
             </div>
           </div>
-          <HeaderAuth setIsProfilePopupVisible={setIsProfilePopupVisible} />
+          <HeaderAuth showInboxButton={false} setIsProfilePopupVisible={setIsProfilePopupVisible} />
           <Show when={props.title}>
             <div
               class={clsx(styles.articleControls, 'col-auto', {

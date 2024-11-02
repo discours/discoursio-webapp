@@ -452,7 +452,7 @@ export const FullArticle = (props: Props) => {
 
   const AuthorItem = (props: { author: Author }) => (
     <div class="col-xl-12">
-      <AuthorBadge iconButtons={true} showMessageButton={true} author={props.author} />
+      <AuthorBadge iconButtons={true} showMessageButton={false} author={props.author} />
     </div>
   )
 
