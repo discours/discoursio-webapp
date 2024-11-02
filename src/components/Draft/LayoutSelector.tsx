@@ -1,7 +1,7 @@
 import { useNavigate } from '@solidjs/router'
-import clsx from 'clsx'
+import { clsx } from 'clsx'
 import { For } from 'solid-js'
-import { useEditorContext } from '~/context/editor'
+
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useSnackbar } from '~/context/ui'
@@ -15,7 +15,6 @@ import styles from './LayoutSelector.module.scss'
 export const LayoutSelector = () => {
   const { t } = useLocalize()
   const { client } = useSession()
-  const { saveDraftToLocalStorage } = useEditorContext()
   const { showSnackbar } = useSnackbar()
   const navigate = useNavigate()
 
@@ -35,13 +34,16 @@ export const LayoutSelector = () => {
         return
       }
       if (shout?.id) {
-        saveDraftToLocalStorage({
-          shoutId: shout.id,
-          selectedTopics: shout.topics,
-          slug: shout.slug,
-          title: '',
-          body: ''
-        })
+        localStorage.setItem(
+          `shout-${shout.id}`,
+          JSON.stringify({
+            shoutId: shout.id,
+            selectedTopics: shout.topics || [],
+            slug: shout.slug,
+            title: shout.title || '',
+            body: shout.body || ''
+          })
+        )
         navigate(`/edit/${shout.id}`)
       }
     }

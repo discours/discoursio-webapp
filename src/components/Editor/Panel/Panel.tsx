@@ -1,7 +1,7 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show, createSignal } from 'solid-js'
-import { useEditorHTML } from 'solid-tiptap'
+import { createEditorTransaction, useEditorHTML } from 'solid-tiptap'
 import Typograf from 'typograf'
 import { Button } from '~/components/_shared/Button'
 import { DarkModeToggle } from '~/components/_shared/DarkModeToggle'
@@ -26,7 +26,6 @@ export const Panel = (props: Props) => {
   const {
     setIsCollabMode,
     isEditorPanelVisible,
-    wordCounter,
     form,
     toggleEditorPanel,
     saveShout,
@@ -52,10 +51,11 @@ export const Panel = (props: Props) => {
 
   const handleSaveClick = () => {
     const hasTopics = form.selectedTopics?.length > 0
+    const data = { ...form, body: editor()?.getHTML() || '' }
     if (hasTopics) {
-      saveShout(form)
+      saveShout(data)
     } else {
-      saveDraft(form)
+      saveDraft(data)
     }
   }
 
@@ -65,6 +65,8 @@ export const Panel = (props: Props) => {
     editor()?.commands.setContent(typograf.execute(html() || '')) // here too
     setIsTypographyFixed(true)
   }
+
+  const counter = createEditorTransaction(editor, (e) => e?.storage.characterCount)
 
   return (
     <aside
@@ -156,10 +158,10 @@ export const Panel = (props: Props) => {
 
         <div class={styles.stats}>
           <div>
-            {t('Characters')}: <em>{wordCounter().characters}</em>
+            {t('Characters')}: <em>{counter()?.characters()}</em>
           </div>
           <div>
-            {t('Words')}: <em>{wordCounter().words}</em>
+            {t('Words')}: <em>{counter()?.words()}</em>
           </div>
           {/*<div>*/}
           {/*  {t('Last rev.')}: <em>22.03.22 в 18:20</em>*/}

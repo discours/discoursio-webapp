@@ -19,6 +19,8 @@ interface MicroEditorProps {
   focusOnMount?: boolean
 }
 
+// MicroEditor uses onChange to update the content
+
 export const MicroEditor = (props: MicroEditorProps): JSX.Element => {
   const [editorElement, setEditorElement] = createSignal<HTMLDivElement>()
   const [bubbleMenuElement, setBubbleMenuElement] = createSignal<HTMLDivElement>()

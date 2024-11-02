@@ -2,9 +2,9 @@ import { Editor } from '@tiptap/core'
 import CharacterCount from '@tiptap/extension-character-count'
 import Placeholder from '@tiptap/extension-placeholder'
 import clsx from 'clsx'
-import { type JSX, Show, createEffect, createSignal, on } from 'solid-js'
+import { type JSX, Show, createSignal } from 'solid-js'
 import { Portal } from 'solid-js/web'
-import { createTiptapEditor, useEditorHTML, useEditorIsEmpty } from 'solid-tiptap'
+import { createEditorTransaction, createTiptapEditor, useEditorIsEmpty } from 'solid-tiptap'
 import { UploadModalContent } from '~/components/Upload/UploadModalContent'
 import { renderUploadedImage } from '~/components/Upload/renderUploadedImage'
 import { Button } from '~/components/_shared/Button'
@@ -21,18 +21,19 @@ import styles from './MiniEditor.module.scss'
 
 interface MiniEditorProps {
   content?: string
-  onChange?: (content: string) => void
+  // onChange?: (content: string) => void
   onSubmit?: (content: string) => void
   onCancel?: () => void
   limit?: number
   placeholder?: string
 }
 
+// MiniEditor uses onSubmit and onCancel instead of onChange
+
 export function MiniEditor(props: MiniEditorProps): JSX.Element {
   const { t } = useLocalize()
   const { showModal } = useUI()
   const [editorElement, setEditorElement] = createSignal<HTMLDivElement>()
-  const [counter, setCounter] = createSignal(0)
   const [showLinkForm, setShowLinkForm] = createSignal(false)
   const editor = createTiptapEditor(() => ({
     element: editorElement()!,
@@ -50,7 +51,6 @@ export function MiniEditor(props: MiniEditorProps): JSX.Element {
     autofocus: 'end'
   }))
 
-  const html = useEditorHTML(editor)
   const isEmpty = useEditorIsEmpty(editor)
 
   const toggleLinkForm = () => {
@@ -80,19 +80,13 @@ export function MiniEditor(props: MiniEditorProps): JSX.Element {
     }
   }
 
-  createEffect(on(html, (c?: string) => c && props.onChange?.(c)))
-
-  createEffect(() => {
-    const textLength = editor()?.getText().length || 0
-    setCounter(textLength)
-    const content = html()
-    content && props.onChange?.(content)
-  })
-
   const handleSubmit = () => {
-    html() && props.onSubmit?.(html() || '')
+    const c = editor()?.getHTML()
+    c && props.onSubmit?.(c || '')
     editor()?.commands.clearContent(true)
   }
+
+  const counter = createEditorTransaction(editor, (e) => e?.storage.characterCount?.characters())
 
   return (
     <div class={clsx(styles.MiniEditor, styles.isFocused)}>
@@ -157,6 +151,8 @@ export function MiniEditor(props: MiniEditorProps): JSX.Element {
           variant="secondary"
           onClick={() => {
             editor()?.commands.clearContent()
+            editor()?.commands.focus()
+
             props.onCancel?.()
           }}
         />

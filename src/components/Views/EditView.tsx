@@ -54,15 +54,7 @@ const handleScrollTopButtonClick = (ev: MouseEvent | TouchEvent) => {
 export const EditView = (props: Props) => {
   const { t } = useLocalize()
   const { client } = useSession()
-  const {
-    form,
-    formErrors,
-    setForm,
-    setFormErrors,
-    saveDraft,
-    saveDraftToLocalStorage,
-    getDraftFromLocalStorage
-  } = useEditorContext()
+  const { form, formErrors, setForm, setFormErrors, saveDraft } = useEditorContext()
 
   const [subtitleInput, setSubtitleInput] = createSignal<HTMLTextAreaElement | undefined>()
   const [prevForm, setPrevForm] = createStore<ShoutForm>(clone(form))
@@ -81,16 +73,11 @@ export const EditView = (props: Props) => {
       () => props.shout,
       (shout) => {
         if (shout) {
-          // console.debug(`[EditView] shout is loaded: ${shout}`)
           setShoutTopics((shout.topics as Topic[]) || [])
-          const stored = getDraftFromLocalStorage(shout.id)
+          const stored = localStorage.getItem(`shout-${shout.id}`) || '{}'
           if (stored) {
-            // console.info(`[EditView] got stored shout: ${stored}`)
-            setDraft((old) => ({ ...old, ...stored }) as Shout)
+            setDraft((old) => ({ ...old, ...JSON.parse(stored) }) as Shout)
           } else {
-            if (!shout.slug) {
-              console.warn(`[EditView] shout has no slug! ${shout}`)
-            }
             const draftForm = {
               slug: shout.slug || '',
               shoutId: shout.id || 0,
@@ -106,7 +93,6 @@ export const EditView = (props: Props) => {
               layout: shout.layout || ''
             }
             setForm((_: ShoutForm) => draftForm)
-            console.debug('draft from props data: ', draftForm)
           }
         }
       },
@@ -121,7 +107,6 @@ export const EditView = (props: Props) => {
         if (d) {
           const draftForm = Object.keys(d) ? d : { shoutId: props.shout.id }
           setForm(draftForm as ShoutForm)
-          console.debug('draft from localstorage: ', draftForm)
         }
       },
       { defer: true }
@@ -136,10 +121,8 @@ export const EditView = (props: Props) => {
           const resp = await client()?.query(getMyShoutQuery, { shout_id: shoutId })
           const result = resp?.data?.get_my_shout
           if (result) {
-            // console.debug('[EditView] getMyShout result: ', result)
             const { shout: loadedShout, error } = result
             setDraft(loadedShout)
-            // console.debug('[EditView] loadedShout:', loadedShout)
             error && console.log(error)
           }
         }
@@ -226,14 +209,16 @@ export const EditView = (props: Props) => {
     }
   }
   const [hasChanges, setHasChanges] = createSignal(false)
+  const { editing } = useEditorContext()
   const autoSave = async () => {
     console.log('autoSave called')
     if (hasChanges()) {
-      console.debug('saving draft', form)
+      const data = { ...form, body: editing()?.getHTML() || '' }
+      console.debug('saving draft', data)
       setSaving(true)
-      saveDraftToLocalStorage(form)
-      await saveDraft(form)
-      setPrevForm(clone(form))
+      localStorage.setItem(`shout-${data.shoutId}`, JSON.stringify(data))
+      await saveDraft(data)
+      setPrevForm(clone(data))
       setSaving(false)
       setHasChanges(false)
     }
@@ -457,7 +442,7 @@ export const EditView = (props: Props) => {
               <EditorComponent
                 shoutId={form.shoutId}
                 initialContent={form.body}
-                onChange={(body: string) => handleInputChange('body', body)}
+                //onChange={(body: string) => handleInputChange('body', body)}
               />
               <Show when={draft()?.id}>
                 <Panel shoutId={draft()?.id} />

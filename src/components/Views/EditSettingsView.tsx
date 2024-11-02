@@ -44,7 +44,7 @@ export const EditSettingsView = (props: Props) => {
   const { t } = useLocalize()
   const [isScrolled, setIsScrolled] = createSignal(false)
   const { client } = useSession()
-  const { form, setForm, saveDraft, saveDraftToLocalStorage, getDraftFromLocalStorage } = useEditorContext()
+  const { form, setForm, saveDraft, editing } = useEditorContext()
   const [shoutTopics, setShoutTopics] = createSignal<Topic[]>([])
   const [draft, setDraft] = createSignal()
   const [prevForm, setPrevForm] = createStore<ShoutForm>(clone(form))
@@ -57,10 +57,10 @@ export const EditSettingsView = (props: Props) => {
         if (shout) {
           // console.debug(`[EditView] shout is loaded: ${shout}`)
           setShoutTopics((shout.topics as Topic[]) || [])
-          const stored = getDraftFromLocalStorage(shout.id)
+          const stored = localStorage.getItem(`shout-${shout.id}`)
           if (stored) {
             // console.info(`[EditView] got stored shout: ${stored}`)
-            setDraft(stored)
+            setDraft(JSON.parse(stored))
           } else {
             if (!shout.slug) {
               console.warn(`[EditView] shout has no slug! ${shout}`)
@@ -147,11 +147,12 @@ export const EditSettingsView = (props: Props) => {
   const autoSave = async () => {
     console.log('autoSave called')
     if (hasChanges()) {
-      console.debug('saving draft', form)
+      const data = { ...form, body: editing()?.getHTML() || '' }
+      console.debug('saving draft', data)
       setSaving(true)
-      saveDraftToLocalStorage(form)
-      await saveDraft(form)
-      setPrevForm(clone(form))
+      localStorage.setItem(`shout-${data.shoutId}`, JSON.stringify(data))
+      await saveDraft(data)
+      setPrevForm(clone(data))
       setSaving(false)
       setHasChanges(false)
     }

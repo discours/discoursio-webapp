@@ -5,7 +5,7 @@ import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { Author, Reaction, ReactionKind, ReactionSort } from '~/graphql/schema/core.gen'
+import { Author, Reaction, ReactionInput, ReactionKind, ReactionSort } from '~/graphql/schema/core.gen'
 import { SortFunction } from '~/types/common'
 import { byCreated, byStat } from '~/utils/sort'
 import { MiniEditor } from '../Editor/MiniEditor'
@@ -85,7 +85,7 @@ export const CommentsTree = (props: Props) => {
           kind: ReactionKind.Comment,
           body: value,
           shout: props.shoutId
-        }
+        } as ReactionInput
       })
       await loadReactionsBy({ by: { shout: props.shoutSlug, kinds: [ReactionKind.Comment] } })
     } catch (error) {

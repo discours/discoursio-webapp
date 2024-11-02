@@ -133,16 +133,20 @@ export const PublishSettings = (props: Props) => {
     setSettingsForm(initialData())
     handleBackClick()
   }
+
+  const { editing } = useEditorContext()
+
   const handlePublishSubmit = () => {
-    const shoutData = { ...props.form, ...settingsForm }
+    const shoutData = { ...props.form, ...settingsForm, body: editing()?.getHTML() || '' }
     if (shoutData?.mainTopic) {
       publishShout(shoutData)
     } else {
       showSnackbar({ body: t('Please, set the main topic first') })
     }
   }
+
   const handleSaveDraft = () => {
-    saveShout({ ...props.form, ...settingsForm })
+    saveShout({ ...props.form, ...settingsForm, body: editing()?.getHTML() || '' })
   }
   const removeSpecial = (ev: InputEvent) => {
     const input = ev.target as HTMLInputElement

@@ -23,11 +23,6 @@ export const AUTO_SAVE_DELAY = 3000
 const yDocs: Record<string, Doc> = {}
 const providers: Record<string, HocuspocusProvider> = {}
 
-export type WordCounter = {
-  characters: number
-  words: number
-}
-
 export type ShoutForm = {
   layout?: string
   shoutId: number
@@ -43,27 +38,34 @@ export type ShoutForm = {
   media?: MediaItem[]
 }
 
+type EditorId = {
+  type: 'shout' | 'author' | 'comment' | 'remark'
+  entityId: number
+  field: 'body' | 'subtitle' | 'lead' | 'bio' | 'footnote' | 'remark'
+  index?: number
+}
+
 export type EditorContextType = {
   isEditorPanelVisible: Accessor<boolean>
-  wordCounter: Accessor<WordCounter>
+  toggleEditorPanel: () => void
+  publishShoutById: (shout_id: number) => Promise<void>
+  handleInputChange: (key: keyof ShoutForm, value: string) => void
   form: ShoutForm
   formErrors: Record<keyof ShoutForm, string>
+  updateContent: (editorId: EditorId, content: string) => void
+  getContent: (editorId: EditorId) => string
+  markEditorDirty: () => void
+  resetEditorState: () => void
   saveShout: (form: ShoutForm) => Promise<void>
   saveDraft: (form: ShoutForm) => Promise<void>
-  saveDraftToLocalStorage: (form: ShoutForm) => void
-  getDraftFromLocalStorage: (shoutId: number) => ShoutForm
   publishShout: (form: ShoutForm) => Promise<void>
-  publishShoutById: (shoutId: number) => Promise<void>
   deleteShout: (shoutId: number) => Promise<boolean>
-  toggleEditorPanel: () => void
-  countWords: (value: WordCounter) => void
   setForm: SetStoreFunction<ShoutForm>
   setFormErrors: SetStoreFunction<Record<keyof ShoutForm, string>>
   editing: Accessor<Editor | undefined>
   setEditing: SetStoreFunction<Editor | undefined>
   isCollabMode: Accessor<boolean>
   setIsCollabMode: SetStoreFunction<boolean>
-  handleInputChange: (key: keyof ShoutForm, value: string) => void
   saving: Accessor<boolean>
   hasChanges: Accessor<boolean>
 }
@@ -80,17 +82,6 @@ const topic2topicInput = (topic: Topic): TopicInput => {
     slug: topic.slug,
     title: topic.title
   }
-}
-
-const saveDraftToLocalStorage = (formToSave: ShoutForm) => {
-  localStorage?.setItem(`shout-${formToSave.shoutId}`, JSON.stringify(formToSave))
-}
-const getDraftFromLocalStorage = (shoutId: number) => {
-  return JSON.parse(localStorage?.getItem(`shout-${shoutId}`) || '{}')
-}
-
-const removeDraftFromLocalStorage = (shoutId: number) => {
-  localStorage?.removeItem(`shout-${shoutId}`)
 }
 
 const defaultForm: ShoutForm = {
@@ -112,7 +103,6 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   const [isEditorPanelVisible, setIsEditorPanelVisible] = createSignal<boolean>(false)
   const [form, setForm] = createStore<ShoutForm>(defaultForm)
   const [formErrors, setFormErrors] = createStore({} as Record<keyof ShoutForm, string>)
-  const [wordCounter, setWordCounter] = createSignal<WordCounter>({ characters: 0, words: 0 })
   const toggleEditorPanel = () => setIsEditorPanelVisible((value) => !value)
   const [isCollabMode, setIsCollabMode] = createSignal<boolean>(false)
 
@@ -120,8 +110,30 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   const [editing, setEditing] = createSignal<Editor | undefined>(undefined)
   const [saving, setSaving] = createSignal(false)
   const [hasChanges, setHasChanges] = createSignal(false)
+  const [editorsContent, setEditorsContent] = createSignal<Record<string, string>>({})
 
-  const countWords = (value: WordCounter) => setWordCounter(value)
+  const generateEditorId = ({ type, entityId, field, index }: EditorId): string => {
+    const base = `${type}-${entityId}-${field}`
+    return index !== undefined ? `${base}-${index}` : base
+  }
+
+  const updateContent = (editorId: EditorId, content: string) => {
+    const id = generateEditorId(editorId)
+    setEditorsContent((prev) => ({ ...prev, [id]: content }))
+    setHasChanges(true)
+    debouncedAutoSave()
+  }
+
+  const getContent = (editorId: EditorId) => {
+    const id = generateEditorId(editorId)
+    return editorsContent()[id] || ''
+  }
+
+  const resetEditorState = () => {
+    setHasChanges(false)
+    setSaving(false)
+  }
+
   const validate = () => {
     if (!form.title) {
       setFormErrors('title', localize?.t('Please, set the article title') || '')
@@ -161,10 +173,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
       shout_id: formToUpdate.shoutId,
       shout_input: {
         body: formToUpdate.body,
-        topics: formToUpdate.selectedTopics.map((topic) => topic2topicInput(topic)), // NOTE: first is main
-        // authors?: InputMaybe<Array<InputMaybe<Scalars['String']>>>
-        // community?: InputMaybe<Scalars['Int']>
-        // mainTopic: topic2topicInput(formToUpdate.mainTopic),
+        topics: formToUpdate.selectedTopics.map((topic) => topic2topicInput(topic)),
         slug: formToUpdate.slug,
         subtitle: formToUpdate.subtitle,
         title: formToUpdate.title,
@@ -191,7 +200,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
         snackbar?.showSnackbar({ type: 'error', body: localize?.t(error) || '' })
         return
       }
-      removeDraftFromLocalStorage(formToSave.shoutId)
+      localStorage.removeItem(`shout-${formToSave.shoutId}`)
       navigate(shout?.published_at ? `/article/${shout.slug}` : '/edit')
     } catch (error) {
       console.error('[saveShout]', error)
@@ -279,10 +288,11 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   const debouncedAutoSave = debounce(AUTO_SAVE_DELAY, async () => {
     console.log('autoSave called')
     if (hasChanges()) {
-      console.debug('saving draft', form)
+      const data = { ...form, body: editing()?.getHTML() || '' }
+      console.debug('saving draft', data)
       setSaving(true)
-      saveDraftToLocalStorage(form)
-      await saveDraft(form)
+      localStorage.setItem(`shout-${form.shoutId}`, JSON.stringify(data))
+      await saveDraft(data)
       setSaving(false)
       setHasChanges(false)
     }
@@ -353,33 +363,29 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
     debouncedAutoSave()
   }
 
-  const actions = {
+  const value: EditorContextType = {
+    isEditorPanelVisible,
+    form,
+    formErrors,
     saveShout,
     saveDraft,
-    saveDraftToLocalStorage,
-    getDraftFromLocalStorage,
     publishShout,
     publishShoutById,
     deleteShout,
     toggleEditorPanel,
-    countWords,
     setForm,
     setFormErrors,
+    editing,
     setEditing,
     isCollabMode,
     setIsCollabMode,
     handleInputChange,
     saving,
-    hasChanges
-  }
-
-  const value: EditorContextType = {
-    ...actions,
-    form,
-    formErrors,
-    isEditorPanelVisible,
-    wordCounter,
-    editing
+    hasChanges,
+    updateContent,
+    getContent,
+    markEditorDirty: () => setHasChanges(true),
+    resetEditorState
   }
 
   return <EditorContext.Provider value={value}>{props.children}</EditorContext.Provider>

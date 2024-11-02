@@ -20,20 +20,21 @@ import { FullBubbleMenu } from './Toolbar/FullBubbleMenu'
 import { IncutBubbleMenu } from './Toolbar/IncutBubbleMenu'
 import { ArticleNode } from './extensions/Article'
 import { TrailingNode } from './extensions/TrailingNode'
-
 import './Editor.module.scss'
 
 type Props = {
   shoutId: number
   initialContent?: string
-  onChange: (text: string) => void
+  // onChange?: (text: string) => void
 }
+
+// Editor uses context/editor to keep content
 
 export const EditorComponent = (props: Props) => {
   const { t } = useLocalize()
   const { session } = useSession()
   const { showSnackbar } = useSnackbar()
-  const { countWords, setEditing } = useEditorContext()
+  const { setEditing } = useEditorContext()
   const [isCommonMarkup, setIsCommonMarkup] = createSignal(false)
   const [shouldShowTextBubbleMenu, setShouldShowTextBubbleMenu] = createSignal(false)
   const [editorElRef, setEditorElRef] = createSignal<HTMLElement | undefined>()
@@ -43,7 +44,7 @@ export const EditorComponent = (props: Props) => {
   const [floatingMenuRef, setFloatingMenuRef] = createSignal<HTMLDivElement | undefined>()
   const [textBubbleMenuRef, setFullBubbleMenuRef] = createSignal<HTMLDivElement | undefined>()
 
-  const editor = createTiptapEditor(() => ({
+  const editor: () => Editor | undefined = createTiptapEditor(() => ({
     element: editorElRef()!,
     editorProps: {
       attributes: {
@@ -65,7 +66,8 @@ export const EditorComponent = (props: Props) => {
       Placeholder.configure({
         placeholder: t('Add a link or click plus to embed media')
       }),
-      CharacterCount.configure(), // https://github.com/ueberdosis/tiptap/issues/2589#issuecomment-1093084689
+      CharacterCount.configure(),
+      // https://github.com/ueberdosis/tiptap/issues/2589#issuecomment-1093084689
       BubbleMenu.configure({
         pluginKey: 'textBubbleMenu',
         element: textBubbleMenuRef()!,
@@ -124,10 +126,7 @@ export const EditorComponent = (props: Props) => {
           placement: 'top',
           getReferenceClientRect: (): DOMRect => {
             const selectedElement = editor()?.view.dom.querySelector('.has-focus') as HTMLElement | null
-            if (selectedElement) {
-              return selectedElement.getBoundingClientRect()
-            }
-            return new DOMRect()
+            return selectedElement?.getBoundingClientRect() || new DOMRect()
           }
         }
       }),
@@ -149,16 +148,7 @@ export const EditorComponent = (props: Props) => {
       ArticleNode
     ],
     enablePasteRules: [Link],
-    content: props.initialContent || null,
-    onTransaction: ({ editor: e, transaction }) => {
-      if (transaction.docChanged) {
-        //const html = e.getHTML()
-        //html && props.onChange(html)
-        const wordCount: number = e.storage.characterCount.words()
-        const charsCount: number = e.storage.characterCount.characters()
-        charsCount && countWords({ words: wordCount, characters: charsCount })
-      }
-    }
+    content: props.initialContent || ''
   }))
 
   // store tiptap editor in context provider's signal to use it in Panel

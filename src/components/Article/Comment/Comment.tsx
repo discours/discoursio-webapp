@@ -67,7 +67,7 @@ export const Comment = (props: Props) => {
 
         if (isConfirmed) {
           const resp = await client()
-            ?.mutation(deleteReactionMutation, { id: props.comment.id })
+            ?.mutation(deleteReactionMutation, { reaction_id: props.comment.id })
             .toPromise()
           const result = resp?.data?.delete_reaction
           const { error } = result
