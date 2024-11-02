@@ -80,14 +80,18 @@ export const CommentsTree = (props: Props) => {
   const handleSubmitComment = async (value: string) => {
     setPosting(true)
     try {
-      await createShoutReaction({
+      const createdReaction = await createShoutReaction({
         reaction: {
           kind: ReactionKind.Comment,
           body: value,
           shout: props.shoutId
         } as ReactionInput
       })
-      await loadReactionsBy({ by: { shout: props.shoutSlug, kinds: [ReactionKind.Comment] } })
+      // await loadReactionsBy({ by: { shout: props.shoutSlug, kinds: [ReactionKind.Comment] } })
+      if (createdReaction) {
+        setTimeout(() => setNewReactions([createdReaction, ...newReactions()]), 100)
+        console.debug('[handleCreate reaction]:', createdReaction)
+      }
     } catch (error) {
       console.error('[handleCreate reaction]:', error)
     }
@@ -132,7 +136,7 @@ export const CommentsTree = (props: Props) => {
     </div>
   )
 
-  const CommentsTreeItems = () => (
+  const CommentsTreeItems = (props: Props) => (
     <ul class={styles.comments}>
       <For each={sortedComments().filter((r) => !r.reply_to)}>
         {(reaction) => (
@@ -166,7 +170,7 @@ export const CommentsTree = (props: Props) => {
     <Show when={!isLoading()} fallback={<Loading />}>
       <CommentsTreeHeader />
 
-      <CommentsTreeItems />
+      <CommentsTreeItems {...props} />
 
       <ShowIfAuthenticated fallback={<FallbackMessage />}>
         <MiniEditor placeholder={t('Write a comment...')} onSubmit={handleSubmitComment} />

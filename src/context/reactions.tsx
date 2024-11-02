@@ -98,7 +98,6 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
     reaction_id: number
   ): Promise<{ error: string; reaction?: string } | null> => {
     setReactionsLoading(true)
-    console.log('[context.reactions] deleteShoutReaction', reaction_id)
     if (reaction_id) {
       const resp = await client()?.mutation(destroyReactionMutation, { reaction_id }).toPromise()
       const result = resp?.data?.delete_reaction
@@ -107,28 +106,41 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
         const reactionToDelete = reactionEntities()[reaction_id]
 
         if (reactionToDelete) {
-          const newReactionEntities = { ...reactionEntities() }
-          delete newReactionEntities[reaction_id]
+          setReactionEntities((prev) => {
+            const next = { ...prev }
+            delete next[reaction_id]
+            return next
+          })
 
-          const newReactionsByShout = { ...reactionsByShout() }
-          const shoutReactions = newReactionsByShout[reactionToDelete.shout.id]
-          if (shoutReactions) {
-            newReactionsByShout[reactionToDelete.shout.id] = shoutReactions.filter(
-              (r) => r.id !== reaction_id
-            )
-          }
+          setReactionsByShout((prev) => {
+            const next = { ...prev }
+            if (next[reactionToDelete.shout.id]) {
+              next[reactionToDelete.shout.id] = next[reactionToDelete.shout.id].filter(
+                (r) => r.id !== reaction_id
+              )
+            }
+            return next
+          })
 
-          const newReactionsByAuthor = { ...reactionsByAuthor() }
-          const authorReactions = newReactionsByAuthor[reactionToDelete.created_by.id]
-          if (authorReactions) {
-            newReactionsByAuthor[reactionToDelete.created_by.id] = authorReactions.filter(
-              (r) => r.id !== reaction_id
-            )
-          }
+          setReactionsByAuthor((prev) => {
+            const next = { ...prev }
+            if (next[reactionToDelete.created_by.id]) {
+              next[reactionToDelete.created_by.id] = next[reactionToDelete.created_by.id].filter(
+                (r) => r.id !== reaction_id
+              )
+            }
+            return next
+          })
 
-          setReactionEntities(newReactionEntities)
-          setReactionsByShout(newReactionsByShout)
-          setReactionsByAuthor(newReactionsByAuthor)
+          setCommentsByAuthor((prev) => {
+            const next = { ...prev }
+            if (next[reactionToDelete.created_by.id]) {
+              next[reactionToDelete.created_by.id] = next[reactionToDelete.created_by.id].filter(
+                (r) => r.id !== reaction_id
+              )
+            }
+            return next
+          })
         }
       }
 
@@ -152,13 +164,35 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
     if (reaction) {
       const newReactionEntities = { ...reactionEntities() }
       newReactionEntities[reaction.id] = reaction
+
+      const newReactionsByShout = { ...reactionsByShout() }
+      const shoutIndex = newReactionsByShout[reaction.shout.id]?.findIndex((r) => r.id === reaction.id)
+      if (shoutIndex !== undefined && shoutIndex !== -1) {
+        newReactionsByShout[reaction.shout.id][shoutIndex] = reaction
+      }
+
+      const newReactionsByAuthor = { ...reactionsByAuthor() }
+      const authorIndex = newReactionsByAuthor[reaction.created_by.id]?.findIndex(
+        (r) => r.id === reaction.id
+      )
+      if (authorIndex !== undefined && authorIndex !== -1) {
+        newReactionsByAuthor[reaction.created_by.id][authorIndex] = reaction
+      }
+
       setReactionEntities(newReactionEntities)
+      setReactionsByShout(newReactionsByShout)
+      setReactionsByAuthor(newReactionsByAuthor)
     }
     setReactionsLoading(false)
     return reaction
   }
 
-  onCleanup(() => setReactionEntities({}))
+  onCleanup(() => {
+    setReactionEntities({})
+    setReactionsByShout({})
+    setReactionsByAuthor({})
+    setCommentsByAuthor({})
+  })
 
   const value: ReactionsContextType = {
     reactionEntities,

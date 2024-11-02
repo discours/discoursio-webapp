@@ -3,7 +3,7 @@ import { Show, createEffect, createSignal, on } from 'solid-js'
 import { debounce } from 'throttle-debounce'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { Reaction, ReactionKind, Shout } from '~/graphql/schema/core.gen'
+import { CommonResult, Reaction, ReactionKind, Shout } from '~/graphql/schema/core.gen'
 import { Icon } from '../_shared/Icon'
 import { Loading } from '../_shared/Loading'
 import { Popup } from '../_shared/Popup'
@@ -91,11 +91,12 @@ export const RatingControl = (props: Props) => {
       } else {
         console.log('[RatingControl] removing reaction', myRate() as ReactionKind)
         setTotal((t) => t + (isUpvote ? 1 : -1))
-        const result = await removeReaction(myRate() as ReactionKind)
+        const result: CommonResult | null = await removeReaction(myRate() as ReactionKind)
         if (result?.error) {
           console.error('[RatingControl] error removing reaction:', result?.error)
           setTotal(storedTotal)
         } else {
+          setRatings((rrr: Reaction[]) => rrr?.filter((r: Reaction) => r.id !== result?.reaction?.id))
           setMyRate(null)
         }
       }

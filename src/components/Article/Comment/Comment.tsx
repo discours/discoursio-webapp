@@ -7,7 +7,6 @@ import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { useSnackbar, useUI } from '~/context/ui'
-import deleteReactionMutation from '~/graphql/mutation/core/reaction-destroy'
 import {
   Author,
   MutationCreate_ReactionArgs,
@@ -15,6 +14,7 @@ import {
   Reaction,
   ReactionKind
 } from '~/graphql/schema/core.gen'
+import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { AuthorLink } from '../../Author/AuthorLink'
 import { Userpic } from '../../Author/Userpic'
 import { CommentDate } from '../CommentDate'
@@ -42,9 +42,9 @@ export const Comment = (props: Props) => {
   const [loading, setLoading] = createSignal(false)
   const [editMode, setEditMode] = createSignal(false)
   const [editedBody, setEditedBody] = createSignal<string>()
-  const { session, client } = useSession()
+  const { session } = useSession()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
-  const { createShoutReaction, updateShoutReaction } = useReactions()
+  const { createShoutReaction, updateShoutReaction, deleteShoutReaction } = useReactions()
   const { showConfirm } = useUI()
   const { showSnackbar } = useSnackbar()
   const canEdit = createMemo(
@@ -55,8 +55,10 @@ export const Comment = (props: Props) => {
 
   const body = createMemo(() => (editedBody() ? editedBody()?.trim() : props.comment.body?.trim() || ''))
 
-  const remove = async () => {
+  const handleDelete = async () => {
     if (props.comment?.id) {
+      setLoading(true)
+      saveScrollPosition()
       try {
         const isConfirmed = await showConfirm({
           confirmBody: t('Are you sure you want to delete this comment?'),
@@ -66,13 +68,9 @@ export const Comment = (props: Props) => {
         })
 
         if (isConfirmed) {
-          const resp = await client()
-            ?.mutation(deleteReactionMutation, { reaction_id: props.comment.id })
-            .toPromise()
-          const result = resp?.data?.delete_reaction
-          const { error } = result
-          const notificationType = error ? 'error' : 'success'
-          const notificationMessage = error
+          const result = await deleteShoutReaction(props.comment.id)
+          const notificationType = result?.error ? 'error' : 'success'
+          const notificationMessage = result?.error
             ? t('Failed to delete comment')
             : t('Comment successfully deleted')
           await showSnackbar({
@@ -81,7 +79,7 @@ export const Comment = (props: Props) => {
             duration: 3
           })
 
-          if (!error && props.onDelete) {
+          if (!result?.error && props.onDelete) {
             props.onDelete(props.comment.id)
           }
         }
@@ -89,12 +87,15 @@ export const Comment = (props: Props) => {
         await showSnackbar({ body: 'error' })
         console.error('[deleteReaction]', error)
       }
+      setTimeout(() => restoreScrollPosition(), 0)
+      setLoading(false)
     }
   }
 
   const handleCreate = async (value: string) => {
     try {
       setLoading(true)
+      saveScrollPosition()
       await createShoutReaction({
         reaction: {
           kind: ReactionKind.Comment,
@@ -104,10 +105,11 @@ export const Comment = (props: Props) => {
         }
       } as MutationCreate_ReactionArgs)
       setIsReplyVisible(false)
-      setLoading(false)
     } catch (error) {
       console.error('[handleCreate reaction]:', error)
     }
+    setLoading(false)
+    setTimeout(() => restoreScrollPosition(), 0)
   }
 
   const toggleEditMode = () => {
@@ -116,6 +118,7 @@ export const Comment = (props: Props) => {
 
   const handleUpdate = async (value: string) => {
     setLoading(true)
+    saveScrollPosition()
     try {
       const reaction = await updateShoutReaction({
         reaction: {
@@ -125,14 +128,22 @@ export const Comment = (props: Props) => {
           shout: props.comment.shout.id
         }
       } as MutationUpdate_ReactionArgs)
+
       if (reaction) {
         setEditedBody(value)
+        setEditMode(false)
       }
-      setEditMode(false)
-      setLoading(false)
     } catch (error) {
-      console.error('[handleCreate reaction]:', error)
+      console.error('[handleUpdate reaction]:', error)
     }
+    setLoading(false)
+    setTimeout(() => restoreScrollPosition(), 0)
+  }
+
+  const handleCancel = () => {
+    saveScrollPosition()
+    setEditMode(false)
+    setTimeout(() => restoreScrollPosition(), 0)
   }
 
   return (
@@ -190,7 +201,7 @@ export const Comment = (props: Props) => {
                   content={editedBody() || props.comment.body || ''}
                   placeholder={t('Write a comment...')}
                   onSubmit={(value) => handleUpdate(value)}
-                  onCancel={() => setEditMode(false)}
+                  onCancel={handleCancel}
                 />
               </Suspense>
             </Show>
@@ -221,7 +232,7 @@ export const Comment = (props: Props) => {
                 </button>
                 <button
                   class={clsx(styles.commentControl, styles.commentControlDelete)}
-                  onClick={() => remove()}
+                  onClick={() => handleDelete()}
                 >
                   <Icon name="delete" class={styles.icon} />
                   {t('Delete')}
