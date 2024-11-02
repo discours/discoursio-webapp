@@ -23,7 +23,7 @@ export const TopicBadge = (props: Props) => {
   const [isMobileView, setIsMobileView] = createSignal(false)
   const { requireAuthentication } = useSession()
   const [isFollowed, setIsFollowed] = createSignal<boolean>()
-  const { follow, unfollow, follows, following } = useFollowing()
+  const { follow, unfollow, follows } = useFollowing()
 
   createEffect(
     on([() => follows, () => props.topic], ([flws, tpc]) => {
@@ -84,11 +84,7 @@ export const TopicBadge = (props: Props) => {
           </a>
         </div>
         <div class={styles.actions}>
-          <FollowingButton
-            isFollowed={Boolean(isFollowed())}
-            action={handleFollowClick}
-            actionMessageType={following?.()?.slug === props.topic.slug ? following()?.type : undefined}
-          />
+          <FollowingButton isFollowed={Boolean(isFollowed())} action={handleFollowClick} />
         </div>
       </div>
 

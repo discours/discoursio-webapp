@@ -2,7 +2,17 @@ import { AuthToken } from '@authorizerdev/authorizer-js'
 import { Link } from '@solidjs/meta'
 import { A, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createMemo, createSignal, on, onCleanup, onMount } from 'solid-js'
+import {
+  For,
+  Show,
+  Suspense,
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+  onCleanup,
+  onMount
+} from 'solid-js'
 import { isServer } from 'solid-js/web'
 import usePopper from 'solid-popper'
 import { useFeed } from '~/context/feed'
@@ -285,13 +295,13 @@ export const FullArticle = (props: Props) => {
   }
 
   // Check iframes size
-  let articleContainer: HTMLElement | undefined
+  const [articleContainer, setArticleContainer] = createSignal<HTMLElement | undefined>()
   const updateIframeSizes = () => {
     if (!window) return
-    if (!(articleContainer && props.article.body)) return
-    const iframes = articleContainer?.querySelectorAll('iframe')
+    if (!(articleContainer() && props.article.body)) return
+    const iframes = articleContainer()?.querySelectorAll('iframe')
     if (!iframes) return
-    const containerWidth = articleContainer?.offsetWidth
+    const containerWidth = articleContainer()?.offsetWidth || window.scrollX - 100 // NOTE: custom ifram padding
     iframes.forEach((iframe) => {
       const style = window.getComputedStyle(iframe)
       const originalWidth = iframe.getAttribute('width') || style.width.replace('px', '')
@@ -311,7 +321,7 @@ export const FullArticle = (props: Props) => {
   }
 
   onMount(() => {
-    console.debug(props.article)
+    // console.debug(props.article)
     setPages((_) => ({ comments: 0, rating: 0 }))
     addSeen(props.article.slug)
     document.title = props.article.title
@@ -473,7 +483,7 @@ export const FullArticle = (props: Props) => {
       <div class="wide-container">
         <div class="row position-relative">
           <article
-            ref={(el) => (articleContainer = el)}
+            ref={setArticleContainer}
             class={clsx('col-md-16 col-lg-14 col-xl-12 offset-md-5', styles.articleContent)}
             onClick={handleArticleBodyClick}
           >
@@ -615,7 +625,9 @@ export const FullArticle = (props: Props) => {
 
             <ArticleTopics />
 
-            <ArticleAuthors />
+            <Suspense>
+              <ArticleAuthors />
+            </Suspense>
 
             <div id="comments" ref={setCommentsWrapper}>
               <Show when={isReactionsLoaded()}>

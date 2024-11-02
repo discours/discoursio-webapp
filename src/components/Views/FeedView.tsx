@@ -67,7 +67,9 @@ export const FeedView = (props: FeedProps) => {
   const { feed, addFeed } = useFeed()
 
   // filters
-  const [mode, setMode] = createSignal<FeedMode>(props.mode || 'all')
+  // use loc.pathname.split('/')
+  // const [mode, setMode] = createSignal<FeedMode>(props.mode || 'all')
+  // const [order, setOrder] = createSignal<ShoutsOrder>(props.order || 'recent')
   const [layoutsFilter, setLayoutsFilter] = createSignal<Array<ExpoLayoutType | 'article'>>([])
   const [currentPeriod, setCurrentPeriod] = createSignal<PeriodType>(PeriodType.AllTime)
   // loading state
@@ -78,7 +80,7 @@ export const FeedView = (props: FeedProps) => {
   // 1 filter changes quering observer
   createEffect(
     on(
-      [mode, layoutsFilter, currentPeriod],
+      [() => props.mode, layoutsFilter, currentPeriod],
       ([m, layouts, period]) => {
         setIsLoading(true)
         const filters: { layouts?: Array<ExpoLayoutType | 'article'>; after?: number; featured?: boolean } =
@@ -196,7 +198,7 @@ export const FeedView = (props: FeedProps) => {
                   popupProps={{ horizontalAnchor: 'right' }}
                   options={[
                     asOptionsGroup(['all', 'featured', 'not featured'], '', (opt: Option) =>
-                      setMode(opt.value as FeedMode)
+                      navigate(`/feed/${opt.value}/${props.order}`)
                     ) as OptionGroup,
                     asOptionsGroup(
                       ['all', 'article', ...EXPO_LAYOUTS],

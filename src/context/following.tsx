@@ -4,32 +4,23 @@ import { createStore } from 'solid-js/store'
 import followMutation from '~/graphql/mutation/core/follow'
 import unfollowMutation from '~/graphql/mutation/core/unfollow'
 import loadAuthorFollowers from '~/graphql/query/core/author-followers'
-import { Author, Community, FollowingEntity, Topic } from '~/graphql/schema/core.gen'
+import { Author, CommonResult, Community, FollowingEntity, Topic } from '~/graphql/schema/core.gen'
 import { useSession } from './session'
 
 export type FollowsFilter = 'all' | 'authors' | 'topics' | 'communities'
-
-type FollowingData = { slug: string; type: 'follow' | 'unfollow' }
 
 interface FollowingContextType {
   loading: Accessor<boolean>
   followers: Accessor<Author[]>
   setFollows: (follows: AuthorFollowsResult) => void
-  following: Accessor<FollowingData | undefined>
   changeFollowing: (what: FollowingEntity, slug: string, value: boolean) => void
   follows: AuthorFollowsResult
   loadFollows: () => void
-  follow: (what: FollowingEntity, slug: string) => Promise<void>
-  unfollow: (what: FollowingEntity, slug: string) => Promise<void>
+  follow: (what: FollowingEntity, slug: string) => Promise<CommonResult | undefined>
+  unfollow: (what: FollowingEntity, slug: string) => Promise<CommonResult | undefined>
 }
 
-const defaultFollowing = {
-  slug: '',
-  type: 'follow'
-} as FollowingData
-
 const FollowingContext = createContext<FollowingContextType>({
-  following: () => defaultFollowing,
   followers: () => [],
   loading: () => false,
   setFollows: (_follows: AuthorFollowsResult) => undefined,
@@ -80,43 +71,42 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
     }
   }
 
-  const [following, setFollowing] = createSignal<FollowingData>(defaultFollowing)
-
   const follow = async (what: FollowingEntity, slug: string) => {
+    console.debug('[context.following] follow', what, slug)
     if (!session()?.access_token) return
-    setFollowing({ slug, type: 'follow' })
     try {
       const resp = await client()?.mutation(followMutation, { what, slug }).toPromise()
+      if (!resp || resp.error) return
       const result = resp?.data?.follow
+      console.debug('[context.following] follow', result)
       if (!result) return
       setFollows((subs) => {
-        if (result.authors) subs['authors'] = result.authors || []
-        if (result.topics) subs['topics'] = result.topics || []
+        if (result.authors) subs['authors'] = result.authors
+        if (result.topics) subs['topics'] = result.topics
         return subs
       })
+      return result
     } catch (error) {
       console.error(error)
-    } finally {
-      setFollowing(defaultFollowing)
     }
   }
 
   const unfollow = async (what: FollowingEntity, slug: string) => {
     if (!session()?.access_token) return
-    setFollowing({ slug: slug, type: 'unfollow' })
     try {
       const resp = await client()?.mutation(unfollowMutation, { what, slug }).toPromise()
       const result = resp?.data?.unfollow
+      console.debug('[context.following] unfollow', result)
       if (!result) return
+      if (result.error) return
       setFollows((subs) => {
         if (result.authors) subs['authors'] = result.authors || []
         if (result.topics) subs['topics'] = result.topics || []
         return subs
       })
+      return result
     } catch (error) {
       console.error(error)
-    } finally {
-      setFollowing(defaultFollowing)
     }
   }
 
@@ -191,7 +181,6 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
     loading,
     follows,
     setFollows,
-    following,
     changeFollowing,
     followers,
     loadFollows: fetchData,

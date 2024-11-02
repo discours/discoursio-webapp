@@ -14,21 +14,31 @@ type Props = {
   minimize?: boolean
   action: () => void
   iconButtons?: boolean
-  actionMessageType?: 'follow' | 'unfollow'
+  loading?: boolean
 }
 
 export const FollowingButton = (props: Props) => {
   const { t } = useLocalize()
 
   const inActionText = createMemo(() => {
-    return props.actionMessageType === 'follow' ? t('Following...') : t('Unfollowing...')
+    return props.isFollowed ? t('Unfollowing...') : t('Following...')
+  })
+
+  const caption = createMemo(() => {
+    return props.isFollowed ? t('Unfollow') : t('Follow')
   })
 
   return (
     <div class={props.class}>
       <Show
         when={!props.minimize}
-        fallback={<CheckButton text={t('Follow')} checked={props.isFollowed} onClick={props.action} />}
+        fallback={
+          <CheckButton
+            text={t('Follow')}
+            checked={props.isFollowed && !props.loading}
+            onClick={props.action}
+          />
+        }
       >
         <Show
           when={props.isFollowed}
@@ -37,10 +47,7 @@ export const FollowingButton = (props: Props) => {
               variant={props.iconButtons ? 'secondary' : 'bordered'}
               size="S"
               value={
-                <Show
-                  when={props.iconButtons}
-                  fallback={props.actionMessageType ? inActionText() : t('Follow')}
-                >
+                <Show when={props.iconButtons} fallback={props.loading ? inActionText() : caption()}>
                   <Icon name="author-subscribe" class={stylesButton.icon} />
                 </Show>
               }
@@ -60,7 +67,7 @@ export const FollowingButton = (props: Props) => {
               <Show
                 when={props.iconButtons}
                 fallback={
-                  props.actionMessageType ? (
+                  props.loading ? (
                     inActionText()
                   ) : (
                     <>

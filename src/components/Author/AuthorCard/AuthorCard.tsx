@@ -3,6 +3,7 @@ import { clsx } from 'clsx'
 import { For, Show, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { Button } from '~/components/_shared/Button'
 import stylesButton from '~/components/_shared/Button/Button.module.scss'
+import { FollowingButton } from '~/components/_shared/FollowingButton'
 import { FollowingCounters } from '~/components/_shared/FollowingCounters/FollowingCounters'
 import { ShowOnlyOnClient } from '~/components/_shared/ShowOnlyOnClient'
 import { FollowsFilter, useFollowing } from '~/context/following'
@@ -35,7 +36,7 @@ export const AuthorCard = (props: Props) => {
   const [followsFilter, setFollowsFilter] = createSignal<FollowsFilter>('all')
   const [isFollowed, setIsFollowed] = createSignal<boolean>()
   const isProfileOwner = createMemo(() => author()?.slug === props.author.slug)
-  const { follow, unfollow, follows, following } = useFollowing() // viewer's followings
+  const { follow, unfollow, follows } = useFollowing() // viewer's followings
   const { hideModal } = useUI()
 
   createEffect(() => {
@@ -71,29 +72,16 @@ export const AuthorCard = (props: Props) => {
     })
   )
 
+  const [followingLoading, setFollowingLoading] = createSignal(false)
   const handleFollowClick = () => {
-    requireAuthentication(() => {
+    requireAuthentication(async () => {
+      setFollowingLoading(true)
       isFollowed()
-        ? unfollow(FollowingEntity.Author, props.author.slug)
-        : follow(FollowingEntity.Author, props.author.slug)
+        ? await unfollow(FollowingEntity.Author, props.author.slug)
+        : await follow(FollowingEntity.Author, props.author.slug)
+      setFollowingLoading(false)
     }, 'follow')
   }
-
-  const followButtonText = createMemo(() => {
-    if (following()?.slug === props.author.slug) {
-      return following()?.type === 'follow' ? t('Following...') : t('Unfollowing...')
-    }
-
-    if (isFollowed()) {
-      return (
-        <>
-          <span class={stylesButton.buttonSubscribeLabel}>{t('Following')}</span>
-          <span class={stylesButton.buttonSubscribeLabelHovered}>{t('Unfollow')}</span>
-        </>
-      )
-    }
-    return t('Follow')
-  })
 
   const FollowersModalView = () => (
     <>
@@ -223,14 +211,11 @@ export const AuthorCard = (props: Props) => {
               fallback={
                 <div class={styles.authorActions}>
                   <Show when={authorSubs()?.length}>
-                    <Button
-                      onClick={handleFollowClick}
-                      disabled={Boolean(following())}
-                      value={followButtonText()}
-                      isSubscribeButton={true}
-                      class={clsx({
-                        [stylesButton.followed]: isFollowed()
-                      })}
+                    <FollowingButton
+                      isFollowed={Boolean(isFollowed())}
+                      action={handleFollowClick}
+                      class={clsx({ [stylesButton.followed]: isFollowed() })}
+                      loading={followingLoading()}
                     />
                   </Show>
                   <Button

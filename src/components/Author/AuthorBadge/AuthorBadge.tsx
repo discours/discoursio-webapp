@@ -29,9 +29,11 @@ type Props = {
   onClick?: () => void
 }
 export const AuthorBadge = (props: Props) => {
+  const navigate = useNavigate()
+  const { t, formatDate, lang } = useLocalize()
   const { session, requireAuthentication } = useSession()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
-  const { follow, unfollow, follows, following } = useFollowing()
+  const { follow, unfollow, follows } = useFollowing()
   const [isMobileView, setIsMobileView] = createSignal(false)
   const [isFollowed, setIsFollowed] = createSignal<boolean>(
     Boolean(follows?.authors?.some((authorEntity) => Boolean(authorEntity.id === props.author?.id)))
@@ -39,18 +41,16 @@ export const AuthorBadge = (props: Props) => {
   createEffect(() => setIsMobileView(!mediaMatches.sm))
   createEffect(
     on(
-      [() => follows?.authors, () => props.author, following],
-      ([followingAuthors, currentAuthor, _]) => {
-        setIsFollowed(
-          Boolean(followingAuthors?.some((followedAuthor) => followedAuthor.id === currentAuthor?.id))
+      [() => follows?.authors, () => props.author],
+      ([followingAuthors, currentAuthor]) => {
+        const authorFollowed = Boolean(
+          followingAuthors?.some((followedAuthor) => followedAuthor.id === currentAuthor?.id)
         )
+        setIsFollowed(authorFollowed)
       },
-      { defer: true }
+      {}
     )
   )
-
-  const navigate = useNavigate()
-  const { t, formatDate, lang } = useLocalize()
 
   const initChat = () => {
     // eslint-disable-next-line solid/reactivity
@@ -59,28 +59,35 @@ export const AuthorBadge = (props: Props) => {
     }, 'discussions')
   }
 
-  const name = createMemo(() => {
-    if (lang() !== 'ru' && isCyrillic(props.author.name || '')) {
+  const getName = (name: string) => {
+    if (lang() !== 'ru' && isCyrillic(name || '')) {
       if (props.author.name === 'Дискурс') {
         return 'Discours'
       }
 
-      return translit(props.author.name || '')
+      return translit(name || '')
     }
 
-    return props.author.name
-  })
-
+    return name || ''
+  }
+  const [followingLoading, setFollowingLoading] = createSignal<boolean>(false)
   const handleFollowClick = () => {
+    console.debug('[AuthorBadge.handleFollowClick] ...')
     requireAuthentication(async () => {
-      const handle = isFollowed() ? unfollow : follow
-      await handle(FollowingEntity.Author, props.author.slug)
+      setFollowingLoading(true)
+      console.debug('[AuthorBadge.handleFollowClick] author slug', props.author.slug)
+      const result = isFollowed()
+        ? await unfollow(FollowingEntity.Author, props.author.slug)
+        : await follow(FollowingEntity.Author, props.author.slug)
+      if (result && !result.error) setIsFollowed(!isFollowed())
+      setFollowingLoading(false)
     }, 'follow')
   }
 
-  const handleClick = () => {
-    console.debug('[AuthorBadge.handleClick]', props.author.slug)
-    props.onClick?.()
+  const handleClick = (_e: MouseEvent) => {
+    if (props.onClick) {
+      props.onClick()
+    }
   }
 
   return (
@@ -89,7 +96,7 @@ export const AuthorBadge = (props: Props) => {
         <Userpic
           hasLink={true}
           size={isMobileView() ? 'M' : 'L'}
-          name={name() || ''}
+          name={getName(props.author.name || '')}
           userpic={props.author.pic || ''}
           slug={props.author.slug}
         />
@@ -102,7 +109,7 @@ export const AuthorBadge = (props: Props) => {
           )}
         >
           <div class={styles.name}>
-            <span>{name()}</span>
+            <span>{getName(props.author.name || '')}</span>
           </div>
           <Show when={!props.nameOnly}>
             <Switch
@@ -139,7 +146,7 @@ export const AuthorBadge = (props: Props) => {
           <FollowingButton
             action={handleFollowClick}
             isFollowed={isFollowed()}
-            actionMessageType={following()?.slug === props.author.slug ? following()?.type : undefined}
+            loading={followingLoading()}
           />
           <Show when={props.showMessageButton}>
             <Button

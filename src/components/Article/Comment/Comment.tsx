@@ -87,8 +87,8 @@ export const Comment = (props: Props) => {
         await showSnackbar({ body: 'error' })
         console.error('[deleteReaction]', error)
       }
-      setTimeout(() => restoreScrollPosition(), 0)
       setLoading(false)
+      restoreScrollPosition()
     }
   }
 

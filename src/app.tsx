@@ -14,6 +14,7 @@ import { TopicsProvider } from './context/topics'
 import { UIProvider } from './context/ui'
 
 import '~/styles/app.scss'
+import { FollowingProvider } from './context/following'
 
 export const Providers = (props: { children?: JSX.Element }) => {
   const sessionStateChanged = (payload: AuthToken) => {
@@ -30,7 +31,9 @@ export const Providers = (props: { children?: JSX.Element }) => {
               <UIProvider>
                 <EditorProvider>
                   <AuthorsProvider>
-                    <Suspense fallback={<Loading />}>{props.children}</Suspense>
+                    <FollowingProvider>
+                      <Suspense fallback={<Loading />}>{props.children}</Suspense>
+                    </FollowingProvider>
                   </AuthorsProvider>
                 </EditorProvider>
               </UIProvider>

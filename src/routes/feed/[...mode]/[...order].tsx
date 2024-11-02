@@ -1,4 +1,4 @@
-import { RouteDefinition, RouteSectionProps, useSearchParams } from '@solidjs/router'
+import { RouteDefinition, RouteSectionProps, useParams, useSearchParams } from '@solidjs/router'
 import { Client } from '@urql/core'
 import { createEffect, createMemo } from 'solid-js'
 
@@ -41,6 +41,7 @@ export type FeedSearchParams = { period?: PeriodType }
 
 export default (props: RouteSectionProps<{ shouts: Shout[]; topics: Topic[] }>) => {
   const [searchParams] = useSearchParams<FeedSearchParams>() // ?period=month
+  const params = useParams<{ mode: string; order: string }>()
   const { t } = useLocalize()
   const { setFeed } = useFeed()
   const { client, session } = useSession()
@@ -52,11 +53,11 @@ export default (props: RouteSectionProps<{ shouts: Shout[]; topics: Topic[] }>) 
   })
 
   // /feed/:mode: all | featured | followed | discussed | coauthored | unrated
-  const mode = createMemo(() => props.params.mode || 'all')
+  const mode = createMemo(() => params.mode || 'all')
 
   // /feed/:mode/:order: recent | hot | likes
   const order = createMemo(() =>
-    props.params.order === 'hot' ? 'last_reacted_at' : props.params.order === 'likes' ? 'rating' : undefined
+    params.order === 'hot' ? 'last_reacted_at' : params.order === 'likes' ? 'rating' : undefined
   )
 
   // load more feed
