@@ -23,7 +23,17 @@ export const RatingControl = (props: Props) => {
     useReactions()
   const [myRate, setMyRate] = createSignal<ReactionKind | null>(null)
   const [ratings, setRatings] = createSignal<Reaction[]>([])
-  const [total, setTotal] = createSignal(props.shout?.stat?.rating || 0)
+  const [total, setTotal] = createSignal(0)
+  const [changed, setChanged] = createSignal(false)
+
+  createEffect(
+    on(
+      () => props.shout?.stat?.rating || 0,
+      (initialRating) => {
+        if (!changed()) setTotal(initialRating)
+      }
+    )
+  )
 
   const commentRatingFilter = (r: Reaction) =>
     (r.kind === ReactionKind.Like || r.kind === ReactionKind.Dislike) && r.reply_to === props.comment?.id
@@ -53,6 +63,7 @@ export const RatingControl = (props: Props) => {
     const reactionToDelete = ratings().find(
       (r) => r.kind === reactionKind && mineFilter(r) && shoutRatingFilter(r)
     )
+    setChanged(true)
     return reactionToDelete
       ? await deleteShoutReaction(reactionToDelete.id)
       : { error: 'cant find reaction to delete' }
@@ -96,11 +107,11 @@ export const RatingControl = (props: Props) => {
           console.error('[RatingControl] error removing reaction:', result?.error)
           setTotal(storedTotal)
         } else {
-          setRatings((rrr: Reaction[]) => rrr?.filter((r: Reaction) => r.id !== result?.reaction?.id))
+          setRatings((_rrr: Reaction[]) => (result?.reactions as Reaction[]) || [])
           setMyRate(null)
         }
       }
-
+      setChanged(true)
       debouncedLoadReactions()
     }, 'vote')
   }

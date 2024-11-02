@@ -12,6 +12,8 @@ export default gql`
         lead
         description
         body
+        authors { id name slug }
+        topics { id title slug}
         created_at
         updated_at
         published_at
