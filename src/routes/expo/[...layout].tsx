@@ -1,6 +1,5 @@
 import { Params, RouteSectionProps, createAsync } from '@solidjs/router'
 import { Show, createEffect, createMemo, createSignal, on } from 'solid-js'
-import { isServer } from 'solid-js/web'
 import { TopicsNav } from '~/components/HeaderNav/TopicsNav'
 import { Expo, ExpoNav } from '~/components/Views/ExpoView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
@@ -15,7 +14,11 @@ import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { byCreated } from '~/utils/sort'
 
 const fetchExpoShouts = async (layouts: string[]) => {
-  const result = await loadShouts({ options: { filters: { layouts }, limit: SHOUTS_PER_PAGE, offset: 0 } })
+  const result = loadShouts({ options: {
+    filters: { layouts },
+    limit: SHOUTS_PER_PAGE,
+    offset: 0
+  } })
   return result
 }
 
@@ -31,12 +34,19 @@ export default (props: RouteSectionProps<Shout[]>) => {
   const { t } = useLocalize()
   const { expoFeed, setExpoFeed, feedByLayout } = useFeed()
   const [loadMoreVisible, setLoadMoreVisible] = createSignal(false)
+  const [shouts, setShouts] = createSignal<Shout[]>(props.data || [])
   const getTitle = createMemo(() => (l?: string) => EXPO_TITLES[(l as ExpoLayoutType) || ''])
 
-  const shouts = createAsync(async () =>
-    isServer
-      ? props.data
-      : await fetchExpoShouts(props.params.layout ? [props.params.layout] : EXPO_LAYOUTS)
+  createEffect(
+    on(
+      () => props.params.layout,
+      async (currentLayout) => {
+        const layouts = currentLayout ? [currentLayout] : EXPO_LAYOUTS
+        const result = await fetchExpoShouts(layouts)
+        const shoutsData = await result()
+        setShouts(shoutsData || [])
+      }
+    )
   )
 
   const loadMore = async () => {
