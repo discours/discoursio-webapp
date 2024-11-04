@@ -7,7 +7,7 @@ import { Image } from '~/components/_shared/Image'
 import { Popover } from '~/components/_shared/Popover'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import type { Author, Maybe, Shout, Topic } from '~/graphql/schema/core.gen'
+import type { Author, Maybe, Shout } from '~/graphql/schema/core.gen'
 import { capitalize } from '~/utils/capitalize'
 import { descFromBody } from '~/utils/meta'
 import { CoverImage } from '../../Article/CoverImage'
@@ -85,15 +85,6 @@ const getTitleAndSubtitle = (
   return { title, subtitle }
 }
 
-const getMainTopicTitle = (article: Shout, lng: string) => {
-  const mainTopicSlug = article.main_topic?.slug || ''
-  const mainTopic = (article.topics || []).find((tpc: Maybe<Topic>) => tpc?.slug === mainTopicSlug)
-  const mainTopicTitle =
-    mainTopicSlug && lng === 'en' ? mainTopicSlug.replaceAll('-', ' ') : mainTopic?.title || ''
-
-  return [mainTopicTitle, mainTopicSlug]
-}
-
 const LAYOUT_ASPECT: { [key: string]: string } = {
   music: styles.aspectRatio1x1,
   audio: styles.aspectRatio1x1,
@@ -103,7 +94,7 @@ const LAYOUT_ASPECT: { [key: string]: string } = {
 }
 
 export const ArticleCard = (props: ArticleCardProps) => {
-  const { t, lang, formatDate } = useLocalize()
+  const { t, formatDate } = useLocalize()
   const { session } = useSession()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
   const [isActionPopupActive, setIsActionPopupActive] = createSignal(false)
@@ -111,7 +102,6 @@ export const ArticleCard = (props: ArticleCardProps) => {
   const [isCoverImageLoading, setIsCoverImageLoading] = createSignal(true)
   const description = descFromBody(props.article.body)
   const aspectRatio: Accessor<string> = () => LAYOUT_ASPECT[props.article.layout as string]
-  const [mainTopicTitle, mainTopicSlug] = getMainTopicTitle(props.article, lang())
   const { title, subtitle } = getTitleAndSubtitle(props.article)
 
   const formattedDate = createMemo<string>(() =>
@@ -136,6 +126,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
     if (props.onInvite) props.onInvite()
   }
 
+  const mainTopic = createMemo(() => props.article.main_topic || props.article.topics?.[0])
   return (
     <section
       class={clsx(styles.shoutCard, props.settings?.additionalClass, {
@@ -201,10 +192,10 @@ export const ArticleCard = (props: ArticleCardProps) => {
         </Show>
 
         {/* Main Topic */}
-        <Show when={!props.settings?.isGroup && mainTopicSlug}>
+        <Show when={!props.settings?.isGroup && mainTopic()}>
           <CardTopic
-            title={mainTopicTitle}
-            slug={mainTopicSlug}
+            title={mainTopic()?.title || ''}
+            slug={mainTopic()?.slug || ''}
             isFloorImportant={props.settings?.isFloorImportant}
             isFeedMode={true}
             class={clsx(styles.shoutTopic, { [styles.shoutTopicTop]: props.settings?.isShort })}

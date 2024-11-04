@@ -26,6 +26,8 @@ import { Row3 } from '../Feed/Row3'
 
 import styles from '~/styles/views/Author.module.scss'
 import stylesArticle from '../Article/Article.module.scss'
+import { ViewSwitcher } from '../_shared/ViewSwitcher/ViewSwitcher'
+import { FeedFilters } from '../Feed/FeedFilters'
 
 type AuthorViewProps = {
   authorSlug: string
@@ -392,8 +394,22 @@ export const AuthorView = (props: AuthorViewProps) => {
               <Placeholder type={loc?.pathname} mode="profile" />
             </div>
           </Show>
-
+        
           <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={loadMoreHidden()}>
+            <div class="floor">
+              <div class="row">
+                <div class="col-md-18">
+                  <div class={styles.filterControls}>
+                    <ViewSwitcher
+                      options={['recent', 'top', 'hot']}
+                      prefix={`/@${props.authorSlug}`}
+                      class={styles.viewSwitcher}
+                    />
+                    <FeedFilters />
+                  </div>
+                </div>
+              </div>
+            </div>
             <For each={shoutBatches()}>
               {(batch) => {
                 const rowsInBatch: Shout[][] = [] // Explicitly type rowsInBatch

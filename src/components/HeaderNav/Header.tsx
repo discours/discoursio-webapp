@@ -13,10 +13,12 @@ import { ConfirmModal } from '../_shared/ConfirmModal'
 import { Icon } from '../_shared/Icon'
 import { Modal } from '../_shared/Modal'
 import { Newsletter } from '../_shared/Newsletter'
-import styles from './Header.module.scss'
+import { ViewSwitcher } from '../_shared/ViewSwitcher/ViewSwitcher'
 import { HeaderAuth } from './HeaderAuth'
-import { Link } from './HeaderLink'
 import { RandomTopics } from './TopicsNav'
+
+import stylesViewSwitcher from '../_shared/ViewSwitcher/ViewSwitcher.module.scss'
+import styles from './Header.module.scss'
 
 type Props = {
   title?: string
@@ -37,21 +39,19 @@ const handleSwitchLanguage = (event: { target: { value: string } }) => {
 export const Header = (props: Props) => {
   const { t, lang } = useLocalize()
   const { modal } = useUI()
-  const { requireAuthentication } = useSession()
+  const { requireAuthentication, session } = useSession()
   const [searchParams, changeSearchParams] = useSearchParams<HeaderSearchParams>()
   const [getIsScrollingBottom, setIsScrollingBottom] = createSignal(false)
   const [getIsScrolled, setIsScrolled] = createSignal(false)
   const [fixed, setFixed] = createSignal(false)
   const [isSharePopupVisible, setIsSharePopupVisible] = createSignal(false)
   const [isProfilePopupVisible, setIsProfilePopupVisible] = createSignal(false)
-  const [isKnowledgeBaseVisible, setIsKnowledgeBaseVisible] = createSignal(false)
-  const [isTopicsVisible, setIsTopicsVisible] = createSignal(false)
-  const [isZineVisible, setIsZineVisible] = createSignal(false)
-  const [isFeedVisible, setIsFeedVisible] = createSignal(false)
-  const { session } = useSession()
-  const toggleFixed = () => setFixed(!fixed())
 
   let windowScrollTop = 0
+  let timer: string | number | NodeJS.Timeout
+
+  const clearTimer = () => clearTimeout(timer)
+  const toggleFixed = () => setFixed(!fixed())
 
   createEffect(() => {
     if (isServer) return
@@ -101,29 +101,9 @@ export const Header = (props: Props) => {
     }, 'create')
   }
 
-  const toggleSubnavigation = (isShow: boolean, signal?: (b: boolean) => void) => {
-    clearTimer()
-    setIsKnowledgeBaseVisible(false)
-    setIsTopicsVisible(false)
-    setIsZineVisible(false)
-    setIsFeedVisible(false)
-
-    if (signal) {
-      signal(isShow)
-    }
-  }
-
-  let timer: string | number | NodeJS.Timeout
-
-  const clearTimer = () => {
-    clearTimeout(timer)
-  }
-
-  const hideSubnavigation = (_ev?: MouseEvent, time = 500) => {
-    timer = setTimeout(() => {
-      toggleSubnavigation(false)
-    }, time)
-  }
+  const [activeSubmenu, setActiveSubmenu] = createSignal<string | null>(null)
+  const switchView = (show: boolean, submenu: string) => setActiveSubmenu(show ? submenu : null)
+  const hideSubnavigation = (_ev?: MouseEvent) => setActiveSubmenu(null)
 
   return (
     <header
@@ -170,46 +150,24 @@ export const Header = (props: Props) => {
               <div class={styles.articleHeader}>{props.title}</div>
             </Show>
             <div class={clsx(styles.mainNavigation, { [styles.fixed]: fixed() })}>
-              <ul class="view-switcher">
-                <Link
-                  onMouseOver={() => toggleSubnavigation(true, setIsZineVisible)}
-                  onMouseOut={(event?: MouseEvent) => hideSubnavigation(event)}
-                  href="/"
-                  active={isZineVisible()}
-                  body={t('Journal')}
-                />
-                <Link
-                  onMouseOver={() => toggleSubnavigation(true, setIsFeedVisible)}
-                  onMouseOut={(event?: MouseEvent) => hideSubnavigation(event)}
-                  href="/feed"
-                  active={isFeedVisible()}
-                  body={t('Feed')}
-                />
-                <Link
-                  onMouseOver={() => toggleSubnavigation(true, setIsTopicsVisible)}
-                  onMouseOut={(event?: MouseEvent) => hideSubnavigation(event)}
-                  href="/topic"
-                  active={isTopicsVisible()}
-                  body={t('Topics')}
-                />
-                <Link
-                  onMouseOver={(event?: MouseEvent) => hideSubnavigation(event, 0)}
-                  onMouseOut={(event?: MouseEvent) => hideSubnavigation(event)}
-                  href="/author"
-                  body={t('Authors')}
-                />
-                <Link
-                  onMouseOver={() => toggleSubnavigation(true, setIsKnowledgeBaseVisible)}
-                  onMouseOut={(event?: MouseEvent) => hideSubnavigation(event)}
-                  href="/guide"
-                  body={t('Knowledge base')}
-                  active={isKnowledgeBaseVisible()}
-                />
-              </ul>
+              <ViewSwitcher
+                class={styles.headerNavViewSwitcher}
+                options={['journal', 'feed', 'topics', 'authors', 'guide']}
+                prefix=""
+                onMouseOver={(option: string) => {
+                  if (option === 'authors') {
+                    hideSubnavigation()
+                  } else {
+                    switchView(true, option)
+                  }
+                }}
+                onMouseOut={hideSubnavigation}
+                //activeSubmenu={activeSubmenu()}
+              />
 
               <div class={styles.mainNavigationMobile}>
                 <h4>{t('Participating')}</h4>
-                <ul class="view-switcher">
+                <ul class={stylesViewSwitcher.viewSwitcher}>
                   <li>
                     <A href="/edit/new">{t('Create post')}</A>
                   </li>
@@ -222,7 +180,7 @@ export const Header = (props: Props) => {
                 </ul>
 
                 <h4>{t('Subscribe us')}</h4>
-                <ul class="view-switcher">
+                <ul class={stylesViewSwitcher.viewSwitcher}>
                   <li class={styles.mainNavigationSocial}>
                     <a href="https://www.instagram.com/discoursio/">
                       <Icon name="user-link-instagram" class={styles.icon} />
@@ -330,7 +288,7 @@ export const Header = (props: Props) => {
 
           <div
             class={clsx(styles.subnavigation, 'col')}
-            classList={{ hidden: !isKnowledgeBaseVisible() }}
+            classList={{ hidden: activeSubmenu() !== 'guide' }}
             onMouseOver={clearTimer}
             onMouseOut={hideSubnavigation}
           >
@@ -364,7 +322,7 @@ export const Header = (props: Props) => {
 
           <div
             class={clsx(styles.subnavigation, 'col')}
-            classList={{ hidden: !isZineVisible() }}
+            classList={{ hidden: activeSubmenu() !== 'topics' }}
             onMouseOver={clearTimer}
             onMouseOut={hideSubnavigation}
           >
@@ -413,7 +371,7 @@ export const Header = (props: Props) => {
 
           <div
             class={clsx(styles.subnavigation, 'col')}
-            classList={{ hidden: !isTopicsVisible() }}
+            classList={{ hidden: activeSubmenu() !== 'topics' }}
             onMouseOver={clearTimer}
             onMouseOut={hideSubnavigation}
           >
@@ -422,7 +380,7 @@ export const Header = (props: Props) => {
 
           <div
             class={clsx(styles.subnavigation, styles.subnavigationFeed, 'col')}
-            classList={{ hidden: !isFeedVisible() }}
+            classList={{ hidden: activeSubmenu() !== 'feed' }}
             onMouseOver={clearTimer}
             onMouseOut={hideSubnavigation}
           >

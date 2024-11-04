@@ -132,16 +132,6 @@ export const FullArticle = (props: Props) => {
 
   const media = createMemo<MediaItem[]>(() => (props.article.media || []) as MediaItem[])
 
-  const mainTopic = createMemo(() => {
-    const mainTopicSlug = (props.article.topics?.length || 0) > 0 ? props.article.main_topic?.slug : null
-    const mt = props.article.topics?.find((tpc: Maybe<Topic>) => tpc?.slug === mainTopicSlug)
-    if (mt) {
-      mt.title = lang() === 'en' ? capitalize(mt.slug.replaceAll('-', ' ')) : mt.title
-      return mt
-    }
-    return props.article.topics?.[0]
-  })
-
   const handleBookmarkButtonClick = (ev: MouseEvent | undefined) => {
     requireAuthentication(() => {
       // TODO: implement bookmark clicked
@@ -490,8 +480,11 @@ export const FullArticle = (props: Props) => {
             {/*TODO: Check styles.shoutTopic*/}
             <Show when={props.article.layout !== 'audio'}>
               <div class={styles.shoutHeader}>
-                <Show when={mainTopic()}>
-                  <CardTopic title={mainTopic()?.title || ''} slug={mainTopic()?.slug || ''} />
+                <Show when={props.article.main_topic}>
+                  <CardTopic
+                    title={props.article.main_topic?.title || ''}
+                    slug={props.article.main_topic?.slug || ''}
+                  />
                 </Show>
 
                 <h1>{props.article.title || ''}</h1>
@@ -537,7 +530,7 @@ export const FullArticle = (props: Props) => {
                 title={props.article.title || ''}
                 cover={props.article.cover || ''}
                 artistData={media()?.[0]}
-                topic={mainTopic() as Topic}
+                topic={props.article.main_topic as Topic}
               />
               <Show when={media().length > 0}>
                 <div class="media-items">

@@ -203,7 +203,7 @@
   .feedFilter {
     margin-top: 0;
     margin-bottom: 0;
-    min-width: 300px;
+    min-width: 250px;
     overflow: hidden;
 
     & > li {
@@ -215,7 +215,13 @@
     display: flex;
     flex-flow: row nowrap;
     gap: 1rem;
-    justify-content: center;
+    justify-content: flex-end;
+    min-width: 260px;
+
+    & > * {
+      flex: 0 0 auto;
+      width: 120px;
+    }
   }
 }
 
@@ -223,6 +229,16 @@
   font-size: 14px;
   font-weight: 700;
   line-height: 18px;
+  width: 120px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
 }
 
 .short-cards {

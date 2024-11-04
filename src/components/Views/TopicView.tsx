@@ -1,4 +1,4 @@
-import { useSearchParams } from '@solidjs/router'
+// import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Match, Show, Suspense, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { SHOUTS_PER_PAGE, useFeed } from '~/context/feed'
@@ -19,6 +19,8 @@ import { Loading } from '../_shared/Loading'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 
 import styles from '~/styles/views/Topic.module.scss'
+import { FeedFilters } from '../Feed/FeedFilters'
+import { ViewSwitcher } from '../_shared/ViewSwitcher/ViewSwitcher'
 
 export type TopicFeedSortBy = 'comments' | '' | 'recent' | 'viewed' | 'rating' | 'last_comment'
 
@@ -37,7 +39,7 @@ export const TopicView = (props: Props) => {
   const { t } = useLocalize()
   const { feedByTopic, addFeed } = useFeed()
   const { topicEntities } = useTopics()
-  const [searchParams, changeSearchParams] = useSearchParams<{ by: TopicFeedSortBy }>()
+  // const [searchParams, changeSearchParams] = useSearchParams<{ by: TopicFeedSortBy }>()
   const [favoriteTopArticles, setFavoriteTopArticles] = createSignal<Shout[]>([])
   const [reactedTopMonthArticles, setReactedTopMonthArticles] = createSignal<Shout[]>([])
   const [topic, setTopic] = createSignal<Topic>()
@@ -159,47 +161,15 @@ export const TopicView = (props: Props) => {
           <FullTopic topic={topic() as Topic} followers={followers()} authors={topicAuthors()} />
         </Show>
         <div class="wide-container">
-          <div class={clsx(styles.groupControls, 'row group__controls')}>
-            <div class="col-md-16">
-              <ul class="view-switcher">
-                <li
-                  classList={{
-                    'view-switcher__item--selected': searchParams?.by === 'recent' || !searchParams?.by
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      changeSearchParams({
-                        by: 'recent'
-                      })
-                    }
-                  >
-                    {t('Recent')}
-                  </button>
-                </li>
-                {/*TODO: server sort*/}
-                {/*<li classList={{ 'view-switcher__item--selected': getSearchParams().by === 'rating' }}>*/}
-                {/*  <button type="button" onClick={() => changeSearchParams('by', 'rating')}>*/}
-                {/*    {t('Popular')}*/}
-                {/*  </button>*/}
-                {/*</li>*/}
-                {/*<li classList={{ 'view-switcher__item--selected': getSearchParams().by === 'viewed' }}>*/}
-                {/*  <button type="button" onClick={() => changeSearchParams('by', 'viewed')}>*/}
-                {/*    {t('Views')}*/}
-                {/*  </button>*/}
-                {/*</li>*/}
-                {/*<li classList={{ 'view-switcher__item--selected': getSearchParams().by === 'commented' }}>*/}
-                {/*  <button type="button" onClick={() => changeSearchParams('by', 'commented')}>*/}
-                {/*    {t('Discussing')}*/}
-                {/*  </button>*/}
-                {/*</li>*/}
-              </ul>
-            </div>
-            <div class="col-md-8">
-              <div class={styles.modeSwitcher}>
-                {`${t('Show')} `}
-                <span class={styles.modeSwitcherControl}>{t('All posts')}</span>
+          <div class={clsx(styles.groupControls, 'row')}>
+            <div class="col-md-12">
+              <div class={styles.filtersRow}>
+                <ViewSwitcher
+                  options={['recent', 'top', 'hot']}
+                  prefix={`/topic/${props.topicSlug}`}
+                  class={styles.viewSwitcher}
+                />
+                <FeedFilters />
               </div>
             </div>
           </div>

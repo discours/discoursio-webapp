@@ -1,6 +1,5 @@
 import { Params, RouteSectionProps, createAsync } from '@solidjs/router'
 import { Show, createEffect, createMemo, createSignal, on } from 'solid-js'
-import { isServer } from 'solid-js/web'
 import { TopicsNav } from '~/components/HeaderNav/TopicsNav'
 import { Expo, ExpoNav } from '~/components/Views/ExpoView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
@@ -33,12 +32,14 @@ export default (props: RouteSectionProps<Shout[]>) => {
   const [loadMoreVisible, setLoadMoreVisible] = createSignal(false)
   const getTitle = createMemo(() => (l?: string) => EXPO_TITLES[(l as ExpoLayoutType) || ''])
 
-  const shouts = createAsync(async () =>
-    isServer
-      ? props.data
-      : await fetchExpoShouts(props.params.layout ? [props.params.layout] : EXPO_LAYOUTS)
+  const shouts = createAsync(
+    async () => {
+      const layouts = props.params.layout ? [props.params.layout] : EXPO_LAYOUTS
+      const fetcher = fetchExpoShouts(layouts)
+      const result = (await (await fetcher)()) || []
+      return result
+    }
   )
-
   const loadMore = async () => {
     saveScrollPosition()
     const limit = SHOUTS_PER_PAGE
@@ -86,9 +87,9 @@ export default (props: RouteSectionProps<Shout[]>) => {
       <TopicsNav />
       <ExpoNav layout={(props.params.layout as ExpoLayoutType) || ''} />
       <Show when={shouts()} fallback={<Loading />} keyed>
-        {(sss) => (
+        {(sss: Shout[]) => (
           <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={!loadMoreVisible()}>
-            <Expo shouts={sss as Shout[]} layout={(props.params.layout as ExpoLayoutType) || ''} />
+            <Expo shouts={sss} layout={(props.params.layout as ExpoLayoutType) || ''} />
           </LoadMoreWrapper>
         )}
       </Show>

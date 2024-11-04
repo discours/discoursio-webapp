@@ -1,7 +1,7 @@
 import type { PopupProps } from '../Popup'
 
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createMemo, createSignal } from 'solid-js'
+import { For, Show, createMemo, createSignal } from 'solid-js'
 
 import { Popup } from '../Popup'
 
@@ -11,13 +11,14 @@ import styles from './DropDown.module.scss'
 export type Option = {
   value?: string | number
   title: string
+  selected?: boolean
 }
 
 export type OptionGroup = {
-  title: string
+  title?: string
   options: Option[]
-  currentOption: Option
-  onChange: (option: Option) => void
+  selected: number[]
+  onChange?: (option: Option) => void
 }
 
 type Props = {
@@ -25,8 +26,7 @@ type Props = {
   popupProps?: Partial<PopupProps>
   options: OptionGroup[] | Option[]
   triggerCssClass?: string
-  currentOption?: Option
-  onChange?: (option: Option | OptionGroup) => void
+  onChange?: (option: Option) => void
 }
 
 const Chevron = (props: { class?: string }) => {
@@ -93,14 +93,23 @@ const GroupOptions = (props: {
           <hr />
         </li>
       )}
-      <li class={styles.groupTitle}>{props.group.title}</li>
+      <Show when={props.group.title}>
+        <li class={styles.groupTitle}>
+          <span>{props.group.title}</span>
+        </li>
+      </Show>
     </Show>
     <For each={props.group.options}>
-      {(option) => (
+      {(option, index) => (
         <OptionItem
           option={option}
-          isActive={props.group.currentOption.value === option.value}
-          onClick={props.group.onChange}
+          isActive={props.group.selected.includes(index())}
+          onClick={
+            props.group.onChange ||
+            (() => {
+              console.log('TODO: implement onClick')
+            })
+          }
         />
       )}
     </For>
@@ -114,20 +123,36 @@ export const DropDown = (props: Props) => {
     () => Array.isArray(props.options) && props.options.length > 0 && 'options' in props.options[0]
   )
 
-  // Синхронизация currentOption с первой группой,
-  // если он передан и options являются OptionGroup[]
-  createEffect(() => {
-    if (props.currentOption && isOptionGroup()) {
-      ;(props.options as OptionGroup[])[0].currentOption = props.currentOption
+  const getDisplayTitle = () => {
+    if (isOptionGroup()) {
+      const groups = props.options as OptionGroup[]
+      const firstGroup = groups[0]
+
+      if (!firstGroup?.options?.length) {
+        return ''
+      }
+
+      const selectedIndex = firstGroup.selected?.[0]
+      return selectedIndex !== undefined && firstGroup.options[selectedIndex]
+        ? firstGroup.options[selectedIndex].title
+        : firstGroup.options[0].title
     }
-  })
+
+    const options = props.options as Option[]
+    if (!options?.length) {
+      return ''
+    }
+
+    const activeOption = options.find((opt) => opt.selected)
+    return activeOption?.title || options[0]?.title || ''
+  }
 
   const renderContent = () => {
     if (isOptionGroup()) {
       const groups = props.options as OptionGroup[]
       const showGroupTitles = groups.length > 1
       return (
-        <For each={groups}>
+        <For each={groups.filter((group) => group?.options.length > 0)}>
           {(group, index) => <GroupOptions group={group} showTitle={showGroupTitles} index={index()} />}
         </For>
       )
@@ -136,11 +161,7 @@ export const DropDown = (props: Props) => {
     return (
       <For each={props.options as Option[]}>
         {(option) => (
-          <OptionItem
-            option={option}
-            isActive={props.currentOption?.value === option.value}
-            onClick={(opt) => props.onChange?.(opt)}
-          />
+          <OptionItem option={option} isActive={false} onClick={(opt) => props.onChange?.(opt)} />
         )}
       </For>
     )
@@ -151,9 +172,7 @@ export const DropDown = (props: Props) => {
       <Popup
         trigger={
           <div class={clsx(styles.trigger, props.triggerCssClass, styles.nonSelectable)}>
-            {isOptionGroup()
-              ? (props.options as OptionGroup[])[0].currentOption.title
-              : (props.options as Option[])[0].title}{' '}
+            {getDisplayTitle()}{' '}
             <Chevron
               class={clsx(styles.chevron, {
                 [styles.rotate]: isPopupVisible()

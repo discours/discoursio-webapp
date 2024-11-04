@@ -1,6 +1,7 @@
 import { createLazyMemo } from '@solid-primitives/memo'
 import { makePersisted } from '@solid-primitives/storage'
 import { Accessor, JSX, Setter, createContext, createSignal, useContext } from 'solid-js'
+import { FeedMode, ShoutsOrder } from '~/components/Feed/FeedFilters'
 import { loadFollowedShouts } from '~/graphql/api/private'
 import { loadShoutsSearch as fetchShoutsSearch, getShout, loadShouts } from '~/graphql/api/public'
 import { Author, LoadShoutsOptions, Shout, ShoutsOrderBy, Topic } from '~/graphql/schema/core.gen'
@@ -58,11 +59,27 @@ type FeedContextType = {
   // expo
   expoFeed: Accessor<Shout[] | undefined>
   setExpoFeed: Setter<Shout[]>
+
+  // options
+  feedOptions: Accessor<FeedOptions>
+  updateFeedOptions: (options: Partial<FeedOptions>) => void
+  setFeedOptions: Setter<FeedOptions>
+
+  // loading
+  isFeedLoading: Accessor<boolean>
+  setFeedLoading: Setter<boolean>
 }
 
 const FeedContext = createContext<FeedContextType>({} as FeedContextType)
 
 export const useFeed = () => useContext(FeedContext)
+
+type FeedOptions = {
+  mode: FeedMode
+  order: ShoutsOrder
+  layout?: ExpoLayoutType
+  filters: LoadShoutsOptions['filters']
+}
 
 export const FeedProvider = (props: { children: JSX.Element }) => {
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>([])
@@ -71,11 +88,24 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   const [featuredFeed, setFeaturedFeed] = createSignal<Shout[]>([])
   const [expoFeed, setExpoFeed] = createSignal<Shout[]>([])
   const [topFeed, setTopFeed] = createSignal<Shout[]>([])
+  const [isFeedLoading, setFeedLoading] = createSignal<boolean>(false)
   const [topMonthFeed, setTopMonthFeed] = createSignal<Shout[]>([])
   const [feedByLayout, _setFeedByLayout] = createSignal<{ [layout: string]: Shout[] }>({})
   const [seen, setSeen] = makePersisted(createSignal<{ [slug: string]: number }>({}), {
     name: 'discoursio-seen'
   })
+  const [feedOptions, setFeedOptions] = createSignal<FeedOptions>({
+    mode: 'all',
+    order: 'recent',
+    filters: {}
+  })
+
+  const updateFeedOptions = (options: Partial<FeedOptions>) => {
+    setFeedOptions((prev) => ({
+      ...prev,
+      ...options
+    }))
+  }
 
   const addSeen = async (slug: string) => {
     setSeen((prev: Record<string, number>) => {
@@ -268,7 +298,12 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
         expoFeed,
         setExpoFeed,
         feed,
-        setFeed
+        setFeed,
+        feedOptions,
+        updateFeedOptions,
+        setFeedOptions,
+        isFeedLoading,
+        setFeedLoading
       }}
     >
       {props.children}
