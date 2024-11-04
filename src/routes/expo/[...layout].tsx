@@ -32,14 +32,12 @@ export default (props: RouteSectionProps<Shout[]>) => {
   const [loadMoreVisible, setLoadMoreVisible] = createSignal(false)
   const getTitle = createMemo(() => (l?: string) => EXPO_TITLES[(l as ExpoLayoutType) || ''])
 
-  const shouts = createAsync(
-    async () => {
-      const layouts = props.params.layout ? [props.params.layout] : EXPO_LAYOUTS
-      const fetcher = fetchExpoShouts(layouts)
-      const result = (await (await fetcher)()) || []
-      return result
-    }
-  )
+  const shouts = createAsync(async () => {
+    const layouts = props.params.layout ? [props.params.layout] : EXPO_LAYOUTS
+    const fetcher = fetchExpoShouts(layouts)
+    const result = (await (await fetcher)()) || []
+    return result
+  })
   const loadMore = async () => {
     saveScrollPosition()
     const limit = SHOUTS_PER_PAGE

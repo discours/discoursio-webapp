@@ -26,8 +26,8 @@ import { Row3 } from '../Feed/Row3'
 
 import styles from '~/styles/views/Author.module.scss'
 import stylesArticle from '../Article/Article.module.scss'
-import { ViewSwitcher } from '../_shared/ViewSwitcher/ViewSwitcher'
 import { FeedFilters } from '../Feed/FeedFilters'
+import { ViewSwitcher } from '../_shared/ViewSwitcher/ViewSwitcher'
 
 type AuthorViewProps = {
   authorSlug: string
@@ -394,7 +394,7 @@ export const AuthorView = (props: AuthorViewProps) => {
               <Placeholder type={loc?.pathname} mode="profile" />
             </div>
           </Show>
-        
+
           <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={loadMoreHidden()}>
             <div class="floor">
               <div class="row">

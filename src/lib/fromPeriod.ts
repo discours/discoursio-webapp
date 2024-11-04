@@ -9,9 +9,9 @@ export enum PeriodType {
 export const getFromDate = (period: PeriodType) => {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
-  
-  let d: Date = new Date(now)
-  
+
+  const d: Date = new Date(now)
+
   switch (period) {
     case PeriodType.Week: {
       d.setDate(d.getDate() - 7)
@@ -33,6 +33,6 @@ export const getFromDate = (period: PeriodType) => {
     default:
       return 0
   }
-  
+
   return Math.floor(d.getTime() / 1000)
 }
