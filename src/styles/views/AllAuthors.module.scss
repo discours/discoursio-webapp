@@ -89,3 +89,28 @@
     }
   }
 }
+
+.nameSearch {
+  @include media-breakpoint-up(sm) {
+      flex: 1;
+      margin-left: 2em;
+  }
+
+  flex: 1 100%;
+  text-align: right;
+  white-space: nowrap;
+
+  .icon {
+      display: inline-block;
+      margin-right: 0.2em;
+      vertical-align: middle;
+  }
+
+  a:hover {
+      .icon {
+          // filter: invert(1);
+          fill: var(--icon-color-invert);
+          color: var(--icon-color);
+      }
+  }
+}

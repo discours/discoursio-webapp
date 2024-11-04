@@ -11,7 +11,7 @@ export default gql`
       layout
       cover
       lead
-      main_topic { id slug }
+      main_topic { id slug title }
       authors {
         id
         name

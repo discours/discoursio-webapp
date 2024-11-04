@@ -10,7 +10,7 @@ export default gql`
       layout
       cover
       # community
-      main_topic { id slug }
+      main_topic { id slug title}
       authors {
         id
         name

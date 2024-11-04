@@ -8,7 +8,7 @@ export default gql`
       layout
       slug
       cover
-      main_topic { id slug }
+      main_topic { id slug title }
       authors {
         id
         name

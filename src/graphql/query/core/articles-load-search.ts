@@ -8,11 +8,7 @@ export default gql`
       slug
       created_at
       cover
-      main_topic {
-        id
-        slug
-        title
-      }
+      main_topic { id slug title }
       authors {
         slug
         name

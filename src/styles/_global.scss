@@ -1,7 +1,6 @@
 @use "sass:color" as color;
 @use "sass:math" as math;
 @use "sass:map" as map;
-@use "theme";
 
 $include-column-box-sizing: true !default;
 $rfs-breakpoint: 1460px !default;
@@ -35,10 +34,6 @@ $font-family: muller, arial, helvetica, sans-serif;
 $font-size-base: 2rem;
 $line-height-base: 1.6;
 
-// цвета
-$color-primary: var(--blue-500);
-$color-danger: var(--danger-color);
-$default-color: var(--black-500);
 
 // Другие переменные
 $border-radius: 2px;

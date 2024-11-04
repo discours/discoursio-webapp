@@ -200,7 +200,7 @@
   opacity: 1;
   transition: opacity 0.3s;
 
-  :global(.view-switcher) {
+  .headerNavViewSwitcher {
     margin: 0;
     overflow: hidden;
     padding: 0;

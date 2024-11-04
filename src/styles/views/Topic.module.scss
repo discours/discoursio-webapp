@@ -1,8 +1,15 @@
 .topicPage {
   .groupControls {
-    align-items: baseline;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: 4rem;
     margin-top: 0;
+    
+    @include media-breakpoint-down(sm) {
+      flex-direction: column;
+      gap: 1rem;
+    }
   }
 
   .floorImportant {
@@ -33,5 +40,38 @@
     border-bottom: 1px dotted;
     cursor: pointer;
     font-weight: bold;
+  }
+
+  .filtersRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4rem;
+    width: 100%;
+    
+    @include media-breakpoint-down(sm) {
+      margin: 1rem 0 0;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .viewSwitcher {
+      margin-top: 0;
+      margin-bottom: 0;
+      min-width: 300px;
+      overflow: hidden;
+      flex-shrink: 0;
+
+      & > li {
+        margin-bottom: 0;
+      }
+    }
+
+    .dropdowns {
+      display: flex;
+      flex-flow: row nowrap;
+      gap: 1rem;
+      justify-content: flex-end;
+    }
   }
 }
