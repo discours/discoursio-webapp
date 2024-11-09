@@ -5,13 +5,15 @@ import { Expo, ExpoNav } from '~/components/Views/ExpoView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { EXPO_LAYOUTS, EXPO_TITLES, SHOUTS_PER_PAGE, useFeed } from '~/context/feed'
+import { EXPO_LAYOUTS, EXPO_TITLES, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { loadShouts } from '~/graphql/api/public'
 import { LoadShoutsFilters, LoadShoutsOptions, Shout } from '~/graphql/schema/core.gen'
 import { ExpoLayoutType } from '~/types/common'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { byCreated } from '~/utils/sort'
+
+const SHOUTS_PER_PAGE = 24
 
 const fetchExpoShouts = async (layouts: string[]) => {
   const result = await loadShouts({ options: { filters: { layouts }, limit: SHOUTS_PER_PAGE, offset: 0 } })
@@ -85,11 +87,9 @@ export default (props: RouteSectionProps<Shout[]>) => {
       <TopicsNav />
       <ExpoNav layout={(props.params.layout as ExpoLayoutType) || ''} />
       <Show when={shouts()} fallback={<Loading />} keyed>
-        {(sss: Shout[]) => (
-          <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={!loadMoreVisible()}>
-            <Expo shouts={sss} layout={(props.params.layout as ExpoLayoutType) || ''} />
-          </LoadMoreWrapper>
-        )}
+        <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={!loadMoreVisible()}>
+          <Expo shouts={shouts() || []} layout={(props.params.layout as ExpoLayoutType) || ''} />
+        </LoadMoreWrapper>
       </Show>
     </PageLayout>
   )

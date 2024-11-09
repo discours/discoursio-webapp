@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { For, Show, createEffect, createSignal, on } from 'solid-js'
 import { Loading } from '~/components/_shared/Loading'
 import { ArticleCardSwiper } from '~/components/_shared/SolidSwiper/ArticleCardSwiper'
-import { EXPO_LAYOUTS, SHOUTS_PER_PAGE } from '~/context/feed'
+import { EXPO_LAYOUTS } from '~/context/feed'
 import { EXPO_TITLES } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
@@ -14,6 +14,8 @@ import { getUnixtime } from '~/utils/date'
 import { ArticleCard } from '../Feed/ArticleCard'
 
 import styles from '~/styles/views/Expo.module.scss'
+
+const SHOUTS_PER_BLOCK = 12
 
 export const ExpoNav = (props: { layout: ExpoLayoutType | '' }) => {
   const { t } = useLocalize()
@@ -98,7 +100,7 @@ export const Expo = (props: Props) => {
           {(feed) => (
             <div class="wide-container">
               <div class="row">
-                <For each={Array.from(feed || []).slice(0, SHOUTS_PER_PAGE)}>
+                <For each={Array.from(feed || []).slice(0, SHOUTS_PER_BLOCK)}>
                   {(shout) => (
                     <div id={`shout-${shout.id}`} class="col-md-6 mt-md-5 col-sm-8 mt-sm-3">
                       <ArticleCard
@@ -115,6 +117,21 @@ export const Expo = (props: Props) => {
               <Show when={reactedTopMonthArticles()?.length > 0}>
                 <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles()} />
               </Show>
+
+              <div class="row">
+                <For each={Array.from(feed || []).slice(SHOUTS_PER_BLOCK, SHOUTS_PER_BLOCK * 2)}>
+                  {(shout) => (
+                    <div id={`shout-${shout.id}`} class="col-md-6 mt-md-5 col-sm-8 mt-sm-3">
+                      <ArticleCard
+                        article={shout}
+                        settings={{ nodate: true, nosubtitle: true, noAuthorLink: true }}
+                        desktopCoverSize="XS"
+                        withAspectRatio={true}
+                      />
+                    </div>
+                  )}
+                </For>
+              </div>
 
               <Show when={favoriteTopArticles()?.length > 0}>
                 <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles()} />
