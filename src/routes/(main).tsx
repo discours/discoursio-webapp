@@ -54,11 +54,13 @@ export const route = {
     const featuredLoader = loadShouts({
       options: { filters: { featured: true }, limit }
     })
-    return {
+    const data = {
       ...(await fetchHomeTopData()),
       featuredShouts: await featuredLoader(),
       topics: await fetchAllTopics()
     }
+    console.log('[route.load] data:', data)
+    return data
   }
 } satisfies RouteDefinition
 
@@ -85,7 +87,7 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
   const shouts = createAsync(async () => {
     if (props.data.featuredShouts) {
       setFeaturedFeed(props.data.featuredShouts)
-      console.debug('[routes.main] featured feed preloaded')
+      console.debug('[HomePage] featured feed preloaded', props.data.featuredShouts)
       return props.data.featuredShouts
     }
     return await loadMoreFeatured()
