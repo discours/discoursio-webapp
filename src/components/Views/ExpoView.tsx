@@ -55,6 +55,7 @@ export const Expo = (props: Props) => {
   const { client } = useSession()
   const [favoriteTopArticles, setFavoriteTopArticles] = createSignal<Shout[]>([])
   const [reactedTopMonthArticles, setReactedTopMonthArticles] = createSignal<Shout[]>([])
+  const [shouts, setShouts] = createSignal(props.shouts)
 
   // Функция загрузки случайных избранных статей
   const loadRandomTopArticles = async () => {
@@ -93,51 +94,59 @@ export const Expo = (props: Props) => {
     )
   )
 
+  // Эффект для обновления shouts при изменении props.shouts
+  createEffect(
+    on(
+      () => props.shouts,
+      (newShouts) => {
+        setShouts(newShouts)
+      }
+    )
+  )
+
   try {
     return (
       <div class={styles.Expo}>
-        <Show when={props.shouts} fallback={<Loading />} keyed>
-          {(feed) => (
-            <div class="wide-container">
-              <div class="row">
-                <For each={Array.from(feed || []).slice(0, SHOUTS_PER_BLOCK)}>
-                  {(shout) => (
-                    <div id={`shout-${shout.id}`} class="col-md-6 mt-md-5 col-sm-8 mt-sm-3">
-                      <ArticleCard
-                        article={shout}
-                        settings={{ nodate: true, nosubtitle: true, noAuthorLink: true }}
-                        desktopCoverSize="XS"
-                        withAspectRatio={true}
-                      />
+        <Show when={shouts()} fallback={<Loading />} keyed>
+          {(feed) => {
+            const chunks: Shout[][] = []
+            for (let i = 0; i < feed.length; i += SHOUTS_PER_BLOCK) {
+              chunks.push(feed.slice(i, i + SHOUTS_PER_BLOCK))
+            }
+
+            return (
+              <div class="wide-container">
+                <For each={chunks} fallback={<Loading />}>
+                  {(chunk, index) => (
+                    <div>
+                      <div class="row">
+                        <For each={chunk}>
+                          {(shout) => (
+                            <div id={`shout-${shout.id}`} class="col-md-6 mt-md-5 col-sm-8 mt-sm-3">
+                              <ArticleCard
+                                article={shout}
+                                settings={{ nodate: true, nosubtitle: true, noAuthorLink: true }}
+                                desktopCoverSize="XS"
+                                withAspectRatio={true}
+                              />
+                            </div>
+                          )}
+                        </For>
+                      </div>
+
+                      {index() % 2 === 0 && reactedTopMonthArticles()?.length > 0 && (
+                        <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles()} />
+                      )}
+
+                      {index() % 2 === 1 && favoriteTopArticles()?.length > 0 && (
+                        <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles()} />
+                      )}
                     </div>
                   )}
                 </For>
               </div>
-
-              <Show when={reactedTopMonthArticles()?.length > 0}>
-                <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles()} />
-              </Show>
-
-              <div class="row">
-                <For each={Array.from(feed || []).slice(SHOUTS_PER_BLOCK, SHOUTS_PER_BLOCK * 2)}>
-                  {(shout) => (
-                    <div id={`shout-${shout.id}`} class="col-md-6 mt-md-5 col-sm-8 mt-sm-3">
-                      <ArticleCard
-                        article={shout}
-                        settings={{ nodate: true, nosubtitle: true, noAuthorLink: true }}
-                        desktopCoverSize="XS"
-                        withAspectRatio={true}
-                      />
-                    </div>
-                  )}
-                </For>
-              </div>
-
-              <Show when={favoriteTopArticles()?.length > 0}>
-                <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles()} />
-              </Show>
-            </div>
-          )}
+            )
+          }}
         </Show>
       </div>
     )
