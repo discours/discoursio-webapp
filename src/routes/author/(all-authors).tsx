@@ -1,4 +1,10 @@
-import { RouteDefinition, RouteLoadFuncArgs, type RouteSectionProps, createAsync } from '@solidjs/router'
+import {
+  Navigate,
+  RouteDefinition,
+  RouteLoadFuncArgs,
+  type RouteSectionProps,
+  createAsync
+} from '@solidjs/router'
 import { Suspense, createEffect, on } from 'solid-js'
 import { AUTHORS_PER_PAGE, AllAuthorsView } from '~/components/Views/AllAuthorsView'
 import { Loading } from '~/components/_shared/Loading'
@@ -15,9 +21,12 @@ const fetchAuthorsWithStat = async (offset = 0, order?: string) => {
 }
 
 export const route = {
-  load: async ({ location: { query } }: RouteLoadFuncArgs) => {
+  load: async ({ location: { query, pathname } }: RouteLoadFuncArgs) => {
     const by = query.by
-    const isAll = !by || by === 'name'
+    if (!by) {
+      return <Navigate href={`${pathname}?by=name`} />
+    }
+    const isAll = by === 'name'
     const authorsAllFetcher = loadAuthorsAll()
     return {
       authors: isAll && (await authorsAllFetcher()),
@@ -52,10 +61,13 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
       [data, () => addAuthors],
       ([data, aa]) => {
         if (data && aa) {
-          aa(data.authors as Author[])
-          aa(data.authorsByFollowers as Author[])
-          aa(data.authorsByShouts as Author[])
-          console.debug('[routes.author] added all authors:', data.authors)
+          // Check if authors are already added to context
+          if (authorsSorted()?.length === 0) {
+            aa(data.authors as Author[])
+            aa(data.authorsByFollowers as Author[])
+            aa(data.authorsByShouts as Author[])
+            console.debug('[routes.author] added all authors:', data.authors)
+          }
         }
       },
       { defer: true }
