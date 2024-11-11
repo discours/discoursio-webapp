@@ -134,11 +134,11 @@ export const Expo = (props: Props) => {
                         </For>
                       </div>
 
-                      {index() % 2 === 0 && reactedTopMonthArticles()?.length > 0 && (
+                      {index() === 0 && reactedTopMonthArticles()?.length > 0 && (
                         <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles()} />
                       )}
 
-                      {index() % 2 === 1 && favoriteTopArticles()?.length > 0 && (
+                      {index() === 1 && favoriteTopArticles()?.length > 0 && (
                         <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles()} />
                       )}
                     </div>
