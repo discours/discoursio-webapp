@@ -55,7 +55,7 @@ export const Beside = (props: Props) => {
                     </Show>
 
                     <Show when={props.wrapper === 'topic'}>
-                      <a href="/topic">
+                      <a href="/topics">
                         {t('All topics')}
                         <Icon name="arrow-right" class={styles.icon} />
                       </a>

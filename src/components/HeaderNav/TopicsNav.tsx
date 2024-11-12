@@ -68,7 +68,7 @@ export const TopicsNav = (props: { fixed?: boolean }) => {
           }}
         </For>
         <li class={styles.rightItem}>
-          <A href="/topic">
+          <A href="/topics">
             {t('All topics')}
             <Icon name="arrow-right-black" class={clsx(styles.icon, styles.rightItemIcon)} />
           </A>
