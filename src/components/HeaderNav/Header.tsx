@@ -102,8 +102,22 @@ export const Header = (props: Props) => {
   }
 
   const [activeSubmenu, setActiveSubmenu] = createSignal<string | null>(null)
-  const switchView = (show: boolean, submenu: string) => setActiveSubmenu(show ? submenu : null)
-  const hideSubnavigation = (_ev?: MouseEvent) => setActiveSubmenu(null)
+  let hideTimer: number | undefined
+
+  const switchView = (show: boolean, submenu: string) => {
+    if (hideTimer) {
+      clearTimeout(hideTimer)
+      hideTimer = undefined
+    }
+    setActiveSubmenu(show ? submenu : null)
+  }
+
+  const hideSubnavigation = (_ev?: MouseEvent) => {
+    // Добавляем задержку перед скрытием подменю
+    hideTimer = window.setTimeout(() => {
+      setActiveSubmenu(null)
+    }, 200) // 200ms задержка
+  }
 
   return (
     <header
@@ -289,8 +303,8 @@ export const Header = (props: Props) => {
           <div
             class={clsx(styles.subnavigation, 'col')}
             classList={{ hidden: activeSubmenu() !== 'guide' }}
-            onMouseOver={clearTimer}
-            onMouseOut={hideSubnavigation}
+            onMouseEnter={() => switchView(true, 'guide')}
+            onMouseLeave={hideSubnavigation}
           >
             <ul class="nodash">
               <li>
@@ -323,8 +337,8 @@ export const Header = (props: Props) => {
           <div
             class={clsx(styles.subnavigation, 'col')}
             classList={{ hidden: activeSubmenu() !== 'topics' }}
-            onMouseOver={clearTimer}
-            onMouseOut={hideSubnavigation}
+            onMouseEnter={() => switchView(true, 'topics')}
+            onMouseLeave={hideSubnavigation}
           >
             <ul class="nodash">
               <li class="item">
@@ -370,19 +384,10 @@ export const Header = (props: Props) => {
           </div>
 
           <div
-            class={clsx(styles.subnavigation, 'col')}
-            classList={{ hidden: activeSubmenu() !== 'topics' }}
-            onMouseOver={clearTimer}
-            onMouseOut={hideSubnavigation}
-          >
-            <RandomTopics />
-          </div>
-
-          <div
             class={clsx(styles.subnavigation, styles.subnavigationFeed, 'col')}
             classList={{ hidden: activeSubmenu() !== 'feed' }}
-            onMouseOver={clearTimer}
-            onMouseOut={hideSubnavigation}
+            onMouseEnter={() => switchView(true, 'feed')}
+            onMouseLeave={hideSubnavigation}
           >
             <ul class="nodash">
               <li>
