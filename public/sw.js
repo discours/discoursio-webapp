@@ -60,8 +60,24 @@ const CACHE_STRATEGIES = {
 self.addEventListener('install', (event) => {
   event.waitUntil(
     Promise.all([
-      caches.open(CACHES.static).then((cache) => cache.addAll(PRECACHE_URLS)),
-      self.skipWaiting() // Активировать немедленно
+      caches.open(CACHES.static).then((cache) => {
+        // Добавляем обработку ошибок для каждого ресурса
+        return Promise.allSettled(
+          PRECACHE_URLS.map((url) =>
+            fetch(url)
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error(`Failed to fetch ${url}`)
+                }
+                return cache.put(url, response)
+              })
+              .catch((error) => {
+                console.warn(`Failed to cache ${url}:`, error)
+              })
+          )
+        )
+      }),
+      self.skipWaiting()
     ])
   )
 })
