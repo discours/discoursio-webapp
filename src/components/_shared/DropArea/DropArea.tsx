@@ -5,7 +5,6 @@ import { JSX, Show, createSignal } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { handleFileUpload } from '~/lib/handleFileUpload'
-import { handleImageUpload } from '~/lib/handleImageUpload'
 import { validateUploads } from '~/lib/validateUploads'
 
 import styles from './DropArea.module.scss'
@@ -38,9 +37,8 @@ export const DropArea = (props: Props) => {
     try {
       setLoading(true)
       const tkn = session()?.access_token as string
-      const handler = props.fileType === 'image' ? handleImageUpload : handleFileUpload
       tkn &&
-        Promise.all(files.map((file) => handler(file, tkn)))
+        Promise.all(files.map((file) => handleFileUpload(file, tkn)))
           .then(props.onUpload)
           .catch(console.error)
       setLoading(false)

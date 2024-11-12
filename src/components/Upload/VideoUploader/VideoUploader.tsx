@@ -23,7 +23,7 @@ export const VideoUploader = (props: Props) => {
   const [error, setError] = createSignal<string>()
   const [incorrectUrl, setIncorrectUrl] = createSignal<boolean>(false)
   const { showSnackbar } = useSnackbar()
-  let urlInput: HTMLInputElement | undefined
+  const [urlInput, setUrlInput] = createSignal<HTMLInputElement | undefined>()
 
   const { setRef: dropzoneRef, files: droppedFiles } = createDropzone({
     onDrop: async () => {
@@ -52,10 +52,24 @@ export const VideoUploader = (props: Props) => {
 
   const handleUrlInput = (value: string) => {
     setError()
+    setIncorrectUrl(false)
+
     if (validateUrl(value)) {
-      props.onVideoAdd(composeMediaItems([{ url: value }]))
+      const url = urlInput()?.value.trim()
+      if (url) {
+        props.onVideoAdd(composeMediaItems([{ url }]))
+        if (urlInput()) {
+          urlInput()!.value = ''
+        }
+      }
     } else {
       setIncorrectUrl(true)
+    }
+  }
+
+  const handleKeyPress = (event: KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      handleUrlInput(urlInput()?.value || '')
     }
   }
 
@@ -93,10 +107,11 @@ export const VideoUploader = (props: Props) => {
         <div class={styles.inputHolder}>
           <input
             class={clsx(styles.urlInput, { [styles.hasError]: incorrectUrl() })}
-            ref={(el) => (urlInput = el)}
+            ref={setUrlInput}
             type="text"
             placeholder={t('Insert video link')}
             onChange={(event) => handleUrlInput(event.currentTarget.value)}
+            onKeyPress={handleKeyPress}
           />
         </div>
         <Show when={incorrectUrl()}>
