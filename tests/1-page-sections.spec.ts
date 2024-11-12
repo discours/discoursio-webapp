@@ -79,8 +79,8 @@ const pagesTitles = {
   '/': /Дискурс/,
   '/feed': /Дискурс :: Лента/,
   '/support': /Поддержите Дискурс/,
-  '/author': /Дискурс :: Все авторы/,
-  '/topic': /Дискурс :: Темы и сюжеты/
+  '/authors': /Дискурс :: Все авторы/,
+  '/topics': /Дискурс :: Темы и сюжеты/
 }
 test.describe('Pages open', () => {
   Object.keys(pagesTitles).forEach((res: string) => {
