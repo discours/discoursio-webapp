@@ -61,13 +61,10 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
       [data, () => addAuthors],
       ([data, aa]) => {
         if (data && aa) {
-          // Check if authors are already added to context
-          if (authorsSorted()?.length === 0) {
-            aa(data.authors as Author[])
-            aa(data.authorsByFollowers as Author[])
-            aa(data.authorsByShouts as Author[])
-            console.debug('[routes.author] added all authors:', data.authors)
-          }
+          aa(data.authors as Author[])
+          aa(data.authorsByFollowers as Author[])
+          aa(data.authorsByShouts as Author[])
+          console.debug('[routes.author] added all authors:', data.authors)
         }
       },
       { defer: true }

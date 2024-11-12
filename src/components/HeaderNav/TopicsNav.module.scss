@@ -10,17 +10,12 @@
   }
 
   font-size: 1.6rem;
-  height: 6rem;
-  line-height: 6rem;
-  margin-bottom: 3rem;
-  overflow: hidden;
   position: relative;
-  transform: translateY(-2px);
+  width: 100%;
 
   .list {
     @include media-breakpoint-up(lg) {
       flex-wrap: wrap;
-      overflow: hidden;
       padding-right: 7em;
     }
 

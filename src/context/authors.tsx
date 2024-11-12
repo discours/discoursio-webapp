@@ -95,7 +95,7 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
       const fetcher = await getAuthor(opts)
       const author = await fetcher()
       if (author) addAuthor(author as Author)
-      console.debug('[context.authors]', author)
+      console.debug('[context.authors] loaded author', author)
     } catch (error) {
       console.error('[context.authors] Error loading author:', error)
       throw error

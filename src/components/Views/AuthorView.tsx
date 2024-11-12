@@ -26,8 +26,6 @@ import { Row3 } from '../Feed/Row3'
 
 import styles from '~/styles/views/Author.module.scss'
 import stylesArticle from '../Article/Article.module.scss'
-import { FeedFilters } from '../Feed/FeedFilters'
-import { ViewSwitcher } from '../_shared/ViewSwitcher/ViewSwitcher'
 
 type AuthorViewProps = {
   authorSlug: string
@@ -396,43 +394,26 @@ export const AuthorView = (props: AuthorViewProps) => {
           </Show>
 
           <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={loadMoreHidden()}>
-            <div class="floor">
-              <div class="row">
-                <div class="col-md-18">
-                  <div class={styles.filterControls}>
-                    <ViewSwitcher
-                      options={['recent', 'top', 'hot']}
-                      prefix={`/@${props.authorSlug}`}
-                      class={styles.viewSwitcher}
-                    />
-                    <FeedFilters />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <For each={shoutBatches()}>
-              {(batch) => {
-                const rowsInBatch: Shout[][] = [] // Explicitly type rowsInBatch
-                for (let i = 0; i < batch.length; i += 3) {
-                  rowsInBatch.push(batch.slice(i, i + 3)) // Slicing batch into arrays of up to 3 items
+            <For each={sortedFeed()}>
+              {(_article, index) => {
+                const i = index()
+                if (i % 3 === 0) {
+                  const articles = sortedFeed().slice(i, i + 3)
+                  return (
+                    <Switch>
+                      <Match when={articles.length === 1}>
+                        <Row1 article={articles[0]} noauthor={true} nodate={true} />
+                      </Match>
+                      <Match when={articles.length === 2}>
+                        <Row2 articles={articles} noauthor={true} nodate={true} isEqual={true} />
+                      </Match>
+                      <Match when={articles.length === 3}>
+                        <Row3 articles={articles} noauthor={true} nodate={true} />
+                      </Match>
+                    </Switch>
+                  )
                 }
-                return (
-                  <For each={rowsInBatch}>
-                    {(articles) => (
-                      <Switch>
-                        <Match when={articles.length === 1}>
-                          <Row1 article={articles[0]} noauthor={true} nodate={true} />
-                        </Match>
-                        <Match when={articles.length === 2}>
-                          <Row2 articles={articles} noauthor={true} nodate={true} isEqual={true} />
-                        </Match>
-                        <Match when={articles.length === 3}>
-                          <Row3 articles={articles} noauthor={true} nodate={true} />
-                        </Match>
-                      </Switch>
-                    )}
-                  </For>
-                )
+                return null
               }}
             </For>
           </LoadMoreWrapper>

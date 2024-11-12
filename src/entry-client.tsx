@@ -3,11 +3,16 @@ import { StartClient, mount } from '@solidjs/start/client'
 
 mount(() => <StartClient />, document.getElementById('app') || document.body)
 
-// if (import.meta.env.PROD && "serviceWorker" in navigator) {
-//   // Use the window load event to keep the page load performant
-//   window.addEventListener("load", () => {
-//     navigator.serviceWorker.register(`/sw.js`);
-//   });
-// }
+// Регистрируем SW только на клиенте и только в production
+if (import.meta.env.PROD && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js')
+      console.log('SW registered:', registration.scope)
+    } catch (error) {
+      console.error('Error registering SW:', error)
+    }
+  })
+}
 
 export default {}

@@ -36,6 +36,7 @@ export const HomeView = (props: HomeViewProps) => {
   const { topAuthors, addAuthors } = useAuthors()
   const { topTopics } = useTopics()
   onMount(() => {
+    // console.log('[HomeView] mounted with props:', props)
     props.featuredShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
     props.topRatedShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
   })

@@ -8,7 +8,7 @@ import { Loading } from '~/components/_shared/Loading'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
-import { handleImageUpload } from '~/lib/handleImageUpload'
+import { handleFileUpload } from '~/lib/handleFileUpload'
 import { UploadedFile } from '~/types/upload'
 import { InlineForm } from '../../_shared/InlineForm'
 
@@ -33,7 +33,7 @@ export const UploadModalContent = (props: Props) => {
   const runUpload = async (file: UploadFile) => {
     try {
       setIsUploading(true)
-      const result = await handleImageUpload(file, session()?.access_token || '')
+      const result = await handleFileUpload(file, session()?.access_token || '', 'image')
       props.onClose(result)
       setIsUploading(false)
     } catch (error) {

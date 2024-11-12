@@ -20,7 +20,7 @@ import { useSession } from '~/context/session'
 import { useSnackbar, useUI } from '~/context/ui'
 import { InputMaybe, ProfileInput } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
-import { handleImageUpload } from '~/lib/handleImageUpload'
+import { handleFileUpload } from '~/lib/handleFileUpload'
 import { profileSocialLinks } from '~/lib/profileSocialLinks'
 import { clone } from '~/utils/clone'
 import { validateUrl } from '~/utils/validate'
@@ -152,7 +152,7 @@ export const ProfileSettings = () => {
       setUploadError(false)
       setIsUserpicUpdating(true)
 
-      const result = await handleImageUpload(uploadFile, session()?.access_token || '')
+      const result = await handleFileUpload(uploadFile, session()?.access_token || '', 'image')
       updateFormField('pic', result.url)
 
       setUserpicFile(undefined)

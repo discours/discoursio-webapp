@@ -56,7 +56,7 @@ export const AllAuthorsView = (props: Props) => {
   // store by first char
   const byLetterFiltered = createMemo<{ [letter: string]: Author[] }>(() => {
     if (!filteredAuthors()) return {}
-    console.debug('[components.AllAuthors] update byLetterFiltered', filteredAuthors()?.length)
+    // console.debug('[components.AllAuthors] update byLetterFiltered', filteredAuthors()?.length)
     return (
       filteredAuthors()?.reduce(
         (acc, author: Author) => authorLetterReduce(acc, author, lang()),

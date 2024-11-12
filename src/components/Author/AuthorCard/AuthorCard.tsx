@@ -33,7 +33,9 @@ export const AuthorCard = (props: Props) => {
   const navigate = useNavigate()
   const { session, isSessionLoaded, requireAuthentication } = useSession()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
-  const [authorSubs, setAuthorSubs] = createSignal<Array<Author | Topic | Community>>([])
+  const [authorSubs, setAuthorSubs] = createSignal<Array<Author | Topic | Community>>(
+    props.flatFollows || []
+  )
   const [followsFilter, setFollowsFilter] = createSignal<FollowsFilter>('all')
   const [isFollowed, setIsFollowed] = createSignal<boolean>()
   const isProfileOwner = createMemo(() => author()?.slug === props.author.slug)
@@ -64,13 +66,20 @@ export const AuthorCard = (props: Props) => {
   }
 
   createEffect(
-    on(followsFilter, (f = 'all') => {
-      const subs =
-        f !== 'all'
-          ? follows[f as keyof typeof follows]
-          : [...(follows.topics || []), ...(follows.authors || [])]
-      setAuthorSubs(subs || [])
-    })
+    on(
+      () => [followsFilter(), props.flatFollows],
+      ([f = 'all']) => {
+        if (!props.flatFollows) return
+
+        const subs =
+          f !== 'all'
+            ? props.flatFollows.filter((sub) => (f === 'authors' ? 'name' in sub : 'title' in sub))
+            : props.flatFollows
+
+        setAuthorSubs(subs)
+      },
+      { defer: true }
+    )
   )
 
   const FollowersModalView = () => (
@@ -88,65 +97,78 @@ export const AuthorCard = (props: Props) => {
     </>
   )
 
-  const FollowingModalView = () => (
-    <>
-      <h2>{t('Subscriptions')}</h2>
-      <ul class="view-switcher">
-        <li
-          class={clsx({
-            'view-switcher__item--selected': followsFilter() === 'all'
-          })}
-        >
-          <button type="button" onClick={() => setFollowsFilter('all')}>
-            {t('All')}
-          </button>
-          <span class="view-switcher__counter">{props.flatFollows?.length}</span>
-        </li>
-        <li
-          class={clsx({
-            'view-switcher__item--selected': followsFilter() === 'authors'
-          })}
-        >
-          <button type="button" onClick={() => setFollowsFilter('authors')}>
-            {t('Authors')}
-          </button>
-          <span class="view-switcher__counter">{props.flatFollows?.filter((s) => 'name' in s).length}</span>
-        </li>
-        <li
-          class={clsx({
-            'view-switcher__item--selected': followsFilter() === 'topics'
-          })}
-        >
-          <button type="button" onClick={() => setFollowsFilter('topics')}>
-            {t('Topics')}
-          </button>
-          <span class="view-switcher__counter">
-            {props.flatFollows?.filter((s) => 'title' in s).length}
-          </span>
-        </li>
-      </ul>
-      <br />
-      <div class={styles.listWrapper}>
-        <div class="row">
-          <div class="col-24">
-            <For each={authorSubs()}>
-              {(subscription) =>
-                'name' in subscription ? (
-                  <AuthorBadge
-                    author={subscription as Author}
-                    subscriptionsMode={true}
-                    onClick={() => hideModal()}
-                  />
-                ) : (
-                  <TopicBadge topic={subscription as Topic} subscriptionsMode={true} />
-                )
-              }
-            </For>
+  const FollowingModalView = () => {
+    const filteredSubs = () => {
+      const f = followsFilter()
+      if (!props.flatFollows) return []
+
+      return f !== 'all'
+        ? props.flatFollows.filter((sub) => (f === 'authors' ? 'name' in sub : 'title' in sub))
+        : props.flatFollows
+    }
+
+    return (
+      <>
+        <h2>{t('Subscriptions')}</h2>
+        <ul class="view-switcher">
+          <li
+            class={clsx({
+              'view-switcher__item--selected': followsFilter() === 'all'
+            })}
+          >
+            <button type="button" onClick={() => setFollowsFilter('all')}>
+              {t('All')}
+            </button>
+            <span class="view-switcher__counter">{props.flatFollows?.length}</span>
+          </li>
+          <li
+            class={clsx({
+              'view-switcher__item--selected': followsFilter() === 'authors'
+            })}
+          >
+            <button type="button" onClick={() => setFollowsFilter('authors')}>
+              {t('Authors')}
+            </button>
+            <span class="view-switcher__counter">
+              {props.flatFollows?.filter((s) => 'name' in s).length}
+            </span>
+          </li>
+          <li
+            class={clsx({
+              'view-switcher__item--selected': followsFilter() === 'topics'
+            })}
+          >
+            <button type="button" onClick={() => setFollowsFilter('topics')}>
+              {t('Topics')}
+            </button>
+            <span class="view-switcher__counter">
+              {props.flatFollows?.filter((s) => 'title' in s).length}
+            </span>
+          </li>
+        </ul>
+        <br />
+        <div class={styles.listWrapper}>
+          <div class="row">
+            <div class="col-24">
+              <For each={filteredSubs()}>
+                {(subscription) =>
+                  'name' in subscription ? (
+                    <AuthorBadge
+                      author={subscription as Author}
+                      subscriptionsMode={true}
+                      onClick={() => hideModal()}
+                    />
+                  ) : (
+                    <TopicBadge topic={subscription as Topic} subscriptionsMode={true} />
+                  )
+                }
+              </For>
+            </div>
           </div>
         </div>
-      </div>
-    </>
-  )
+      </>
+    )
+  }
 
   return (
     <div class={clsx(styles.author, 'row')}>

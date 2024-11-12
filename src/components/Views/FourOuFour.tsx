@@ -1,5 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
+import { createSignal, onMount } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Icon } from '../_shared/Icon'
 
@@ -8,12 +9,22 @@ import styles from '~/styles/views/FourOuFour.module.scss'
 type EvType = Event & { submitter: HTMLElement } & { currentTarget: HTMLFormElement; target: Element }
 
 export const FourOuFourView = () => {
-  console.debug('[components.404] init context...')
-  let queryInput: HTMLInputElement | null
+  const [isLoading, setIsLoading] = createSignal(true)
   const navigate = useNavigate()
   const search = (_ev: EvType) => navigate(`/search?q=${queryInput?.value || ''}`)
 
   const { t } = useLocalize()
+
+  onMount(() => {
+    setTimeout(() => setIsLoading(false), 100)
+  })
+
+  if (isLoading()) {
+    return <div>Загрузка...</div>
+  }
+
+  let queryInput: HTMLInputElement | null
+
   return (
     <div class={styles.errorPageWrapper}>
       <div class={styles.errorPage}>

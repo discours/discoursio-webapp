@@ -1,9 +1,7 @@
-import { A, useLocation } from '@solidjs/router'
-import { For, Show, createEffect, createMemo } from 'solid-js'
-
+import { A } from '@solidjs/router'
+import { For, Show, createMemo } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
-
 import { Author, Topic } from '~/graphql/schema/core.gen'
 import { Userpic } from '../../Author/Userpic'
 
@@ -41,24 +39,11 @@ const Counter = (props: { count: number; label: string }) => (
 
 export const FollowingCounters = (props: Props) => {
   const { t } = useLocalize()
-  const { hideModal, showModal } = useUI()
-  const location = useLocation()
-
+  const { hideModal } = useUI()
   const getFollowersCount = createMemo(() => props.followersAmount || props.followers?.length || 0)
   const getFollowingCount = createMemo(() => props.followingAmount || props.following?.length || 0)
   const getAuthorsCount = createMemo(() => props.authorsAmount || props.authors?.length || 0)
   const getTopicsCount = createMemo(() => props.topicsAmount || props.topics?.length || 0)
-
-  // Monitor URL changes to control modal state
-  createEffect(() => {
-    const searchParams = new URLSearchParams(location.search)
-    const modalParam = searchParams.get('m')
-    if (modalParam === 'followers') {
-      showModal('followers')
-    } else {
-      hideModal()
-    }
-  })
 
   return (
     <>

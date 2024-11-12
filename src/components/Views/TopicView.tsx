@@ -42,24 +42,47 @@ export const TopicView = (props: Props) => {
   // const [searchParams, changeSearchParams] = useSearchParams<{ by: TopicFeedSortBy }>()
   const [favoriteTopArticles, setFavoriteTopArticles] = createSignal<Shout[]>([])
   const [reactedTopMonthArticles, setReactedTopMonthArticles] = createSignal<Shout[]>([])
-  const [topic, setTopic] = createSignal<Topic>()
   const [followers, setFollowers] = createSignal<Author[]>(props.followers || [])
 
-  // TODO: filter + sort
-  const [sortedFeed, setSortedFeed] = createSignal([] as Shout[])
+  // 1. Обновим сигналы и добавим эффект для начальных данных
+  const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
+  const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
+  const [topic, setTopic] = createSignal<Topic>()
+  createEffect(on(topicEntities, (ttt) => setTopic(ttt[props.topicSlug])))
+
+  // 2. Добавим эффект для обработки начальных данных
+  createEffect(() => {
+    if (props.shouts?.length) {
+      setSortedFeed(props.shouts)
+      addFeed(props.shouts) // Добавляем в общий feed
+    }
+  })
+
+  // 3. Обновим эффект для отслеживания изменений в feed
   createEffect(
     on(
-      [feedByTopic, () => props.topicSlug, topicEntities],
-      ([feed, slug, ttt]) => {
-        if (Object.values(ttt).length === 0) return
-        const sss = (feed[slug] || []) as Shout[]
-        sss && setSortedFeed(sss)
-        console.debug('topic slug loaded', slug)
-        const tpc = ttt[slug]
-        console.debug('topics loaded', ttt)
-        tpc && setTopic(tpc)
+      () => feedByTopic()[props.topicSlug],
+      (topicFeed) => {
+        if (topicFeed?.length) {
+          console.debug('Feed updated:', topicFeed.length, 'articles')
+          setSortedFeed(topicFeed)
+
+          setLoadMoreHidden(topicFeed.length === (topic()?.stat?.shouts || 0))
+        }
       },
-      {}
+      { defer: false } // Важно: убираем defer чтобы эффект сработал сразу
+    )
+  )
+
+  // 4. Добавим эффект для сброса при смене топика
+  createEffect(
+    on(
+      () => props.topicSlug,
+      (newSlug, prevSlug) => {
+        if (newSlug !== prevSlug) {
+          setSortedFeed([]) // Сбрасываем при смене топика
+        }
+      }
     )
   )
 
@@ -76,7 +99,7 @@ export const TopicView = (props: Props) => {
     const topicAuthorsFetcher = await loadAuthors({ by, limit: 10, offset: 0 })
     const result = await topicAuthorsFetcher()
     result && setTopicAuthors(result)
-    console.debug('loadTopicAuthors', result)
+    console.debug('loadTopicAuthors got ', result?.length, 'authors')
   }
 
   const loadFavoriteTopArticles = async () => {
@@ -123,15 +146,22 @@ export const TopicView = (props: Props) => {
     )
   )
 
-  // дозагрузка
+  // 5. Обновим loadMore для гарантированного обновления UI
   const loadMore = async () => {
     saveScrollPosition()
-    const amountBefore = feedByTopic()?.[props.topicSlug]?.length || 0
     const topicShoutsFetcher = loadShouts({
-      options: { filters: { topic: props.topicSlug }, limit: SHOUTS_PER_PAGE, offset: amountBefore }
+      options: {
+        filters: { topic: props.topicSlug },
+        limit: SHOUTS_PER_PAGE,
+        offset: sortedFeed().length
+      }
     })
+
     const result = await topicShoutsFetcher()
-    result && addFeed(result)
+    if (result?.length) {
+      setSortedFeed((prev) => [...prev, ...result]) // Напрямую обновляем sortedFeed
+      addFeed(result) // И добавляем в общий feed
+    }
     restoreScrollPosition()
     return result as LoadMoreItems
   }
@@ -175,49 +205,44 @@ export const TopicView = (props: Props) => {
           </div>
         </div>
 
-        <Row1 article={sortedFeed()[0]} />
-        <Row2 articles={sortedFeed().slice(1, 3)} isEqual={true} />
+        <Row1 article={(sortedFeed() || [])[0]} />
+        <Row2 articles={(sortedFeed() || []).slice(1, 3)} isEqual={true} />
 
         <Beside
-          beside={sortedFeed()[3]}
+          beside={(sortedFeed() || [])[3]}
           title={t('Topic is supported by')}
-          values={topicAuthors().slice(0, 6)}
+          values={topicAuthors() || []}
           wrapper={'author'}
         />
         <Show when={reactedTopMonthArticles()?.length > 0} keyed={true}>
           <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles()} />
         </Show>
         <Beside
-          beside={sortedFeed()[4]}
+          beside={(sortedFeed() || [])[4]}
           title={t('Top viewed')}
           values={topViewedShouts().slice(0, 5)}
           wrapper={'top-article'}
         />
 
-        <Row2 articles={sortedFeed().slice(5, 7)} isEqual={true} />
-        <Row1 article={sortedFeed()[7]} />
+        <Row2 articles={(sortedFeed() || []).slice(5, 7)} isEqual={true} />
+        <Row1 article={(sortedFeed() || [])[7]} />
 
         <Show when={favoriteTopArticles()?.length > 0} keyed={true}>
           <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles()} />
         </Show>
 
-        <Show when={sortedFeed().length > 7}>
-          <Row3 articles={sortedFeed().slice(8, 11)} />
-          <Row2 articles={sortedFeed().slice(11, 13)} />
+        <Show when={(sortedFeed() || []).length > 7}>
+          <Row3 articles={(sortedFeed() || []).slice(8, 11)} />
+          <Row2 articles={(sortedFeed() || []).slice(11, 13)} />
         </Show>
 
-        <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE}>
-          <For
-            each={sortedFeed()
-              .slice(13)
-              .filter((_, i) => i % 3 === 0)}
-          >
-            {(_shout, index) => {
-              const articles = sortedFeed()
-                .slice(13)
-                .slice(index() * 3, index() * 3 + 3)
-              return (
-                <>
+        <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={loadMoreHidden()}>
+          <For each={sortedFeed()}>
+            {(_article, index) => {
+              const i = index()
+              if (i % 3 === 0) {
+                const articles = sortedFeed().slice(i, i + 3)
+                return (
                   <Switch>
                     <Match when={articles.length === 1}>
                       <Row1 article={articles[0]} noauthor={true} nodate={true} />
@@ -229,8 +254,9 @@ export const TopicView = (props: Props) => {
                       <Row3 articles={articles} noauthor={true} nodate={true} />
                     </Match>
                   </Switch>
-                </>
-              )
+                )
+              }
+              return null
             }}
           </For>
         </LoadMoreWrapper>

@@ -1,4 +1,5 @@
-import { openDB } from 'idb'
+import { createAsync } from '@solidjs/router'
+import { IDBPDatabase, openDB } from 'idb'
 import { Accessor, JSX, createContext, createEffect, createSignal, on, onMount, useContext } from 'solid-js'
 import { loadTopics } from '~/graphql/api/public'
 import { Topic } from '~/graphql/schema/core.gen'
@@ -32,75 +33,91 @@ export function useTopics() {
 const DB_NAME = 'discourseAppDB'
 const DB_VERSION = 1
 const STORE_NAME = 'topics'
-const CACHE_LIFETIME = 24 * 60 * 60 * 1000 // один день в миллисекундах
+const CACHE_LIFETIME = 24 * 60 * 60 * 1000 // 24 часа
 
 const setupIndexedDB = async () => {
-  if (window && !('indexedDB' in window)) {
-    console.error("This browser doesn't support IndexedDB")
-    return
-  }
-
   try {
-    const db = await openDB(DB_NAME, DB_VERSION, {
-      upgrade(db, oldVersion, newVersion, _transaction) {
-        console.log(`Upgrading database from version ${oldVersion} to ${newVersion}`)
-        if (db.objectStoreNames.contains(STORE_NAME)) {
-          console.log(`Object store ${STORE_NAME} already exists`)
-        } else {
-          console.log(`Creating object store: ${STORE_NAME}`)
-          db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+    return await openDB<{ topics: Topic[]; timestamp: number }>(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME)
         }
       }
     })
-    console.log('Database opened successfully:', db)
-    return db
   } catch (e) {
     console.error('Failed to open IndexedDB:', e)
+    return null
   }
 }
 
-const getTopicsFromIndexedDB = async (db: IDBDatabase) => {
-  if (db) {
-    return new Promise<{ topics: Topic[]; timestamp: number }>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly')
-      const store = tx.objectStore(STORE_NAME)
-      const request = store.getAll()
-
-      request.onsuccess = () => {
-        const topics = request.result || []
-        const timestamp =
-          (tx.objectStore(STORE_NAME).get('timestamp') as IDBRequest<{ value: number }>).result?.value || 0
-        resolve({ topics, timestamp })
-      }
-
-      request.onerror = () => {
-        console.error('Error fetching topics from IndexedDB')
-        reject()
-      }
-    })
-  }
-  return { topics: [], timestamp: 0 }
+export const fetchTopicsData = async () => {
+  const topicsLoader = loadTopics()
+  const ttt = await topicsLoader()
+  return ttt || []
 }
 
-const saveTopicsToIndexedDB = async (db: IDBDatabase, topics: Topic[]) => {
-  if (db) {
-    const tx = (db as IDBDatabase).transaction(STORE_NAME, 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    const timestamp = Date.now()
-
-    topics?.forEach(async (topic: Topic) => {
-      if (topic) await store.put(topic as Topic)
-    })
-    await store.put({ id: 'timestamp', value: timestamp })
-    // @ts-ignore
-    await tx.done
-  }
-}
 export type TopicSort = 'shouts' | 'followers' | 'authors' | 'title'
+
 export const TopicsProvider = (props: { children: JSX.Element }) => {
   const [topicEntities, setTopicEntities] = createSignal<{ [topicSlug: string]: Topic }>({})
   const [sortedTopics, setSortedTopics] = createSignal<Topic[]>([])
   const [sortAllBy, setSortAllBy] = createSignal<TopicSort>('shouts')
+  const [db, setDb] = createSignal<IDBPDatabase | null>(null)
+
+  const getTopicsFromIndexedDB = async () => {
+    const tx = db()?.transaction(STORE_NAME, 'readonly')
+    const store = tx?.objectStore(STORE_NAME)
+    const topics = await store?.get('data')
+    const timestamp = await store?.get('timestamp')
+    return { topics, timestamp }
+  }
+
+  onMount(async () => {
+    const database = await setupIndexedDB()
+    if (!database) return
+    setDb(database as unknown as IDBPDatabase)
+
+    try {
+      const cached = (await database.get(STORE_NAME, 'data')) as Topic[] | undefined
+      const timestamp = (await database.get(STORE_NAME, 'timestamp')) as number | undefined
+
+      if (cached && timestamp && Date.now() - timestamp < CACHE_LIFETIME) {
+        addTopics(cached)
+      } else {
+        const fresh = await loadAllTopics()
+        if (fresh.length > 0) {
+          await database.put(STORE_NAME, fresh, 'data')
+          await database.put(STORE_NAME, Date.now(), 'timestamp')
+          addTopics(fresh)
+        }
+      }
+    } catch (e) {
+      console.error('IndexedDB operation failed:', e)
+      const fresh = await loadAllTopics()
+      fresh.length > 0 && addTopics(fresh)
+    }
+  })
+
+  const addTopics = (topics: Topic[]) => {
+    const newTopicEntities = topics.reduce(
+      (acc, topic) => {
+        if (topic?.slug) acc[topic.slug] = topic
+        return acc
+      },
+      {} as Record<string, Topic>
+    )
+
+    setTopicEntities((prev) => ({ ...prev, ...newTopicEntities }))
+  }
+
+  const topics = createAsync<Topic[]>(fetchTopicsData as () => Promise<Topic[]>)
+  createEffect(
+    on(
+      () => topics() || [],
+      (ttt: Topic[]) => ttt && addTopics(ttt),
+      { defer: true }
+    )
+  )
 
   createEffect(() => {
     const topics = Object.values(topicEntities())
@@ -136,39 +153,6 @@ export const TopicsProvider = (props: { children: JSX.Element }) => {
     })
   )
 
-  const addTopics = (...args: Topic[][]) => {
-    const allTopics = args.flatMap((topics) => (topics || []).filter(Boolean))
-
-    const newTopicEntities = allTopics.reduce(
-      (acc, topic) => {
-        acc[topic.slug] = topic
-        return acc
-      },
-      {} as Record<string, Topic>
-    )
-
-    setTopicEntities((prevTopicEntities) => {
-      const ttt = {
-        ...prevTopicEntities,
-        ...newTopicEntities
-      }
-
-      if (db()) saveTopicsToIndexedDB(db() as IDBDatabase, Object.values(ttt) as Topic[])
-      return ttt
-    })
-  }
-  const [db, setDb] = createSignal()
-  createEffect(
-    on(
-      () => window?.indexedDB,
-      async (_raw) => {
-        const initialized = await setupIndexedDB()
-        setDb(initialized)
-      },
-      { defer: true }
-    )
-  )
-
   const loadAllTopics = async () => {
     const topicsLoader = loadTopics()
     const ttt = await topicsLoader()
@@ -182,14 +166,14 @@ export const TopicsProvider = (props: { children: JSX.Element }) => {
       db,
       async (indexed) => {
         if (indexed) {
-          const { topics: req, timestamp } = await getTopicsFromIndexedDB(indexed as IDBDatabase)
+          const { topics: req, timestamp } = await getTopicsFromIndexedDB()
           const now = Date.now()
           const isCacheValid = now - timestamp < CACHE_LIFETIME
 
           const topics = isCacheValid ? req : await loadAllTopics()
           console.info(`[context.topics] got ${(topics as Topic[]).length || 0} topics from idb`)
           addTopics(topics as Topic[])
-          setRandomTopic(getRandomItemsFromArray(topics || [], 1).pop())
+          setRandomTopic(getRandomItemsFromArray(topics as Topic[], 1)[0])
         }
       },
       { defer: true }
@@ -197,7 +181,7 @@ export const TopicsProvider = (props: { children: JSX.Element }) => {
   )
 
   const getCachedOrLoadTopics = async () => {
-    const { topics: stored } = await getTopicsFromIndexedDB(db() as IDBDatabase)
+    const { topics: stored } = await getTopicsFromIndexedDB()
     if (stored) {
       setSortedTopics(stored)
       return stored

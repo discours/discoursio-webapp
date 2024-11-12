@@ -136,6 +136,11 @@
   .fixed & {
     display: block;
   }
+
+  &:hover + .subnavigation:not(.hidden) {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .mainNavigation {
@@ -781,6 +786,16 @@
     &:hover {
       opacity: 0.5;
     }
+  }
+
+  z-index: 10004;
+  pointer-events: auto;
+  transition: opacity 0.2s ease-in-out;
+  opacity: 1;
+
+  &.hidden {
+    opacity: 0;
+    pointer-events: none;
   }
 }
 

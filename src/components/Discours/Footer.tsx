@@ -47,7 +47,7 @@ export const FooterView = () => {
       {
         header: t('Sections'),
         items: [
-          { title: t('Authors'), slug: '/author' },
+          { title: t('Authors'), slug: '/authors' },
           { title: t('Communities'), slug: '/community' },
           { title: t('Partners'), slug: '/partners' },
           { title: t('Special projects'), slug: '/projects' },

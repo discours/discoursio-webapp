@@ -7,7 +7,7 @@ import { useLocalize } from '~/context/localize'
 import { useSnackbar } from '~/context/ui'
 import { composeMediaItems } from '~/lib/composeMediaItems'
 import { getFileUrl } from '~/lib/getThumbUrl'
-import { handleImageUpload } from '~/lib/handleImageUpload'
+import { handleFileUpload } from '~/lib/handleFileUpload'
 import { validateUploads } from '~/lib/validateUploads'
 import { DropArea } from '../DropArea'
 import { Icon } from '../Icon'
@@ -101,7 +101,7 @@ export const EditorSwiper = (props: Props) => {
       setLoading(true)
       const results: UploadedFile[] = []
       for (const file of selectedFiles) {
-        const result = await handleImageUpload(file, session()?.access_token || '')
+        const result = await handleFileUpload(file, session()?.access_token || '', 'image')
         results.push(result)
       }
       props.onImagesAdd?.(composeMediaItems(results))

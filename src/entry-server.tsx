@@ -1,5 +1,7 @@
 // @refresh reload
 import { StartServer, createHandler } from '@solidjs/start/server'
+import { ErrorBoundary, Suspense } from 'solid-js'
+import { Loading } from './components/_shared/Loading'
 
 export default createHandler(() => {
   return (
@@ -13,7 +15,16 @@ export default createHandler(() => {
             {assets}
           </head>
           <body>
-            <div id="app">{children}</div>
+            <div id="app">
+              <ErrorBoundary
+                fallback={(err) => {
+                  console.error('Server Error:', err)
+                  return <Loading />
+                }}
+              >
+                <Suspense fallback={<Loading />}>{children}</Suspense>
+              </ErrorBoundary>
+            </div>
             {scripts}
           </body>
         </html>

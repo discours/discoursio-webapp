@@ -1,10 +1,13 @@
+import { UploadFile } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
 import { Show } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { DropArea } from '~/components/_shared/DropArea'
 import { useLocalize } from '~/context/localize'
+import { useSession } from '~/context/session'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { composeMediaItems } from '~/lib/composeMediaItems'
+import { handleFileUpload } from '~/lib/handleFileUpload'
 import { AudioPlayer } from '../../Article/AudioPlayer'
 import styles from './AudioUploader.module.scss'
 
@@ -26,6 +29,7 @@ type Props = {
 
 export const AudioUploader = (props: Props) => {
   const { t } = useLocalize()
+  const { session } = useSession()
 
   const handleMediaItemFieldChange = (
     index: number,
@@ -49,6 +53,14 @@ export const AudioUploader = (props: Props) => {
     props.onAudioSorted(media)
   }
 
+  const handleUpload = async (files: UploadFile[]) => {
+    const result = await handleFileUpload(files, session()?.access_token || '', 'audio')
+
+    if (result) {
+      props.onAudioAdd(composeMediaItems(result))
+    }
+  }
+
   return (
     <div class={clsx(styles.AudioUploader, props.class)}>
       <Show when={props.audio.length > 0}>
@@ -64,7 +76,7 @@ export const AudioUploader = (props: Props) => {
         placeholder={t('Add audio')}
         description={t('You can download multiple tracks at once in .mp3, .wav or .flac formats')}
         fileType={'audio'}
-        onUpload={(value) => props.onAudioAdd(composeMediaItems(value, props.baseFields))}
+        onUpload={handleUpload}
       />
     </div>
   )

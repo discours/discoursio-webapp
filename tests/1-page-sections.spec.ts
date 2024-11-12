@@ -27,19 +27,34 @@ function httpsGet(url: string): Promise<void> {
       })
   })
 }
-async function waitForServer(url: string, timeout = 150000) {
+async function waitForServer(url: string, timeout = 300000, retries = 3) {
   const start = Date.now()
-  while (Date.now() - start < timeout) {
+  let attemptCount = 0
+
+  while (attemptCount < retries) {
     try {
-      await httpsGet(url)
-      return true
+      while (Date.now() - start < timeout) {
+        try {
+          await httpsGet(url)
+          return true
+        } catch (error) {
+          if ((error as { code: string }).code === 'ECONNREFUSED') {
+            console.log(`Server not ready, retrying... (Attempt ${attemptCount + 1}/${retries})`)
+            await new Promise((resolve) => setTimeout(resolve, 2000))
+            continue
+          }
+          throw error
+        }
+      }
     } catch (error) {
-      // Ignore errors and try again
-      console.log(`Error fetching ${url}: ${error}`)
+      console.error(`Attempt ${attemptCount + 1} failed:`, error)
+      attemptCount++
+      if (attemptCount === retries) {
+        throw new Error(`Server at ${url} did not start after ${retries} attempts`)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2 ** attemptCount * 1000))
     }
-    await new Promise((resolve) => setTimeout(resolve, 1000))
   }
-  throw new Error(`Server at ${url} did not start within ${timeout} ms`)
 }
 test.beforeAll(async ({ browser }) => {
   console.log('Waiting for the server to start...')
@@ -64,8 +79,8 @@ const pagesTitles = {
   '/': /Дискурс/,
   '/feed': /Дискурс :: Лента/,
   '/support': /Поддержите Дискурс/,
-  '/author': /Дискурс :: Все авторы/,
-  '/topic': /Дискурс :: Темы и сюжеты/
+  '/authors': /Дискурс :: Все авторы/,
+  '/topics': /Дискурс :: Темы и сюжеты/
 }
 test.describe('Pages open', () => {
   Object.keys(pagesTitles).forEach((res: string) => {

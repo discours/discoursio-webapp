@@ -26,16 +26,27 @@ import AuthorPage, { AuthorPageProps } from '../author/[slug]/[...tab]'
 import TopicPage, { TopicPageProps } from '../topic/[slug]/[...tab]'
 
 const fetchShout = async (slug: string): Promise<Shout | undefined> => {
+  console.log('[fetchShout] slug:', slug)
   if (slug.startsWith('@')) return
-  const shoutLoader = getShout({ slug })
-  const result = await shoutLoader()
-  return result
+  try {
+    const shoutLoader = getShout({ slug })
+    const result = await shoutLoader()
+    console.log('[fetchShout] result:', result)
+    return result
+  } catch (error) {
+    console.error('[fetchShout] error:', error)
+    return undefined
+  }
 }
 
 export const route: RouteDefinition = {
-  load: async ({ params }) => ({
-    article: await fetchShout(params.slug)
-  })
+  load: async ({ params }) => {
+    const data = {
+      article: await fetchShout(params.slug)
+    }
+    // console.log('[route.load] data:', data)
+    return data
+  }
 }
 
 export type ArticlePageProps = {
@@ -58,6 +69,7 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   const { t } = useLocalize()
   const data = createAsync(async () => {
     const result = props.data?.article || (await fetchShout(props.params.slug))
+    // console.log('[ArticlePageContent] data:', result)
     return result
   })
 
@@ -125,6 +137,8 @@ export default function ArticlePage(props: RouteSectionProps<SlugPageProps>) {
       setCurrentSlug(newSlug)
     }
   })
+
+  console.log('[ArticlePage] props:', props)
 
   return (
     <Switch fallback={<div>Loading...</div>}>
