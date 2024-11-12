@@ -14,28 +14,23 @@ import { TopicBadge } from '../Topic/TopicBadge'
 
 import styles from '~/styles/views/AllTopics.module.scss'
 
-type Props = {
-  topics: Topic[]
-}
-
 export const TOPICS_PER_PAGE = 50
 export const ABC = {
   ru: 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ#',
   en: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
 }
 
-export const AllTopicsView = (props: Props) => {
+export const AllTopicsView = () => {
   const { t, lang } = useLocalize()
   const alphabet = createMemo(() => ABC[lang()])
   const { setTopicsSort, sortedTopics } = useTopics()
-  const topics = createMemo(() => sortedTopics() || props.topics)
   const [searchParams, changeSearchParams] = useSearchParams<{ by?: string }>()
   onMount(() => changeSearchParams({ by: 'shouts' }))
   createEffect(on(() => searchParams?.by || 'shouts', setTopicsSort, { defer: true }))
 
   // sorted derivative
   const byLetter = createMemo<{ [letter: string]: Topic[] }>(() => {
-    return topics().reduce(
+    return sortedTopics().reduce(
       (acc, topic) => {
         const firstCharIndex = findFirstReadableCharIndex(topic?.title || '')
         let letter =
@@ -67,7 +62,7 @@ export const AllTopicsView = (props: Props) => {
   const [searchQuery, setSearchQuery] = createSignal('')
   const [filteredResults, setFilteredResults] = createSignal<Topic[]>([])
   createEffect(() =>
-    setFilteredResults((_prev: Topic[]) => dummyFilter(topics(), searchQuery(), lang()) as Topic[])
+    setFilteredResults((_prev: Topic[]) => dummyFilter(sortedTopics(), searchQuery(), lang()) as Topic[])
   )
 
   // subcomponent

@@ -8,7 +8,7 @@ import { PageLayout } from '~/components/_shared/PageLayout'
 import { SHOUTS_PER_PAGE } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { loadShouts, loadTopics } from '~/graphql/api/public'
+import { loadShouts } from '~/graphql/api/public'
 import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { descFromBody } from '~/utils/meta'
@@ -19,18 +19,12 @@ const fetchTopicShouts = async (slug: string, offset?: number) => {
   return await shoutsLoader()
 }
 
-const fetchAllTopics = async () => {
-  const topicsFetcher = loadTopics()
-  return await topicsFetcher()
-}
-
 export const route = {
   load: async ({ params, location: { query } }: RouteSectionProps<{ articles: Shout[] }>) => {
     const offset: number = Number.parseInt(query.offset as string, 10)
     const result = await fetchTopicShouts(params.slug, offset)
     return {
-      articles: result,
-      topics: await fetchAllTopics()
+      articles: result
     }
   }
 }
@@ -40,13 +34,8 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   const { t } = useLocalize()
 
   // all topics
-  const { addTopics } = useTopics()
+  const { addTopics, sortedTopics } = useTopics()
   const [loadingError, setLoadingError] = createSignal(false)
-  const topics = createAsync(async () => {
-    const result = props.data.topics || (await fetchAllTopics())
-    if (!result) setLoadingError(true)
-    return result
-  })
 
   // current topic's shouts
   const articles = createAsync(async () => {
@@ -63,7 +52,7 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   const [viewed, setViewed] = createSignal(false)
   createEffect(
     on(
-      [topics, () => window],
+      [sortedTopics, () => window],
       ([ttt, win]) => {
         if (ttt && win) {
           // console.debug('all topics:', ttt)

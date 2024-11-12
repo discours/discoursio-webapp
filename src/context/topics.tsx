@@ -1,3 +1,4 @@
+import { createAsync } from '@solidjs/router'
 import { openDB } from 'idb'
 import { Accessor, JSX, createContext, createEffect, createSignal, on, onMount, useContext } from 'solid-js'
 import { loadTopics } from '~/graphql/api/public'
@@ -97,10 +98,23 @@ const saveTopicsToIndexedDB = async (db: IDBDatabase, topics: Topic[]) => {
   }
 }
 export type TopicSort = 'shouts' | 'followers' | 'authors' | 'title'
+export const fetchTopicsData = async () => {
+  const topicsLoader = loadTopics()
+  return await topicsLoader()
+}
 export const TopicsProvider = (props: { children: JSX.Element }) => {
   const [topicEntities, setTopicEntities] = createSignal<{ [topicSlug: string]: Topic }>({})
   const [sortedTopics, setSortedTopics] = createSignal<Topic[]>([])
   const [sortAllBy, setSortAllBy] = createSignal<TopicSort>('shouts')
+
+  const topics = createAsync<Topic[]>(fetchTopicsData as () => Promise<Topic[]>)
+  createEffect(
+    on(
+      () => topics() || [],
+      (ttt: Topic[]) => ttt && addTopics(ttt),
+      { defer: true }
+    )
+  )
 
   createEffect(() => {
     const topics = Object.values(topicEntities())

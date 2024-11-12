@@ -788,10 +788,6 @@
     }
   }
 
-  &.hidden {
-    display: none;
-  }
-
   z-index: 10004;
   pointer-events: auto;
   transition: opacity 0.2s ease-in-out;
