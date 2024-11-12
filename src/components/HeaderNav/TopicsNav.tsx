@@ -21,7 +21,7 @@ export const DEFAULT_TOPICS = [
 ]
 
 export const TopicsNav = (props: { fixed?: boolean }) => {
-  const { t } = useLocalize()
+  const { t, lang } = useLocalize()
   const { addTopics, sortedTopics } = useTopics()
   const [randomTopics, setRandomTopics] = createSignal<string[]>(DEFAULT_TOPICS)
   createEffect(
@@ -51,20 +51,21 @@ export const TopicsNav = (props: { fixed?: boolean }) => {
           </A>
         </li>
         <For each={randomTopics()}>
-          {(slug: string, _idx: Accessor<number>) => (
-            <li class={styles.item}>
-              <A href={`/topic/${slug}`}>
-                <span>
-                  #
-                  {capitalize(
-                    sortedTopics()?.find((t: Topic) => t.slug === slug)?.title ||
-                      t(capitalize(slug)) ||
-                      slug
-                  )}
-                </span>
-              </A>
-            </li>
-          )}
+          {(slug: string, _idx: Accessor<number>) => {
+            const topic = sortedTopics()?.find((t: Topic) => t.slug === slug)
+            return (
+              <li class={styles.item}>
+                <A href={`/topic/${slug}`}>
+                  <span>
+                    #
+                    {capitalize(
+                      (lang() === 'ru' && topic?.title) || t(capitalize(slug)) || slug.replace('-', ' ')
+                    )}
+                  </span>
+                </A>
+              </li>
+            )
+          }}
         </For>
         <li class={styles.rightItem}>
           <A href="/topic">
