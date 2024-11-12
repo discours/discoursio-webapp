@@ -1,4 +1,4 @@
-import { thumborUrl } from '~/config'
+import { cdnDomain, cdnUrl, thumborDomain } from '~/config'
 
 export const getFileUrl = (
   src: string,
@@ -14,10 +14,10 @@ export const getFileUrl = (
   if (options.shout) {
     extension = `${extension}?s=${options.shout}`
   }
-  const result = `${thumborUrl}/${basename}.${extension}`
+  const result = `${cdnUrl}/${basename}.${extension}`
   // console.debug(`${src} -> ${result}`)
   return result
-    .replace('assets.discours.io', 'files.dscrs.site')
-    .replace('images.discours.io', 'files.dscrs.site')
-    .replace('cdn.discours.io', 'files.dscrs.site')
+    .replace(thumborDomain, cdnDomain)
+    .replace('assets.discours.io', cdnDomain)
+    .replace('cdn.discours.io', cdnDomain)
 }

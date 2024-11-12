@@ -24,7 +24,7 @@ export const LayoutSelector = () => {
       ?.mutation(createShoutMutation, { shout: { layout: layout } })
       .toPromise()
     if (result) {
-      console.debug(result)
+      // console.debug(result)
       const { shout, error } = result.data.create_shout
       if (error) {
         showSnackbar({

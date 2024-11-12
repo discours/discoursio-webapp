@@ -55,7 +55,7 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
           aa(data.authors as Author[])
           aa(data.authorsByFollowers as Author[])
           aa(data.authorsByShouts as Author[])
-          console.debug('[routes.author] added all authors:', data.authors)
+          // console.debug('[routes.author] added all authors:', data.authors)
         }
       },
       { defer: true }

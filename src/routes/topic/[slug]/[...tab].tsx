@@ -21,7 +21,6 @@ const fetchTopicShouts = async (slug: string, offset?: number) => {
 
 const fetchAllTopics = async () => {
   const topicsFetcher = loadTopics()
-  console.debug('all topics fetched')
   return await topicsFetcher()
 }
 

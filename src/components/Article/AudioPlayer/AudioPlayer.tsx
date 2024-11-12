@@ -1,5 +1,6 @@
 import { Show, createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
 
+import { cdnUrl } from '~/config'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { PlayerHeader } from './PlayerHeader'
 import { PlayerPlaylist } from './PlayerPlaylist'
@@ -147,7 +148,7 @@ export const AudioPlayer = (props: Props) => {
           <audio
             ref={(el) => (audioRef = el)}
             onTimeUpdate={handleAudioTimeUpdate}
-            src={currentTack()?.url?.replace('images.discours.io', 'files.dscrs.site') || ''}
+            src={currentTack()?.url?.replace('images.discours.io', cdnUrl) || ''}
             onCanPlay={() => {
               // start to play the next track on src change
               if (isPlaying() && audioRef) {

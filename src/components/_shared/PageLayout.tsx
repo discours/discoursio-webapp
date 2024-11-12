@@ -2,8 +2,10 @@ import { Meta, Title } from '@solidjs/meta'
 import { useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
 import type { JSX } from 'solid-js'
-import { Show, createMemo } from 'solid-js'
+import { Show, createEffect, createMemo, createSignal, onMount } from 'solid-js'
+import { cdnUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
+import { getShout } from '~/graphql/api/public'
 import { Shout } from '~/graphql/schema/core.gen'
 import enKeywords from '~/intl/locales/en/keywords.json'
 import ruKeywords from '~/intl/locales/ru/keywords.json'
@@ -31,12 +33,11 @@ type PageLayoutProps = {
 }
 
 export const PageLayout = (props: PageLayoutProps) => {
+  const [isInitialLoad, setIsInitialLoad] = createSignal(true)
   const isHeaderFixed = props.isHeaderFixed === undefined ? true : props.isHeaderFixed // FIXME: выглядит как костылек
   const loc = useLocation()
   const { t, lang } = useLocalize()
-  const imageUrl = getFileUrl(
-    props.cover ? props.cover : 'https://images.discours.io/production/image/logo_image.png'
-  )
+  const imageUrl = getFileUrl(props.cover ? props.cover : `${cdnUrl}/production/image/logo_image.png`)
   const ogImage = createMemo(() =>
     // NOTE: preview generation logic works only for one article view
     props.article
@@ -51,6 +52,29 @@ export const PageLayout = (props: PageLayoutProps) => {
     const keypath = (props.key || loc?.pathname.split('/')[0]) as keyof typeof ruKeywords
     return props.keywords || lang() === 'ru' ? ruKeywords[keypath] : enKeywords[keypath]
   })
+
+  onMount(() => {
+    // Установить флаг после начального рендеринга
+    setIsInitialLoad(false)
+  })
+
+  createEffect(() => {
+    if (!(isInitialLoad() || props.article) && props.slug) {
+      // Повторная попытка загрузки данных при неудаче
+      const retryLoad = async () => {
+        try {
+          // Здесь логика повторной загрузки
+          console.log('Retrying to load article', props.slug)
+          const _res = await getShout({ slug: props.slug })
+          // console.log('res', res)
+        } catch (error) {
+          console.error('Failed to load article:', error)
+        }
+      }
+      retryLoad()
+    }
+  })
+
   return (
     <>
       <Title>{props.article?.title || t(props.title)}</Title>

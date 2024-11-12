@@ -44,7 +44,7 @@ export const route: RouteDefinition = {
     const data = {
       article: await fetchShout(params.slug)
     }
-    console.log('[route.load] data:', data)
+    // console.log('[route.load] data:', data)
     return data
   }
 }
@@ -69,7 +69,7 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   const { t } = useLocalize()
   const data = createAsync(async () => {
     const result = props.data?.article || (await fetchShout(props.params.slug))
-    console.log('[ArticlePageContent] data:', result)
+    // console.log('[ArticlePageContent] data:', result)
     return result
   })
 

@@ -44,7 +44,8 @@ export default defineConfig({
           key: fs.readFileSync(keyPath).toString(),
           cert: fs.readFileSync(certPath).toString()
         }
-      : true
+      : true,
+    streaming: false
   },
   devOverlay: isDev,
   vite: viteConfig

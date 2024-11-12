@@ -12,7 +12,7 @@ TimeAgo.addLocale(ruTime)
 
 export const i18nextInit = async (lng = 'ru') => {
   if (!i18next.isInitialized) {
-    console.debug('[i18next] initializing...')
+    // console.debug('[i18next] initializing...')
     await i18next
       .use(HttpApi)
       .use(ICU)

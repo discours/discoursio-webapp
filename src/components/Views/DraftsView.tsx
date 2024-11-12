@@ -36,7 +36,7 @@ export const DraftsView = (props: { drafts?: Shout[] }) => {
   onMount(() => {
     requireAuthentication(async () => {
       const result = await fetchDrafts(client() as Client)
-      console.debug('fetchDrafts result: ', result)
+      // console.debug('fetchDrafts result: ', result)
       if (result) {
         setDrafts(result as Shout[])
       }

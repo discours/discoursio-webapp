@@ -76,7 +76,7 @@ export const TopicView = (props: Props) => {
     const topicAuthorsFetcher = await loadAuthors({ by, limit: 10, offset: 0 })
     const result = await topicAuthorsFetcher()
     result && setTopicAuthors(result)
-    console.debug('loadTopicAuthors', result)
+    console.debug('loadTopicAuthors got ', result?.length, 'authors')
   }
 
   const loadFavoriteTopArticles = async () => {

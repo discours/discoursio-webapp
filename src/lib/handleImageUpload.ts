@@ -1,6 +1,6 @@
 import { UploadFile } from '@solid-primitives/upload'
 import { Editor } from '@tiptap/core'
-import { thumborUrl } from '../config'
+import { cdnUrl } from '../config'
 
 export const allowedImageTypes = new Set([
   'image/bmp',
@@ -16,7 +16,7 @@ export const allowedImageTypes = new Set([
 export const handleImageUpload = async (uploadFile: UploadFile, token: string) => {
   const formData = new FormData()
   formData.append('media', uploadFile.file, uploadFile.name)
-  const response = await fetch(`${thumborUrl}/image`, {
+  const response = await fetch(`${cdnUrl}/image`, {
     method: 'POST',
     body: formData,
     headers: token ? { Authorization: token } : {}
@@ -24,7 +24,7 @@ export const handleImageUpload = async (uploadFile: UploadFile, token: string) =
 
   const location = response.headers.get('Location')
 
-  const url = `${thumborUrl}/unsafe/production${location?.slice(0, location.lastIndexOf('/'))}`
+  const url = `${cdnUrl}/unsafe/production${location?.slice(0, location.lastIndexOf('/'))}`
   const originalFilename = location?.slice(location.lastIndexOf('/') + 1)
 
   // check that image is available
