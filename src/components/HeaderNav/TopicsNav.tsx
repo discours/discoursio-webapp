@@ -1,6 +1,6 @@
 import { A, useMatch } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Accessor, For, Show, createEffect, createSignal, on, onMount } from 'solid-js'
+import { Accessor, For, createEffect, createSignal, on, onMount } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
 import type { Topic } from '~/graphql/schema/core.gen'
@@ -25,13 +25,20 @@ export const TopicsNav = (props: { fixed?: boolean }) => {
   const { addTopics, sortedTopics } = useTopics()
   const [randomTopics, setRandomTopics] = createSignal<string[]>(DEFAULT_TOPICS)
   createEffect(
-    on(sortedTopics, (topics: Topic[]) => {
-      if (props.fixed) return
-      if (topics?.length > 0) {
-        const randomItems = getRandomItemsFromArray(topics.map(t => t.slug), 7)
-        setRandomTopics(randomItems)
-      }
-    }, { defer: true })
+    on(
+      sortedTopics,
+      (topics: Topic[]) => {
+        if (props.fixed) return
+        if (topics?.length > 0) {
+          const randomItems = getRandomItemsFromArray(
+            topics.map((t) => t.slug),
+            7
+          )
+          setRandomTopics(randomItems)
+        }
+      },
+      { defer: true }
+    )
   )
   onMount(() => addTopics([]))
   const matchExpo = useMatch(() => '/expo')
@@ -48,8 +55,12 @@ export const TopicsNav = (props: { fixed?: boolean }) => {
             <li class={styles.item}>
               <A href={`/topic/${slug}`}>
                 <span>
-                  #{capitalize(sortedTopics()?.find((t: Topic) => t.slug === slug)?.title ||
-                    t(capitalize(slug)) || slug)}
+                  #
+                  {capitalize(
+                    sortedTopics()?.find((t: Topic) => t.slug === slug)?.title ||
+                      t(capitalize(slug)) ||
+                      slug
+                  )}
                 </span>
               </A>
             </li>
