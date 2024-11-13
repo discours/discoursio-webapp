@@ -2,7 +2,7 @@ import { clsx } from 'clsx'
 import { Show, createEffect, createSignal, on } from 'solid-js'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { CommonResult, Reaction, ReactionKind, Shout } from '~/graphql/schema/core.gen'
+import { CommonResult, Reaction, ReactionBy, ReactionKind, Shout } from '~/graphql/schema/core.gen'
 import { Icon } from '../_shared/Icon'
 import { Popup } from '../_shared/Popup'
 import { RATINGS_PER_PAGE, VotersList } from '../_shared/VotersList'
@@ -28,7 +28,7 @@ export const RatingControl = (props: Props) => {
   const [votersListVisible, setVotersListVisible] = createSignal(false)
   const [initialLoadDone, setInitialLoadDone] = createSignal(false)
   const toggleVotersList = (visible: boolean) => {
-    console.log('[RatingControl] voters list visibility changed to', visible)
+    // console.log('[RatingControl] voters list visibility changed to', visible)
     setVotersListVisible(visible)
   }
 
@@ -111,12 +111,16 @@ export const RatingControl = (props: Props) => {
 
   const handleRatingClick = async () => {
     if (!initialLoadDone()) {
+      const by = {
+        shout: props.shout?.slug,
+        kinds: [ReactionKind.Like, ReactionKind.Dislike]
+      } as ReactionBy
+      if (props.comment) {
+        by.reply_to = props.comment.id
+      }
       const initialRatings = await loadReactionsBy({
-        by: {
-          shout: props.shout?.slug,
-          kinds: [ReactionKind.Like, ReactionKind.Dislike]
-        },
-        offset: 0,
+        by,
+        offset: ratings().length,
         limit: RATINGS_PER_PAGE
       })
 

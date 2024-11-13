@@ -210,9 +210,15 @@ $vendors-thumb: ('::-webkit-slider-thumb', '::-moz-moz-range-thumb', '::-ms-thum
   list-style-type: none;
   margin: 32px 0 16px;
   padding: 0;
+  pointer-events: none;
 
   & > li {
     border-top: 1px solid #e9e9ee;
+  }
+
+  .playlistItemPlayButton,
+  .playlistItemControls {
+    pointer-events: auto;
   }
 }
 
@@ -221,6 +227,27 @@ $vendors-thumb: ('::-webkit-slider-thumb', '::-moz-moz-range-thumb', '::-ms-thum
   align-items: center;
   min-height: 56px;
   padding: 16px 0;
+  pointer-events: none;
+  
+  button,
+  input,
+  .actions,
+  .playlistItemPlayButton {
+    pointer-events: auto;
+  }
+}
+
+.playlistItemText {
+  font-size: 1.6rem;
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  margin: 0 16px;
+  gap: 16px;
+  color: var(--default-color);
+  cursor: default;
 }
 
 .description {
@@ -233,42 +260,6 @@ $vendors-thumb: ('::-webkit-slider-thumb', '::-moz-moz-range-thumb', '::-ms-thum
   cursor: pointer;
   width: 14px;
   height: auto;
-}
-
-.playlistItemText {
-  font-size:1.6rem;
-  display: flex;
-  flex-direction: row;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  margin: 0 16px;
-  gap: 16px;
-  color: var(--default-color);
-
-  .artist,
-  .title {
-    font-size:1.6rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0;
-    margin: 0;
-    max-width: calc(50% - 16px);
-    border: none;
-
-    &:focus {
-      outline: none;
-    }
-
-    &::placeholder {
-      font-weight: 400;
-      color: var(--secondary-color);
-    }
-  }
-
-  .title {
-    font-weight: 500;
-  }
 }
 
 .playlistItemControls {

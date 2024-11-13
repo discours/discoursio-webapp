@@ -24,8 +24,6 @@ type Props = {
   onChangeMediaIndex?: (direction: 'up' | 'down', index: number) => void
 }
 
-const _getMediaTitle = (itm: MediaItem, idx: number) => `${idx}. ${itm.artist} - ${itm.title}`
-
 export const PlayerPlaylist = (props: Props) => {
   const { t } = useLocalize()
   const [activeEditIndex, setActiveEditIndex] = createSignal(-1)
@@ -38,6 +36,7 @@ export const PlayerPlaylist = (props: Props) => {
   }
 
   const play = (index: number) => {
+    event?.stopPropagation()
     props.onPlayMedia(index)
     //const mi = props.media[index]
     //gtag('event', 'select_item', {

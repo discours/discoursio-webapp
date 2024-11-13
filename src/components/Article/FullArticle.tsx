@@ -276,11 +276,15 @@ export const FullArticle = (props: Props) => {
     })
   })
 
-  // biome-ignore lint/suspicious/noExplicitAny: FIXME: typing
-  const handleArticleBodyClick = (event: any) => {
-    if (event.target.tagName === 'IMG' && !event.target.dataset.disableLightbox) {
-      const src = event.target.src
-      setSelectedImage(getFileUrl(src))
+  const handleArticleBodyClick = (event: MouseEvent) => {
+    const target = event.target as HTMLElement
+    
+    if (target.closest('.mediaItems')) {
+      return
+    }
+
+    if (target.tagName === 'IMG') {
+      setSelectedImage((target as HTMLImageElement).src)
     }
   }
 
@@ -474,7 +478,10 @@ export const FullArticle = (props: Props) => {
         <div class="row position-relative">
           <article
             ref={setArticleContainer}
-            class={clsx('col-md-16 col-lg-14 col-xl-12 offset-md-5', styles.articleContent)}
+            class={clsx(
+              'col-md-16 col-lg-14 col-xl-12 offset-md-5',
+              styles[`${props.article.layout}Layout`]
+            )}
             onClick={handleArticleBodyClick}
           >
             {/*TODO: Check styles.shoutTopic*/}
@@ -533,14 +540,14 @@ export const FullArticle = (props: Props) => {
                 topic={props.article.main_topic as Topic}
               />
               <Show when={media().length > 0}>
-                <div class="media-items">
+                <div class="mediaItems">
                   <AudioPlayer media={media()} articleSlug={props.article.slug || ''} body={body()} />
                 </div>
               </Show>
             </Show>
 
             <Show when={media() && props.article.layout === 'video'}>
-              <div class="media-items">
+              <div class="mediaItems">
                 <For each={media() || []}>
                   {(m: MediaItem) => (
                     <div class={styles.shoutMediaBody}>

@@ -26,8 +26,8 @@ import AuthorPage, { AuthorPageProps } from '../author/[slug]/[...tab]'
 import TopicPage, { TopicPageProps } from '../topic/[slug]/[...tab]'
 
 const fetchShout = async (slug: string): Promise<Shout | undefined> => {
+  if (slug.startsWith('@') || slug.startsWith('!') || slug.startsWith('_') || slug.startsWith('.')) return
   console.log('[fetchShout] slug:', slug)
-  if (slug.startsWith('@')) return
   try {
     const shoutLoader = getShout({ slug })
     const result = await shoutLoader()
@@ -35,7 +35,7 @@ const fetchShout = async (slug: string): Promise<Shout | undefined> => {
     return result
   } catch (error) {
     console.error('[fetchShout] error:', error)
-    return undefined
+    return
   }
 }
 

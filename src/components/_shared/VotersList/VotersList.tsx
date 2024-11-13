@@ -1,16 +1,16 @@
+import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createSignal, on } from 'solid-js'
+import { For, Show, batch, createEffect, createMemo, createSignal } from 'solid-js'
 
 import { useLocalize } from '~/context/localize'
+import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { Reaction, ReactionBy, ReactionKind } from '~/graphql/schema/core.gen'
-import { Userpic } from '../../Author/Userpic'
-
-import { A } from '@solidjs/router'
-import { useReactions } from '~/context/reactions'
 import { byCreated } from '~/utils/sort'
+import { Userpic } from '../../Author/Userpic'
 import { LoadMoreWrapper } from '../LoadMoreWrapper'
 import { Loading } from '../Loading'
+
 import styles from './VotersList.module.scss'
 
 export type VotersListProps = {
@@ -25,34 +25,42 @@ export const VotersList = (props: VotersListProps) => {
   const { session } = useSession()
   const { loadReactionsBy, reactionsLoading } = useReactions()
   const [hiddenMoreButton, setHiddenMoreButton] = createSignal(true)
-  const [ratings, setRatings] = createSignal<Reaction[]>(props.reactions || [])
+  const [ratings, setRatings] = createSignal<Map<string, Reaction>>(new Map())
 
-  createEffect(() => {
-    if (props.reactions) {
-      setRatings(props.reactions.sort(byCreated))
-    }
+  const sortedReactions = createMemo(() => {
+    if (!(props.reactions && props.visible)) return []
+    return [...props.reactions].sort(byCreated)
   })
 
-  createEffect(
-    on(
-      () => props.visible,
-      (visible) => {
-        if (visible) {
-          setHiddenMoreButton(props.reactions.length < RATINGS_PER_PAGE)
-        }
-      }
-    )
-  )
+  const sortedRatings = createMemo(() => {
+    return Array.from(ratings().values()).sort(byCreated)
+  })
+
+  createEffect(() => {
+    const sorted = sortedReactions()
+    if (sorted.length) {
+      batch(() => {
+        const newMap = new Map()
+        sorted.forEach((item) => newMap.set(item.id, item))
+        setRatings(newMap)
+        setHiddenMoreButton(sorted.length < RATINGS_PER_PAGE)
+      })
+    }
+  })
 
   const loadMore = async (offset: number) => {
     if (reactionsLoading() || !props.reactions[0]?.shout?.slug) return []
 
     try {
+      const by = {
+        shout: props.reactions[0].shout.slug,
+        kinds: [ReactionKind.Like, ReactionKind.Dislike]
+      } as ReactionBy
+      if (props.reactions[0].reply_to) {
+        by.reply_to = props.reactions[0].reply_to
+      }
       const newRatings = await loadReactionsBy({
-        by: {
-          shout: props.reactions[0].shout.slug,
-          kinds: [ReactionKind.Like, ReactionKind.Dislike]
-        } as ReactionBy,
+        by,
         offset,
         limit: RATINGS_PER_PAGE
       })
@@ -62,11 +70,13 @@ export const VotersList = (props: VotersListProps) => {
         return []
       }
 
-      setHiddenMoreButton(newRatings.length < RATINGS_PER_PAGE)
-      setRatings((prev) => {
-        const combined = [...prev, ...newRatings]
-        const unique = Array.from(new Map(combined.map((item) => [item.id, item])).values())
-        return unique.sort(byCreated)
+      batch(() => {
+        setHiddenMoreButton(newRatings.length < RATINGS_PER_PAGE)
+        setRatings((prev) => {
+          const newMap = new Map(prev)
+          newRatings.forEach((item) => newMap.set(item.id.toString(), item))
+          return newMap
+        })
       })
 
       return newRatings
@@ -95,7 +105,7 @@ export const VotersList = (props: VotersListProps) => {
             }
           >
             <Show
-              when={ratings().length > 0}
+              when={ratings().size > 0}
               fallback={
                 <li class={clsx(styles.item, styles.fallbackMessage)}>
                   <Show when={!session()?.access_token} fallback={t('No one rated yet')}>
@@ -105,7 +115,7 @@ export const VotersList = (props: VotersListProps) => {
                 </li>
               }
             >
-              <For each={ratings()}>
+              <For each={sortedRatings()}>
                 {(reaction) => (
                   <li class={styles.item}>
                     <div class={styles.user}>

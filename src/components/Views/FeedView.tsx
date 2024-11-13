@@ -182,18 +182,20 @@ export const FeedView = (props: FeedProps) => {
               </section>
             </Show>
 
-            <Show when={topTopics().length > 0}>
-              <section class={styles.asideSection}>
+            <section class={styles.asideSection}>
+              <Show when={topTopics()?.length > 0} fallback={<h4>{t('Hot topics')}</h4>}>
                 <h4>{t('Hot topics')}</h4>
-                <For each={topTopics().slice(0, 7)}>
-                  {(topic) => (
-                    <span class={clsx(stylesTopic.shoutTopic, styles.topic)}>
-                      <A href={`/topic/${topic.slug}`}>{topic.title}</A>{' '}
-                    </span>
-                  )}
-                </For>
-              </section>
-            </Show>
+                <div>
+                  <For each={topTopics().slice(0, 7)}>
+                    {(topic) => (
+                      <span class={clsx(stylesTopic.shoutTopic, styles.topic)}>
+                        <A href={`/topic/${topic.slug}`}>{topic.title}</A>
+                      </span>
+                    )}
+                  </For>
+                </div>
+              </Show>
+            </section>
 
             <Show when={unrated?.()}>
               <section class={clsx(styles.asideSection)}>

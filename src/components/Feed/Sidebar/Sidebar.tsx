@@ -25,9 +25,8 @@ export const Sidebar = () => {
   const checkAuthorIsSeen = (authorSlug: string) => {
     return feedByAuthor()[authorSlug]?.every((article) => Boolean(seen()[article.slug]))
   }
-
-  return (
-    <div class={styles.sidebar}>
+  const AuthorizedFilters = () => {
+    return (
       <ul class={styles.feedFilters}>
         <li>
           <A
@@ -82,55 +81,68 @@ export const Sidebar = () => {
           </a>
         </li>
       </ul>
+    )
+  }
 
-      <Show when={(follows?.authors?.length || 0) > 0 || (follows?.topics?.length || 0) > 0}>
-        <h4
-          classList={{ [styles.opened]: isSubscriptionsVisible() }}
-          onClick={() => {
-            setSubscriptionsVisible(!isSubscriptionsVisible())
-          }}
-        >
-          {t('My subscriptions')}
-          <Icon name="toggle-arrow" class={styles.icon} />
-        </h4>
+  return (
+    <>
+      <div class={styles.sidebar}>
+        <AuthorizedFilters />
+        <Show when={follows?.authors}>
+          {/* header */}
+          <h4
+            class={clsx({ [styles.opened]: isSubscriptionsVisible() })}
+            onClick={() => setSubscriptionsVisible(!isSubscriptionsVisible())}
+          >
+            <span>{t('My subscriptions')}</span>
+            <Icon name="toggle-arrow" class={styles.icon} />
+          </h4>
 
-        <ul class={clsx(styles.subscriptions, { [styles.hidden]: !isSubscriptionsVisible() })}>
-          <For each={follows.authors}>
-            {(a: Author) => (
-              <li>
-                <a href={`/@${a.slug}`} classList={{ [styles.unread]: checkAuthorIsSeen(a.slug) }}>
-                  <div class={styles.sidebarItemName}>
-                    <Userpic name={a.name || ''} userpic={a.pic || ''} size="XS" class={styles.userpic} />
-                    <div class={styles.sidebarItemNameLabel}>{a.name}</div>
-                  </div>
-                </a>
-              </li>
-            )}
-          </For>
-          <For each={follows.topics}>
-            {(topic) => (
-              <li>
-                <a
-                  href={`/topic/${topic.slug}`}
-                  classList={{ [styles.unread]: checkTopicIsSeen(topic.slug) }}
-                >
-                  <div class={styles.sidebarItemName}>
-                    <Icon name="hash" class={styles.icon} />
-                    <div class={styles.sidebarItemNameLabel}>{topic.title}</div>
-                  </div>
-                </a>
-              </li>
-            )}
-          </For>
-        </ul>
-      </Show>
+          {/* authors */}
+          <ul class={clsx(styles.subscriptions, { [styles.hidden]: !isSubscriptionsVisible() })}>
+            <For each={follows.authors}>
+              {(a: Author) => (
+                <li>
+                  <a href={`/@${a.slug}`} classList={{ [styles.unread]: checkAuthorIsSeen(a.slug) }}>
+                    <div class={styles.sidebarItemName}>
+                      <Userpic name={a.name || ''} userpic={a.pic || ''} size="XS" class={styles.userpic} />
+                      <div class={styles.sidebarItemNameLabel}>{a.name}</div>
+                    </div>
+                  </a>
+                </li>
+              )}
+            </For>
+          </ul>
+        </Show>
+        <Show when={follows?.topics}>
+          {/* topics */}
+          <ul class={clsx(styles.subscriptions, { [styles.hidden]: !isSubscriptionsVisible() })}>
+            <For each={follows.topics}>
+              {(topic) => (
+                <li>
+                  <a
+                    href={`/topic/${topic.slug}`}
+                    classList={{ [styles.unread]: checkTopicIsSeen(topic.slug) }}
+                  >
+                    <div class={styles.sidebarItemName}>
+                      <Icon name="hash" class={styles.icon} />
+                      <div class={styles.sidebarItemNameLabel}>{topic.title}</div>
+                    </div>
+                  </a>
+                </li>
+              )}
+            </For>
+          </ul>
+        </Show>
 
-      <div class={styles.settings}>
-        <a href="/profile/subs">
-          <Icon name="settings" class={styles.icon} />
-          <span class={styles.settingsLabel}>{t('Feed settings')}</span>
-        </a>
+        {/* settings */}
+        <div class={styles.settings}>
+          <a href="/profile/subs">
+            <Icon name="settings" class={styles.icon} />
+            <span class={styles.settingsLabel}>{t('Feed settings')}</span>
+          </a>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

@@ -17,11 +17,9 @@ img {
   margin-bottom: 1.5em;
 }
 
-.articleContent {
-  img:not(.icon) {
-    cursor: zoom-in;
-    width: 100%;
-  }
+.articleLayout img, .literatureLayout img, .imageLayout img {
+  cursor: zoom-in;
+  width: 100%;
 }
 
 .shoutBody {
