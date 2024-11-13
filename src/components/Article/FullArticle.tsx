@@ -25,7 +25,6 @@ import type { Author, Maybe, Shout, Topic } from '~/graphql/schema/core.gen'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { processPrepositions } from '~/intl/prepositions'
 import { isCyrillic } from '~/intl/translate'
-import { getFileUrl } from '~/lib/getThumbUrl'
 import { capitalize } from '~/utils/capitalize'
 import { AuthorBadge } from '../Author/AuthorBadge'
 import { CardTopic } from '../Feed/CardTopic'
@@ -278,7 +277,7 @@ export const FullArticle = (props: Props) => {
 
   const handleArticleBodyClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement
-    
+
     if (target.closest('.mediaItems')) {
       return
     }

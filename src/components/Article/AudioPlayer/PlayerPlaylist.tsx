@@ -36,7 +36,7 @@ export const PlayerPlaylist = (props: Props) => {
   }
 
   const play = (index: number) => {
-    event?.stopPropagation()
+    // event?.stopPropagation()
     props.onPlayMedia(index)
     //const mi = props.media[index]
     //gtag('event', 'select_item', {
