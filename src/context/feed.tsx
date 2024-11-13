@@ -1,10 +1,10 @@
 import { createLazyMemo } from '@solid-primitives/memo'
 import { makePersisted } from '@solid-primitives/storage'
-import { Accessor, JSX, Setter, createContext, createSignal, useContext } from 'solid-js'
+import { Accessor, JSX, Setter, createContext, createEffect, createSignal, on, useContext } from 'solid-js'
 import { FeedMode, ShoutsOrder } from '~/components/Feed/FeedFilters'
 import { loadFollowedShouts } from '~/graphql/api/private'
 import { loadShoutsSearch as fetchShoutsSearch, getShout, loadShouts } from '~/graphql/api/public'
-import { Author, LoadShoutsOptions, Shout, ShoutsOrderBy, Topic } from '~/graphql/schema/core.gen'
+import { Author, LoadShoutsOptions, Shout, ShoutsOrderBy } from '~/graphql/schema/core.gen'
 import { ExpoLayoutType } from '~/types/common'
 import { byStat } from '../utils/sort'
 import { useSession } from './session'
@@ -91,6 +91,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   const [isFeedLoading, setFeedLoading] = createSignal<boolean>(false)
   const [topMonthFeed, setTopMonthFeed] = createSignal<Shout[]>([])
   const [feedByLayout, _setFeedByLayout] = createSignal<{ [layout: string]: Shout[] }>({})
+  const [_feedByTopic, _setFeedByTopic] = createSignal<{ [topicSlug: string]: Shout[] }>({})
   const [seen, setSeen] = makePersisted(createSignal<{ [slug: string]: number }>({}), {
     name: 'discoursio-seen'
   })
@@ -130,15 +131,17 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     )
   })
 
-  // Memoized articles grouped by topic
+  // Добавить после feedByAuthor
   const feedByTopic = createLazyMemo(() => {
     return Object.values(articleEntities()).reduce(
       (acc, article: Shout) => {
-        article.topics?.forEach((topic: Topic | null) => {
-          if (!acc[topic?.slug || '']) {
-            acc[topic?.slug || ''] = []
+        article.topics?.forEach((topic) => {
+          if (topic?.slug) {
+            if (!acc[topic.slug]) {
+              acc[topic.slug] = []
+            }
+            acc[topic.slug].push(article)
           }
-          acc[topic?.slug || ''].push(article)
         })
         return acc
       },
@@ -270,6 +273,50 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     addFeed(result)
     setTopFeed(result)
   }
+
+  // Создаем эффект для обработки feed
+  createEffect(
+    on(feed, (articles) => {
+      if (!articles?.length) return
+
+      // Группируем статьи по темам
+      const topicGroups = articles.reduce(
+        (acc, article) => {
+          if (article.topics) {
+            article.topics.forEach((topic) => {
+              if (topic?.slug) {
+                if (!acc[topic.slug]) {
+                  acc[topic.slug] = []
+                }
+                acc[topic.slug].push(article)
+              }
+            })
+          }
+          return acc
+        },
+        {} as { [topicSlug: string]: Shout[] }
+      )
+
+      console.log('Topic groups created:', topicGroups) // Для отладки
+      _setFeedByTopic(topicGroups)
+
+      // Обновляем articleEntities
+      const newArticleEntities = articles.reduce(
+        (acc, article) => {
+          if (!acc[article.slug]) {
+            acc[article.slug] = article
+          }
+          return acc
+        },
+        {} as { [articleSlug: string]: Shout }
+      )
+
+      setArticleEntities((prevArticleEntities) => ({
+        ...prevArticleEntities,
+        ...newArticleEntities
+      }))
+    })
+  )
 
   return (
     <FeedContext.Provider

@@ -56,9 +56,85 @@
 }
 
 .asideSection {
-  border: 1px solid #e9e9ee;
-  margin-bottom: 0.8em;
-  padding: 1em;
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.asideTitle {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.unratedArticle {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border-color);
+  background: fit left / 40px auto;
+  background-repeat: no-repeat;
+  background-size: auto;
+  padding-left: 50px;
+
+  a {
+    padding: 5px;
+    background-color: #f0f0f0;
+    color: #000;
+  }
+
+  .commentDetails {
+    a {
+      background-color: transparent;
+      text-shadow: 1px 1px 15px #fff;
+    }
+  }
+
+  &:first-child {
+    padding-top: 0;
+  }
+
+  &:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+}
+
+.unratedTopicLink {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #06F;
+  text-decoration: none;
+  margin-bottom: 12px;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.unratedArticleTitle {
+  display: block;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-color);
+  text-decoration: none;
+  margin-bottom: 12px;
+  
+  &:hover {
+    color: #06F;
+  }
+}
+
+.unratedArticleDescription {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--secondary-text-color);
+  margin-bottom: 16px;
+}
+
+.unratedArticleAuthor {
+  margin-top: 16px;
 }
 
 .topic {
@@ -264,4 +340,14 @@
 
   margin-bottom: 10px;
   padding: 0 5px;
+}
+
+.commentText {
+  font-size: 14px;
+  color: var(--secondary-text-color);
+  margin-top: 8px;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

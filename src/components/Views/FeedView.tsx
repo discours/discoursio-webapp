@@ -1,7 +1,6 @@
 import { A, createAsync, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, Suspense, createEffect, createMemo, createResource, createSignal, on } from 'solid-js'
-// import { Icon } from '~/components/_shared/Icon'
+import { For, Show, Suspense, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
 import { ShareModal } from '~/components/_shared/ShareModal'
@@ -10,14 +9,14 @@ import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { useTopics } from '~/context/topics'
 import { ModalType, useUI } from '~/context/ui'
 import { loadUnratedShouts } from '~/graphql/api/public'
 import type { Author, Shout } from '~/graphql/schema/core.gen'
 import { ReactionKind } from '~/graphql/schema/core.gen'
+import { getFileUrl } from '~/lib/getThumbUrl'
+import styles from '~/styles/views/Feed.module.scss'
 import { CommentDate } from '../Article/CommentDate'
 import { getShareUrl } from '../Article/SharePopup'
-// import { AuthorBadge } from '../Author/AuthorBadge'
 import { AuthorLink } from '../Author/AuthorLink'
 import { ArticleCard } from '../Feed/ArticleCard'
 import { FeedFilters, FeedMode, ShoutsOrder } from '../Feed/FeedFilters'
@@ -25,11 +24,6 @@ import { Placeholder } from '../Feed/Placeholder'
 import { Sidebar } from '../Feed/Sidebar'
 import { Modal } from '../_shared/Modal'
 import { ViewSwitcher } from '../_shared/ViewSwitcher/ViewSwitcher'
-
-import { isServer } from 'solid-js/web'
-import styles from '~/styles/views/Feed.module.scss'
-// import stylesBeside from '../Feed/Beside.module.scss'
-import stylesTopic from '../Feed/CardTopic.module.scss'
 
 export const FEED_PAGE_SIZE = 20
 export type FeedProps = {
@@ -42,24 +36,32 @@ export const FeedView = (props: FeedProps) => {
   const loc = useLocation()
   const { showModal } = useUI()
   const { loadReactionsBy } = useReactions()
-  const { topTopics } = useTopics()
   const { topAuthors } = useAuthors()
   const { session } = useSession()
-  const { feedByAuthor, feedByTopic, feedOptions, updateFeedOptions, feed, isFeedLoading, seen } = useFeed()
+  const { feedOptions, updateFeedOptions, feed, isFeedLoading } = useFeed()
 
   // loading async data
   const asyncData = createAsync(async () => {
-    const fetchUnrated = loadUnratedShouts({ limit: 5, offset: 0 })
-    const comments = await loadReactionsBy({ by: { kinds: [ReactionKind.Comment] }, limit: 3 })
-    return {
-      unrated: await fetchUnrated(),
-      comments
+    console.log('Starting asyncData load')
+    try {
+      const fetchUnrated = loadUnratedShouts({ limit: 5, offset: 0 })
+      const comments = await loadReactionsBy({ by: { kinds: [ReactionKind.Comment] }, limit: 3 })
+
+      const unrated = await fetchUnrated()
+      console.log('Loaded unrated:', unrated)
+
+      return {
+        unrated,
+        comments
+      }
+    } catch (error) {
+      console.error('Error in asyncData:', error)
+      return {
+        unrated: [],
+        comments: []
+      }
     }
   })
-
-  const topicShoutsSeen = (topic: string) => feedByTopic()[topic]?.some((shout) => !seen()[shout.slug])
-  const authorShoutsSeen = (author: string) => feedByAuthor()[author]?.some((shout) => !seen()[shout.slug])
-
   // loading state
   const [shareData, setShareData] = createSignal<Shout | undefined>()
 
@@ -100,20 +102,6 @@ export const FeedView = (props: FeedProps) => {
   const topArticles = createMemo(() => feedState().items.slice(0, 4))
   const bottomArticles = createMemo(() => feedState().items.slice(4))
 
-  // Создаем ресурс вместо memo для асинхронной загрузки
-  const [topics] = createResource(async () => {
-    if (isServer) return [] // На сервере возвращаем пустой массив
-
-    const topics = await topTopics()
-    return (
-      topics?.slice(0, 7).map((topic) => ({
-        slug: topic.slug,
-        title: topic.title,
-        key: `topic-${topic.slug}`
-      })) || []
-    )
-  })
-
   // Компонент для рендеринга статей
   const ArticlesList = (props: { articles: Shout[] }) => (
     <For each={props.articles}>
@@ -135,65 +123,71 @@ export const FeedView = (props: FeedProps) => {
       <section class={styles.asideSection}>
         <h4>{t('Comments')}</h4>
         <For each={asyncData()?.comments || []}>
-          {(comment) => (
-            <div class={styles.comment} id={`comment-${comment.id}`}>
-              <div class={clsx('text-truncate', styles.commentBody)}>
-                <A href={`/${comment.shout.slug}?commentId=${comment.id}`} innerHTML={comment.body || ''} />
+          {(comment) => {
+            const suffix = comment.id ? `?commentId=${comment.id}` : ''
+            return (
+              <div class={styles.comment} id={`comment-${comment.id}`}>
+                <div class={clsx('text-truncate', styles.commentBody)}>
+                  <A href={`/${comment.shout.slug}${suffix}`} innerHTML={comment.body || ''} />
+                </div>
+                <div class={styles.commentDetails}>
+                  <AuthorLink author={comment.created_by as Author} size={'XS'} />
+                  <CommentDate comment={comment} isShort={true} isLastInRow={true} />
+                </div>
+                <div class={clsx('text-truncate', styles.commentArticleTitle)}>
+                  <A href={`/${comment.shout.slug}`}>{comment.shout.title}</A>
+                </div>
               </div>
-              <div class={styles.commentDetails}>
-                <AuthorLink author={comment.created_by as Author} size={'XS'} />
-                <CommentDate comment={comment} isShort={true} isLastInRow={true} />
-              </div>
-              <div class={clsx('text-truncate', styles.commentArticleTitle)}>
-                <A href={`/${comment.shout.slug}`}>{comment.shout.title}</A>
-              </div>
-            </div>
-          )}
+            )
+          }}
         </For>
       </section>
     </Show>
   )
 
-  // Компонент списка тем теперь использует Suspense
-  const TopicsList = () => (
-    <Suspense fallback={null}>
-      <Show when={topics()?.length}>
+  // После TopicsList добавляем новый компонент
+  const UnratedArticlesList = () => {
+    return (
+      <Show when={asyncData()?.unrated?.length}>
         <section class={styles.asideSection}>
-          <h4>{t('Hot topics')}</h4>
-          <ul class={styles.topicsGrid}>
-            <For each={topics() || []}>
-              {(topic) => (
-                <li id={topic.key}>
-                  <span
-                    class={clsx(stylesTopic.shoutTopic, styles.topic, {
-                      [styles.seen]: topicShoutsSeen(topic.slug)
-                    })}
-                  >
-                    <A href={`/topic/${topic.slug}`}>{topic.title}</A>
-                  </span>
-                </li>
-              )}
-            </For>
-          </ul>
+          <h4>{t('Be the first to rate')}</h4>
+          <For each={asyncData()?.unrated || []}>
+            {(article) => (
+              <div
+                class={clsx(styles.comment, styles.unratedArticle)}
+                style={{
+                  'background-image': `url(${getFileUrl(article.cover || '', { width: 40 })})`
+                }}
+              >
+                <Show when={article.main_topic}>
+                  <A href={`/topic/${article.main_topic?.slug}`} class={styles.commentTopic}>
+                    {article.main_topic?.title?.toUpperCase()}
+                  </A>
+                </Show>
+
+                <div class={clsx('text-truncate', styles.commentBody)}>
+                  <A href={`/${article.slug}`}>{article.title}</A>
+                  <Show when={article.subtitle || article.lead}>
+                    <p class={styles.commentText}>{article.subtitle || article.lead}</p>
+                  </Show>
+                </div>
+
+                <div class={styles.commentDetails}>
+                  <AuthorLink author={article.created_by as Author} size={'XS'} />
+                </div>
+              </div>
+            )}
+          </For>
         </section>
       </Show>
-    </Suspense>
-  )
-  const AuthorsList = () => (
-    <Show when={topAuthors()?.length}>
-      <section class={styles.asideSection}>
-        <h4>{t('Top authors')}</h4>
-        <For each={topAuthors() || []}>
-          {(author) => (
-            <AuthorLink
-              author={author}
-              size={'XS'}
-              class={clsx({ [styles.seen]: authorShoutsSeen(author.slug) })}
-            />
-          )}
-        </For>
-      </section>
-    </Show>
+    )
+  }
+
+  const TopAuthorsList = () => (
+    <section class={styles.asideSection}>
+      <h4>{t('Top authors')}</h4>
+      <For each={topAuthors() || []}>{(author) => <AuthorLink author={author} size={'XS'} />}</For>
+    </section>
   )
 
   return (
@@ -227,7 +221,7 @@ export const FeedView = (props: FeedProps) => {
                 <ArticlesList articles={topArticles()} />
 
                 <div class={styles.asideSection}>
-                  <AuthorsList />
+                  <TopAuthorsList />
                 </div>
 
                 <ArticlesList articles={bottomArticles()} />
@@ -240,8 +234,37 @@ export const FeedView = (props: FeedProps) => {
         <aside class={clsx('col-md-7 col-xl-6 offset-xl-1', styles.feedAside)}>
           <Show when={!isFeedLoading()}>
             <Suspense fallback={<Loading />}>
+              {/* Блок комментариев */}
               <FreshestCommentsList />
-              <TopicsList />
+              {/* Блок "Оцените первым" */}
+              <UnratedArticlesList />
+              {/* Блок "База знаний" */}
+              <section class={styles.asideSection}>
+                <h4>{t('Knowledge base')}</h4>
+                <ul class={styles.knowledgeBaseList}>
+                  <li>
+                    <A href="/guide/how-it-works" class={styles.knowledgeBaseLink}>
+                      {t('How Discours works')}
+                    </A>
+                  </li>
+                  <li>
+                    <A href="/guide/constructive-criticism" class={styles.knowledgeBaseLink}>
+                      {t('Constructive criticism')}
+                    </A>
+                  </li>
+
+                  <li>
+                    <A href="/guide/community-principles" class={styles.knowledgeBaseLink}>
+                      {t('Community principles')}
+                    </A>
+                  </li>
+                  <li>
+                    <A href="/how-to-write-a-good-article" class={styles.knowledgeBaseLink}>
+                      {t('How to write a good article')}
+                    </A>
+                  </li>
+                </ul>
+              </section>
             </Suspense>
           </Show>
         </aside>

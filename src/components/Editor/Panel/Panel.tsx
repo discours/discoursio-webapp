@@ -150,7 +150,7 @@ export const Panel = (props: Props) => {
             </button>
           </p>
           <p>
-            <a class={styles.link} href="#">
+            <a class={styles.link} href="/guide/help">
               {t('Help')}
             </a>
           </p>

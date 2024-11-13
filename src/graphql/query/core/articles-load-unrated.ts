@@ -10,13 +10,12 @@ export default gql`
       layout
       cover
       main_topic { id slug title }
-      authors {
+      created_by {
         id
         name
         slug
         pic
         created_at
-        bio
       }
     }
   }
