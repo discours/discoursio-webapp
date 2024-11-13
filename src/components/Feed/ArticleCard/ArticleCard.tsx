@@ -7,7 +7,7 @@ import { Image } from '~/components/_shared/Image'
 import { Popover } from '~/components/_shared/Popover'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import type { Author, Maybe, Shout } from '~/graphql/schema/core.gen'
+import type { Author, Maybe, ReactionKind, Shout } from '~/graphql/schema/core.gen'
 import { capitalize } from '~/utils/capitalize'
 import { descFromBody } from '~/utils/meta'
 import { CoverImage } from '../../Article/CoverImage'
@@ -284,7 +284,11 @@ export const ArticleCard = (props: ArticleCardProps) => {
             classList={{ [styles.shoutCardDetailsActive]: isActionPopupActive() }}
           >
             <div class={styles.shoutCardDetailsContent}>
-              <RatingControl shout={props.article} class={styles.shoutCardDetailsItem} />
+              <RatingControl
+                shout={props.article}
+                rated={props.article.stat?.my_rate as ReactionKind | undefined}
+                class={styles.shoutCardDetailsItem}
+              />
 
               <div class={clsx(styles.shoutCardDetailsItem, styles.shoutCardComments)}>
                 <a href="#" onClick={(event) => scrollToComments(event)}>

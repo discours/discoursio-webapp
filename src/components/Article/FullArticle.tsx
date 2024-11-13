@@ -159,7 +159,7 @@ export const FullArticle = (props: Props) => {
     on(
       pages,
       (p: Record<string, number>) => {
-        console.debug('content paginated')
+        // console.debug('content paginated')
         loadReactionsBy({
           by: { shout: props.article.slug, kinds: [ReactionKind.Comment] },
           limit: COMMENTS_PER_PAGE,
@@ -171,7 +171,7 @@ export const FullArticle = (props: Props) => {
           offset: VOTES_PER_PAGE * p.rating || 0
         })
         setIsReactionsLoaded(true)
-        console.debug('reactions paginated')
+        // console.debug('reactions paginated')
       },
       { defer: true }
     )
@@ -330,7 +330,7 @@ export const FullArticle = (props: Props) => {
   const ArticleActionsBar = () => (
     <div class={styles.shoutStats}>
       <div class={styles.shoutStatsItem}>
-        <RatingControl shout={props.article} class={styles.ratingControl} />
+        <RatingControl shout={props.article} class={styles.ratingControl} rated={props.article.stat?.my_rate as ReactionKind | undefined} />
       </div>
 
       <Popover content={t('Comment')} disabled={isActionPopupActive()}>

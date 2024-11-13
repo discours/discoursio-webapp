@@ -89,10 +89,16 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
   const createShoutReaction = async (input: MutationCreate_ReactionArgs): Promise<Reaction | undefined> => {
     setReactionsLoading(true)
     const resp = await client()?.mutation(createReactionMutation, input).toPromise()
-    const { error, reaction } = resp?.data?.create_reaction || {}
+    const result = resp?.data?.create_reaction
+    if (!result) {
+      console.error('[context.reactions] createShoutReaction', result)
+      throw new Error('cannot create reaction')
+    }
+    const { error, reaction } = result
     if (error) await showSnackbar({ type: 'error', body: t(error) })
-    if (!reaction) return
-    addShoutReactions([reaction])
+    if (reaction) {
+      updateShoutInStores(reaction)
+    }
     setReactionsLoading(false)
     return reaction
   }
@@ -188,6 +194,27 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
     }
     setReactionsLoading(false)
     return reaction
+  }
+
+  const updateShoutInStores = (reaction: Reaction) => {
+    const newReactionEntities = { ...reactionEntities() }
+    newReactionEntities[reaction.id] = reaction
+
+    const newReactionsByShout = { ...reactionsByShout() }
+    if (reaction.shout) {
+      // Обновляем статистику шаута
+      const shoutIndex = newReactionsByShout[reaction.shout.id]?.findIndex((r) => r.id === reaction.id)
+      if (shoutIndex !== undefined && shoutIndex !== -1) {
+        newReactionsByShout[reaction.shout.id][shoutIndex] = reaction
+        // Обновляем my_rate в stat шаута
+        if (reaction.shout.stat) {
+          reaction.shout.stat.my_rate = reaction.kind
+        }
+      }
+    }
+
+    setReactionEntities(newReactionEntities)
+    setReactionsByShout(newReactionsByShout)
   }
 
   onCleanup(() => {

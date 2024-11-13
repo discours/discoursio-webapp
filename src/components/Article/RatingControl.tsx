@@ -13,15 +13,14 @@ interface Props {
   shout?: Shout
   comment?: Reaction
   class?: string
+  rated?: ReactionKind
 }
 
 export const RatingControl = (props: Props) => {
   const { requireAuthentication, session } = useSession()
   const { reactionsByShout, createShoutReaction, deleteShoutReaction, loadReactionsBy, reactionsLoading } =
     useReactions()
-  const [myRate, setMyRate] = createSignal<ReactionKind | undefined>(
-    (props.comment?.shout || props.shout)?.stat?.my_rate as ReactionKind
-  )
+  const [myRate, setMyRate] = createSignal<ReactionKind | undefined>(props.rated)
   const [ratings, setRatings] = createSignal<Reaction[]>([])
   const [total, setTotal] = createSignal(0)
   const [changed, setChanged] = createSignal(false)
@@ -71,6 +70,17 @@ export const RatingControl = (props: Props) => {
       : { error: 'cant find reaction to delete' }
   }
 
+  createEffect(
+    on(
+      () => props.rated,
+      (newRate) => {
+        if (newRate !== myRate()) {
+          setMyRate(newRate as ReactionKind)
+        }
+      }
+    )
+  )
+
   const handleRatingChange = async (isUpvote: boolean) => {
     const kind = isUpvote ? ReactionKind.Like : ReactionKind.Dislike
     console.log(`handleRatingChange clicked to ${kind}`)
@@ -87,6 +97,9 @@ export const RatingControl = (props: Props) => {
         if (reaction) {
           console.warn('[RatingControl] created reaction: ', reaction)
           setMyRate(reaction.kind)
+          if (props.shout.stat) {
+            props.shout.stat.my_rate = reaction.kind
+          }
         } else {
           console.error('[RatingControl] error creating reaction')
           setTotal(storedTotal)
@@ -98,10 +111,11 @@ export const RatingControl = (props: Props) => {
         setTotal((t) => t + (isUpvote ? 1 : -1))
         const result: CommonResult | null = await removeReaction(myRate() as ReactionKind)
         if (result?.error) {
-          console.error('[RatingControl] error removing reaction:', result?.error)
           setTotal(storedTotal)
         } else {
-          setRatings((_rrr: Reaction[]) => (result?.reactions as Reaction[]) || [])
+          if (props.shout.stat) {
+            props.shout.stat.my_rate = undefined
+          }
           setMyRate(undefined)
         }
       }
