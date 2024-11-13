@@ -1,10 +1,10 @@
 import { clsx } from 'clsx'
-import { Show, createSignal, createEffect, on } from 'solid-js'
+import { Show, createEffect, createSignal, on } from 'solid-js'
+import { LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { Reaction, ReactionKind, Shout } from '~/graphql/schema/core.gen'
 import { Icon } from '../_shared/Icon'
-import { LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { RATINGS_PER_PAGE, VotersList } from '../_shared/VotersList'
 
 import styles from './RatingControl.module.scss'
@@ -18,19 +18,19 @@ interface Props {
 export const RatingControl = (props: Props) => {
   const { requireAuthentication } = useSession()
   const { createShoutReaction, deleteShoutReaction, loadReactionsBy, reactionsLoading } = useReactions()
-  
+
   const [total, setTotal] = createSignal(props.comment?.stat?.rating || props.shout?.stat?.rating || 0)
-  const [myRate, setMyRate] = createSignal<ReactionKind | null>(props.comment?.stat?.my_rate || props.shout?.stat?.my_rate || null)
+  const [myRate, setMyRate] = createSignal<ReactionKind | null>(
+    props.comment?.stat?.my_rate || props.shout?.stat?.my_rate || null
+  )
   const [ratings, setRatings] = createSignal<Reaction[]>([])
-  const [isPopupOpen, setIsPopupOpen] = createSignal(false)
+  const [isPopupOpen, _setIsPopupOpen] = createSignal(false)
   const [hasMore, setHasMore] = createSignal(true)
-  const [isLoadingMore, setIsLoadingMore] = createSignal(false)
+  const [_isLoadingMore, setIsLoadingMore] = createSignal(false)
 
   createEffect(
-    on([
-      () => props.shout?.stat?.rating as number, 
-      () => props.shout?.stat?.my_rate as ReactionKind
-    ],
+    on(
+      [() => props.shout?.stat?.rating as number, () => props.shout?.stat?.my_rate as ReactionKind],
       ([rating, myrate]) => {
         rating && setTotal(rating)
         myrate && setMyRate(myrate)
@@ -41,20 +41,20 @@ export const RatingControl = (props: Props) => {
   const loadVoters = async (isLoadMore = false) => {
     if (!isLoadMore && ratings().length > 0) return
     if (!hasMore()) return
-    
+
     setIsLoadingMore(true)
     try {
       const result = await loadReactionsBy({
-        by: { 
-          shout: props.shout?.slug, 
-          kinds: [ReactionKind.Like, ReactionKind.Dislike] 
+        by: {
+          shout: props.shout?.slug,
+          kinds: [ReactionKind.Like, ReactionKind.Dislike]
         },
         offset: ratings().length,
         limit: RATINGS_PER_PAGE
       })
 
       if (result) {
-        setRatings(prev => [...prev, ...result])
+        setRatings((prev) => [...prev, ...result])
         setHasMore(result.length === RATINGS_PER_PAGE)
       }
     } finally {
@@ -66,21 +66,21 @@ export const RatingControl = (props: Props) => {
 
   const handleRatingChange = async (isUpvote: boolean) => {
     const kind = isUpvote ? ReactionKind.Like : ReactionKind.Dislike
-    
+
     requireAuthentication(async () => {
       if (!props.shout) return
-      
+
       const currentRate = myRate()
       const storedTotal = total()
 
       if (!currentRate) {
-        setTotal(t => t + (isUpvote ? 1 : -1))
+        setTotal((t) => t + (isUpvote ? 1 : -1))
         setMyRate(kind)
-        
-        const result = await createShoutReaction({ 
+
+        const result = await createShoutReaction({
           reaction: { kind, shout: props.shout.id }
         })
-        
+
         if (!result) {
           setTotal(storedTotal)
           setMyRate(null)
@@ -88,13 +88,11 @@ export const RatingControl = (props: Props) => {
       } else if (currentRate === kind) {
         return
       } else {
-        setTotal(t => t + (isUpvote ? 1 : -1))
+        setTotal((t) => t + (isUpvote ? 1 : -1))
         setMyRate(null)
-        
-        const result = await deleteShoutReaction(
-          ratings().find(r => r.kind === currentRate)?.id || 0
-        )
-        
+
+        const result = await deleteShoutReaction(ratings().find((r) => r.kind === currentRate)?.id || 0)
+
         if (result?.error) {
           setTotal(storedTotal)
           setMyRate(currentRate)
@@ -119,9 +117,9 @@ export const RatingControl = (props: Props) => {
         pageSize={RATINGS_PER_PAGE}
         loadFunction={async (offset) => {
           const result = await loadReactionsBy({
-            by: { 
-              shout: props.shout?.slug, 
-              kinds: [ReactionKind.Like, ReactionKind.Dislike] 
+            by: {
+              shout: props.shout?.slug,
+              kinds: [ReactionKind.Like, ReactionKind.Dislike]
             },
             offset,
             limit: RATINGS_PER_PAGE
