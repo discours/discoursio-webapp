@@ -14,6 +14,8 @@ type LoadMoreProps = {
   loadFunction: (offset: number) => Promise<LoadMoreItems | undefined>
   pageSize: number
   hidden?: boolean
+  size?: 'S' | 'M' | 'L'
+  loadMoreText?: string
   children: JSX.Element
 }
 
@@ -64,7 +66,8 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
             <Button
               onClick={loadItems}
               disabled={isLoading()}
-              value={t('Load more')}
+              size={props.size}
+              value={t(props.loadMoreText || 'Load more')}
               title={`${items().length} ${t('loaded')}`}
             />
           </div>

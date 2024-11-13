@@ -1,3 +1,4 @@
+import { Client as GraphQLClient } from '@urql/core'
 import type { Accessor, JSX } from 'solid-js'
 import { createContext, createSignal, onCleanup, useContext } from 'solid-js'
 import { loadReactions } from '~/graphql/api/public'
@@ -14,12 +15,14 @@ import {
 import { useLocalize } from './localize'
 import { useSession } from './session'
 import { useSnackbar } from './ui'
-
 type ReactionsContextType = {
   reactionEntities: Accessor<Record<number, Reaction>>
   reactionsByShout: Accessor<Record<number, Reaction[]>>
   commentsByAuthor: Accessor<Record<number, Reaction[]>>
-  loadReactionsBy: (args: QueryLoad_Reactions_ByArgs) => Promise<Reaction[]>
+  loadReactionsBy: (
+    args: QueryLoad_Reactions_ByArgs,
+    authorizedClient?: GraphQLClient
+  ) => Promise<Reaction[]>
   createShoutReaction: (reaction: MutationCreate_ReactionArgs) => Promise<Reaction | undefined>
   updateShoutReaction: (reaction: MutationUpdate_ReactionArgs) => Promise<Reaction | undefined>
   deleteShoutReaction: (id: number) => Promise<{ error: string } | null>

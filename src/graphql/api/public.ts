@@ -1,5 +1,5 @@
 import { cache } from '@solidjs/router'
-import { defaultClient } from '~/graphql/client'
+import { Client, defaultClient } from '~/graphql/client'
 import getShoutQuery from '~/graphql/query/core/article-load'
 import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
 import loadShoutsSearchQuery from '~/graphql/query/core/articles-load-search'
@@ -62,7 +62,7 @@ export const loadShouts = (args: QueryLoad_Shouts_ByArgs) => {
   }, `shouts-${filter}-${page}`)
 }
 
-export const loadReactions = (options: QueryLoad_Reactions_ByArgs) => {
+export const loadReactions = (options: QueryLoad_Reactions_ByArgs, authorizedClient?: Client) => {
   if (!options.by) {
     console.debug(options)
     throw new Error('[api] wrong loadReactions call')
@@ -73,7 +73,7 @@ export const loadReactions = (options: QueryLoad_Reactions_ByArgs) => {
   const filter = new URLSearchParams(options.by as Record<string, string>)
   // console.debug(options)
   return cache(async () => {
-    const resp = await defaultClient.query(loadReactionsByQuery, options).toPromise()
+    const resp = await (authorizedClient || defaultClient).query(loadReactionsByQuery, options).toPromise()
     const result = resp?.data?.load_reactions_by
     if (result) return result as Reaction[]
   }, `${allorone}-${kind}-${filter}-${page}`)

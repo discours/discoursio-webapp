@@ -1,6 +1,6 @@
 import { A, createAsync, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createSignal, on } from 'solid-js'
+import { For, Show, Suspense, createEffect, createSignal, on } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
@@ -88,10 +88,11 @@ export const FeedView = (props: FeedProps) => {
   return (
     <div class={clsx('wide-container', styles.feed)}>
       <div class="row">
-        <div class={clsx('col-md-5 col-xl-4', styles.feedNavigation)}>
-          <Sidebar />
-        </div>
-
+        <Suspense fallback={<Loading />}>
+          <div class={clsx('col-md-5 col-xl-4', styles.feedNavigation)}>
+            <Sidebar />
+          </div>
+        </Suspense>
         <div class="col-md-12 offset-xl-1">
           <Show when={!session() && loc?.pathname !== 'feed'}>
             <Placeholder type={loc?.pathname} mode="feed" />
