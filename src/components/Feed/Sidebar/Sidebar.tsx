@@ -5,6 +5,7 @@ import { Icon } from '~/components/_shared/Icon'
 import { useFeed } from '~/context/feed'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
+import { useSession } from '~/context/session'
 import { Userpic } from '../../Author/Userpic'
 
 import styles from './Sidebar.module.scss'
@@ -12,6 +13,7 @@ import styles from './Sidebar.module.scss'
 export const Sidebar = () => {
   const { t } = useLocalize()
   const { follows } = useFollowing()
+  const { session } = useSession()
   const { feedByTopic, feedByAuthor, seen } = useFeed()
   const [selected, setSelected] = createSignal('all')
   const params = useParams()
@@ -20,73 +22,30 @@ export const Sidebar = () => {
   })
 
   // Создаем стабильные сигналы для SSR
-  const [isAuthorsVisible, setAuthorsVisible] = createSignal<boolean>(false)
-  const [isTopicsVisible, setTopicsVisible] = createSignal<boolean>(false)
+  const [isSubsOpened, setSubsOpened] = createSignal<boolean>(false)
 
   // Мемоизируем списки с проверкой на SSR
   const authorsList = createMemo(() => {
     const authors = follows.authors
     if (!authors?.length) return []
 
-    return authors
-      .filter(Boolean)
-      .map(author => ({
-        ...author,
-        isUnread: feedByAuthor()[author.slug]?.every(
-          (article) => Boolean(seen()[article.slug])
-        ),
-        key: `author-${author.slug}`
-      }))
+    return authors.filter(Boolean).map((author) => ({
+      ...author,
+      isUnread: feedByAuthor()[author.slug]?.every((article) => Boolean(seen()[article.slug])),
+      key: `author-${author.slug}`
+    }))
   })
 
   const topicsList = createMemo(() => {
     const topics = follows.topics
     if (!topics?.length) return []
 
-    return topics
-      .filter(Boolean)
-      .map(topic => ({
-        ...topic,
-        isUnread: feedByTopic()[topic.slug]?.every(
-          (article) => Boolean(seen()[article.slug])
-        ),
-        key: `topic-${topic.slug}`
-      }))
+    return topics.filter(Boolean).map((topic) => ({
+      ...topic,
+      isUnread: feedByTopic()[topic.slug]?.every((article) => Boolean(seen()[article.slug])),
+      key: `topic-${topic.slug}`
+    }))
   })
-
-  // Компонент списка авторов
-  const AuthorsList = () => {
-    const authors = authorsList()
-    if (!authors.length) return null
-
-    return (
-      <ul class={styles.subscriptions}>
-        <For each={authors}>
-          {(author) => (
-            <li id={author.key}>
-              <a 
-                href={`/@${author.slug}`} 
-                class={styles.sidebarItem} 
-                classList={{ [styles.unread]: author.isUnread }}
-              >
-                <div class={styles.sidebarItemName}>
-                  <Userpic 
-                    name={author.name || ''} 
-                    userpic={author.pic || ''} 
-                    size="XS" 
-                    class={styles.userpic} 
-                  />
-                  <span class={styles.sidebarItemNameLabel}>
-                    {author.name}
-                  </span>
-                </div>
-              </a>
-            </li>
-          )}
-        </For>
-      </ul>
-    )
-  }
 
   return (
     <div class={styles.sidebar}>
@@ -121,38 +80,49 @@ export const Sidebar = () => {
       </nav>
 
       <section>
-        <button
-          type="button"
-          class={clsx(styles.sectionHeader, {
-            [styles.opened]: isAuthorsVisible()
-          })}
-          onClick={() => setAuthorsVisible(prev => !prev)}
-        >
-          <span>{t('Authors')}</span>
-          <Icon name="toggle-arrow" class={styles.icon} />
-        </button>
-        <Show when={isAuthorsVisible()}>
-          <AuthorsList />
-        </Show>
-      </section>
-
-      <section>
-        <button
-          type="button"
-          class={styles.sectionHeader}
-          onClick={() => setTopicsVisible(prev => !prev)}
-        >
-          <span>{t('Topics')}</span>
-          <Icon name="toggle-arrow" class={styles.icon} />
-        </button>
-        <Show when={isTopicsVisible()}>
+        <span>
+          {t('My subscriptions')}
+          <Show when={session()?.access_token} fallback={'...'}>
+            <button
+              type="button"
+              class={clsx(styles.sectionHeader, {
+                [styles.opened]: isSubsOpened()
+              })}
+              onClick={() => setSubsOpened((prev) => !prev)}
+            >
+              <Icon name="toggle-arrow" class={styles.icon} />
+            </button>
+          </Show>
+        </span>
+        <Show when={isSubsOpened()}>
           <ul class={styles.subscriptions}>
+            <For each={authorsList()}>
+              {(author) => (
+                <li id={author.key}>
+                  <a
+                    href={`/@${author.slug}`}
+                    class={styles.sidebarItem}
+                    classList={{ [styles.unread]: author.isUnread }}
+                  >
+                    <div class={styles.sidebarItemName}>
+                      <Userpic
+                        name={author.name || ''}
+                        userpic={author.pic || ''}
+                        size="XS"
+                        class={styles.userpic}
+                      />
+                      <span class={styles.sidebarItemNameLabel}>{author.name}</span>
+                    </div>
+                  </a>
+                </li>
+              )}
+            </For>
             <For each={topicsList()}>
               {(topic) => (
                 <li id={topic.key}>
-                  <a 
-                    href={`/topic/${topic.slug}`} 
-                    class={styles.sidebarItem} 
+                  <a
+                    href={`/topic/${topic.slug}`}
+                    class={styles.sidebarItem}
                     classList={{ [styles.unread]: topic.isUnread }}
                   >
                     <div class={styles.sidebarItemName}>

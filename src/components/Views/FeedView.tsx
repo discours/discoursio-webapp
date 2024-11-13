@@ -1,6 +1,6 @@
 import { A, createAsync, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, Suspense, createEffect, createSignal, on, createMemo } from 'solid-js'
+import { For, Show, Suspense, createEffect, createMemo, createResource, createSignal, on } from 'solid-js'
 // import { Icon } from '~/components/_shared/Icon'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
@@ -13,7 +13,7 @@ import { useSession } from '~/context/session'
 import { useTopics } from '~/context/topics'
 import { ModalType, useUI } from '~/context/ui'
 import { loadUnratedShouts } from '~/graphql/api/public'
-import type { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import type { Author, Shout } from '~/graphql/schema/core.gen'
 import { ReactionKind } from '~/graphql/schema/core.gen'
 import { CommentDate } from '../Article/CommentDate'
 import { getShareUrl } from '../Article/SharePopup'
@@ -26,6 +26,7 @@ import { Sidebar } from '../Feed/Sidebar'
 import { Modal } from '../_shared/Modal'
 import { ViewSwitcher } from '../_shared/ViewSwitcher/ViewSwitcher'
 
+import { isServer } from 'solid-js/web'
 import styles from '~/styles/views/Feed.module.scss'
 // import stylesBeside from '../Feed/Beside.module.scss'
 import stylesTopic from '../Feed/CardTopic.module.scss'
@@ -44,17 +45,20 @@ export const FeedView = (props: FeedProps) => {
   const { topTopics } = useTopics()
   const { topAuthors } = useAuthors()
   const { session } = useSession()
-  const { feedOptions, updateFeedOptions, feed, isFeedLoading, feedByAuthor, seen } = useFeed()
+  const { feedByAuthor, feedByTopic, feedOptions, updateFeedOptions, feed, isFeedLoading, seen } = useFeed()
 
-  const unrated = createAsync(async () => {
-    const fetcher = loadUnratedShouts({ limit: 5, offset: 0 })
-    const result = await fetcher()
-    return result
+  // loading async data
+  const asyncData = createAsync(async () => {
+    const fetchUnrated = loadUnratedShouts({ limit: 5, offset: 0 })
+    const comments = await loadReactionsBy({ by: { kinds: [ReactionKind.Comment] }, limit: 3 })
+    return {
+      unrated: await fetchUnrated(),
+      comments
+    }
   })
 
-  const recentComments = createAsync(
-    async () => await loadReactionsBy({ by: { kinds: [ReactionKind.Comment] }, limit: 3 })
-  )
+  const topicShoutsSeen = (topic: string) => feedByTopic()[topic]?.some((shout) => !seen()[shout.slug])
+  const authorShoutsSeen = (author: string) => feedByAuthor()[author]?.some((shout) => !seen()[shout.slug])
 
   // loading state
   const [shareData, setShareData] = createSignal<Shout | undefined>()
@@ -96,12 +100,19 @@ export const FeedView = (props: FeedProps) => {
   const topArticles = createMemo(() => feedState().items.slice(0, 4))
   const bottomArticles = createMemo(() => feedState().items.slice(4))
 
-  // Мемоизируем асинхронные данные
-  const asyncData = createMemo(() => ({
-    unrated: unrated(),
-    comments: recentComments(),
-    topics: topTopics()
-  }))
+  // Создаем ресурс вместо memo для асинхронной загрузки
+  const [topics] = createResource(async () => {
+    if (isServer) return [] // На сервере возвращаем пустой массив
+
+    const topics = await topTopics()
+    return (
+      topics?.slice(0, 7).map((topic) => ({
+        slug: topic.slug,
+        title: topic.title,
+        key: `topic-${topic.slug}`
+      })) || []
+    )
+  })
 
   // Компонент для рендеринга статей
   const ArticlesList = (props: { articles: Shout[] }) => (
@@ -119,18 +130,15 @@ export const FeedView = (props: FeedProps) => {
   )
 
   // Компонент для комментариев
-  const CommentsList = () => (
-    <Show when={asyncData().comments}>
+  const FreshestCommentsList = () => (
+    <Show when={asyncData()?.comments?.length}>
       <section class={styles.asideSection}>
         <h4>{t('Comments')}</h4>
-        <For each={asyncData().comments}>
+        <For each={asyncData()?.comments || []}>
           {(comment) => (
             <div class={styles.comment} id={`comment-${comment.id}`}>
               <div class={clsx('text-truncate', styles.commentBody)}>
-                <A
-                  href={`/${comment.shout.slug}?commentId=${comment.id}`}
-                  innerHTML={comment.body || ''}
-                />
+                <A href={`/${comment.shout.slug}?commentId=${comment.id}`} innerHTML={comment.body || ''} />
               </div>
               <div class={styles.commentDetails}>
                 <AuthorLink author={comment.created_by as Author} size={'XS'} />
@@ -146,94 +154,47 @@ export const FeedView = (props: FeedProps) => {
     </Show>
   )
 
-  // Мемоизируем список топиков с предварительной проверкой данных
-  const visibleTopics = createMemo(() => {
-    const topics = topTopics()
-    if (!topics) return []
-    
-    return topics
-      .slice(0, 7)
-      .map(topic => ({
-        slug: topic.slug,
-        title: topic.title,
-        key: `topic-${topic.slug}`
-      }))
-      .filter(Boolean)
-  }, [])
-
-  // Компонент для горячих тем с предсказуемой структурой
+  // Компонент списка тем теперь использует Suspense
   const TopicsList = () => (
-    <section class={styles.asideSection}>
-      <h4>{t('Hot topics')}</h4>
-      <ul class={styles.topicsGrid}>
-        <For each={visibleTopics() || []}>
-          {(topic) => (
-            <li id={topic.key}>
-              <span class={clsx(stylesTopic.shoutTopic, styles.topic)}>
-                <A href={`/topic/${topic.slug}`}>
-                  {topic.title}
-                </A>
-              </span>
-            </li>
+    <Suspense fallback={null}>
+      <Show when={topics()?.length}>
+        <section class={styles.asideSection}>
+          <h4>{t('Hot topics')}</h4>
+          <ul class={styles.topicsGrid}>
+            <For each={topics() || []}>
+              {(topic) => (
+                <li id={topic.key}>
+                  <span
+                    class={clsx(stylesTopic.shoutTopic, styles.topic, {
+                      [styles.seen]: topicShoutsSeen(topic.slug)
+                    })}
+                  >
+                    <A href={`/topic/${topic.slug}`}>{topic.title}</A>
+                  </span>
+                </li>
+              )}
+            </For>
+          </ul>
+        </section>
+      </Show>
+    </Suspense>
+  )
+  const AuthorsList = () => (
+    <Show when={topAuthors()?.length}>
+      <section class={styles.asideSection}>
+        <h4>{t('Top authors')}</h4>
+        <For each={topAuthors() || []}>
+          {(author) => (
+            <AuthorLink
+              author={author}
+              size={'XS'}
+              class={clsx({ [styles.seen]: authorShoutsSeen(author.slug) })}
+            />
           )}
         </For>
-      </ul>
-    </section>
+      </section>
+    </Show>
   )
-
-  // Мемоизируем список авторов с предварительной проверкой данных
-  const authorsList = createMemo(() => {
-    const authors = topAuthors()
-
-    // Важно: дождемся инициализации данных
-    if (!authors) return []
-
-    return authors
-      .filter(Boolean)
-      .map(author => {
-        // Убеждаемся, что все необходимые данные существуют
-        if (!author.slug || !author.name) return null
-
-        return {
-          ...author,
-          isUnread: Boolean(
-            feedByAuthor()[author.slug]?.every(
-              (article) => Boolean(seen()[article.slug])
-            )
-          ),
-          key: `author-${author.slug}`
-        }
-      })
-      .filter(Boolean) // Удаляем null элементы
-  })
-
-  // Оптимизированный компонент списка авторов
-  const AuthorsList = () => {
-    // Получаем данные через memo для стабильности
-    const authors = authorsList()
-
-    // Если данных нет - возвращаем null для предсказуемой гидратации
-    if (!authors.length) return null
-
-    return (
-      <ul>
-        <For each={authors}>
-          {(author: Author & { isUnread: boolean, key: string } | null) => {
-            if (!author) return null
-            return (
-              <li id={author.key}>
-                <AuthorLink
-                  author={author}
-                  size="XS"
-                  class={clsx({ [styles.unread]: author.isUnread })}
-                />
-              </li>
-            )
-          }}
-        </For>
-      </ul>
-    )
-  }
 
   return (
     <div class={clsx('wide-container', styles.feed)}>
@@ -263,16 +224,13 @@ export const FeedView = (props: FeedProps) => {
               </div>
 
               <Show when={!feedState().isLoading} fallback={<Loading />}>
-
                 <ArticlesList articles={topArticles()} />
 
                 <div class={styles.asideSection}>
-                  {/* Популярные авторы */}
                   <AuthorsList />
                 </div>
 
                 <ArticlesList articles={bottomArticles()} />
-
               </Show>
             </Show>
           </Show>
@@ -280,9 +238,9 @@ export const FeedView = (props: FeedProps) => {
 
         {/* Боковая панель с Suspense для асинхронных данных */}
         <aside class={clsx('col-md-7 col-xl-6 offset-xl-1', styles.feedAside)}>
-          <Show when={!feedState().isLoading}>
+          <Show when={!isFeedLoading()}>
             <Suspense fallback={<Loading />}>
-              <CommentsList />
+              <FreshestCommentsList />
               <TopicsList />
             </Suspense>
           </Show>
@@ -305,7 +263,3 @@ export const FeedView = (props: FeedProps) => {
     </div>
   )
 }
-function seen() {
-  throw new Error('Function not implemented.')
-}
-

@@ -37,8 +37,8 @@ type AuthorsContextType = {
   authorsSorted: Accessor<Author[]>
   addAuthors: (authors: Author[]) => void
   addAuthor: (author: Author) => void
-  loadAuthor: (args: QueryGet_AuthorArgs) => Promise<void>
-  loadAuthors: (args: QueryLoad_Authors_ByArgs) => Promise<void>
+  loadAuthor: (args: QueryGet_AuthorArgs) => Promise<Author | undefined>
+  loadAuthors: (args: QueryLoad_Authors_ByArgs) => Promise<Author[] | undefined>
   topAuthors: Accessor<Author[]>
   authorsByTopic: Accessor<{ [topicSlug: string]: Author[] }>
   setAuthorsSort: (stat: string) => void
@@ -89,24 +89,26 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
     })
   }
 
-  const loadAuthor = async (opts: QueryGet_AuthorArgs): Promise<void> => {
+  const loadAuthor = async (opts: QueryGet_AuthorArgs): Promise<Author | undefined> => {
     try {
       console.debug('[context.authors] load author', opts)
       const fetcher = await getAuthor(opts)
       const author = await fetcher()
       if (author) addAuthor(author as Author)
       console.debug('[context.authors] loaded author', author)
+      return author
     } catch (error) {
       console.error('[context.authors] Error loading author:', error)
       throw error
     }
   }
 
-  const loadAuthorsPaginated = async (args: QueryLoad_Authors_ByArgs): Promise<void> => {
+  const loadAuthorsPaginated = async (args: QueryLoad_Authors_ByArgs): Promise<Author[] | undefined> => {
     try {
       const fetcher = await loadAuthors(args)
       const data = await fetcher()
       if (data) addAuthors(data as Author[])
+      return data
     } catch (error) {
       console.error('Error loading authors:', error)
       throw error
