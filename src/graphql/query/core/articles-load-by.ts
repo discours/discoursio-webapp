@@ -18,7 +18,6 @@ export default gql`
         slug
         pic
         created_at
-        bio
       }
       created_at
       published_at

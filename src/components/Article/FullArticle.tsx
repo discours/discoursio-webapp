@@ -330,11 +330,7 @@ export const FullArticle = (props: Props) => {
   const ArticleActionsBar = () => (
     <div class={styles.shoutStats}>
       <div class={styles.shoutStatsItem}>
-        <RatingControl
-          shout={props.article}
-          class={styles.ratingControl}
-          rated={props.article.stat?.my_rate as ReactionKind | undefined}
-        />
+        <RatingControl shout={props.article} class={styles.ratingControl} />
       </div>
 
       <Popover content={t('Comment')} disabled={isActionPopupActive()}>

@@ -191,10 +191,7 @@ export const Comment = (props: Props) => {
                 </div>
               </Show>
               <CommentDate showOnHover={true} comment={props.comment} isShort={true} />
-              <RatingControl
-                comment={props.comment}
-                rated={props.comment.stat?.my_rate as ReactionKind | undefined}
-              />
+              <RatingControl comment={props.comment} />
             </div>
           </Show>
           <div class={styles.commentBody}>
