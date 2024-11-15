@@ -1,64 +1,93 @@
-import { RouteDefinition, RouteLoadFuncArgs, type RouteSectionProps, createAsync } from '@solidjs/router'
-import { Suspense, createEffect, on } from 'solid-js'
-import { AUTHORS_PER_PAGE, AllAuthorsView } from '~/components/Views/AllAuthorsView'
+import { RouteDefinition, type RouteSectionProps } from '@solidjs/router'
+import { Show, createEffect, createSignal, on } from 'solid-js'
+import { AllAuthorsView } from '~/components/Views/AllAuthorsView'
+import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import { loadAuthors, loadAuthorsAll } from '~/graphql/api/public'
 import { Author, AuthorsBy } from '~/graphql/schema/core.gen'
+import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 
-const fetchAuthorsWithStat = async (offset = 0, order?: string) => {
+const AUTHORS_PER_PAGE = 20
+
+// Function to fetch authors with a specific stat (followers or shouts)
+const fetchAuthorsWithStat = async (offset = 0, order?: string, limit = AUTHORS_PER_PAGE) => {
   const by: AuthorsBy = { order }
-  const authorsFetcher = loadAuthors({ by, offset, limit: AUTHORS_PER_PAGE })
-  return await authorsFetcher()
+  const authorsFetcher = loadAuthors({ by, offset, limit })
+  const result = await authorsFetcher()
+  return result
 }
 
+// Route definition to load initial data
 export const route = {
-  load: async ({ location: { query } }: RouteLoadFuncArgs) => {
+  load: async ({ location: { query } }) => {
     const by = query.by
-    const isAll = !by || by === 'name'
+    const isAll = by === 'name'
     const authorsAllFetcher = loadAuthorsAll()
-    return {
+    const data = {
       authors: isAll && (await authorsAllFetcher()),
-      authorsByFollowers: await fetchAuthorsWithStat(10, 'followers'),
-      authorsByShouts: await fetchAuthorsWithStat(10, 'shouts')
-    } as AllAuthorsData
+      authorsByFollowers: (await fetchAuthorsWithStat(0, 'followers', 20)) || [],
+      authorsByShouts: (await fetchAuthorsWithStat(0, 'shouts', 20)) || []
+    }
+    console.log('AllAuthorsPage data:', data)
+    return data as AllAuthorsData
   }
 } satisfies RouteDefinition
 
 type AllAuthorsData = { authors: Author[]; authorsByFollowers: Author[]; authorsByShouts: Author[] }
 
-// addAuthors to context
-
 export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>) {
   const { t } = useLocalize()
-  const { addAuthors, authorsSorted } = useAuthors()
+  const [authors, setAuthors] = createSignal<Author[]>([])
+  const [authorsByFollowers, setAuthorsByFollowers] = createSignal<Author[]>([])
+  const [authorsByShouts, setAuthorsByShouts] = createSignal<Author[]>([])
+  const [loadMoreVisible, setLoadMoreVisible] = createSignal(false)
+  const [isLoading, setIsLoading] = createSignal(false)
 
-  // async load data: from ssr or fetch
-  const data = createAsync<AllAuthorsData>(async () => {
-    if (props.data) return props.data
-    const authorsAllFetcher = loadAuthorsAll()
-    return {
-      authors: authorsSorted() || (await authorsAllFetcher()),
-      authorsByFollowers: await fetchAuthorsWithStat(10, 'followers'),
-      authorsByShouts: await fetchAuthorsWithStat(10, 'shouts')
-    } as AllAuthorsData
-  })
+  // Function to load more authors
+  const loadMore = async () => {
+    saveScrollPosition()
+    const offset = authors()?.length || 0
+    const layout = props.location.query.by || 'shouts'
+    const isAll = layout === 'name'
+    const newData = {
+      authors: isAll && (await loadAuthorsAll()),
+      authorsByFollowers: (await fetchAuthorsWithStat(offset, 'followers')) || [],
+      authorsByShouts: (await fetchAuthorsWithStat(offset, 'shouts')) || []
+    }
+    if (newData.authors) setAuthors(newData.authors as unknown as Author[])
+    if (newData.authorsByFollowers) setAuthorsByFollowers(newData.authorsByFollowers as Author[])
+    if (newData.authorsByShouts) setAuthorsByShouts(newData.authorsByShouts as Author[])
+    setLoadMoreVisible(
+      Boolean(
+        (Array.isArray(newData.authors) && newData.authors.length) ||
+          newData.authorsByFollowers.length ||
+          newData.authorsByShouts.length
+      )
+    )
+    restoreScrollPosition()
+    return newData as unknown as LoadMoreItems
+  }
 
-  // update context when data is loaded
+  // Effect to fetch authors data when the layout changes
   createEffect(
     on(
-      [data, () => addAuthors],
-      ([data, aa]) => {
-        if (data && aa) {
-          aa(data.authors as Author[])
-          aa(data.authorsByFollowers as Author[])
-          aa(data.authorsByShouts as Author[])
-          // console.debug('[routes.author] added all authors:', data.authors)
+      () => props.location.query.by,
+      async (layout) => {
+        setIsLoading(true)
+        const isAll = layout === 'name'
+        const authorsAllFetcher = loadAuthorsAll()
+        const newData = {
+          authors: isAll && (await authorsAllFetcher()),
+          authorsByFollowers: (await fetchAuthorsWithStat(0, 'followers', 20)) || [],
+          authorsByShouts: (await fetchAuthorsWithStat(0, 'shouts', 20)) || []
         }
-      },
-      { defer: true }
+        setAuthors(newData.authors || [])
+        setAuthorsByFollowers(newData.authorsByFollowers || [])
+        setAuthorsByShouts(newData.authorsByShouts || [])
+        setIsLoading(false)
+      }
     )
   )
 
@@ -68,14 +97,26 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
       title={`${t('Discours')} :: ${t('All authors')}`}
       desc="List of authors of the open editorial community"
     >
-      <Suspense fallback={<Loading />}>
-        <AllAuthorsView
-          isLoaded={Boolean(data()?.authors)}
-          authors={data()?.authors || []}
-          authorsByFollowers={data()?.authorsByFollowers}
-          authorsByShouts={data()?.authorsByShouts}
-        />
-      </Suspense>
+      <Show when={!isLoading()} fallback={<Loading />}>
+        <Show when={authors().length === 0}>
+          <LoadMoreWrapper loadFunction={loadMore} pageSize={AUTHORS_PER_PAGE} hidden={!loadMoreVisible()}>
+            <AllAuthorsView
+              isLoaded={!isLoading()}
+              authors={authors() || []}
+              authorsByFollowers={authorsByFollowers() || []}
+              authorsByShouts={authorsByShouts() || []}
+            />
+          </LoadMoreWrapper>
+        </Show>
+        <Show when={authors().length !== 0}>
+          <AllAuthorsView
+            isLoaded={!isLoading()}
+            authors={authors() || []}
+            authorsByFollowers={authorsByFollowers() || []}
+            authorsByShouts={authorsByShouts() || []}
+          />
+        </Show>
+      </Show>
     </PageLayout>
   )
 }
