@@ -1,12 +1,13 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, Suspense, createMemo, createSignal, lazy } from 'solid-js'
+import { For, Show, Suspense, createEffect, createMemo, createSignal, lazy, on } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { ShowIfAuthenticated } from '~/components/_shared/ShowIfAuthenticated'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { useSnackbar, useUI } from '~/context/ui'
+import { loadCommentsMyRates } from '~/graphql/api/private'
 import {
   Author,
   MutationCreate_ReactionArgs,
@@ -31,6 +32,7 @@ type Props = {
   lastSeen?: number
   class?: string
   showArticleLink?: boolean
+  myRate?: ReactionKind
   clickedReply?: (id: number) => void
   clickedReplyId?: number
   onDelete?: (id: number) => void
@@ -42,7 +44,7 @@ export const Comment = (props: Props) => {
   const [loading, setLoading] = createSignal(false)
   const [editMode, setEditMode] = createSignal(false)
   const [editedBody, setEditedBody] = createSignal<string>()
-  const { session } = useSession()
+  const { session, client } = useSession()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
   const { createShoutReaction, updateShoutReaction, deleteShoutReaction } = useReactions()
   const { showConfirm } = useUI()
@@ -146,6 +148,30 @@ export const Comment = (props: Props) => {
     setTimeout(() => restoreScrollPosition(), 0)
   }
 
+  const [commentsMyrates, setCommentsMyrates] = createSignal<Record<number, ReactionKind>>({})
+  createEffect(
+    on(
+      [() => props.sortedComments, client],
+      async ([ccc, api]) => {
+        if (ccc) {
+          const commentsRatesFetcher = loadCommentsMyRates(
+            ccc.map((c) => c.id),
+            api
+          )
+          const myratesData = await commentsRatesFetcher()
+          const myrates = myratesData?.reduce(
+            (acc, row) => {
+              acc[row.comment] = row.my_rate
+              return acc
+            },
+            {} as Record<number, ReactionKind>
+          )
+          myrates && setCommentsMyrates((prev) => ({ ...prev, ...myrates }))
+        }
+      },
+      { defer: true }
+    )
+  )
   return (
     <li
       id={`comment_${props.comment.id}`}
@@ -191,7 +217,7 @@ export const Comment = (props: Props) => {
                 </div>
               </Show>
               <CommentDate showOnHover={true} comment={props.comment} isShort={true} />
-              <RatingControl comment={props.comment} />
+              <RatingControl comment={props.comment} myRate={commentsMyrates()[props.comment.id]} />
             </div>
           </Show>
           <div class={styles.commentBody}>
@@ -281,6 +307,7 @@ export const Comment = (props: Props) => {
                 lastSeen={props.lastSeen}
                 clickedReply={props.clickedReply}
                 clickedReplyId={props.clickedReplyId}
+                myRate={commentsMyrates()[c.id]}
               />
             )}
           </For>

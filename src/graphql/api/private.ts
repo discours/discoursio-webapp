@@ -11,6 +11,7 @@ import {
   QueryLoad_Shouts_CoauthoredArgs,
   QueryLoad_Shouts_DiscussedArgs,
   QueryLoad_Shouts_FeedArgs,
+  ReactionKind,
   Shout
 } from '~/graphql/schema/core.gen'
 
@@ -62,23 +63,38 @@ export const loadCoauthoredShouts = (
   }, `shouts-coauthored-${page}`)
 }
 
-export const loadArticlesMyRates = (shouts: number[], signedClient: Client | undefined) => {
-  return cache(
-    async () => {
-      const resp = await signedClient?.query(loadArticlesMyRatesQuery, { shouts }).toPromise()
-      const result = resp?.data?.articles_myrates
-      if (result) return result as Shout[]
-    },
-    `articles-myrates-${shouts.join('-')}`
-  )
+export const loadShoutsMyRates = (shoutIds: number[], client: Client) => {
+  console.log('[API] loadShoutsMyRates called with ids:', shoutIds)
+
+  return async () => {
+    try {
+      const response = await client
+        .query(loadArticlesMyRatesQuery, {
+          shouts: shoutIds
+        })
+        .toPromise()
+
+      console.log('[API] loadShoutsMyRates response:', response)
+
+      if (response.error) {
+        console.error('[API] loadShoutsMyRates error:', response.error)
+        return undefined
+      }
+
+      return response.data?.get_my_rates_shouts
+    } catch (error) {
+      console.error('[API] loadShoutsMyRates caught error:', error)
+      return undefined
+    }
+  }
 }
 
 export const loadCommentsMyRates = (comments: number[], signedClient: Client | undefined) => {
   return cache(
     async () => {
       const resp = await signedClient?.query(loadCommentsMyRatesQuery, { comments }).toPromise()
-      const result = resp?.data?.comments_myrates
-      if (result) return result as Comment[]
+      const result = resp?.data?.get_my_rates_comments
+      if (result) return result as { comment: number; my_rate: ReactionKind }[]
     },
     `comments-myrates-${comments.join('-')}`
   )

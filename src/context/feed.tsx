@@ -3,7 +3,14 @@ import { useParams } from '@solidjs/router'
 import { Accessor, JSX, Setter, createContext, createEffect, createSignal, on, useContext } from 'solid-js'
 import { loadCoauthoredShouts, loadDiscussedShouts, loadFollowedShouts } from '~/graphql/api/private'
 import { loadShouts, loadShoutsSearch } from '~/graphql/api/public'
-import { Author, LoadShoutsOptions, Shout, ShoutsOrderBy, Topic } from '~/graphql/schema/core.gen'
+import {
+  Author,
+  LoadShoutsOptions,
+  ReactionKind,
+  Shout,
+  ShoutsOrderBy,
+  Topic
+} from '~/graphql/schema/core.gen'
 import { useSession } from './session'
 
 export const FEED_PAGE_SIZE = 20
@@ -58,6 +65,10 @@ interface FeedContextType {
   // Seen tracking
   seen: Accessor<{ [slug: string]: number }>
   addSeen: (slug: string) => void
+
+  // My rates
+  myRates: Accessor<Record<number, ReactionKind>>
+  setMyRates: Setter<Record<number, ReactionKind>>
 }
 
 const FeedContext = createContext<FeedContextType>({} as FeedContextType)
@@ -69,6 +80,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   const params = useParams<{ mode: FeedMode }>()
   const [feed, setFeed] = createSignal<Shout[]>([])
   const [isFeedLoading, setIsFeedLoading] = createSignal(false)
+  const [myRates, setMyRates] = createSignal<Record<number, ReactionKind>>({})
   const [options, setOptions] = createSignal<LoadShoutsOptions>({
     limit: FEED_PAGE_SIZE,
     filters: {}
@@ -223,6 +235,8 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   return (
     <FeedContext.Provider
       value={{
+        myRates,
+        setMyRates,
         feed,
         setFeed,
         options,

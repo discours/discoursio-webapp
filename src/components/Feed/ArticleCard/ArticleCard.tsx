@@ -16,6 +16,7 @@ import { AuthorLink } from '../../Author/AuthorLink'
 import { CardTopic } from '../CardTopic'
 import { FeedArticlePopup } from '../FeedArticlePopup'
 
+import { useFeed } from '~/context/feed'
 import stylesHeader from '../../HeaderNav/Header.module.scss'
 import styles from './ArticleCard.module.scss'
 
@@ -96,6 +97,7 @@ const LAYOUT_ASPECT: { [key: string]: string } = {
 export const ArticleCard = (props: ArticleCardProps) => {
   const { t, formatDate } = useLocalize()
   const { session } = useSession()
+  const { myRates } = useFeed()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
   const [isActionPopupActive, setIsActionPopupActive] = createSignal(false)
   const [isCoverImageLoadError, setIsCoverImageLoadError] = createSignal(false)
@@ -284,7 +286,11 @@ export const ArticleCard = (props: ArticleCardProps) => {
             classList={{ [styles.shoutCardDetailsActive]: isActionPopupActive() }}
           >
             <div class={styles.shoutCardDetailsContent}>
-              <RatingControl shout={props.article} class={styles.shoutCardDetailsItem} />
+              <RatingControl
+                shout={props.article}
+                myRate={myRates()[props.article.id]}
+                class={styles.shoutCardDetailsItem}
+              />
 
               <div class={clsx(styles.shoutCardDetailsItem, styles.shoutCardComments)}>
                 <a href="#" onClick={(event) => scrollToComments(event)}>

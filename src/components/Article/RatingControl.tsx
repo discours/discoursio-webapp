@@ -15,7 +15,7 @@ interface Props {
   shout?: Shout
   comment?: Reaction
   class?: string
-  myRate?: ReactionKind
+  myRate: ReactionKind
 }
 
 export const RatingControl = (props: Props) => {
@@ -80,16 +80,12 @@ export const RatingControl = (props: Props) => {
 
   const handleRatingChange = async (isUpvote: boolean) => {
     const kind = isUpvote ? ReactionKind.Like : ReactionKind.Dislike
-    console.log(`handleRatingChange clicked to ${kind}`)
     requireAuthentication(async () => {
       if (!props.shout) return
-
       const storedTotal = total()
-      console.log('[RatingControl] myRate before', currentRate())
       if (!currentRate()) {
         // Оптимистичное обновление UI
         setTotal((t) => t + (isUpvote ? 1 : -1))
-        console.log('[RatingControl] was not rated, creating reaction', kind)
         const reaction = await createShoutReaction({ reaction: { kind, shout: props.shout.id } })
 
         if (reaction) {
@@ -99,9 +95,15 @@ export const RatingControl = (props: Props) => {
           console.error('[RatingControl] error creating reaction')
           setTotal(storedTotal)
         }
+        setCurrentRate(kind)
       } else if (currentRate() === kind) {
+        console.log('[RatingControl] Same rate clicked, ignoring')
         return
       } else {
+        console.log('[RatingControl] Changing existing rate', {
+          from: currentRate(),
+          to: kind
+        })
         // Оптимистичное обновление UI для смены рейтинга
         console.log('[RatingControl] removing reaction', currentRate() as ReactionKind)
         setTotal((t) => t + (isUpvote ? 1 : -1))
@@ -109,6 +111,7 @@ export const RatingControl = (props: Props) => {
         if (result?.error) {
           setTotal(storedTotal)
         }
+        setCurrentRate(undefined)
       }
       // setChanged(true)
     }, 'vote')

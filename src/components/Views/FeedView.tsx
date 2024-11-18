@@ -1,6 +1,6 @@
 import { A, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, Suspense, createSignal } from 'solid-js'
+import { For, Show, Suspense, createEffect, createSignal, on } from 'solid-js'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
 import { ShareModal } from '~/components/_shared/ShareModal'
@@ -9,10 +9,10 @@ import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { ModalType, useUI } from '~/context/ui'
+import { loadShoutsMyRates } from '~/graphql/api/private'
 import { Author, Shout } from '~/graphql/schema/core.gen'
 import { Reaction } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
-import styles from '~/styles/views/Feed.module.scss'
 import { CommentDate } from '../Article/CommentDate'
 import { getShareUrl } from '../Article/SharePopup'
 import { AuthorLink } from '../Author/AuthorLink'
@@ -22,6 +22,8 @@ import { ViewSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 import { Placeholder } from '../Feed/Placeholder'
 import { Sidebar } from '../Feed/Sidebar'
 import { Modal } from '../_shared/Modal'
+
+import styles from '~/styles/views/Feed.module.scss'
 
 export interface FeedProps {
   shouts: Shout[]
@@ -33,8 +35,8 @@ export const FeedView = (props: FeedProps) => {
   const { t } = useLocalize()
   const loc = useLocation()
   const { showModal } = useUI()
-  const { session } = useSession()
-  const { feed, isFeedLoading } = useFeed()
+  const { session, client } = useSession()
+  const { feed, isFeedLoading, setMyRates } = useFeed()
 
   // Состояние для хранения данных для шаринга
   const [shareData, setShareData] = createSignal<Shout | undefined>()
@@ -42,6 +44,65 @@ export const FeedView = (props: FeedProps) => {
     showModal('share')
     setShareData(shared)
   }
+
+  // Загружаем оценки статей
+  createEffect(
+    on(
+      [feed, client],
+      async ([shouts, authorizedClient]) => {
+        console.log('[FeedView] Feed/client effect triggered:', {
+          shoutsLength: shouts?.length,
+          hasClient: !!authorizedClient,
+          isAuthorized: !!session()?.access_token
+        })
+
+        if (Array.isArray(shouts) && shouts.length && authorizedClient) {
+          const shoutIds = shouts.map((s) => s.id)
+          console.log('[FeedView] Loading rates for shouts:', shoutIds)
+
+          try {
+            const myRatesFetcher = loadShoutsMyRates(shoutIds, authorizedClient)
+            const myRates = await myRatesFetcher()
+            console.log('[FeedView] Raw myRates response:', myRates)
+
+            if (myRates === undefined) {
+              console.warn('[FeedView] myRates is undefined, possible auth or API issue')
+              return
+            }
+
+            if (Array.isArray(myRates)) {
+              console.log('[FeedView] Processing myRates array:', myRates)
+              for (const row of myRates) {
+                if (row?.my_rate && row?.shout_id) {
+                  console.log('[FeedView] Setting rate:', {
+                    shout_id: row.shout_id,
+                    rate: row.my_rate
+                  })
+                  setMyRates((prev) => {
+                    const updated = { ...prev, [row.shout_id]: row.my_rate }
+                    console.log('[FeedView] Updated myRates:', updated)
+                    return updated
+                  })
+                } else {
+                  console.log('[FeedView] Skipping invalid rate row:', row)
+                }
+              }
+            } else {
+              console.warn('[FeedView] myRates is not an array:', myRates)
+            }
+          } catch (error) {
+            console.error('[FeedView] Error loading rates:', error)
+          }
+        } else {
+          console.log('[FeedView] Skipping rates load:', {
+            hasShouts: Array.isArray(shouts) && shouts.length > 0,
+            hasClient: !!authorizedClient
+          })
+        }
+      },
+      { defer: true }
+    )
+  )
 
   // Компонент для рендеринга статей
   const ArticlesList = (props: { articles: Shout[] }) => {
