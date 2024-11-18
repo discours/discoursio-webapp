@@ -3,12 +3,11 @@ import { debounce } from 'throttle-debounce'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
-import { SHOUTS_PER_PAGE, useFeed } from '~/context/feed'
+import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import type { Shout } from '~/graphql/schema/core.gen'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { byScore } from '~/utils/sort'
-import { FEED_PAGE_SIZE } from '../Views/FeedView'
 import { SearchResultItem } from './SearchResultItem'
 
 import styles from './SearchModal.module.scss'
@@ -42,7 +41,7 @@ const prepareSearchResults = (list: Shout[], searchValue: string) =>
 
 export const SearchModal = () => {
   const { t } = useLocalize()
-  const { loadShoutsSearch } = useFeed()
+  const { loadFeedSearch } = useFeed()
   const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(false)
   const [inputValue, setInputValue] = createSignal('')
   const [isLoading, setIsLoading] = createSignal(false)
@@ -51,12 +50,9 @@ export const SearchModal = () => {
   const fetchSearchResults = async () => {
     setIsLoading(true)
     saveScrollPosition()
-    const { hasMore, newShouts } = await loadShoutsSearch({
-      text: inputValue(),
-      options: {
-        offset: offset(),
-        limit: FEED_PAGE_SIZE
-      }
+    const { hasMore, newShouts } = await loadFeedSearch(inputValue(), {
+      offset: offset(),
+      limit: FEED_PAGE_SIZE
     })
     setIsLoading(false)
     setOffset(newShouts.length)
@@ -131,7 +127,7 @@ export const SearchModal = () => {
         <Show when={searchResultsList()}>
           <LoadMoreWrapper
             loadFunction={loadMoreResults}
-            pageSize={SHOUTS_PER_PAGE}
+            pageSize={FEED_PAGE_SIZE}
             hidden={!isLoadMoreButtonVisible()}
           >
             <For each={prepareSearchResults(searchResultsList(), inputValue())}>

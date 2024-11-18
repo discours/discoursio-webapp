@@ -27,7 +27,6 @@ export default gql`
         last_reacted_at
         rating
         commented
-        my_rate
       }
     }
   }

@@ -14,6 +14,7 @@ import { TopicsProvider } from './context/topics'
 import { UIProvider } from './context/ui'
 
 import '~/styles/app.scss'
+import { FeaturedFeedProvider } from './context/featured'
 import { FollowingProvider } from './context/following'
 
 export const Providers = (props: { children?: JSX.Element }) => {
@@ -25,20 +26,22 @@ export const Providers = (props: { children?: JSX.Element }) => {
     <LocalizeProvider>
       <SessionProvider onStateChangeCallback={sessionStateChanged}>
         <TopicsProvider>
-          <FeedProvider>
-            <MetaProvider>
-              <Meta name="viewport" content="width=device-width, initial-scale=1" />
-              <UIProvider>
-                <EditorProvider>
-                  <AuthorsProvider>
-                    <FollowingProvider>
-                      <Suspense fallback={<Loading />}>{props.children}</Suspense>
-                    </FollowingProvider>
-                  </AuthorsProvider>
-                </EditorProvider>
-              </UIProvider>
-            </MetaProvider>
-          </FeedProvider>
+          <FeaturedFeedProvider>
+            <FeedProvider>
+              <MetaProvider>
+                <Meta name="viewport" content="width=device-width, initial-scale=1" />
+                <UIProvider>
+                  <EditorProvider>
+                    <AuthorsProvider>
+                      <FollowingProvider>
+                        <Suspense fallback={<Loading />}>{props.children}</Suspense>
+                      </FollowingProvider>
+                    </AuthorsProvider>
+                  </EditorProvider>
+                </UIProvider>
+              </MetaProvider>
+            </FeedProvider>
+          </FeaturedFeedProvider>
         </TopicsProvider>
       </SessionProvider>
     </LocalizeProvider>

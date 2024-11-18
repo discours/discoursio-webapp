@@ -1,21 +1,17 @@
 import { type RouteDefinition, type RouteSectionProps, createAsync } from '@solidjs/router'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
-import { SHOUTS_PER_PAGE, useFeed } from '~/context/feed'
-import { loadShouts, loadTopics } from '~/graphql/api/public'
+import { useFeaturedFeed } from '~/context/featured'
+import { FEED_PAGE_SIZE } from '~/context/feed'
+import { loadShouts } from '~/graphql/api/public'
 import { LoadShoutsOptions, Shout, ShoutsOrderBy } from '~/graphql/schema/core.gen'
 import { PageLayout } from '../components/_shared/PageLayout'
 import { useLocalize } from '../context/localize'
 
 const featuredLoader = (offset?: number) => {
   return loadShouts({
-    options: { filters: { featured: true }, limit: SHOUTS_PER_PAGE, offset }
+    options: { filters: { featured: true }, limit: FEED_PAGE_SIZE, offset }
   })
-}
-
-const fetchAllTopics = async () => {
-  const allTopicsLoader = loadTopics()
-  return await allTopicsLoader()
 }
 
 const fetchHomeTopData = async () => {
@@ -56,8 +52,7 @@ export const route = {
     })
     const data = {
       ...(await fetchHomeTopData()),
-      featuredShouts: await featuredLoader(),
-      topics: await fetchAllTopics()
+      featuredShouts: await featuredLoader()
     }
     // console.log('[route.load] data:', data)
     return data
@@ -67,19 +62,19 @@ export const route = {
 export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
   const { t } = useLocalize()
   const {
-    setFeaturedFeed,
     featuredFeed,
+    setFeaturedFeed,
     topMonthFeed,
     topViewedFeed,
     topCommentedFeed,
     topFeed: topRatedFeed
-  } = useFeed()
+  } = useFeaturedFeed()
 
   // load more featured shouts
   const loadMoreFeatured = async (offset?: number) => {
     const shoutsLoader = featuredLoader(offset)
     const loaded = await shoutsLoader()
-    loaded && setFeaturedFeed((prev: Shout[]) => [...prev, ...loaded])
+    loaded && setFeaturedFeed((prev?: Shout[]) => [...(prev || []), ...loaded])
     return loaded as LoadMoreItems
   }
 

@@ -1,6 +1,6 @@
-import { A, redirect, useSearchParams } from '@solidjs/router'
+import { A, redirect, useLocation, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
+import { For, Show, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
@@ -13,12 +13,13 @@ import { ConfirmModal } from '../_shared/ConfirmModal'
 import { Icon } from '../_shared/Icon'
 import { Modal } from '../_shared/Modal'
 import { Newsletter } from '../_shared/Newsletter'
-import { ViewSwitcher } from '../_shared/ViewSwitcher/ViewSwitcher'
 import { HeaderAuth } from './HeaderAuth'
 import { TopicsNav } from './TopicsNav'
+import { capitalize } from '~/utils/capitalize'
 
-import stylesViewSwitcher from '../_shared/ViewSwitcher/ViewSwitcher.module.scss'
+import stylesViewSwitcher from '../Feed/FeedSwitcher/FeedSwitcher.module.scss'
 import styles from './Header.module.scss'
+
 type Props = {
   title?: string
   slug?: string
@@ -37,6 +38,7 @@ const handleSwitchLanguage = (event: { target: { value: string } }) => {
 
 export const Header = (props: Props) => {
   const { t, lang } = useLocalize()
+  const loc = useLocation()
   const { modal } = useUI()
   const { requireAuthentication, session } = useSession()
   const [searchParams, changeSearchParams] = useSearchParams<HeaderSearchParams>()
@@ -167,20 +169,30 @@ export const Header = (props: Props) => {
               <div class={styles.articleHeader}>{props.title}</div>
             </Show>
             <div class={clsx(styles.mainNavigation, { [styles.fixed]: fixed() })}>
-              <ViewSwitcher
-                class={styles.headerNavViewSwitcher}
-                options={['journal', 'feed', 'topics', 'authors', 'guide']}
-                prefix=""
-                onMouseOver={(option: string) => {
-                  if (option === 'authors') {
-                    hideSubnavigation()
-                  } else {
-                    switchView(true, option)
-                  }
-                }}
-                onMouseOut={hideSubnavigation}
-                //activeSubmenu={activeSubmenu()}
-              />
+              <ul class={styles.headerNavLinks}>
+                <For each={['journal', 'feed', 'topics', 'authors', 'guide']}>
+                  {(route) => {
+                    const isActive = () => {
+                      const currentPath = loc.pathname.split('/')[1] || ''
+                      return route === 'journal' ? !currentPath : currentPath === route
+                    }
+
+                    return (
+                      <li
+                        class={clsx({ [styles.active]: isActive() })}
+                        onMouseOver={() => {
+                          if (!isActive() && route !== 'authors') {
+                            switchView(true, route)
+                          }
+                        }}
+                        onMouseOut={hideSubnavigation}
+                      >
+                        <A href={route === 'journal' ? '/' : `/${route}`}>{t(capitalize(route))}</A>
+                      </li>
+                    )
+                  }}
+                </For>
+              </ul>
 
               <div class={styles.mainNavigationMobile}>
                 <h4>{t('Participating')}</h4>
@@ -363,7 +375,7 @@ export const Header = (props: Props) => {
               </li>
 
               <li>
-                <A href={'/feed/my/followed'}>
+                <A href={'/feed/followed'}>
                   <span class={styles.subnavigationItemName}>
                     <Icon name="feed-my" class={styles.icon} />
                     {t('My feed')}
@@ -371,7 +383,7 @@ export const Header = (props: Props) => {
                 </A>
               </li>
               <li>
-                <A href={'/feed/my/coauthored'}>
+                <A href={'/feed/coauthored'}>
                   <span class={styles.subnavigationItemName}>
                     <Icon name="feed-collaborate" class={styles.icon} />
                     {t('Participation')}
@@ -379,7 +391,7 @@ export const Header = (props: Props) => {
                 </A>
               </li>
               <li>
-                <A href={'/feed/my/discussed'}>
+                <A href={'/feed/discussed'}>
                   <span class={styles.subnavigationItemName}>
                     <Icon name="feed-discussion" class={styles.icon} />
                     {t('Discussions')}

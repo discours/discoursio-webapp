@@ -23,7 +23,7 @@ import { FullArticle } from '../../components/Article/FullArticle'
 import { PageLayout } from '../../components/_shared/PageLayout'
 import { ReactionsProvider } from '../../context/reactions'
 import AuthorPage, { AuthorPageProps } from '../author/[slug]/[...tab]'
-import TopicPage, { TopicPageProps } from '../topic/[slug]/[...tab]'
+import TopicPage, { TopicPageProps } from '../topic/[slug]/[...mode]'
 
 const fetchShout = async (slug: string): Promise<Shout | undefined> => {
   if (slug.startsWith('@') || slug.startsWith('!') || slug.startsWith('_') || slug.startsWith('.')) return

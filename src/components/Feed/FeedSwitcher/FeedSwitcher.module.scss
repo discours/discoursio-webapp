@@ -28,6 +28,26 @@
         &:last-child {
             margin-right: 0;
         }
+
+        &.itemSelected, &.active {
+            font-weight: bold;
+            cursor: default !important;
+            pointer-events: none;
+            
+            a,
+            .link,
+            .linkReplacement,
+            button {
+                border-bottom: 2px solid var(--default-color);
+                color: var(--default-color);
+                cursor: default !important;
+                pointer-events: none;
+
+                &:hover {
+                    background: transparent;
+                }
+            }
+        }
     }
 
     button {
@@ -54,24 +74,6 @@
         }
     }
 
-    .itemSelected {
-        font-weight: bold;
-
-        a,
-        .link,
-        .linkReplacement,
-        button {
-            border-bottom: 2px solid var(--default-color);
-            color: var(--default-color);
-            cursor: default;
-
-            &:hover {
-                background: transparent;
-            }
-        }
-    }
-
-
     .itemCounter {
         background: var(--black-50);
         border-radius: 0.8rem;
@@ -86,7 +88,7 @@
         padding: 0 0.6rem;
         text-align: center;
 
-        .itemSelected & {
+        .itemSelected &, .active & {
             background: var(--background-color-invert);
             color: var(--default-color-invert);
         }

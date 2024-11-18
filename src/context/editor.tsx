@@ -98,7 +98,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   const matchEdit = useMatch(() => '/edit')
   const matchEditSettings = useMatch(() => '/editSettings')
   const { client, session } = useSession()
-  const { addFeed } = useFeed()
+  const { setFeed: addFeed } = useFeed()
   const snackbar = useSnackbar()
   const [isEditorPanelVisible, setIsEditorPanelVisible] = createSignal<boolean>(false)
   const [form, setForm] = createStore<ShoutForm>(defaultForm)

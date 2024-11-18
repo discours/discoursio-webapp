@@ -5,7 +5,7 @@ import { useSession } from '~/context/session'
 import { CommonResult, Reaction, ReactionBy, ReactionKind, Shout } from '~/graphql/schema/core.gen'
 import { Icon } from '../_shared/Icon'
 import { Popup } from '../_shared/Popup'
-import { RATINGS_PER_PAGE, VotersList } from '../_shared/VotersList'
+import { RATINGS_PER_PAGE, VotersList } from './VotersList'
 
 import { A } from '@solidjs/router'
 import { useLocalize } from '~/context/localize'
@@ -15,6 +15,7 @@ interface Props {
   shout?: Shout
   comment?: Reaction
   class?: string
+  myRate?: ReactionKind
 }
 
 export const RatingControl = (props: Props) => {
@@ -63,11 +64,19 @@ export const RatingControl = (props: Props) => {
       : { error: 'cant find reaction to delete' }
   }
 
-  const currentRate = () => {
-    if (props.shout) return props.shout.stat?.my_rate as ReactionKind | undefined
-    if (props.comment) return props.comment.stat?.my_rate as ReactionKind | undefined
-    return undefined
-  }
+  const [currentRate, setCurrentRate] = createSignal<ReactionKind | undefined>()
+  createEffect(
+    on(
+      () => props.myRate,
+      (myRate) => {
+        if (myRate !== undefined) {
+          console.log('[RatingControl] myRate', myRate)
+          setCurrentRate(myRate as ReactionKind)
+        }
+      },
+      {}
+    )
+  )
 
   const handleRatingChange = async (isUpvote: boolean) => {
     const kind = isUpvote ? ReactionKind.Like : ReactionKind.Dislike
@@ -85,9 +94,6 @@ export const RatingControl = (props: Props) => {
 
         if (reaction) {
           console.warn('[RatingControl] created reaction: ', reaction)
-          if (props.shout.stat) {
-            props.shout.stat.my_rate = reaction.kind
-          }
         } else {
           // Откатываем изменения если произошла ошибка
           console.error('[RatingControl] error creating reaction')
@@ -102,8 +108,6 @@ export const RatingControl = (props: Props) => {
         const result: CommonResult | null = await removeReaction(currentRate() as ReactionKind)
         if (result?.error) {
           setTotal(storedTotal)
-        } else if (props.shout.stat) {
-          props.shout.stat.my_rate = undefined
         }
       }
       // setChanged(true)
@@ -172,11 +176,8 @@ export const RatingControl = (props: Props) => {
           [styles.commentRatingControlDown]: props.comment && currentRate() === ReactionKind.Dislike
         })}
       >
-        <Show
-          when={currentRate() !== ReactionKind.Dislike}
-          fallback={<Icon name="rating-control-checked" />}
-        >
-          <Icon name="rating-control-less" />
+        <Show when={currentRate() === ReactionKind.Dislike} fallback={<Icon name="rating-control-less" />}>
+          <Icon name="rating-control-checked" />
         </Show>
       </button>
 
@@ -206,8 +207,8 @@ export const RatingControl = (props: Props) => {
           [styles.commentRatingControlUp]: props.comment && currentRate() === ReactionKind.Like
         })}
       >
-        <Show when={currentRate() !== ReactionKind.Like} fallback={<Icon name="rating-control-checked" />}>
-          <Icon name="rating-control-more" />
+        <Show when={currentRate() === ReactionKind.Like} fallback={<Icon name="rating-control-more" />}>
+          <Icon name="rating-control-checked" />
         </Show>
       </button>
     </div>

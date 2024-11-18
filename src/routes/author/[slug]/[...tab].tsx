@@ -39,7 +39,7 @@
  * - Ensure that the necessary context providers and GraphQL API functions are properly set up and imported.
  */
 
-import { RouteSectionProps, createAsync, useParams } from '@solidjs/router'
+import { RouteSectionProps, createAsync, useParams, useSearchParams } from '@solidjs/router'
 import { ErrorBoundary, Show, Suspense, createEffect, createSignal, on } from 'solid-js'
 import { COMMENTS_PER_PAGE } from '~/components/Article/FullArticle'
 import { AuthorView } from '~/components/Views/AuthorView'
@@ -47,7 +47,7 @@ import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { useAuthors } from '~/context/authors'
-import { SHOUTS_PER_PAGE } from '~/context/feed'
+import { FEED_PAGE_SIZE, FeedMode, orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { ReactionsProvider } from '~/context/reactions'
 import { loadAuthors, loadReactions, loadShouts, loadTopics } from '~/graphql/api/public'
@@ -61,10 +61,12 @@ import {
   Shout,
   Topic
 } from '~/graphql/schema/core.gen'
+import { PeriodType, getFromDate } from '~/lib/fromPeriod'
 import { getFileUrl } from '~/lib/getThumbUrl'
+import { FeedSearchParams } from '~/routes/feed/[...mode]'
 
 const fetchAuthorShouts = async (slug: string, offset?: number) => {
-  const options: LoadShoutsOptions = { filters: { author: slug }, limit: SHOUTS_PER_PAGE, offset }
+  const options: LoadShoutsOptions = { filters: { author: slug }, limit: FEED_PAGE_SIZE, offset }
   const shoutsLoader = loadShouts({ options })
   return await shoutsLoader()
 }
@@ -111,15 +113,33 @@ export type AuthorPageProps = {
 
 export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
   const { t } = useLocalize()
-  const params = useParams()
+  const params = useParams<{ slug: string; tab: FeedMode | 'comments' | 'about' }>()
+  const [searchParams] = useSearchParams<FeedSearchParams>()
   const [currentSlug, setCurrentSlug] = createSignal(params.slug)
+  const { updateOptions, options } = useFeed()
 
-  createEffect(() => {
-    const newSlug = params.slug
-    if (newSlug !== currentSlug()) {
-      setCurrentSlug(newSlug)
-    }
-  })
+  // everything from address bar to route feed filters
+  createEffect(
+    on(
+      [() => params.slug, () => params.tab, () => searchParams.period],
+      ([newSlug, newMode, newPeriod]) => {
+        setCurrentSlug(newSlug)
+        const opts: LoadShoutsOptions = { ...options() }
+
+        if (typeof newMode === 'string' && newMode !== 'comments' && newMode !== 'about') {
+          opts.order_by = orderByMode(newMode as FeedMode)
+        }
+
+        if (newPeriod) {
+          opts.filters = {
+            ...(opts.filters || {}),
+            after: getFromDate(newPeriod as PeriodType)
+          }
+        }
+        updateOptions(opts)
+      }
+    )
+  )
 
   // load author's profile
   const { addAuthor, authorsEntities } = useAuthors()

@@ -4,7 +4,7 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on } 
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
 import { useAuthors } from '~/context/authors'
-import { SHOUTS_PER_PAGE, useFeed } from '~/context/feed'
+import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
@@ -197,7 +197,7 @@ export const AuthorView = (props: AuthorViewProps) => {
     const authorShoutsFetcher = loadShouts({
       options: {
         filters: { author: props.authorSlug },
-        limit: SHOUTS_PER_PAGE,
+        limit: FEED_PAGE_SIZE,
         offset: sortedFeed().length || 0
       } // Offset is based on the current length of sortedFeed
     })
@@ -393,7 +393,7 @@ export const AuthorView = (props: AuthorViewProps) => {
             </div>
           </Show>
 
-          <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={loadMoreHidden()}>
+          <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
             <For each={sortedFeed()}>
               {(_article, index) => {
                 const i = index()

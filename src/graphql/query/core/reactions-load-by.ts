@@ -22,7 +22,6 @@ export default gql`
       updated_at
       stat {
         rating
-        my_rate
       }
     }
   }

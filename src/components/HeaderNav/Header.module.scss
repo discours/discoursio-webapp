@@ -225,6 +225,17 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
   }
+
+  .headerNavLinks {
+    margin: 0;
+    padding: 0;
+    
+    li {
+      &.active a {
+        background: transparent !important;
+      }
+    }
+  }
 }
 
 .mainNavigationMobile {
@@ -891,4 +902,48 @@
   position: absolute;
   top: -0.2em;
   width: 2.4rem;
+}
+
+.headerNavLinks {
+  display: flex;
+  font-size: 1.4rem;
+  font-weight: 500;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    margin-right: 2.4rem;
+    
+    &:last-child {
+      margin-right: 0;
+    }
+
+    &.active {
+      pointer-events: none;
+      
+      a {
+        border-bottom: 2px solid var(--default-color);
+        color: var(--default-color);
+        font-weight: bold;
+        cursor: default;
+        pointer-events: none;
+
+        &:hover {
+          background: transparent;
+          color: var(--default-color);
+        }
+      }
+    }
+
+    a {
+      border-bottom: 1px solid transparent;
+      color: var(--link-color);
+      
+      &:hover {
+        background: var(--link-hover-background);
+        color: var(--link-hover-color);
+      }
+    }
+  }
 }

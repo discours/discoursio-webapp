@@ -1,5 +1,29 @@
 .feed {
   padding-top: 7.2rem;
+
+  .feedContent {
+    position: relative;
+    width: 100%;
+  }
+
+  .feedPage {
+    margin-bottom: 2rem;
+  }
+
+  .mainArticles,
+  .remainingArticles {
+    margin-bottom: 1.5rem;
+  }
+
+  .topAuthorsSection {
+    margin: 2rem 0;
+  }
+
+  .noContent {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+  }
 }
 
 .feedFilter {
@@ -350,4 +374,12 @@
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+@media (width <= 768px) {
+  .feed {
+    .feedAside {
+      display: none;
+    }
+  }
 }

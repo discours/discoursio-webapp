@@ -15,11 +15,11 @@ type Props = {
   results: SearchResult[]
 }
 
-const LOAD_MORE_PAGE_SIZE = 50
+const RESULTS_PER_PAGE = 50
 
 export const SearchView = (props: Props) => {
   const { t } = useLocalize()
-  const { sortedFeed, loadShoutsSearch } = useFeed()
+  const { feed: sortedFeed, loadFeedSearch } = useFeed()
   const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(false)
   const [query, setQuery] = createSignal(props.query)
   const [offset, setOffset] = createSignal(0)
@@ -35,15 +35,12 @@ export const SearchView = (props: Props) => {
     let results: Shout[] = []
     if (query()) {
       console.log(query())
-      const { hasMore, newShouts } = await loadShoutsSearch({
-        text: query(),
-        options: {
-          offset: offset(),
-          limit: LOAD_MORE_PAGE_SIZE
-        }
+      const { hasMore, newShouts } = await loadFeedSearch(query(), {
+        offset: offset(),
+        limit: RESULTS_PER_PAGE
       })
       setIsLoadMoreButtonVisible(hasMore)
-      setOffset(offset() + LOAD_MORE_PAGE_SIZE)
+      setOffset(offset() + RESULTS_PER_PAGE)
       results = newShouts
     } else {
       console.warn('[SaerchView] no query found')
@@ -102,7 +99,7 @@ export const SearchView = (props: Props) => {
         <div class="floor">
           <div class="row">
             <LoadMoreWrapper
-              pageSize={LOAD_MORE_PAGE_SIZE}
+              pageSize={RESULTS_PER_PAGE}
               hidden={!isLoadMoreButtonVisible()}
               loadFunction={loadMore}
             >

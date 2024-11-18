@@ -1,4 +1,3 @@
-import { Client as GraphQLClient } from '@urql/core'
 import type { Accessor, JSX } from 'solid-js'
 import { createContext, createSignal, onCleanup, useContext } from 'solid-js'
 import { loadReactions } from '~/graphql/api/public'
@@ -19,10 +18,7 @@ type ReactionsContextType = {
   reactionEntities: Accessor<Record<number, Reaction>>
   reactionsByShout: Accessor<Record<number, Reaction[]>>
   commentsByAuthor: Accessor<Record<number, Reaction[]>>
-  loadReactionsBy: (
-    args: QueryLoad_Reactions_ByArgs,
-    authorizedClient?: GraphQLClient
-  ) => Promise<Reaction[]>
+  loadReactionsBy: (args: QueryLoad_Reactions_ByArgs) => Promise<Reaction[]>
   createShoutReaction: (reaction: MutationCreate_ReactionArgs) => Promise<Reaction | undefined>
   updateShoutReaction: (reaction: MutationUpdate_ReactionArgs) => Promise<Reaction | undefined>
   deleteShoutReaction: (id: number) => Promise<{ error: string } | null>
@@ -78,7 +74,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
   const loadReactionsBy = async (opts: QueryLoad_Reactions_ByArgs): Promise<Reaction[]> => {
     setReactionsLoading(true)
     if (!opts.by) console.warn('reactions provider got wrong opts')
-    const fetcher = await loadReactions(opts)
+    const fetcher = await loadReactions(opts, client())
     const result = (await fetcher()) || []
     // console.debug('[context.reactions] loaded', result)
     if (result) addShoutReactions(result)
@@ -206,10 +202,6 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
       const shoutIndex = newReactionsByShout[reaction.shout.id]?.findIndex((r) => r.id === reaction.id)
       if (shoutIndex !== undefined && shoutIndex !== -1) {
         newReactionsByShout[reaction.shout.id][shoutIndex] = reaction
-        // Обновляем my_rate в stat шаута
-        if (reaction.shout.stat) {
-          reaction.shout.stat.my_rate = reaction.kind
-        }
       }
     }
 

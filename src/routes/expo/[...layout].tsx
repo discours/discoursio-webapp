@@ -21,7 +21,7 @@ const fetchExpoShouts = async (layouts: string[], offset = 0) => {
 
 export const route = {
   load: async ({ params }: { params: Params }) => {
-    const layouts = params.layout ? [params.layout] : EXPO_LAYOUTS
+    const layouts: string[] = params.layout ? [params.layout] : [...EXPO_LAYOUTS]
     const shoutsLoader = await fetchExpoShouts(layouts)
     return (await shoutsLoader()) as Shout[]
   }
@@ -29,12 +29,12 @@ export const route = {
 
 export default (props: RouteSectionProps<Shout[]>) => {
   const { t } = useLocalize()
-  const { expoFeed, setExpoFeed, feedByLayout } = useFeed()
+  const { feed, setFeed, feedByLayout } = useFeed()
   const [loadMoreVisible, setLoadMoreVisible] = createSignal(false)
   const getTitle = createMemo(() => (l?: string) => EXPO_TITLES[(l as ExpoLayoutType) || ''])
 
   const shouts = createAsync(async () => {
-    const layouts = props.params.layout ? [props.params.layout] : EXPO_LAYOUTS
+    const layouts: string[] = props.params.layout ? [props.params.layout] : [...EXPO_LAYOUTS]
     const fetcher = fetchExpoShouts(layouts)
     const result = (await (await fetcher)()) || []
     return result
@@ -43,8 +43,8 @@ export default (props: RouteSectionProps<Shout[]>) => {
   const loadMore = async () => {
     saveScrollPosition()
     const limit = SHOUTS_PER_PAGE
-    const layouts = props.params.layout ? [props.params.layout] : EXPO_LAYOUTS
-    const offset = expoFeed()?.length || 0
+    const layouts: string[] = props.params.layout ? [props.params.layout] : [...EXPO_LAYOUTS]
+    const offset = feed()?.length || 0
     const filters: LoadShoutsFilters = { layouts, featured: true }
     const options: LoadShoutsOptions = { filters, limit, offset }
     try {
@@ -52,7 +52,7 @@ export default (props: RouteSectionProps<Shout[]>) => {
       const result = (await fetcher()) || []
       setLoadMoreVisible(Boolean(result?.length))
       if (result && Array.isArray(result)) {
-        setExpoFeed((prev) => [...prev, ...result])
+        setFeed((prev) => [...prev, ...result])
       }
       restoreScrollPosition()
       return result as LoadMoreItems
@@ -66,8 +66,8 @@ export default (props: RouteSectionProps<Shout[]>) => {
     on(
       () => props.params.layout,
       async (currentLayout) => {
-        const layouts = currentLayout ? [currentLayout] : EXPO_LAYOUTS
-        const offset = (currentLayout ? feedByLayout()[currentLayout]?.length : expoFeed()?.length) || 0
+        const layouts: string[] = currentLayout ? [currentLayout] : [...EXPO_LAYOUTS]
+        const offset = (currentLayout ? feedByLayout()[currentLayout]?.length : feed()?.length) || 0
         const options: LoadShoutsOptions = {
           filters: { layouts, featured: true },
           limit: SHOUTS_PER_PAGE,
@@ -75,9 +75,9 @@ export default (props: RouteSectionProps<Shout[]>) => {
         }
         const result = await loadShouts({ options })
         if (result && Array.isArray(result)) {
-          setExpoFeed(result)
+          setFeed(result)
         } else {
-          setExpoFeed([])
+          setFeed([])
         }
       }
     )
@@ -93,7 +93,7 @@ export default (props: RouteSectionProps<Shout[]>) => {
       <ExpoNav layout={(props.params.layout as ExpoLayoutType) || ''} />
       <Show when={shouts()} fallback={<Loading />} keyed>
         <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={!loadMoreVisible()}>
-          <Expo shouts={expoFeed() || []} layout={(props.params.layout as ExpoLayoutType) || ''} />
+          <Expo shouts={feed() || []} layout={(props.params.layout as ExpoLayoutType) || ''} />
         </LoadMoreWrapper>
       </Show>
     </PageLayout>

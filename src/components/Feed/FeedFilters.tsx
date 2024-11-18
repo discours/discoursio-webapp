@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
+import { createEffect, createSignal, on, onMount } from 'solid-js'
 import { EXPO_LAYOUTS, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { getFromDate } from '~/lib/fromPeriod'
@@ -8,43 +8,44 @@ import { capitalize } from '~/utils/capitalize'
 import { DropDown, OptionGroup } from '../_shared/DropDown/DropDown'
 import type { Option } from '../_shared/DropDown/DropDown'
 
+import { InputMaybe } from '~/graphql/schema/core.gen'
 import styles from '~/styles/views/Feed.module.scss'
 
-export type FeedMode = 'featured' | 'unfeatured' | 'all'
+export type FeaturedFilter = 'featured' | 'unfeatured' | 'all'
 
-export type ShoutsOrder = 'recent' | 'top' | 'hot'
 export const periodToAfter = (period: PeriodType): number => {
   const now = Math.floor(Date.now() / 1000)
   return now - getFromDate(period)
 }
 
+function getPeriodTitle(period: PeriodType): string {
+  return (
+    {
+      [PeriodType.AllTime]: 'All time',
+      [PeriodType.Day]: 'Day',
+      [PeriodType.Week]: 'Week',
+      [PeriodType.Month]: 'Month',
+      [PeriodType.Year]: 'Year'
+    }[period] || 'All time'
+  )
+}
+
 export const FeedFilters = () => {
   const { t } = useLocalize()
-  const { updateFeedOptions, feedOptions } = useFeed()
+  const { updateOptions, options: feedOptions } = useFeed()
 
   const [currentPeriod, setCurrentPeriod] = createSignal<PeriodType>(PeriodType.AllTime)
-  const [currentFeedMode, setCurrentFeedMode] = createSignal<FeedMode>('all')
+  const [currentFeaturedFilter, setCurrentFeaturedFilter] = createSignal<FeaturedFilter>('all')
 
-  // Синхронизируем только при инициализации
+  // Синхронизируем фильтр featured при инициализации
   onMount(() => {
-    const mode = feedOptions()?.mode
-    if (mode) {
-      setCurrentFeedMode(mode as FeedMode)
+    const featured = feedOptions()?.filters?.featured
+    if (featured !== undefined) {
+      setCurrentFeaturedFilter(featured === true ? 'featured' : featured === false ? 'unfeatured' : 'all')
     }
-  }) // Высокий приоритет для выполнения при инициализации
+  })
 
-  function getPeriodTitle(period: PeriodType): string {
-    const title =
-      {
-        [PeriodType.AllTime]: 'All time',
-        [PeriodType.Day]: 'Day',
-        [PeriodType.Week]: 'Week',
-        [PeriodType.Month]: 'Month',
-        [PeriodType.Year]: 'Year'
-      }[period] || 'All time'
-    return t(title)
-  }
-
+  // Синхронизируем период при изменении after в опциях
   createEffect(
     on(
       () => feedOptions()?.filters?.after,
@@ -53,11 +54,11 @@ export const FeedFilters = () => {
           setCurrentPeriod(PeriodType.AllTime)
           return
         }
-        // Находим ближайший период
-        const now = Math.floor(Date.now() / 1000)
-        const diff = now - after
 
+        const now = Date.now()
+        const diff = now - after
         const periods = Object.values(PeriodType)
+
         const period = periods.find((p) => {
           const periodDiff = now - getFromDate(p)
           return Math.abs(diff - periodDiff) < 24 * 60 * 60 // допуск в 1 день
@@ -68,6 +69,58 @@ export const FeedFilters = () => {
     )
   )
 
+  // Обработчик фильтра featured
+  const featuredFilterHandler = (opt: Option) => {
+    if (!opt?.value) return
+    const mode = opt.value as FeaturedFilter
+    setCurrentFeaturedFilter(mode)
+
+    // Обновляем фильтры в соответствии с выбранным режимом
+    updateOptions({
+      filters: {
+        ...feedOptions()?.filters,
+        featured: mode === 'featured' ? true : mode === 'unfeatured' ? false : undefined
+      }
+    })
+  }
+
+  // Обработчик layouts
+  const layoutsOptionsGroupHandler = (opt: Option) => {
+    if (!opt?.value) return
+
+    const currentLayouts = feedOptions()?.filters?.layouts || []
+    const newLayouts = currentLayouts.includes(opt.value as ExpoLayoutType | 'article')
+      ? currentLayouts.filter((x: InputMaybe<string>) => x !== opt.value)
+      : [...currentLayouts, opt.value as ExpoLayoutType | 'article']
+
+    updateOptions({
+      filters: {
+        ...feedOptions()?.filters,
+        ...(newLayouts.length ? { layouts: newLayouts } : {})
+      }
+    })
+  }
+
+  // Обработчик периода
+  const periodHandler = (opt: Option) => {
+    if (!opt?.value) return
+    const period = opt.value as PeriodType
+    if (period === PeriodType.AllTime) {
+      const filters = { ...feedOptions()?.filters }
+      // biome-ignore lint/performance/noDelete: fine
+      delete filters.after
+      updateOptions({ filters })
+    } else {
+      updateOptions({
+        filters: {
+          ...feedOptions()?.filters,
+          after: periodToAfter(period)
+        }
+      })
+    }
+  }
+
+  // Создаем группы опций
   const asOptionsGroup = (
     opts: string[],
     title?: string,
@@ -85,80 +138,30 @@ export const FeedFilters = () => {
 
     if (title) {
       const currentLayouts = feedOptions()?.filters?.layouts || []
+      const selectedOption = options.find((o) =>
+        currentLayouts.includes(o.value as ExpoLayoutType | 'article')
+      )
+      const selected = [selectedOption ? options.indexOf(selectedOption) : -1]
       return {
         title,
         options,
-        selected: options
-          .map((opt, index) => (currentLayouts.includes(opt.value as string) ? index : -1))
-          .filter((index) => index !== -1),
+        selected,
         onChange
       }
     }
 
+    const selectedOption = options.find(
+      (o) => o.value === currentFeaturedFilter() || o.value === currentPeriod()
+    )
+    const selected = [selectedOption ? options.indexOf(selectedOption) : -1]
+
     return {
-      title,
       options,
-      selected: [
-        options.findIndex((opt) => {
-          const isSelected = Object.values(PeriodType).includes(opt.value as PeriodType)
-            ? opt.value === currentPeriod()
-            : opt.value === currentFeedMode()
-          // console.log('Option:', opt.value, 'Selected:', isSelected, 'CurrentFeedMode:', currentFeedMode())
-          return isSelected
-        })
-      ],
+      selected,
       onChange
     }
   }
 
-  const layoutsOptionsGroupHandler = (opt: Option) => {
-    if (!opt?.value) return
-
-    const currentLayouts = feedOptions()?.filters?.layouts || []
-    const newLayouts = currentLayouts.includes(opt.value as ExpoLayoutType | 'article')
-      ? currentLayouts.filter((x) => x !== opt.value)
-      : [...currentLayouts, opt.value as ExpoLayoutType | 'article']
-
-    updateFeedOptions({
-      filters: {
-        ...feedOptions()?.filters,
-        ...(newLayouts.length ? { layouts: newLayouts } : {})
-      }
-    })
-  }
-
-  const featuredFilterHandler = (opt: Option) => {
-    if (!opt?.value) return
-    const mode = opt.value as FeedMode
-    setCurrentFeedMode(mode)
-    updateFeedOptions({ mode })
-    console.log('updated mode', mode)
-  }
-
-  const periodOptionsGroupHandler = (opt: Option) => {
-    const period = opt?.value as PeriodType
-    if (!period) return
-    const after = getFromDate(period)
-    if (period === PeriodType.AllTime) {
-      const filters = feedOptions()?.filters
-      // biome-ignore lint/performance/noDelete: itsok
-      delete filters?.after
-      updateFeedOptions({ filters })
-    } else {
-      updateFeedOptions({
-        filters: {
-          ...feedOptions()?.filters,
-          ...(after ? { after } : {})
-        }
-      })
-    }
-    console.log('period', period)
-    setCurrentPeriod(period)
-  }
-
-  const periodOptionsGroup = createMemo(() =>
-    asOptionsGroup(Object.values(PeriodType), '', periodOptionsGroupHandler)
-  )
   return (
     <div class={styles.dropdowns}>
       <DropDown
@@ -171,7 +174,7 @@ export const FeedFilters = () => {
       />
       <DropDown
         popupProps={{ horizontalAnchor: 'right' }}
-        options={[periodOptionsGroup()]}
+        options={[asOptionsGroup(Object.values(PeriodType), '', periodHandler)]}
         triggerCssClass={styles.periodSwitcher}
       />
     </div>

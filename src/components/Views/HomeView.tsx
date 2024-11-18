@@ -1,9 +1,8 @@
 import { For, Show, createMemo, onMount } from 'solid-js'
 import { useAuthors } from '~/context/authors'
-import { SHOUTS_PER_PAGE } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import { Author, Shout } from '~/graphql/schema/core.gen'
 import { paginate } from '~/utils/paginate'
 import Banner from '../Discours/Banner'
 import Hero from '../Discours/Hero'
@@ -17,6 +16,7 @@ import RowShort from '../Feed/RowShort'
 import { TopicsNav } from '../HeaderNav/TopicsNav'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 
+export const SHOUTS_PER_PAGE = 20
 export const RANDOM_TOPICS_COUNT = 12
 export const RANDOM_TOPIC_SHOUTS_COUNT = 7
 const CLIENT_LOAD_ARTICLES_COUNT = 29
@@ -28,7 +28,6 @@ export interface HomeViewProps {
   topMonthShouts: Shout[]
   topViewedShouts: Shout[]
   topCommentedShouts: Shout[]
-  topics?: Topic[]
 }
 
 export const HomeView = (props: HomeViewProps) => {

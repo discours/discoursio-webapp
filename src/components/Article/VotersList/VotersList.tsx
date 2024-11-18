@@ -2,14 +2,14 @@ import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show, batch, createEffect, createMemo, createSignal } from 'solid-js'
 
+import { Userpic } from '~/components/Author/Userpic'
+import { LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import { Loading } from '~/components/_shared/Loading'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { Reaction, ReactionBy, ReactionKind } from '~/graphql/schema/core.gen'
 import { byCreated } from '~/utils/sort'
-import { Userpic } from '../../Author/Userpic'
-import { LoadMoreWrapper } from '../LoadMoreWrapper'
-import { Loading } from '../Loading'
 
 import styles from './VotersList.module.scss'
 

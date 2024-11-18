@@ -1,113 +1,175 @@
 import { createLazyMemo } from '@solid-primitives/memo'
-import { makePersisted } from '@solid-primitives/storage'
+import { useParams } from '@solidjs/router'
 import { Accessor, JSX, Setter, createContext, createEffect, createSignal, on, useContext } from 'solid-js'
-import { FeedMode, ShoutsOrder } from '~/components/Feed/FeedFilters'
-import { loadFollowedShouts } from '~/graphql/api/private'
-import { loadShoutsSearch as fetchShoutsSearch, getShout, loadShouts } from '~/graphql/api/public'
-import { Author, LoadShoutsOptions, Shout, ShoutsOrderBy } from '~/graphql/schema/core.gen'
-import { ExpoLayoutType } from '~/types/common'
-import { byStat } from '../utils/sort'
+import { loadCoauthoredShouts, loadDiscussedShouts, loadFollowedShouts } from '~/graphql/api/private'
+import { loadShouts, loadShoutsSearch } from '~/graphql/api/public'
+import { Author, LoadShoutsOptions, Shout, ShoutsOrderBy, Topic } from '~/graphql/schema/core.gen'
 import { useSession } from './session'
 
-export const PRERENDERED_ARTICLES_COUNT = 5
-export const SHOUTS_PER_PAGE = 20
-export const EXPO_LAYOUTS = ['audio', 'literature', 'video', 'image'] as ExpoLayoutType[]
-export const EXPO_TITLES: Record<ExpoLayoutType | '', string> = {
+export const FEED_PAGE_SIZE = 20
+export const EXPO_LAYOUTS = ['audio', 'video', 'literature', 'image']
+export const EXPO_TITLES = {
   audio: 'Audio',
   video: 'Video',
-  image: 'Artworks',
   literature: 'Literature',
-  '': 'All'
+  image: 'Image'
 }
 
-type FeedContextType = {
-  sortedFeed: Accessor<Shout[]>
-  articleEntities: Accessor<{ [articleSlug: string]: Shout }>
-  feedByAuthor: Accessor<{ [authorSlug: string]: Shout[] }>
-  feedByTopic: Accessor<{ [topicSlug: string]: Shout[] }>
+export const orderByMode = (value: string) => {
+  return value === 'hot'
+    ? ShoutsOrderBy.LastReactedAt
+    : value === 'top'
+      ? ShoutsOrderBy.Rating
+      : value === 'followed'
+        ? undefined
+        : value === 'discussed'
+          ? ShoutsOrderBy.LastReactedAt
+          : value === 'coauthored'
+            ? undefined
+            : undefined
+}
+
+export type FeedMode = 'all' | 'recent' | 'hot' | 'top' | 'followed' | 'discussed' | 'coauthored'
+export type FeaturedFilter = 'featured' | 'unfeatured' | 'all'
+
+interface FeedContextType {
+  // Core state
+  feed: Accessor<Shout[]>
+  setFeed: Setter<Shout[]>
+  options: Accessor<LoadShoutsOptions>
+  updateOptions: (newOptions: Partial<LoadShoutsOptions>) => void
+  isFeedLoading: Accessor<boolean>
+
+  // Feed loading methods
+  loadFeed: (opts?: Partial<LoadShoutsOptions>) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
+
+  // Feeds
+  loadFollowed: (options: LoadShoutsOptions) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
+  loadDiscussed: (options: LoadShoutsOptions) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
+  loadCoauthored: (options: LoadShoutsOptions) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
+  loadFeedSearch: (
+    text: string,
+    options: LoadShoutsOptions
+  ) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
+  // Feed organization
   feedByLayout: Accessor<{ [layout: string]: Shout[] }>
-  topViewedFeed: Accessor<Shout[]>
-  topCommentedFeed: Accessor<Shout[]>
-  addFeed: (articles?: Shout[]) => void
-  loadShout: (slug: string) => Promise<void>
-  loadShouts: (options: LoadShoutsOptions) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
-  loadMyFeed: (options: LoadShoutsOptions) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
-  loadShoutsSearch: ({
-    text,
-    options
-  }: { text: string; options?: LoadShoutsOptions }) => Promise<{ hasMore: boolean; newShouts: Shout[] }>
-  resetSortedFeed: () => void
+  feedByTopic: Accessor<{ [topicSlug: string]: Shout[] }>
+  feedByAuthor: Accessor<{ [authorSlug: string]: Shout[] }>
+  // Seen tracking
   seen: Accessor<{ [slug: string]: number }>
   addSeen: (slug: string) => void
-
-  // all
-  feed: Accessor<Shout[] | undefined>
-  setFeed: Setter<Shout[]>
-
-  // featured
-  featuredFeed: Accessor<Shout[] | undefined>
-  setFeaturedFeed: Setter<Shout[]>
-
-  // top month
-  loadTopMonthFeed: () => Promise<void>
-  topMonthFeed: Accessor<Shout[]>
-
-  // top rated
-  loadTopFeed: () => Promise<void>
-  topFeed: Accessor<Shout[]>
-
-  // expo
-  expoFeed: Accessor<Shout[] | undefined>
-  setExpoFeed: Setter<Shout[]>
-
-  // options
-  feedOptions: Accessor<FeedOptions>
-  updateFeedOptions: (options: Partial<FeedOptions>) => void
-  setFeedOptions: Setter<FeedOptions>
-
-  // loading
-  isFeedLoading: Accessor<boolean>
-  setFeedLoading: Setter<boolean>
 }
 
 const FeedContext = createContext<FeedContextType>({} as FeedContextType)
 
 export const useFeed = () => useContext(FeedContext)
 
-type FeedOptions = {
-  mode: FeedMode
-  order: ShoutsOrder
-  layout?: ExpoLayoutType
-  filters: LoadShoutsOptions['filters']
-}
-
 export const FeedProvider = (props: { children: JSX.Element }) => {
-  const [sortedFeed, setSortedFeed] = createSignal<Shout[]>([])
-  const [articleEntities, setArticleEntities] = createSignal<{ [articleSlug: string]: Shout }>({})
-  const [feed, setFeed] = createSignal<Shout[]>([] as Shout[])
-  const [featuredFeed, setFeaturedFeed] = createSignal<Shout[]>([])
-  const [expoFeed, setExpoFeed] = createSignal<Shout[]>([])
-  const [topFeed, setTopFeed] = createSignal<Shout[]>([])
-  const [isFeedLoading, setFeedLoading] = createSignal<boolean>(false)
-  const [topMonthFeed, setTopMonthFeed] = createSignal<Shout[]>([])
-  const [feedByLayout, _setFeedByLayout] = createSignal<{ [layout: string]: Shout[] }>({})
-  const [_feedByTopic, _setFeedByTopic] = createSignal<{ [topicSlug: string]: Shout[] }>({})
-  const [seen, setSeen] = makePersisted(createSignal<{ [slug: string]: number }>({}), {
-    name: 'discoursio-seen'
-  })
-  const [feedOptions, setFeedOptions] = createSignal<FeedOptions>({
-    mode: 'all',
-    order: 'recent',
+  const { client } = useSession()
+  const params = useParams<{ mode: FeedMode }>()
+  const [feed, setFeed] = createSignal<Shout[]>([])
+  const [isFeedLoading, setIsFeedLoading] = createSignal(false)
+  const [options, setOptions] = createSignal<LoadShoutsOptions>({
+    limit: FEED_PAGE_SIZE,
     filters: {}
   })
 
-  const updateFeedOptions = (options: Partial<FeedOptions>) => {
-    setFeedOptions((prev) => ({
-      ...prev,
-      ...options
-    }))
+  // Добавляем эффект для автоматической загрузки при изменении options
+  createEffect(
+    on(
+      options,
+      async (newOptions) => {
+        if (!isFeedLoading()) {
+          // Предотвращаем повторные загрузки
+          const result = await loadFeed(newOptions)
+          if (result.newShouts) {
+            setFeed(result.newShouts)
+          }
+        }
+      },
+      { defer: true } // Откладываем первый запуск до необходимости
+    )
+  )
+
+  // Обновляем updateOptions для более надежной работы
+  const updateOptions = (newOptions: Partial<LoadShoutsOptions>) => {
+    setOptions((prev) => {
+      const updated = { ...prev, ...newOptions }
+      // Если сбрасываем offset, то очищаем текущий feed
+      if (newOptions.offset === 0) {
+        setFeed([])
+      }
+      return updated
+    })
   }
 
+  // Загрузка ленты с учетом сортировки
+  const loadFeed = async (opts?: Partial<LoadShoutsOptions>) => {
+    const currentOptions = { ...options(), ...opts }
+    const currentMode = params.mode || 'recent'
+
+    setIsFeedLoading(true)
+    try {
+      let result: Shout[] = []
+
+      switch (currentMode) {
+        case 'followed': {
+          const followedResult = await loadFollowed(currentOptions)
+          result = followedResult.newShouts
+          return { hasMore: followedResult.hasMore, newShouts: result }
+        }
+        case 'discussed': {
+          currentOptions.order_by = ShoutsOrderBy.LastReactedAt
+          const discussedResult = await loadDiscussed(currentOptions)
+          result = discussedResult.newShouts
+          return { hasMore: discussedResult.hasMore, newShouts: result }
+        }
+        case 'coauthored': {
+          const coauthoredResult = await loadCoauthored(currentOptions)
+          result = coauthoredResult.newShouts
+          return { hasMore: coauthoredResult.hasMore, newShouts: result }
+        }
+        default: {
+          // Для остальных режимов используем обычную загрузку
+          const fetcher = loadShouts({ options: currentOptions })
+          result = (await fetcher()) || []
+          const hasMore = result.length >= (currentOptions.limit || FEED_PAGE_SIZE)
+          return { hasMore, newShouts: result }
+        }
+      }
+    } finally {
+      setIsFeedLoading(false)
+    }
+  }
+
+  const loadFeedSearch = async (text: string, options: LoadShoutsOptions) => {
+    const fetcher = loadShoutsSearch(text, options)
+    const result = (await fetcher()) || []
+    const hasMore = result.length >= options.limit
+    return { hasMore, newShouts: result }
+  }
+
+  const loadFollowed = async (options: LoadShoutsOptions) => {
+    const fetcher = loadFollowedShouts({ options }, client())
+    const result = (await fetcher()) || []
+    const hasMore = result.length >= options.limit
+    return { hasMore, newShouts: result }
+  }
+
+  const loadDiscussed = async (options: LoadShoutsOptions) => {
+    const fetcher = loadDiscussedShouts({ options }, client())
+    const result = (await fetcher()) || []
+    const hasMore = result.length >= options.limit
+    return { hasMore, newShouts: result }
+  }
+
+  const loadCoauthored = async (options: LoadShoutsOptions) => {
+    const fetcher = loadCoauthoredShouts({ options }, client())
+    const result = (await fetcher()) || []
+    const hasMore = result.length >= options.limit
+    return { hasMore, newShouts: result }
+  }
+  const [seen, setSeen] = createSignal<{ [slug: string]: number }>({})
   const addSeen = async (slug: string) => {
     setSeen((prev: Record<string, number>) => {
       const newSeen = { ...prev, [slug]: Date.now() }
@@ -115,9 +177,8 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     })
   }
 
-  // Memoized articles grouped by author
   const feedByAuthor = createLazyMemo(() => {
-    return Object.values(articleEntities()).reduce(
+    return Object.values(feed()).reduce(
       (acc, article: Shout) => {
         article.authors?.forEach((author: Author | null) => {
           if (!acc[author?.slug || '']) {
@@ -131,11 +192,10 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     )
   })
 
-  // Добавить после feedByAuthor
   const feedByTopic = createLazyMemo(() => {
-    return Object.values(articleEntities()).reduce(
+    return Object.values(feed()).reduce(
       (acc, article: Shout) => {
-        article.topics?.forEach((topic) => {
+        article.topics?.forEach((topic: Topic | null) => {
           if (topic?.slug) {
             if (!acc[topic.slug]) {
               acc[topic.slug] = []
@@ -149,208 +209,35 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     )
   })
 
-  // Memoized top viewed articles
-  const topViewedFeed = createLazyMemo(() => {
-    const result = Object.values(articleEntities())
-    // @ts-ignore
-    result.sort(byStat('viewed'))
-    return result
-  })
-
-  // Memoized top commented articles
-  const topCommentedFeed = createLazyMemo(() => {
-    const result = Object.values(articleEntities())
-    // @ts-ignore
-    result.sort(byStat('commented'))
-    return result
-  })
-
-  // Add articles to the articleEntities and sortedFeed state
-  const addFeed = (articles?: Shout[]) => {
-    const newArticleEntities = (articles || []).reduce(
-      (acc, article) => {
-        if (!acc[article.slug]) {
-          acc[article.slug] = article
-        }
+  const feedByLayout = createLazyMemo(() => {
+    return Object.values(feed()).reduce(
+      (acc, article: Shout) => {
+        acc[article.layout] = acc[article.layout] || []
+        acc[article.layout].push(article)
         return acc
       },
-      {} as { [articleSlug: string]: Shout }
+      {} as { [layout: string]: Shout[] }
     )
-
-    setArticleEntities((prevArticleEntities) => ({
-      ...prevArticleEntities,
-      ...newArticleEntities
-    }))
-
-    setSortedFeed((prevSortedFeed) => [...prevSortedFeed, ...(articles || [])])
-  }
-
-  // Load a single shout by slug and update the articleEntities and sortedFeed state
-  const loadShout = async (slug: string): Promise<void> => {
-    const fetcher = await getShout({ slug })
-    const newArticle = (await fetcher()) as Shout
-    addFeed([newArticle])
-    const newArticleIndex = sortedFeed().findIndex((s) => s.id === newArticle.id)
-    if (newArticleIndex >= 0) {
-      const newSortedFeed = [...sortedFeed()]
-      newSortedFeed[newArticleIndex] = articleEntities()?.[newArticle?.slug || '']
-      setSortedFeed(newSortedFeed)
-    }
-  }
-
-  // Load shouts based on the provided options and update the articleEntities and sortedFeed state
-  const loadShoutsBy = async (
-    options: LoadShoutsOptions
-  ): Promise<{ hasMore: boolean; newShouts: Shout[] }> => {
-    const fetcher = await loadShouts({ options })
-    const result = (await fetcher()) || []
-    const hasMore = result.length !== options.limit + 1 && result.length !== 0
-    if (hasMore) result.splice(-1)
-    addFeed(result)
-    return { hasMore, newShouts: result }
-  }
-  const { client } = useSession()
-
-  // Load the user's feed based on the provided options and update the articleEntities and sortedFeed state
-  const loadMyFeed = async (
-    options: LoadShoutsOptions
-  ): Promise<{ hasMore: boolean; newShouts: Shout[] }> => {
-    if (!options.limit) options.limit = 0
-    options.limit += 1
-    const fetcher = await loadFollowedShouts(client(), { options })
-    const result = (await fetcher()) || []
-    const hasMore = result.length === options.limit + 1
-    if (hasMore) result.splice(-1)
-    addFeed(result || [])
-    return { hasMore, newShouts: result }
-  }
-
-  // Load shouts based on the search query and update the articleEntities and sortedFeed state
-  const loadShoutsSearch = async ({
-    text,
-    options
-  }: { text: string; options?: LoadShoutsOptions }): Promise<{ hasMore: boolean; newShouts: Shout[] }> => {
-    const limit = (options?.limit || 0) + 1
-    const fetcher = fetchShoutsSearch(text, { ...options, limit })
-    const result = (await fetcher()) || []
-    const hasMore = result.length === limit
-    if (hasMore) result.splice(-1)
-    addFeed(result)
-    return { hasMore, newShouts: result }
-  }
-
-  // Reset the sortedFeed state
-  const resetSortedFeed = () => {
-    setSortedFeed([])
-  }
-
-  // Load the top articles from the last month and update the topMonthFeed state
-  const loadTopMonthFeed = async (): Promise<void> => {
-    const daysago = Date.now() - 30 * 24 * 60 * 60 * 1000
-    const after = Math.floor(daysago / 1000)
-    const options: LoadShoutsOptions = {
-      filters: {
-        featured: true,
-        after
-      },
-      order_by: 'rating' as ShoutsOrderBy,
-      limit: 10
-    }
-    const fetcher = await loadShouts({ options })
-    const result = (await fetcher()) || []
-    addFeed(result)
-    setTopMonthFeed(result)
-  }
-  // Load the top articles and update the topFeed state
-  const loadTopFeed = async (): Promise<void> => {
-    const options: LoadShoutsOptions = {
-      filters: { featured: true },
-      // order_by: published_at
-      limit: 10
-    }
-    const fetcher = await loadShouts({ options })
-    const result = (await fetcher()) || []
-    addFeed(result)
-    setTopFeed(result)
-  }
-
-  // Создаем эффект для обработки feed
-  createEffect(
-    on(feed, (articles) => {
-      if (!articles?.length) return
-
-      // Группируем статьи по темам
-      const topicGroups = articles.reduce(
-        (acc, article) => {
-          if (article.topics) {
-            article.topics.forEach((topic) => {
-              if (topic?.slug) {
-                if (!acc[topic.slug]) {
-                  acc[topic.slug] = []
-                }
-                acc[topic.slug].push(article)
-              }
-            })
-          }
-          return acc
-        },
-        {} as { [topicSlug: string]: Shout[] }
-      )
-
-      console.log('Topic groups created:', topicGroups) // Для отладки
-      _setFeedByTopic(topicGroups)
-
-      // Обновляем articleEntities
-      const newArticleEntities = articles.reduce(
-        (acc, article) => {
-          if (!acc[article.slug]) {
-            acc[article.slug] = article
-          }
-          return acc
-        },
-        {} as { [articleSlug: string]: Shout }
-      )
-
-      setArticleEntities((prevArticleEntities) => ({
-        ...prevArticleEntities,
-        ...newArticleEntities
-      }))
-    })
-  )
+  })
 
   return (
     <FeedContext.Provider
       value={{
-        sortedFeed,
-        articleEntities,
-        topFeed,
-        topMonthFeed,
-        feedByAuthor,
-        feedByTopic,
-        feedByLayout,
-        topViewedFeed,
-        topCommentedFeed,
-        addFeed,
-        loadShout,
-        loadShouts: loadShoutsBy,
-        loadMyFeed,
-        loadShoutsSearch,
-        resetSortedFeed,
-        loadTopMonthFeed,
-        loadTopFeed,
-        seen,
-        addSeen,
-        featuredFeed,
-        setFeaturedFeed,
-        expoFeed,
-        setExpoFeed,
         feed,
         setFeed,
-        feedOptions,
-        updateFeedOptions,
-        setFeedOptions,
+        options,
+        updateOptions,
         isFeedLoading,
-        setFeedLoading
+        loadFeed,
+        loadFollowed,
+        loadDiscussed,
+        loadCoauthored,
+        loadFeedSearch,
+        feedByLayout,
+        feedByTopic,
+        feedByAuthor,
+        seen,
+        addSeen
       }}
     >
       {props.children}

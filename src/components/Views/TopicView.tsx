@@ -1,7 +1,7 @@
 // import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Match, Show, Suspense, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
-import { SHOUTS_PER_PAGE, useFeed } from '~/context/feed'
+import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { loadAuthors, loadFollowersByTopic, loadShouts } from '~/graphql/api/public'
@@ -20,16 +20,13 @@ import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 
 import styles from '~/styles/views/Topic.module.scss'
 import { FeedFilters } from '../Feed/FeedFilters'
-import { ViewSwitcher } from '../_shared/ViewSwitcher/ViewSwitcher'
-
-export type TopicFeedSortBy = 'comments' | '' | 'recent' | 'viewed' | 'rating' | 'last_comment'
+import { ViewSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 
 interface Props {
   topic: Topic
   shouts: Shout[]
   topicSlug: string
   followers?: Author[]
-  selectedTab?: TopicFeedSortBy
 }
 
 export const PRERENDERED_ARTICLES_COUNT = 28
@@ -37,9 +34,8 @@ export const PRERENDERED_ARTICLES_COUNT = 28
 
 export const TopicView = (props: Props) => {
   const { t } = useLocalize()
-  const { feedByTopic, addFeed } = useFeed()
+  const { feedByTopic, setFeed } = useFeed()
   const { topicEntities } = useTopics()
-  // const [searchParams, changeSearchParams] = useSearchParams<{ by: TopicFeedSortBy }>()
   const [favoriteTopArticles, setFavoriteTopArticles] = createSignal<Shout[]>([])
   const [reactedTopMonthArticles, setReactedTopMonthArticles] = createSignal<Shout[]>([])
   const [followers, setFollowers] = createSignal<Author[]>(props.followers || [])
@@ -54,7 +50,7 @@ export const TopicView = (props: Props) => {
   createEffect(() => {
     if (props.shouts?.length) {
       setSortedFeed(props.shouts)
-      addFeed(props.shouts) // Добавляем в общий feed
+      setFeed(props.shouts) // Добавляем в общий feed
     }
   })
 
@@ -152,7 +148,7 @@ export const TopicView = (props: Props) => {
     const topicShoutsFetcher = loadShouts({
       options: {
         filters: { topic: props.topicSlug },
-        limit: SHOUTS_PER_PAGE,
+        limit: FEED_PAGE_SIZE,
         offset: sortedFeed().length
       }
     })
@@ -160,21 +156,11 @@ export const TopicView = (props: Props) => {
     const result = await topicShoutsFetcher()
     if (result?.length) {
       setSortedFeed((prev) => [...prev, ...result]) // Напрямую обновляем sortedFeed
-      addFeed(result) // И добавляем в общий feed
+      setFeed(result) // И добавляем в общий feed
     }
     restoreScrollPosition()
     return result as LoadMoreItems
   }
-
-  /*
-  const selectionTitle = createMemo(() => {
-    const m = searchParams?.by
-    if (m === 'viewed') return t('Top viewed')
-    if (m === 'rating') return t('Top rated')
-    if (m === 'commented') return t('Top discussed')
-    return t('Top recent')
-  })
-  */
 
   const topViewedShouts = createMemo(() => {
     const loaded = feedByTopic()?.[props.topicSlug] || []
@@ -236,7 +222,7 @@ export const TopicView = (props: Props) => {
           <Row2 articles={(sortedFeed() || []).slice(11, 13)} />
         </Show>
 
-        <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={loadMoreHidden()}>
+        <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
           <For each={sortedFeed()}>
             {(_article, index) => {
               const i = index()

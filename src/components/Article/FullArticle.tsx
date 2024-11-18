@@ -45,6 +45,7 @@ import { CommentsTree } from './CommentsTree'
 import { RatingControl } from './RatingControl'
 import { SharePopup, getShareUrl } from './SharePopup'
 
+import { patchBodyUrls } from '~/lib/getThumbUrl'
 import stylesHeader from '../HeaderNav/Header.module.scss'
 import styles from './Article.module.scss'
 
@@ -93,19 +94,27 @@ export const FullArticle = (props: Props) => {
   const formattedDate = createMemo(() => formatDate(new Date((props.article.published_at || 0) * 1000)))
 
   const body = createMemo(() => {
-    if (props.article.layout === 'literature') {
+    let body = props.article.body || ''
+    if (props.article.layout === 'literature' || body.length < 2) {
       try {
+        let mediaBody = ''
         if (props.article.media) {
           const media = props.article.media as MediaItem[]
           if (media.length > 0) {
-            return processPrepositions(media[0].body || '')
+            for (const item of media) {
+              if (mediaBody.includes(item.body || '')) continue
+              mediaBody += item.body || ''
+            }
+            body = mediaBody
           }
         }
       } catch (error) {
         console.error(error)
       }
     }
-    return processPrepositions(props.article.body) || ''
+    if (canEdit()) body = processPrepositions(body)
+    body = patchBodyUrls(body)
+    return body
   })
 
   const imageUrls = createMemo(() => {

@@ -2,10 +2,10 @@ import { RouteSectionProps, createAsync } from '@solidjs/router'
 import { HttpStatusCode } from '@solidjs/start'
 import { Show, Suspense, createEffect, createSignal, on } from 'solid-js'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
-import { TopicFeedSortBy, TopicView } from '~/components/Views/TopicView'
+import { TopicView } from '~/components/Views/TopicView'
 import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { SHOUTS_PER_PAGE } from '~/context/feed'
+import { FEED_PAGE_SIZE } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { loadShouts } from '~/graphql/api/public'
@@ -14,7 +14,7 @@ import { getFileUrl } from '~/lib/getThumbUrl'
 import { descFromBody } from '~/utils/meta'
 
 const fetchTopicShouts = async (slug: string, offset?: number) => {
-  const options: LoadShoutsOptions = { filters: { topic: slug }, limit: SHOUTS_PER_PAGE, offset }
+  const options: LoadShoutsOptions = { filters: { topic: slug }, limit: FEED_PAGE_SIZE, offset }
   const shoutsLoader = loadShouts({ options })
   return await shoutsLoader()
 }
@@ -106,7 +106,6 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
             topic={topic() as Topic}
             topicSlug={props.params.slug}
             shouts={articles() as Shout[]}
-            selectedTab={props.params.tab as TopicFeedSortBy}
           />
         </PageLayout>
       </Suspense>
