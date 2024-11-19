@@ -9,6 +9,16 @@ export default gql`
         body
         updated_at
         reply_to
+        created_by {
+          id
+          name
+          slug
+        }
+        shout {
+          id
+          title
+          slug
+        }
       }
     }
   }
