@@ -106,7 +106,7 @@ export const AllAuthorsView = (props: Props) => {
       <div class="col-lg-20 col-xl-18">
         <h1>{t('Authors')}</h1>
         <p>{t('Subscribe who you like to tune your personal feed')}</p>
-        <ul class={clsx(styles.viewSwitcher, 'view-switcher')}>
+        <ul class={clsx(styles.feedSwitcher, 'view-switcher')}>
           <li
             class={clsx({
               ['view-switcher__item--selected']: !searchParams?.by || searchParams?.by === 'shouts'

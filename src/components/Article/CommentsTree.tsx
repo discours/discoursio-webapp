@@ -107,7 +107,7 @@ export const CommentsTree = (props: Props) => {
         </Show>
       </h2>
       <Show when={comments().length > 0}>
-        <ul class={clsx(styles.commentsViewSwitcher, 'view-switcher')}>
+        <ul class={clsx(styles.commentsFeedSwitcher, 'view-switcher')}>
           <Show when={newReactions().length > 0}>
             <li classList={{ 'view-switcher__item--selected': onlyNew() }}>
               <Button variant="light" value={t('New only')} onClick={() => setOnlyNew(!onlyNew())} />

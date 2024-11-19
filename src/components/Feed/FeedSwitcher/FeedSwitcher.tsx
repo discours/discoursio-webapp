@@ -1,6 +1,7 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show, createEffect, createMemo, createSignal } from 'solid-js'
+import { orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { capitalize } from '~/utils/capitalize'
 
@@ -8,7 +9,7 @@ import styles from './FeedSwitcher.module.scss'
 
 type ViewOption = string | { value: string; title: string }
 
-type ViewSwitcherProps = {
+type FeedSwitcherProps = {
   class?: string
   options: ViewOption[]
   prefix: string
@@ -20,10 +21,12 @@ type ViewSwitcherProps = {
 
 const getOptionValue = (option: ViewOption) => (typeof option === 'string' ? option : option.value)
 const FIRST_SLASH_REGEX = /^\//
-export const ViewSwitcher = (props: ViewSwitcherProps) => {
+
+export const FeedSwitcher = (props: FeedSwitcherProps) => {
   const loc = useLocation()
   const { t } = useLocalize()
   const navigate = useNavigate()
+  const { updateOptions } = useFeed()
   const [currentOption, setCurrentOption] = createSignal('recent')
 
   createEffect(() => {
@@ -41,12 +44,17 @@ export const ViewSwitcher = (props: ViewSwitcherProps) => {
       : idx()
         ? `/${value}`
         : '/'
-    // console.log('[FeedSwitcher] handleClick', { value, path })
+
+    updateOptions({
+      offset: 0,
+      order_by: orderByMode(value)
+    })
+
     navigate(path)
   }
 
   return (
-    <ul class={clsx(styles.viewSwitcher, styles.feedFilter, props.class)}>
+    <ul class={clsx(styles.feedSwitcher, styles.feedFilter, props.class)}>
       <For each={props.options}>
         {(option: ViewOption, idx) => {
           const isSelected = createMemo(() => {

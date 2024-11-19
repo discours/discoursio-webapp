@@ -17,7 +17,7 @@ import { Newsletter } from '../_shared/Newsletter'
 import { HeaderAuth } from './HeaderAuth'
 import { TopicsNav } from './TopicsNav'
 
-import stylesViewSwitcher from '../Feed/FeedSwitcher/FeedSwitcher.module.scss'
+import stylesFeedSwitcher from '../Feed/FeedSwitcher/FeedSwitcher.module.scss'
 import styles from './Header.module.scss'
 
 type Props = {
@@ -196,7 +196,7 @@ export const Header = (props: Props) => {
 
               <div class={styles.mainNavigationMobile}>
                 <h4>{t('Participating')}</h4>
-                <ul class={stylesViewSwitcher.viewSwitcher}>
+                <ul class={stylesFeedSwitcher.feedSwitcher}>
                   <li>
                     <A href="/edit/new">{t('Create post')}</A>
                   </li>
@@ -209,7 +209,7 @@ export const Header = (props: Props) => {
                 </ul>
 
                 <h4>{t('Subscribe us')}</h4>
-                <ul class={stylesViewSwitcher.viewSwitcher}>
+                <ul class={stylesFeedSwitcher.feedSwitcher}>
                   <li class={styles.mainNavigationSocial}>
                     <a href="https://www.instagram.com/discoursio/">
                       <Icon name="user-link-instagram" class={styles.icon} />

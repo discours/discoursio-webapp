@@ -86,6 +86,9 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     filters: {}
   })
 
+  // Добавляем сигнал для отслеживания последнего запроса
+  const [currentRequestId, setCurrentRequestId] = createSignal<number>(0)
+
   // Добавляем эффект для автоматической загрузки при изменении options
   createEffect(
     on(
@@ -103,54 +106,84 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     )
   )
 
+  // Добавляем отслеживание изменения mode
+  createEffect(() => {
+    const currentMode = params.mode || 'recent'
+    // При изменении режима сбрасываем ленту и загружаем заново
+    updateOptions({
+      offset: 0, // Сбрасываем пагинацию
+      order_by: orderByMode(currentMode), // Обновляем сортировку
+      filters: {} // Сбрасываем фильтры если нужно
+    })
+  })
+
   // Обновляем updateOptions для более надежной работы
   const updateOptions = (newOptions: Partial<LoadShoutsOptions>) => {
     setOptions((prev) => {
       const updated = { ...prev, ...newOptions }
-      // Если сбрасываем offset, то очищаем текущий feed
-      if (newOptions.offset === 0) {
+      // Если сбрасываем offset или меняется режим сортировки, очищаем текущий feed
+      if (newOptions.offset === 0 || newOptions.order_by !== prev.order_by) {
         setFeed([])
       }
       return updated
     })
   }
 
-  // Загрузка ленты с учетом сортировки
+  // Обновляем loadFeed для защиты от race condition
   const loadFeed = async (opts?: Partial<LoadShoutsOptions>) => {
     const currentOptions = { ...options(), ...opts }
     const currentMode = params.mode || 'recent'
 
+    // Генерируем уникальный ID для этого запроса
+    const requestId = Date.now()
+    setCurrentRequestId(requestId)
+
     setIsFeedLoading(true)
     try {
-      let result: Shout[] = []
+      let result: { hasMore: boolean; newShouts: Shout[] }
 
       switch (currentMode) {
         case 'followed': {
           const followedResult = await loadFollowed(currentOptions)
-          result = followedResult.newShouts
-          return { hasMore: followedResult.hasMore, newShouts: result }
+          // Проверяем, не устарел ли запрос
+          if (requestId !== currentRequestId()) return { hasMore: false, newShouts: [] }
+          result = followedResult
+          break
         }
         case 'discussed': {
           currentOptions.order_by = ShoutsOrderBy.LastReactedAt
           const discussedResult = await loadDiscussed(currentOptions)
-          result = discussedResult.newShouts
-          return { hasMore: discussedResult.hasMore, newShouts: result }
+          if (requestId !== currentRequestId()) return { hasMore: false, newShouts: [] }
+          result = discussedResult
+          break
         }
         case 'coauthored': {
           const coauthoredResult = await loadCoauthored(currentOptions)
-          result = coauthoredResult.newShouts
-          return { hasMore: coauthoredResult.hasMore, newShouts: result }
+          if (requestId !== currentRequestId()) return { hasMore: false, newShouts: [] }
+          result = coauthoredResult
+          break
         }
         default: {
-          // Для остальных режимов используем обычную загрузку
           const fetcher = loadShouts({ options: currentOptions })
-          result = (await fetcher()) || []
-          const hasMore = result.length >= (currentOptions.limit || FEED_PAGE_SIZE)
-          return { hasMore, newShouts: result }
+          const shouts = await fetcher()
+          if (requestId !== currentRequestId()) return { hasMore: false, newShouts: [] }
+          result = {
+            hasMore: (shouts || []).length >= (currentOptions.limit || FEED_PAGE_SIZE),
+            newShouts: shouts || []
+          }
         }
       }
+
+      // Обновляем ленту только если запрос все еще актуален
+      if (requestId === currentRequestId()) {
+        return result
+      }
+      return { hasMore: false, newShouts: [] }
     } finally {
-      setIsFeedLoading(false)
+      // Сбрасываем loading только если это последний запрос
+      if (requestId === currentRequestId()) {
+        setIsFeedLoading(false)
+      }
     }
   }
 

@@ -55,7 +55,15 @@ export const Comment = (props: Props) => {
       (props.comment?.created_by?.slug === author()?.slug || session()?.user?.roles?.includes('editor'))
   )
 
-  const body = createMemo(() => (editedBody() ? editedBody()?.trim() : props.comment.body?.trim() || ''))
+  const body = createMemo(() => {
+    const content = editedBody() ? editedBody()?.trim() : props.comment.body?.trim() || ''
+    console.log('[Comment] body memo recalculated:', {
+      editedBody: editedBody(),
+      commentBody: props.comment.body,
+      result: content
+    })
+    return content
+  })
 
   const handleDelete = async () => {
     if (props.comment?.id) {
@@ -119,6 +127,7 @@ export const Comment = (props: Props) => {
   }
 
   const handleUpdate = async (value: string) => {
+    console.log('[handleUpdate] starting with value:', value)
     setLoading(true)
     saveScrollPosition()
     try {
@@ -131,9 +140,13 @@ export const Comment = (props: Props) => {
         }
       } as MutationUpdate_ReactionArgs)
 
+      console.log('[handleUpdate] got response:', reaction)
+
       if (reaction) {
         setEditedBody(value)
+        console.log('[handleUpdate] setEditedBody called with:', value)
         setEditMode(false)
+        console.log('[handleUpdate] setEditMode called with false')
       }
     } catch (error) {
       console.error('[handleUpdate reaction]:', error)

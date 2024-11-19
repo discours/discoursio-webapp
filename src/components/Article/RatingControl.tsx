@@ -70,7 +70,7 @@ export const RatingControl = (props: Props) => {
       () => props.myRate,
       (myRate) => {
         if (myRate !== undefined) {
-          console.log('[RatingControl] myRate', myRate)
+          // console.log('[RatingControl] myRate', myRate)
           setCurrentRate(myRate as ReactionKind)
         }
       },

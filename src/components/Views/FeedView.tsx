@@ -18,7 +18,7 @@ import { getShareUrl } from '../Article/SharePopup'
 import { AuthorLink } from '../Author/AuthorLink'
 import { ArticleCard } from '../Feed/ArticleCard'
 import { FeedFilters } from '../Feed/FeedFilters'
-import { ViewSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
+import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 import { Placeholder } from '../Feed/Placeholder'
 import { Sidebar } from '../Feed/Sidebar'
 import { Modal } from '../_shared/Modal'
@@ -36,7 +36,7 @@ export const FeedView = (props: FeedProps) => {
   const loc = useLocation()
   const { showModal } = useUI()
   const { session, client } = useSession()
-  const { feed, isFeedLoading, setMyRates } = useFeed()
+  const { feed, isFeedLoading, setMyRates, loadFeed, options } = useFeed()
 
   // Состояние для хранения данных для шаринга
   const [shareData, setShareData] = createSignal<Shout | undefined>()
@@ -44,6 +44,25 @@ export const FeedView = (props: FeedProps) => {
     showModal('share')
     setShareData(shared)
   }
+
+  // Добавляем эффект для отслеживания изменений пути и опций
+  createEffect(
+    on(
+      [() => loc.pathname, options],
+      async ([path, currentOptions]) => {
+        console.log('[FeedView] Path or options changed:', { path, currentOptions })
+        if (!isFeedLoading()) {
+          try {
+            const result = await loadFeed(currentOptions)
+            console.log('[FeedView] Feed loaded:', result)
+          } catch (error) {
+            console.error('[FeedView] Error loading feed:', error)
+          }
+        }
+      },
+      { defer: true }
+    )
+  )
 
   // Загружаем оценки статей
   createEffect(
@@ -201,40 +220,39 @@ export const FeedView = (props: FeedProps) => {
 
   return (
     <Suspense fallback={<Loading />}>
-      <Show when={props.shouts} fallback={<Loading />}>
+      <Show when={feed()} fallback={<Loading />}>
         <div class="wide-container">
           <div class={clsx('row')}>
             {/* Sidebar с Suspense */}
-            <Suspense fallback={<Loading />}>
+            <Suspense fallback={<Loading size="small" />}>
               <div class={clsx('col-md-5 col-xl-4', styles.feedNavigation)}>
                 <Sidebar />
               </div>
             </Suspense>
 
-            {/* Основной контент - исправляем структуру и классы */}
+            {/* Основной контент */}
             <div class="col-md-12 col-xl-7 offset-xl-1">
               <Show
                 when={session() || loc.pathname.includes('feed')}
                 fallback={<Placeholder type={loc.pathname} mode="feed" />}
               >
                 <div class={styles.filtersContainer}>
-                  <ViewSwitcher options={['recent', 'top', 'hot']} prefix={'/feed'} />
+                  <FeedSwitcher
+                    options={['recent', 'top', 'hot']}
+                    prefix={'/feed'}
+                    isLoading={isFeedLoading()}
+                  />
                   <FeedFilters />
                 </div>
 
                 <Show when={!isFeedLoading()} fallback={<Loading />}>
-                  <Show
-                    when={feed()?.length > 0}
-                    fallback={<div class={styles.noContent}>{t('No articles found')}</div>}
-                  >
-                    <div class={styles.feedContent}>
-                      <div class={styles.feedPage}>
-                        <div class={styles.mainArticles}>
-                          <ArticlesList articles={props.shouts} />
-                        </div>
+                  <div class={styles.feedContent}>
+                    <div class={styles.feedPage}>
+                      <div class={styles.mainArticles}>
+                        <ArticlesList articles={feed()} />
                       </div>
                     </div>
-                  </Show>
+                  </div>
                 </Show>
               </Show>
             </div>

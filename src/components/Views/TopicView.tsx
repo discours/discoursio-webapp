@@ -20,7 +20,7 @@ import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 
 import styles from '~/styles/views/Topic.module.scss'
 import { FeedFilters } from '../Feed/FeedFilters'
-import { ViewSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
+import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 
 interface Props {
   topic: Topic
@@ -180,10 +180,10 @@ export const TopicView = (props: Props) => {
           <div class={clsx(styles.groupControls, 'row')}>
             <div class="col-md-12">
               <div class={styles.filtersRow}>
-                <ViewSwitcher
+                <FeedSwitcher
                   options={['recent', 'top', 'hot']}
                   prefix={`/topic/${props.topicSlug}`}
-                  class={styles.viewSwitcher}
+                  class={styles.feedSwitcher}
                 />
                 <FeedFilters />
               </div>
