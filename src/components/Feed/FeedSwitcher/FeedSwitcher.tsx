@@ -1,7 +1,6 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createMemo, on } from 'solid-js'
-import { orderByMode, useFeed } from '~/context/feed'
+import { For, Show, createEffect, createMemo, createSignal } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { capitalize } from '~/utils/capitalize'
 
@@ -25,42 +24,25 @@ export const ViewSwitcher = (props: ViewSwitcherProps) => {
   const loc = useLocation()
   const { t } = useLocalize()
   const navigate = useNavigate()
-  const { updateOptions } = useFeed()
+  const [currentOption, setCurrentOption] = createSignal('recent')
 
-  const activeOption = createMemo(() => {
+  createEffect(() => {
     const currentPath = loc.pathname.replace(props.prefix, '').replace(FIRST_SLASH_REGEX, '')
-    return currentPath || 'recent'
+    setCurrentOption(currentPath || 'recent')
   })
-
-  createEffect(
-    on(activeOption, (mode) => {
-      updateOptions({
-        order_by: orderByMode(mode),
-        offset: 0
-      })
-    })
-  )
 
   const handleClick = (ev: MouseEvent, option: ViewOption, idx: () => number) => {
     ev?.preventDefault()
-
+    const value = getOptionValue(option)
     const path = props.prefix
       ? idx()
-        ? `${props.prefix}/${getOptionValue(option)}`
+        ? `${props.prefix}/${value}`
         : props.prefix
       : idx()
-        ? `/${getOptionValue(option)}`
+        ? `/${value}`
         : '/'
-
-    if (path === loc.pathname) {
-      const mode = getOptionValue(option) || 'recent'
-      updateOptions({
-        order_by: orderByMode(mode),
-        offset: 0
-      })
-    } else {
-      navigate(path)
-    }
+    // console.log('[FeedSwitcher] handleClick', { value, path })
+    navigate(path)
   }
 
   return (
@@ -69,7 +51,7 @@ export const ViewSwitcher = (props: ViewSwitcherProps) => {
         {(option: ViewOption, idx) => {
           const isSelected = createMemo(() => {
             const optionValue = getOptionValue(option)
-            return optionValue ? activeOption() === optionValue : activeOption() === 'recent'
+            return optionValue ? currentOption() === optionValue : currentOption() === 'recent'
           })
 
           return (
