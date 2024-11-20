@@ -1,7 +1,8 @@
 import { type Author, FollowingEntity, type Topic } from '~/graphql/schema/core.gen'
 
+import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, on } from 'solid-js'
+import { For, Show, createEffect, createSignal, on } from 'solid-js'
 
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
@@ -9,6 +10,10 @@ import { capitalize } from '~/utils/capitalize'
 import { FollowingButton } from '../_shared/FollowingButton'
 import { FollowingCounters } from '../_shared/FollowingCounters/FollowingCounters'
 import { Icon } from '../_shared/Icon'
+
+import { AuthorBadge } from '~/components/Author/AuthorBadge'
+import { useUI } from '~/context/ui'
+import { Modal } from '../_shared/Modal'
 
 import styles from './Full.module.scss'
 
@@ -23,6 +28,39 @@ export const FullTopic = (props: Props) => {
   const { follows } = useFollowing()
   const [followed, setFollowed] = createSignal()
   const [title, setTitle] = createSignal('')
+  const { hideModal } = useUI()
+
+  const FollowersModalView = () => (
+    <>
+      <h2>{t('Followers')}</h2>
+      <div class="row">
+        <div class="col-24">
+          <For each={props.followers}>
+            {(follower: Author) => <AuthorBadge author={follower} onClick={() => hideModal()} />}
+          </For>
+        </div>
+      </div>
+    </>
+  )
+
+  const FollowingModalView = () => (
+    <>
+      <h2>{t('Authors')}</h2>
+      <div class="row">
+        <div class="col-24">
+          <For each={props.authors}>
+            {(subscription) => (
+              <AuthorBadge
+                author={subscription as Author}
+                subscriptionsMode={true}
+                onClick={() => hideModal()}
+              />
+            )}
+          </For>
+        </div>
+      </div>
+    </>
+  )
 
   createEffect(
     on(
@@ -70,6 +108,18 @@ export const FullTopic = (props: Props) => {
         />
       </div>
 
+      <Show when={props.followers}>
+        <Modal variant="medium" isResponsive={true} name="followers" maxHeight>
+          <FollowersModalView />
+        </Modal>
+      </Show>
+
+      <Show when={props.authors}>
+        <Modal variant="medium" isResponsive={true} name="following" maxHeight>
+          <FollowingModalView />
+        </Modal>
+      </Show>
+
       <div class={clsx(styles.topicActions)}>
         <FollowingButton
           entity={FollowingEntity.Topic}
@@ -77,9 +127,9 @@ export const FullTopic = (props: Props) => {
           isFollowed={Boolean(followed())}
           class={styles.followControl}
         />
-        <a class={styles.writeControl} href={`/edit/new/?topicId=${props.topic?.id}`}>
+        <A class={styles.writeControl} href={`/edit/new/?topicId=${props.topic?.id}`}>
           {t('Write about the topic')}
-        </a>
+        </A>
       </div>
       <Show when={props.topic?.pic}>
         <img src={props.topic?.pic || ''} alt={props.topic?.title || ''} />
