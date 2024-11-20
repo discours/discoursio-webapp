@@ -1,12 +1,12 @@
 import { RouteDefinition, type RouteSectionProps } from '@solidjs/router'
 import { Show, createEffect, createSignal, on } from 'solid-js'
 import { AllAuthorsView } from '~/components/Views/AllAuthorsView'
+import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { useLocalize } from '~/context/localize'
 import { loadAuthors, loadAuthorsAll } from '~/graphql/api/public'
 import { Author, AuthorsBy } from '~/graphql/schema/core.gen'
-import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 
 const AUTHORS_PER_PAGE = 20
@@ -27,8 +27,8 @@ export const route = {
     const authorsAllFetcher = loadAuthorsAll()
     const data = {
       authors: isAll && (await authorsAllFetcher()),
-      authorsByFollowers: (await fetchAuthorsWithStat(0 , 'followers', 20)) || [],
-      authorsByShouts: (await fetchAuthorsWithStat(0 , 'shouts', 20)) || []
+      authorsByFollowers: (await fetchAuthorsWithStat(0, 'followers', 20)) || [],
+      authorsByShouts: (await fetchAuthorsWithStat(0, 'shouts', 20)) || []
     }
     return data as AllAuthorsData
   }
@@ -44,9 +44,8 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
   const [isLoading, setIsLoading] = createSignal(false)
   const [loadMoreVisible, setLoadMoreVisible] = createSignal(false)
 
-
   // Function to load more authors
-  const loadMore = async ( offset: number ) => {
+  const loadMore = async (offset: number) => {
     saveScrollPosition()
     const limit = AUTHORS_PER_PAGE
     try {
@@ -54,10 +53,17 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
         authorsByFollowers: (await fetchAuthorsWithStat(offset, 'followers', limit)) || [],
         authorsByShouts: (await fetchAuthorsWithStat(offset, 'shouts', limit)) || []
       }
-      setLoadMoreVisible(Boolean(result?.authorsByFollowers.length) && Boolean(result?.authorsByShouts.length))
+      setLoadMoreVisible(
+        Boolean(result?.authorsByFollowers.length) && Boolean(result?.authorsByShouts.length)
+      )
 
-      if (offset != 0 && result.authorsByFollowers && Array.isArray(result.authorsByFollowers) && result.authorsByShouts && Array.isArray(result.authorsByShouts))
-      {
+      if (
+        offset !== 0 &&
+        result.authorsByFollowers &&
+        Array.isArray(result.authorsByFollowers) &&
+        result.authorsByShouts &&
+        Array.isArray(result.authorsByShouts)
+      ) {
         setAuthorsByFollowers((prev) => [...prev, ...result.authorsByFollowers])
         setAuthorsByShouts((prev) => [...prev, ...result.authorsByShouts])
       }
@@ -68,8 +74,7 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
       console.log('Error loading more shouts', error)
       return []
     }
-  } 
-
+  }
 
   // Effect to fetch authors data when the layout changes
   createEffect(
@@ -117,7 +122,7 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
               authorsByShouts={authorsByShouts() || []}
             />
           </LoadMoreWrapper>
-         </Show>
+        </Show>
       </Show>
     </PageLayout>
   )
