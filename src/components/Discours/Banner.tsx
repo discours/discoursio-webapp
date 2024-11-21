@@ -17,8 +17,8 @@ export default () => {
             <h3>{t('Discours exists because of our common effort')}</h3>
             <p>
               <a href="/support">{t('Support us')}</a>
-              <a href="/edit/new">{t('Become an author')}</a>
-              <a href={''} onClick={() => showModal('auth')}>
+              <a href="/edit/new?m=auth&mode=signup">{t('Become an author')}</a>
+              <a href={'/?m=auth&mode=signup'} onClick={() => showModal('auth')}>
                 {t('Join the community')}
               </a>
             </p>

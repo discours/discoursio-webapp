@@ -9,12 +9,14 @@ import { Icon } from '../_shared/Icon'
 import { Popup } from '../_shared/Popup'
 import { RATINGS_PER_PAGE, VotersList } from './VotersList'
 
+import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
 import styles from './RatingControl.module.scss'
 
 interface Props {
   shout?: Shout
   comment?: Reaction
   class?: string
+  myRate: ReactionKind | undefined
 }
 
 export const RatingControl = (props: Props) => {
@@ -25,19 +27,17 @@ export const RatingControl = (props: Props) => {
   const [total, setTotal] = createSignal(
     props.comment ? props.comment.stat?.rating || 0 : props.shout?.stat?.rating || 0
   )
-  const [currentRate, setCurrentRate] = createSignal<ReactionKind | undefined>()
+  const [currentRate, setCurrentRate] = createSignal<ReactionKind | undefined>(props.myRate)
   const [votersListVisible, setVotersListVisible] = createSignal(false)
   const [initialLoadDone, setInitialLoadDone] = createSignal(false)
-  const toggleVotersList = (visible: boolean) => {
-    // console.log('[RatingControl] voters list visibility changed to', visible)
-    setVotersListVisible(visible)
-  }
 
   const commentRatingFilter = (r: Reaction) =>
     (r.kind === ReactionKind.Like || r.kind === ReactionKind.Dislike) && r.reply_to === props.comment?.id
   const shoutRatingFilter = (r: Reaction) =>
     (r.kind === ReactionKind.Like || r.kind === ReactionKind.Dislike) && !r.reply_to
   const mineFilter = (r: Reaction) => r.created_by.slug === session()?.user?.app_data?.profile?.slug
+
+  createEffect(on(() => props.myRate, setCurrentRate))
 
   createEffect(
     on(
@@ -67,7 +67,7 @@ export const RatingControl = (props: Props) => {
   const handleRatingChange = async (isUpvote: boolean) => {
     if (ratings().length === 0) await loadRatings()
     const kind = isUpvote ? ReactionKind.Like : ReactionKind.Dislike
-    requireAuthentication(async () => {
+    await requireAuthentication(async () => {
       if (!(props.shout || props.comment)) return
       const storedTotal = total()
       const storedRate = currentRate()
@@ -156,7 +156,7 @@ export const RatingControl = (props: Props) => {
     if (votersListVisible()) return
 
     await loadRatings()
-    toggleVotersList(true)
+    setVotersListVisible(true)
   }
 
   // Обработчик закрытия попапа
@@ -164,7 +164,7 @@ export const RatingControl = (props: Props) => {
     if (!visible) {
       setInitialLoadDone(false)
     }
-    toggleVotersList(visible)
+    setVotersListVisible(visible)
   }
 
   const Trigger = () => (
@@ -180,6 +180,15 @@ export const RatingControl = (props: Props) => {
   )
 
   const { t } = useLocalize()
+
+  const loadMoreRatings = async () => {
+    const moreRatings = await loadReactionsBy({
+      by: { shout: props.shout?.slug },
+      offset: ratings().length,
+      limit: RATINGS_PER_PAGE
+    })
+    return moreRatings as LoadMoreItems
+  }
 
   return (
     <div class={clsx(props.comment ? styles.commentRating : styles.shoutRating, props.class)}>
@@ -209,7 +218,13 @@ export const RatingControl = (props: Props) => {
               </>
             }
           >
-            <VotersList reactions={ratings()} visible={votersListVisible()} />
+            <LoadMoreWrapper
+              loadFunction={loadMoreRatings}
+              loadMoreText={'...'}
+              pageSize={RATINGS_PER_PAGE}
+            >
+              <VotersList reactions={ratings()} visible={votersListVisible()} />
+            </LoadMoreWrapper>
           </Show>
         </div>
       </Popup>

@@ -7,7 +7,7 @@ import { Image } from '~/components/_shared/Image'
 import { Popover } from '~/components/_shared/Popover'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import type { Author, Maybe, Shout } from '~/graphql/schema/core.gen'
+import type { Author, Maybe, ReactionKind, Shout } from '~/graphql/schema/core.gen'
 import { capitalize } from '~/utils/capitalize'
 import { descFromBody } from '~/utils/meta'
 import { CoverImage } from '../../Article/CoverImage'
@@ -16,7 +16,6 @@ import { AuthorLink } from '../../Author/AuthorLink'
 import { CardTopic } from '../CardTopic'
 import { FeedArticlePopup } from '../FeedArticlePopup'
 
-import { useFeed } from '~/context/feed'
 import stylesHeader from '../../HeaderNav/Header.module.scss'
 import styles from './ArticleCard.module.scss'
 
@@ -49,6 +48,8 @@ export type ArticleCardProps = {
   article: Shout
   onShare?: (article: Shout) => void
   onInvite?: () => void
+  myRate?: ReactionKind | undefined
+  isBookmarked?: boolean
 }
 
 const desktopCoverImageWidths: Record<string, number> = {
@@ -97,7 +98,6 @@ const LAYOUT_ASPECT: { [key: string]: string } = {
 export const ArticleCard = (props: ArticleCardProps) => {
   const { t, formatDate } = useLocalize()
   const { session } = useSession()
-  const { myRates } = useFeed()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
   const [isActionPopupActive, setIsActionPopupActive] = createSignal(false)
   const [isCoverImageLoadError, setIsCoverImageLoadError] = createSignal(false)
@@ -288,8 +288,8 @@ export const ArticleCard = (props: ArticleCardProps) => {
             <div class={styles.shoutCardDetailsContent}>
               <RatingControl
                 shout={props.article}
-                myRate={myRates()[props.article.id]}
                 class={styles.shoutCardDetailsItem}
+                myRate={props.myRate}
               />
 
               <div class={clsx(styles.shoutCardDetailsItem, styles.shoutCardComments)}>

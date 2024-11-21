@@ -230,7 +230,7 @@ export const Comment = (props: Props) => {
                 </div>
               </Show>
               <CommentDate showOnHover={true} comment={props.comment} isShort={true} />
-              <RatingControl comment={props.comment} />
+              <RatingControl comment={props.comment} myRate={commentsMyrates()[props.comment.id]} />
             </div>
           </Show>
           <div class={styles.commentBody}>

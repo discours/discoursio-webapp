@@ -1,6 +1,6 @@
 import { A, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, Suspense, createEffect, createMemo, createSignal } from 'solid-js'
+import { For, Show, Suspense, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
 import { ShareModal } from '~/components/_shared/ShareModal'
@@ -9,7 +9,8 @@ import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { ModalType, useUI } from '~/context/ui'
-import { Author, Shout } from '~/graphql/schema/core.gen'
+import { loadShoutsMyRates } from '~/graphql/api/private'
+import { Author, ReactionKind, Shout } from '~/graphql/schema/core.gen'
 import { Reaction } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { CommentDate } from '../Article/CommentDate'
@@ -31,16 +32,10 @@ export interface FeedProps {
 }
 
 export const FeedView = (props: FeedProps) => {
-  console.log('[FeedView] Render started with props:', {
-    shoutsCount: props.shouts?.length,
-    unratedCount: props.unratedShouts?.length,
-    commentsCount: props.recentComments?.length
-  })
-
   const { t } = useLocalize()
   const loc = useLocation()
   const { showModal } = useUI()
-  const { session } = useSession()
+  const { session, client } = useSession()
   const { isFeedLoading, feedByMode } = useFeed()
 
   // Мемоизируем sortedFeed для оптимизации производительности
@@ -54,6 +49,50 @@ export const FeedView = (props: FeedProps) => {
     })
     return result
   })
+
+  const [myRates, setMyRates] = createSignal<Record<string, ReactionKind | undefined>>({})
+  // загрузка myRates при изменении фида или авторизации
+  createEffect(
+    on(
+      [sortedFeed, client],
+      async ([shouts, authorizedClient]) => {
+        console.log('[FeedPage] Loading rates effect triggered:', {
+          hasShouts: !!shouts?.length,
+          hasClient: !!authorizedClient
+        })
+
+        if (!(shouts?.length && authorizedClient)) return
+
+        try {
+          const myRates = await loadShoutsMyRates(
+            shouts.map((s) => s.id),
+            authorizedClient
+          )()
+
+          console.log('[FeedPage] Rates loaded:', {
+            ratesCount: myRates?.length
+          })
+
+          if (Array.isArray(myRates)) {
+            const ratesMap = myRates.reduce(
+              (acc, row) => {
+                if (row?.my_rate && row?.shout_id) {
+                  acc[row.shout_id] = row.my_rate
+                }
+                return acc
+              },
+              {} as Record<string, number>
+            )
+
+            setMyRates(ratesMap)
+          }
+        } catch (error) {
+          console.error('[FeedPage] Error loading rates:', error)
+        }
+      },
+      { defer: true }
+    )
+  )
 
   const [shareData, setShareData] = createSignal<Shout>()
 
@@ -147,6 +186,7 @@ export const FeedView = (props: FeedProps) => {
                 desktopCoverSize="M"
                 onShare={handleShare}
                 onInvite={() => showModal('inviteCoauthors' as ModalType)}
+                myRate={myRates()[article.id]}
               />
             </>
           )}

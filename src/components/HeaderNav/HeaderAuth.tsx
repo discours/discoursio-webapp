@@ -1,4 +1,4 @@
-import { A, useLocation } from '@solidjs/router'
+import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
 import { useEditorContext } from '~/context/editor'
@@ -14,6 +14,7 @@ import { Icon } from '../_shared/Icon'
 import { Popover } from '../_shared/Popover'
 import { Popup } from '../_shared/Popup'
 import { ShowOnlyOnClient } from '../_shared/ShowOnlyOnClient'
+
 import styles from './Header.module.scss'
 
 type Props = {
@@ -98,6 +99,16 @@ export const HeaderAuth = (props: Props) => {
   }
   const matchInbox = createMemo(() => loc.pathname.endsWith('inbox'))
   const matchProfile = createMemo(() => loc.pathname.endsWith(author()?.slug))
+  const navigate = useNavigate()
+  const handleCreatePostClick = (event: Event) => {
+    event.preventDefault()
+    if (!session()?.access_token) {
+      showModal('auth')
+      return
+    }
+
+    navigate('/edit/new')
+  }
   return (
     <ShowOnlyOnClient>
       <Show when={isSessionLoaded()} keyed={true}>
@@ -111,7 +122,7 @@ export const HeaderAuth = (props: Props) => {
                   styles.userControlItemCreate
                 )}
               >
-                <A href={'/edit/new'}>
+                <A href="/edit/new">
                   <span class={styles.textLabel}>{t('Create post')}</span>
                   <Icon name="pencil-outline" class={styles.icon} />
                   <Icon name="pencil-outline-hover" class={clsx(styles.icon, styles.iconHover)} />
@@ -121,10 +132,10 @@ export const HeaderAuth = (props: Props) => {
 
             <Show when={!isSaveButtonVisible()}>
               <div class={clsx(styles.userControlItem, styles.userControlItemSearch)}>
-                <a href="?m=search">
+                <A href="?m=search">
                   <Icon name="search" class={styles.icon} />
                   <Icon name="search" class={clsx(styles.icon, styles.iconHover)} />
-                </a>
+                </A>
               </div>
             </Show>
 
@@ -224,11 +235,11 @@ export const HeaderAuth = (props: Props) => {
                   styles.userControlItemCreate
                 )}
               >
-                <A href={'/edit/new'}>
+                <button onClick={handleCreatePostClick}>
                   <span class={styles.textLabel}>{t('Create post')}</span>
                   <Icon name="pencil-outline" class={styles.icon} />
                   <Icon name="pencil-outline-hover" class={clsx(styles.icon, styles.iconHover)} />
-                </A>
+                </button>
               </div>
             </Show>
 
@@ -237,11 +248,11 @@ export const HeaderAuth = (props: Props) => {
               fallback={
                 <Show when={!session()?.access_token}>
                   <div class={clsx(styles.userControlItem, styles.userControlItemVerbose, 'loginbtn')}>
-                    <a href="?m=auth&mode=login">
+                    <A href="?m=auth&mode=login">
                       <span class={styles.textLabel}>{t('Enter')}</span>
                       <Icon name="key" class={styles.icon} />
                       <Icon name="key" class={clsx(styles.icon, styles.iconHover)} />
-                    </a>
+                    </A>
                   </div>
                 </Show>
               }

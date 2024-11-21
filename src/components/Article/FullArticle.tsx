@@ -80,7 +80,7 @@ const VOTES_PER_PAGE = 50
 export const FullArticle = (props: Props) => {
   const [searchParams] = useSearchParams<ArticlePageSearchParams>()
   const { showModal } = useUI()
-  const { loadReactionsBy } = useReactions()
+  const { loadReactionsBy, reactionsByShout } = useReactions()
   const [selectedImage, setSelectedImage] = createSignal('')
   const [isReactionsLoaded, setIsReactionsLoaded] = createSignal(false)
   const [isActionPopupActive, setIsActionPopupActive] = createSignal(false)
@@ -335,10 +335,16 @@ export const FullArticle = (props: Props) => {
   const getAuthorName = (a: Author) =>
     lang() === 'en' && isCyrillic(a.name || '') ? capitalize(a.slug.replaceAll('-', ' ')) : a.name
 
+  const myRate = createMemo(
+    () =>
+      reactionsByShout()[props.article.id || 0]?.find(
+        (r) => r.created_by.slug === session()?.user?.app_data?.profile?.slug
+      )?.kind
+  )
   const ArticleActionsBar = () => (
     <div class={styles.shoutStats}>
       <div class={styles.shoutStatsItem}>
-        <RatingControl shout={props.article} class={styles.ratingControl} />
+        <RatingControl shout={props.article} class={styles.ratingControl} myRate={myRate()} />
       </div>
 
       <Popover content={t('Comment')} disabled={isActionPopupActive()}>

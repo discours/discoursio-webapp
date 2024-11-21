@@ -9,8 +9,6 @@ import { PageLayout } from '~/components/_shared/PageLayout'
 import { FEED_PAGE_SIZE, FeedMode, FeedName, orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { ReactionsProvider } from '~/context/reactions'
-import { useSession } from '~/context/session'
-import { loadShoutsMyRates } from '~/graphql/api/private'
 import { loadReactions, loadShouts, loadUnratedShouts } from '~/graphql/api/public'
 import { LoadShoutsFilters, Reaction, ReactionKind, ReactionSort, Shout } from '~/graphql/schema/core.gen'
 import { PeriodType, getFromDate } from '~/lib/fromPeriod'
@@ -19,6 +17,7 @@ export interface RouteData {
   shouts: Shout[]
   recentComments: Reaction[]
   unratedShouts: Shout[]
+  myRates: Record<string, ReactionKind | undefined>
 }
 
 export const route = {
@@ -70,8 +69,7 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
   console.log('[FeedPage] Component render started with props:', props)
 
   const { t } = useLocalize()
-  const { mode, initializeFeed, options, isFeedLoading, addShoutsToFeed, setMyRates } = useFeed()
-  const { client } = useSession()
+  const { mode, initializeFeed, options, isFeedLoading, addShoutsToFeed } = useFeed()
   const [recentComments, setRecentComments] = createSignal<Reaction[]>(props.data?.recentComments || [])
   const [unratedShouts, setUnratedShouts] = createSignal<Shout[]>(props.data?.unratedShouts || [])
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.data?.shouts || [])
@@ -144,49 +142,6 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
       order_by: orderByMode(mode())
     }
   }))
-
-  // Восстанавливаем загрузку myRates при изменении фида или авторизации
-  createEffect(
-    on(
-      [sortedFeed, client],
-      async ([shouts, authorizedClient]) => {
-        console.log('[FeedPage] Loading rates effect triggered:', {
-          hasShouts: !!shouts?.length,
-          hasClient: !!authorizedClient
-        })
-
-        if (!(shouts?.length && authorizedClient)) return
-
-        try {
-          const myRates = await loadShoutsMyRates(
-            shouts.map((s) => s.id),
-            authorizedClient
-          )()
-
-          console.log('[FeedPage] Rates loaded:', {
-            ratesCount: myRates?.length
-          })
-
-          if (Array.isArray(myRates)) {
-            const ratesMap = myRates.reduce(
-              (acc, row) => {
-                if (row?.my_rate && row?.shout_id) {
-                  acc[row.shout_id] = row.my_rate
-                }
-                return acc
-              },
-              {} as Record<string, number>
-            )
-
-            setMyRates(ratesMap)
-          }
-        } catch (error) {
-          console.error('[FeedPage] Error loading rates:', error)
-        }
-      },
-      { defer: true }
-    )
-  )
 
   // Функция загрузки дополнительных постов
   const loadMoreShouts = async (offset?: number): Promise<LoadMoreItems> => {

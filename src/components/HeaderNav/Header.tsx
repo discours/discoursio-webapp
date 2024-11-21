@@ -40,7 +40,7 @@ export const Header = (props: Props) => {
   const { t, lang } = useLocalize()
   const loc = useLocation()
   const { modal } = useUI()
-  const { requireAuthentication, session } = useSession()
+  const { session } = useSession()
   const [searchParams, changeSearchParams] = useSearchParams<HeaderSearchParams>()
   const [getIsScrollingBottom, setIsScrollingBottom] = createSignal(false)
   const [getIsScrolled, setIsScrolled] = createSignal(false)
@@ -91,21 +91,6 @@ export const Header = (props: Props) => {
     })
   })
 
-  const handleBookmarkButtonClick = (ev: { preventDefault: () => void }) => {
-    requireAuthentication(() => {
-      // TODO: implement bookmark clicked
-      ev.preventDefault()
-    }, 'bookmark')
-  }
-
-  const handleCreateButtonClick = (ev?: { preventDefault: () => void }) => {
-    requireAuthentication(() => {
-      ev?.preventDefault()
-
-      redirect('/edit/new')
-    }, 'create')
-  }
-
   const [activeSubmenu, setActiveSubmenu] = createSignal<string | null>(null)
   let hideTimer: number | undefined
 
@@ -124,6 +109,17 @@ export const Header = (props: Props) => {
     }, 200) // 200ms задержка
   }
 
+  const { showModal } = useUI()
+  const handleCreatePostClick = (event: Event) => {
+    event.preventDefault()
+    if (!session()?.access_token) {
+      setFixed(false)
+      showModal('auth')
+      return
+    }
+
+    redirect('/edit/new')
+  }
   return (
     <header
       class={styles.mainHeader}
@@ -198,7 +194,7 @@ export const Header = (props: Props) => {
                 <h4>{t('Participating')}</h4>
                 <ul class={stylesFeedSwitcher.feedSwitcher}>
                   <li>
-                    <A href="/edit/new">{t('Create post')}</A>
+                    <button onClick={handleCreatePostClick}>{t('Create post')}</button>
                   </li>
                   <li>
                     <A href="/connect">{t('Suggest an idea')}</A>
@@ -304,14 +300,14 @@ export const Header = (props: Props) => {
                 <Icon name="comment" class={styles.icon} />
                 <Icon name="comment-hover" class={clsx(styles.icon, styles.iconHover)} />
               </div>
-              <button class={styles.control} onClick={handleCreateButtonClick}>
+              <button class={styles.control} onClick={handleCreatePostClick}>
                 <Icon name="pencil-outline" class={styles.icon} />
                 <Icon name="pencil-outline-hover" class={clsx(styles.icon, styles.iconHover)} />
               </button>
-              <button class={styles.control} onClick={handleBookmarkButtonClick}>
+              <A class={styles.control} href="/feed/bookmarked">
                 <Icon name="bookmark" class={styles.icon} />
                 <Icon name="bookmark-hover" class={clsx(styles.icon, styles.iconHover)} />
-              </button>
+              </A>
             </div>
           </Show>
 

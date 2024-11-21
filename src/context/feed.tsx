@@ -119,8 +119,6 @@ type ControllersMap = {
 }
 
 export const FeedProvider = (props: { children: JSX.Element }) => {
-  console.log('[FeedProvider] Initializing')
-
   const { client } = useSession()
   const loc = useLocation()
   const [isFeedLoading, setIsFeedLoading] = createSignal(false)
@@ -142,9 +140,17 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   const [feedByMode, setFeedByMode] = createSignal<FeedStore>(emptyFeed)
   const mode = createMemo((): FeedMode => {
     const path = loc.pathname
-    const currentMode = path.includes('/feed/') ? path.split('/feed/')[1] || 'recent' : 'recent'
-    console.log('[FeedProvider] Mode computed:', { path, currentMode })
-    return currentMode as FeedMode
+    if (
+      path.startsWith('/feed/') ||
+      path.startsWith('/author/') ||
+      path.startsWith('/@') ||
+      path.startsWith('/topic/')
+    ) {
+      const currentMode = path.includes('/feed/') ? path.split('/feed/')[1] || 'recent' : 'recent'
+      // console.log('[FeedProvider] Mode computed:', { path, currentMode })
+      return currentMode as FeedMode
+    }
+    return 'recent'
   })
 
   const [options, setOptions] = createSignal<LoadShoutsOptions>({ limit: FEED_PAGE_SIZE })
@@ -554,16 +560,6 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     )
     setFeedByAuthor(groupedByAuthor)
   }
-
-  // В FeedProvider добавим логирование инициализации
-  createEffect(() => {
-    console.log('[FeedProvider] Mode effect triggered:', {
-      currentMode: mode(),
-      hasClient: !!client()
-    })
-
-    // ... rest of the effect
-  })
 
   return (
     <FeedContext.Provider
