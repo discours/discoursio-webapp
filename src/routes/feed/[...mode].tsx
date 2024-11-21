@@ -21,7 +21,6 @@ export interface RouteData {
   unratedShouts: Shout[]
 }
 
-// Выносим логику загрузки в отдельную функцию
 export const route = {
   load: async ({ params, location: { query } }: RouteSectionProps) => {
     console.log('[FeedPage] Route load started:', { params, query })
@@ -71,9 +70,9 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
   console.log('[FeedPage] Component render started with props:', props)
 
   const { t } = useLocalize()
-  const { mode, initializeFeed } = useFeed()
-  const { options, isFeedLoading, addShoutsToFeed, setMyRates } = useFeed()
-  const { session, client } = useSession()
+  const { mode, initializeFeed, options, isFeedLoading, addShoutsToFeed, setMyRates } = useFeed()
+  const { client } = useSession()
+  const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.data?.shouts || [])
 
   // Мемоизируем вычисляемые значения
   const currentFeedName = createMemo(() => {
@@ -82,10 +81,24 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
     return name
   })
 
-  // Состояния инициализируем сразу с SSR данными
+  // Состояния для данных
   const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(true)
-  const [recentComments, setRecentComments] = createSignal(props.data?.recentComments || [])
-  const [unratedShouts, setUnratedShouts] = createSignal(props.data?.unratedShouts || [])
+  const [recentComments, setRecentComments] = createSignal<Reaction[]>(props.data?.recentComments || [])
+  const [unratedShouts, setUnratedShouts] = createSignal<Shout[]>(props.data?.unratedShouts || [])
+
+  // Эффект для обновления комментариев и unrated постов
+  createEffect(() => {
+    console.log('[FeedPage] Updating comments and unrated:', {
+      newComments: props.data?.recentComments?.length,
+      newUnrated: props.data?.unratedShouts?.length
+    })
+    if (props.data?.recentComments) {
+      setRecentComments(props.data.recentComments)
+    }
+    if (props.data?.unratedShouts) {
+      setUnratedShouts(props.data.unratedShouts)
+    }
+  })
 
   // Инициализация фида при получении SSR данных
   createEffect(() => {
@@ -109,18 +122,61 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
     }
   }))
 
-  // Загрузка рейтингов для авторизованных пользователей
+  // Добавляем эффект для обновления комментариев и unrated при смене режима
   createEffect(
     on(
-      [() => props.data?.shouts, client],
+      mode,
+      async (currentMode) => {
+        console.log('[FeedPage] Mode changed, updating additional data:', { currentMode })
+        
+        try {
+          const [newComments, newUnrated] = await Promise.all([
+            loadReactions({
+              by: {
+                kinds: [ReactionKind.Comment],
+                sort: ReactionSort.Newest
+              },
+              limit: 3
+            })(),
+            loadUnratedShouts({ limit: 5, offset: 0 })()
+          ])
+
+          console.log('[FeedPage] Additional data loaded:', {
+            commentsCount: newComments?.length,
+            unratedCount: newUnrated?.length
+          })
+
+          setRecentComments(newComments || [])
+          setUnratedShouts(newUnrated || [])
+        } catch (error) {
+          console.error('[FeedPage] Error loading additional data:', error)
+        }
+      },
+      { defer: true }
+    )
+  )
+
+  // Восстанавливаем загрузку myRates при изменении фида или авторизации
+  createEffect(
+    on(
+      [sortedFeed, client],
       async ([shouts, authorizedClient]) => {
-        if (!shouts?.length || !authorizedClient) return
+        console.log('[FeedPage] Loading rates effect triggered:', {
+          hasShouts: !!shouts?.length,
+          hasClient: !!authorizedClient
+        })
+        
+        if (!(shouts?.length && authorizedClient)) return
 
         try {
           const myRates = await loadShoutsMyRates(
             shouts.map((s) => s.id),
             authorizedClient
           )()
+
+          console.log('[FeedPage] Rates loaded:', {
+            ratesCount: myRates?.length
+          })
 
           if (Array.isArray(myRates)) {
             const ratesMap = myRates.reduce(
@@ -136,7 +192,7 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
             setMyRates(ratesMap)
           }
         } catch (error) {
-          console.error('[FeedView] Error loading rates:', error)
+          console.error('[FeedPage] Error loading rates:', error)
         }
       },
       { defer: true }
