@@ -15,36 +15,42 @@ import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 const SHOUTS_PER_PAGE = 24
 
 const fetchExpoShouts = async (layouts: string[], offset = 0) => {
-  const result = await loadShouts({ options: { filters: { layouts }, limit: SHOUTS_PER_PAGE, offset } })
+  const fetcher = loadShouts({ options: { filters: { layouts }, limit: SHOUTS_PER_PAGE, offset } })
+  const result = await fetcher()
   return result
 }
 
 export const route = {
   load: async ({ params }: { params: Params }) => {
     const layouts: string[] = params.layout ? [params.layout] : [...EXPO_LAYOUTS]
-    const shoutsLoader = await fetchExpoShouts(layouts)
-    return (await shoutsLoader()) as Shout[]
+    return await fetchExpoShouts(layouts)
   }
 }
 
 export default (props: RouteSectionProps<Shout[]>) => {
   const { t } = useLocalize()
-  const { feed, setFeed, feedByLayout } = useFeed()
+  const { feedByLayout, addShoutsToFeed } = useFeed()
   const [loadMoreVisible, setLoadMoreVisible] = createSignal(false)
   const getTitle = createMemo(() => (l?: string) => EXPO_TITLES[(l as ExpoLayoutType) || ''])
 
+  const [feed, setFeed] = createSignal<Shout[]>([])
+  createEffect(
+    () => props.params.layout,
+    (currentLayout: string) => {
+      if (currentLayout) setFeed(feedByLayout()[currentLayout] || [])
+    }
+  )
+
   const shouts = createAsync(async () => {
     const layouts: string[] = props.params.layout ? [props.params.layout] : [...EXPO_LAYOUTS]
-    const fetcher = fetchExpoShouts(layouts)
-    const result = (await (await fetcher)()) || []
-    return result
+    return props.data || (await fetchExpoShouts(layouts))
   })
 
   const loadMore = async () => {
     saveScrollPosition()
     const limit = SHOUTS_PER_PAGE
     const layouts: string[] = props.params.layout ? [props.params.layout] : [...EXPO_LAYOUTS]
-    const offset = feed()?.length || 0
+    const offset = feedByLayout()[props.params.layout || '']?.length || 0
     const filters: LoadShoutsFilters = { layouts, featured: true }
     const options: LoadShoutsOptions = { filters, limit, offset }
     try {
@@ -52,7 +58,7 @@ export default (props: RouteSectionProps<Shout[]>) => {
       const result = (await fetcher()) || []
       setLoadMoreVisible(Boolean(result?.length))
       if (result && Array.isArray(result)) {
-        setFeed((prev) => [...prev, ...result])
+        addShoutsToFeed(result as Shout[])
       }
       restoreScrollPosition()
       return result as LoadMoreItems
@@ -67,7 +73,9 @@ export default (props: RouteSectionProps<Shout[]>) => {
       () => props.params.layout,
       async (currentLayout) => {
         const layouts: string[] = currentLayout ? [currentLayout] : [...EXPO_LAYOUTS]
-        const offset = (currentLayout ? feedByLayout()[currentLayout]?.length : feed()?.length) || 0
+        const offset =
+          (currentLayout ? feedByLayout()[currentLayout]?.length : feedByLayout()[currentLayout]?.length) ||
+          0
         const options: LoadShoutsOptions = {
           filters: { layouts, featured: true },
           limit: SHOUTS_PER_PAGE,

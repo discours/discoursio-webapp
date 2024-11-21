@@ -34,7 +34,7 @@ export const PRERENDERED_ARTICLES_COUNT = 28
 
 export const TopicView = (props: Props) => {
   const { t } = useLocalize()
-  const { feedByTopic, setFeed } = useFeed()
+  const { feedByTopic } = useFeed()
   const { topicEntities } = useTopics()
   const [favoriteTopArticles, setFavoriteTopArticles] = createSignal<Shout[]>([])
   const [reactedTopMonthArticles, setReactedTopMonthArticles] = createSignal<Shout[]>([])
@@ -50,7 +50,6 @@ export const TopicView = (props: Props) => {
   createEffect(() => {
     if (props.shouts?.length) {
       setSortedFeed(props.shouts)
-      setFeed(props.shouts) // Добавляем в общий feed
     }
   })
 
@@ -156,7 +155,6 @@ export const TopicView = (props: Props) => {
     const result = await topicShoutsFetcher()
     if (result?.length) {
       setSortedFeed((prev) => [...prev, ...result]) // Напрямую обновляем sortedFeed
-      setFeed(result) // И добавляем в общий feed
     }
     restoreScrollPosition()
     return result as LoadMoreItems

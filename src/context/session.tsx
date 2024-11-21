@@ -184,7 +184,7 @@ export const SessionProvider = (props: {
 
         // Set up session expiration check timer
         minuteLater = setTimeout(checkSessionIsExpired, 60 * 1000)
-        console.info(`[context.session] will refresh in ${s.data.expires_in / 60} mins`)
+        console.info(`[context.session] will refresh in ${Math.round(s.data.expires_in / 60)} mins`)
 
         // Set the session loaded flag
         setIsSessionLoaded(true)

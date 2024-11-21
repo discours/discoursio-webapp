@@ -64,7 +64,7 @@ export const loadCoauthoredShouts = (
 }
 
 export const loadShoutsMyRates = (shoutIds: number[], client: Client) => {
-  console.log('[API] loadShoutsMyRates called with ids:', shoutIds)
+  // console.log('[API] loadShoutsMyRates called with ids:', shoutIds)
 
   return async () => {
     try {
@@ -74,7 +74,7 @@ export const loadShoutsMyRates = (shoutIds: number[], client: Client) => {
         })
         .toPromise()
 
-      console.log('[API] loadShoutsMyRates response:', response)
+      // console.log('[API] loadShoutsMyRates response:', response)
 
       if (response.error) {
         console.error('[API] loadShoutsMyRates error:', response.error)

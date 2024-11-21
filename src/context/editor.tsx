@@ -98,7 +98,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   const matchEdit = useMatch(() => '/edit')
   const matchEditSettings = useMatch(() => '/editSettings')
   const { client, session } = useSession()
-  const { setFeed: addFeed } = useFeed()
+  const { addShoutsToFeed } = useFeed()
   const snackbar = useSnackbar()
   const [isEditorPanelVisible, setIsEditorPanelVisible] = createSignal<boolean>(false)
   const [form, setForm] = createStore<ShoutForm>(defaultForm)
@@ -263,7 +263,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
           return
         }
         if (newShout) {
-          addFeed([newShout])
+          addShoutsToFeed([newShout], 'recent')
           navigate('/feed')
         } else {
           console.error('[publishShoutById] no shout returned:', newShout)
