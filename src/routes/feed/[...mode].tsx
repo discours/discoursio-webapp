@@ -70,9 +70,11 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
   console.log('[FeedPage] Component render started with props:', props)
 
   const { t } = useLocalize()
-  const { mode, initializeFeed, options, isFeedLoading, addShoutsToFeed, setMyRates } = useFeed()
+  const { mode, initializeFeed, options, isFeedLoading, addShoutsToFeed, setMyRates, feedByMode } =
+    useFeed()
   const { client } = useSession()
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.data?.shouts || [])
+  createEffect(on(() => feedByMode().shouts, setSortedFeed))
 
   // Мемоизируем вычисляемые значения
   const currentFeedName = createMemo(() => {
@@ -128,7 +130,7 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
       mode,
       async (currentMode) => {
         console.log('[FeedPage] Mode changed, updating additional data:', { currentMode })
-        
+
         try {
           const [newComments, newUnrated] = await Promise.all([
             loadReactions({
@@ -165,7 +167,7 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
           hasShouts: !!shouts?.length,
           hasClient: !!authorizedClient
         })
-        
+
         if (!(shouts?.length && authorizedClient)) return
 
         try {

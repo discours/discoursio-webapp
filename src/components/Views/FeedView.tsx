@@ -70,7 +70,7 @@ export const FeedView = (props: FeedProps) => {
 
   // Добавляем мемоизацию для проверки необходимости показа плейсхолдера
   const showPlaceholder = createMemo(() => {
-    const shouldShow = !session() && !loc.pathname.includes('feed')
+    const shouldShow = !(session() && loc.pathname.includes('feed'))
     console.log('[FeedView] Placeholder visibility computed:', {
       hasSession: !!session(),
       pathname: loc.pathname,
