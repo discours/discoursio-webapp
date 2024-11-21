@@ -8,13 +8,15 @@ import getAuthorQuery from '~/graphql/query/core/author-by'
 import loadAuthorsAllQuery from '~/graphql/query/core/authors-all'
 import loadAuthorsByQuery from '~/graphql/query/core/authors-load-by'
 import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
-import loadFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
+import getAuthorsByTopicQuery from '~/graphql/query/core/topic-authors'
+import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
 import loadTopicsQuery from '~/graphql/query/core/topics-all'
 import {
   Author,
   LoadShoutsOptions,
   QueryGet_AuthorArgs,
   QueryGet_ShoutArgs,
+  QueryGet_Topic_AuthorsArgs,
   QueryGet_Topic_FollowersArgs,
   QueryLoad_Authors_ByArgs,
   QueryLoad_Reactions_ByArgs,
@@ -113,15 +115,25 @@ export const loadShoutsSearch = (text: string, options: LoadShoutsOptions) => {
   }, `search-${text}-${page}`)
 }
 
-export const loadFollowersByTopic = (slug: string) => {
+export const getFollowersByTopic = (slug: string) => {
   // TODO: paginate topic followers
   return cache(async () => {
     const resp = await defaultClient
-      .query(loadFollowersByTopicQuery, { slug } as QueryGet_Topic_FollowersArgs)
+      .query(getFollowersByTopicQuery, { slug } as QueryGet_Topic_FollowersArgs)
       .toPromise()
     const result = resp?.data?.get_topic_followers
     if (result) return result as Author[]
   }, `topic-${slug}`)
+}
+
+export const getAuthorsByTopic = (slug: string) => {
+  return cache(async () => {
+    const resp = await defaultClient
+      .query(getAuthorsByTopicQuery, { slug } as QueryGet_Topic_AuthorsArgs)
+      .toPromise()
+    const result = resp?.data?.get_topic_authors
+    if (result) return result as Author[]
+  }, `author-${slug}`)
 }
 
 export const loadUnratedShouts = (options: LoadShoutsOptions) => {

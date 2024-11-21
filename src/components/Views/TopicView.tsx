@@ -4,8 +4,8 @@ import { For, Match, Show, Suspense, Switch, createEffect, createMemo, createSig
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { loadAuthors, loadFollowersByTopic, loadShouts } from '~/graphql/api/public'
-import { Author, AuthorsBy, LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
+import { getAuthorsByTopic, getFollowersByTopic, loadShouts } from '~/graphql/api/public'
+import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/utils/date'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { byPublished, byStat } from '~/utils/sort'
@@ -82,7 +82,7 @@ export const TopicView = (props: Props) => {
   )
 
   const loadTopicFollowers = async () => {
-    const topicFollowersFetcher = loadFollowersByTopic(props.topicSlug)
+    const topicFollowersFetcher = getFollowersByTopic(props.topicSlug)
     const topicFollowers = await topicFollowersFetcher()
     topicFollowers && setFollowers(topicFollowers)
     console.debug('loadTopicFollowers', topicFollowers)
@@ -90,11 +90,10 @@ export const TopicView = (props: Props) => {
 
   const [topicAuthors, setTopicAuthors] = createSignal<Author[]>([])
   const loadTopicAuthors = async () => {
-    const by: AuthorsBy = { topic: props.topicSlug }
-    const topicAuthorsFetcher = await loadAuthors({ by, limit: 10, offset: 0 })
-    const result = await topicAuthorsFetcher()
-    result && setTopicAuthors(result)
-    console.debug('loadTopicAuthors got ', result?.length, 'authors')
+    const topicAuthorsFetcher = getAuthorsByTopic(props.topicSlug)
+    const topicAuthors = await topicAuthorsFetcher()
+    topicAuthors && setTopicAuthors(topicAuthors)
+    console.debug('loadTopicAuthors got ', topicAuthors?.length, 'authors')
   }
 
   const loadFavoriteTopArticles = async () => {
