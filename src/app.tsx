@@ -18,8 +18,8 @@ import { FeaturedFeedProvider } from './context/featured'
 import { FollowingProvider } from './context/following'
 
 export const Providers = (props: { children?: JSX.Element }) => {
-  const sessionStateChanged = (payload: AuthToken) => {
-    console.debug(payload)
+  const sessionStateChanged = (_payload: AuthToken) => {
+    // console.debug(payload)
     // TODO: maybe load subs here
   }
   return (

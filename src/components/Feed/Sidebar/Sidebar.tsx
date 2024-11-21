@@ -27,7 +27,7 @@ export const Sidebar = () => {
 
   // Обновляем selected при изменении параметров URL
   const params = useParams()
-  createEffect(() => setSelected(params.mode || 'all'))
+  createEffect(() => setSelected(params.mode || 'recent'))
 
   // Объединенный эффект для обработки авторов и топиков
   createEffect(

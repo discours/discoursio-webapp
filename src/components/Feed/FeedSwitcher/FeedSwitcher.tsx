@@ -1,6 +1,6 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createMemo, createSignal } from 'solid-js'
+import { For, Show, createEffect, createMemo } from 'solid-js'
 import { orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { capitalize } from '~/utils/capitalize'
@@ -26,17 +26,47 @@ export const FeedSwitcher = (props: FeedSwitcherProps) => {
   const loc = useLocation()
   const { t } = useLocalize()
   const navigate = useNavigate()
-  const { updateOptions } = useFeed()
-  const [currentOption, setCurrentOption] = createSignal('recent')
+  const { updateOptions, mode: feedMode } = useFeed()
 
+  console.log('[FeedSwitcher] Initial render with props:', {
+    options: props.options,
+    prefix: props.prefix,
+    pathname: loc.pathname
+  })
+
+  // Мемоизируем текущую опцию на основе URL
+  const currentOption = createMemo(() => {
+    const path = loc.pathname.replace(props.prefix, '').replace(FIRST_SLASH_REGEX, '')
+    const option = path || 'recent'
+    console.log('[FeedSwitcher] currentOption memo:', {
+      pathname: loc.pathname,
+      path,
+      option,
+      feedMode: feedMode()
+    })
+    return option
+  })
+
+  // Отслеживаем изменения URL и режима
   createEffect(() => {
-    const currentPath = loc.pathname.replace(props.prefix, '').replace(FIRST_SLASH_REGEX, '')
-    setCurrentOption(currentPath || 'recent')
+    const option = currentOption()
+    const mode = feedMode()
+    console.log('[FeedSwitcher] Effect triggered:', {
+      currentOption: option,
+      feedMode: mode,
+      pathname: loc.pathname
+    })
   })
 
   const handleClick = (ev: MouseEvent, option: ViewOption, idx: () => number) => {
     ev?.preventDefault()
     const value = getOptionValue(option)
+    console.log('[FeedSwitcher] handleClick:', {
+      value,
+      currentOption: currentOption(),
+      idx: idx()
+    })
+
     const path = props.prefix
       ? idx()
         ? `${props.prefix}/${value}`
@@ -45,6 +75,13 @@ export const FeedSwitcher = (props: FeedSwitcherProps) => {
         ? `/${value}`
         : '/'
 
+    console.log('[FeedSwitcher] Updating options and navigating:', {
+      path,
+      orderBy: orderByMode(value),
+      value
+    })
+
+    // Обновляем опции перед навигацией
     updateOptions({
       offset: 0,
       order_by: orderByMode(value)
@@ -57,16 +94,29 @@ export const FeedSwitcher = (props: FeedSwitcherProps) => {
     <ul class={clsx(styles.feedSwitcher, styles.feedFilter, props.class)}>
       <For each={props.options}>
         {(option: ViewOption, idx) => {
+          // Мемоизируем состояние выбранности для каждой опции
           const isSelected = createMemo(() => {
             const optionValue = getOptionValue(option)
-            return optionValue ? currentOption() === optionValue : currentOption() === 'recent'
+            const selected = optionValue === currentOption()
+            console.log('[FeedSwitcher] Option selection check:', {
+              optionValue,
+              currentOption: currentOption(),
+              selected
+            })
+            return selected
           })
 
           return (
             <li
               class={clsx({ [styles.itemSelected]: isSelected() })}
-              onMouseOver={() => !isSelected() && props.onMouseOver?.(getOptionValue(option))}
-              onMouseOut={() => !isSelected() && props.onMouseOut?.()}
+              onMouseOver={() => {
+                console.log('[FeedSwitcher] Mouse over:', getOptionValue(option))
+                !isSelected() && props.onMouseOver?.(getOptionValue(option))
+              }}
+              onMouseOut={() => {
+                console.log('[FeedSwitcher] Mouse out:', getOptionValue(option))
+                !isSelected() && props.onMouseOut?.()
+              }}
             >
               <Show
                 when={!(isSelected() && props.isLoading)}

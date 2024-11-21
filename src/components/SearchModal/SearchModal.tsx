@@ -41,7 +41,7 @@ const prepareSearchResults = (list: Shout[], searchValue: string) =>
 
 export const SearchModal = () => {
   const { t } = useLocalize()
-  const { loadFeedSearch } = useFeed()
+  const { loadFeedSearch, searchFeed } = useFeed()
   const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(false)
   const [inputValue, setInputValue] = createSignal('')
   const [isLoading, setIsLoading] = createSignal(false)
@@ -50,10 +50,11 @@ export const SearchModal = () => {
   const fetchSearchResults = async () => {
     setIsLoading(true)
     saveScrollPosition()
-    const { hasMore, newShouts } = await loadFeedSearch(inputValue(), {
+    await loadFeedSearch(inputValue(), {
       offset: offset(),
       limit: FEED_PAGE_SIZE
     })
+    const { hasMore, shouts: newShouts } = searchFeed()
     setIsLoading(false)
     setOffset(newShouts.length)
     setIsLoadMoreButtonVisible(hasMore)

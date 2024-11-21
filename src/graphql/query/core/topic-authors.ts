@@ -1,0 +1,25 @@
+import { gql } from '@urql/core'
+
+export default gql`
+  query TopicAuthorsQuery($slug: String) {
+    get_topic_authors(slug: $slug) {
+      id
+      slug
+      name
+      bio
+      about
+      pic
+      # communities
+      links
+      created_at
+      last_seen
+      stat {
+        shouts
+        authors
+        followers
+        rating
+        comments
+      }
+    }
+  }
+`

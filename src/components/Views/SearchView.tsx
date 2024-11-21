@@ -19,7 +19,7 @@ const RESULTS_PER_PAGE = 50
 
 export const SearchView = (props: Props) => {
   const { t } = useLocalize()
-  const { feed: sortedFeed, loadFeedSearch } = useFeed()
+  const { searchFeed, loadFeedSearch } = useFeed()
   const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(false)
   const [query, setQuery] = createSignal(props.query)
   const [offset, setOffset] = createSignal(0)
@@ -35,10 +35,11 @@ export const SearchView = (props: Props) => {
     let results: Shout[] = []
     if (query()) {
       console.log(query())
-      const { hasMore, newShouts } = await loadFeedSearch(query(), {
+      await loadFeedSearch(query(), {
         offset: offset(),
         limit: RESULTS_PER_PAGE
       })
+      const { hasMore, shouts: newShouts } = searchFeed()
       setIsLoadMoreButtonVisible(hasMore)
       setOffset(offset() + RESULTS_PER_PAGE)
       results = newShouts
@@ -93,7 +94,7 @@ export const SearchView = (props: Props) => {
         </li>
       </ul>
 
-      <Show when={sortedFeed()?.length > 0}>
+      <Show when={searchFeed()?.shouts?.length > 0}>
         <h3>{t('Publications')}</h3>
 
         <div class="floor">
@@ -103,7 +104,7 @@ export const SearchView = (props: Props) => {
               hidden={!isLoadMoreButtonVisible()}
               loadFunction={loadMore}
             >
-              <For each={sortedFeed()}>
+              <For each={searchFeed()?.shouts}>
                 {(article) => (
                   <div class="col-md-6">
                     <ArticleCard article={article} desktopCoverSize="L" />

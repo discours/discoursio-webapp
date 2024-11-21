@@ -27,11 +27,11 @@ import TopicPage, { TopicPageProps } from '../topic/[slug]/[...mode]'
 
 const fetchShout = async (slug: string): Promise<Shout | undefined> => {
   if (slug.startsWith('@') || slug.startsWith('!') || slug.startsWith('_') || slug.startsWith('.')) return
-  console.log('[fetchShout] slug:', slug)
+  // console.log('[fetchShout] slug:', slug)
   try {
     const shoutLoader = getShout({ slug })
     const result = await shoutLoader()
-    console.log('[fetchShout] result:', result)
+    //console.log('[fetchShout] result:', result)
     return result
   } catch (error) {
     console.error('[fetchShout] error:', error)
@@ -138,7 +138,7 @@ export default function ArticlePage(props: RouteSectionProps<SlugPageProps>) {
     }
   })
 
-  console.log('[ArticlePage] props:', props)
+  // console.log('[ArticlePage] props:', props)
 
   return (
     <Switch fallback={<div>Loading...</div>}>
