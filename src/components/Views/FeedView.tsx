@@ -80,32 +80,34 @@ export const FeedView = (props: FeedProps) => {
   })
 
   // Компонент для комментариев
-  const FreshestCommentsList = () => (
-    <Show when={props.recentComments?.length}>
-      <section class={styles.asideSection}>
-        <h4>{t('Comments')}</h4>
-        <For each={props.recentComments || []}>
-          {(comment) => {
-            const suffix = comment.id ? `?commentId=${comment.id}` : ''
-            return (
-              <div class={styles.comment} id={`comment-${comment.id}`}>
-                <div class={clsx('text-truncate', styles.commentBody)}>
-                  <A href={`/${comment.shout.slug}${suffix}`} innerHTML={comment.body || ''} />
+  const FreshestCommentsList = () => {
+    return (
+      <Show when={props.recentComments?.length > 0}>
+        <section class={styles.asideSection}>
+          <h4>{t('Comments')}</h4>
+          <For each={props.recentComments || []}>
+            {(comment) => {
+              const suffix = comment.id ? `?commentId=${comment.id}` : ''
+              return (
+                <div class={styles.comment} id={`comment-${comment.id}`}>
+                  <div class={clsx('text-truncate', styles.commentBody)}>
+                    <A href={`/${comment.shout.slug}${suffix}`} innerHTML={comment.body || ''} />
+                  </div>
+                  <div class={styles.commentDetails}>
+                    <AuthorLink author={comment.created_by as Author} size={'XS'} />
+                    <CommentDate comment={comment} isShort={true} isLastInRow={true} />
+                  </div>
+                  <div class={clsx('text-truncate', styles.commentArticleTitle)}>
+                    <A href={`/${comment.shout.slug}`}>{comment.shout.title}</A>
+                  </div>
                 </div>
-                <div class={styles.commentDetails}>
-                  <AuthorLink author={comment.created_by as Author} size={'XS'} />
-                  <CommentDate comment={comment} isShort={true} isLastInRow={true} />
-                </div>
-                <div class={clsx('text-truncate', styles.commentArticleTitle)}>
-                  <A href={`/${comment.shout.slug}`}>{comment.shout.title}</A>
-                </div>
-              </div>
-            )
-          }}
-        </For>
-      </section>
-    </Show>
-  )
+              )
+            }}
+          </For>
+        </section>
+      </Show>
+    )
+  }
 
   createEffect(() => {
     console.log('[FeedView] Feed state updated:', {
@@ -156,7 +158,7 @@ export const FeedView = (props: FeedProps) => {
   // После TopicsList добавляем новый компонент
   const UnratedArticlesList = () => {
     return (
-      <Show when={props.unratedShouts?.length}>
+      <Show when={props.unratedShouts?.length > 0}>
         <section class={styles.asideSection}>
           <h4>{t('Be the first to rate')}</h4>
           <For each={props.unratedShouts || []}>

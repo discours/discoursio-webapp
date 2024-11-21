@@ -555,6 +555,16 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     setFeedByAuthor(groupedByAuthor)
   }
 
+  // В FeedProvider добавим логирование инициализации
+  createEffect(() => {
+    console.log('[FeedProvider] Mode effect triggered:', {
+      currentMode: mode(),
+      hasClient: !!client()
+    })
+
+    // ... rest of the effect
+  })
+
   return (
     <FeedContext.Provider
       value={{

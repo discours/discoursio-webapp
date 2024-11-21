@@ -63,7 +63,6 @@ import {
 } from '~/graphql/schema/core.gen'
 import { PeriodType, getFromDate } from '~/lib/fromPeriod'
 import { getFileUrl } from '~/lib/getThumbUrl'
-import { FeedSearchParams } from '~/routes/feed/[...mode]'
 
 const fetchAuthorShouts = async (slug: string, offset?: number) => {
   const options: LoadShoutsOptions = { filters: { author: slug }, limit: FEED_PAGE_SIZE, offset }
@@ -114,7 +113,7 @@ export type AuthorPageProps = {
 export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
   const { t } = useLocalize()
   const params = useParams<{ slug: string; tab: FeedMode | 'comments' | 'about' }>()
-  const [searchParams] = useSearchParams<FeedSearchParams>()
+  const [searchParams] = useSearchParams<{ period: PeriodType }>()
   const [currentSlug, setCurrentSlug] = createSignal(params.slug)
   const { updateOptions, options } = useFeed()
 

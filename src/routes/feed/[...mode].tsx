@@ -70,11 +70,11 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
   console.log('[FeedPage] Component render started with props:', props)
 
   const { t } = useLocalize()
-  const { mode, initializeFeed, options, isFeedLoading, addShoutsToFeed, setMyRates, feedByMode } =
-    useFeed()
+  const { mode, initializeFeed, options, isFeedLoading, addShoutsToFeed, setMyRates } = useFeed()
   const { client } = useSession()
+  const [recentComments, setRecentComments] = createSignal<Reaction[]>(props.data?.recentComments || [])
+  const [unratedShouts, setUnratedShouts] = createSignal<Shout[]>(props.data?.unratedShouts || [])
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.data?.shouts || [])
-  createEffect(on(() => feedByMode().shouts, setSortedFeed))
 
   // Мемоизируем вычисляемые значения
   const currentFeedName = createMemo(() => {
@@ -85,51 +85,35 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
 
   // Состояния для данных
   const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(true)
-  const [recentComments, setRecentComments] = createSignal<Reaction[]>(props.data?.recentComments || [])
-  const [unratedShouts, setUnratedShouts] = createSignal<Shout[]>(props.data?.unratedShouts || [])
 
-  // Эффект для обновления комментариев и unrated постов
-  createEffect(() => {
-    console.log('[FeedPage] Updating comments and unrated:', {
-      newComments: props.data?.recentComments?.length,
-      newUnrated: props.data?.unratedShouts?.length
+  // Добавим эффект для обновления данных при разрешении Promise
+  createEffect(async () => {
+    const data = await props.data
+    console.log('[FeedPage] Data resolved:', {
+      hasShouts: !!data?.shouts?.length,
+      hasComments: !!data?.recentComments?.length,
+      hasUnrated: !!data?.unratedShouts?.length
     })
-    if (props.data?.recentComments) {
-      setRecentComments(props.data.recentComments)
-    }
-    if (props.data?.unratedShouts) {
-      setUnratedShouts(props.data.unratedShouts)
+
+    if (data) {
+      if (data.recentComments) setRecentComments(data.recentComments)
+      if (data.unratedShouts) setUnratedShouts(data.unratedShouts)
+      if (data.shouts) {
+        setSortedFeed(data.shouts)
+        initializeFeed(currentFeedName() as FeedName, data.shouts)
+        setIsLoadMoreButtonVisible(data.shouts.length >= FEED_PAGE_SIZE)
+      }
     }
   })
 
-  // Инициализация фида при получении SSR данных
-  createEffect(() => {
-    const ssrShouts = props.data?.shouts
-    console.log('[FeedPage] SSR initialization effect:', {
-      hasShouts: !!ssrShouts?.length,
-      currentFeedName: currentFeedName(),
-      mode: mode()
-    })
-    if (ssrShouts?.length) {
-      initializeFeed(currentFeedName() as FeedName, ssrShouts)
-      setIsLoadMoreButtonVisible(ssrShouts.length >= FEED_PAGE_SIZE)
-    }
-  })
-
-  // Мемоизируем параметры для загрузки
-  const loadParams = createMemo(() => ({
-    options: {
-      ...options(),
-      order_by: orderByMode(mode())
-    }
-  }))
-
-  // Добавляем эффект для обновления комментариев и unrated при смене режима
+  // Изменим эффект обновления при смене режима
   createEffect(
     on(
       mode,
       async (currentMode) => {
         console.log('[FeedPage] Mode changed, updating additional data:', { currentMode })
+
+        if (!currentMode) return // Добавляем проверку
 
         try {
           const [newComments, newUnrated] = await Promise.all([
@@ -143,13 +127,8 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
             loadUnratedShouts({ limit: 5, offset: 0 })()
           ])
 
-          console.log('[FeedPage] Additional data loaded:', {
-            commentsCount: newComments?.length,
-            unratedCount: newUnrated?.length
-          })
-
-          setRecentComments(newComments || [])
-          setUnratedShouts(newUnrated || [])
+          if (newComments) setRecentComments(newComments)
+          if (newUnrated) setUnratedShouts(newUnrated)
         } catch (error) {
           console.error('[FeedPage] Error loading additional data:', error)
         }
@@ -157,6 +136,14 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
       { defer: true }
     )
   )
+
+  // Мемоизируем параметры для загрузки
+  const loadParams = createMemo(() => ({
+    options: {
+      ...options(),
+      order_by: orderByMode(mode())
+    }
+  }))
 
   // Восстанавливаем загрузку myRates при изменении фида или авторизации
   createEffect(
@@ -247,7 +234,7 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
         >
           <ReactionsProvider>
             <FeedView
-              shouts={props.data?.shouts || []}
+              shouts={sortedFeed()}
               unratedShouts={unratedShouts()}
               recentComments={recentComments()}
             />
