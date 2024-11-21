@@ -1,14 +1,14 @@
+import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show, createEffect, createSignal, on } from 'solid-js'
+import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { CommonResult, Reaction, ReactionBy, ReactionKind, Shout } from '~/graphql/schema/core.gen'
+import { Reaction, ReactionBy, ReactionKind, Shout } from '~/graphql/schema/core.gen'
 import { Icon } from '../_shared/Icon'
 import { Popup } from '../_shared/Popup'
 import { RATINGS_PER_PAGE, VotersList } from './VotersList'
 
-import { A } from '@solidjs/router'
-import { useLocalize } from '~/context/localize'
 import styles from './RatingControl.module.scss'
 
 interface Props {
@@ -45,24 +45,20 @@ export const RatingControl = (props: Props) => {
       [() => reactionsByShout()[props.shout?.id || 0], () => session()?.user?.app_data?.profile],
       ([rrr, profile]) => {
         if (rrr) {
-          const shoutRatings = rrr.filter(props.comment ? commentRatingFilter : shoutRatingFilter)
-          profile && setRatings((_rrr) => shoutRatings)
+          // Удаляем дубликаты по id
+          const uniqueReactions = Array.from(new Map(rrr.map((r) => [r.id, r])).values())
+          const shoutRatings = uniqueReactions.filter(
+            props.comment ? commentRatingFilter : shoutRatingFilter
+          )
+          console.log('[RatingControl] filtered ratings:', shoutRatings)
+          if (profile) {
+            setRatings(shoutRatings) // Убираем стрелочную функцию, она здесь не нужна
+          }
         }
       },
-      {}
+      { defer: true } // Добавляем defer: true чтобы эффект не запускался сразу
     )
   )
-
-  const removeReaction = async (reactionKind: ReactionKind) => {
-    console.log('[RatingControl] ratings before', ratings())
-    const reactionToDelete = ratings().find(
-      (r) => r.kind === reactionKind && mineFilter(r) && shoutRatingFilter(r)
-    )
-    // setChanged(true)
-    return reactionToDelete
-      ? await deleteShoutReaction(reactionToDelete.id)
-      : { error: 'cant find reaction to delete' }
-  }
 
   const [currentRate, setCurrentRate] = createSignal<ReactionKind | undefined>()
   createEffect(
@@ -79,50 +75,68 @@ export const RatingControl = (props: Props) => {
   )
 
   const handleRatingChange = async (isUpvote: boolean) => {
+    if (ratings().length === 0) await loadRatings()
     const kind = isUpvote ? ReactionKind.Like : ReactionKind.Dislike
     requireAuthentication(async () => {
-      if (!props.shout) return
+      if (!(props.shout || props.comment)) return
       const storedTotal = total()
-      if (!currentRate()) {
+      const storedRate = currentRate()
+
+      // Сохраняем текущие рейтинги перед изменением
+      const currentRatings = ratings()
+
+      if (!storedRate && props.shout) {
         // Оптимистичное обновление UI
         setTotal((t) => t + (isUpvote ? 1 : -1))
         const reaction = await createShoutReaction({ reaction: { kind, shout: props.shout.id } })
 
         if (reaction) {
           console.warn('[RatingControl] created reaction: ', reaction)
+          // Добавляем новую реакцию в список
+          setRatings((prev) => [...prev, reaction])
         } else {
           // Откатываем изменения если произошла ошибка
           console.error('[RatingControl] error creating reaction')
           setTotal(storedTotal)
         }
         setCurrentRate(kind)
-      } else if (currentRate() === kind) {
+      } else if (storedRate === kind) {
         console.log('[RatingControl] Same rate clicked, ignoring')
         return
       } else {
         console.log('[RatingControl] Changing existing rate', {
-          from: currentRate(),
-          to: kind
+          from: storedRate,
+          to: kind,
+          currentRatings // Добавляем лог текущих рейтингов
         })
-        // Оптимистичное обновление UI для смены рейтинга
-        console.log('[RatingControl] removing reaction', currentRate() as ReactionKind)
-        setTotal((t) => t + (isUpvote ? 1 : -1))
-        const result: CommonResult | null = await removeReaction(currentRate() as ReactionKind)
-        if (result?.error) {
-          setTotal(storedTotal)
+
+        // Используем сохраненные рейтинги для поиска
+        const reactionToDelete = currentRatings.find(
+          (r) =>
+            r.kind === storedRate &&
+            mineFilter(r) &&
+            (props.comment ? commentRatingFilter(r) : shoutRatingFilter(r))
+        )
+
+        if (reactionToDelete) {
+          setTotal((t) => t + (isUpvote ? 1 : -1))
+          const result = await deleteShoutReaction(reactionToDelete.id)
+          if (result?.error) {
+            setTotal(storedTotal)
+            setCurrentRate(storedRate)
+            console.error(`[RatingControl] error removing reaction ${storedRate}`, result.error)
+          } else {
+            setRatings((prev) => prev.filter((r) => r.id !== reactionToDelete.id))
+            setCurrentRate(undefined)
+          }
+        } else {
+          console.error('[RatingControl] Could not find reaction to delete', currentRatings)
         }
-        setCurrentRate(undefined)
       }
-      // setChanged(true)
     }, 'vote')
   }
 
-  const handleRatingClick = async () => {
-    if (!session()?.access_token) return
-
-    // Если попап уже открыт, просто игнорируем клик
-    if (votersListVisible()) return
-
+  const loadRatings = async () => {
     // Загружаем список только если он еще не был загружен
     if (!initialLoadDone()) {
       const by = {
@@ -143,13 +157,21 @@ export const RatingControl = (props: Props) => {
         setInitialLoadDone(true)
       }
     }
+  }
+
+  const handleRatingClick = async () => {
+    if (!session()?.access_token) return
+
+    // Если попап уже открыт, просто игнорируем клик
+    if (votersListVisible()) return
+
+    await loadRatings()
     toggleVotersList(true)
   }
 
   // Обработчик закрытия попапа
   const toggleVotersListVisibility = (visible: boolean) => {
     if (!visible) {
-      setRatings([])
       setInitialLoadDone(false)
     }
     toggleVotersList(visible)

@@ -163,9 +163,20 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
 
   const updateShout = async (formToUpdate: ShoutForm, { publish }: { publish: boolean }) => {
     if (!formToUpdate.shoutId && formToUpdate.body) {
-      console.debug('[updateShout] no shoutId, but body:', formToUpdate)
+      console.debug('[updateShout] creating a new shout', formToUpdate)
+      const topics = formToUpdate.selectedTopics.map((topic) => topic2topicInput(topic))
+      if (topics.length === 0) {
+        navigate('/editSettings')
+        return { error: 'No topics selected' }
+      }
       const resp = await client()
-        ?.mutation(createShoutMutation, { shout: { layout: formToUpdate.layout, body: formToUpdate.body } })
+        ?.mutation(createShoutMutation, {
+          shout: {
+            layout: formToUpdate.layout,
+            body: formToUpdate.body,
+            topics
+          }
+        })
         .toPromise()
       return resp?.data?.create_shout
     }
