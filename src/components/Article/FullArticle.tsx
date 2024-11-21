@@ -331,7 +331,6 @@ export const FullArticle = (props: Props) => {
     window?.addEventListener('resize', updateIframeSizes)
     onCleanup(() => window.removeEventListener('resize', updateIframeSizes))
   })
-  const { myRates } = useFeed()
   const shareUrl = createMemo(() => getShareUrl({ pathname: `/${props.article.slug || ''}` }))
   const getAuthorName = (a: Author) =>
     lang() === 'en' && isCyrillic(a.name || '') ? capitalize(a.slug.replaceAll('-', ' ')) : a.name
@@ -339,11 +338,7 @@ export const FullArticle = (props: Props) => {
   const ArticleActionsBar = () => (
     <div class={styles.shoutStats}>
       <div class={styles.shoutStatsItem}>
-        <RatingControl
-          shout={props.article}
-          class={styles.ratingControl}
-          myRate={myRates()[props.article.id]}
-        />
+        <RatingControl shout={props.article} class={styles.ratingControl} />
       </div>
 
       <Popover content={t('Comment')} disabled={isActionPopupActive()}>

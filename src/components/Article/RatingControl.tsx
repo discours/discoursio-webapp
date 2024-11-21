@@ -15,7 +15,6 @@ interface Props {
   shout?: Shout
   comment?: Reaction
   class?: string
-  myRate: ReactionKind
 }
 
 export const RatingControl = (props: Props) => {
@@ -26,7 +25,7 @@ export const RatingControl = (props: Props) => {
   const [total, setTotal] = createSignal(
     props.comment ? props.comment.stat?.rating || 0 : props.shout?.stat?.rating || 0
   )
-  // const [changed, setChanged] = createSignal(false)
+  const [currentRate, setCurrentRate] = createSignal<ReactionKind | undefined>()
   const [votersListVisible, setVotersListVisible] = createSignal(false)
   const [initialLoadDone, setInitialLoadDone] = createSignal(false)
   const toggleVotersList = (visible: boolean) => {
@@ -51,26 +50,17 @@ export const RatingControl = (props: Props) => {
             props.comment ? commentRatingFilter : shoutRatingFilter
           )
           console.log('[RatingControl] filtered ratings:', shoutRatings)
+          // console.debug('[RatingControl] profile:', profile)
           if (profile) {
+            const mr = shoutRatings.find((r) => r.created_by.slug === profile.slug)
+            if (mr) {
+              setCurrentRate(mr.kind)
+            }
             setRatings(shoutRatings) // Убираем стрелочную функцию, она здесь не нужна
           }
         }
       },
-      { defer: true } // Добавляем defer: true чтобы эффект не запускался сразу
-    )
-  )
-
-  const [currentRate, setCurrentRate] = createSignal<ReactionKind | undefined>()
-  createEffect(
-    on(
-      () => props.myRate,
-      (myRate) => {
-        if (myRate !== undefined) {
-          // console.log('[RatingControl] myRate', myRate)
-          setCurrentRate(myRate as ReactionKind)
-        }
-      },
-      {}
+      { defer: true }
     )
   )
 
@@ -94,12 +84,12 @@ export const RatingControl = (props: Props) => {
           console.warn('[RatingControl] created reaction: ', reaction)
           // Добавляем новую реакцию в список
           setRatings((prev) => [...prev, reaction])
+          setCurrentRate(kind)
         } else {
           // Откатываем изменения если произошла ошибка
           console.error('[RatingControl] error creating reaction')
           setTotal(storedTotal)
         }
-        setCurrentRate(kind)
       } else if (storedRate === kind) {
         console.log('[RatingControl] Same rate clicked, ignoring')
         return
