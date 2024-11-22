@@ -57,11 +57,7 @@ export const FollowingButton = (props: Props) => {
   )
 
   const MiniButton = () => (
-    <CheckButton
-      text={caption()}
-      checked={followed() && !followingLoading()}
-      onClick={handleFollowClick}
-    />
+    <CheckButton text={caption()} checked={followed() && !followingLoading()} onClick={handleFollowClick} />
   )
 
   const FollowButton = () => (

@@ -134,7 +134,6 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
       }
     )
   )
-  const { requireAuthentication } = useSession()
   const [followingLoading, setFollowingLoading] = createSignal<boolean>(false)
   const changeFollowing = async (
     isFollowed: boolean,
