@@ -277,10 +277,10 @@ export const AuthorView = (props: AuthorViewProps) => {
 
   createEffect(
     on(
-      [author, feedByAuthor],
+      [author, sortedFeed],
       ([a, feed]) => {
-        if (a && feed[props.authorSlug]) {
-          setLoadMoreHidden(feed[props.authorSlug]?.length === a.stat?.shouts)
+        if (a && Array.isArray(feed)) {
+          setLoadMoreHidden(feed.length === a.stat?.shouts)
         }
       },
       {}

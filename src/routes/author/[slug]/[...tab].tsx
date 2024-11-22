@@ -40,16 +40,25 @@
  */
 
 import { RouteSectionProps, createAsync, useParams, useSearchParams } from '@solidjs/router'
-import { ErrorBoundary, Show, Suspense, createEffect, createSignal, on } from 'solid-js'
+import {
+  ErrorBoundary,
+  Show,
+  Suspense,
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+  onMount
+} from 'solid-js'
 import { COMMENTS_PER_PAGE } from '~/components/Article/FullArticle'
 import { AuthorView } from '~/components/Views/AuthorView'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
-import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { useAuthors } from '~/context/authors'
 import { FEED_PAGE_SIZE, FeedMode, orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { ReactionsProvider } from '~/context/reactions'
+import { useSession } from '~/context/session'
 import { loadAuthors, loadReactions, loadShouts, loadTopics } from '~/graphql/api/public'
 import { ReactionKind } from '~/graphql/schema/core.gen'
 import {
@@ -116,6 +125,13 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
   const [searchParams] = useSearchParams<{ period: PeriodType }>()
   const [currentSlug, setCurrentSlug] = createSignal(params.slug)
   const { updateOptions, options } = useFeed()
+  const { isSessionLoaded } = useSession()
+  const [isClientMounted, setIsClientMounted] = createSignal(false)
+
+  // Add onMount to track client-side hydration
+  onMount(() => {
+    setIsClientMounted(true)
+  })
 
   // everything from address bar to route feed filters
   createEffect(
@@ -202,35 +218,42 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
     async () => (props.data.comments as Reaction[]) || (await fetchAuthorComments(props.params.slug, 0))
   )
 
+  // Combine all loading states
+  const isReady = createMemo(() => {
+    return isSessionLoaded() && isClientMounted()
+  })
+
   return (
-    <Show when={currentSlug()} keyed>
-      {(_slug) => (
-        <ErrorBoundary
-          fallback={(_err) => {
-            console.error('ErrorBoundary caught an error', _err)
-            return <FourOuFourView />
-          }}
-        >
-          <Suspense fallback={<Loading />}>
-            <PageLayout
-              title={title()}
-              headerTitle={author()?.name || ''}
-              slug={author()?.slug}
-              desc={desc()}
-              cover={cover()}
-            >
-              <ReactionsProvider>
-                <AuthorView
-                  author={author() as Author}
-                  authorSlug={props.params.slug}
-                  shouts={authorShouts() || []}
-                  comments={authorComments() || []}
-                />
-              </ReactionsProvider>
-            </PageLayout>
-          </Suspense>
-        </ErrorBoundary>
-      )}
+    <Show when={isReady()} fallback={null}>
+      <Show when={currentSlug()} keyed>
+        {(_slug) => (
+          <ErrorBoundary
+            fallback={(_err) => {
+              console.error('ErrorBoundary caught an error', _err)
+              return <FourOuFourView />
+            }}
+          >
+            <Suspense fallback={null}>
+              <PageLayout
+                title={title()}
+                headerTitle={author()?.name || ''}
+                slug={author()?.slug}
+                desc={desc()}
+                cover={cover()}
+              >
+                <ReactionsProvider>
+                  <AuthorView
+                    author={author() as Author}
+                    authorSlug={props.params.slug}
+                    shouts={authorShouts() || []}
+                    comments={authorComments() || []}
+                  />
+                </ReactionsProvider>
+              </PageLayout>
+            </Suspense>
+          </ErrorBoundary>
+        )}
+      </Show>
     </Show>
   )
 }
