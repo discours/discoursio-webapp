@@ -38,65 +38,67 @@ export const FollowingButton = (props: Props) => {
     })
   )
 
-  return (
-    <div class={props.class}>
-      <Show
-        when={!props.minimize}
-        fallback={
-          <CheckButton
-            text={t('Follow')}
-            checked={followed() && !followingLoading()}
-            onClick={handleFollowClick}
-          />
-        }
-      >
+  const FollowedButton = () => (
+    <Button
+      variant={props.iconButtons ? 'secondary' : 'bordered'}
+      size="S"
+      value={
+        <Show when={props.iconButtons} fallback={followingLoading() ? inActionText() : caption()}>
+          <Icon name="author-subscribe" class={stylesButton.icon} />
+        </Show>
+      }
+      onClick={handleFollowClick}
+      isSubscribeButton={true}
+      class={clsx(styles.actionButton, {
+        [styles.iconed]: props.iconButtons,
+        [stylesButton.followed]: followed()
+      })}
+    />
+  )
+
+  const MiniButton = () => (
+    <CheckButton
+      text={caption()}
+      checked={followed() && !followingLoading()}
+      onClick={handleFollowClick}
+    />
+  )
+
+  const FollowButton = () => (
+    <Button
+      variant={props.iconButtons ? 'secondary' : 'bordered'}
+      size="S"
+      value={
         <Show
-          when={props.isFollowed}
+          when={props.iconButtons}
           fallback={
-            <Button
-              variant={props.iconButtons ? 'secondary' : 'bordered'}
-              size="S"
-              value={
-                <Show when={props.iconButtons} fallback={followingLoading() ? inActionText() : caption()}>
-                  <Icon name="author-subscribe" class={stylesButton.icon} />
-                </Show>
-              }
-              onClick={handleFollowClick}
-              isSubscribeButton={true}
-              class={clsx(styles.actionButton, {
-                [styles.iconed]: props.iconButtons,
-                [stylesButton.followed]: followed()
-              })}
-            />
+            followingLoading() ? (
+              inActionText()
+            ) : (
+              <>
+                <span class={styles.actionButtonLabel}>{caption()}</span>
+                <span class={styles.actionButtonLabelHovered}>{caption()}</span>
+              </>
+            )
           }
         >
-          <Button
-            variant={props.iconButtons ? 'secondary' : 'bordered'}
-            size="S"
-            value={
-              <Show
-                when={props.iconButtons}
-                fallback={
-                  followingLoading() ? (
-                    inActionText()
-                  ) : (
-                    <>
-                      <span class={styles.actionButtonLabel}>{t('Following')}</span>
-                      <span class={styles.actionButtonLabelHovered}>{t('Unfollow')}</span>
-                    </>
-                  )
-                }
-              >
-                <Icon name="author-unsubscribe" class={stylesButton.icon} />
-              </Show>
-            }
-            onClick={handleFollowClick}
-            isSubscribeButton={true}
-            class={clsx(styles.actionButton, {
-              [styles.iconed]: props.iconButtons,
-              [stylesButton.followed]: followed()
-            })}
-          />
+          <Icon name="author-unsubscribe" class={stylesButton.icon} />
+        </Show>
+      }
+      onClick={handleFollowClick}
+      isSubscribeButton={true}
+      class={clsx(styles.actionButton, {
+        [styles.iconed]: props.iconButtons,
+        [stylesButton.followed]: followed()
+      })}
+    />
+  )
+
+  return (
+    <div class={props.class}>
+      <Show when={!props.minimize} fallback={<MiniButton />}>
+        <Show when={followed()} fallback={<FollowedButton />}>
+          <FollowButton />
         </Show>
       </Show>
     </div>

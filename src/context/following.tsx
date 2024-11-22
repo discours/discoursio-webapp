@@ -6,6 +6,7 @@ import unfollowMutation from '~/graphql/mutation/core/unfollow'
 import loadAuthorFollowers from '~/graphql/query/core/author-followers'
 import { Author, CommonResult, Community, FollowingEntity, Topic } from '~/graphql/schema/core.gen'
 import { useSession } from './session'
+import { useUI } from './ui'
 
 export type FollowsFilter = 'all' | 'authors' | 'topics' | 'communities'
 
@@ -54,6 +55,7 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
   const [followers, setFollowers] = createSignal<Author[]>([] as Author[])
   const [follows, setFollows] = createStore<FollowingData>(EMPTY_SUBSCRIPTIONS)
   const { session, client } = useSession()
+  const { showModal } = useUI()
 
   const fetchData = async () => {
     setLoading(true)
@@ -76,7 +78,10 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
 
   const follow = async (what: FollowingEntity, slug: string) => {
     // console.debug('[context.following] follow', what, slug)
-    if (!session()?.access_token) return
+    if (!session()?.access_token) {
+      showModal('auth')
+      return
+    }
     try {
       const resp = await client()?.mutation(followMutation, { what, slug }).toPromise()
       if (!resp || resp.error) return
@@ -95,7 +100,10 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
   }
 
   const unfollow = async (what: FollowingEntity, slug: string) => {
-    if (!session()?.access_token) return
+    if (!session()?.access_token) {
+      showModal('auth')
+      return
+    }
     try {
       const resp = await client()?.mutation(unfollowMutation, { what, slug }).toPromise()
       const result = resp?.data?.unfollow
@@ -135,30 +143,32 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
   ): Promise<boolean> => {
     let hasChanged = false
 
-    await requireAuthentication(async () => {
-      setFollowingLoading(true)
-      // console.debug('[handleFollowClick] slug', slug);
-      try {
-        const result = isFollowed ? await unfollow(what, slug) : await follow(what, slug)
+    if (!session()?.access_token) {
+      showModal('auth')
+      return isFollowed
+    }
+    setFollowingLoading(true)
+    // console.debug('[handleFollowClick] slug', slug);
+    try {
+      const result = isFollowed ? await unfollow(what, slug) : await follow(what, slug)
 
-        if (result) {
-          const key = `${what.toLowerCase()}s` as 'authors' | 'topics' | 'communities'
-          hasChanged = result[key]?.length !== follows[key]?.length
-          setFollows((subs) => {
-            if (result.authors) {
-              subs.authors = result.authors as Author[]
-              // console.debug('authors subs updated', result.authors);
-            }
-            if (result.topics) subs.topics = result.topics as Topic[]
-            if (result.communities) subs.communities = result.communities as Community[]
-            return subs
-          })
-        }
-      } catch (error) {
-        console.error(error)
+      if (result) {
+        const key = `${what.toLowerCase()}s` as 'authors' | 'topics' | 'communities'
+        hasChanged = result[key]?.length !== follows[key]?.length
+        setFollows((subs) => {
+          if (result.authors) {
+            subs.authors = result.authors as Author[]
+            // console.debug('authors subs updated', result.authors);
+          }
+          if (result.topics) subs.topics = result.topics as Topic[]
+          if (result.communities) subs.communities = result.communities as Community[]
+          return subs
+        })
       }
-      setFollowingLoading(false)
-    }, 'follow')
+    } catch (error) {
+      console.error(error)
+    }
+    setFollowingLoading(false)
 
     const r = hasChanged ? isFollowed : !isFollowed
     // console.debug(`now is ${!r ? 'NOT ' : ''}following`);
