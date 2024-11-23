@@ -27,8 +27,18 @@ export const FollowingButton = (props: Props) => {
   const { followingLoading, changeFollowing } = useFollowing()
 
   const handleFollowClick = async () => {
-    const newFollowState = await changeFollowing(followed(), props.entity, props.slug)
-    setFollowed(newFollowState)
+    const newState = !followed()
+    setFollowed(newState)
+
+    try {
+      const serverState = await changeFollowing(newState, props.entity, props.slug)
+      if (serverState !== newState) {
+        setFollowed(serverState)
+      }
+    } catch (error) {
+      setFollowed(!newState)
+      console.error('Failed to change following state:', error)
+    }
   }
 
   createEffect(

@@ -121,9 +121,14 @@ export const AuthorView = (props: AuthorViewProps) => {
           setFollowersLoaded(true)
           setFollowingArray([...(myFollows?.topics || []), ...(myFollows?.authors || [])])
           setFollowingsLoaded(true)
+          // Добавить логирование для отладки
+          console.log('Current user:', meData)
+          console.log('Author slug:', slug)
         } else if (slug && !author()) {
           await loadAuthor({ slug })
           const foundAuthor = authorsEntities()[slug]
+          // Проверить загрузку автора
+          console.log('Loaded author:', foundAuthor)
           setAuthor(foundAuthor)
 
           if (foundAuthor) {

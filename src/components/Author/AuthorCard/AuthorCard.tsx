@@ -46,6 +46,7 @@ export const AuthorCard = (props: Props) => {
   createEffect(() => {
     if (!(follows && props.author)) return
     const followed = follows?.authors?.some((authorEntity) => authorEntity.id === props.author?.id)
+    console.log('Is followed state:', followed)
     setIsFollowed(followed)
   })
 
@@ -68,14 +69,12 @@ export const AuthorCard = (props: Props) => {
 
   createEffect(
     on(
-      () => [followsFilter(), props.flatFollows],
-      ([f = 'all']) => {
-        if (!props.flatFollows) return
+      [followsFilter, () => props.flatFollows],
+      ([flt = 'all', ff = []]) => {
+        if (!ff) return
 
         const subs =
-          f !== 'all'
-            ? props.flatFollows.filter((sub) => (f === 'authors' ? 'name' in sub : 'title' in sub))
-            : props.flatFollows
+          flt !== 'all' ? ff.filter((sub) => (flt === 'authors' ? 'name' in sub : 'title' in sub)) : ff
 
         setAuthorSubs(subs)
       },
@@ -101,11 +100,11 @@ export const AuthorCard = (props: Props) => {
   const FollowingModalView = () => {
     const filteredSubs = () => {
       const f = followsFilter()
-      if (!props.flatFollows) return []
+      if (!authorSubs()) return []
 
       return f !== 'all'
-        ? props.flatFollows.filter((sub) => (f === 'authors' ? 'name' in sub : 'title' in sub))
-        : props.flatFollows
+        ? authorSubs().filter((sub) => (f === 'authors' ? 'name' in sub : 'title' in sub))
+        : authorSubs()
     }
 
     return (
@@ -120,7 +119,7 @@ export const AuthorCard = (props: Props) => {
             <button type="button" onClick={() => setFollowsFilter('all')}>
               {t('All')}
             </button>
-            <span class="view-switcher__counter">{props.flatFollows?.length}</span>
+            <span class="view-switcher__counter">{authorSubs()?.length}</span>
           </li>
           <li
             class={clsx({
@@ -130,9 +129,7 @@ export const AuthorCard = (props: Props) => {
             <button type="button" onClick={() => setFollowsFilter('authors')}>
               {t('Authors')}
             </button>
-            <span class="view-switcher__counter">
-              {props.flatFollows?.filter((s) => 'name' in s).length}
-            </span>
+            <span class="view-switcher__counter">{authorSubs()?.filter((s) => 'name' in s).length}</span>
           </li>
           <li
             class={clsx({
@@ -142,9 +139,7 @@ export const AuthorCard = (props: Props) => {
             <button type="button" onClick={() => setFollowsFilter('topics')}>
               {t('Topics')}
             </button>
-            <span class="view-switcher__counter">
-              {props.flatFollows?.filter((s) => 'title' in s).length}
-            </span>
+            <span class="view-switcher__counter">{authorSubs()?.filter((s) => 'title' in s).length}</span>
           </li>
         </ul>
         <br />
@@ -188,13 +183,13 @@ export const AuthorCard = (props: Props) => {
           <Show when={props.author.bio}>
             <div class={styles.authorAbout} innerHTML={props.author.bio || ''} />
           </Show>
-          <Show when={(props.followers || [])?.length > 0 || (props.flatFollows || []).length > 0}>
+          <Show when={(props.followers || [])?.length > 0 || (authorSubs() || []).length > 0}>
             <div class={styles.subscribersContainer}>
               <FollowingCounters
                 followers={props.followers}
                 followersAmount={props.author?.stat?.followers || 0}
-                following={props.flatFollows}
-                followingAmount={props.flatFollows?.length || 0}
+                following={authorSubs()}
+                followingAmount={authorSubs()?.length || 0}
               />
             </div>
           </Show>
@@ -223,14 +218,12 @@ export const AuthorCard = (props: Props) => {
               when={isProfileOwner()}
               fallback={
                 <div class={styles.authorActions}>
-                  <Show when={authorSubs()?.length}>
-                    <FollowingButton
-                      slug={props.author.slug}
-                      entity={FollowingEntity.Author}
-                      isFollowed={Boolean(isFollowed())}
-                      class={clsx({ [stylesButton.followed]: isFollowed() })}
-                    />
-                  </Show>
+                  <FollowingButton
+                    slug={props.author.slug}
+                    entity={FollowingEntity.Author}
+                    isFollowed={Boolean(isFollowed())}
+                    class={clsx({ [stylesButton.followed]: isFollowed() })}
+                  />
                   <Show when={props.showMessageButton}>
                     <Button
                       variant={'secondary'}
@@ -271,7 +264,7 @@ export const AuthorCard = (props: Props) => {
             <FollowersModalView />
           </Modal>
         </Show>
-        <Show when={props.flatFollows}>
+        <Show when={authorSubs()}>
           <Modal variant="medium" isResponsive={true} name="following" maxHeight>
             <FollowingModalView />
           </Modal>
