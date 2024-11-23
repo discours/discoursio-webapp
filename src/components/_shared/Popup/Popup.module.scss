@@ -98,14 +98,15 @@
   }
 
   .action {
-    display: flex;
     align-items: center;
-    width: 100%;
     box-sizing: border-box;
-    padding: 8px 16px;
+    display: flex;
     font-size: inherit;
     font-weight: 500;
+    gap: 0.5rem;
+    padding: 8px 16px;
     text-align: left;
+    width: 100%;
     white-space: nowrap;
 
     &:hover {
@@ -113,9 +114,7 @@
       color: var(--black-50) !important;
 
       .icon img {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+        filter: invert(1);
       }
     }
   }

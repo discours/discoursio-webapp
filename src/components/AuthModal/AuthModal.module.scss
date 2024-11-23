@@ -34,17 +34,11 @@
   }
 
   & ~ :global(.close-control) {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+    filter: invert(1);
   }
 }
 
 .authImage {
-  @include media-breakpoint-down(sm) {
-    display: none;
-  }
-
   font-size:1.5rem;
   background: var(--background-color-invert)
     url('auth-page.jpg') center no-repeat;
@@ -53,6 +47,10 @@
   display: flex;
   padding: 3em;
   position: relative;
+
+  @include media-breakpoint-down(md) {
+    display: none;
+  }
 
   h2 {
     text-transform: uppercase;

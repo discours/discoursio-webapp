@@ -39,9 +39,7 @@ h5 {
       background-color: #000;
 
       .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+        filter: invert(1);
       }
     }
 
@@ -151,9 +149,7 @@ h5 {
 .socialButtonApple {
   &:hover {
     .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 
@@ -260,9 +256,7 @@ h5 {
       background: var(--background-color-invert);
 
       img {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+        filter: invert(1);
       }
     }
   }

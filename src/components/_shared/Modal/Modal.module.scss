@@ -140,9 +140,7 @@
   }
 
   .close {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+    filter: invert(1);
     height: 3.2rem;
     right: 0;
     top: 2rem;

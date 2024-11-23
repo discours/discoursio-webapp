@@ -44,9 +44,7 @@
         color: var(--black-50) !important;
 
         .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+          filter: invert(1);
           opacity: 1 !important;
         }
       }

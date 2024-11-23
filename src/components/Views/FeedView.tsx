@@ -243,7 +243,7 @@ export const FeedView = (props: FeedProps) => {
                 <Sidebar />
               </div>
 
-              <div class="col-md-12 col-xl-7 offset-xl-1">
+              <div class="col-md-12 offset-xl-1">
                 <div class={styles.filtersContainer}>
                   <FeedSwitcher options={['recent', 'top', 'hot']} prefix={'/feed'} />
                   <FeedFilters />
@@ -260,7 +260,7 @@ export const FeedView = (props: FeedProps) => {
                 </Show>
               </div>
 
-              <aside class={clsx('col-md-7 col-xl-4', styles.feedAside)}>
+              <aside class={clsx('col-md-7 col-xl-6 offset-xl-1', styles.feedAside)}>
                 <Show when={!isFeedLoading()}>
                   <Suspense fallback={<Loading />}>
                     <FreshestCommentsList />

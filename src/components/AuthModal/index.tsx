@@ -64,7 +64,7 @@ export const AuthModal = () => {
       })}
     >
       <Show when={!searchParams?.source}>
-        <div class={clsx('col-md-12 d-none d-md-flex', styles.authImage)}>
+        <div class={clsx('col-md-12', styles.authImage)}>
           <div
             class={styles.authImageText}
             classList={{ [styles.hidden]: mode() !== 'register' && mode() !== 'confirm-email' }}

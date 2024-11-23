@@ -89,9 +89,7 @@
     width: 100px;
 
     [data-theme='dark'] & {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 
@@ -229,7 +227,7 @@
   .headerNavLinks {
     margin: 0;
     padding: 0;
-    
+
     li {
       &.active a {
         background: transparent !important;
@@ -264,9 +262,7 @@
 
     &:hover {
       .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+        filter: invert(1);
       }
     }
 
@@ -530,9 +526,7 @@
       background: var(--background-color-invert);
 
       img {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+        filter: invert(1);
       }
     }
   }
@@ -789,9 +783,7 @@
     color: #fff;
 
     .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
 
     &:hover {
@@ -914,14 +906,14 @@
 
   li {
     margin-right: 2.4rem;
-    
+
     &:last-child {
       margin-right: 0;
     }
 
     &.active {
       pointer-events: none;
-      
+
       a {
         border-bottom: 2px solid var(--default-color);
         color: var(--default-color);
@@ -939,7 +931,7 @@
     a {
       border-bottom: 1px solid transparent;
       color: var(--link-color);
-      
+
       &:hover {
         background: var(--link-hover-background);
         color: var(--link-hover-color);

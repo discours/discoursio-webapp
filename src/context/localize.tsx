@@ -76,7 +76,7 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
       options
     )
 
-    return date.toLocaleDateString(lang(), opts)
+    return date.toLocaleDateString(lang(), opts).replace(/\s*г\./, '')
   }
 
   const timeAgo = createMemo(() => new TimeAgo(lang()))

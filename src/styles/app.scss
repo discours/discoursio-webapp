@@ -219,9 +219,7 @@ button {
     color: var(--default-color-invert);
 
     img {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 }
@@ -256,9 +254,7 @@ button {
     opacity: 1;
 
     .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 
@@ -311,9 +307,7 @@ button {
 
   &:hover {
     .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 
@@ -953,9 +947,7 @@ iframe {
 
   a:hover {
     .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 }
@@ -963,9 +955,7 @@ iframe {
 // Добавим глобальный стиль для SVG
 [data-theme='dark'] {
   svg {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+    filter: invert(1);
   }
 }
 

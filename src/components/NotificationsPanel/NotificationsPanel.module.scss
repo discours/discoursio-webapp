@@ -88,9 +88,7 @@ $transition-duration: 200ms;
     background-color: var(--background-color-invert);
 
     .closeIcon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 }

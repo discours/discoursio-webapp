@@ -79,6 +79,8 @@ export const TableOfContents = (props: Props) => {
     debouncedUpdateHeadings()
     window.addEventListener('scroll', updateActiveHeader)
     onCleanup(() => window.removeEventListener('scroll', updateActiveHeader))
+
+    window.console.log(headings());
   })
 
   return (
@@ -127,7 +129,7 @@ export const TableOfContents = (props: Props) => {
               {
                 [styles.TableOfContentsPrimaryButtonLefted]: props.variant === 'editor' && !isVisible()
               },
-              'd-none d-xl-block'
+              'd-xl-block'
             )}
             onClick={(e) => {
               e.preventDefault()
