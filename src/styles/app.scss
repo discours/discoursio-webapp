@@ -714,18 +714,12 @@ figure {
 }
 
 .container {
-  @include media-breakpoint-down(sm) {
-    // padding: 0 $container-padding-x * 0.5;
-  }
-
   max-width: 1500px;
   width: auto;
 }
 
 .container--static-page {
   @include media-breakpoint-up(md) {
-    padding-top: 1.5em;
-
     > .row {
       flex-wrap: nowrap;
       justify-content: space-between;
