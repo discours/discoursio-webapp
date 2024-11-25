@@ -5,7 +5,7 @@ import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { loadAuthors, getAuthorsByTopic, getFollowersByTopic, loadShouts } from '~/graphql/api/public'
-import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
+import { Author, AuthorsBy, LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/utils/date'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { byPublished, byStat } from '~/utils/sort'
@@ -21,7 +21,6 @@ import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 import styles from '~/styles/views/Topic.module.scss'
 import { FeedFilters } from '../Feed/FeedFilters'
 import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
-import { get } from 'http'
 
 interface Props {
   topic: Topic
@@ -39,7 +38,6 @@ export const TopicView = (props: Props) => {
   const { topicEntities } = useTopics()
   const [favoriteTopArticles, setFavoriteTopArticles] = createSignal<Shout[]>([])
   const [reactedTopMonthArticles, setReactedTopMonthArticles] = createSignal<Shout[]>([])
-
 
   // 1. Обновим сигналы и добавим эффект для начальных данных
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
@@ -82,7 +80,6 @@ export const TopicView = (props: Props) => {
     )
   )
 
-
   // Loading Followers and Authors for the topics
   const [topicAuthors, setTopicAuthors] = createSignal<Author[]>([])
   const [topicFollowers, setTopicFollowers] = createSignal<Author[]>([])
@@ -110,10 +107,9 @@ export const TopicView = (props: Props) => {
     console.debug('loadTopicAuthors got ', topicAuthors?.length, 'authors')
   }
 
-
   const loadTopicAuthors = async () => {
     const by: AuthorsBy = { topic: props.topicSlug }
-    const topicTopAuthorsFetcher = await loadAuthors({ by, limit: 10, offset: 0 })
+    const topicTopAuthorsFetcher = await loadAuthors({ by, limit: 4, offset: 0 })
     const result = await topicTopAuthorsFetcher()
     result && setLoadTopicAuthors(result)
     console.debug('loadTopicAuthors', result)
@@ -207,7 +203,6 @@ export const TopicView = (props: Props) => {
   return (
     <div class={styles.topicPage}>
       <Suspense fallback={<Loading />}>
-
         <Show when={topic()}>
           <FullTopic topic={topic() as Topic} followers={topicFollowers()} authors={topicAuthors()} />
         </Show>
@@ -229,8 +224,9 @@ export const TopicView = (props: Props) => {
 
         <Row1 article={(sortedFeed() || [])[0]} />
         <Row2 articles={(sortedFeed() || []).slice(1, 3)} isEqual={true} />
-        
-// Bisede for adding top authors 
+
+        {/* Bisede for adding top authors by Slug */}
+
         <Beside
           beside={(sortedFeed() || [])[3]}
           title={t('Topic is supported by')}

@@ -15,7 +15,8 @@ import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { useUI } from '~/context/ui'
 import { Modal } from '../_shared/Modal'
 
-import { LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 
 import styles from './Full.module.scss'
 
@@ -25,6 +26,8 @@ type Props = {
   authors?: Author[]
 }
 
+const AUTHORS_ON_PAGE = 20
+
 export const FullTopic = (props: Props) => {
   const { t, lang } = useLocalize()
   const { follows } = useFollowing()
@@ -32,17 +35,66 @@ export const FullTopic = (props: Props) => {
   const [title, setTitle] = createSignal('')
   const { hideModal } = useUI()
 
+  // This is function for load more Authors for modals windows
+
+  const [offsetFollowers, setOffsetFollowers] = createSignal(0)
+  const [offsetAuthors, setOffsetAuthors] = createSignal(0)
+  const [displayedFollowers, setDisplayedFollowers] = createSignal<Author[]>(
+    (props.followers ?? []).slice(0, AUTHORS_ON_PAGE)
+  )
+  const [displayedAuthors, setDisplayedAuthors] = createSignal<Author[]>(
+    (props.authors ?? []).slice(0, AUTHORS_ON_PAGE)
+  )
+  const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
+
+  const loadMoreFollowers = async () => {
+    saveScrollPosition()
+    const start = offsetFollowers
+    const end = offsetFollowers() + AUTHORS_ON_PAGE
+    const newFollowers = await new Promise<Author[]>((resolve) =>
+      resolve((props.followers ?? []).slice(start(), end))
+    )
+    setDisplayedFollowers([...displayedFollowers(), ...newFollowers])
+    setOffsetFollowers(offsetFollowers() + AUTHORS_ON_PAGE)
+    if (newFollowers.length < AUTHORS_ON_PAGE) {
+      setLoadMoreHidden(true)
+    }
+    restoreScrollPosition()
+    return newFollowers as LoadMoreItems
+  }
+
+  const loadMoreAuthors = async () => {
+    saveScrollPosition()
+    const start = offsetAuthors
+    const end = offsetAuthors() + AUTHORS_ON_PAGE
+    const newAuthors = await new Promise<Author[]>((resolve) =>
+      resolve((props.authors ?? []).slice(start(), end))
+    )
+    setDisplayedAuthors([...displayedAuthors(), ...newAuthors])
+    setOffsetAuthors(offsetAuthors() + AUTHORS_ON_PAGE)
+    if (newAuthors.length < AUTHORS_ON_PAGE) {
+      setLoadMoreHidden(true)
+    }
+    restoreScrollPosition()
+    return newAuthors as LoadMoreItems
+  }
+
+  // Modals views
+
   const FollowersModalView = () => (
     <>
       <h2>{t('Followers')}</h2>
       <div class="row">
         <div class="col-24">
-          <For each={props.followers}>
-            {(follower: Author) =>
-              <AuthorBadge
-                author={follower}
-                onClick={() => hideModal()} />}
-          </For>
+          <LoadMoreWrapper
+            loadFunction={loadMoreFollowers}
+            pageSize={AUTHORS_ON_PAGE}
+            hidden={loadMoreHidden()}
+          >
+            <For each={displayedFollowers()}>
+              {(follower: Author) => <AuthorBadge author={follower} onClick={() => hideModal()} />}
+            </For>
+          </LoadMoreWrapper>
         </div>
       </div>
     </>
@@ -53,14 +105,15 @@ export const FullTopic = (props: Props) => {
       <h2>{t('Authors')}</h2>
       <div class="row">
         <div class="col-24">
-          <For each={props.authors}>
-            {(authors: Author) => (
-              <AuthorBadge
-                author={authors}
-                onClick={() => hideModal()}
-              />
-            )}
+          <LoadMoreWrapper
+            loadFunction={loadMoreAuthors}
+            pageSize={AUTHORS_ON_PAGE}
+            hidden={loadMoreHidden()}
+          >
+            <For each={displayedAuthors()}>
+              {(authors: Author) => <AuthorBadge author={authors} onClick={() => hideModal()} />}
             </For>
+          </LoadMoreWrapper>
         </div>
       </div>
     </>
