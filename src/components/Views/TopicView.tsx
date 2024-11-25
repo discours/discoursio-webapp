@@ -4,7 +4,7 @@ import { For, Match, Show, Suspense, Switch, createEffect, createMemo, createSig
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { getAuthorsByTopic, getFollowersByTopic, loadShouts } from '~/graphql/api/public'
+import { loadAuthors, getAuthorsByTopic, getFollowersByTopic, loadShouts } from '~/graphql/api/public'
 import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/utils/date'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
@@ -113,8 +113,8 @@ export const TopicView = (props: Props) => {
 
   const loadTopicAuthors = async () => {
     const by: AuthorsBy = { topic: props.topicSlug }
-    const topicAuthorsFetcher = await loadAuthors({ by, limit: 10, offset: 0 })
-    const result = await topicAuthorsFetcher()
+    const topicTopAuthorsFetcher = await loadAuthors({ by, limit: 10, offset: 0 })
+    const result = await topicTopAuthorsFetcher()
     result && setLoadTopicAuthors(result)
     console.debug('loadTopicAuthors', result)
   }
@@ -155,7 +155,7 @@ export const TopicView = (props: Props) => {
         if (slug) {
           getTopicFollowers()
           getTopicAuthors()
-          getTopTopicAuthors()
+          loadTopicAuthors()
         }
       }
     )
