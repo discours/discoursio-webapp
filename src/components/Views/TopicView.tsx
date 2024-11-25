@@ -86,7 +86,7 @@ export const TopicView = (props: Props) => {
   // Loading Followers and Authors for the topics
   const [topicAuthors, setTopicAuthors] = createSignal<Author[]>([])
   const [topicFollowers, setTopicFollowers] = createSignal<Author[]>([])
-  const [topicTopAuthors, setTopicTopAuthors] = createSignal<Author[]>([])
+  const [topicTopAuthors, setLoadTopicAuthors] = createSignal<Author[]>([])
 
   const getTopicFollowers = async () => {
     const topicFollowersFetcher = getFollowersByTopic(props.topicSlug)
@@ -110,12 +110,13 @@ export const TopicView = (props: Props) => {
     console.debug('loadTopicAuthors got ', topicAuthors?.length, 'authors')
   }
 
-  const getTopTopicAuthors = () => { 
-    const authors = topicAuthors()
-    if (authors) {
-      const topAuthors = authors.slice(0, 5)
-      setTopicTopAuthors(topAuthors)
-    }
+
+  const loadTopicAuthors = async () => {
+    const by: AuthorsBy = { topic: props.topicSlug }
+    const topicAuthorsFetcher = await loadAuthors({ by, limit: 10, offset: 0 })
+    const result = await topicAuthorsFetcher()
+    result && setLoadTopicAuthors(result)
+    console.debug('loadTopicAuthors', result)
   }
 
   const loadFavoriteTopArticles = async () => {
