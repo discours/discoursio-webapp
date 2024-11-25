@@ -312,41 +312,44 @@ export const Header = (props: Props) => {
           </Show>
 
           <div
-            class={clsx(styles.subnavigation, 'col')}
+            class={clsx(styles.subnavigation)}
             classList={{ hidden: activeSubmenu() !== 'guide' }}
             onMouseEnter={() => switchView(true, 'guide')}
             onMouseLeave={hideSubnavigation}
           >
-            <ul class="nodash">
-              <li>
-                <A href="/manifest">{t('Manifesto')}</A>
-              </li>
-              <li>
-                <A href="/dogma">{t('Dogma')}</A>
-              </li>
-              <li>
-                <A href="/principles">{t('Our principles')}</A>
-              </li>
-              <li>
-                <A href="/guide">{t('Platform Guide')}</A>
-              </li>
-              <li>
-                <A href="/support">{t('Support us')}</A>
-              </li>
-              <li>
-                <A href="/manifest#participation">{t('How to help')}</A>
-              </li>
-              <li class={styles.rightItem}>
-                <A href="/connect">
-                  {t('Suggest an idea')}
-                  <Icon name="arrow-right-black" class={clsx(styles.icon, styles.rightItemIcon)} />
-                </A>
-              </li>
-            </ul>
+            <div class="wide-container">
+              <ul class="nodash">
+                <li>
+                  <A href="/manifest">{t('Manifesto')}</A>
+                </li>
+                <li>
+                  <A href="/dogma">{t('Dogma')}</A>
+                </li>
+                <li>
+                  <A href="/principles">{t('Our principles')}</A>
+                </li>
+                <li>
+                  <A href="/guide">{t('Platform Guide')}</A>
+                </li>
+                <li>
+                  <A href="/support">{t('Support us')}</A>
+                </li>
+                <li>
+                  <A href="/manifest#participation">{t('How to help')}</A>
+                </li>
+                <li class={styles.rightItem}>
+                  <A href="/connect">
+                    {t('Suggest an idea')}
+                    <Icon name="arrow-right-black"
+                          class={clsx(styles.icon, styles.rightItemIcon)}/>
+                  </A>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <div
-            class={clsx(styles.subnavigation, styles.subnavigationFeed, 'col')}
+            class={clsx(styles.subnavigation, styles.subnavigationFeed)}
             classList={{ hidden: activeSubmenu() !== 'topics' }}
             onMouseEnter={() => switchView(true, 'topics')}
             onMouseLeave={hideSubnavigation}
@@ -355,46 +358,47 @@ export const Header = (props: Props) => {
           </div>
 
           <div
-            class={clsx(styles.subnavigation, styles.subnavigationFeed, 'col')}
+            class={clsx(styles.subnavigation, styles.subnavigationFeed)}
             classList={{ hidden: activeSubmenu() !== 'feed' }}
             onMouseEnter={() => switchView(true, 'feed')}
             onMouseLeave={hideSubnavigation}
           >
-            <ul class="nodash">
-              <li>
-                <A href={'/feed'}>
+            <div class="wide-container">
+              <ul class="nodash">
+                <li>
+                  <A href={'/feed'}>
                   <span class={styles.subnavigationItemName}>
-                    <Icon name="feed-all" class={styles.icon} />
+                    <Icon name="feed-all" class={styles.icon}/>
                     {t('All')}
                   </span>
-                </A>
-              </li>
+                  </A>
+                </li>
 
-              <li>
-                <A href={'/feed/followed'}>
+                <li>
+                  <A href={'/feed/followed'}>
                   <span class={styles.subnavigationItemName}>
-                    <Icon name="feed-my" class={styles.icon} />
+                    <Icon name="feed-my" class={styles.icon}/>
                     {t('My feed')}
                   </span>
-                </A>
-              </li>
-              <li>
-                <A href={'/feed/coauthored'}>
+                  </A>
+                </li>
+                <li>
+                  <A href={'/feed/coauthored'}>
                   <span class={styles.subnavigationItemName}>
-                    <Icon name="feed-collaborate" class={styles.icon} />
+                    <Icon name="feed-collaborate" class={styles.icon}/>
                     {t('Participation')}
                   </span>
-                </A>
-              </li>
-              <li>
-                <A href={'/feed/discussed'}>
+                  </A>
+                </li>
+                <li>
+                  <A href={'/feed/discussed'}>
                   <span class={styles.subnavigationItemName}>
-                    <Icon name="feed-discussion" class={styles.icon} />
+                    <Icon name="feed-discussion" class={styles.icon}/>
                     {t('Discussions')}
                   </span>
-                </A>
-              </li>
-              {/* <li>
+                  </A>
+                </li>
+                {/* <li>
                 <A href={'/feed/bookmarked'}>
                   <span class={styles.subnavigationItemName}>
                     <Icon name="bookmark" class={styles.icon} />
@@ -402,7 +406,8 @@ export const Header = (props: Props) => {
                   </span>
                 </A>
               </li> */}
-            </ul>
+              </ul>
+            </div>
           </div>
         </nav>
 

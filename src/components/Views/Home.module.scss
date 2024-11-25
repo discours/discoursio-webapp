@@ -2,6 +2,10 @@
 
 :global(.main-content) {
   position: static;
+
+  @include media-breakpoint-up(lg) {
+    padding-top: 73px !important;
+  }
 }
 
 .articlePreview {
