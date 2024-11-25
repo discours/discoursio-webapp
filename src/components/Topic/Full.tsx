@@ -15,6 +15,8 @@ import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { useUI } from '~/context/ui'
 import { Modal } from '../_shared/Modal'
 
+import { LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+
 import styles from './Full.module.scss'
 
 type Props = {
@@ -36,27 +38,29 @@ export const FullTopic = (props: Props) => {
       <div class="row">
         <div class="col-24">
           <For each={props.followers}>
-            {(follower: Author) => <AuthorBadge author={follower} onClick={() => hideModal()} />}
+            {(follower: Author) =>
+              <AuthorBadge
+                author={follower}
+                onClick={() => hideModal()} />}
           </For>
         </div>
       </div>
     </>
   )
 
-  const FollowingModalView = () => (
+  const AuthorsModalView = () => (
     <>
       <h2>{t('Authors')}</h2>
       <div class="row">
         <div class="col-24">
           <For each={props.authors}>
-            {(subscription) => (
+            {(authors: Author) => (
               <AuthorBadge
-                author={subscription as Author}
-                subscriptionsMode={true}
+                author={authors}
                 onClick={() => hideModal()}
               />
             )}
-          </For>
+            </For>
         </div>
       </div>
     </>
@@ -116,7 +120,7 @@ export const FullTopic = (props: Props) => {
 
       <Show when={props.authors}>
         <Modal variant="medium" isResponsive={true} name="following" maxHeight>
-          <FollowingModalView />
+          <AuthorsModalView />
         </Modal>
       </Show>
 

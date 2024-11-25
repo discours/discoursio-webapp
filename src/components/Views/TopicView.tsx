@@ -21,6 +21,7 @@ import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 import styles from '~/styles/views/Topic.module.scss'
 import { FeedFilters } from '../Feed/FeedFilters'
 import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
+import { get } from 'http'
 
 interface Props {
   topic: Topic
@@ -38,7 +39,7 @@ export const TopicView = (props: Props) => {
   const { topicEntities } = useTopics()
   const [favoriteTopArticles, setFavoriteTopArticles] = createSignal<Shout[]>([])
   const [reactedTopMonthArticles, setReactedTopMonthArticles] = createSignal<Shout[]>([])
-  const [followers, setFollowers] = createSignal<Author[]>(props.followers || [])
+
 
   // 1. Обновим сигналы и добавим эффект для начальных данных
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
@@ -81,19 +82,40 @@ export const TopicView = (props: Props) => {
     )
   )
 
-  const loadTopicFollowers = async () => {
+
+  // Loading Followers and Authors for the topics
+  const [topicAuthors, setTopicAuthors] = createSignal<Author[]>([])
+  const [topicFollowers, setTopicFollowers] = createSignal<Author[]>([])
+  const [topicTopAuthors, setTopicTopAuthors] = createSignal<Author[]>([])
+
+  const getTopicFollowers = async () => {
     const topicFollowersFetcher = getFollowersByTopic(props.topicSlug)
     const topicFollowers = await topicFollowersFetcher()
-    topicFollowers && setFollowers(topicFollowers)
+    // sorting by maximum shouts
+    if (topicFollowers) {
+      const sortedFollowers = topicFollowers.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
+      setTopicFollowers(sortedFollowers)
+    }
     console.debug('loadTopicFollowers', topicFollowers)
   }
 
-  const [topicAuthors, setTopicAuthors] = createSignal<Author[]>([])
-  const loadTopicAuthors = async () => {
+  const getTopicAuthors = async () => {
     const topicAuthorsFetcher = getAuthorsByTopic(props.topicSlug)
     const topicAuthors = await topicAuthorsFetcher()
-    topicAuthors && setTopicAuthors(topicAuthors)
+    // sorting by maximum shouts
+    if (topicAuthors) {
+      const sortedAuthors = topicAuthors.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
+      setTopicAuthors(sortedAuthors)
+    }
     console.debug('loadTopicAuthors got ', topicAuthors?.length, 'authors')
+  }
+
+  const getTopTopicAuthors = () => { 
+    const authors = topicAuthors()
+    if (authors) {
+      const topAuthors = authors.slice(0, 5)
+      setTopicTopAuthors(topAuthors)
+    }
   }
 
   const loadFavoriteTopArticles = async () => {
@@ -124,6 +146,20 @@ export const TopicView = (props: Props) => {
     console.debug('loadReactedTopMonthArticles', result)
   }
 
+  // Effect to monitor changes to props.topicSlug for get Authors and Followers by topic
+  createEffect(
+    on(
+      () => props.topicSlug,
+      (slug) => {
+        if (slug) {
+          getTopicFollowers()
+          getTopicAuthors()
+          getTopTopicAuthors()
+        }
+      }
+    )
+  )
+
   // второй этап начальной загрузки данных
   createEffect(
     on(
@@ -133,8 +169,8 @@ export const TopicView = (props: Props) => {
         if (!tpc) return
         loadFavoriteTopArticles()
         loadReactedTopMonthArticles()
-        loadTopicAuthors()
-        loadTopicFollowers()
+        getTopicFollowers()
+        getTopicAuthors()
       },
       { defer: true }
     )
@@ -170,9 +206,11 @@ export const TopicView = (props: Props) => {
   return (
     <div class={styles.topicPage}>
       <Suspense fallback={<Loading />}>
+
         <Show when={topic()}>
-          <FullTopic topic={topic() as Topic} followers={followers()} authors={topicAuthors()} />
+          <FullTopic topic={topic() as Topic} followers={topicFollowers()} authors={topicAuthors()} />
         </Show>
+
         <div class="wide-container">
           <div class={clsx(styles.groupControls, 'row')}>
             <div class="col-md-12">
@@ -190,16 +228,19 @@ export const TopicView = (props: Props) => {
 
         <Row1 article={(sortedFeed() || [])[0]} />
         <Row2 articles={(sortedFeed() || []).slice(1, 3)} isEqual={true} />
-
+        
+// Bisede for adding top authors 
         <Beside
           beside={(sortedFeed() || [])[3]}
           title={t('Topic is supported by')}
-          values={topicAuthors() || []}
+          values={topicTopAuthors() || []}
           wrapper={'author'}
         />
+
         <Show when={reactedTopMonthArticles()?.length > 0} keyed={true}>
           <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles()} />
         </Show>
+
         <Beside
           beside={(sortedFeed() || [])[4]}
           title={t('Top viewed')}
