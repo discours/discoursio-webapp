@@ -50,36 +50,38 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   const [desc, setDesc] = createSignal<string>('')
   const [cover, setCover] = createSignal<string>('')
   const [viewed, setViewed] = createSignal(false)
+  const [topicsAdded, setTopicsAdded] = createSignal(false)
+
   createEffect(
     on(
-      [sortedTopics, () => window],
-      ([ttt, win]) => {
-        if (ttt && win) {
-          // console.debug('all topics:', ttt)
-          ttt && addTopics(ttt)
+      sortedTopics,
+      (ttt) => {
+        if (ttt && !topicsAdded()) {
+          addTopics(ttt)
+          setTopicsAdded(true) // Prevent future calls
           const tpc = ttt.find((x) => x.slug === props.params.slug)
           if (!tpc) return
           setTopic(tpc)
-          setTitle(() => `${t('Discours')}${topic()?.title ? ` :: ${topic()?.title}` : ''}`)
-          setDesc(() =>
-            topic()?.body
-              ? descFromBody(topic()?.body || '')
-              : t('The most interesting publications on the topic', { topicName: title() })
+          setTitle(`${t('Discours')}${tpc.title ? ` :: ${tpc.title}` : ''}`)
+          setDesc(
+            tpc.body
+              ? descFromBody(tpc.body)
+              : t('The most interesting publications on the topic', { topicName: tpc.title })
           )
-          setCover(() => (topic()?.pic ? getFileUrl(topic()?.pic || '', { width: 1200 }) : '/logo.png'))
+          setCover(tpc.pic ? getFileUrl(tpc.pic, { width: 1200 }) : '/logo.png')
 
           // views google counter increment
           if (!viewed()) {
             window?.gtag?.('event', 'page_view', {
               page_title: tpc.title,
-              page_location: window?.location.href,
-              page_path: window?.location.pathname
+              page_location: window.location.href,
+              page_path: window.location.pathname
             })
             setViewed(true)
           }
         }
       },
-      {}
+      { defer: true }
     )
   )
 
