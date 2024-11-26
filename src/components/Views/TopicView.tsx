@@ -1,10 +1,21 @@
 // import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Match, Show, Suspense, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
+import {
+  For,
+  Match,
+  Show,
+  Suspense,
+  Switch,
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  on
+} from 'solid-js'
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { loadAuthors, getAuthorsByTopic, getFollowersByTopic, loadShouts } from '~/graphql/api/public'
+import { getAuthorsByTopic, getFollowersByTopic, loadAuthors, loadShouts } from '~/graphql/api/public'
 import { Author, AuthorsBy, LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/utils/date'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
@@ -90,31 +101,32 @@ export const TopicView = (props: Props) => {
     const topicFollowers = await topicFollowersFetcher()
     // sorting by maximum shouts
     if (topicFollowers) {
-      const sortedFollowers = topicFollowers.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
-      setTopicFollowers(sortedFollowers)
+      return topicFollowers.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
     }
-    console.debug('loadTopicFollowers', topicFollowers)
+    return []
   }
+  const [followers] = createResource(() => props.topicSlug, getTopicFollowers)
 
   const getTopicAuthors = async () => {
     const topicAuthorsFetcher = getAuthorsByTopic(props.topicSlug)
     const topicAuthors = await topicAuthorsFetcher()
     // sorting by maximum shouts
     if (topicAuthors) {
-      const sortedAuthors = topicAuthors.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
-      setTopicAuthors(sortedAuthors)
+      return topicAuthors.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
     }
-    console.debug('loadTopicAuthors got ', topicAuthors?.length, 'authors')
+    return []
   }
+  const [authors] = createResource(() => props.topicSlug, getTopicAuthors)
 
   const loadTopicAuthors = async () => {
     const by: AuthorsBy = { topic: props.topicSlug }
     const topicTopAuthorsFetcher = await loadAuthors({ by, limit: 4, offset: 0 })
     const result = await topicTopAuthorsFetcher()
-    result && setLoadTopicAuthors(result)
-    console.debug('loadTopicAuthors', result)
+    return result || []
   }
+  const [topAuthors] = createResource(() => props.topicSlug, loadTopicAuthors)
 
+  // Load Favorite and Reacted Top Month Articles
   const loadFavoriteTopArticles = async () => {
     const options: LoadShoutsOptions = {
       filters: { featured: true, topic: props.topicSlug },
@@ -123,9 +135,9 @@ export const TopicView = (props: Props) => {
     }
     const topicRandomShoutsFetcher = loadShouts({ options })
     const result = await topicRandomShoutsFetcher()
-    result && setFavoriteTopArticles(result)
-    console.debug('loadFavoriteTopArticles', result)
+    return result || []
   }
+  const [favoriteArticles] = createResource(() => props.topicSlug, loadFavoriteTopArticles)
 
   const loadReactedTopMonthArticles = async () => {
     const now = new Date()
@@ -139,39 +151,31 @@ export const TopicView = (props: Props) => {
 
     const reactedTopMonthShoutsFetcher = loadShouts({ options })
     const result = await reactedTopMonthShoutsFetcher()
-    result && setReactedTopMonthArticles(result)
-    console.debug('loadReactedTopMonthArticles', result)
+    return result || []
   }
+  const [reactedArticles] = createResource(() => props.topicSlug, loadReactedTopMonthArticles)
 
-  // Effect to monitor changes to props.topicSlug for get Authors and Followers by topic
-  createEffect(
-    on(
-      () => props.topicSlug,
-      (slug) => {
-        if (slug) {
-          getTopicFollowers()
-          getTopicAuthors()
-          loadTopicAuthors()
-        }
+  createEffect(() => {
+    console.debug('Effect triggered with topicSlug:', props.topicSlug)
+
+    if (props.topicSlug) {
+      if (!(followers.loading || followers.error)) {
+        setTopicFollowers(followers() || [])
       }
-    )
-  )
-
-  // второй этап начальной загрузки данных
-  createEffect(
-    on(
-      topic,
-      (tpc) => {
-        console.debug('topic loaded', tpc)
-        if (!tpc) return
-        loadFavoriteTopArticles()
-        loadReactedTopMonthArticles()
-        getTopicFollowers()
-        getTopicAuthors()
-      },
-      { defer: true }
-    )
-  )
+      if (!(authors.loading || authors.error)) {
+        setTopicAuthors(authors() || [])
+      }
+      if (!(topAuthors.loading || topAuthors.error)) {
+        setLoadTopicAuthors(topAuthors() || [])
+      }
+      if (!(favoriteArticles.loading || favoriteArticles.error)) {
+        setFavoriteTopArticles(favoriteArticles() || [])
+      }
+      if (!(reactedArticles.loading || reactedArticles.error)) {
+        setReactedTopMonthArticles(reactedArticles() || [])
+      }
+    }
+  })
 
   // 5. Обновим loadMore для гарантированного обновления UI
   const loadMore = async () => {
@@ -203,84 +207,95 @@ export const TopicView = (props: Props) => {
   return (
     <div class={styles.topicPage}>
       <Suspense fallback={<Loading />}>
-        <Show when={topic()}>
+        <Show
+          when={
+            !(
+              followers.loading ||
+              authors.loading ||
+              topAuthors.loading ||
+              favoriteArticles.loading ||
+              reactedArticles.loading
+            )
+          }
+          fallback={<Loading />}
+        >
           <FullTopic topic={topic() as Topic} followers={topicFollowers()} authors={topicAuthors()} />
-        </Show>
 
-        <div class="wide-container">
-          <div class={clsx(styles.groupControls, 'row')}>
-            <div class="col-md-12">
-              <div class={styles.filtersRow}>
-                <FeedSwitcher
-                  options={['recent', 'top', 'hot']}
-                  prefix={`/topic/${props.topicSlug}`}
-                  class={styles.feedSwitcher}
-                />
-                <FeedFilters />
+          <div class="wide-container">
+            <div class={clsx(styles.groupControls, 'row')}>
+              <div class="col-md-12">
+                <div class={styles.filtersRow}>
+                  <FeedSwitcher
+                    options={['recent', 'top', 'hot']}
+                    prefix={`/topic/${props.topicSlug}`}
+                    class={styles.feedSwitcher}
+                  />
+                  <FeedFilters />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <Row1 article={(sortedFeed() || [])[0]} />
-        <Row2 articles={(sortedFeed() || []).slice(1, 3)} isEqual={true} />
+          <Row1 article={(sortedFeed() || [])[0]} />
+          <Row2 articles={(sortedFeed() || []).slice(1, 3)} isEqual={true} />
 
-        {/* Bisede for adding top authors by Slug */}
+          {/* Bisede for adding top authors by Slug */}
 
-        <Beside
-          beside={(sortedFeed() || [])[3]}
-          title={t('Topic is supported by')}
-          values={topicTopAuthors() || []}
-          wrapper={'author'}
-        />
+          <Beside
+            beside={(sortedFeed() || [])[3]}
+            title={t('Topic is supported by')}
+            values={topicTopAuthors() || []}
+            wrapper={'author'}
+          />
 
-        <Show when={reactedTopMonthArticles()?.length > 0} keyed={true}>
-          <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles()} />
+          <Show when={reactedTopMonthArticles()?.length > 0} keyed={true}>
+            <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles()} />
+          </Show>
+
+          <Beside
+            beside={(sortedFeed() || [])[4]}
+            title={t('Top viewed')}
+            values={topViewedShouts().slice(0, 5)}
+            wrapper={'top-article'}
+          />
+
+          <Row2 articles={(sortedFeed() || []).slice(5, 7)} isEqual={true} />
+          <Row1 article={(sortedFeed() || [])[7]} />
+
+          <Show when={favoriteTopArticles()?.length > 0} keyed={true}>
+            <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles()} />
+          </Show>
+
+          <Show when={(sortedFeed() || []).length > 7}>
+            <Row3 articles={(sortedFeed() || []).slice(8, 11)} />
+            <Row2 articles={(sortedFeed() || []).slice(11, 13)} />
+          </Show>
+
+          <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
+            <For each={sortedFeed()}>
+              {(_article, index) => {
+                const i = index()
+                if (i % 3 === 0) {
+                  const articles = sortedFeed().slice(i, i + 3)
+                  return (
+                    <Switch>
+                      <Match when={articles.length === 1}>
+                        <Row1 article={articles[0]} noauthor={true} nodate={true} />
+                      </Match>
+                      <Match when={articles.length === 2}>
+                        <Row2 articles={articles} noauthor={true} nodate={true} isEqual={true} />
+                      </Match>
+                      <Match when={articles.length === 3}>
+                        <Row3 articles={articles} noauthor={true} nodate={true} />
+                      </Match>
+                    </Switch>
+                  )
+                }
+                return null
+              }}
+            </For>
+          </LoadMoreWrapper>
         </Show>
-
-        <Beside
-          beside={(sortedFeed() || [])[4]}
-          title={t('Top viewed')}
-          values={topViewedShouts().slice(0, 5)}
-          wrapper={'top-article'}
-        />
-
-        <Row2 articles={(sortedFeed() || []).slice(5, 7)} isEqual={true} />
-        <Row1 article={(sortedFeed() || [])[7]} />
-
-        <Show when={favoriteTopArticles()?.length > 0} keyed={true}>
-          <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles()} />
-        </Show>
-
-        <Show when={(sortedFeed() || []).length > 7}>
-          <Row3 articles={(sortedFeed() || []).slice(8, 11)} />
-          <Row2 articles={(sortedFeed() || []).slice(11, 13)} />
-        </Show>
-
-        <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
-          <For each={sortedFeed()}>
-            {(_article, index) => {
-              const i = index()
-              if (i % 3 === 0) {
-                const articles = sortedFeed().slice(i, i + 3)
-                return (
-                  <Switch>
-                    <Match when={articles.length === 1}>
-                      <Row1 article={articles[0]} noauthor={true} nodate={true} />
-                    </Match>
-                    <Match when={articles.length === 2}>
-                      <Row2 articles={articles} noauthor={true} nodate={true} isEqual={true} />
-                    </Match>
-                    <Match when={articles.length === 3}>
-                      <Row3 articles={articles} noauthor={true} nodate={true} />
-                    </Match>
-                  </Switch>
-                )
-              }
-              return null
-            }}
-          </For>
-        </LoadMoreWrapper>
       </Suspense>
     </div>
   )
