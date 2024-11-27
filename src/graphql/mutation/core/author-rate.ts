@@ -1,4 +1,4 @@
-import { gql } from '@urql/core'
+import { gql } from 'graphql-tag'
 
 export default gql`
   mutation AuthorRate($rated_slug: String!, $value: Int!) {

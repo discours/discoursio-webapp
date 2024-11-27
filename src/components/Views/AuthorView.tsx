@@ -26,6 +26,8 @@ import { Row3 } from '../Feed/Row3'
 
 import styles from '~/styles/views/Author.module.scss'
 import stylesArticle from '../Article/Article.module.scss'
+import { FeedFilters } from '../Feed/FeedFilters'
+import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 
 type AuthorViewProps = {
   authorSlug: string
@@ -317,6 +319,18 @@ export const AuthorView = (props: AuthorViewProps) => {
                 followers={followers() || []}
                 flatFollows={followingArray() || []}
               />
+            </div>
+            <div class={clsx(styles.groupControls, 'row')}>
+              <div class="col-md-12">
+                <div class={styles.filtersRow}>
+                  <FeedSwitcher
+                    options={['recent', 'top', 'hot']}
+                    prefix={`/@${props.authorSlug}`}
+                    class={styles.feedSwitcher}
+                  />
+                  <FeedFilters />
+                </div>
+              </div>
             </div>
             <div class={clsx(styles.groupControls, 'row')}>
               <TabNavigator />

@@ -1,4 +1,4 @@
-import { gql } from '@urql/core'
+import { gql } from 'graphql-tag'
 
 export default gql`
   mutation MarkAsReadMutation($message_id: Int!, $chat_id: String!) {

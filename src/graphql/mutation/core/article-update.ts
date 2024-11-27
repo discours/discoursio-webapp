@@ -1,4 +1,4 @@
-import { gql } from '@urql/core'
+import { gql } from 'graphql-tag'
 
 export default gql`
   mutation UpdateShoutMutation($shout_id: Int!, $shout_input: ShoutInput, $publish: Boolean) {

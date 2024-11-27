@@ -6,8 +6,9 @@ import dotenv from 'dotenv'
 import { CSSOptions, LogLevel, LoggerOptions, createLogger, defineConfig } from 'vite'
 import { PolyfillOptions, nodePolyfills } from 'vite-plugin-node-polyfills'
 import sassDts from 'vite-plugin-sass-dts'
+import type { OutputChunk } from 'rollup'
 
-// Загружаем .env файл с выводом информации о статусе
+// Загружаем .env
 const envPath = path.resolve(process.cwd(), '.env')
 if (existsSync(envPath)) {
   console.log('[vite.config] Loading .env file from:', envPath)
@@ -16,29 +17,15 @@ if (existsSync(envPath)) {
   console.warn('[vite.config] No .env file found')
 }
 
-export const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
-console.log(`[vite.config] ${process.env.NODE_ENV} mode`)
+export const isDev = process.env.NODE_ENV !== 'production'
 
-const customLogger = createLogger(
-  'debug' as LogLevel,
-  {
-    warn: (message: string, options: LoggerOptions) => {
-      console.debug(message)
-      if (message.startsWith('Future global-builtin')) {
-        return // Игнорируем это конкретное предупреждение
-      }
-      console.warn(message, options)
-    }
-  } as LoggerOptions
-)
-
-const polyfillOptions = {
-  include: ['path', 'stream', 'util'],
-  exclude: ['http'],
-  globals: { Buffer: true },
-  overrides: { fs: 'memfs' },
-  protocolImports: true
-} as PolyfillOptions
+// Базовая конфигурация логгера
+const customLogger = createLogger('info' as LogLevel, {
+  warn: (message: string, options: LoggerOptions) => {
+    if (message.startsWith('Future global-builtin')) return
+    console.warn(message, options)
+  }
+} as LoggerOptions)
 
 export default defineConfig({
   resolve: {
@@ -62,42 +49,65 @@ export default defineConfig({
     } as CSSOptions['preprocessorOptions']
   },
   customLogger,
-  plugins: [nodePolyfills(polyfillOptions), sassDts()],
+  plugins: [nodePolyfills(), sassDts()],
   build: {
     target: 'esnext',
     sourcemap: true,
-    minify: 'terser', // explicit terser usage
+    minify: 'terser',
     terserOptions: {
-      compress: {
-        drop_console: true // removes console logs in production
-      }
+      compress: { drop_console: true }
     },
     rollupOptions: {
-      plugins: [], // visualizer()]
       output: {
-        manualChunks: {
-          icons: ['./src/components/_shared/Icon/Icon.tsx'],
-          session: ['./src/context/session.tsx'],
-          localize: ['./src/context/localize.tsx'],
-          editor: ['./src/context/editor.tsx'],
-          connect: ['./src/context/connect.tsx']
+        manualChunks: (id: string) => {
+          // Основные вендоры
+          if (id.includes('node_modules')) {
+            // Редактор
+            if (id.match(/(prosemirror|tiptap|yjs)/i)) {
+              return 'vendor.editor'
+            }
+            // GraphQL стек
+            if (id.match(/(@urql|graphql|wonka)/i)) {
+              return 'vendor.graphql'
+            }
+            // Solid.js
+            if (id.match(/(solid-js|@solidjs)/i)) {
+              return 'vendor.solid'
+            }
+            // i18n
+            if (id.match(/(i18next|messageformat|time-ago)/i)) {
+              return 'vendor.i18n'
+            }
+            // UI компоненты
+            if (id.match(/(cropperjs|swiper|tippy|popper)/i)) {
+              return 'vendor.ui'
+            }
+            // Остальные вендоры
+            return 'vendor.shared'
+          }
+
+          // Группировка приложения
+          if (id.includes('/src/')) {
+            if (id.includes('/components/Views/')) return 'app.pages'
+            if (id.includes('/components/Editor/')) return 'app.editor'
+            if (id.includes('/components/Article/')) return 'app.article'
+            if (id.includes('/components/_shared/')) return 'app.shared'
+            return 'app.core'
+          }
+
+          return null
         }
       }
-    },
-    commonjsOptions: {
-      ignore: ['punycode']
     }
   },
-  define: {
-    'process.env': JSON.stringify({
-      NODE_ENV: process.env.NODE_ENV,
-      // Добавляем только те переменные, которые начинаются с PUBLIC_
-      ...Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith('PUBLIC_')))
-    }),
-    global: 'globalThis'
-  },
+
   optimizeDeps: {
-    include: ['solid-tiptap', 'buffer'],
-    exclude: ['punycode']
+    include: [
+      'solid-js',
+      'solid-js/web',
+      '@solidjs/router',
+      '@urql/core',
+      'solid-tiptap'
+    ]
   }
 })

@@ -1,4 +1,4 @@
-import { gql } from '@urql/core'
+import { gql } from 'graphql-tag'
 
 export default gql`
   mutation createMessage($chat_id: String!, $body: String!, $reply_to: Int) {

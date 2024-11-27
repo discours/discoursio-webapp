@@ -1,4 +1,4 @@
-import { Client, ClientOptions, cacheExchange, createClient, fetchExchange } from '@urql/core'
+import { type Client, type ClientOptions, cacheExchange, createClient, fetchExchange } from '@urql/core'
 import { coreApiUrl } from '~/config'
 
 // Функция для создания GraphQL клиента с заданным URL и токеном
@@ -21,6 +21,6 @@ const graphqlClientCreate = (url: string, token = ''): Client => {
   return createClient(options)
 }
 
-const defaultClient = graphqlClientCreate(coreApiUrl)
+const defaultClient: Client = graphqlClientCreate(coreApiUrl)
 
-export { Client, defaultClient, graphqlClientCreate }
+export { type Client, defaultClient, graphqlClientCreate }

@@ -11,7 +11,6 @@
 - [i18next](https://www.i18next.com/)
 - [Tiptap](https://tiptap.dev/)
 - [Playwright](https://playwright.dev/)
-- [Storybook](https://storybook.js.org/)
 - [Stylelint](https://stylelint.io/)
 - [Biome](https://biomejs.dev/)
 
