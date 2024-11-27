@@ -4,9 +4,8 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import dotenv from 'dotenv'
 import { CSSOptions, LogLevel, LoggerOptions, createLogger, defineConfig } from 'vite'
-import { PolyfillOptions, nodePolyfills } from 'vite-plugin-node-polyfills'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import sassDts from 'vite-plugin-sass-dts'
-import type { OutputChunk } from 'rollup'
 
 // Загружаем .env
 const envPath = path.resolve(process.cwd(), '.env')
@@ -17,15 +16,24 @@ if (existsSync(envPath)) {
   console.warn('[vite.config] No .env file found')
 }
 
+const I18NEXT_REGEX = /(i18next|messageformat|time-ago)/i
+const UI_REGEX = /(cropperjs|swiper|tippy|popper)/i
+const GRAPHQL_REGEX = /(@urql|graphql|wonka)/i
+const SOLID_REGEX = /(solid-js|@solidjs)/i
+const EDITOR_REGEX = /(prosemirror|tiptap|yjs)/i
+
 export const isDev = process.env.NODE_ENV !== 'production'
 
 // Базовая конфигурация логгера
-const customLogger = createLogger('info' as LogLevel, {
-  warn: (message: string, options: LoggerOptions) => {
-    if (message.startsWith('Future global-builtin')) return
-    console.warn(message, options)
-  }
-} as LoggerOptions)
+const customLogger = createLogger(
+  'info' as LogLevel,
+  {
+    warn: (message: string, options: LoggerOptions) => {
+      if (message.startsWith('Future global-builtin')) return
+      console.warn(message, options)
+    }
+  } as LoggerOptions
+)
 
 export default defineConfig({
   resolve: {
@@ -63,23 +71,23 @@ export default defineConfig({
           // Основные вендоры
           if (id.includes('node_modules')) {
             // Редактор
-            if (id.match(/(prosemirror|tiptap|yjs)/i)) {
+            if (id.match(EDITOR_REGEX)) {
               return 'vendor.editor'
             }
             // GraphQL стек
-            if (id.match(/(@urql|graphql|wonka)/i)) {
+            if (id.match(GRAPHQL_REGEX)) {
               return 'vendor.graphql'
             }
             // Solid.js
-            if (id.match(/(solid-js|@solidjs)/i)) {
+            if (id.match(SOLID_REGEX)) {
               return 'vendor.solid'
             }
             // i18n
-            if (id.match(/(i18next|messageformat|time-ago)/i)) {
+            if (id.match(I18NEXT_REGEX)) {
               return 'vendor.i18n'
             }
             // UI компоненты
-            if (id.match(/(cropperjs|swiper|tippy|popper)/i)) {
+            if (id.match(UI_REGEX)) {
               return 'vendor.ui'
             }
             // Остальные вендоры
@@ -102,12 +110,6 @@ export default defineConfig({
   },
 
   optimizeDeps: {
-    include: [
-      'solid-js',
-      'solid-js/web',
-      '@solidjs/router',
-      '@urql/core',
-      'solid-tiptap'
-    ]
+    include: ['solid-js', 'solid-js/web', '@solidjs/router', '@urql/core', 'solid-tiptap']
   }
 })
