@@ -47,8 +47,6 @@ export const TopicView = (props: Props) => {
   const { t } = useLocalize()
   const { feedByTopic } = useFeed()
   const { topicEntities } = useTopics()
-  const [favoriteTopArticles, setFavoriteTopArticles] = createSignal<Shout[]>([])
-  const [reactedTopMonthArticles, setReactedTopMonthArticles] = createSignal<Shout[]>([])
 
   // 1. Обновим сигналы и добавим эффект для начальных данных
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
@@ -92,9 +90,6 @@ export const TopicView = (props: Props) => {
   )
 
   // Loading Followers and Authors for the topics
-  const [topicAuthors, setTopicAuthors] = createSignal<Author[]>([])
-  const [topicFollowers, setTopicFollowers] = createSignal<Author[]>([])
-  const [topicTopAuthors, setLoadTopicAuthors] = createSignal<Author[]>([])
 
   const getTopicFollowers = async () => {
     const topicFollowersFetcher = getFollowersByTopic(props.topicSlug)
@@ -105,7 +100,10 @@ export const TopicView = (props: Props) => {
     }
     return []
   }
-  const [followers] = createResource(() => props.topicSlug, getTopicFollowers)
+  const [topicFollowers, { refetch: refetchFollowers }] = createResource(
+    () => props.topicSlug,
+    getTopicFollowers
+  )
 
   const getTopicAuthors = async () => {
     const topicAuthorsFetcher = getAuthorsByTopic(props.topicSlug)
@@ -116,7 +114,7 @@ export const TopicView = (props: Props) => {
     }
     return []
   }
-  const [authors] = createResource(() => props.topicSlug, getTopicAuthors)
+  const [topicAuthors, { refetch: refetchAuthors }] = createResource(() => props.topicSlug, getTopicAuthors)
 
   const loadTopicAuthors = async () => {
     const by: AuthorsBy = { topic: props.topicSlug }
@@ -124,7 +122,10 @@ export const TopicView = (props: Props) => {
     const result = await topicTopAuthorsFetcher()
     return result || []
   }
-  const [topAuthors] = createResource(() => props.topicSlug, loadTopicAuthors)
+  const [topicTopAuthors, { refetch: refetchTopAuthors }] = createResource(
+    () => props.topicSlug,
+    loadTopicAuthors
+  )
 
   // Load Favorite and Reacted Top Month Articles
   const loadFavoriteTopArticles = async () => {
@@ -137,7 +138,10 @@ export const TopicView = (props: Props) => {
     const result = await topicRandomShoutsFetcher()
     return result || []
   }
-  const [favoriteArticles] = createResource(() => props.topicSlug, loadFavoriteTopArticles)
+  const [favoriteTopArticles, { refetch: refetchFavoriteArticles }] = createResource(
+    () => props.topicSlug,
+    loadFavoriteTopArticles
+  )
 
   const loadReactedTopMonthArticles = async () => {
     const now = new Date()
@@ -153,29 +157,25 @@ export const TopicView = (props: Props) => {
     const result = await reactedTopMonthShoutsFetcher()
     return result || []
   }
-  const [reactedArticles] = createResource(() => props.topicSlug, loadReactedTopMonthArticles)
+  const [reactedTopMonthArticles, { refetch: refetchReactedArticles }] = createResource(
+    () => props.topicSlug,
+    loadReactedTopMonthArticles
+  )
 
-  createEffect(() => {
-    console.debug('Effect triggered with topicSlug:', props.topicSlug)
-
-    if (props.topicSlug) {
-      if (!(followers.loading || followers.error)) {
-        setTopicFollowers(followers() || [])
+  createEffect(
+    on(
+      () => props.topicSlug,
+      (slug) => {
+        if (slug) {
+          refetchFollowers()
+          refetchAuthors()
+          refetchTopAuthors()
+          refetchFavoriteArticles()
+          refetchReactedArticles()
+        }
       }
-      if (!(authors.loading || authors.error)) {
-        setTopicAuthors(authors() || [])
-      }
-      if (!(topAuthors.loading || topAuthors.error)) {
-        setLoadTopicAuthors(topAuthors() || [])
-      }
-      if (!(favoriteArticles.loading || favoriteArticles.error)) {
-        setFavoriteTopArticles(favoriteArticles() || [])
-      }
-      if (!(reactedArticles.loading || reactedArticles.error)) {
-        setReactedTopMonthArticles(reactedArticles() || [])
-      }
-    }
-  })
+    )
+  )
 
   // 5. Обновим loadMore для гарантированного обновления UI
   const loadMore = async () => {
@@ -207,95 +207,82 @@ export const TopicView = (props: Props) => {
   return (
     <div class={styles.topicPage}>
       <Suspense fallback={<Loading />}>
-        <Show
-          when={
-            !(
-              followers.loading ||
-              authors.loading ||
-              topAuthors.loading ||
-              favoriteArticles.loading ||
-              reactedArticles.loading
-            )
-          }
-          fallback={<Loading />}
-        >
-          <FullTopic topic={topic() as Topic} followers={topicFollowers()} authors={topicAuthors()} />
+        <FullTopic topic={topic() as Topic} followers={topicFollowers()} authors={topicAuthors()} />
 
-          <div class="wide-container">
-            <div class={clsx(styles.groupControls, 'row')}>
-              <div class="col-md-12">
-                <div class={styles.filtersRow}>
-                  <FeedSwitcher
-                    options={['recent', 'top', 'hot']}
-                    prefix={`/topic/${props.topicSlug}`}
-                    class={styles.feedSwitcher}
-                  />
-                  <FeedFilters />
-                </div>
+        <div class="wide-container">
+          <div class={clsx(styles.groupControls, 'row')}>
+            <div class="col-md-12">
+              <div class={styles.filtersRow}>
+                <FeedSwitcher
+                  options={['recent', 'top', 'hot']}
+                  prefix={`/topic/${props.topicSlug}`}
+                  class={styles.feedSwitcher}
+                />
+                <FeedFilters />
               </div>
             </div>
           </div>
+        </div>
 
-          <Row1 article={(sortedFeed() || [])[0]} />
-          <Row2 articles={(sortedFeed() || []).slice(1, 3)} isEqual={true} />
+        <Row1 article={(sortedFeed() || [])[0]} />
+        <Row2 articles={(sortedFeed() || []).slice(1, 3)} isEqual={true} />
 
-          {/* Bisede for adding top authors by Slug */}
+        {/* Bisede for adding top authors by Slug */}
 
-          <Beside
-            beside={(sortedFeed() || [])[3]}
-            title={t('Topic is supported by')}
-            values={topicTopAuthors() || []}
-            wrapper={'author'}
-          />
+        <Beside
+          beside={(sortedFeed() || [])[3]}
+          title={t('Topic is supported by')}
+          values={topicTopAuthors() || []}
+          wrapper={'author'}
+        />
 
-          <Show when={reactedTopMonthArticles()?.length > 0} keyed={true}>
-            <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles()} />
-          </Show>
-
-          <Beside
-            beside={(sortedFeed() || [])[4]}
-            title={t('Top viewed')}
-            values={topViewedShouts().slice(0, 5)}
-            wrapper={'top-article'}
-          />
-
-          <Row2 articles={(sortedFeed() || []).slice(5, 7)} isEqual={true} />
-          <Row1 article={(sortedFeed() || [])[7]} />
-
-          <Show when={favoriteTopArticles()?.length > 0} keyed={true}>
-            <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles()} />
-          </Show>
-
-          <Show when={(sortedFeed() || []).length > 7}>
-            <Row3 articles={(sortedFeed() || []).slice(8, 11)} />
-            <Row2 articles={(sortedFeed() || []).slice(11, 13)} />
-          </Show>
-
-          <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
-            <For each={sortedFeed()}>
-              {(_article, index) => {
-                const i = index()
-                if (i % 3 === 0) {
-                  const articles = sortedFeed().slice(i, i + 3)
-                  return (
-                    <Switch>
-                      <Match when={articles.length === 1}>
-                        <Row1 article={articles[0]} noauthor={true} nodate={true} />
-                      </Match>
-                      <Match when={articles.length === 2}>
-                        <Row2 articles={articles} noauthor={true} nodate={true} isEqual={true} />
-                      </Match>
-                      <Match when={articles.length === 3}>
-                        <Row3 articles={articles} noauthor={true} nodate={true} />
-                      </Match>
-                    </Switch>
-                  )
-                }
-                return null
-              }}
-            </For>
-          </LoadMoreWrapper>
+        <Show when={(reactedTopMonthArticles()?.length ?? 0) > 0} keyed={true}>
+          <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles() || []} />
         </Show>
+
+        <Beside
+          beside={(sortedFeed() || [])[4]}
+          title={t('Top viewed')}
+          values={topViewedShouts().slice(0, 5)}
+          wrapper={'top-article'}
+        />
+
+        <Row2 articles={(sortedFeed() || []).slice(5, 7)} isEqual={true} />
+        <Row1 article={(sortedFeed() || [])[7]} />
+
+        <Show when={favoriteTopArticles()?.length ?? 0} keyed={true}>
+          <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles() || []} />
+        </Show>
+
+        <Show when={(sortedFeed() || []).length > 7}>
+          <Row3 articles={(sortedFeed() || []).slice(8, 11)} />
+          <Row2 articles={(sortedFeed() || []).slice(11, 13)} />
+        </Show>
+
+        <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
+          <For each={sortedFeed()}>
+            {(_article, index) => {
+              const i = index()
+              if (i % 3 === 0) {
+                const articles = sortedFeed().slice(i, i + 3)
+                return (
+                  <Switch>
+                    <Match when={articles.length === 1}>
+                      <Row1 article={articles[0]} noauthor={true} nodate={true} />
+                    </Match>
+                    <Match when={articles.length === 2}>
+                      <Row2 articles={articles} noauthor={true} nodate={true} isEqual={true} />
+                    </Match>
+                    <Match when={articles.length === 3}>
+                      <Row3 articles={articles} noauthor={true} nodate={true} />
+                    </Match>
+                  </Switch>
+                )
+              }
+              return null
+            }}
+          </For>
+        </LoadMoreWrapper>
       </Suspense>
     </div>
   )
