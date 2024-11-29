@@ -6,6 +6,9 @@ import dotenv from 'dotenv'
 import { CSSOptions, LogLevel, LoggerOptions, createLogger, defineConfig } from 'vite'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import sassDts from 'vite-plugin-sass-dts'
+import solid from 'vite-plugin-solid'
+import { execSync } from 'child_process'
+import type { ServerOptions } from 'vite'
 
 // Загружаем .env
 const envPath = path.resolve(process.cwd(), '.env')
@@ -35,6 +38,24 @@ const customLogger = createLogger(
   } as LoggerOptions
 )
 
+function generateSSLCertificate(): ServerOptions['https'] {
+  try {
+    // Проверяем наличие mkcert
+    execSync('which mkcert')
+    
+    // Если mkcert установлен, создаем сертификаты
+    execSync('mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1')
+    return {
+      key: './key.pem',
+      cert: './cert.pem'
+    }
+  } catch (error) {
+    // Если mkcert не установлен, возвращаем undefined вместо null
+    console.warn('mkcert не установлен. HTTPS не будет доступен в режиме разработки')
+    return undefined
+  }
+}
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -57,7 +78,7 @@ export default defineConfig({
     } as CSSOptions['preprocessorOptions']
   },
   customLogger,
-  plugins: [nodePolyfills(), sassDts()],
+  plugins: [nodePolyfills(), sassDts(), solid()],
   build: {
     target: 'esnext',
     sourcemap: true,
@@ -111,5 +132,10 @@ export default defineConfig({
 
   optimizeDeps: {
     include: ['solid-js', 'solid-js/web', '@urql/core', 'solid-tiptap']
+  },
+  server: {
+    https: generateSSLCertificate(),
+    port: 3000,
+    host: true
   }
 })
