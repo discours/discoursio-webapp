@@ -1,6 +1,4 @@
 // biome-ignore lint/correctness/noNodejsModules: build
-import { execSync } from 'node:child_process'
-// biome-ignore lint/correctness/noNodejsModules: build
 import { existsSync } from 'node:fs'
 // biome-ignore lint/correctness/noNodejsModules: build
 import { resolve } from 'node:path'
@@ -39,68 +37,32 @@ const customLogger = createLogger(
 )
 
 function generateSSLCertificate(): ServerOptions['https'] {
-  // Проверяем окружение
-  const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS || process.env.VERCEL)
-  const isDevelopment = process.env.NODE_ENV === 'development'
-  const isBuild = process.argv.includes('build')
-
-  // Логируем для отладки
-  console.debug('[SSL] Environment:', {
-    CI: process.env.CI,
-    GITHUB_ACTIONS: process.env.GITHUB_ACTIONS,
-    VERCEL: process.env.VERCEL,
-    NODE_ENV: process.env.NODE_ENV,
-    isBuild,
-    isCI,
-    isDevelopment
-  })
-
-  // Пропускаем для всех случаев кроме локальной разработки
-  if (isCI || !isDevelopment || isBuild) {
-    console.debug('[SSL] Skipping SSL certificate generation')
-    return undefined
-  }
-
   try {
-    // Используем существующие сертификаты если есть
-    if (existsSync('./key.pem') && existsSync('./cert.pem')) {
-      console.debug('[SSL] Using existing certificates')
-      return {
-        key: './key.pem',
-        cert: './cert.pem'
-      }
-    }
-
-    // Тихая проверка наличия mkcert
-    try {
-      execSync('command -v mkcert', { stdio: 'ignore' })
-    } catch {
-      console.debug('[SSL] mkcert not found')
+    // Пропускаем все кроме локальной разработки
+    if (
+      process.argv.includes('build') ||
+      process.env.CI ||
+      process.env.GITHUB_ACTIONS ||
+      process.env.VERCEL ||
+      process.env.NODE_ENV !== 'development'
+    ) {
       return undefined
     }
 
-    console.debug('[SSL] Generating new certificates')
-    // Генерация сертификатов
-    execSync('mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1', {
-      stdio: ['ignore', 'pipe', 'pipe']
-    })
-
-    return {
-      key: './key.pem',
-      cert: './cert.pem'
+    // Используем существующие сертификаты если есть
+    if (existsSync('./key.pem') && existsSync('./cert.pem')) {
+      return { key: './key.pem', cert: './cert.pem' }
     }
-  } catch (error) {
-    console.debug(
-      '[SSL] Certificate generation failed:',
-      error instanceof Error ? error.message : 'Unknown error'
-    )
+
+    return undefined
+  } catch {
     return undefined
   }
 }
 
-// В конфигурации сервера добавим условие для определения порта
+// Конфигурация сервера
 const serverConfig: ServerOptions = {
-  https: process.argv.includes('build') ? undefined : generateSSLCertificate(),
+  https: generateSSLCertificate(),
   port: process.env.PORT ? Number.parseInt(process.env.PORT) : 3000,
   host: true
 }
