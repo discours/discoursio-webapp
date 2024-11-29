@@ -3,19 +3,18 @@ import { execSync } from 'node:child_process'
 // biome-ignore lint/correctness/noNodejsModules: build
 import { existsSync } from 'node:fs'
 // biome-ignore lint/correctness/noNodejsModules: build
-import path from 'node:path'
-import dotenv from 'dotenv'
+import { resolve } from 'node:path'
+import { config } from 'dotenv'
 import { CSSOptions, LogLevel, LoggerOptions, createLogger, defineConfig } from 'vite'
 import type { ServerOptions } from 'vite'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import sassDts from 'vite-plugin-sass-dts'
-import solid from 'vite-plugin-solid'
 
 // Загружаем .env
-const envPath = path.resolve(process.cwd(), '.env')
+const envPath = resolve(process.cwd(), '.env')
 if (existsSync(envPath)) {
   console.log('[vite.config] Loading .env file from:', envPath)
-  dotenv.config({ path: envPath })
+  config({ path: envPath })
 } else {
   console.warn('[vite.config] No .env file found')
 }
@@ -40,31 +39,47 @@ const customLogger = createLogger(
 )
 
 function generateSSLCertificate(): ServerOptions['https'] {
-  try {
-    // Проверяем наличие mkcert
-    execSync('which mkcert')
-
-    // Если mkcert установлен, создаем сертификаты
-    execSync('mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1')
-    return {
-      key: './key.pem',
-      cert: './cert.pem'
-    }
-  } catch (error) {
-    console.error(error)
-    // Если mkcert не установлен, возвращаем undefined вместо null
-    console.warn('mkcert не установлен. HTTPS не будет доступен в режиме разработки')
+  // Пропускаем генерацию сертификата для Vercel
+  if (process.env.VERCEL) {
     return undefined
   }
+
+  // Генерируем сертификат только в режиме разработки
+  if (process.env.NODE_ENV === 'development') {
+    try {
+      // Проверяем наличие mkcert
+      execSync('which mkcert')
+      
+      // Если mkcert установлен, создаем сертификаты
+      execSync('mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1')
+      return {
+        key: './key.pem',
+        cert: './cert.pem'
+      }
+    } catch (error) {
+      console.error('Ошибка при генерации SSL-сертификата:', error)
+      console.warn('mkcert не установлен. HTTPS не будет доступен в режиме разработки')
+      return undefined
+    }
+  }
+
+  return undefined
+}
+
+// В конфигурации сервера добавим условие для определения порта
+const serverConfig: ServerOptions = {
+  https: generateSSLCertificate(),
+  port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
+  host: true
 }
 
 export default defineConfig({
   resolve: {
     alias: {
-      '~': path.resolve('./src'),
-      '@': path.resolve('./public'),
-      '/icons': path.resolve('./public/icons'),
-      '/fonts': path.resolve('./public/fonts')
+      '~': resolve('./src'),
+      '@': resolve('./public'),
+      '/icons': resolve('./public/icons'),
+      '/fonts': resolve('./public/fonts')
     }
   },
   envPrefix: 'PUBLIC_',
@@ -80,7 +95,7 @@ export default defineConfig({
     } as CSSOptions['preprocessorOptions']
   },
   customLogger,
-  plugins: [nodePolyfills(), sassDts(), solid()],
+  plugins: [nodePolyfills(), sassDts()],
   build: {
     target: 'esnext',
     sourcemap: true,
@@ -135,9 +150,5 @@ export default defineConfig({
   optimizeDeps: {
     include: ['solid-js', 'solid-js/web', '@urql/core', 'solid-tiptap']
   },
-  server: {
-    https: generateSSLCertificate(),
-    port: 3000,
-    host: true
-  }
+  server: serverConfig
 })
