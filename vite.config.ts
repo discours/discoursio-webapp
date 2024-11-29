@@ -4,7 +4,6 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { config } from 'dotenv'
 import { CSSOptions, LogLevel, LoggerOptions, createLogger, defineConfig } from 'vite'
-import type { ServerOptions } from 'vite'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import sassDts from 'vite-plugin-sass-dts'
 
@@ -36,37 +35,6 @@ const customLogger = createLogger(
   } as LoggerOptions
 )
 
-function generateSSLCertificate(): ServerOptions['https'] {
-  try {
-    // Пропускаем все кроме локальной разработки
-    if (
-      process.argv.includes('build') ||
-      process.env.CI ||
-      process.env.GITHUB_ACTIONS ||
-      process.env.VERCEL ||
-      process.env.NODE_ENV !== 'development'
-    ) {
-      return undefined
-    }
-
-    // Используем существующие сертификаты если есть
-    if (existsSync('./key.pem') && existsSync('./cert.pem')) {
-      return { key: './key.pem', cert: './cert.pem' }
-    }
-
-    return undefined
-  } catch {
-    return undefined
-  }
-}
-
-// Конфигурация сервера
-const serverConfig: ServerOptions = {
-  https: generateSSLCertificate(),
-  port: process.env.PORT ? Number.parseInt(process.env.PORT) : 3000,
-  host: true
-}
-
 export default defineConfig({
   resolve: {
     alias: {
@@ -82,7 +50,7 @@ export default defineConfig({
       scss: {
         api: 'modern-compiler',
         quietDeps: true,
-        silenceDeprecations: ['mixed-decls', 'legacy-js-api'], // 'global-builtin'],
+        silenceDeprecations: ['mixed-decls', 'legacy-js-api'],
         additionalData: (content: string) => `@use '~/styles/global' as *;\n${content}`,
         includePaths: ['./public', './src/styles', './node_modules']
       }
@@ -100,33 +68,15 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id: string) => {
-          // Основные вендоры
           if (id.includes('node_modules')) {
-            // Редактор
-            if (id.match(EDITOR_REGEX)) {
-              return 'vendor.editor'
-            }
-            // GraphQL стек
-            if (id.match(GRAPHQL_REGEX)) {
-              return 'vendor.graphql'
-            }
-            // Solid.js
-            if (id.match(SOLID_REGEX)) {
-              return 'vendor.solid'
-            }
-            // i18n
-            if (id.match(I18NEXT_REGEX)) {
-              return 'vendor.i18n'
-            }
-            // UI компоненты
-            if (id.match(UI_REGEX)) {
-              return 'vendor.ui'
-            }
-            // Остальные вендоры
+            if (id.match(EDITOR_REGEX)) return 'vendor.editor'
+            if (id.match(GRAPHQL_REGEX)) return 'vendor.graphql'
+            if (id.match(SOLID_REGEX)) return 'vendor.solid'
+            if (id.match(I18NEXT_REGEX)) return 'vendor.i18n'
+            if (id.match(UI_REGEX)) return 'vendor.ui'
             return 'vendor.shared'
           }
 
-          // Группировка приложения
           if (id.includes('/src/')) {
             if (id.includes('/components/Views/')) return 'app.pages'
             if (id.includes('/components/Editor/')) return 'app.editor'
@@ -143,6 +93,5 @@ export default defineConfig({
 
   optimizeDeps: {
     include: ['solid-js', 'solid-js/web', '@urql/core', 'solid-tiptap']
-  },
-  server: serverConfig
+  }
 })

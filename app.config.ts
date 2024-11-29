@@ -31,6 +31,22 @@ if (isDev) {
   }
 }
 
+// Функция для проверки SSL
+function checkSSL(): { key: string; cert: string } | undefined {
+  try {
+    // Только проверяем существующие сертификаты
+    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+      return {
+        key: keyPath,
+        cert: certPath
+      }
+    }
+  } catch {
+    // Игнорируем любые ошибки
+  }
+  return undefined
+}
+
 export default defineConfig({
   nitro: {
     timing: true
@@ -39,12 +55,7 @@ export default defineConfig({
   server: {
     preset,
     port: 3000,
-    https: isDev
-      ? {
-          key: fs.readFileSync(keyPath).toString(),
-          cert: fs.readFileSync(certPath).toString()
-        }
-      : true,
+    https: checkSSL(),
     streaming: false
   },
   devOverlay: isDev,
