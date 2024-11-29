@@ -60,13 +60,16 @@ export default defineConfig({
   plugins: [nodePolyfills(), sassDts()],
   build: {
     target: 'esnext',
-    sourcemap: true,
+    sourcemap: isDev,
     minify: 'terser',
     terserOptions: {
-      compress: { drop_console: true }
+      compress: { 
+        drop_console: !isDev
+      }
     },
     rollupOptions: {
       output: {
+        sourcemapExcludeSources: true,
         manualChunks: (id: string) => {
           if (id.includes('node_modules')) {
             if (id.match(EDITOR_REGEX)) return 'vendor.editor'
@@ -92,6 +95,7 @@ export default defineConfig({
   },
 
   optimizeDeps: {
-    include: ['solid-js', 'solid-js/web', '@urql/core', 'solid-tiptap']
+    include: ['solid-js', 'solid-js/web', '@urql/core', 'solid-tiptap'],
+    exclude: ['i18next-icu']
   }
 })

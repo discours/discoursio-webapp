@@ -57,11 +57,11 @@ export const Comment = (props: Props) => {
 
   const body = createMemo(() => {
     const content = editedBody() ? editedBody()?.trim() : props.comment.body?.trim() || ''
-    console.log('[Comment] body memo recalculated:', {
-      editedBody: editedBody(),
-      commentBody: props.comment.body,
-      result: content
-    })
+    // console.log('[Comment] body memo recalculated:', {
+    //   editedBody: editedBody(),
+    //   commentBody: props.comment.body,
+    //   result: content
+    // })
     return content
   })
 

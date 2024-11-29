@@ -43,13 +43,13 @@ export const RatingControl = (props: Props) => {
     on(
       [() => reactionsByShout()[props.shout?.id || 0], () => session()?.user?.app_data?.profile],
       ([rrr, profile]) => {
-        if (rrr) {
+        if (rrr !== ratings() && rrr) {
           // Удаляем дубликаты по id
           const uniqueReactions = Array.from(new Map(rrr.map((r) => [r.id, r])).values())
           const shoutRatings = uniqueReactions.filter(
             props.comment ? commentRatingFilter : shoutRatingFilter
           )
-          console.log('[RatingControl] filtered ratings:', shoutRatings)
+          // console.log('[RatingControl] filtered ratings:', shoutRatings)
           // console.debug('[RatingControl] profile:', profile)
           if (profile) {
             const mr = shoutRatings.find((r) => r.created_by.slug === profile.slug)

@@ -1,7 +1,7 @@
 // biome-ignore lint/correctness/noNodejsModules: build
-import fs from 'node:fs'
+import { existsSync } from 'node:fs'
 // biome-ignore lint/correctness/noNodejsModules: build
-import path from 'node:path'
+import { dirname, join } from 'node:path'
 // biome-ignore lint/correctness/noNodejsModules: build
 import { fileURLToPath } from 'node:url'
 import { SolidStartInlineConfig, defineConfig } from '@solidjs/start/config'
@@ -17,9 +17,9 @@ console.info(`[app.config] solid-start preset {> ${preset} <}`)
 
 // certs for local development
 const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const keyPath = path.join(__dirname, 'key.pem')
-const certPath = path.join(__dirname, 'cert.pem')
+const __dirname = dirname(__filename)
+const keyPath = join(__dirname, 'key.pem')
+const certPath = join(__dirname, 'cert.pem')
 
 // Функция для проверки SSL
 function checkSSL(): { key: string; cert: string } | undefined {
@@ -30,7 +30,7 @@ function checkSSL(): { key: string; cert: string } | undefined {
 
   try {
     // Только проверяем существующие сертификаты
-    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+    if (existsSync(keyPath) && existsSync(certPath)) {
       return {
         key: keyPath,
         cert: certPath
@@ -44,7 +44,8 @@ function checkSSL(): { key: string; cert: string } | undefined {
 
 export default defineConfig({
   nitro: {
-    timing: true
+    timing: true,
+    compatibilityDate: '2024-11-29'
   },
   ssr: true,
   server: {
@@ -54,5 +55,20 @@ export default defineConfig({
     streaming: false
   },
   devOverlay: isDev,
-  vite: viteConfig
+  vite: {
+    ...viteConfig,
+    // Добавляем глобальные CSS переменные для скролла
+    css: {
+      preprocessorOptions: {
+        scss: {
+          ...viteConfig.css?.preprocessorOptions?.scss,
+          additionalData: (content: string) => `
+            @use '~/styles/global' as *;
+            :root { scroll-padding-top: 80px; }
+            ${content}
+          `
+        }
+      }
+    }
+  }
 } as SolidStartInlineConfig)
