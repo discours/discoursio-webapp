@@ -78,19 +78,22 @@ function generateSSLCertificate(): ServerOptions['https'] {
       console.debug('[SSL] mkcert not found')
       return undefined
     }
-    
+
     console.debug('[SSL] Generating new certificates')
     // Генерация сертификатов
     execSync('mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1', {
       stdio: ['ignore', 'pipe', 'pipe']
     })
-    
+
     return {
       key: './key.pem',
       cert: './cert.pem'
     }
   } catch (error) {
-    console.debug('[SSL] Certificate generation failed:', error instanceof Error ? error.message : 'Unknown error')
+    console.debug(
+      '[SSL] Certificate generation failed:',
+      error instanceof Error ? error.message : 'Unknown error'
+    )
     return undefined
   }
 }
@@ -98,7 +101,7 @@ function generateSSLCertificate(): ServerOptions['https'] {
 // В конфигурации сервера добавим условие для определения порта
 const serverConfig: ServerOptions = {
   https: process.argv.includes('build') ? undefined : generateSSLCertificate(),
-  port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
+  port: process.env.PORT ? Number.parseInt(process.env.PORT) : 3000,
   host: true
 }
 
