@@ -55,20 +55,5 @@ export default defineConfig({
     streaming: false
   },
   devOverlay: isDev,
-  vite: {
-    ...viteConfig,
-    // Добавляем глобальные CSS переменные для скролла
-    css: {
-      preprocessorOptions: {
-        scss: {
-          ...viteConfig.css?.preprocessorOptions?.scss,
-          additionalData: (content: string) => `
-            @use '~/styles/global' as *;
-            :root { scroll-padding-top: 80px; }
-            ${content}
-          `
-        }
-      }
-    }
-  }
+  vite: viteConfig
 } as SolidStartInlineConfig)

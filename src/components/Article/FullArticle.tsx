@@ -63,10 +63,16 @@ export type ArticlePageSearchParams = {
   slide?: string
 }
 
-const scrollTo = (el?: HTMLElement) => {
-  const { top } = el?.getBoundingClientRect() || { top: 0 }
-  window?.scrollTo({
-    top: top + window.scrollY - DEFAULT_HEADER_OFFSET,
+const COMMENTS_SCROLL_OFFSET = 420 // Дополнительный отступ для комментариев
+
+const scrollTo = (el?: HTMLElement, isComments?: boolean) => {
+  if (!(el && window)) return
+
+  const { top } = el.getBoundingClientRect()
+  const offset = DEFAULT_HEADER_OFFSET + (isComments ? COMMENTS_SCROLL_OFFSET : 0)
+
+  window.scrollTo({
+    top: top + window.scrollY - offset,
     left: 0,
     behavior: 'smooth'
   })
@@ -155,7 +161,7 @@ export const FullArticle = (props: Props) => {
       console.debug('comment id is in link, scroll to')
       const scrollToComment =
         document.querySelector<HTMLElement>(`[id='comment_${cid}']`) || wrapper || document.body
-      requestAnimationFrame(() => scrollTo(scrollToComment))
+      requestAnimationFrame(() => scrollTo(scrollToComment, true))
     })
   )
 
@@ -347,7 +353,7 @@ export const FullArticle = (props: Props) => {
           <div
             class={clsx(styles.shoutStatsItem)}
             ref={triggerRef}
-            onClick={() => scrollTo(commentsWrapper())}
+            onClick={() => scrollTo(commentsWrapper(), true)}
           >
             <Icon name="comment" class={styles.icon} />
             <Icon name="comment-hover" class={clsx(styles.icon, styles.iconHover)} />

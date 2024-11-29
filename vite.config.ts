@@ -63,7 +63,7 @@ export default defineConfig({
     sourcemap: isDev,
     minify: 'terser',
     terserOptions: {
-      compress: { 
+      compress: {
         drop_console: !isDev
       }
     },
