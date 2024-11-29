@@ -74,10 +74,10 @@ export const updateEditorExtensions = (
 
   // Обновляем расширения
   currentEditor.extensionManager.extensions = updatedExtensions
-  
+
   // Получаем текущие плагины и обновляем их с новой схемой
   const plugins = currentEditor.extensionManager.plugins
-  
+
   // Правильно реконфигурируем состояние с новыми плагинами
   const newState = currentEditor.state.reconfigure({ plugins })
 
