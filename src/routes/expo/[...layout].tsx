@@ -8,7 +8,7 @@ import { PageLayout } from '~/components/_shared/PageLayout'
 import { EXPO_LAYOUTS, EXPO_TITLES, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { loadShouts } from '~/graphql/api/public'
-import { LoadShoutsFilters, LoadShoutsOptions, Shout } from '~/graphql/schema/core.gen'
+import { Shout } from '~/graphql/schema/core.gen'
 import { ExpoLayoutType } from '~/types/common'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 
@@ -30,78 +30,93 @@ export const route = {
 export default (props: RouteSectionProps<Shout[]>) => {
   const { t } = useLocalize()
   const { feedByLayout, addShoutsToFeed } = useFeed()
-  const [loadMoreVisible, setLoadMoreVisible] = createSignal(false)
+  const [loadMoreVisible, setLoadMoreVisible] = createSignal(true)
   const getTitle = createMemo(() => (l?: string) => EXPO_TITLES[(l as ExpoLayoutType) || ''])
 
+  const [currentLayout, setCurrentLayout] = createSignal(props.params.layout)
   const [feed, setFeed] = createSignal<Shout[]>([])
-  createEffect(
-    () => props.params.layout,
-    (currentLayout: string) => {
-      if (currentLayout) setFeed(feedByLayout()[currentLayout] || [])
-    }
-  )
 
-  const shouts = createAsync(async () => {
-    const layouts: string[] = props.params.layout ? [props.params.layout] : [...EXPO_LAYOUTS]
-    return props.data || (await fetchExpoShouts(layouts))
+  createEffect(() => {
+    if (props.params.layout !== currentLayout()) {
+      setFeed([])
+      setCurrentLayout(props.params.layout)
+    }
   })
 
-  const loadMore = async () => {
-    saveScrollPosition()
-    const limit = SHOUTS_PER_PAGE
-    const layouts: string[] = props.params.layout ? [props.params.layout] : [...EXPO_LAYOUTS]
-    const offset = feedByLayout()[props.params.layout || '']?.length || 0
-    const filters: LoadShoutsFilters = { layouts, featured: true }
-    const options: LoadShoutsOptions = { filters, limit, offset }
-    try {
-      const fetcher = await loadShouts({ options })
-      const result = (await fetcher()) || []
-      setLoadMoreVisible(Boolean(result?.length))
-      if (result && Array.isArray(result)) {
-        addShoutsToFeed(result as Shout[])
-      }
-      restoreScrollPosition()
-      return result as LoadMoreItems
-    } catch (error) {
-      console.log('Error loading more shouts', error)
-      return []
+  const shouts = createAsync(async () => {
+    const layout = currentLayout()
+    const layouts = layout ? [layout] : EXPO_LAYOUTS
+    const existingFeed = layout ? feedByLayout()[layout] : []
+
+    if (existingFeed?.length >= SHOUTS_PER_PAGE) {
+      return existingFeed
     }
-  }
+
+    const result = await fetchExpoShouts(layouts)
+    if (result?.length) {
+      addShoutsToFeed(result)
+    }
+    return result || props.data || []
+  })
 
   createEffect(
     on(
-      () => props.params.layout,
-      async (currentLayout) => {
-        const layouts: string[] = currentLayout ? [currentLayout] : [...EXPO_LAYOUTS]
-        const offset =
-          (currentLayout ? feedByLayout()[currentLayout]?.length : feedByLayout()[currentLayout]?.length) ||
-          0
-        const options: LoadShoutsOptions = {
-          filters: { layouts, featured: true },
-          limit: SHOUTS_PER_PAGE,
-          offset
-        }
-        const result = await loadShouts({ options })
-        if (result && Array.isArray(result)) {
-          setFeed(result)
-        } else {
-          setFeed([])
+      () => shouts() || [],
+      (newShouts: Shout[]) => {
+        if (newShouts?.length) {
+          const uniqueShouts = newShouts.filter(
+            (shout, index, self) => index === self.findIndex((s) => s.slug === shout.slug)
+          )
+          setFeed(uniqueShouts)
+          setLoadMoreVisible(uniqueShouts.length >= SHOUTS_PER_PAGE)
         }
       }
     )
   )
 
+  const loadMore = async () => {
+    saveScrollPosition()
+    const layout = currentLayout()
+    const offset = feed().length
+
+    try {
+      const result = await fetchExpoShouts(layout ? [layout] : EXPO_LAYOUTS, offset)
+
+      if (result?.length) {
+        const currentSlugs = new Set(feed().map((s) => s.slug))
+        const newShouts = result.filter((shout) => !currentSlugs.has(shout.slug))
+
+        if (newShouts.length) {
+          addShoutsToFeed(newShouts)
+          setFeed((prev) => [...prev, ...newShouts])
+          setLoadMoreVisible(result.length >= SHOUTS_PER_PAGE)
+        } else {
+          setLoadMoreVisible(false)
+        }
+      } else {
+        setLoadMoreVisible(false)
+      }
+
+      restoreScrollPosition()
+      return result as LoadMoreItems
+    } catch (error) {
+      console.error('Error loading more shouts', error)
+      setLoadMoreVisible(false)
+      return []
+    }
+  }
+
   return (
     <PageLayout
       withPadding={true}
       zeroBottomPadding={true}
-      title={`${t('Discours')} :: ${getTitle()((props.params.layout as ExpoLayoutType) || '')}`}
+      title={`${t('Discours')} :: ${getTitle()(currentLayout() || '')}`}
     >
       <TopicsNav />
-      <ExpoNav layout={(props.params.layout as ExpoLayoutType) || ''} />
-      <Show when={shouts()} fallback={<Loading />} keyed>
+      <ExpoNav layout={currentLayout() as ExpoLayoutType} />
+      <Show when={feed().length > 0} fallback={<Loading />} keyed>
         <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={!loadMoreVisible()}>
-          <Expo shouts={feed() || []} layout={(props.params.layout as ExpoLayoutType) || ''} />
+          <Expo shouts={feed()} layout={currentLayout() as ExpoLayoutType} />
         </LoadMoreWrapper>
       </Show>
     </PageLayout>
