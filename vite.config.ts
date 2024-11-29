@@ -39,26 +39,42 @@ const customLogger = createLogger(
 )
 
 function generateSSLCertificate(): ServerOptions['https'] {
-  // Пропускаем генерацию сертификата для Vercel
-  if (process.env.VERCEL) {
+  // Пропускаем генерацию сертификата для CI/CD и Vercel
+  if (process.env.VERCEL || process.env.CI || process.env.GITHUB_ACTIONS) {
     return undefined
   }
 
   // Генерируем сертификат только в режиме разработки
   if (process.env.NODE_ENV === 'development') {
     try {
-      // Проверяем наличие mkcert
-      execSync('which mkcert')
+      // Сначала проверяем существование сертификатов
+      if (existsSync('./key.pem') && existsSync('./cert.pem')) {
+        return {
+          key: './key.pem',
+          cert: './cert.pem'
+        }
+      }
+
+      // Проверяем наличие mkcert тихо, без вывода ошибки
+      try {
+        execSync('which mkcert', { stdio: 'ignore' })
+      } catch {
+        return undefined
+      }
       
       // Если mkcert установлен, создаем сертификаты
-      execSync('mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1')
+      execSync('mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1', {
+        stdio: ['ignore', 'pipe', 'pipe']
+      })
+      
       return {
         key: './key.pem',
         cert: './cert.pem'
       }
     } catch (error) {
-      console.error('Ошибка при генерации SSL-сертификата:', error)
-      console.warn('mkcert не установлен. HTTPS не будет доступен в режиме разработки')
+      if (error instanceof Error) {
+        console.debug('SSL setup skipped:', error.message)
+      }
       return undefined
     }
   }
