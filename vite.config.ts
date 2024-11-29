@@ -110,6 +110,6 @@ export default defineConfig({
   },
 
   optimizeDeps: {
-    include: ['solid-js', 'solid-js/web', '@solidjs/router', '@urql/core', 'solid-tiptap']
+    include: ['solid-js', 'solid-js/web', '@urql/core', 'solid-tiptap']
   }
 })

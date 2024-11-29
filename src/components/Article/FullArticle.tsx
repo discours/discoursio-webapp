@@ -63,9 +63,8 @@ export type ArticlePageSearchParams = {
   slide?: string
 }
 
-const scrollTo = (el: HTMLElement) => {
-  const { top } = el.getBoundingClientRect()
-
+const scrollTo = (el?: HTMLElement) => {
+  const { top } = el?.getBoundingClientRect() || { top: 0 }
   window?.scrollTo({
     top: top + window.scrollY - DEFAULT_HEADER_OFFSET,
     left: 0,
@@ -150,19 +149,15 @@ export const FullArticle = (props: Props) => {
   const clickHandlers: { element: HTMLElement; handler: () => void }[] = []
   const documentClickHandlers: ((e: MouseEvent) => void)[] = []
 
-  createEffect(() => {
-    if (searchParams?.commentId && isReactionsLoaded()) {
+  createEffect(
+    on([() => searchParams?.commentId, commentsWrapper, isReactionsLoaded], ([cid, wrapper, loaded]) => {
+      if (!(cid && loaded && wrapper)) return
       console.debug('comment id is in link, scroll to')
-      const scrollToElement =
-        document.querySelector<HTMLElement>(`[id='comment_${searchParams?.commentId}']`) ||
-        commentsWrapper() ||
-        document.body
-
-      if (scrollToElement) {
-        requestAnimationFrame(() => scrollTo(scrollToElement))
-      }
-    }
-  })
+      const scrollToComment =
+        document.querySelector<HTMLElement>(`[id='comment_${cid}']`) || wrapper || document.body
+      requestAnimationFrame(() => scrollTo(scrollToComment))
+    })
+  )
 
   createEffect(
     on(
@@ -333,7 +328,7 @@ export const FullArticle = (props: Props) => {
   })
   const shareUrl = createMemo(() => getShareUrl({ pathname: `/${props.article.slug || ''}` }))
   const getAuthorName = (a: Author) =>
-    lang() === 'en' && isCyrillic(a.name || '') ? capitalize(a.slug.replaceAll('-', ' ')) : a.name
+    lang() === 'en' && isCyrillic(a.name || '') ? capitalize(a.slug.replace(/-/g, ' ')) : a.name
 
   const myRate = createMemo(
     () =>
@@ -352,7 +347,7 @@ export const FullArticle = (props: Props) => {
           <div
             class={clsx(styles.shoutStatsItem)}
             ref={triggerRef}
-            onClick={() => commentsWrapper() && scrollTo(commentsWrapper() as HTMLElement)}
+            onClick={() => scrollTo(commentsWrapper())}
           >
             <Icon name="comment" class={styles.icon} />
             <Icon name="comment-hover" class={clsx(styles.icon, styles.iconHover)} />
