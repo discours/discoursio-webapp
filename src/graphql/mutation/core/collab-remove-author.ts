@@ -1,4 +1,4 @@
-import { gql } from '@urql/core'
+import { gql } from 'graphql-tag'
 
 export default gql`
   mutation CollabRemoveAuthorMutation($author_id: Int!, $slug: String!) {

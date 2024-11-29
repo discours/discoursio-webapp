@@ -45,7 +45,10 @@ export default defineConfig({
           cert: fs.readFileSync(certPath).toString()
         }
       : true,
-    streaming: false
+    streaming: false,
+    rollupConfig: {
+      external: ['punycode']
+    }
   },
   devOverlay: isDev,
   vite: viteConfig

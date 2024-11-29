@@ -4,7 +4,7 @@ import { For, Match, Show, Suspense, Switch, createEffect, createMemo, createSig
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { loadAuthors, getAuthorsByTopic, getFollowersByTopic, loadShouts } from '~/graphql/api/public'
+import { getAuthorsByTopic, getFollowersByTopic, loadAuthors, loadShouts } from '~/graphql/api/public'
 import { Author, AuthorsBy, LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/utils/date'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'

@@ -1,4 +1,4 @@
-import { gql } from '@urql/core'
+import { gql } from 'graphql-tag'
 
 export default gql`
   query LoadTopicsFollowedBy($slug: String, $user: String, $author_id: Int) {
