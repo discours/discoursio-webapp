@@ -22,7 +22,7 @@ import { descFromBody, keywordsFromTopics } from '~/utils/meta'
 import { FullArticle } from '../../components/Article/FullArticle'
 import { PageLayout } from '../../components/_shared/PageLayout'
 import { ReactionsProvider } from '../../context/reactions'
-import AuthorPage, { AuthorPageProps } from '../author/[slug]/[...tab]'
+import AuthorPage, { AuthorPageProps } from '../author/[slug]/[...mode]'
 import TopicPage, { TopicPageProps } from '../topic/[slug]/[...mode]'
 
 const fetchShout = async (slug: string): Promise<Shout | undefined> => {
@@ -79,7 +79,7 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
         await loadGAScript(gaIdentity)
         initGA(gaIdentity)
       } catch (error) {
-        console.warn('[routes] [slug]/[...tab] Failed to connect Google Analytics:', error)
+        console.warn('[routes] [slug]/[...mode] Failed to connect Google Analytics:', error)
       }
     }
   })

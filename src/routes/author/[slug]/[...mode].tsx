@@ -24,7 +24,7 @@
  * Example Usage:
  *
  * ```tsx
- * import AuthorPage from '~/routes/author/[slug]/[...tab]'
+ * import AuthorPage from '~/routes/author/[slug]/[...mode]'
  *
  * <AuthorPage params={{ slug: 'author-slug' }} data={{ author: authorData, articles: articlesData }} />
  * ```

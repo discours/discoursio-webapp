@@ -1,3 +1,3 @@
-import ArticlePage from '~/routes/[slug]/[...tab]'
+import ArticlePage from '~/routes/[slug]/[...mode]'
 
 export default ArticlePage
