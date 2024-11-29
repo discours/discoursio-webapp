@@ -39,47 +39,44 @@ const customLogger = createLogger(
 )
 
 function generateSSLCertificate(): ServerOptions['https'] {
-  // Пропускаем генерацию сертификата для CI/CD и Vercel
-  if (process.env.VERCEL || process.env.CI || process.env.GITHUB_ACTIONS) {
+  // Генерируем сертификат только для локальной разработки
+  const isLocalDev = process.env.NODE_ENV === 'development' && !process.env.CI && !process.env.GITHUB_ACTIONS && !process.env.VERCEL
+
+  if (!isLocalDev) {
     return undefined
   }
 
-  // Генерируем сертификат только в режиме разработки
-  if (process.env.NODE_ENV === 'development') {
-    try {
-      // Сначала проверяем существование сертификатов
-      if (existsSync('./key.pem') && existsSync('./cert.pem')) {
-        return {
-          key: './key.pem',
-          cert: './cert.pem'
-        }
-      }
-
-      // Проверяем наличие mkcert тихо, без вывода ошибки
-      try {
-        execSync('which mkcert', { stdio: 'ignore' })
-      } catch {
-        return undefined
-      }
-      
-      // Если mkcert установлен, создаем сертификаты
-      execSync('mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1', {
-        stdio: ['ignore', 'pipe', 'pipe']
-      })
-      
+  try {
+    // Используем существующие сертификаты если есть
+    if (existsSync('./key.pem') && existsSync('./cert.pem')) {
       return {
         key: './key.pem',
         cert: './cert.pem'
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        console.debug('SSL setup skipped:', error.message)
-      }
+    }
+
+    // Тихая проверка наличия mkcert
+    try {
+      execSync('which mkcert', { stdio: 'ignore' })
+    } catch {
       return undefined
     }
+    
+    // Генерация сертификатов
+    execSync('mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1', {
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    
+    return {
+      key: './key.pem',
+      cert: './cert.pem'
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      console.debug('SSL setup skipped:', error.message)
+    }
+    return undefined
   }
-
-  return undefined
 }
 
 // В конфигурации сервера добавим условие для определения порта
