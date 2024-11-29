@@ -1,5 +1,5 @@
 import { EditorOptions } from '@tiptap/core'
-import { Editor, Extension, getSchemaByResolvedExtensions } from '@tiptap/core'
+import { Editor, Extension } from '@tiptap/core'
 import Bold from '@tiptap/extension-bold'
 import { Document as DocExt } from '@tiptap/extension-document'
 import Dropcursor from '@tiptap/extension-dropcursor'
@@ -74,19 +74,25 @@ export const updateEditorExtensions = (
 
   // Обновляем расширения
   currentEditor.extensionManager.extensions = updatedExtensions
-
-  // Пересоздаем схему и состояние
-  const newSchema = getSchemaByResolvedExtensions(updatedExtensions, currentEditor)
-  const newState = currentEditor.state.reconfigure({ schema: newSchema } as Editor['state'])
+  
+  // Получаем текущие плагины и обновляем их с новой схемой
+  const plugins = currentEditor.extensionManager.plugins
+  
+  // Правильно реконфигурируем состояние с новыми плагинами
+  const newState = currentEditor.state.reconfigure({ plugins })
 
   // Обновляем view с новым состоянием
   currentEditor.view.updateState(newState)
 
-  // Восстанавливаем выделение
-  currentEditor.commands.setTextSelection({ from, to })
+  // Восстанавливаем выделение, только если оно было валидным
+  if (from < newState.doc.content.size && to <= newState.doc.content.size) {
+    currentEditor.commands.setTextSelection({ from, to })
+  }
 
-  // Принудительно обновляем редактор
-  currentEditor.commands.focus()
+  // Обновляем фокус только если редактор активен
+  if (currentEditor.isFocused) {
+    currentEditor.commands.focus()
+  }
 }
 
 export const base: EditorOptions['extensions'] = [

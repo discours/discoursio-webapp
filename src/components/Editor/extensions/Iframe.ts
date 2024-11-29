@@ -66,7 +66,8 @@ export const Iframe = Node.create<IframeOptions>({
           const { selection } = tr
           const node = this.type.create(options)
           if (dispatch) {
-            tr.replaceRangeWith(selection.from, selection.to, node)
+            // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+            tr.replaceRangeWith(selection.from, selection.to, node as any)
           }
           return true
         }

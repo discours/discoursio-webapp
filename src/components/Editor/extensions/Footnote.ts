@@ -55,8 +55,9 @@ export const Footnote = Node.create({
         ({ tr, state }) => {
           const { selection } = state
           const position = selection.$to.pos
-          const node = this.type.create(attributes)
-          tr.insert(position, node)
+          const node = this.type.create(attributes) // Type assertion to bypass type mismatch
+          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+          tr.insert(position, node as any)
           return true
         },
       updateFootnote:
