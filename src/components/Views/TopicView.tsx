@@ -1,6 +1,17 @@
 // import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Match, Show, Suspense, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
+import {
+  For,
+  Match,
+  Show,
+  Suspense,
+  Switch,
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  on
+} from 'solid-js'
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
@@ -36,8 +47,6 @@ export const TopicView = (props: Props) => {
   const { t } = useLocalize()
   const { feedByTopic } = useFeed()
   const { topicEntities } = useTopics()
-  const [favoriteTopArticles, setFavoriteTopArticles] = createSignal<Shout[]>([])
-  const [reactedTopMonthArticles, setReactedTopMonthArticles] = createSignal<Shout[]>([])
 
   // 1. Обновим сигналы и добавим эффект для начальных данных
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
@@ -81,40 +90,44 @@ export const TopicView = (props: Props) => {
   )
 
   // Loading Followers and Authors for the topics
-  const [topicAuthors, setTopicAuthors] = createSignal<Author[]>([])
-  const [topicFollowers, setTopicFollowers] = createSignal<Author[]>([])
-  const [topicTopAuthors, setLoadTopicAuthors] = createSignal<Author[]>([])
 
   const getTopicFollowers = async () => {
     const topicFollowersFetcher = getFollowersByTopic(props.topicSlug)
     const topicFollowers = await topicFollowersFetcher()
     // sorting by maximum shouts
     if (topicFollowers) {
-      const sortedFollowers = topicFollowers.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
-      setTopicFollowers(sortedFollowers)
+      return topicFollowers.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
     }
-    console.debug('loadTopicFollowers', topicFollowers)
+    return []
   }
+  const [topicFollowers, { refetch: refetchFollowers }] = createResource(
+    () => props.topicSlug,
+    getTopicFollowers
+  )
 
   const getTopicAuthors = async () => {
     const topicAuthorsFetcher = getAuthorsByTopic(props.topicSlug)
     const topicAuthors = await topicAuthorsFetcher()
     // sorting by maximum shouts
     if (topicAuthors) {
-      const sortedAuthors = topicAuthors.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
-      setTopicAuthors(sortedAuthors)
+      return topicAuthors.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
     }
-    console.debug('loadTopicAuthors got ', topicAuthors?.length, 'authors')
+    return []
   }
+  const [topicAuthors, { refetch: refetchAuthors }] = createResource(() => props.topicSlug, getTopicAuthors)
 
   const loadTopicAuthors = async () => {
     const by: AuthorsBy = { topic: props.topicSlug }
     const topicTopAuthorsFetcher = await loadAuthors({ by, limit: 4, offset: 0 })
     const result = await topicTopAuthorsFetcher()
-    result && setLoadTopicAuthors(result)
-    console.debug('loadTopicAuthors', result)
+    return result || []
   }
+  const [topicTopAuthors, { refetch: refetchTopAuthors }] = createResource(
+    () => props.topicSlug,
+    loadTopicAuthors
+  )
 
+  // Load Favorite and Reacted Top Month Articles
   const loadFavoriteTopArticles = async () => {
     const options: LoadShoutsOptions = {
       filters: { featured: true, topic: props.topicSlug },
@@ -123,9 +136,12 @@ export const TopicView = (props: Props) => {
     }
     const topicRandomShoutsFetcher = loadShouts({ options })
     const result = await topicRandomShoutsFetcher()
-    result && setFavoriteTopArticles(result)
-    console.debug('loadFavoriteTopArticles', result)
+    return result || []
   }
+  const [favoriteTopArticles, { refetch: refetchFavoriteArticles }] = createResource(
+    () => props.topicSlug,
+    loadFavoriteTopArticles
+  )
 
   const loadReactedTopMonthArticles = async () => {
     const now = new Date()
@@ -139,37 +155,25 @@ export const TopicView = (props: Props) => {
 
     const reactedTopMonthShoutsFetcher = loadShouts({ options })
     const result = await reactedTopMonthShoutsFetcher()
-    result && setReactedTopMonthArticles(result)
-    console.debug('loadReactedTopMonthArticles', result)
+    return result || []
   }
+  const [reactedTopMonthArticles, { refetch: refetchReactedArticles }] = createResource(
+    () => props.topicSlug,
+    loadReactedTopMonthArticles
+  )
 
-  // Effect to monitor changes to props.topicSlug for get Authors and Followers by topic
   createEffect(
     on(
       () => props.topicSlug,
       (slug) => {
         if (slug) {
-          getTopicFollowers()
-          getTopicAuthors()
-          loadTopicAuthors()
+          refetchFollowers()
+          refetchAuthors()
+          refetchTopAuthors()
+          refetchFavoriteArticles()
+          refetchReactedArticles()
         }
       }
-    )
-  )
-
-  // второй этап начальной загрузки данных
-  createEffect(
-    on(
-      topic,
-      (tpc) => {
-        console.debug('topic loaded', tpc)
-        if (!tpc) return
-        loadFavoriteTopArticles()
-        loadReactedTopMonthArticles()
-        getTopicFollowers()
-        getTopicAuthors()
-      },
-      { defer: true }
     )
   )
 
@@ -203,9 +207,7 @@ export const TopicView = (props: Props) => {
   return (
     <div class={styles.topicPage}>
       <Suspense fallback={<Loading />}>
-        <Show when={topic()}>
-          <FullTopic topic={topic() as Topic} followers={topicFollowers()} authors={topicAuthors()} />
-        </Show>
+        <FullTopic topic={topic() as Topic} followers={topicFollowers()} authors={topicAuthors()} />
 
         <div class="wide-container">
           <div class={clsx(styles.groupControls, 'row')}>
@@ -234,8 +236,8 @@ export const TopicView = (props: Props) => {
           wrapper={'author'}
         />
 
-        <Show when={reactedTopMonthArticles()?.length > 0} keyed={true}>
-          <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles()} />
+        <Show when={(reactedTopMonthArticles()?.length ?? 0) > 0} keyed={true}>
+          <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles() || []} />
         </Show>
 
         <Beside
@@ -248,8 +250,8 @@ export const TopicView = (props: Props) => {
         <Row2 articles={(sortedFeed() || []).slice(5, 7)} isEqual={true} />
         <Row1 article={(sortedFeed() || [])[7]} />
 
-        <Show when={favoriteTopArticles()?.length > 0} keyed={true}>
-          <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles()} />
+        <Show when={favoriteTopArticles()?.length ?? 0} keyed={true}>
+          <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles() || []} />
         </Show>
 
         <Show when={(sortedFeed() || []).length > 7}>
