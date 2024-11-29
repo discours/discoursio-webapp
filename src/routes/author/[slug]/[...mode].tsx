@@ -121,7 +121,7 @@ export type AuthorPageProps = {
 
 export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
   const { t } = useLocalize()
-  const params = useParams<{ slug: string; tab: FeedMode | 'comments' | 'about' }>()
+  const params = useParams<{ slug: string; mode: FeedMode | 'comments' | 'about' }>()
   const [searchParams] = useSearchParams<{ period: PeriodType }>()
   const [currentSlug, setCurrentSlug] = createSignal(params.slug)
   const { updateOptions, options } = useFeed()
@@ -136,7 +136,7 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
   // everything from address bar to route feed filters
   createEffect(
     on(
-      [() => params.slug, () => params.tab, () => searchParams.period],
+      [() => params.slug, () => params.mode, () => searchParams.period],
       ([newSlug, newMode, newPeriod]) => {
         setCurrentSlug(newSlug)
         const opts: LoadShoutsOptions = { ...options() }

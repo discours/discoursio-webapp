@@ -19,6 +19,8 @@ import { byCreated } from '~/utils/sort'
 import { Comment } from '../Article/Comment'
 import { AuthorCard } from '../Author/AuthorCard'
 import { AuthorShoutsRating } from '../Author/AuthorShoutsRating'
+import { FeedFilters } from '../Feed/FeedFilters'
+import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 import { Placeholder } from '../Feed/Placeholder'
 import { Row1 } from '../Feed/Row1'
 import { Row2 } from '../Feed/Row2'
@@ -61,52 +63,77 @@ export const AuthorView = (props: AuthorViewProps) => {
   const [commented, setCommented] = createSignal<Reaction[]>(props.comments || [])
   const [followersLoaded, setFollowersLoaded] = createSignal(false)
   const [followingsLoaded, setFollowingsLoaded] = createSignal(false)
-  const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || []) // Full list of shouts
-  const [shoutBatches, setShoutBatches] = createSignal<Shout[][]>([]) // Array for batches
+  const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
 
-  // Utility function to append new shouts into batches, keeping the last incomplete batch untouched
-  const appendShoutsToBatches = (newShouts: Shout[]): Shout[][] => {
-    const currentBatches = shoutBatches() // Get the current batches
-    const newBatch: Shout[][] = [] // Explicitly type newBatch as Shout[][]
-
-    // If the last batch is full, we can start adding new shouts directly
-    if (currentBatches.length === 0 || currentBatches[currentBatches.length - 1].length === 3) {
-      // No incomplete batch, so just add new batches
-      for (let i = 0; i < newShouts.length; i += 3) {
-        newBatch.push(newShouts.slice(i, i + 3))
-      }
-    } else {
-      // If the last batch is incomplete, leave it as is and start a new batch
-      for (let i = 0; i < newShouts.length; i += 3) {
-        newBatch.push(newShouts.slice(i, i + 3))
-      }
-    }
-
-    return [...currentBatches, ...newBatch] // Return the combined old and new batches
-  }
-
-  // When sortedFeed changes, append the new items to shoutBatches without modifying incomplete batches
-  createEffect(() => {
-    // Get the current number of shouts that have already been batched
-    const currentShoutCount = shoutBatches().reduce((acc, batch) => acc + batch.length, 0)
-
-    // Calculate how many new shouts have been added since last time
-    const newShouts = sortedFeed().slice(currentShoutCount)
-
-    // Only append if there are new shouts
-    if (newShouts.length > 0) {
-      // Append only if new batches differ from old ones
-      const batches = appendShoutsToBatches(newShouts)
-
-      // Check if the new batches are different from the existing ones to avoid redundant updates
-      if (JSON.stringify(batches) !== JSON.stringify(shoutBatches())) {
-        setShoutBatches(batches)
-      }
-    }
-  })
+  const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
 
   // derivatives
   const me = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
+
+  const { commentsByAuthor, addShoutReactions } = useReactions()
+  const { feedByAuthor } = useFeed()
+
+  // Создаем мемо для статистики из author.stat
+  const stats = createMemo(() => ({
+    shouts: author()?.stat?.shouts || 0,
+    comments: author()?.stat?.comments || 0
+  }))
+
+  // Эффект для обработки изменения таба через браузер
+  createEffect(
+    on(
+      () => params.tab,
+      async (newTab) => {
+        setCurrentTab(newTab)
+
+        // Если переключились на комментарии и они еще не загружены
+        if (newTab === 'comments' && !commented().length && author()) {
+          try {
+            const result = await loadReactions({
+              by: {
+                kinds: [ReactionKind.Comment],
+                author: author()?.slug
+              },
+              limit: COMMENTS_PER_PAGE,
+              offset: 0
+            })()
+
+            if (result) {
+              addShoutReactions(result)
+              setCommented(result)
+              setLoadMoreCommentsHidden(result.length >= stats().comments)
+            }
+          } catch (error) {
+            console.error('[AuthorView] Error loading comments:', error)
+          }
+        }
+      }
+    )
+  )
+
+  // Эффект для обновления комментариев при изменении автора или commentsByAuthor
+  createEffect(
+    on([author, commentsByAuthor], ([a, ccc]) => {
+      if (a?.id && ccc?.[a.id]) {
+        setCommented(ccc[a.id])
+        setLoadMoreCommentsHidden(ccc[a.id].length >= stats().comments)
+      }
+    })
+  )
+
+  // Эффект для обновления статей при изменении feedByAuthor
+  createEffect(
+    on(
+      () => feedByAuthor()[props.authorSlug],
+      (authorFeed) => {
+        if (authorFeed?.length) {
+          setSortedFeed(authorFeed)
+          setLoadMoreHidden(authorFeed.length >= stats().shouts)
+        }
+      },
+      { defer: false }
+    )
+  )
 
   // Объединенный эффект для загрузки автора и его подписок
   createEffect(
@@ -175,13 +202,13 @@ export const AuthorView = (props: AuthorViewProps) => {
         <li classList={{ 'view-switcher__item--selected': !currentTab() }}>
           <A href={`/@${props.authorSlug}`}>{t('Publications')}</A>
           <Show when={author()?.stat}>
-            <span class="view-switcher__counter">{author()?.stat?.shouts || 0}</span>
+            <span class="view-switcher__counter">{stats().shouts}</span>
           </Show>
         </li>
         <li classList={{ 'view-switcher__item--selected': currentTab() === 'comments' }}>
           <A href={`/@${props.authorSlug}/comments`}>{t('Comments')}</A>
           <Show when={author()?.stat}>
-            <span class="view-switcher__counter">{author()?.stat?.comments || 0}</span>
+            <span class="view-switcher__counter">{stats().comments}</span>
           </Show>
         </li>
         <li classList={{ 'view-switcher__item--selected': currentTab() === 'about' }}>
@@ -193,118 +220,88 @@ export const AuthorView = (props: AuthorViewProps) => {
     </div>
   )
 
-  const { feedByAuthor } = useFeed()
-  const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
+  // Эффект для обработки начальных данных
+  createEffect(on(() => props.shouts, setSortedFeed))
 
-  // Load more functionality, fetch new shouts, and update sortedFeed
+  // Обновленная функция loadMore
   const loadMore = async () => {
     saveScrollPosition()
-    const authorShoutsFetcher = loadShouts({
-      options: {
-        filters: { author: props.authorSlug },
-        limit: FEED_PAGE_SIZE,
-        offset: sortedFeed().length || 0
-      } // Offset is based on the current length of sortedFeed
-    })
-    const result = await authorShoutsFetcher()
+    const offset = sortedFeed().length
 
-    if (result) {
-      // Append the newly loaded shouts to the existing sortedFeed
-      setSortedFeed((prev) => [...prev, ...result]) // Ensure sortedFeed grows with new items
+    try {
+      const authorShoutsFetcher = loadShouts({
+        options: {
+          filters: { author: props.authorSlug },
+          limit: FEED_PAGE_SIZE,
+          offset
+        }
+      })
+      const result = await authorShoutsFetcher()
+
+      if (result?.length) {
+        // Добавляем только уникальные статьи
+        const currentSlugs = new Set(sortedFeed().map((s) => s.slug))
+        const newShouts = result.filter((shout) => !currentSlugs.has(shout.slug))
+
+        if (newShouts.length) {
+          setSortedFeed((prev) => [...prev, ...newShouts])
+          setLoadMoreHidden(sortedFeed().length >= stats().shouts)
+        }
+      }
+
+      restoreScrollPosition()
+      return result as LoadMoreItems
+    } catch (error) {
+      console.error('[AuthorView] Error loading more shouts:', error)
+      return []
     }
-    restoreScrollPosition()
-    return result as LoadMoreItems
   }
-
-  // fx to update author's feed
-  createEffect(
-    on(
-      feedByAuthor,
-      (byAuthor) => {
-        const feed = byAuthor[props.authorSlug] as Shout[]
-        if (!feed) return
-        setSortedFeed(feed)
-      },
-      {}
-    )
-  )
 
   const [loadMoreCommentsHidden, setLoadMoreCommentsHidden] = createSignal(
-    Boolean(props.author?.stat && props.author?.stat?.comments === 0)
-  )
-  const { commentsByAuthor, addShoutReactions } = useReactions()
-  const loadMoreComments = async () => {
-    if (!author()) return [] as LoadMoreItems
-    saveScrollPosition()
-    const aid = author()?.id || 0
-    const authorCommentsFetcher = loadReactions({
-      by: {
-        kinds: [ReactionKind.Comment],
-        author: author()?.slug
-      },
-      limit: COMMENTS_PER_PAGE,
-      offset: commentsByAuthor()[aid]?.length || 0
-    })
-    const result = await authorCommentsFetcher()
-    if (result) {
-      addShoutReactions(result)
-    }
-    restoreScrollPosition()
-    return result as LoadMoreItems
-  }
-
-  createEffect(() => setCurrentTab(params.tab))
-
-  // Update commented when author or commentsByAuthor changes
-  createEffect(
-    on(
-      [author, commentsByAuthor],
-      ([a, ccc]) => {
-        if (a && ccc && ccc[a.id]) {
-          setCommented(ccc[a.id])
-        }
-      },
-      {}
-    )
+    Boolean(author()?.stat && author()?.stat?.comments === 0)
   )
 
-  createEffect(
-    on(
-      [author, commented],
-      ([a, ccc]) => {
-        if (a && ccc) {
-          setLoadMoreCommentsHidden((ccc || []).length === a.stat?.comments)
-        }
-      },
-      {}
-    )
-  )
-
-  createEffect(
-    on(
-      [author, sortedFeed],
-      ([a, feed]) => {
-        if (a && Array.isArray(feed)) {
-          setLoadMoreHidden(feed.length === a.stat?.shouts)
-        }
-      },
-      {}
-    )
-  )
-
-  // ffect: Reset sortedFeed When Author Slug Changes**
+  // Effect: Reset sortedFeed When Author Slug Changes**
   createEffect(
     on(
       () => props.authorSlug,
       (newSlug, prevSlug) => {
         if (newSlug !== prevSlug) {
           setSortedFeed([]) // Reset sortedFeed to prevent shouts from previous author
-          setShoutBatches([]) // Reset shoutBatches as well
         }
       },
       {}
     )
   )
+
+  // Функция загрузки дополнительных комментариев
+  const loadMoreComments = async () => {
+    if (!author()) return [] as LoadMoreItems
+
+    saveScrollPosition()
+    try {
+      const result = await loadReactions({
+        by: {
+          kinds: [ReactionKind.Comment],
+          author: author()?.slug
+        },
+        limit: COMMENTS_PER_PAGE,
+        offset: commented().length
+      })()
+
+      if (result?.length) {
+        addShoutReactions(result)
+        setCommented((prev) => [...prev, ...result])
+        setLoadMoreCommentsHidden(commented().length >= stats().comments)
+      }
+
+      restoreScrollPosition()
+      return result as LoadMoreItems
+    } catch (error) {
+      console.error('[AuthorView] Error loading more comments:', error)
+      return []
+    }
+  }
 
   return (
     <div class={styles.authorPage}>
@@ -392,6 +389,11 @@ export const AuthorView = (props: AuthorViewProps) => {
         </Match>
 
         <Match when={!currentTab()}>
+          <div class={styles.filtersContainer}>
+            <FeedSwitcher options={['recent', 'top', 'hot']} prefix={`/@${props.authorSlug}`} />
+            <FeedFilters />
+          </div>
+
           <Show when={me()?.slug === props.authorSlug && !me()?.stat?.shouts}>
             <div class="wide-container">
               <Placeholder type={loc?.pathname} mode="profile" />
