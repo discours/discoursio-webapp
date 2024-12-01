@@ -107,9 +107,7 @@
       }
 
       img {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+        filter: invert(1);
       }
     }
   }
@@ -213,14 +211,14 @@
 
 .sectionHeader {
   padding: 0.5rem 0;
-  
+
   .icon {
     width: 6px;
     height: 6px;
     margin-left: auto;
     transition: transform 0.2s ease;
   }
-  
+
   &.opened .icon {
     transform: rotate(180deg);
   }

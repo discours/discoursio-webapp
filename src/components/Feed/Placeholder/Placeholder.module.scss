@@ -137,9 +137,7 @@
     width: 100%;
 
     .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 }
@@ -256,9 +254,7 @@
   }
 
   .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+    filter: invert(1);
     height: 1.8rem;
     left: 0;
     position: absolute;

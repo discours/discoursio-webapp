@@ -66,6 +66,8 @@
 
   a {
     border: none;
+    display: block;
+    margin-bottom: 1rem;
   }
 }
 
@@ -130,7 +132,7 @@
   color: #06F;
   text-decoration: none;
   margin-bottom: 12px;
-  
+
   &:hover {
     text-decoration: underline;
   }
@@ -144,7 +146,7 @@
   color: var(--text-color);
   text-decoration: none;
   margin-bottom: 12px;
-  
+
   &:hover {
     color: #06F;
   }
@@ -293,16 +295,16 @@
 }
 
 .filtersContainer {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4rem;
+
   @include media-breakpoint-down(sm) {
     margin: 1rem 0 0;
     flex-direction: column;
     gap: 1rem;
   }
-
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4rem;
 
   .feedFilter {
     margin-top: 0;
@@ -340,8 +342,7 @@
   text-overflow: ellipsis;
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 40px;
+  justify-content: end;
 }
 
 .short-cards {

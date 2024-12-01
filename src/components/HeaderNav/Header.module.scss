@@ -89,9 +89,7 @@
     width: 100px;
 
     [data-theme='dark'] & {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 
@@ -229,7 +227,7 @@
   .headerNavLinks {
     margin: 0;
     padding: 0;
-    
+
     li {
       &.active a {
         background: transparent !important;
@@ -264,9 +262,7 @@
 
     &:hover {
       .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+        filter: invert(1);
       }
     }
 
@@ -530,9 +526,7 @@
       background: var(--background-color-invert);
 
       img {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+        filter: invert(1);
       }
     }
   }
@@ -743,24 +737,25 @@
 }
 
 .subnavigation {
-  @include media-breakpoint-down(md) {
-    display: none;
-  }
-
   background: #000;
   color: #fff;
   font-weight: 500;
   left: 0;
+  padding: 0;
   position: absolute;
   top: 100%;
   transform: translateY(-2px);
+  pointer-events: auto;
+  transition: opacity 0.2s ease-in-out;
+  opacity: 1;
   width: 100%;
+  z-index: 10004;
+
+  @include media-breakpoint-down(md) {
+    display: none;
+  }
 
   ul {
-    @include media-breakpoint-up(xl) {
-      margin: 0 calc(0.5 * var(--bs-gutter-x));
-    }
-
     display: flex;
     flex-wrap: wrap;
     height: 6rem;
@@ -770,11 +765,14 @@
     position: relative;
     overflow: hidden;
 
+    @include media-breakpoint-up(xl) {
+      margin: 0 calc(0.5 * var(--bs-gutter-x));
+    }
+
     li {
       margin-right: 2.4rem;
       white-space: nowrap;
     }
-
 
     .rightItem {
       margin-right: 0;
@@ -789,20 +787,13 @@
     color: #fff;
 
     .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
 
     &:hover {
       opacity: 0.5;
     }
   }
-
-  z-index: 10004;
-  pointer-events: auto;
-  transition: opacity 0.2s ease-in-out;
-  opacity: 1;
 
   &.hidden {
     opacity: 0;
@@ -914,14 +905,14 @@
 
   li {
     margin-right: 2.4rem;
-    
+
     &:last-child {
       margin-right: 0;
     }
 
     &.active {
       pointer-events: none;
-      
+
       a {
         border-bottom: 2px solid var(--default-color);
         color: var(--default-color);
@@ -939,7 +930,7 @@
     a {
       border-bottom: 1px solid transparent;
       color: var(--link-color);
-      
+
       &:hover {
         background: var(--link-hover-background);
         color: var(--link-hover-color);

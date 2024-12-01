@@ -219,9 +219,7 @@ button {
     color: var(--default-color-invert);
 
     img {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 }
@@ -256,9 +254,7 @@ button {
     opacity: 1;
 
     .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 
@@ -311,9 +307,7 @@ button {
 
   &:hover {
     .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 
@@ -720,18 +714,12 @@ figure {
 }
 
 .container {
-  @include media-breakpoint-down(sm) {
-    // padding: 0 $container-padding-x * 0.5;
-  }
-
   max-width: 1500px;
   width: auto;
 }
 
 .container--static-page {
   @include media-breakpoint-up(md) {
-    padding-top: 1.5em;
-
     > .row {
       flex-wrap: nowrap;
       justify-content: space-between;
@@ -953,9 +941,7 @@ iframe {
 
   a:hover {
     .icon {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+      filter: invert(1);
     }
   }
 }
@@ -963,9 +949,7 @@ iframe {
 // Добавим глобальный стиль для SVG
 [data-theme='dark'] {
   svg {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+    filter: invert(1);
   }
 }
 

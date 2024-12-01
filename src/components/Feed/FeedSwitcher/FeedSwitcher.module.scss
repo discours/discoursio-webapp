@@ -1,96 +1,96 @@
 .feedSwitcher {
+  font-size: 1.4rem;
+  display: flex;
+  font-weight: 500;
+  list-style: none;
+  margin: 0;
+  overflow: auto;
+  padding: 0;
+
+  @include media-breakpoint-up(md) {
+    flex-wrap: wrap;
+  }
+
+  li {
     @include media-breakpoint-up(md) {
-        flex-wrap: wrap;
+      margin-right: 2.4rem;
     }
 
-    font-size:1.4rem;
-    display: flex;
-    font-weight: 500;
-    list-style: none;
-    margin: 3.6rem -1rem 0;
-    overflow: auto;
-    padding: 0 1rem;
+    display: inline-block;
+    margin-right: 2rem;
+    margin-bottom: 0.6em;
+    white-space: nowrap;
 
-    li {
-        @include media-breakpoint-up(md) {
-            margin-right: 2.4rem;
-        }
-
-        display: inline-block;
-        margin-right: 2rem;
-        margin-bottom: 0.6em;
-        white-space: nowrap;
-
-        .link {
-            border-bottom: none;
-        }
-
-        &:last-child {
-            margin-right: 0;
-        }
-
-        &.itemSelected, &.active {
-            font-weight: bold;
-            cursor: default !important;
-            pointer-events: none;
-            
-            a,
-            .link,
-            .linkReplacement,
-            button {
-                border-bottom: 2px solid var(--default-color);
-                color: var(--default-color);
-                cursor: default !important;
-                pointer-events: none;
-
-                &:hover {
-                    background: transparent;
-                }
-            }
-        }
+    .link {
+      border-bottom: none;
     }
 
-    button {
-        background: none;
-        border: none;
-        cursor: pointer;
-        height: auto !important;
-        font-size: inherit !important;
-        padding: 0 !important;
+    &:last-child {
+      margin-right: 0;
     }
 
-    a,
-    .link,
-    .linkReplacement,
-    button {
-        border-bottom: 1px solid transparent;
-        color: var(--link-color);
-        cursor: pointer;
-        font-weight: inherit;
+    &.itemSelected, &.active {
+      font-weight: bold;
+      cursor: default !important;
+      pointer-events: none;
+
+      a,
+      .link,
+      .linkReplacement,
+      button {
+        border-bottom: 2px solid var(--default-color);
+        color: var(--default-color);
+        cursor: default !important;
+        pointer-events: none;
 
         &:hover {
-            background: var(--link-hover-background);
-            color: var(--link-hover-color);
+          background: transparent;
         }
+      }
     }
+  }
 
-    .itemCounter {
-        background: var(--black-50);
-        border-radius: 0.8rem;
-        display: inline-flex;
-        font-size: 1.2rem;
-        font-weight: bold;
-        height: 2.2rem;
-        justify-content: center;
-        line-height: 2.2rem;
-        margin-left: 0.4rem;
-        min-width: 2.2rem;
-        padding: 0 0.6rem;
-        text-align: center;
+  button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    height: auto !important;
+    font-size: inherit !important;
+    padding: 0 !important;
+  }
 
-        .itemSelected &, .active & {
-            background: var(--background-color-invert);
-            color: var(--default-color-invert);
-        }
+  a,
+  .link,
+  .linkReplacement,
+  button {
+    border-bottom: 1px solid transparent;
+    color: var(--link-color);
+    cursor: pointer;
+    font-weight: inherit;
+
+    &:hover {
+      background: var(--link-hover-background);
+      color: var(--link-hover-color);
     }
+  }
+
+  .itemCounter {
+    background: var(--black-50);
+    border-radius: 0.8rem;
+    display: inline-flex;
+    font-size: 1.2rem;
+    font-weight: bold;
+    height: 2.2rem;
+    justify-content: center;
+    line-height: 2.2rem;
+    margin-left: 0.4rem;
+    min-width: 2.2rem;
+    padding: 0 0.6rem;
+    text-align: center;
+
+    .itemSelected &, .active & {
+      background: var(--background-color-invert);
+      color: var(--default-color-invert);
+    }
+  }
 }

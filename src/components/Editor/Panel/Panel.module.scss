@@ -12,9 +12,7 @@
   z-index: 10;
 
   .close {
-        // filter: invert(1);
-        fill: var(--icon-color-invert);
-        color: var(--icon-color);
+    filter: invert(1);
     margin: -1.6rem 0 0 -2.4rem;
   }
 

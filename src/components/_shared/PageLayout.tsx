@@ -97,7 +97,6 @@ export const PageLayout = (props: PageLayoutProps) => {
       <Meta name="twitter:description" content={description() || ''} />
       <main
         class={clsx('main-content', {
-          [styles.withPadding]: props.withPadding,
           [styles.zeroBottomPadding]: props.zeroBottomPadding
         })}
         classList={{ 'main-content--no-padding': !isHeaderFixed }}
