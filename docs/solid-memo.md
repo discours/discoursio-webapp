@@ -1,60 +1,47 @@
 # Мемоизация в SolidJS
 
-## Принципы работы
+## Примеры из нашей кодовой базы
 
-### Fine-grained реактивность
+### 1. Группировка и сортировка [TopicView.tsx](../src/components/Views/TopicView.tsx)
 
-В отличие от React, где обновление компонента происходит целиком, SolidJS использует точечные (fine-grained) обновления. Это означает, что обновляется только тот конкретный DOM-узел, который зависит от изменившегося значения.
-
-```mermaid
-graph TD
-    A[Signal] -->|Изменение| B[Computation]
-    B -->|Точечное<br>обновление| C[Конкретный DOM узел]
-```
-
-### Реактивные примитивы
-
-1. **Signals** - базовые единицы реактивности:
 ```typescript
-const [count, setCount] = createSignal(0)
-// count - getter функция
-// setCount - setter функция
-```
+// ❌ Было - избыточные вычисления при каждом рендере
+const topViewedShouts = createMemo(() => {
+  const loaded = feedByTopic()?.[props.topicSlug] || []
+  return [...loaded].sort(byStat('views'))
+})
 
-2. **Effects** - автоматические подписчики:
-```typescript
-createEffect(() => {
-  console.log(count()) // Перезапускается при изменении count
+// ✅ Стало - кэширование результатов и проверка изменений
+const [prevFeed, setPrevFeed] = createSignal<Shout[]>([])
+const [prevSorted, setPrevSorted] = createSignal<Shout[]>([])
+
+const topicFeed = () => feedByTopic()?.[props.topicSlug] || []
+
+const topViewedShouts = createMemo(() => {
+  const feed = topicFeed()
+  
+  // Проверяем равенство массивов
+  const isEqual = feed.length === prevFeed().length && 
+    feed.every((item, i) => item.id === prevFeed()[i]?.id)
+  
+  if (isEqual) return prevSorted()
+  
+  setPrevFeed(feed)
+  const sorted = [...feed].sort((a: Shout, b: Shout) => {
+    const aViews = (a.stat as Stat)?.viewed || 0
+    const bViews = (b.stat as Stat)?.viewed || 0
+    return bViews - aViews
+  })
+  setPrevSorted(sorted)
+  
+  return sorted
 })
 ```
 
-3. **Memo** - кэшированные вычисления:
+### 2. Управление фидами [FeedProvider.tsx](../src/context/feed.tsx)
+
 ```typescript
-const doubled = createMemo(() => count() * 2)
-// Пересчитывается только при изменении count
-```
-
-## Мутабельность vs Иммутабельность
-
-### Иммутабельный подход (как в React)
-```typescript
-// ❌ Требует пересоздания всего объекта
-const [user, setUser] = createSignal({ name: "John", age: 30 })
-setUser(prev => ({ ...prev, age: 31 }))
-```
-
-### Мутабельный подход (Store в SolidJS)
-```typescript
-// ✅ Точечное обновление только age
-const [user, setUser] = createStore({ name: "John", age: 30 })
-setUser("age", 31)
-```
-
-## Примеры из нашей кодовой базы
-
-### 1. Производные вычисления [FeedProvider.tsx](../src/context/feed.tsx)
-```typescript
-// Группировка по режимам с автоматическим отслеживанием зависимостей
+// ❌ Было - смешивание вычислений и доступа к состоянию
 const feedByMode = createMemo(() => {
   switch (mode()) {
     case 'hot': return hotFeed()
@@ -62,94 +49,103 @@ const feedByMode = createMemo(() => {
     default: return recentFeed()
   }
 })
+
+// ✅ Стало - изоляция вычислений и кэширование
+const currentMode = () => mode()
+const feedByMode = createMemo(() => {
+  const feeds: Record<FeedMode, () => FeedStore> = {
+    hot: hotFeed,
+    top: topFeed,
+    recent: recentFeed,
+    followed: followedFeed,
+    discussed: discussedFeed,
+    coauthored: coauthoredFeed,
+    search: searchFeed,
+    comments: recentFeed
+  }
+  return feeds[currentMode()]?.() || recentFeed()
+})
 ```
 
-### 2. Независимые обновления [TopicView.tsx](../src/components/Views/TopicView.tsx)
+### 3. Параметры загрузки [FeedPage.tsx](../src/routes/feed/[...mode].tsx)
+
 ```typescript
-// Каждое вычисление обновляется независимо
-const topViewedShouts = createMemo(() => {
-  const loaded = feedByTopic()?.[props.topicSlug] || []
-  return [...loaded].sort(byStat('views'))
+// ❌ Было - пересоздание объекта при каждом рендере
+const loadParams = () => ({
+  options: {
+    ...options(),
+    order_by: orderByMode(mode())
+  }
 })
+
+// ✅ Стало - мемоизация параметров
+const loadParams = createMemo(() => ({
+  options: {
+    ...options(),
+    order_by: orderByMode(mode())
+  }
+}))
 ```
 
 ## Рекомендации по оптимизации
 
-### 1. Гранулярность обновлений
+### 1. Кэширование результатов
 ```typescript
-// ❌ Обновление всего списка
-const list = createMemo(() => {
-  return items().map(item => ({
-    ...item,
-    selected: selectedId() === item.id
-  }))
-})
+// В TopicView.tsx
+const [prevFeed, setPrevFeed] = createSignal<Shout[]>([])
+const [prevSorted, setPrevSorted] = createSignal<Shout[]>([])
 
-// ✅ Точечные обновления
-const isSelected = (id) => selectedId() === id
-<For each={items()}>
-  {item => (
-    <div class={isSelected(item.id) ? "selected" : ""}>
-      {item.name}
-    </div>
-  )}
-</For>
+// Проверяем изменения перед пересчетом
+if (isEqual) return prevSorted()
 ```
 
-### 2. Изоляция изменений
+### 2. Изоляция вычислений
 ```typescript
-// ❌ Смешивание статических и динамических данных
-const UserCard = (props) => {
-  const info = createMemo(() => ({
-    name: props.user.name,        // Статическое
-    online: userStatus().online,  // Динамическое
-    avatar: props.user.avatar     // Статическое
-  }))
-}
-
-// ✅ Разделение статических и динамических данных
-const UserCard = (props) => {
-  const status = createMemo(() => userStatus().online)
-  return (
-    <div>
-      <h3>{props.user.name}</h3>
-      <OnlineStatus status={status()} />
-      <img src={props.user.avatar} />
-    </div>
-  )
-}
+// В FeedProvider.tsx
+const currentMode = () => mode()
+const feedByMode = createMemo(() => {
+  const feeds = { /*...*/ }
+  return feeds[currentMode()]?.() || recentFeed()
+})
 ```
 
-### 3. Использование Store для сложных объектов
+### 3. Предотвращение лишних обновлений
 ```typescript
-// ❌ Сигнал с объектом
-const [state, setState] = createSignal({ 
-  user: { name: "John" },
-  settings: { theme: "dark" }
+// В FeedProvider.tsx
+createEffect(() => {
+  const feed = currentFeed()
+  const currentMode = mode()
+  const currentSetter = feedSetters[currentMode]
+  
+  if (!feedByMode().shouts.includes(feed.shouts[0])) {
+    currentSetter({
+      shouts: feed.shouts,
+      isLoading: false,
+      hasMore: feed.shouts.length >= FEED_PAGE_SIZE
+    })
+  }
 })
-
-// ✅ Store с точечными обновлениями
-const [state, setState] = createStore({ 
-  user: { name: "John" },
-  settings: { theme: "dark" }
-})
-// Обновляет только theme
-setState("settings", "theme", "light")
 ```
 
-## Важно помнить
+## Важные моменты
 
-1. SolidJS оптимизирован для точечных обновлений "из коробки"
-2. Не нужно вручную оптимизировать простые операции
-3. Используйте Store для сложных объектов с вложенными обновлениями
-4. Разделяйте статические и динамические данные
-5. Изолируйте области изменений для минимизации перерендеров
+1. **Используйте createMemo для:**
+   - Сложных вычислений (сортировка, фильтрация)
+   - Преобразования данных для UI
+   - Кэширования результатов запросов
+
+2. **Избегайте createMemo для:**
+   - Простых операций
+   - Прямого доступа к сигналам
+   - Единичных преобразований
+
+3. **Оптимизируйте через:**
+   - Кэширование промежуточных результатов
+   - Проверку изменений перед пересчетом
+   - Изоляцию вычислений от состояния
 
 ## Дополнительные материалы
 
 - [Fine-grained Reactivity](https://docs.solidjs.com/advanced-concepts/fine-grained-reactivity)
-- [Mutable Derivations in Reactivity](https://dev.to/this-is-learning/mutable-derivations-in-reactivity-2ffl)
-- [SolidJS Reactivity Documentation](https://docs.solidjs.com/concepts/reactivity)
 - [Understanding Solid's Signals](https://docs.solidjs.com/concepts/signals)
 - [Ryan's Reactivity Deep Dive](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf)
-- [Solid Store Documentation](https://docs.solidjs.com/references/api-reference/stores/using-stores)
