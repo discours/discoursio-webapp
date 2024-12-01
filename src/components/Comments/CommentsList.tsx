@@ -1,11 +1,10 @@
 import { For, Show, createMemo } from 'solid-js'
 import { Reaction, ReactionSort } from '~/graphql/schema/core.gen'
 import { byCreated } from '~/utils/sort'
-import { Comment } from '../Article/Comment'
-import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
-import { CommentsFilter } from './CommentsFilter'
-
 import stylesArticle from '../Article/Article.module.scss'
+import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
+import { Comment } from './Comment'
+
 import styles from './CommentsList.module.scss'
 
 export interface CommentsListProps {
@@ -31,10 +30,6 @@ export const CommentsList = (props: CommentsListProps) => {
 
   return (
     <div class={styles.commentsList}>
-      {props.withFilter && (
-        <CommentsFilter onChange={props.onFiltersChange} currentSort={props.sortOrder} />
-      )}
-
       <Show when={props.comments.length > 0} fallback={<div>No comments yet</div>}>
         <LoadMoreWrapper
           loadFunction={props.loadMoreComments!}

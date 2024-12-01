@@ -340,8 +340,7 @@ export const Header = (props: Props) => {
                 <li class={styles.rightItem}>
                   <A href="/connect">
                     {t('Suggest an idea')}
-                    <Icon name="arrow-right-black"
-                          class={clsx(styles.icon, styles.rightItemIcon)}/>
+                    <Icon name="arrow-right-black" class={clsx(styles.icon, styles.rightItemIcon)} />
                   </A>
                 </li>
               </ul>
@@ -367,35 +366,35 @@ export const Header = (props: Props) => {
               <ul class="nodash">
                 <li>
                   <A href={'/feed'}>
-                  <span class={styles.subnavigationItemName}>
-                    <Icon name="feed-all" class={styles.icon}/>
-                    {t('All')}
-                  </span>
+                    <span class={styles.subnavigationItemName}>
+                      <Icon name="feed-all" class={styles.icon} />
+                      {t('All')}
+                    </span>
                   </A>
                 </li>
 
                 <li>
                   <A href={'/feed/followed'}>
-                  <span class={styles.subnavigationItemName}>
-                    <Icon name="feed-my" class={styles.icon}/>
-                    {t('My feed')}
-                  </span>
+                    <span class={styles.subnavigationItemName}>
+                      <Icon name="feed-my" class={styles.icon} />
+                      {t('My feed')}
+                    </span>
                   </A>
                 </li>
                 <li>
                   <A href={'/feed/coauthored'}>
-                  <span class={styles.subnavigationItemName}>
-                    <Icon name="feed-collaborate" class={styles.icon}/>
-                    {t('Participation')}
-                  </span>
+                    <span class={styles.subnavigationItemName}>
+                      <Icon name="feed-collaborate" class={styles.icon} />
+                      {t('Participation')}
+                    </span>
                   </A>
                 </li>
                 <li>
                   <A href={'/feed/discussed'}>
-                  <span class={styles.subnavigationItemName}>
-                    <Icon name="feed-discussion" class={styles.icon}/>
-                    {t('Discussions')}
-                  </span>
+                    <span class={styles.subnavigationItemName}>
+                      <Icon name="feed-discussion" class={styles.icon} />
+                      {t('Discussions')}
+                    </span>
                   </A>
                 </li>
                 {/* <li>

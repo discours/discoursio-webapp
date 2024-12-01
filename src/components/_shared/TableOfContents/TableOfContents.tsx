@@ -80,7 +80,7 @@ export const TableOfContents = (props: Props) => {
     window.addEventListener('scroll', updateActiveHeader)
     onCleanup(() => window.removeEventListener('scroll', updateActiveHeader))
 
-    window.console.log(headings());
+    window.console.log(headings())
   })
 
   return (

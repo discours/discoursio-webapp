@@ -15,7 +15,7 @@ import { Row5 } from '../Feed/Row5'
 import RowShort from '../Feed/RowShort'
 import { TopicsNav } from '../HeaderNav/TopicsNav'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
-import './Home.module.scss';
+import './Home.module.scss'
 
 export const SHOUTS_PER_PAGE = 20
 export const RANDOM_TOPICS_COUNT = 12

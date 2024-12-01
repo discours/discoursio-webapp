@@ -89,7 +89,7 @@
     "prosemirror-history": "^1.4.1",
     "prosemirror-trailing-node": "^3.0.0",
     "prosemirror-view": "^1.37.0",
-    "sass": "^1.81.0",
+    "sass": "1.78.0",
     "solid-js": "^1.9.3",
     "solid-popper": "^0.3.0",
     "solid-tiptap": "0.7.0",

@@ -1,7 +1,7 @@
 import { A, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Accessor, For, Show, createMemo, createSignal } from 'solid-js'
-import { RatingControl } from '~/components/Article/RatingControl'
+import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { Icon } from '~/components/_shared/Icon'
 import { Image } from '~/components/_shared/Image'
 import { Popover } from '~/components/_shared/Popover'

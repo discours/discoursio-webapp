@@ -1,28 +1,18 @@
-import { clsx } from 'clsx'
 import { ErrorBoundary, For, Show, createMemo, createResource, createSignal, onMount } from 'solid-js'
-
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import {
-  Author,
-  Reaction,
-  ReactionBy,
-  ReactionInput,
-  ReactionKind,
-  ReactionSort
-} from '~/graphql/schema/core.gen'
+import { Author, Reaction, ReactionInput, ReactionKind, ReactionSort } from '~/graphql/schema/core.gen'
 import { SortFunction } from '~/types/common'
 import { byCreated, byStat } from '~/utils/sort'
-import { CommentsFilter } from '../Comments/CommentsFilter'
 import { MiniEditor } from '../Editor/MiniEditor'
-import { Button } from '../_shared/Button'
 import { Loading } from '../_shared/Loading'
 import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
-import { Comment } from './Comment'
+import { Comment as CommentCard } from './Comment'
+import { CommentsHeader } from './CommentsHeader'
 
-import styles from './Article.module.scss'
+import styles from './Article/Article.module.scss'
 
 type Props = {
   articleAuthors: Author[]
@@ -37,15 +27,18 @@ interface ErrorBoundaryError extends Error {
 export const CommentsTree = (props: Props) => {
   const { session } = useSession()
   const { t } = useLocalize()
-  const [commentsOrder, setCommentsOrder] = createSignal<ReactionSort>(ReactionSort.Newest)
   const [onlyNew, setOnlyNew] = createSignal(false)
-  const [newReactions, setNewReactions] = createSignal<Reaction[]>([])
   const [clickedReplyId, setClickedReplyId] = createSignal<number>()
   const { reactionEntities, createShoutReaction, loadReactionsBy } = useReactions()
+
+  const [newReactions, setNewReactions] = createSignal<Reaction[]>([])
+  const [commentsOrder, setCommentsOrder] = createSignal<ReactionSort>(ReactionSort.Newest)
 
   const comments = createMemo(() =>
     Object.values(reactionEntities()).filter((reaction) => reaction.kind === 'COMMENT')
   )
+
+  const toggleNewOnly = () => setOnlyNew(!onlyNew())
 
   const sortedComments = createMemo(() => {
     let newSortedComments = [...comments()]
@@ -62,7 +55,6 @@ export const CommentsTree = (props: Props) => {
   })
   const { seen } = useFeed()
   const shoutLastSeen = createMemo(() => seen()[props.shoutSlug] ?? 0)
-
   const [isLoading, setIsLoading] = createSignal(true)
 
   onMount(async () => {
@@ -110,72 +102,6 @@ export const CommentsTree = (props: Props) => {
     setPosting(false)
   }
 
-  const handleFiltersChange = (filters?: ReactionBy) => {
-    setCommentsOrder(filters?.sort || ReactionSort.Newest)
-    loadReactionsBy({
-      by: {
-        shout: props.shoutSlug,
-        kinds: [ReactionKind.Comment],
-        after: filters?.after
-      }
-    })
-  }
-
-  const CommentsTreeHeader = () => (
-    <div class={styles.commentsHeaderWrapper}>
-      <h2 class={styles.commentsHeader}>
-        {t('Comments')} {comments().length.toString() || ''}
-        <Show when={newReactions().length > 0}>
-          <span class={styles.newReactions}>{` +${newReactions().length}`}</span>
-        </Show>
-      </h2>
-      <Show when={comments().length > 0}>
-        <ul class={clsx(styles.commentsFeedSwitcher, 'view-switcher')}>
-          <Show when={newReactions().length > 0}>
-            <li classList={{ 'view-switcher__item--selected': onlyNew() }}>
-              <Button variant="light" value={t('New only')} onClick={() => setOnlyNew(!onlyNew())} />
-            </li>
-          </Show>
-          <li classList={{ 'view-switcher__item--selected': commentsOrder() === ReactionSort.Newest }}>
-            <Button
-              variant="light"
-              value={t('By time')}
-              onClick={() => {
-                setCommentsOrder(ReactionSort.Newest)
-              }}
-            />
-          </li>
-          <li classList={{ 'view-switcher__item--selected': commentsOrder() === ReactionSort.Like }}>
-            <Button
-              variant="light"
-              value={t('By rating')}
-              onClick={() => {
-                setCommentsOrder(ReactionSort.Like)
-              }}
-            />
-          </li>
-        </ul>
-      </Show>
-    </div>
-  )
-
-  const CommentsTreeItems = (props: Props) => (
-    <ul class={styles.comments}>
-      <For each={sortedComments().filter((r) => !r.reply_to)}>
-        {(reaction) => (
-          <Comment
-            sortedComments={sortedComments()}
-            isArticleAuthor={Boolean(props.articleAuthors.some((a) => a?.id === reaction.created_by.id))}
-            comment={reaction}
-            clickedReply={(id) => setClickedReplyId(id)}
-            clickedReplyId={clickedReplyId()}
-            lastSeen={shoutLastSeen()}
-          />
-        )}
-      </For>
-    </ul>
-  )
-
   const FallbackMessage = () => (
     <div class={styles.signInMessage}>
       {t('To write a comment, you must')}{' '}
@@ -202,6 +128,23 @@ export const CommentsTree = (props: Props) => {
     }
   )
 
+  const CommentsTreeItems = (props: Props) => (
+    <ul class={styles.comments}>
+      <For each={sortedComments().filter((r) => !r.reply_to)}>
+        {(reaction) => (
+          <CommentCard
+            sortedComments={sortedComments()}
+            isArticleAuthor={Boolean(props.articleAuthors.some((a) => a?.id === reaction.created_by.id))}
+            comment={reaction}
+            clickedReply={(id: number) => setClickedReplyId(id)}
+            clickedReplyId={clickedReplyId()}
+            lastSeen={shoutLastSeen()}
+          />
+        )}
+      </For>
+    </ul>
+  )
+
   return (
     <ErrorBoundary
       fallback={(err: ErrorBoundaryError) => (
@@ -212,10 +155,15 @@ export const CommentsTree = (props: Props) => {
       )}
     >
       <div>
-        <CommentsFilter shoutId={props.shoutId} onChange={handleFiltersChange} />
-
         <Show when={!isLoading()} fallback={<Loading />}>
-          <CommentsTreeHeader />
+          <CommentsHeader
+            comments={comments()}
+            newComments={newReactions()}
+            order={commentsOrder()}
+            setOrder={setCommentsOrder}
+            toggleNewOnly={toggleNewOnly}
+            onlyNew={onlyNew()}
+          />
 
           <Show when={!commentsResource.loading} fallback={<Loading />}>
             <Show when={commentsResource()} fallback={<div>{t('No comments yet')}</div>}>

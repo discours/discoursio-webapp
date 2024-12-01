@@ -1,6 +1,7 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show, Suspense, createEffect, createMemo, createSignal, lazy, on } from 'solid-js'
+import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { Icon } from '~/components/_shared/Icon'
 import { ShowIfAuthenticated } from '~/components/_shared/ShowIfAuthenticated'
 import { useLocalize } from '~/context/localize'
@@ -19,7 +20,7 @@ import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { AuthorLink } from '../../Author/AuthorLink'
 import { Userpic } from '../../Author/Userpic'
 import { CommentDate } from '../CommentDate'
-import { RatingControl } from '../RatingControl'
+
 import styles from './Comment.module.scss'
 
 const MiniEditor = lazy(() => import('../../Editor/MiniEditor'))

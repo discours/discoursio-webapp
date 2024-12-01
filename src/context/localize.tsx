@@ -15,6 +15,8 @@ import { processPrepositions } from '~/intl/prepositions'
 
 i18nextInit()
 
+const SPEC_REGEX = /\s*г\./
+
 export type LocalizeContextType = {
   t: i18n['t']
   lang: Accessor<Language>
@@ -76,7 +78,7 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
       options
     )
 
-    return date.toLocaleDateString(lang(), opts).replace(/\s*г\./, '')
+    return date.toLocaleDateString(lang(), opts).replace(SPEC_REGEX, '')
   }
 
   const timeAgo = createMemo(() => new TimeAgo(lang()))
