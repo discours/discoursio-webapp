@@ -1,44 +1,63 @@
 # Компоненты управления лентой
 
-## Содержание
-- [Архитектура](#архитектура)
-  - [FeedSwitcher](#feedswitcher)
-  - [FeedFilters](#feedfilters)
-  - [FeedProvider](#feedprovider)
-- [Статус реализации](#статус-реализации)
-  - [Основные функции](#основные-функции)
-  - [Дополнительные функции](#дополнительные-функции)
-- [Известные проблемы](#известные-проблемы)
-- [Источники](#источники)
+## Фильтры и сортировка
 
-## Архитектура
+### Режимы ленты [FeedProvider.tsx](../src/context/feed.tsx#L30-L40)
 
-```
-FeedView
-├── FeedSwitcher (режимы ленты)
-├── FeedFilters (фильтры)
-└── FeedProvider (состояние)
-```
-
-### FeedSwitcher
-
-Управляет режимами отображения ленты:
+Режимы определяют базовую сортировку материалов:
+- `recent` - сортировка по дате, показывает новейшие материалы первыми
+- `hot` - по активности, учитывает недавние реакции и комментарии
+- `top` - по рейтингу, показывает материалы с наибольшим количеством положительных реакций
+- `followed` - материалы от отслеживаемых авторов
+- `discussed` - материалы с активными обсуждениями
+- `coauthored` - материалы в соавторстве
+- `search` - результаты поиска
 
 ```typescript
-type FeedMode = 'recent' | 'hot' | 'top' | 'followed' | 'discussed' | 'coauthored' | 'search'
+export const orderByMode = (value: string) => {
+  return value === 'hot'
+    ? ShoutsOrderBy.LastReactedAt
+    : value === 'top'
+      ? ShoutsOrderBy.Rating
+      : value === 'followed'
+        ? undefined
+        : value === 'discussed'
+          ? ShoutsOrderBy.LastReactedAt
+          : value === 'coauthored'
+            ? undefined
+            : undefined
+}
 ```
 
-Логика работы:
-1. Синхронизация URL с режимом
-2. Обновление параметров сортировки
-3. Сброс offset при смене режима
-4. Поддержка счетчиков
+### Типы фильтров
 
-### FeedFilters
+1. **Layouts (типы контента)** [FeedFiltersControl.tsx](../src/components/Feed/FeedFiltersControl.tsx#L70-L82)
 
-Управляет фильтрацией:
+Фильтр по типу контента позволяет комбинировать разные форматы. Пользователь может выбрать несколько типов одновременно - в этом случае будут показаны материалы всех выбранных типов.
 
 ```typescript
+// В UI можно выбрать несколько типов
+const EXPO_LAYOUTS = ['audio', 'video', 'literature', 'image']
+
+// В GraphQL уходит как массив
+interface FeedFilters {
+  layouts?: InputMaybe<string>[] // Можно выбрать несколько
+}
+
+// Пример запроса
+{
+  layouts: ['video', 'audio'] // Покажет видео И аудио
+}
+
+// Обработка в UI - см. layoutsOptionsGroupHandler в FeedFiltersControl.tsx
+```
+
+2. **Временные периоды** [fromPeriod.ts](../src/lib/fromPeriod.ts#L1-L20)
+
+Фильтр по времени публикации. В UI показываем человекопонятные периоды (день/неделя/месяц), но в API отправляем конкретную временную метку. Все материалы после этой метки будут включены в выборку.
+
+```typescript
+// В UI используем enum
 enum PeriodType {
   AllTime = 'all',
   Day = 'day',
@@ -47,99 +66,180 @@ enum PeriodType {
   Year = 'year'
 }
 
-const EXPO_LAYOUTS = [
-  'audio',
-  'video', 
-  'literature',
-  'image'
-]
+// В GraphQL передаем timestamp
+interface FeedFilters {
+  after?: number // Unix timestamp в секундах
+}
+
+// Преобразование периода в timestamp
+const after = period === PeriodType.AllTime 
+  ? undefined 
+  : Math.floor(getTimestampFromPeriod(period) / 1000)
 ```
 
-### FeedProvider
+3. **Отобранное** [FeedFiltersControl.tsx](../src/components/Feed/FeedFiltersControl.tsx#L58-L68)
 
-Управляет состоянием:
+Фильтр для работы с избранными материалами. Может находиться в трех состояниях:
+- `all` - показывать все материалы
+- `featured` - только избранные
+- `unfeatured` - только не избранные
 
 ```typescript
-interface FeedStore {
-  shouts: Shout[]
-  isLoading: boolean
-  hasMore: boolean
-  error?: Error
+// В UI
+type FeaturedFilter = 'featured' | 'unfeatured' | 'all'
+
+// В GraphQL
+interface FeedFilters {
+  featured?: boolean
+}
+
+// Преобразование
+const featuredFilterHandler = (opt: Option) => {
+  const mode = opt.value as FeaturedFilter
+  updateFilters({
+    featured: mode === 'featured' ? true : mode === 'unfeatured' ? false : undefined
+  })
 }
 ```
 
-Группировки:
-- `feedByLayout` - по типу контента
-- `feedByTopic` - по темам
-- `feedByAuthor` - по авторам
-- `feedByMode` - текущий фид
+### Состояние фильтров [filters.ts](../src/types/filters.ts)
 
-## Статус реализации
+Фильтры хранятся в едином состоянии с временной меткой последнего обновления. Это позволяет:
+1. Отслеживать изменения для синхронизации с URL
+2. Избегать лишних запросов при быстрых изменениях
+3. Поддерживать разные наборы фильтров для разных типов контента
 
-### Основные функции
+```typescript
+// Общий интерфейс состояния
+interface FilterState {
+  filters: FeedFilters | CommentsFilters
+  timestamp: number // Для отслеживания изменений
+}
 
-| Функционал | Статус | Приоритет | Комментарий |
-|------------|--------|-----------|-------------|
-| Базовая лента | ✅ | Критично | Основной функционал работает |
-| Переключение режимов | 🟡 | Критично | Проблемы с реактивностью при смене режима |
-| Фильтры по периоду | 🟡 | Критично | Кнопка применения фильтров ожидает макета |
-| Фильтры по лэйаутам | 🟡 | Критично | Требует доработки для мультивыбора |
-| Панель управления лентой | 🟡 | Критично | Проблемы с UI/UX и обновлением состояния |
-| Сохранение состояния | 🟡 | Важно | Неполное сохранение фильтров между сессиями |
-| Обновление ленты | 🟡 | Критично | Проблемы с обновлением при смене фильтров |
-| Индикация загрузки | 🟡 | Важно | Нет четкой индикации состояния загрузки |
-| Пагинация | 🟡 | Важно | Базовая реализация, требует доработки |
-| Рейтинги статей | ✅ | Критично | Загрузка и отображение рейтингов |
-| Персональная лента | ❌ | Критично | Не работает режим followed |
-| Лента соавторства | ❌ | Важно | Не работает режим coauthored |
-| Сортировка | 🟡 | Важно | Требует доработки для разных режимов |
-| Фильтрация | 🟡 | Важно | Неполная поддержка комбинированных фильтров |
-| Поиск | 🟡 | Важно | Базовая реализация, требует улучшения |
-| Тесты | ❌ | Важно | Только базовые тесты авторизации |
+// Для ленты публикаций
+interface FeedFilters {
+  after?: number
+  featured?: boolean
+  layouts?: InputMaybe<string>[]
+}
 
-### Дополнительные функции
+// Для комментариев 
+interface CommentsFilters {
+  after?: number
+  sort?: ReactionSort
+}
+```
 
-| Функционал | Статус | Приоритет |
-|------------|--------|-----------|
-| Сайдбар | ✅ | Важно |
-| Кэширование | 🟡 | Некритично |
-| SSR поддержка | 🟡 | Важно |
-| Предзагрузка | 🟡 | Важно |
-| Офлайн режим | 🟡 | Некритично |
-| Мобильная оптимизация | 🟡 | Некритично |
-| Обработка ошибок | 🟡 | Важно |
-| Интеграция с API | ✅ | Критично |
+### Обработка крайних случаев [FeedProvider.tsx](../src/context/feed.tsx#L200-L240)
 
-Легенда:
-- ✅ Готово
-- 🟡 Частично
-- ❌ План
+1. **Пустые результаты** - возвращаем пустой фид с флагом отсутствия дополнительных страниц
 
-## Известные проблемы
+```typescript
+if (!result?.length) {
+  return emptyFeed // { shouts: [], isLoading: false, hasMore: false }
+}
+```
 
-1. **Панель управления**
-   - Проблемы с обновлением состояния при переключении режимов
-   - Неоптимальный UX при смене фильтров
-   - Отсутствие анимаций при переходах
-   - Проблемы с мобильной версией
+2. **Дедупликация** - проверяем ID материалов чтобы избежать дублей при подгрузке
 
-2. **Реактивность**
-   - Задержки при обновлении ленты
-   - Рассинхронизация состояния фильтров
-   - Проблемы с кэшированием состояния
-   - Неоптимальная обработка ошибок
+```typescript
+const existingIds = new Set(existingFeed.shouts.map(s => s.id))
+const uniqueShouts = shouts.filter(s => !existingIds.has(s.id))
+```
 
-3. **Производительность**
-   - Избыточные ререндеры при обновлении
-   - Отсутствие виртуализации для длинных списков
-   - Неоптимальная загрузка изображений
-   - Проблемы с памятью при долгом скролле
+3. **Пагинация** - проверяем количество загруженных материалов для определения наличия следующей страницы
 
-## Источники
+```typescript
+const hasMore = shouts.length >= FEED_PAGE_SIZE
+const newShouts = offset ? [...prev.shouts, ...uniqueShouts] : uniqueShouts
+```
 
-- [FeedView.tsx](../src/components/Views/FeedView.tsx)
-- [FeedProvider.tsx](../src/context/feed.tsx)
-- [FeedSwitcher.tsx](../src/components/Feed/FeedSwitcher/FeedSwitcher.tsx)
-- [FeedFiltersControl.tsx](../src/components/Feed/FeedFiltersControl.tsx)
-- [Sidebar.tsx](../src/components/Feed/Sidebar/Sidebar.tsx)
-- [feed/[...mode].tsx](../src/routes/feed/[...mode].tsx)
+### Синхронизация с URL [FeedProvider.tsx](../src/context/feed.tsx#L450-L480)
+
+URL должен отражать текущее состояние фильтров для:
+1. Возможности делиться ссылками на отфильтрованную ленту
+2. Корректной работы навигации браузера (back/forward)
+3. Восстановления состояния при перезагрузке страницы
+
+```typescript
+// Эффект синхронизации с URL
+createEffect(on(filterState, (state) => {
+  const params = new URLSearchParams(location.search)
+  
+  if (state.filters.after) {
+    const period = getPeriodFromTimestamp(state.filters.after)
+    params.set('period', period)
+  }
+  
+  if (state.filters.layouts?.length) {
+    params.set('layouts', state.filters.layouts.join(','))
+  }
+  
+  history.replaceState(null, '', `?${params}`)
+}))
+```
+
+### Взаимодействие компонентов
+
+Компоненты образуют иерархию:
+1. `FeedView` - основной контейнер, управляет общим состоянием:
+   - Управляет загрузкой данных
+   - Обрабатывает пагинацию
+   - Содержит сайдбар с дополнительной информацией
+2. `FeedSwitcher` - переключает режимы сортировки
+3. `FeedFiltersControl` - управляет фильтрами
+4. `FeedProvider` - обеспечивает доступ к данным:
+   - Хранит состояние всех типов фидов (recent, hot, top и др.)
+   - Предоставляет методы загрузки данных
+   - Управляет группировками и рейтингами
+   - Отслеживает просмотренные материалы
+
+```
+FeedView [../src/components/Views/FeedView.tsx]
+├── FeedSwitcher [../src/components/Feed/FeedSwitcher/FeedSwitcher.tsx]
+├── FeedFiltersControl [../src/components/Feed/FeedFiltersControl.tsx]
+└── FeedProvider [../src/context/feed.tsx]
+```
+
+### Оптимизации
+
+1. **Реактивные вычисления** [FeedProvider.tsx](../src/context/feed.tsx#L130-L150)
+
+Используем `createMemo` для автоматического отслеживания зависимостей и обновления только при их изменении:
+
+```typescript
+const currentFeed = createMemo(() => {
+  switch (mode()) {
+    case 'hot': return hotFeed()
+    case 'top': return topFeed()
+    default: return recentFeed()
+  }
+})
+```
+
+2. **Отложенная реактивность** [FeedProvider.tsx](../src/context/feed.tsx#L460-L480)
+
+Используем `{ defer: true }` в эффектах для предотвращения циклических обновлений:
+
+```typescript
+createEffect(on(mode, loadCurrentFeed, { defer: true }))
+```
+
+3. **Гранулярная реактивность** [FeedFiltersControl.tsx](../src/components/Feed/FeedFiltersControl.tsx#L40-L60)
+
+Разделяем состояние на мелкие сигналы для точечных обновлений:
+
+```typescript
+const [currentPeriod, setCurrentPeriod] = createSignal<PeriodType>(PeriodType.AllTime)
+const [currentFeaturedFilter, setCurrentFeaturedFilter] = createSignal<FeaturedFilter>('all')
+
+// Обновляется только при изменении конкретного фильтра
+createEffect(on(currentPeriod, (period) => {
+  updateFilters({
+    after: period === PeriodType.AllTime ? undefined : getTimestampFromPeriod(period)
+  })
+}))
+```
+
+### Дополнительные материалы
+- [Фильтры комментариев](./comments-filter.md) - специфика фильтрации комментариев

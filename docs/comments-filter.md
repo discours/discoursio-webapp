@@ -128,15 +128,6 @@ const uniqueComments = Array.from(
 
 ### Временные периоды
 ```typescript
-// В UI используется enum для удобства
-enum PeriodType {
-  AllTime = 'all',    
-  Day = 'day',        
-  Week = 'week',      
-  Month = 'month',    
-  Year = 'year'       
-}
-
 // Преобразование в Unix timestamp (секунды)
 const getTimestampFromPeriod = (period: PeriodType): number => {
   const now = Math.floor(Date.now() / 1000) // текущее время в секундах
