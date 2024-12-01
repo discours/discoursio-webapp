@@ -49,9 +49,9 @@ export const Header = (props: Props) => {
   const [isProfilePopupVisible, setIsProfilePopupVisible] = createSignal(false)
 
   let windowScrollTop = 0
-  let timer: undefined | number | NodeJS.Timeout
+  let timer: number | NodeJS.Timeout | undefined
 
-  const clearTimer = () => clearTimeout(timer as undefined | number | NodeJS.Timeout)
+  const clearTimer = () => clearTimeout(timer as NodeJS.Timeout | number | undefined)
   const toggleFixed = () => setFixed(!fixed())
 
   onCleanup(() => {

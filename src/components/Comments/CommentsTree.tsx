@@ -12,7 +12,7 @@ import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { Comment as CommentCard } from './Comment'
 import { CommentsHeader } from './CommentsHeader'
 
-import styles from './Article/Article.module.scss'
+import styles from '../Article/Article.module.scss'
 
 type Props = {
   articleAuthors: Author[]

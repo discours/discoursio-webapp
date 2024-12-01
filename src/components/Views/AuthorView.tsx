@@ -324,6 +324,18 @@ export const AuthorView = (props: AuthorViewProps) => {
               />
             </div>
             <div class={clsx(styles.groupControls, 'row')}>
+              <div class="col-md-12">
+                <div class={styles.filtersRow}>
+                  <FeedSwitcher
+                    options={['recent', 'top', 'hot']}
+                    prefix={`/@${props.authorSlug}`}
+                    class={styles.feedSwitcher}
+                  />
+                  <FeedFiltersControl />
+                </div>
+              </div>
+            </div>
+            <div class={clsx(styles.groupControls, 'row')}>
               <TabNavigator />
               <div class={clsx('col-md-8', styles.additionalControls)}>
                 <Show when={typeof author()?.stat?.rating === 'number'}>

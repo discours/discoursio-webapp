@@ -4,7 +4,7 @@ import { useLocalize } from '~/context/localize'
 import { Reaction, ReactionSort } from '~/graphql/schema/core.gen'
 import { Button } from '../_shared/Button'
 
-import styles from './CommentsHeader.module.css'
+import styles from '../Article/Article.module.scss'
 
 type Props = {
   onlyNew: boolean

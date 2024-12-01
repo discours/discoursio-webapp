@@ -21,6 +21,6 @@ const graphqlClientCreate = (url: string, token = ''): Client => {
   return createClient(options)
 }
 
-const defaultClient = graphqlClientCreate(coreApiUrl)
+const defaultClient: Client = graphqlClientCreate(coreApiUrl)
 
 export { type Client, defaultClient, graphqlClientCreate }
