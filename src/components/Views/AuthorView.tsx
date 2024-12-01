@@ -1,6 +1,7 @@
 import { A, useLocation, useParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { CommentsList } from '~/components/Comments/CommentsList'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
 import { useAuthors } from '~/context/authors'
@@ -12,14 +13,12 @@ import { useSession } from '~/context/session'
 import { loadReactions, loadShouts } from '~/graphql/api/public'
 import getAuthorFollowersQuery from '~/graphql/query/core/author-followers'
 import getAuthorFollowsQuery from '~/graphql/query/core/author-follows'
-import { ReactionKind } from '~/graphql/schema/core.gen'
+import { ReactionKind, ReactionSort } from '~/graphql/schema/core.gen'
 import type { Author, Reaction, Shout, Topic } from '~/graphql/schema/core.gen'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { byCreated } from '~/utils/sort'
-import { Comment } from '../Article/Comment'
 import { AuthorCard } from '../Author/AuthorCard'
 import { AuthorShoutsRating } from '../Author/AuthorShoutsRating'
-import { FeedFilters } from '../Feed/FeedFilters'
+import FeedFiltersControl from '../Feed/FeedFiltersControl'
 import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 import { Placeholder } from '../Feed/Placeholder'
 import { Row1 } from '../Feed/Row1'
@@ -27,7 +26,6 @@ import { Row2 } from '../Feed/Row2'
 import { Row3 } from '../Feed/Row3'
 
 import styles from '~/styles/views/Author.module.scss'
-import stylesArticle from '../Article/Article.module.scss'
 
 type AuthorViewProps = {
   authorSlug: string
@@ -45,7 +43,9 @@ export const AuthorView = (props: AuthorViewProps) => {
   const { t } = useLocalize()
   const loc = useLocation()
   const params = useParams()
-  const [currentTab, setCurrentTab] = createSignal<string>(params.tab)
+  const { mode } = useParams()
+  const { mode: feedMode } = useFeed()
+  const [currentTab, setCurrentTab] = createSignal<string | undefined>()
 
   const { session, client } = useSession()
 
@@ -192,10 +192,6 @@ export const AuthorView = (props: AuthorViewProps) => {
     checkBioHeight()
   })
 
-  const handleDeleteComment = (id: number) => {
-    setCommented((prev) => (prev || []).filter((comment) => comment.id !== id))
-  }
-
   const TabNavigator = () => (
     <div class="col-md-16">
       <ul class="view-switcher">
@@ -303,6 +299,18 @@ export const AuthorView = (props: AuthorViewProps) => {
     }
   }
 
+  // Синхронизируем таб с URL
+  createEffect(() => {
+    // Если режим comments или URL содержит /comments, переключаем на таб комментариев
+    if (feedMode() === 'comments' || loc.pathname.includes('/comments')) {
+      setCurrentTab('comments')
+    } else {
+      setCurrentTab(mode)
+    }
+  })
+
+  const [commentsOrder, setCommentsOrder] = createSignal<ReactionSort>(ReactionSort.Newest)
+
   return (
     <div class={styles.authorPage}>
       <div class="wide-container">
@@ -362,36 +370,29 @@ export const AuthorView = (props: AuthorViewProps) => {
             </div>
           </Show>
 
-          <LoadMoreWrapper
-            loadFunction={loadMoreComments}
-            pageSize={COMMENTS_PER_PAGE}
-            hidden={loadMoreCommentsHidden()}
-          >
-            <div class="wide-container">
-              <div class="row">
-                <div class="col-md-20 col-lg-18">
-                  <ul class={stylesArticle.comments}>
-                    <For each={commented()?.sort(byCreated).reverse()}>
-                      {(comment) => (
-                        <Comment
-                          comment={comment}
-                          class={styles.comment}
-                          showArticleLink={true}
-                          onDelete={(id) => handleDeleteComment(id)}
-                        />
-                      )}
-                    </For>
-                  </ul>
-                </div>
+          <div class="wide-container">
+            <div class="row">
+              <div class="col-md-20 col-lg-18">
+                <CommentsList
+                  comments={commented()}
+                  showArticleLink={true}
+                  withFilter={true}
+                  sortOrder={commentsOrder()}
+                  onFiltersChange={(filters) => setCommentsOrder(filters.sort || ReactionSort.Newest)}
+                  onDeleteComment={(id) => setCommented((prev) => prev.filter((c) => c.id !== id))}
+                  loadMoreComments={loadMoreComments}
+                  loadMoreHidden={loadMoreCommentsHidden()}
+                  pageSize={COMMENTS_PER_PAGE}
+                />
               </div>
             </div>
-          </LoadMoreWrapper>
+          </div>
         </Match>
 
         <Match when={!currentTab()}>
           <div class={styles.filtersContainer}>
             <FeedSwitcher options={['recent', 'top', 'hot']} prefix={`/@${props.authorSlug}`} />
-            <FeedFilters />
+            <FeedFiltersControl />
           </div>
 
           <Show when={me()?.slug === props.authorSlug && !me()?.stat?.shouts}>

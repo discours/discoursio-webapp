@@ -6,12 +6,13 @@ import { FeedView } from '~/components/Views/FeedView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { FEED_PAGE_SIZE, FeedMode, FeedName, orderByMode, useFeed } from '~/context/feed'
+import { FEED_PAGE_SIZE, orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { ReactionsProvider } from '~/context/reactions'
 import { loadReactions, loadShouts, loadUnratedShouts } from '~/graphql/api/public'
 import { LoadShoutsFilters, Reaction, ReactionKind, ReactionSort, Shout } from '~/graphql/schema/core.gen'
-import { PeriodType, getFromDate } from '~/lib/fromPeriod'
+import { PeriodType, getTimestampFromPeriod } from '~/lib/fromPeriod'
+import { FeedMode } from '~/types/filters'
 
 export interface RouteData {
   shouts: Shout[]
@@ -24,7 +25,7 @@ export const route = {
   load: async ({ params, location: { query } }: RouteSectionProps) => {
     console.log('[FeedPage] Route load started:', { params, query })
     const filters: LoadShoutsFilters = {}
-    if (query.period) filters.after = getFromDate(query.period as PeriodType)
+    if (query.period) filters.after = getTimestampFromPeriod(query.period as PeriodType)
 
     try {
       console.log('[FeedPage] Loading initial data with filters:', {
@@ -76,7 +77,7 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
 
   // Мемоизируем вычисляемые значения
   const currentFeedName = createMemo(() => {
-    const name = mode() === 'all' ? 'recent' : mode()
+    const name = mode() ? mode() : 'recent'
     console.log('[FeedPage] Current feed name computed:', { name, mode: mode() })
     return name
   })
@@ -98,7 +99,7 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
       if (data.unratedShouts) setUnratedShouts(data.unratedShouts)
       if (data.shouts) {
         setSortedFeed(data.shouts)
-        initializeFeed(currentFeedName() as FeedName, data.shouts)
+        initializeFeed(currentFeedName() as FeedMode, data.shouts)
         setIsLoadMoreButtonVisible(data.shouts.length >= FEED_PAGE_SIZE)
       }
     }

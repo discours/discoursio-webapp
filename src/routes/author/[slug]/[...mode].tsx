@@ -55,7 +55,7 @@ import { AuthorView } from '~/components/Views/AuthorView'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { useAuthors } from '~/context/authors'
-import { FEED_PAGE_SIZE, FeedMode, orderByMode, useFeed } from '~/context/feed'
+import { FEED_PAGE_SIZE, orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { ReactionsProvider } from '~/context/reactions'
 import { useSession } from '~/context/session'
@@ -70,8 +70,9 @@ import {
   Shout,
   Topic
 } from '~/graphql/schema/core.gen'
-import { PeriodType, getFromDate } from '~/lib/fromPeriod'
+import { PeriodType, getTimestampFromPeriod } from '~/lib/fromPeriod'
 import { getFileUrl } from '~/lib/getThumbUrl'
+import { FeedMode } from '~/types/filters'
 
 const fetchAuthorShouts = async (slug: string, offset?: number) => {
   const options: LoadShoutsOptions = { filters: { author: slug }, limit: FEED_PAGE_SIZE, offset }
@@ -148,7 +149,7 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
         if (newPeriod) {
           opts.filters = {
             ...(opts.filters || {}),
-            after: getFromDate(newPeriod as PeriodType)
+            after: getTimestampFromPeriod(newPeriod as PeriodType)
           }
         }
         updateOptions(opts)

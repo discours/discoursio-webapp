@@ -1,13 +1,21 @@
 import { clsx } from 'clsx'
-import { For, Show, createMemo, createSignal, onMount } from 'solid-js'
+import { ErrorBoundary, For, Show, createMemo, createResource, createSignal, onMount } from 'solid-js'
 
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { Author, Reaction, ReactionInput, ReactionKind, ReactionSort } from '~/graphql/schema/core.gen'
+import {
+  Author,
+  Reaction,
+  ReactionBy,
+  ReactionInput,
+  ReactionKind,
+  ReactionSort
+} from '~/graphql/schema/core.gen'
 import { SortFunction } from '~/types/common'
 import { byCreated, byStat } from '~/utils/sort'
+import { CommentsFilter } from '../Comments/CommentsFilter'
 import { MiniEditor } from '../Editor/MiniEditor'
 import { Button } from '../_shared/Button'
 import { Loading } from '../_shared/Loading'
@@ -20,6 +28,10 @@ type Props = {
   articleAuthors: Author[]
   shoutSlug: string
   shoutId: number
+}
+
+interface ErrorBoundaryError extends Error {
+  message: string
 }
 
 export const CommentsTree = (props: Props) => {
@@ -98,6 +110,17 @@ export const CommentsTree = (props: Props) => {
     setPosting(false)
   }
 
+  const handleFiltersChange = (filters?: ReactionBy) => {
+    setCommentsOrder(filters?.sort || ReactionSort.Newest)
+    loadReactionsBy({
+      by: {
+        shout: props.shoutSlug,
+        kinds: [ReactionKind.Comment],
+        after: filters?.after
+      }
+    })
+  }
+
   const CommentsTreeHeader = () => (
     <div class={styles.commentsHeaderWrapper}>
       <h2 class={styles.commentsHeader}>
@@ -166,18 +189,48 @@ export const CommentsTree = (props: Props) => {
     </div>
   )
 
+  const [commentsResource, { refetch }] = createResource<Reaction[], string>(
+    () => props.shoutSlug,
+    async (slug: string) => {
+      const response = await loadReactionsBy({
+        by: {
+          shout: slug,
+          kinds: [ReactionKind.Comment]
+        }
+      })
+      return response || []
+    }
+  )
+
   return (
-    <Show when={!isLoading()} fallback={<Loading />}>
-      <CommentsTreeHeader />
+    <ErrorBoundary
+      fallback={(err: ErrorBoundaryError) => (
+        <div class="error">
+          <p>{err.message}</p>
+          <button onClick={() => refetch()}>{t('Try again')}</button>
+        </div>
+      )}
+    >
+      <div>
+        <CommentsFilter shoutId={props.shoutId} onChange={handleFiltersChange} />
 
-      <CommentsTreeItems {...props} />
+        <Show when={!isLoading()} fallback={<Loading />}>
+          <CommentsTreeHeader />
 
-      <ShowIfAuthenticated fallback={<FallbackMessage />}>
-        <MiniEditor placeholder={t('Write a comment...')} onSubmit={handleSubmitComment} />
-        <Show when={posting()}>
-          <Loading />
+          <Show when={!commentsResource.loading} fallback={<Loading />}>
+            <Show when={commentsResource()} fallback={<div>{t('No comments yet')}</div>}>
+              <CommentsTreeItems {...props} />
+            </Show>
+          </Show>
+
+          <ShowIfAuthenticated fallback={<FallbackMessage />}>
+            <MiniEditor placeholder={t('Write a comment...')} onSubmit={handleSubmitComment} />
+            <Show when={posting()}>
+              <Loading />
+            </Show>
+          </ShowIfAuthenticated>
         </Show>
-      </ShowIfAuthenticated>
-    </Show>
+      </div>
+    </ErrorBoundary>
   )
 }

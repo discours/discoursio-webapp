@@ -63,9 +63,9 @@ export const loadCoauthoredShouts = (
   }, `shouts-coauthored-${page}`)
 }
 
-export const loadShoutsMyRates = (shoutIds: number[], client: Client) => {
+export const loadShoutsMyRates = (shoutIds: number[], client?: Client) => {
   // console.log('[API] loadShoutsMyRates called with ids:', shoutIds)
-
+  if (!client) return async () => undefined
   return async () => {
     try {
       const response = await client

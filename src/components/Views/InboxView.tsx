@@ -16,8 +16,8 @@ import type {
   MutationCreate_MessageArgs
 } from '~/graphql/schema/chat.gen'
 import type { Author } from '~/graphql/schema/core.gen'
+import { getShortDate } from '~/lib/fromPeriod'
 import styles from '~/styles/views/Inbox.module.scss'
-import { getShortDate } from '~/utils/date'
 import DialogCard from '../Inbox/DialogCard'
 import DialogHeader from '../Inbox/DialogHeader'
 import { Message } from '../Inbox/Message'

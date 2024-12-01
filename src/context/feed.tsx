@@ -13,6 +13,7 @@ import {
 import { loadCoauthoredShouts, loadDiscussedShouts, loadFollowedShouts } from '~/graphql/api/private'
 import { loadShouts, loadShoutsSearch } from '~/graphql/api/public'
 import { LoadShoutsOptions, ReactionKind, Shout, ShoutsOrderBy } from '~/graphql/schema/core.gen'
+import { FeedFilters, FeedMode, FilterState } from '~/types/filters'
 import { useSession } from './session'
 
 export const FEED_PAGE_SIZE = 20
@@ -37,9 +38,6 @@ export const orderByMode = (value: string) => {
             ? undefined
             : undefined
 }
-
-export type FeedMode = 'all' | 'recent' | 'hot' | 'top' | 'followed' | 'discussed' | 'coauthored' | 'search'
-export type FeaturedFilter = 'featured' | 'unfeatured' | 'all'
 
 interface FeedStore {
   shouts: Shout[]
@@ -96,7 +94,11 @@ interface FeedContextType {
   addShoutsToFeed: (shouts: Shout[], mode?: FeedMode) => void
 
   // Добавим метод для инициализации фида с SSR данными
-  initializeFeed: (name: FeedName, shouts: Shout[]) => void
+  initializeFeed: (name: FeedMode, shouts: Shout[]) => void
+
+  // Добавляем поля для фильтров
+  filterState: Accessor<FilterState>
+  updateFilters: (filters: Partial<FeedFilters>) => void
 }
 
 const FeedContext = createContext<FeedContextType>({} as FeedContextType)
@@ -105,17 +107,14 @@ export const useFeed = () => useContext(FeedContext)
 
 const emptyFeed: FeedStore = { shouts: [], isLoading: false, hasMore: false }
 
-// Добавляем тип для имени фида
-export type FeedName = 'recent' | 'hot' | 'top' | 'followed' | 'discussed' | 'coauthored' | 'search'
-
 // Добавляем тип для мапы сеттеров
 type FeedSettersMap = {
-  [K in FeedName]: Setter<FeedStore>
+  [K in FeedMode]: Setter<FeedStore>
 }
 
 // Добавляем тип для мапы абортконтроллеров
 type ControllersMap = {
-  [K in FeedName]: AbortController | null
+  [K in FeedMode]: AbortController | null
 }
 
 export const FeedProvider = (props: { children: JSX.Element }) => {
@@ -137,7 +136,6 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   const [feedByLayout, setFeedByLayout] = createSignal<Record<string, Shout[]>>({})
   const [feedByTopic, setFeedByTopic] = createSignal<Record<string, Shout[]>>({})
   const [feedByAuthor, setFeedByAuthor] = createSignal<Record<string, Shout[]>>({})
-  const [feedByMode, setFeedByMode] = createSignal<FeedStore>(emptyFeed)
   const mode = createMemo((): FeedMode => {
     const path = loc.pathname
     if (
@@ -165,7 +163,8 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     followed: null,
     discussed: null,
     coauthored: null,
-    search: null
+    search: null,
+    comments: null
   }
 
   // Создаем мапу сеттеров
@@ -176,11 +175,12 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     followed: setFollowedFeed,
     discussed: setDiscussedFeed,
     coauthored: setCoauthoredFeed,
-    search: setSearchFeed
+    search: setSearchFeed,
+    comments: setRecentFeed
   }
 
   // Modify updateFeed to be more conservative with updates
-  const updateFeed = (name: FeedName, shouts: Shout[], opts?: { offset?: number; limit?: number }) => {
+  const updateFeed = (name: FeedMode, shouts: Shout[], opts?: { offset?: number; limit?: number }) => {
     console.log('[FeedProvider] Updating feed:', {
       name,
       shoutsCount: shouts.length,
@@ -218,7 +218,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
       // Update feedByMode in next tick if it matches current mode
       if (name === mode()) {
         Promise.resolve().then(() => {
-          setFeedByMode(newFeed)
+          setter(newFeed)
         })
       }
     }
@@ -231,7 +231,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   }
 
   // Simplify loadFeed to avoid nested state updates
-  const loadFeed = async (name: FeedName, opts?: Partial<LoadShoutsOptions>) => {
+  const loadFeed = async (name: FeedMode, opts?: Partial<LoadShoutsOptions>) => {
     console.log('[FeedProvider] Loading feed:', { name, opts })
 
     const currentFeed = feedSetters[name]((prev) => prev)
@@ -349,7 +349,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
   // Simplify addShoutsToFeed to avoid unnecessary updates
   const addShoutsToFeed = (shouts: Shout[]) => {
-    const currentMode = mode() as FeedName
+    const currentMode = mode() as FeedMode
     const setter = feedSetters[currentMode]
 
     if (!setter) return
@@ -421,8 +421,15 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   // Обновляем эффект для feedByMode
   createEffect(() => {
     const feed = currentFeed()
+    const currentMode = mode()
+    const currentSetter = feedSetters[currentMode]
+
     if (!feedByMode().shouts.includes(feed.shouts[0])) {
-      setFeedByMode(feed)
+      currentSetter({
+        shouts: feed.shouts,
+        isLoading: false,
+        hasMore: feed.shouts.length >= FEED_PAGE_SIZE
+      })
     }
   })
 
@@ -495,7 +502,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   )
 
   // Добавим метод для инициализации фида с SSR данными
-  const initializeFeed = (name: FeedName, shouts: Shout[]) => {
+  const initializeFeed = (name: FeedMode, shouts: Shout[]) => {
     const setter = feedSetters[name]
     if (!setter) return
 
@@ -508,7 +515,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
     // Устанавливаем значения синхронно
     setter(newFeed)
-    setFeedByMode(newFeed)
+    setter(newFeed)
 
     // Обновляем группировки
     const groupedByLayout = shouts.reduce(
@@ -561,6 +568,31 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     setFeedByAuthor(groupedByAuthor)
   }
 
+  // Добавляем фильтры в значение контекста
+  const [filterState, setFilterState] = createSignal<FilterState>({ filters: {}, timestamp: Date.now() })
+  const updateFilters = (filters: Partial<FeedFilters>) => {
+    setFilterState((prev) => ({
+      filters: { ...prev.filters, ...filters },
+      timestamp: Date.now()
+    }))
+  }
+
+  // ✅ Лучше - изолировать динамические вычисления
+  const currentMode = () => mode()
+  const feedByMode = createMemo(() => {
+    const feeds: Record<FeedMode, () => FeedStore> = {
+      hot: hotFeed,
+      top: topFeed,
+      recent: recentFeed,
+      followed: followedFeed,
+      discussed: discussedFeed,
+      coauthored: coauthoredFeed,
+      search: searchFeed,
+      comments: recentFeed
+    }
+    return feeds[currentMode()]?.() || recentFeed()
+  })
+
   return (
     <FeedContext.Provider
       value={{
@@ -607,7 +639,11 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
         addShoutsToFeed,
 
         // Добавим метод для инициализации фида с SSR данными
-        initializeFeed
+        initializeFeed,
+
+        // Добавляем поля для фильтров
+        filterState,
+        updateFilters
       }}
     >
       {props.children}

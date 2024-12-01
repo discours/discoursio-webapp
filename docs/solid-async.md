@@ -1,175 +1,221 @@
 # Асинхронные наблюдатели в SolidJS
 
-### Проблема асинхронных наблюдателей
+## Примеры из нашей кодовой базы
+
+### 1. Загрузка фида [FeedProvider.tsx](../src/context/feed.tsx)
 
 ```typescript
-// ❌ Проблема: потеря реактивности в асинхронном коде
-const [count, setCount] = createSignal(0)
-
-createEffect(async () => {
-  await someAsyncOperation()
-  console.log(count()) // Может пропустить обновления
-})
-```
-
-### Решение через Store
-
-```typescript
-// ✅ Store сохраняет реактивность в асинхронном коде
-const [state, setState] = createStore({
-  count: 0,
-  timestamp: Date.now()
-})
-
-createEffect(async () => {
-  await someAsyncOperation()
-  console.log(state.count) // Надежно отслеживает изменения
-})
-```
-
-## Примеры из нашего кода
-
-### FeedProvider [context/feed.tsx](../src/context/feed.tsx)
-
-```typescript
-// Было - проблемы с асинхронным отслеживанием
+// ❌ Было - проблемы с состоянием при асинхронной загрузке
 const [feed, setFeed] = createSignal<Shout[]>([])
 const [loading, setLoading] = createSignal(false)
 
 createEffect(async () => {
   setLoading(true)
-  await loadFeed()
-  setLoading(false)
-})
-
-// Стало - надежное отслеживание через Store
-const [feedState, setFeedState] = createStore({
-  items: [] as Shout[],
-  loading: false,
-  error: null as Error | null,
-  timestamp: Date.now()
-})
-
-createEffect(async () => {
-  setFeedState('loading', true)
   try {
-    const items = await loadFeed()
-    setFeedState(store => ({
-      ...store,
-      items,
-      loading: false,
-      timestamp: Date.now()
-    }))
-  } catch (error) {
-    setFeedState('error', error as Error)
+    const result = await loadShouts(options())()
+    setFeed(result || [])
+  } finally {
+    setLoading(false)
   }
 })
-```
 
-### Почему Store лучше для асинхронных операций
-
-1. **Атомарные обновления**
-```typescript
-// Store гарантирует атомарность
-setFeedState(store => ({
-  items: [...store.items, newItem],
-  timestamp: Date.now()
-}))
-```
-
-2. **Предсказуемые подписки**
-```typescript
-// Store надежно отслеживает вложенные изменения
-createEffect(() => {
-  console.log('Items updated:', feedState.items.length)
-  console.log('Last update:', new Date(feedState.timestamp))
-})
-```
-
-3. **Производительность**
-```typescript
-// Store оптимизирует обновления
-const visibleItems = createMemo(() => 
-  feedState.items.filter(item => 
-    item.timestamp > feedState.timestamp - 86400000
-  )
-)
-```
-
-## Когда использовать Store
-
-### 1. Асинхронные операции
-```typescript
-const [authState, setAuthState] = createStore({
-  user: null,
-  loading: false,
-  error: null
+// ✅ Стало - атомарные обновления через Store
+const [feedState, setFeedState] = createStore<FeedStore>({
+  shouts: [],
+  isLoading: false,
+  hasMore: false,
+  error: undefined
 })
 
-// Надежная работа с асинхронным кодом
-async function login() {
-  setAuthState('loading', true)
+const loadFeed = async (name: FeedMode, opts?: Partial<LoadShoutsOptions>) => {
+  if (feedState.isLoading) return
+
+  setFeedState('isLoading', true)
   try {
-    const user = await api.login()
-    setAuthState({ user, loading: false })
+    const result = await loadShouts({
+      options: {
+        ...options(),
+        ...opts,
+        order_by: orderByMode(name)
+      }
+    })()
+
+    setFeedState({
+      shouts: opts?.offset ? [...feedState.shouts, ...(result || [])] : result || [],
+      isLoading: false,
+      hasMore: (result || []).length >= FEED_PAGE_SIZE
+    })
   } catch (error) {
-    setAuthState({ error, loading: false })
+    setFeedState({
+      error: error as Error,
+      isLoading: false
+    })
   }
 }
 ```
 
-### 2. Сложные объекты с вложенными обновлениями
+### 2. Загрузка топиков [TopicView.tsx](../src/components/Views/TopicView.tsx)
+
 ```typescript
-const [uiState, setUIState] = createStore({
-  theme: {
-    mode: 'light',
-    colors: {
-      primary: '#007AFF'
-    }
-  },
-  layout: {
-    sidebar: true
+// ❌ Было - множество независимых состояний
+const [topicFollowers, setTopicFollowers] = createSignal<Author[]>([])
+const [loading, setLoading] = createSignal(true)
+const [error, setError] = createSignal<Error>()
+
+createEffect(async () => {
+  setLoading(true)
+  try {
+    const followers = await getFollowersByTopic(props.topicSlug)()
+    setTopicFollowers(followers || [])
+  } catch (e) {
+    setError(e as Error)
+  } finally {
+    setLoading(false)
   }
 })
 
-// Точечные обновления
-setUIState('theme', 'mode', 'dark')
+// ✅ Стало - использование createResource
+const getTopicFollowers = async () => {
+  const topicFollowersFetcher = getFollowersByTopic(props.topicSlug)
+  const topicFollowers = await topicFollowersFetcher()
+  // sorting by maximum shouts
+  if (topicFollowers) {
+    return topicFollowers.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
+  }
+  return []
+}
+
+const [topicFollowers, { refetch: refetchFollowers }] = createResource(
+  () => props.topicSlug,
+  getTopicFollowers
+)
 ```
 
-### 3. Состояния с множественными подписчиками
+### 3. Обработка авторизации [LoginForm.tsx](../src/components/AuthModal/LoginForm.tsx)
+
 ```typescript
-const [appState, setAppState] = createStore({
-  notifications: [],
-  unreadCount: 0,
-  lastUpdate: null as Date | null
+// ❌ Было - смешивание состояний и асинхронной логики
+const [loading, setLoading] = createSignal(false)
+const [error, setError] = createSignal<string>()
+
+const handleSubmit = async (e: Event) => {
+  e.preventDefault()
+  setLoading(true)
+  try {
+    await login(email(), password())
+  } catch (e) {
+    setError((e as Error).message)
+  } finally {
+    setLoading(false)
+  }
+}
+
+// ✅ Стало - единое состояние через Store
+const [authState, setAuthState] = createStore({
+  loading: false,
+  error: null as string | null,
+  data: null as any
 })
 
-// Множество наблюдателей
-createEffect(() => {
-  updateBadge(appState.unreadCount)
-})
+const handleSubmit = async (e: Event) => {
+  e.preventDefault()
+  setAuthState('loading', true)
+  try {
+    const data = await login(email(), password())
+    setAuthState({
+      data,
+      loading: false,
+      error: null
+    })
+  } catch (e) {
+    setAuthState({
+      error: (e as Error).message,
+      loading: false
+    })
+  }
+}
+```
 
-createEffect(() => {
-  syncWithServer(appState.notifications)
+## Рекомендации по работе с асинхронным кодом
+
+### 1. Используйте Store для состояния
+
+```typescript
+// В FeedProvider.tsx
+const [feedState, setFeedState] = createStore<FeedStore>({
+  shouts: [],
+  isLoading: false,
+  hasMore: false,
+  error: undefined
 })
 ```
+
+### 2. Используйте createResource для загрузки данных
+
+```typescript
+// В TopicView.tsx
+const [topicData] = createResource(
+  () => props.topicSlug,
+  async (slug) => {
+    const response = await loadTopic(slug)
+    return response.data
+  }
+)
+```
+
+### 3. Атомарные обновления состояния
+
+```typescript
+// В FeedProvider.tsx
+setFeedState((prev) => ({
+  ...prev,
+  shouts: [...prev.shouts, ...newShouts],
+  hasMore: newShouts.length >= FEED_PAGE_SIZE,
+  loading: false
+}))
+```
+
+### 4. Отображение загрузки и ошибок
+
+```typescript
+// ✅ Правильная обработка всех состояний
+const [data] = createResource(loadData)
+return (
+  <>
+    <Show when={data.loading}>
+      <Loading />
+    </Show>
+    <Show when={data.error}>
+      <ErrorMessage error={data.error} />
+    </Show>
+    <Show
+      when={!data.loading && !data.error && data()}
+      fallback={<EmptyState />}
+    >
+      <DataView data={data()} />
+    </Show>
+  </>
+)```
 
 ## Важные моменты
 
 1. **Используйте Store для:**
-   - Асинхронных операций
-   - Сложных объектов
-   - Множественных подписчиков
+   - Сложных состояний с асинхронными обновлениями
+   - Состояний с множественными полями
+   - Состояний, требующих атомарных обновлений
 
-2. **Используйте Signals для:**
-   - Простых значений
-   - Синхронных операций
-   - Одиночных подписчиков
+2. **Используйте createResource для:**
+   - Загрузки данных с сервера
+   - Автоматического отслеживания зависимостей
+   - Обработки состояний загрузки/ошибок
+
+3. **Избегайте:**
+   - Множества независимых сигналов для связанных данных
+   - Прямых обновлений состояния в асинхронном коде
+   - Смешивания бизнес-логики и управления состоянием
 
 ## Дополнительные материалы
 
-- [Understanding Stores in SolidJS](https://www.solidjs.com/tutorial/stores_nested_reactivity)
-- [Ryan's Deep Dive into Stores](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf)
-- [Async Tracking in SolidJS](https://www.solidjs.com/guides/reactivity#async-tracking)
-- [Store API Documentation](https://www.solidjs.com/docs/latest/api#createstore)
-- [Best Practices for Store Usage](https://github.com/solidjs/solid/discussions/397) 
+- [SolidJS Resources](https://docs.solidjs.com/concepts/resources)
+- [Understanding Solid's Stores](https://docs.solidjs.com/concepts/stores)
+- [Async Patterns in SolidJS](https://docs.solidjs.com/concepts/async) 

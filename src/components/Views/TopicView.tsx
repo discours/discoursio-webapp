@@ -16,11 +16,12 @@ import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { getAuthorsByTopic, getFollowersByTopic, loadAuthors, loadShouts } from '~/graphql/api/public'
-import { Author, AuthorsBy, LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
-import { getUnixtime } from '~/utils/date'
+import { Author, AuthorsBy, LoadShoutsOptions, Shout, Stat, Topic } from '~/graphql/schema/core.gen'
+import { getUnixtime } from '~/lib/fromPeriod'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { byPublished, byStat } from '~/utils/sort'
 import { Beside } from '../Feed/Beside'
+import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
+import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 import { Row1 } from '../Feed/Row1'
 import { Row2 } from '../Feed/Row2'
 import { Row3 } from '../Feed/Row3'
@@ -30,8 +31,6 @@ import { Loading } from '../_shared/Loading'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 
 import styles from '~/styles/views/Topic.module.scss'
-import { FeedFilters } from '../Feed/FeedFilters'
-import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 
 interface Props {
   topic: Topic
@@ -196,12 +195,30 @@ export const TopicView = (props: Props) => {
     return result as LoadMoreItems
   }
 
+  // Добавляем сигналы для кэширования
+  const [prevFeed, setPrevFeed] = createSignal<Shout[]>([])
+  const [prevSorted, setPrevSorted] = createSignal<Shout[]>([])
+
+  const topicFeed = () => feedByTopic()?.[props.topicSlug] || []
+
   const topViewedShouts = createMemo(() => {
-    const loaded = feedByTopic()?.[props.topicSlug] || []
-    const sss = [...loaded] as Shout[]
-    const sortfn = byStat('views') || byPublished
-    sortfn && sss.sort(sortfn as ((a: Shout, b: Shout) => number) | undefined)
-    return sss
+    const feed = topicFeed()
+
+    // Проверяем равенство массивов
+    const isEqual =
+      feed.length === prevFeed().length && feed.every((item, i) => item.id === prevFeed()[i]?.id)
+
+    if (isEqual) return prevSorted()
+
+    setPrevFeed(feed)
+    const sorted = [...feed].sort((a: Shout, b: Shout) => {
+      const aViews = (a.stat as Stat)?.viewed || 0
+      const bViews = (b.stat as Stat)?.viewed || 0
+      return bViews - aViews
+    })
+    setPrevSorted(sorted)
+
+    return sorted
   })
 
   return (
@@ -218,7 +235,7 @@ export const TopicView = (props: Props) => {
                   prefix={`/topic/${props.topicSlug}`}
                   class={styles.feedSwitcher}
                 />
-                <FeedFilters />
+                <FeedFiltersControl />
               </div>
             </div>
           </div>

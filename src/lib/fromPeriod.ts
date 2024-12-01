@@ -6,7 +6,7 @@ export enum PeriodType {
   Year = 'year'
 }
 
-export const getFromDate = (period: PeriodType) => {
+export const getTimestampFromPeriod = (period: PeriodType) => {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
 
@@ -35,4 +35,19 @@ export const getFromDate = (period: PeriodType) => {
   }
 
   return Math.floor(d.getTime() / 1000)
+}
+
+export const getShortDate = (date: Date) => date.toISOString().slice(0, 10) // 2023-12-31
+export const getUnixtime = (date: Date) => Math.floor(date.getTime() / 1000) as number
+
+export function getPeriodTitle(period: PeriodType): string {
+  return (
+    {
+      [PeriodType.AllTime]: 'All time',
+      [PeriodType.Day]: 'Day',
+      [PeriodType.Week]: 'Week',
+      [PeriodType.Month]: 'Month',
+      [PeriodType.Year]: 'Year'
+    }[period] || 'All time'
+  )
 }

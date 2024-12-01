@@ -3,12 +3,13 @@ import { For, Suspense, createEffect, createSignal, on } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'
 import { useAuthors } from '~/context/authors'
-import { FeedMode, useFeed } from '~/context/feed'
+import { useFeed } from '~/context/feed'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useTopics } from '~/context/topics'
 import { Author, Topic } from '~/graphql/schema/core.gen'
+import { FeedMode } from '~/types/filters'
 import { Userpic } from '../../Author/Userpic'
 import styles from './Sidebar.module.scss'
 
@@ -106,8 +107,8 @@ export const Sidebar = () => {
 
   // Упрощенный обработчик для переключения режимов
   const handleModeSwitch = (mode: FeedMode, path: string) => {
-    // Если режим "all", то используем корневой путь /feed
-    const targetPath = mode === 'all' ? '/feed' : path
+    // Если режим "recent", то используем корневой путь /feed
+    const targetPath = mode && mode !== 'recent' ? path : '/feed'
     navigate(targetPath)
     setSelected(mode)
   }
@@ -119,9 +120,9 @@ export const Sidebar = () => {
           href="/feed"
           onClick={(e) => {
             e.preventDefault()
-            handleModeSwitch('all', '/feed')
+            handleModeSwitch('recent', '/feed')
           }}
-          classList={{ [styles.selected]: selected() === 'all' }}
+          classList={{ [styles.selected]: selected() === 'recent' }}
         >
           <div class={styles.sidebarItemName}>
             <Icon name="feed-all" class={styles.icon} />

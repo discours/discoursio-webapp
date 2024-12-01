@@ -17,7 +17,7 @@ import { CommentDate } from '../Article/CommentDate'
 import { getShareUrl } from '../Article/SharePopup'
 import { AuthorLink } from '../Author/AuthorLink'
 import { ArticleCard } from '../Feed/ArticleCard'
-import { FeedFilters } from '../Feed/FeedFilters'
+import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
 import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 import { Placeholder } from '../Feed/Placeholder'
 import { Sidebar } from '../Feed/Sidebar'
@@ -246,7 +246,7 @@ export const FeedView = (props: FeedProps) => {
               <div class="col-md-12 col-xl-7 offset-xl-1">
                 <div class={styles.filtersContainer}>
                   <FeedSwitcher options={['recent', 'top', 'hot']} prefix={'/feed'} />
-                  <FeedFilters />
+                  <FeedFiltersControl />
                 </div>
 
                 <Show when={!isFeedLoading()} fallback={<Loading />}>
