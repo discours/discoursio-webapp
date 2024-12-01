@@ -7,6 +7,7 @@
 - [Фильтр комментариев](./comments-filter.md)
 - [Просмотры](./views.md)
 - [SolidJS Memo](./solid-memo.md)
+- [SolidJS Async](./solid-async.md)
 
 ### Архитектура
 - [Общая архитектура](./architecture.md)
