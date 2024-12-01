@@ -3,10 +3,10 @@ import { existsSync } from 'node:fs'
 // biome-ignore lint/correctness/noNodejsModules: build
 import path from 'node:path'
 import dotenv from 'dotenv'
+import { Deprecations } from 'sass'
 import { CSSOptions, LogLevel, LoggerOptions, createLogger, defineConfig } from 'vite'
 import { PolyfillOptions, nodePolyfills } from 'vite-plugin-node-polyfills'
 import sassDts from 'vite-plugin-sass-dts'
-
 // Загружаем .env файл с выводом информации о статусе
 const envPath = path.resolve(process.cwd(), '.env')
 if (existsSync(envPath)) {
@@ -17,15 +17,19 @@ if (existsSync(envPath)) {
 }
 
 export const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
-console.log(`[vite.config] ${process.env.NODE_ENV} mode`)
+console.log(`[vite.config] ${isDev ? 'dev' : 'prod'} mode`)
 
 const customLogger = createLogger(
   'debug' as LogLevel,
   {
     warn: (message: string, options: LoggerOptions) => {
-      console.debug(message)
-      if (message.startsWith('Future global-builtin')) {
-        return // Игнорируем это конкретное предупреждение
+      // Игнорируем определенные предупреждения
+      if (
+        message.includes('legacy JS API') ||
+        message.includes('mixed-decls') ||
+        message.startsWith('Future global-builtin')
+      ) {
+        return
       }
       console.warn(message, options)
     }
@@ -53,9 +57,9 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        api: 'modern-compiler',
+        api: 'modern',
         quietDeps: true,
-        silenceDeprecations: ['mixed-decls', 'legacy-js-api'], // 'global-builtin'],
+        silenceDeprecations: ['mixed-decls', 'legacy-js-api'] as (keyof Deprecations)[],
         additionalData: (content: string) => `@use '~/styles/global' as *;\n${content}`,
         includePaths: ['./public', './src/styles', './node_modules']
       }
@@ -83,9 +87,6 @@ export default defineConfig({
           connect: ['./src/context/connect.tsx']
         }
       }
-    },
-    commonjsOptions: {
-      ignore: ['punycode']
     }
   },
   define: {
@@ -97,7 +98,6 @@ export default defineConfig({
     global: 'globalThis'
   },
   optimizeDeps: {
-    include: ['solid-tiptap', 'buffer'],
-    exclude: ['punycode']
+    include: ['solid-tiptap', 'buffer']
   }
 })
