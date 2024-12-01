@@ -19,12 +19,6 @@ if (existsSync(envPath)) {
 export const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
 console.log(`[vite.config] ${isDev ? 'dev' : 'prod'} mode`)
 
-const EDITOR_REGEX = /\/(solid-tiptap|@tiptap\/|prosemirror-|y-prosemirror|yjs)/
-const GRAPHQL_REGEX = /\/(urql|graphql|@urql\/core)/
-const SOLID_REGEX = /\/(solid-js|@solidjs\/|solid-popper|solid-transition-group|solid-tiptap)/
-const I18NEXT_REGEX = /\/(i18next|i18next-http-backend|i18next-icu|intl-messageformat)/
-const UI_REGEX = /\/(tippy\.js|swiper|cropperjs|@solid-primitives)/
-
 const polyfillOptions = {
   include: ['path', 'stream', 'util'],
   exclude: ['http'],
@@ -86,32 +80,12 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        sourcemapExcludeSources: true,
-        manualChunks: (id: string) => {
-          if (id.includes('node_modules')) {
-            if (id.match(EDITOR_REGEX)) return 'vendor.editor'
-            if (id.match(GRAPHQL_REGEX)) return 'vendor.graphql'
-            if (id.match(SOLID_REGEX)) return 'vendor.solid'
-            if (id.match(I18NEXT_REGEX)) return 'vendor.i18n'
-            if (id.match(UI_REGEX)) return 'vendor.ui'
-            return 'vendor.shared'
-          }
-
-          if (id.includes('/src/')) {
-            if (id.includes('/components/Views/')) return 'app.pages'
-            if (id.includes('/components/Editor/')) return 'app.editor'
-            if (id.includes('/components/Article/')) return 'app.article'
-            if (id.includes('/components/_shared/')) return 'app.shared'
-            return 'app.core'
-          }
-
-          return null
-        }
+        sourcemapExcludeSources: true
       }
     }
   },
 
   optimizeDeps: {
-    include: ['solid-tiptap', 'buffer']
+    include: ['buffer']
   }
 })
