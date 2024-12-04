@@ -252,9 +252,19 @@ export const FeedView = (props: FeedProps) => {
                 <Show when={!isFeedLoading()} fallback={<Loading />}>
                   <div class={styles.feedContent}>
                     <div class={styles.feedPage}>
-                      <div class={styles.mainArticles}>
-                        <ArticlesList />
-                      </div>
+                      <Show
+                        when={!feedByMode().isEmpty}
+                        fallback={
+                          <div class={styles.noContent}>
+                            <p>{t('No publications yet')}</p>
+                            <p>{t('Follow authors or topics to see their publications here')}</p>
+                          </div>
+                        }
+                      >
+                        <div class={styles.mainArticles}>
+                          <ArticlesList />
+                        </div>
+                      </Show>
                     </div>
                   </div>
                 </Show>

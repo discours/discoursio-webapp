@@ -70,7 +70,7 @@ export const InboxProvider = (props: { children: JSX.Element }) => {
   const getMessages = async (chatId: string) => {
     if (!chatId) return []
     try {
-      const msgs: Message[] = await loadMessages({ chat_id: chatId })
+      const msgs: Message[] = await loadMessages({ chat: chatId })
       setMessages(msgs)
       return msgs || []
     } catch (error) {

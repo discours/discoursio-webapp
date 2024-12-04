@@ -1,15 +1,15 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createMemo } from 'solid-js'
+import { For, Show, createMemo } from 'solid-js'
 import { orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
+import { FeedMode } from '~/types/filters'
 import { capitalize } from '~/utils/capitalize'
-
 import styles from './FeedSwitcher.module.scss'
 
 type ViewOption = string | { value: string; title: string }
 
-type FeedSwitcherProps = {
+interface Props {
   class?: string
   options: ViewOption[]
   prefix: string
@@ -19,131 +19,65 @@ type FeedSwitcherProps = {
   isLoading?: boolean
 }
 
-const getOptionValue = (option: ViewOption) => (typeof option === 'string' ? option : option.value)
-const FIRST_SLASH_REGEX = /^\//
+const PERFIX_REGEX = /^\//
 
-export const FeedSwitcher = (props: FeedSwitcherProps) => {
+export const FeedSwitcher = (props: Props) => {
   const loc = useLocation()
   const { t } = useLocalize()
   const navigate = useNavigate()
-  const { updateOptions, mode: feedMode } = useFeed()
+  const { updateOptions } = useFeed()
 
-  console.log('[FeedSwitcher] Initial render with props:', {
-    options: props.options,
-    prefix: props.prefix,
-    pathname: loc.pathname
-  })
-
-  // Мемоизируем текущую опцию на основе URL
   const currentOption = createMemo(() => {
-    const path = loc.pathname.replace(props.prefix, '').replace(FIRST_SLASH_REGEX, '')
-    const option = path || 'recent'
-    console.log('[FeedSwitcher] currentOption memo:', {
-      pathname: loc.pathname,
-      path,
-      option,
-      feedMode: feedMode()
-    })
-    return option
+    const path = loc.pathname.replace(props.prefix, '').replace(PERFIX_REGEX, '')
+    return path || 'recent'
   })
 
-  // Отслеживаем изменения URL и режима
-  createEffect(() => {
-    const option = currentOption()
-    const mode = feedMode()
-    console.log('[FeedSwitcher] Effect triggered:', {
-      currentOption: option,
-      feedMode: mode,
-      pathname: loc.pathname
-    })
-  })
+  const getOptionValue = (option: ViewOption) => (typeof option === 'string' ? option : option.value)
+
+  const getOptionTitle = (option: ViewOption) =>
+    typeof option === 'string' ? t(capitalize(option)) : option.title
+
+  const getPath = createMemo(
+    () => (value: string, idx: () => number) =>
+      props.prefix ? (idx() ? `${props.prefix}/${value}` : props.prefix) : idx() ? `/${value}` : '/'
+  )
 
   const handleClick = (ev: MouseEvent, option: ViewOption, idx: () => number) => {
     ev?.preventDefault()
     const value = getOptionValue(option)
-    console.log('[FeedSwitcher] handleClick:', {
-      value,
-      currentOption: currentOption(),
-      idx: idx()
-    })
 
-    const path = props.prefix
-      ? idx()
-        ? `${props.prefix}/${value}`
-        : props.prefix
-      : idx()
-        ? `/${value}`
-        : '/'
-
-    console.log('[FeedSwitcher] Updating options and navigating:', {
-      path,
-      orderBy: orderByMode(value),
-      value
-    })
-
-    // Обновляем опции перед навигацией
     updateOptions({
       offset: 0,
-      order_by: orderByMode(value)
+      order_by: orderByMode(value as FeedMode)
     })
 
-    navigate(path)
+    navigate(getPath()(value, idx))
   }
 
   return (
     <ul class={clsx(styles.feedSwitcher, styles.feedFilter, props.class)}>
       <For each={props.options}>
-        {(option: ViewOption, idx) => {
-          // Мемоизируем состояние выбранности для каждой опции
-          const isSelected = createMemo(() => {
-            const optionValue = getOptionValue(option)
-            const selected = optionValue === currentOption()
-            console.log('[FeedSwitcher] Option selection check:', {
-              optionValue,
-              currentOption: currentOption(),
-              selected
-            })
-            return selected
-          })
+        {(option, idx) => {
+          const value = createMemo(() => getOptionValue(option))
+          const isSelected = createMemo(() => value() === currentOption())
+          const title = createMemo(() => getOptionTitle(option))
+          const path = createMemo(() => getPath()(value(), idx))
+          const counter = createMemo(() => props.counters?.[value()])
 
           return (
             <li
               class={clsx({ [styles.itemSelected]: isSelected() })}
-              onMouseOver={() => {
-                console.log('[FeedSwitcher] Mouse over:', getOptionValue(option))
-                !isSelected() && props.onMouseOver?.(getOptionValue(option))
-              }}
-              onMouseOut={() => {
-                console.log('[FeedSwitcher] Mouse out:', getOptionValue(option))
-                !isSelected() && props.onMouseOut?.()
-              }}
+              onMouseOver={() => !isSelected() && props.onMouseOver?.(value())}
+              onMouseOut={() => !isSelected() && props.onMouseOut?.()}
             >
               <Show
                 when={!(isSelected() && props.isLoading)}
-                fallback={
-                  <span class={styles.active}>
-                    {typeof option === 'string' ? t(capitalize(option)) : option.title}
-                    <Show when={props.counters?.[getOptionValue(option)] !== undefined}>
-                      <span class={styles.itemCounter}>{props.counters?.[getOptionValue(option)]}</span>
-                    </Show>
-                  </span>
-                }
+                fallback={<span class={styles.active}>{title()}</span>}
               >
-                <A
-                  href={
-                    props.prefix
-                      ? idx()
-                        ? `${props.prefix}/${getOptionValue(option)}`
-                        : props.prefix
-                      : idx()
-                        ? `/${getOptionValue(option)}`
-                        : '/'
-                  }
-                  onClick={(ev) => handleClick(ev, option, idx)}
-                >
-                  {typeof option === 'string' ? t(capitalize(option)) : option.title}
-                  <Show when={props.counters?.[getOptionValue(option)] !== undefined}>
-                    <span class={styles.itemCounter}>{props.counters?.[getOptionValue(option)]}</span>
+                <A href={path()} onClick={(ev) => handleClick(ev, option, idx)}>
+                  {title()}
+                  <Show when={counter() !== undefined}>
+                    <span class={styles.itemCounter}>{counter()}</span>
                   </Show>
                 </A>
               </Show>

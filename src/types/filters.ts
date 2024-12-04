@@ -1,16 +1,9 @@
 import { InputMaybe, ReactionSort } from '~/graphql/schema/core.gen'
 
 export type FeaturedFilter = 'featured' | 'unfeatured' | 'all'
-
-export type FeedMode =
-  | 'recent'
-  | 'hot'
-  | 'top'
-  | 'followed'
-  | 'discussed'
-  | 'coauthored'
-  | 'search'
-  | 'comments'
+export type FeedMode = 'recent' | 'hot' | 'top' | 'search' | 'comments'
+export const FEED_MODES: FeedMode[] = ['recent', 'hot', 'top', 'search', 'comments']
+export type MyFeedKind = 'followed' | 'coauthored' | 'discussed' | undefined
 
 export interface FeedFilters {
   after?: number // Unix timestamp в секундах

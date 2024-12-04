@@ -1,4 +1,4 @@
-import { A, useNavigate, useParams } from '@solidjs/router'
+import { A } from '@solidjs/router'
 import { For, Suspense, createEffect, createSignal, on } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'
@@ -9,7 +9,7 @@ import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useTopics } from '~/context/topics'
 import { Author, Topic } from '~/graphql/schema/core.gen'
-import { FeedMode } from '~/types/filters'
+import { MyFeedKind } from '~/types/filters'
 import { Userpic } from '../../Author/Userpic'
 import styles from './Sidebar.module.scss'
 
@@ -17,18 +17,11 @@ export const Sidebar = () => {
   const { t } = useLocalize()
   const { follows } = useFollowing()
   const { session } = useSession()
-  const { feedByTopic, feedByAuthor, seen } = useFeed()
+  const { feedByTopic, feedByAuthor, seen, myFeed, setMyFeed } = useFeed()
   const { authorsEntities } = useAuthors()
   const { topicEntities, topTopics } = useTopics()
-  const navigate = useNavigate()
-
-  const [selected, setSelected] = createSignal('all')
   const [authorsList, setAuthorsList] = createSignal<Partial<Author>[]>([])
   const [topicsList, setTopicsList] = createSignal<Partial<Topic>[]>([])
-
-  // Обновляем selected при изменении параметров URL
-  const params = useParams()
-  createEffect(() => setSelected(params.mode || 'recent'))
 
   // Объединенный эффект для обработки авторов и топиков
   createEffect(
@@ -106,12 +99,7 @@ export const Sidebar = () => {
   )
 
   // Упрощенный обработчик для переключения режимов
-  const handleModeSwitch = (mode: FeedMode, path: string) => {
-    // Если режим "recent", то используем корневой путь /feed
-    const targetPath = mode && mode !== 'recent' ? path : '/feed'
-    navigate(targetPath)
-    setSelected(mode)
-  }
+  const handleMyFeedSwitch = (kind: MyFeedKind) => setMyFeed(kind)
 
   return (
     <div class={styles.sidebar}>
@@ -120,9 +108,9 @@ export const Sidebar = () => {
           href="/feed"
           onClick={(e) => {
             e.preventDefault()
-            handleModeSwitch('recent', '/feed')
+            handleMyFeedSwitch(undefined)
           }}
-          classList={{ [styles.selected]: selected() === 'recent' }}
+          classList={{ [styles.selected]: !myFeed() }}
         >
           <div class={styles.sidebarItemName}>
             <Icon name="feed-all" class={styles.icon} />
@@ -134,9 +122,9 @@ export const Sidebar = () => {
           href="/feed/followed"
           onClick={(e) => {
             e.preventDefault()
-            handleModeSwitch('followed', '/feed/followed')
+            handleMyFeedSwitch('followed')
           }}
-          classList={{ [styles.selected]: selected() === 'followed' }}
+          classList={{ [styles.selected]: myFeed() === 'followed' }}
         >
           <div class={styles.sidebarItemName}>
             <Icon name="feed-my" class={styles.icon} />
@@ -148,9 +136,9 @@ export const Sidebar = () => {
           href="/feed/coauthored"
           onClick={(e) => {
             e.preventDefault()
-            handleModeSwitch('coauthored', '/feed/coauthored')
+            handleMyFeedSwitch('coauthored')
           }}
-          classList={{ [styles.selected]: selected() === 'coauthored' }}
+          classList={{ [styles.selected]: myFeed() === 'coauthored' }}
         >
           <div class={styles.sidebarItemName}>
             <Icon name="feed-collaborate" class={styles.icon} />
@@ -162,9 +150,9 @@ export const Sidebar = () => {
           href="/feed/discussed"
           onClick={(e) => {
             e.preventDefault()
-            handleModeSwitch('discussed', '/feed/discussed')
+            handleMyFeedSwitch('discussed')
           }}
-          classList={{ [styles.selected]: selected() === 'discussed' }}
+          classList={{ [styles.selected]: myFeed() === 'discussed' }}
         >
           <div class={styles.sidebarItemName}>
             <Icon name="feed-discussion" class={styles.icon} />

@@ -2,32 +2,17 @@
 
 ## Фильтры и сортировка
 
-### Режимы ленты [FeedProvider.tsx](../src/context/feed.tsx#L30-L40)
+### Типы лент
 
-Режимы определяют базовую сортировку материалов:
-- `recent` - сортировка по дате, показывает новейшие материалы первыми
-- `hot` - по активности, учитывает недавние реакции и комментарии
-- `top` - по рейтингу, показывает материалы с наибольшим количеством положительных реакций
+#### 1. Основные режимы сортировки
+- `recent` - сортировка по дате создания (по умолчанию)
+- `hot` - по активности, учитывает недавние комментарии
+- `top` - по рейтингу
+
+#### 2. Персональные ленты (требуют авторизации)
 - `followed` - материалы от отслеживаемых авторов
 - `discussed` - материалы с активными обсуждениями
 - `coauthored` - материалы в соавторстве
-- `search` - результаты поиска
-
-```typescript
-export const orderByMode = (value: string) => {
-  return value === 'hot'
-    ? ShoutsOrderBy.LastReactedAt
-    : value === 'top'
-      ? ShoutsOrderBy.Rating
-      : value === 'followed'
-        ? undefined
-        : value === 'discussed'
-          ? ShoutsOrderBy.LastReactedAt
-          : value === 'coauthored'
-            ? undefined
-            : undefined
-}
-```
 
 ### Типы фильтров
 
