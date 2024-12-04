@@ -568,7 +568,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     setFeedByAuthor(groupedByAuthor)
   }
 
-  // Добавляем фильтры в значение контекста
+  // Доба��ляем фильтры в зачение контекста
   const [filterState, setFilterState] = createSignal<FilterState>({ filters: {}, timestamp: Date.now() })
   const updateFilters = (filters: Partial<FeedFilters>) => {
     setFilterState((prev) => ({

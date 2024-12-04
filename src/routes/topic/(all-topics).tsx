@@ -6,7 +6,7 @@ import { PageLayout } from '~/components/_shared/PageLayout'
 import { useLocalize } from '~/context/localize'
 import { loadTopics } from '~/graphql/api/public'
 
-export const route = { load: loadTopics } satisfies RouteDefinition
+export const route = { load: loadTopics() } satisfies RouteDefinition
 
 export default () => {
   const { t } = useLocalize()

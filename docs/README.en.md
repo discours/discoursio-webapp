@@ -2,27 +2,16 @@
 
 The project uses: SolidJS, Typescript, GraphQL, SASS
 
-## Articles
+## Articles about SolidJS
 
-### How [asynchronous observers](solid-async.md) work
-- Working with `createResource` instead of `createAsync` (will be removed in SolidJS 2.0)
-- Optimization of SSR
-- State management
-- Data caching
+- How [asynchronous observers](solid-async.md) work
+- How [cached component state](solid-memo.md) works
+- [Data caching](caching-v2.md)
+- [API patterns](api-patterns.md)
+- [Battling cyclic effects](solid-effects.md)
 
-### How [cached component state](solid-memo.md) works
-- Working with `createMemo` to avoid repeated calculations
-- Caching calculations
-- Dependency management
 
-### [Battling cyclic effects](solid-effects.md)
-- Working with `createEffect`, `on`, `defer`, `batch`, `untrack`
-- State management
-
-### [data caching](caching.md)
-- [data caching 2.0](caching-v2.md) (SolidJS 2.0)
-- Cache management
-- Optimization of performance
+## Articles about the project
 
 ### [view tracking system](views.md)
 - Working with GA4 (as an analytics backend)
@@ -35,10 +24,12 @@ The project uses: SolidJS, Typescript, GraphQL, SASS
 - Optimization of SSR
 - State management
 
-### [фильтры комментариев](comments-filter.md)
+### [comment filters](comments-filter.md)
 - Filtering and sorting
 - State management
 
-### [how the review of PRs works](pr-review.md)
+## Articles about development process
+
+### [how PR review works](pr-review.md)
 - Order of reviewing PRs
 - Conditions for accepting PRs

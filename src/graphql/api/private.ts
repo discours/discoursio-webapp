@@ -1,5 +1,6 @@
 import { Client } from '@urql/core'
 import { createResource } from 'solid-js'
+import { ResourceArgs, createQueryResource, defaultClient } from '~/graphql/client'
 import loadShoutsBookmarkedQuery from '~/graphql/query/core/articles-load-bookmarked'
 import loadShoutsCoauthoredQuery from '~/graphql/query/core/articles-load-coauthored'
 import loadShoutsDiscussedQuery from '~/graphql/query/core/articles-load-discussed'
@@ -21,10 +22,9 @@ import {
   Shout
 } from '~/graphql/schema/core.gen'
 
-type ResourceArgs<T> = readonly [T, Client | undefined]
-
 /**
  * Реактивный ресурс для загрузки ленты подписок
+ * Кешируемый метод с автоматическим обновлением при изменении параметров
  * Особенности:
  * - Автоматическое обновление при изменении options/client
  * - Поддержка пагинации через options
@@ -53,26 +53,35 @@ type ResourceArgs<T> = readonly [T, Client | undefined]
  * )
  * ```
  */
-export const useFollowedShouts = (
-  { options }: QueryLoad_Shouts_FeedArgs,
-  signedClient: Client | undefined
-) => {
-  return createResource(
-    () => [options, signedClient] as ResourceArgs<LoadShoutsOptions>,
-    async ([opts, client]) => {
-      if (!(client && opts)) return
-      const resp = await client.query(loadShoutsFeedQuery, { ...opts }).toPromise()
-      return resp?.data?.load_shouts_feed as Shout[]
-    }
-  )
-}
+export const useFollowedShouts = createQueryResource<Shout[], QueryLoad_Shouts_FeedArgs>(
+  loadShoutsFeedQuery,
+  ({ options }: QueryLoad_Shouts_FeedArgs) => ({ ...options }),
+  defaultClient
+)
 
 /**
  * Реактивный ресурс для загрузки закладок пользователя
+ * Кешируемый метод с автоматическим обновлением при изменении параметров
  * Особенности:
  * - Автоматическое обновление при изменении options/client
- * - Поддержка пагинации через options
- * - Требует авторизованного клиента
++ *
++ * @example
++ * ```tsx
++ * const [bookmarks] = useBookmarkedShouts({
++ *   options: { 
++ *     limit: FEED_PAGE_SIZE,
++ *     offset: page() * FEED_PAGE_SIZE
++ *   }
++ * }, signedClient)
++ * 
++ * return (
++ *   <Show when={bookmarks()} fallback={<Loading />}>
++ *     <For each={bookmarks()}>{shout =>
++ *       <ArticleCard shout={shout} />
++ *     }</For>
++ *   </Show>
++ * )
++ * ```
  */
 export const useBookmarkedShouts = (
   { options }: QueryLoad_Shouts_BookmarkedArgs,
@@ -90,10 +99,20 @@ export const useBookmarkedShouts = (
 
 /**
  * Реактивный ресурс для загрузки статей, в обсуждениях которых участвует пользователь
+ * Кешируемый метод с автоматическим обновлением при изменении параметров
  * Особенности:
  * - Автоматическое обновление при изменении options/client
- * - Поддержка пагинации через options
- * - Требует авторизованного клиента
++ *
++ * @example
++ * ```tsx
++ * const [discussed] = useDiscussedShouts({
++ *   options: { limit: FEED_PAGE_SIZE }
++ * }, signedClient)
++ * 
++ * <For each={discussed()}>{shout =>
++ *   <ArticleCard shout={shout} />
++ * }</For>
++ * ```
  */
 export const useDiscussedShouts = (
   { options }: QueryLoad_Shouts_DiscussedArgs,
@@ -111,10 +130,9 @@ export const useDiscussedShouts = (
 
 /**
  * Реактивный ресурс для загрузки статей соавторства
+ * Кешируемый метод с автоматическим обновленим при изменении параметров
  * Особенности:
  * - Автоматическое обновление при изменении options/client
- * - Поддержка пагинации через options
- * - Требует авторизованного клиента
  */
 export const useCoauthoredShouts = (
   { options }: QueryLoad_Shouts_CoauthoredArgs,
@@ -132,26 +150,25 @@ export const useCoauthoredShouts = (
 
 /**
  * Реактивный ресурс для загрузки оценок пользователя
+ * Кешируемый метод с автоматическим обновлением при изменении параметров
  * Особенности:
  * - Автоматическое обновление при изменении shoutIds/client
- * - Группировка запросов по ID статей
- * - Требует авторизованного клиента
- *
- * @example
- * ```tsx
- * // В ArticleRatings:
- * const [myRates] = useShoutsMyRates([shout1.id, shout2.id], signedClient)
- *
- * // Использование с createEffect:
- * createEffect(() => {
- *   const rates = myRates()
- *   if (rates) {
- *     rates.forEach(rate => {
- *       setShoutRating(rate.shout_id, rate.my_rate)
- *     })
- *   }
- * })
- * ```
++ *
++ * @example
++ * ```tsx
++ * // В ArticleRatings:
++ * const [myRates] = useShoutsMyRates([shout1.id, shout2.id], signedClient)
++ *
++ * // Использование с createEffect:
++ * createEffect(() => {
++ *   const rates = myRates()
++ *   if (rates) {
++ *     rates.forEach(rate => {
++ *       setShoutRating(rate.shout_id, rate.my_rate)
++ *     })
++ *   }
++ * })
++ * ```
  */
 export const useShoutsMyRates = (shoutIds: number[], client?: Client) => {
   return createResource(
@@ -172,10 +189,9 @@ export const useShoutsMyRates = (shoutIds: number[], client?: Client) => {
 
 /**
  * Реактивный ресурс для загрузки оценок комментариев
+ * Кешируемый метод с автоматическим обновлением при изменении параметров
  * Особенности:
  * - Автоматическое обновление при изменении commentIds/client
- * - Группировка запросов по ID комментариев
- * - Требует авторизованного клиента
  */
 export const useCommentsMyRates = (comments: number[], signedClient: Client | undefined) => {
   type RateResult = { comment: number; my_rate: ReactionKind }
@@ -192,10 +208,22 @@ export const useCommentsMyRates = (comments: number[], signedClient: Client | un
 
 /**
  * Реактивный ресурс для загрузки реакций
+ * Кешируемый метод с авт����атическим обновлением при изменении параметров
  * Особенности:
  * - Автоматическое обновление при изменении параметров
- * - Поддержка пагинации и фильтрации
- * - Требует авторизованного клиента
++ *
++ * @example
++ * ```tsx
++ * const [reactions] = useReactions(
++ *   { kinds: [ReactionKind.Comment] },
++ *   10, // limit
++ *   0   // offset
++ * )
++ * 
++ * <For each={reactions()}>{reaction =>
++ *   <ReactionItem reaction={reaction} />
++ * }</For>
++ * ```
  */
 export const useReactions = (by: ReactionBy, limit?: number, offset?: number, signedClient?: Client) => {
   return createResource(
@@ -214,11 +242,10 @@ export const useReactions = (by: ReactionBy, limit?: number, offset?: number, si
 }
 
 /**
- * Реактивный ресурс для загрузки сообществ, на которые подписан пользователь
+ * Реактивный ресурс для загрузки сообществ
+ * Кешируемый метод с автоматическим обновлением при изменении параметров
  * Особенности:
  * - Автоматическое обновление при изменении параметров
- * - Поддержка загрузки по slug/id
- * - Требует авторизованного клиента
  */
 export const useFollowedCommunities = (
   slug?: string,
@@ -241,27 +268,10 @@ export const useFollowedCommunities = (
   )
 }
 
-// @deprecated Legacy API
-// будет удалено в следующих версиях
-
 /**
- * @deprecated Используйте useFollowedShouts вместо loadFollowedShouts
- * Пример миграции:
- * ```tsx
- * // Было в FeedView:
- * const feedLoader = loadFollowedShouts({
- *   options: { limit: 20 }
- * }, client)
- * const feed = await feedLoader()
- *
- * // Стало:
- * const [feed] = useFollowedShouts({
- *   options: { limit: 20 }
- * }, signedClient)
- * <For each={feed()}>{shout =>
- *   <ArticleCard shout={shout} />
- * }</For>
- * ```
+ * Прямой метод без кеширования
+ * Загрузка ленты подписок
+ * Используется для SSR и начальной загрузки
  */
 export const loadFollowedShouts = (
   { options }: QueryLoad_Shouts_FeedArgs,
@@ -275,23 +285,8 @@ export const loadFollowedShouts = (
 }
 
 /**
- * @deprecated Используйте useDiscussedShouts вместо loadDiscussedShouts
- * Пример миграции:
- * ```tsx
- * // Было в FeedView:
- * const discussedLoader = loadDiscussedShouts({
- *   options: { limit: FEED_PAGE_SIZE }
- * }, client)
- * const discussed = await discussedLoader()
- *
- * // Стало:
- * const [discussed] = useDiscussedShouts({
- *   options: { limit: FEED_PAGE_SIZE }
- * }, signedClient)
- * <For each={discussed()}>{shout =>
- *   <ArticleCard shout={shout} />
- * }</For>
- * ```
+ * Загрузка обсуждаемых статей
+ * Используется для SSR и начальной загрузки
  */
 export const loadDiscussedShouts = (
   { options }: QueryLoad_Shouts_DiscussedArgs,
@@ -305,23 +300,8 @@ export const loadDiscussedShouts = (
 }
 
 /**
- * @deprecated Используйте useCoauthoredShouts вместо loadCoauthoredShouts
- * Пример миграции:
- * ```tsx
- * // Было в FeedView:
- * const coauthoredLoader = loadCoauthoredShouts({
- *   options: { limit: FEED_PAGE_SIZE }
- * }, client)
- * const coauthored = await coauthoredLoader()
- *
- * // Стало:
- * const [coauthored] = useCoauthoredShouts({
- *   options: { limit: FEED_PAGE_SIZE }
- * }, signedClient)
- * <For each={coauthored()}>{shout =>
- *   <ArticleCard shout={shout} />
- * }</For>
- * ```
+ * Загрузка статей соавторства
+ * Используется для SSR и начальной загрузки
  */
 export const loadCoauthoredShouts = (
   { options }: QueryLoad_Shouts_CoauthoredArgs,
@@ -336,7 +316,9 @@ export const loadCoauthoredShouts = (
 
 /**
  * @deprecated Используйте useCommentsMyRates вместо loadCommentsMyRates
- * Пример миграции:
+ * Активно используется в RatingControl для реактивных обновлений
+ *
+ * @example
  * ```tsx
  * // Было в Comment.tsx:
  * const commentsRatesFetcher = loadCommentsMyRates(
@@ -344,16 +326,6 @@ export const loadCoauthoredShouts = (
  *   client
  * )
  * const myratesData = await commentsRatesFetcher()
- *
- * // Стало:
- * const [myRates] = useCommentsMyRates(
- *   comments().map(c => c.id),
- *   signedClient
- * )
- * createEffect(() => {
- *   const rates = myRates()
- *   rates?.forEach(rate => updateRating(rate))
- * })
  * ```
  */
 export const loadCommentsMyRates = (comments: number[], signedClient: Client | undefined) => {
@@ -366,25 +338,7 @@ export const loadCommentsMyRates = (comments: number[], signedClient: Client | u
 
 /**
  * @deprecated Используйте useShoutsMyRates вместо loadShoutsMyRates
- * Пример миграции:
- * ```tsx
- * // Было в FeedView:
- * const ratesLoader = loadShoutsMyRates(
- *   shouts.map(s => s.id),
- *   client
- * )
- * const rates = await ratesLoader()
- *
- * // Стало:
- * const [myRates] = useShoutsMyRates(
- *   shouts().map(s => s.id),
- *   signedClient
- * )
- * createEffect(() => {
- *   const rates = myRates()
- *   rates?.forEach(rate => updateRating(rate))
- * })
- * ```
+ * Активно используется в RatingControl для реактивных обновлений
  */
 export const loadShoutsMyRates = (shoutIds: number[], client?: Client) => {
   return async () => {

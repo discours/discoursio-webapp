@@ -237,7 +237,7 @@ export const AuthorView = (props: AuthorViewProps) => {
       if (result?.length) {
         // Добавляем только уникальные статьи
         const currentSlugs = new Set(sortedFeed().map((s) => s.slug))
-        const newShouts = result.filter((shout) => !currentSlugs.has(shout.slug))
+        const newShouts = result.filter((shout: Shout) => !currentSlugs.has(shout.slug))
 
         if (newShouts.length) {
           setSortedFeed((prev) => [...prev, ...newShouts])
