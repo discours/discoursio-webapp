@@ -1,4 +1,5 @@
-import { type RouteDefinition, type RouteSectionProps, createAsync } from '@solidjs/router'
+import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
+import { createResource } from 'solid-js'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { useFeaturedFeed } from '~/context/featured'
@@ -78,11 +79,9 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
     return loaded as LoadMoreItems
   }
 
-  // preload featured shouts
-  const shouts = createAsync(async () => {
+  const [shouts] = createResource(async () => {
     if (props.data.featuredShouts) {
       setFeaturedFeed(props.data.featuredShouts)
-      // console.debug('[HomePage] featured feed preloaded', props.data.featuredShouts)
       return props.data.featuredShouts
     }
     return await loadMoreFeatured()

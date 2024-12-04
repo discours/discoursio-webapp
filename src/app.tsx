@@ -1,48 +1,64 @@
-import { Meta, MetaProvider } from '@solidjs/meta'
+import { MetaProvider } from '@solidjs/meta'
 import { Router } from '@solidjs/router'
 import { FileRoutes } from '@solidjs/start/router'
-import { type JSX, Suspense } from 'solid-js'
+import { Component, type JSX, Suspense } from 'solid-js'
+import { batch, createRenderEffect, onCleanup, untrack } from 'solid-js'
 
 import { AuthToken } from '@authorizerdev/authorizer-js'
 import { Loading } from './components/_shared/Loading'
 import { AuthorsProvider } from './context/authors'
 import { EditorProvider } from './context/editor'
+import { FeaturedFeedProvider } from './context/featured'
 import { FeedProvider } from './context/feed'
+import { FollowingProvider } from './context/following'
 import { LocalizeProvider } from './context/localize'
 import { SessionProvider } from './context/session'
 import { TopicsProvider } from './context/topics'
 import { UIProvider } from './context/ui'
 
 import '~/styles/app.scss'
-import { FeaturedFeedProvider } from './context/featured'
-import { FollowingProvider } from './context/following'
 
-export const Providers = (props: { children?: JSX.Element }) => {
+export const Providers: Component<{ children?: JSX.Element }> = (props) => {
+  let updateCount = 0
+
+  createRenderEffect(() => {
+    console.log('[app] Render cycle:', ++updateCount)
+    if (updateCount > 100) {
+      console.error('[Providers] Too many updates, possible infinite loop')
+      console.trace()
+    }
+    onCleanup(() => updateCount--)
+  })
+
   const sessionStateChanged = (_payload: AuthToken) => {
-    // console.debug(payload)
-    // TODO: maybe load subs here
+    console.log('[app] Session state changed:', _payload)
+    untrack(() => {
+      batch(() => {
+        console.log('[app] Running batch updates')
+      })
+    })
   }
+
   return (
     <LocalizeProvider>
       <SessionProvider onStateChangeCallback={sessionStateChanged}>
-        <TopicsProvider>
-          <FeaturedFeedProvider>
-            <FeedProvider>
-              <MetaProvider>
-                <Meta name="viewport" content="width=device-width, initial-scale=1" />
-                <UIProvider>
-                  <EditorProvider>
-                    <AuthorsProvider>
-                      <FollowingProvider>
+        <UIProvider>
+          <TopicsProvider>
+            <AuthorsProvider>
+              <FeedProvider>
+                <EditorProvider>
+                  <FeaturedFeedProvider>
+                    <FollowingProvider>
+                      <MetaProvider>
                         <Suspense fallback={<Loading />}>{props.children}</Suspense>
-                      </FollowingProvider>
-                    </AuthorsProvider>
-                  </EditorProvider>
-                </UIProvider>
-              </MetaProvider>
-            </FeedProvider>
-          </FeaturedFeedProvider>
-        </TopicsProvider>
+                      </MetaProvider>
+                    </FollowingProvider>
+                  </FeaturedFeedProvider>
+                </EditorProvider>
+              </FeedProvider>
+            </AuthorsProvider>
+          </TopicsProvider>
+        </UIProvider>
       </SessionProvider>
     </LocalizeProvider>
   )

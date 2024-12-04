@@ -1,19 +1,19 @@
-import { createAsync } from '@solidjs/router'
-import { IDBPDatabase, openDB } from 'idb'
-import { Accessor, JSX, createContext, createEffect, createSignal, on, onMount, useContext } from 'solid-js'
+import { openDB } from 'idb'
+import { Accessor, Component, JSX, createContext, createEffect, createResource, useContext } from 'solid-js'
+import { createStore } from 'solid-js/store'
+import { isServer } from 'solid-js/web'
 import { loadTopics } from '~/graphql/api/public'
 import { Topic } from '~/graphql/schema/core.gen'
-import { getRandomItemsFromArray } from '~/utils/random'
 import { byTopicStatDesc } from '../utils/sort'
 
 type TopicsContextType = {
   topicEntities: Accessor<{ [topicSlug: string]: Topic }>
   sortedTopics: Accessor<Topic[]>
   randomTopic: Accessor<Topic | undefined>
-  topTopics: Accessor<Topic[]>
+  topTopics: () => Topic[]
   setTopicsSort: (sortBy: string) => void
   addTopics: (topics: Topic[]) => void
-  loadTopics: () => Promise<Topic[]>
+  loadTopics: () => Promise<Topic[] | undefined>
 }
 
 const TopicsContext = createContext<TopicsContextType>({
@@ -36,6 +36,8 @@ const STORE_NAME = 'topics'
 const CACHE_LIFETIME = 24 * 60 * 60 * 1000 // 24 часа
 
 const setupIndexedDB = async () => {
+  if (isServer) return null
+
   try {
     return await openDB<{ topics: Topic[]; timestamp: number }>(DB_NAME, DB_VERSION, {
       upgrade(db) {
@@ -50,158 +52,177 @@ const setupIndexedDB = async () => {
   }
 }
 
-export const fetchTopicsData = async () => {
-  const topicsLoader = loadTopics()
-  const ttt = await topicsLoader()
-  return ttt || []
-}
-
 export type TopicSort = 'shouts' | 'followers' | 'authors' | 'title'
 
-export const TopicsProvider = (props: { children: JSX.Element }) => {
-  const [topicEntities, setTopicEntities] = createSignal<{ [topicSlug: string]: Topic }>({})
-  const [sortedTopics, setSortedTopics] = createSignal<Topic[]>([])
-  const [sortAllBy, setSortAllBy] = createSignal<TopicSort>('shouts')
-  const [db, setDb] = createSignal<IDBPDatabase | null>(null)
+// Добавляем функции для работы с кешем
+async function loadFromCache(): Promise<Topic[] | null> {
+  if (isServer) return null
 
-  const getTopicsFromIndexedDB = async () => {
-    const tx = db()?.transaction(STORE_NAME, 'readonly')
-    const store = tx?.objectStore(STORE_NAME)
-    const topics = await store?.get('data')
-    const timestamp = await store?.get('timestamp')
-    return { topics, timestamp }
+  const db = await setupIndexedDB()
+  if (!db) return null
+
+  const tx = db.transaction(STORE_NAME, 'readonly')
+  const store = tx.objectStore(STORE_NAME)
+  const [cached, timestamp] = await Promise.all([
+    store.get('data') as Promise<Topic[] | undefined>,
+    store.get('timestamp') as Promise<number | undefined>
+  ])
+
+  if (cached && timestamp && Date.now() - timestamp < CACHE_LIFETIME) {
+    return cached
   }
+  return null
+}
 
-  onMount(async () => {
-    const database = await setupIndexedDB()
-    if (!database) return
-    setDb(database as unknown as IDBPDatabase)
+async function saveToCache(topics: Topic[]): Promise<void> {
+  if (isServer) return
 
-    try {
-      const cached = (await database.get(STORE_NAME, 'data')) as Topic[] | undefined
-      const timestamp = (await database.get(STORE_NAME, 'timestamp')) as number | undefined
+  const db = await setupIndexedDB()
+  if (!db) return
 
-      if (cached && timestamp && Date.now() - timestamp < CACHE_LIFETIME) {
-        addTopics(cached)
-      } else {
-        const fresh = await loadAllTopics()
-        if (fresh.length > 0) {
-          await database.put(STORE_NAME, fresh, 'data')
-          await database.put(STORE_NAME, Date.now(), 'timestamp')
-          addTopics(fresh)
-        }
-      }
-    } catch (e) {
-      console.error('IndexedDB operation failed:', e)
-      const fresh = await loadAllTopics()
-      fresh.length > 0 && addTopics(fresh)
-    }
+  const tx = db.transaction(STORE_NAME, 'readwrite')
+  await Promise.all([
+    tx.objectStore(STORE_NAME).put(topics, 'data'),
+    tx.objectStore(STORE_NAME).put(Date.now(), 'timestamp')
+  ])
+}
+
+// Добавляем константы для управления обновлениями
+const TOPICS_UPDATE_INTERVAL = 24 * 60 * 60 * 1000 // 24 часа
+const TOPICS_LAST_UPDATE_KEY = 'topics_last_update'
+
+// Функция проверки необходимости обновления
+function shouldUpdateTopics(): boolean {
+  if (isServer) return true
+
+  const lastUpdate = sessionStorage.getItem(TOPICS_LAST_UPDATE_KEY)
+  if (!lastUpdate) return true
+
+  const timeSinceLastUpdate = Date.now() - Number.parseInt(lastUpdate)
+  return timeSinceLastUpdate > TOPICS_UPDATE_INTERVAL
+}
+
+// Функция обновления временной метки
+function updateLastUpdateTime(): void {
+  if (isServer) return
+
+  sessionStorage.setItem(TOPICS_LAST_UPDATE_KEY, Date.now().toString())
+}
+
+// Добавляем тип для провайдера
+// type TopicsProviderProps = {
+//   children: JSX.Element
+// }
+
+// Явно указываем возвращаемый тип
+export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
+  const [state, setState] = createStore({
+    entities: {} as Record<string, Topic>,
+    sorted: [] as Topic[],
+    sortBy: 'shouts' as TopicSort,
+    random: undefined as Topic | undefined,
+    loading: true,
+    error: undefined as Error | undefined
   })
 
-  const addTopics = (topics: Topic[]) => {
-    const newTopicEntities = topics.reduce(
-      (acc, topic) => {
-        if (topic?.slug) acc[topic.slug] = topic
-        return acc
-      },
-      {} as Record<string, Topic>
-    )
+  const [topics, { refetch }] = createResource<Topic[], { sortBy: TopicSort }>(
+    () => ({ sortBy: state.sortBy }),
+    async ({ sortBy }) => {
+      try {
+        // Сначала проверяем кеш
+        const cached = await loadFromCache()
 
-    setTopicEntities((prev) => ({ ...prev, ...newTopicEntities }))
-  }
+        // Проверяем необходимость обновления
+        const needsUpdate = shouldUpdateTopics()
 
-  const topics = createAsync<Topic[]>(fetchTopicsData as () => Promise<Topic[]>)
-  createEffect(
-    on(
-      () => topics() || [],
-      (ttt: Topic[]) => ttt && addTopics(ttt),
-      { defer: true }
-    )
+        let result: Topic[] = []
+
+        if (cached?.length && !needsUpdate) {
+          result = cached
+        } else {
+          // Загружаем новые данные только если нужно
+          const topicsLoader = loadTopics()
+          const newData = await topicsLoader()
+          if (newData?.length) {
+            await saveToCache(newData)
+            updateLastUpdateTime()
+            result = newData
+          } else if (cached?.length) {
+            result = cached
+          }
+        }
+
+        // Применяем сортировку к результату
+        return result.sort(byTopicStatDesc(sortBy))
+      } catch (error) {
+        console.error('Failed to load topics:', error)
+        setState('error', error as Error)
+        // В случае ошибки возвращаем кеш если есть
+        const cached = await loadFromCache()
+        return cached || []
+      }
+    }
   )
 
   createEffect(() => {
-    const topics = Object.values(topicEntities())
-    // console.debug('[context.topics] effect trig', topics)
-    switch (sortAllBy()) {
-      case 'followers': {
-        topics.sort(byTopicStatDesc('followers'))
-        break
+    const newTopics = topics()
+    if (!newTopics?.length) return
+
+    setState((prev) => {
+      // Создаем новый объект entities один раз
+      const newEntities = { ...prev.entities }
+
+      // Заполняем его без spread
+      newTopics.forEach((t) => {
+        if (t?.slug) newEntities[t.slug] = t
+      })
+
+      // Восстанавливаем сортировку и random
+      const sorted = Object.values(newEntities).sort(byTopicStatDesc(prev.sortBy))
+      const random = prev.random || sorted[0]
+
+      return {
+        ...prev,
+        entities: newEntities,
+        sorted,
+        random,
+        loading: false
       }
-      case 'shouts': {
-        topics.sort(byTopicStatDesc('shouts'))
-        break
-      }
-      case 'authors': {
-        topics.sort(byTopicStatDesc('authors'))
-        break
-      }
-      case 'title': {
-        topics.sort((a, b) => (a?.title || '').localeCompare(b?.title || ''))
-        break
-      }
-      default: {
-        topics.sort(byTopicStatDesc('shouts'))
-      }
-    }
-    setSortedTopics(topics as Topic[])
+    })
   })
 
-  const [topTopics, setTopTopics] = createSignal<Topic[]>([])
-  createEffect(
-    on(topicEntities, (te: Record<string, Topic>) => {
-      setTopTopics(Object.values(te).sort(byTopicStatDesc('shouts')))
-    })
-  )
-
-  const loadAllTopics = async () => {
-    const topicsLoader = loadTopics()
-    const ttt = await topicsLoader()
-    ttt && addTopics(ttt)
-    return ttt || []
-  }
-
-  const [randomTopic, setRandomTopic] = createSignal<Topic>()
-  createEffect(
-    on(
-      db,
-      async (indexed) => {
-        if (indexed) {
-          const { topics: req, timestamp } = await getTopicsFromIndexedDB()
-          const now = Date.now()
-          const isCacheValid = now - timestamp < CACHE_LIFETIME
-
-          const topics = isCacheValid ? req : await loadAllTopics()
-          console.info(`[context.topics] got ${(topics as Topic[]).length || 0} topics from idb`)
-          addTopics(topics as Topic[])
-          setRandomTopic(getRandomItemsFromArray(topics as Topic[], 1)[0])
-        }
-      },
-      { defer: true }
-    )
-  )
-
-  const getCachedOrLoadTopics = async () => {
-    const { topics: stored } = await getTopicsFromIndexedDB()
-    if (stored) {
-      setSortedTopics(stored)
-      return stored
-    }
-    const loaded = await loadAllTopics()
-    if (loaded) setSortedTopics(loaded)
-    return loaded
-  }
-
-  // preload all topics
-  onMount(getCachedOrLoadTopics)
-
   const value: TopicsContextType = {
-    setTopicsSort: setSortAllBy,
-    topicEntities,
-    sortedTopics,
-    randomTopic,
-    topTopics,
-    addTopics,
-    loadTopics: loadAllTopics
+    topicEntities: () => state.entities,
+    sortedTopics: () => state.sorted,
+    randomTopic: () => state.random,
+    topTopics: () => state.sorted.slice(0, 10),
+    setTopicsSort: (sortBy) => {
+      setState('sortBy', sortBy as TopicSort)
+      refetch()
+    },
+    addTopics: (newTopics) =>
+      setState((prev) => {
+        // Создаем новый объект entities один раз
+        const newEntities = { ...prev.entities }
+
+        // Заполняем его без spread
+        newTopics.forEach((t) => {
+          if (t?.slug) newEntities[t.slug] = t
+        })
+
+        return {
+          ...prev,
+          entities: newEntities
+        }
+      }),
+    loadTopics: async () => {
+      // Принудительное обновление только если прошло достаточно времени
+      if (await shouldUpdateTopics()) {
+        const result = await refetch()
+        return result || []
+      }
+      return topics() || []
+    }
   }
 
   return <TopicsContext.Provider value={value}>{props.children}</TopicsContext.Provider>

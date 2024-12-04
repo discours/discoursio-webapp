@@ -1,4 +1,15 @@
-import { Accessor, JSX, createContext, createEffect, createSignal, on, useContext } from 'solid-js'
+import {
+  Accessor,
+  Component,
+  JSX,
+  batch,
+  createContext,
+  createEffect,
+  createResource,
+  createSignal,
+  on,
+  useContext
+} from 'solid-js'
 import { createStore } from 'solid-js/store'
 
 import followMutation from '~/graphql/mutation/core/follow'
@@ -44,28 +55,61 @@ export interface FollowingData {
   communities?: Community[]
 }
 
-const EMPTY_SUBSCRIPTIONS: FollowingData = {
-  topics: [] as Topic[],
-  authors: [] as Author[],
-  communities: [] as Community[]
-}
-
-export const FollowingProvider = (props: { children: JSX.Element }) => {
-  const [loading, setLoading] = createSignal<boolean>(false)
-  const [followers, setFollowers] = createSignal<Author[]>([] as Author[])
-  const [follows, setFollows] = createStore<FollowingData>(EMPTY_SUBSCRIPTIONS)
+export const FollowingProvider: Component<{ children: JSX.Element }> = (props) => {
   const { session, client } = useSession()
+  const [loading, setLoading] = createSignal(false)
+  const [followers, setFollowers] = createSignal<Author[]>([])
   const { showModal } = useUI()
+
+  const [state, setState] = createStore<FollowingData>({
+    authors: [],
+    topics: [],
+    communities: []
+  })
+
+  const getToken = () => session()?.access_token
+
+  const [follows] = createResource(getToken, async (token) => {
+    if (!token) return null
+    const result = await client()
+      ?.query(loadAuthorFollowers, {
+        user: session()?.user?.id
+      })
+      .toPromise()
+    return result?.data || null
+  })
+
+  createEffect(
+    on(
+      follows,
+      (data) => {
+        if (!data) return
+        batch(() => {
+          setState((prev) => ({
+            ...prev,
+            authors: data.authors || [],
+            topics: data.topics || [],
+            communities: data.communities || []
+          }))
+          if (data.followers) {
+            setFollowers(data.followers)
+          }
+        })
+      },
+      { defer: true }
+    )
+  )
 
   const fetchData = async () => {
     setLoading(true)
     try {
       if (session()?.access_token) {
-        // console.debug('[context.following] fetching subs data...')
         const result = await client()?.query(loadAuthorFollowers, { user: session()?.user?.id }).toPromise()
-        if (result) {
-          setFollows((_: FollowingData) => {
-            return { ...EMPTY_SUBSCRIPTIONS, ...result } as FollowingData
+        if (result?.data) {
+          setState((subs: FollowingData) => {
+            if (result.data.authors) subs.authors = result.data.authors as Author[]
+            if (result.data.topics) subs.topics = result.data.topics as Topic[]
+            return subs
           })
         }
       }
@@ -77,7 +121,6 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
   }
 
   const follow = async (what: FollowingEntity, slug: string) => {
-    // console.debug('[context.following] follow', what, slug)
     if (!session()?.access_token) {
       showModal('auth')
       return
@@ -86,9 +129,8 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
       const resp = await client()?.mutation(followMutation, { what, slug }).toPromise()
       if (!resp || resp.error) return
       const result = resp?.data?.follow
-      // console.debug('[context.following] follow', result)
       if (!result) return
-      setFollows((subs) => {
+      setState((subs) => {
         if (result.authors) subs['authors'] = result.authors
         if (result.topics) subs['topics'] = result.topics
         return subs
@@ -107,10 +149,9 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
     try {
       const resp = await client()?.mutation(unfollowMutation, { what, slug }).toPromise()
       const result = resp?.data?.unfollow
-      // console.debug('[context.following] unfollow', result)
       if (!result) return
       if (result.error) return
-      setFollows((subs) => {
+      setState((subs) => {
         if (result.authors) subs['authors'] = result.authors || []
         if (result.topics) subs['topics'] = result.topics || []
         return subs
@@ -127,7 +168,11 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
       (appdata) => {
         if (appdata) {
           const { authors, followers, topics } = appdata
-          setFollows({ authors, topics })
+          setState((subs) => {
+            if (authors) subs.authors = authors
+            if (topics) subs.topics = topics
+            return subs
+          })
           setFollowers(followers)
           if (!authors) fetchData()
         }
@@ -147,17 +192,16 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
       return isFollowed
     }
     setFollowingLoading(true)
-    // console.debug('[handleFollowClick] slug', slug);
     try {
       const result = isFollowed ? await unfollow(what, slug) : await follow(what, slug)
 
       if (result) {
-        const key = `${what.toLowerCase()}s` as 'authors' | 'topics' | 'communities'
-        hasChanged = result[key]?.length !== follows[key]?.length
-        setFollows((subs) => {
+        const key = `${what.toLowerCase()}s` as keyof FollowingData
+        const currentFollows = state[key]
+        hasChanged = result[key]?.length !== currentFollows?.length
+        setState((subs) => {
           if (result.authors) {
             subs.authors = result.authors as Author[]
-            // console.debug('authors subs updated', result.authors);
           }
           if (result.topics) subs.topics = result.topics as Topic[]
           if (result.communities) subs.communities = result.communities as Community[]
@@ -170,15 +214,14 @@ export const FollowingProvider = (props: { children: JSX.Element }) => {
     setFollowingLoading(false)
 
     const r = hasChanged ? isFollowed : !isFollowed
-    // console.debug(`now is ${!r ? 'NOT ' : ''}following`);
     return r
   }
 
   const value: FollowingContextType = {
-    loading,
-    follows,
-    setFollows,
-    followers,
+    loading: loading,
+    follows: state,
+    setFollows: setState,
+    followers: followers,
     loadFollows: fetchData,
     follow,
     unfollow,

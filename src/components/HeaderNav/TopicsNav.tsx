@@ -1,6 +1,6 @@
 import { A, useMatch } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Accessor, For, createEffect, createSignal, on, onMount } from 'solid-js'
+import { Accessor, For, createEffect, createSignal, untrack } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
 import type { Topic } from '~/graphql/schema/core.gen'
@@ -22,25 +22,22 @@ export const DEFAULT_TOPICS = [
 
 export const TopicsNav = (props: { fixed?: boolean }) => {
   const { t, lang } = useLocalize()
-  const { addTopics, sortedTopics } = useTopics()
+  const { sortedTopics } = useTopics()
   const [randomTopics, setRandomTopics] = createSignal<string[]>(DEFAULT_TOPICS)
-  createEffect(
-    on(
-      sortedTopics,
-      (topics: Topic[]) => {
-        if (props.fixed) return
-        if (topics?.length > 0) {
-          const randomItems = getRandomItemsFromArray(
-            topics.map((t) => t.slug),
-            7
-          )
-          setRandomTopics(randomItems)
-        }
-      },
-      { defer: true }
-    )
-  )
-  onMount(() => addTopics([]))
+
+  createEffect(() => {
+    if (props.fixed) return
+
+    const topics = untrack(sortedTopics) as Topic[]
+    if (!topics?.length) return
+
+    const slugs = topics.map((t: Topic) => t.slug).filter(Boolean)
+    if (!slugs.length) return
+
+    const randomItems = getRandomItemsFromArray(slugs, 7) as string[]
+    setRandomTopics(randomItems)
+  })
+
   const matchExpo = useMatch(() => '/expo')
   return (
     <div class={clsx('wide-container', styles.Topics)}>
