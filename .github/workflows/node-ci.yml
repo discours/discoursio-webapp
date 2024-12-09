@@ -2,7 +2,7 @@ name: "CI and E2E Tests"
 
 on:
   push:
-    branches: [dev]
+    branches: [dev, feature/email-templates-v2]
 
 jobs:
   ci:
