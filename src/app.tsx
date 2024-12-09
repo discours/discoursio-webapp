@@ -2,7 +2,6 @@ import { MetaProvider } from '@solidjs/meta'
 import { Router } from '@solidjs/router'
 import { FileRoutes } from '@solidjs/start/router'
 import { Component, type JSX, Suspense } from 'solid-js'
-import { batch, createRenderEffect, onCleanup, untrack } from 'solid-js'
 
 import { AuthToken } from '@authorizerdev/authorizer-js'
 import { Loading } from './components/_shared/Loading'
@@ -19,24 +18,8 @@ import { UIProvider } from './context/ui'
 import '~/styles/app.scss'
 
 export const Providers: Component<{ children?: JSX.Element }> = (props) => {
-  let updateCount = 0
-
-  createRenderEffect(() => {
-    console.log('[app] Render cycle:', ++updateCount)
-    if (updateCount > 100) {
-      console.error('[Providers] Too many updates, possible infinite loop')
-      console.trace()
-    }
-    onCleanup(() => updateCount--)
-  })
-
-  const sessionStateChanged = (_payload: AuthToken) => {
-    console.log('[app] Session state changed:', _payload)
-    untrack(() => {
-      batch(() => {
-        console.log('[app] Running batch updates')
-      })
-    })
+  const sessionStateChanged = (payload: AuthToken) => {
+    console.log('[app] Session state changed:', payload)
   }
 
   return (

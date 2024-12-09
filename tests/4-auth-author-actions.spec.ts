@@ -1,8 +1,8 @@
 // biome-ignore lint/correctness/noNodejsModules: <explanation>
 import https from 'node:https'
 import { type Page, expect, test } from '@playwright/test'
-import { TEST_PASSWORD } from './config'
 
+const TEST_PASSWORD = process.env.TEST_PASSWORD
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 let context: any
 let page: Page
@@ -87,7 +87,9 @@ test('Sign up', async ({ page }) => {
   await page.getByPlaceholder('Почта').click()
   await page.getByPlaceholder('Почта').fill(`guests+${randomstring}@discours.io`)
   await page.getByPlaceholder('Пароль').click()
-  await page.getByPlaceholder('Пароль').fill(TEST_PASSWORD)
+  if (TEST_PASSWORD) {
+    await page.getByPlaceholder('Пароль').fill(TEST_PASSWORD)
+  }
   await page.getByRole('button', { name: 'Присоединиться' }).click()
 })
 
@@ -98,7 +100,9 @@ test.beforeEach(async ({ page }) => {
   await page.getByPlaceholder('Почта').click()
   await page.getByPlaceholder('Почта').fill(`guests+${randomstring}@discours.io`)
   await page.getByPlaceholder('Пароль').click()
-  await page.getByPlaceholder('Пароль').fill(TEST_PASSWORD)
+  if (TEST_PASSWORD) {
+    await page.getByPlaceholder('Пароль').fill(TEST_PASSWORD)
+  }
   await page.getByRole('button', { name: 'Войти' }).click()
 })
 

@@ -33,3 +33,4 @@ edge.*
 .vscode/settings.json
 storybook-static
 app.config.*.js
+*.log

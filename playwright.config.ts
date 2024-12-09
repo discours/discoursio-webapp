@@ -13,7 +13,7 @@ export default defineConfig({
   /* Directory to search for tests */
   testDir: './tests',
   /* Run tests in files in parallel */
-  fullyParallel: false,
+  fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
@@ -69,8 +69,8 @@ export default defineConfig({
   webServer: process.env.CI
     ? undefined
     : {
-        command: 'npm run dev',
-        url: 'http://localhost:3000',
+        command: 'npm run start',
+        url: 'https://localhost:3000',
         ignoreHTTPSErrors: true,
         reuseExistingServer: !process.env.CI,
         timeout: 5 * 60 * 1000

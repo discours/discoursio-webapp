@@ -1,10 +1,11 @@
 // biome-ignore lint/correctness/noNodejsModules: тесты
 import https from 'node:https'
 import { type Page, expect, test } from '@playwright/test'
-import { TEST_LOGIN, TEST_PASSWORD } from './config'
 
 /* Global starting test config */
 
+const TEST_LOGIN = process.env.TEST_LOGIN
+const TEST_PASSWORD = process.env.TEST_PASSWORD
 let page: Page
 
 function httpsGet(url: string): Promise<void> {
@@ -67,9 +68,13 @@ test.beforeEach(async ({ page }) => {
   test.setTimeout(80000)
   await page.getByRole('link', { name: 'Войти' }).click()
   await page.getByPlaceholder('Почта').click()
-  await page.getByPlaceholder('Почта').fill(TEST_LOGIN)
-  await page.getByPlaceholder('Пароль').click()
-  await page.getByPlaceholder('Пароль').fill(TEST_PASSWORD)
+  if (TEST_LOGIN) {
+    await page.getByPlaceholder('Почта').fill(TEST_LOGIN)
+    await page.getByPlaceholder('Пароль').click()
+    if (TEST_PASSWORD) {
+      await page.getByPlaceholder('Пароль').fill(TEST_PASSWORD)
+    }
+  }
   await page.getByRole('button', { name: 'Войти' }).click()
 })
 
