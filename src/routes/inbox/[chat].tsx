@@ -1,8 +1,8 @@
-import { RouteDefinition, RouteSectionProps, createAsync, useParams } from '@solidjs/router'
-import { createSignal, onMount } from 'solid-js'
+import { RouteDefinition, RouteSectionProps, useParams } from '@solidjs/router'
+import { Show, createResource, createSignal, onMount } from 'solid-js'
 import { InboxView } from '~/components/Views/InboxView'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { ShowOnlyOnClient } from '~/components/_shared/ShowOnlyOnClient'
+import { ShowAfterMount } from '~/components/_shared/ShowAfterMount'
 import { useInbox } from '~/context/inbox'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
@@ -25,10 +25,19 @@ export const ChatPage = (props: RouteSectionProps<{ authors: Author[] }>) => {
   const { createChat, chats } = useInbox()
   const [chat, setChat] = createSignal<Chat>()
   const { session } = useSession()
-  const authors = createAsync(async () => {
-    const authorsAllFetcher = loadAuthorsAll()
-    return props.data.authors || (await authorsAllFetcher())
-  })
+
+  const [authors] = createResource(
+    async () => {
+      if (props.data.authors) {
+        return props.data.authors
+      }
+      const authorsAllFetcher = loadAuthorsAll()
+      return await authorsAllFetcher()
+    },
+    {
+      initialValue: props.data.authors
+    }
+  )
 
   onMount(async () => {
     if (params.id.includes('-')) {
@@ -40,18 +49,22 @@ export const ChatPage = (props: RouteSectionProps<{ authors: Author[] }>) => {
         const me = session()?.user?.app_data?.profile.id as number
         const author = Number.parseInt(params.chat)
         const result = await createChat([author, me], '')
-        // result.chat.id && redirect(`/inbox/${result.chat.id}`)
         result.chat && setChat(result.chat)
       } catch (e) {
         console.warn(e)
       }
     }
   })
+
   return (
     <PageLayout hideFooter={true} title={t('Inbox')}>
-      <ShowOnlyOnClient>
-        <InboxView authors={authors() || []} chat={chat() as Chat} />
-      </ShowOnlyOnClient>
+      <ShowAfterMount>
+        <Show when={!authors.loading} fallback={<div>Loading...</div>}>
+          <Show when={!authors.error} fallback={<div>Error: {authors.error?.message}</div>}>
+            <InboxView authors={authors() || []} chat={chat()} />
+          </Show>
+        </Show>
+      </ShowAfterMount>
     </PageLayout>
   )
 }

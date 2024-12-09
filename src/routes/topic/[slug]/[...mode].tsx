@@ -1,6 +1,6 @@
-import { RouteSectionProps, createAsync } from '@solidjs/router'
+import { RouteSectionProps } from '@solidjs/router'
 import { HttpStatusCode } from '@solidjs/start'
-import { Show, Suspense, createEffect, createSignal, on } from 'solid-js'
+import { Show, createEffect, createResource, createSignal, on } from 'solid-js'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { TopicView } from '~/components/Views/TopicView'
 import { Loading } from '~/components/_shared/Loading'
@@ -38,11 +38,29 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   const [loadingError, setLoadingError] = createSignal(false)
 
   // current topic's shouts
-  const articles = createAsync(async () => {
-    const result = (await props.data).articles || (await fetchTopicShouts(props.params.slug))
-    if (!result) setLoadingError(true)
-    return result
-  })
+  const [articles] = createResource(
+    () => props.params.slug,
+    async (slug) => {
+      try {
+        if (props.data?.articles) {
+          return props.data.articles
+        }
+        const result = await fetchTopicShouts(slug)
+        if (!result) {
+          setLoadingError(true)
+        }
+        return result
+      } catch (error) {
+        console.error('Error loading topic shouts:', error)
+        setLoadingError(true)
+        return []
+      }
+    },
+    {
+      initialValue: props.data?.articles,
+      ssrLoadFrom: 'initial'
+    }
+  )
 
   // current topic's data
   const [topic, setTopic] = createSignal<Topic>()
@@ -58,7 +76,7 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
       (ttt) => {
         if (ttt && !topicsAdded()) {
           addTopics(ttt)
-          setTopicsAdded(true) // Prevent future calls
+          setTopicsAdded(true)
           const tpc = ttt.find((x) => x.slug === props.params.slug)
           if (!tpc) return
           setTopic(tpc)
@@ -70,7 +88,6 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
           )
           setCover(tpc.pic ? getFileUrl(tpc.pic, { width: 1200 }) : '/logo.png')
 
-          // views google counter increment
           if (!viewed()) {
             window?.gtag?.('event', 'page_view', {
               page_title: tpc.title,
@@ -95,22 +112,13 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
         </PageLayout>
       }
     >
-      <Suspense fallback={<Loading />}>
-        <PageLayout
-          key="topic"
-          title={title()}
-          desc={desc()}
-          headerTitle={topic()?.title || ''}
-          slug={topic()?.slug}
-          cover={cover()}
-        >
-          <TopicView
-            topic={topic() as Topic}
-            topicSlug={props.params.slug}
-            shouts={articles() as Shout[]}
-          />
-        </PageLayout>
-      </Suspense>
+      <Show when={!articles.loading && articles()} fallback={<Loading />}>
+        <Show when={!articles.error} fallback={<div>Error: {articles.error?.message}</div>}>
+          <PageLayout key="topic" title={title()} desc={desc()} cover={cover()}>
+            <TopicView topic={topic() as Topic} shouts={articles() || []} topicSlug={props.params.slug} />
+          </PageLayout>
+        </Show>
+      </Show>
     </Show>
   )
 }

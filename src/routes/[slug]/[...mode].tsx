@@ -1,12 +1,12 @@
-import { RouteDefinition, RouteSectionProps, createAsync, useLocation } from '@solidjs/router'
+import { RouteDefinition, RouteSectionProps, useLocation } from '@solidjs/router'
 import { HttpStatusCode } from '@solidjs/start'
 import {
   ErrorBoundary,
   Match,
   Show,
-  Suspense,
   Switch,
   createEffect,
+  createResource,
   createSignal,
   on,
   onMount
@@ -67,11 +67,19 @@ export type SlugPageProps = {
 function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   const loc = useLocation()
   const { t } = useLocalize()
-  const data = createAsync(async () => {
-    const result = props.data?.article || (await fetchShout(props.params.slug))
-    // console.log('[ArticlePageContent] data:', result)
-    return result
-  })
+
+  const [data] = createResource(
+    () => props.params.slug,
+    async (slug) => {
+      if (props.data?.article) {
+        return props.data.article
+      }
+      return await fetchShout(slug)
+    },
+    {
+      initialValue: props.data?.article
+    }
+  )
 
   onMount(async () => {
     if (gaIdentity && data()?.id) {
@@ -100,32 +108,24 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   )
 
   return (
-    <ErrorBoundary fallback={() => <HttpStatusCode code={500} />}>
-      <Suspense fallback={<Loading />}>
-        <Show
-          when={data()?.id}
-          fallback={
-            <PageLayout isHeaderFixed={false} hideFooter={true} title={t('Nothing is here')}>
-              <FourOuFourView />
-              <HttpStatusCode code={404} />
+    <Show when={!data.loading} fallback={<Loading />}>
+      <Show when={!data.error} fallback={<div>Error: {data.error?.message}</div>}>
+        <Show when={data()} fallback={<FourOuFourView />}>
+          <ReactionsProvider>
+            <PageLayout
+              title={`${t('Discours')}${data()?.title ? ' :: ' : ''}${data()?.title || ''}`}
+              desc={descFromBody(data()?.body || '')}
+              keywords={keywordsFromTopics((data()?.topics || []) as { title: string }[])}
+              headerTitle={data()?.title || ''}
+              slug={data()?.slug}
+              cover={data()?.cover || ''}
+            >
+              <FullArticle article={data()!} />
             </PageLayout>
-          }
-        >
-          <PageLayout
-            title={`${t('Discours')}${data()?.title ? ' :: ' : ''}${data()?.title || ''}`}
-            desc={descFromBody(data()?.body || '')}
-            keywords={keywordsFromTopics(data()?.topics as { title: string }[])}
-            headerTitle={data()?.title || ''}
-            slug={data()?.slug}
-            cover={data()?.cover || ''}
-          >
-            <ReactionsProvider>
-              <FullArticle article={data() as Shout} />
-            </ReactionsProvider>
-          </PageLayout>
+          </ReactionsProvider>
         </Show>
-      </Suspense>
-    </ErrorBoundary>
+      </Show>
+    </Show>
   )
 }
 

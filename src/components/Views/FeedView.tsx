@@ -56,22 +56,16 @@ export const FeedView = (props: FeedProps) => {
     on(
       [sortedFeed, client],
       async ([shouts, authorizedClient]) => {
-        console.log('[FeedPage] Loading rates effect triggered:', {
-          hasShouts: !!shouts?.length,
-          hasClient: !!authorizedClient
-        })
-
-        if (!(shouts?.length && authorizedClient)) return
+        if (!(shouts?.length && authorizedClient)) {
+          setMyRates({})
+          return
+        }
 
         try {
           const myRates = await loadShoutsMyRates(
             shouts.map((s) => s.id),
             authorizedClient
           )()
-
-          console.log('[FeedPage] Rates loaded:', {
-            ratesCount: myRates?.length
-          })
 
           if (Array.isArray(myRates)) {
             const ratesMap = myRates.reduce(
@@ -83,11 +77,11 @@ export const FeedView = (props: FeedProps) => {
               },
               {} as Record<string, number>
             )
-
             setMyRates(ratesMap)
           }
         } catch (error) {
           console.error('[FeedPage] Error loading rates:', error)
+          setMyRates({})
         }
       },
       { defer: true }
@@ -235,7 +229,7 @@ export const FeedView = (props: FeedProps) => {
 
   return (
     <Suspense fallback={<Loading />}>
-      <Show when={!isLoading()} fallback={<Loading />}>
+      <Show when={!isLoading() && sortedFeed()} fallback={<Loading />}>
         <div class="wide-container">
           <div class={clsx('row')}>
             <Show when={!showPlaceholder()} fallback={<Placeholder type={loc.pathname} mode="feed" />}>

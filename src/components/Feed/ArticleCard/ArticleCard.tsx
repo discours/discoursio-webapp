@@ -131,6 +131,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
   const mainTopic = createMemo(() => props.article.main_topic || props.article.topics?.[0])
   return (
     <section
+      data-testid="article-card"
       class={clsx(styles.shoutCard, props.settings?.additionalClass, {
         [styles.shoutCardShort]: props.settings?.isShort,
         [styles.shoutCardPhotoBottom]: props.settings?.noimage && props.settings?.photoBottom,
@@ -152,6 +153,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
         {/* Cover Image Container */}
         <div class={styles.shoutCardCoverContainer}>
           <div
+            data-testid="article-card-cover"
             class={clsx(styles.shoutCardCover, {
               [styles.loading]: props.article.cover && isCoverImageLoading()
             })}
@@ -177,6 +179,19 @@ export const ArticleCard = (props: ArticleCardProps) => {
 
       {/* Shout Card Content */}
       <div class={styles.shoutCardContent}>
+        {/* Author */}
+        <div data-testid="article-card-author" class={styles.shoutAuthor}>
+          <For each={props.article.authors}>
+            {(a: Maybe<Author>) => (
+              <AuthorLink
+                size={'XS'}
+                author={a as Author}
+                isFloorImportant={Boolean(props.settings?.isFloorImportant || props.settings?.isWithCover)}
+              />
+            )}
+          </For>
+        </div>
+
         {/* Shout Card Icon */}
         <Show
           when={

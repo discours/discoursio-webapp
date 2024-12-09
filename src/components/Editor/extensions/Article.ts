@@ -16,11 +16,7 @@ export const ArticleNode = Node.create({
   content: 'block+',
 
   parseHTML() {
-    return [
-      {
-        tag: 'article'
-      }
-    ]
+    return [{ tag: 'article' }]
   },
 
   renderHTML({ HTMLAttributes }) {
@@ -29,17 +25,29 @@ export const ArticleNode = Node.create({
 
   addOptions() {
     return {
-      'data-type': 'incut'
+      HTMLAttributes: {
+        'data-type': 'incut'
+      }
     }
   },
 
   addAttributes() {
     return {
       'data-float': {
-        default: null
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-float'),
+        renderHTML: (attributes) => {
+          if (!attributes['data-float']) return {}
+          return { 'data-float': attributes['data-float'] }
+        }
       },
       'data-bg': {
-        default: null
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-bg'),
+        renderHTML: (attributes) => {
+          if (!attributes['data-bg']) return {}
+          return { 'data-bg': attributes['data-bg'] }
+        }
       }
     }
   },
@@ -48,19 +56,24 @@ export const ArticleNode = Node.create({
     return {
       toggleArticle:
         () =>
-        // eslint-disable-next-line unicorn/consistent-function-scoping
         ({ commands }) => {
-          return commands.toggleWrap('article')
+          return commands.toggleWrap(this.name)
         },
       setArticleFloat:
-        (value) =>
+        (float) =>
         ({ commands }) => {
-          return commands.updateAttributes(this.name, { 'data-float': value })
+          if (float === null) {
+            return commands.resetAttributes(this.name, ['data-float'])
+          }
+          return commands.updateAttributes(this.name, { 'data-float': float })
         },
       setArticleBg:
-        (value) =>
+        (bg) =>
         ({ commands }) => {
-          return commands.updateAttributes(this.name, { 'data-bg': value })
+          if (bg === null) {
+            return commands.resetAttributes(this.name, ['data-bg'])
+          }
+          return commands.updateAttributes(this.name, { 'data-bg': bg })
         }
     }
   }

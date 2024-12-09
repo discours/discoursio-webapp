@@ -1,5 +1,5 @@
-import { Params, RouteSectionProps, createAsync } from '@solidjs/router'
-import { Show, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { Params, RouteSectionProps } from '@solidjs/router'
+import { Show, createEffect, createMemo, createResource, createSignal, on } from 'solid-js'
 import { TopicsNav } from '~/components/HeaderNav/TopicsNav'
 import { Expo, ExpoNav } from '~/components/Views/ExpoView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
@@ -33,31 +33,38 @@ export default (props: RouteSectionProps<Shout[]>) => {
   const [loadMoreVisible, setLoadMoreVisible] = createSignal(true)
   const getTitle = createMemo(() => (l?: string) => EXPO_TITLES[(l as ExpoLayoutType) || ''])
 
-  const [currentLayout, setCurrentLayout] = createSignal(props.params.layout)
+  const [currentLayout, setCurrentLayout] = createSignal<ExpoLayoutType>(
+    (props.params.layout || '') as ExpoLayoutType
+  )
   const [feed, setFeed] = createSignal<Shout[]>([])
 
   createEffect(() => {
     if (props.params.layout !== currentLayout()) {
       setFeed([])
-      setCurrentLayout(props.params.layout)
+      setCurrentLayout((props.params.layout || '') as ExpoLayoutType)
     }
   })
 
-  const shouts = createAsync(async () => {
-    const layout = currentLayout()
-    const layouts = layout ? [layout] : EXPO_LAYOUTS
-    const existingFeed = layout ? feedByLayout()[layout] : []
+  const [shouts] = createResource(
+    () => ({ layout: currentLayout() }),
+    async ({ layout }) => {
+      const layouts = layout ? [layout] : EXPO_LAYOUTS
+      const existingFeed = layout ? feedByLayout()[layout] : []
 
-    if (existingFeed?.length >= SHOUTS_PER_PAGE) {
-      return existingFeed
-    }
+      if (existingFeed?.length >= SHOUTS_PER_PAGE) {
+        return existingFeed
+      }
 
-    const result = await fetchExpoShouts(layouts)
-    if (result?.length) {
-      addShoutsToFeed(result)
+      const result = await fetchExpoShouts(layouts)
+      if (result?.length) {
+        addShoutsToFeed(result)
+      }
+      return result || props.data || []
+    },
+    {
+      initialValue: props.data
     }
-    return result || props.data || []
-  })
+  )
 
   createEffect(
     on(
@@ -110,14 +117,21 @@ export default (props: RouteSectionProps<Shout[]>) => {
     <PageLayout
       withPadding={true}
       zeroBottomPadding={true}
-      title={`${t('Discours')} :: ${getTitle()(currentLayout() || '')}`}
+      title={`${t('Discours')} :: ${getTitle()(currentLayout())}`}
     >
-      <TopicsNav />
-      <ExpoNav layout={currentLayout() as ExpoLayoutType} />
-      <Show when={feed().length > 0} fallback={<Loading />} keyed>
-        <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={!loadMoreVisible()}>
-          <Expo shouts={feed()} layout={currentLayout() as ExpoLayoutType} />
-        </LoadMoreWrapper>
+      <Show when={!shouts.loading} fallback={<Loading />}>
+        <Show when={!shouts.error} fallback={<div>Error: {shouts.error?.message}</div>}>
+          <TopicsNav />
+          <ExpoNav layout={currentLayout()} />
+          <Expo shouts={feed()} layout={currentLayout()} />
+          <Show when={loadMoreVisible()}>
+            <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE}>
+              <div onClick={loadMore} class="load-more-items">
+                {t('Load more')}
+              </div>
+            </LoadMoreWrapper>
+          </Show>
+        </Show>
       </Show>
     </PageLayout>
   )
