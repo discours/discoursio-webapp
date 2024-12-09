@@ -1,7 +1,8 @@
-import { RouteDefinition, RouteSectionProps, createAsync } from '@solidjs/router'
+import { RouteDefinition, RouteSectionProps } from '@solidjs/router'
+import { createResource } from 'solid-js'
 import { InboxView } from '~/components/Views/InboxView'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { ShowOnlyOnClient } from '~/components/_shared/ShowOnlyOnClient'
+import { ShowAfterMount } from '~/components/_shared/ShowAfterMount'
 import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import { loadAuthorsAll } from '~/graphql/api/public'
@@ -19,16 +20,28 @@ export const route = {
 export const InboxPage = (props: RouteSectionProps<{ authors: Author[] }>) => {
   const { t } = useLocalize()
   const { authorsSorted } = useAuthors()
-  const authors = createAsync(async () => {
-    const authorsAllFetcher = loadAuthorsAll()
-    return props.data.authors || authorsSorted() || (await authorsAllFetcher())
-  })
+
+  const [authors] = createResource(
+    async () => {
+      if (props.data.authors) {
+        return props.data.authors
+      }
+      if (authorsSorted()) {
+        return authorsSorted()
+      }
+      const authorsAllFetcher = loadAuthorsAll()
+      return await authorsAllFetcher()
+    },
+    {
+      initialValue: props.data.authors
+    }
+  )
 
   return (
     <PageLayout hideFooter={true} title={t('Inbox')}>
-      <ShowOnlyOnClient>
+      <ShowAfterMount>
         <InboxView authors={authors() || []} />
-      </ShowOnlyOnClient>
+      </ShowAfterMount>
     </PageLayout>
   )
 }

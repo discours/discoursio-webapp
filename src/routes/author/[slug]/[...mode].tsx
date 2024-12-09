@@ -39,13 +39,13 @@
  * - Ensure that the necessary context providers and GraphQL API functions are properly set up and imported.
  */
 
-import { RouteSectionProps, createAsync, useParams, useSearchParams } from '@solidjs/router'
+import { RouteSectionProps, useParams, useSearchParams } from '@solidjs/router'
 import {
   ErrorBoundary,
   Show,
-  Suspense,
   createEffect,
   createMemo,
+  createResource,
   createSignal,
   on,
   onMount
@@ -210,18 +210,40 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
   )
 
   // author's shouts
-  const authorShouts = createAsync(
-    async () => (props.data.articles as Shout[]) || (await fetchAuthorShouts(props.params.slug, 0))
+  const [authorShouts] = createResource(
+    () => props.params.slug,
+    async (slug) => {
+      try {
+        return props.data.articles || (await fetchAuthorShouts(slug, 0))
+      } catch (error) {
+        console.error('Error loading author shouts:', error)
+        return []
+      }
+    },
+    {
+      initialValue: props.data.articles
+    }
   )
 
   // author's comments
-  const authorComments = createAsync(
-    async () => (props.data.comments as Reaction[]) || (await fetchAuthorComments(props.params.slug, 0))
+  const [authorComments] = createResource(
+    () => props.params.slug,
+    async (slug) => {
+      try {
+        return props.data.comments || (await fetchAuthorComments(slug, 0))
+      } catch (error) {
+        console.error('Error loading author comments:', error)
+        return []
+      }
+    },
+    {
+      initialValue: props.data.comments
+    }
   )
 
   // Combine all loading states
   const isReady = createMemo(() => {
-    return isSessionLoaded() && isClientMounted()
+    return isSessionLoaded() && isClientMounted() && !authorShouts.loading && !authorComments.loading
   })
 
   return (
@@ -234,7 +256,7 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
               return <FourOuFourView />
             }}
           >
-            <Suspense fallback={null}>
+            <Show when={!(authorShouts.error || authorComments.error)}>
               <PageLayout
                 title={title()}
                 headerTitle={author()?.name || ''}
@@ -251,7 +273,7 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
                   />
                 </ReactionsProvider>
               </PageLayout>
-            </Suspense>
+            </Show>
           </ErrorBoundary>
         )}
       </Show>

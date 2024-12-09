@@ -25,6 +25,8 @@ export const FeaturedFeedProvider = (props: { children: JSX.Element }) => {
   const [topFeed, setTopFeed] = createSignal<Shout[] | undefined>([])
 
   const loadTopMonthFeed = async (): Promise<void> => {
+    if (topMonthFeed()?.length) return
+
     const daysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
     const after = Math.floor(daysAgo / 1000)
     const options = {
@@ -35,16 +37,20 @@ export const FeaturedFeedProvider = (props: { children: JSX.Element }) => {
       order_by: 'rating' as const,
       limit: 10
     } as LoadShoutsOptions
+
     try {
       const fetcher = await loadShouts({ options })
       const result = (await fetcher()) || []
       setTopMonthFeed(result)
     } catch (error) {
       console.error('Ошибка при загрузке топовых статей за месяц:', error)
+      setTopMonthFeed([])
     }
   }
 
   const loadTopFeed = async (): Promise<void> => {
+    if (topFeed()?.length) return
+
     const options = {
       filters: { featured: true },
       limit: 10
@@ -55,18 +61,19 @@ export const FeaturedFeedProvider = (props: { children: JSX.Element }) => {
       setTopFeed(result)
     } catch (error) {
       console.error('Ошибка при загрузке топовых статей:', error)
+      setTopFeed([])
     }
   }
 
-  // Мемоизированные топовые по просмотрам статьи
-  const topViewedFeed = createMemo(() =>
-    [...(featuredFeed() || [])].sort(byStat('viewed') as (a: Shout, b: Shout) => number)
-  )
+  const topViewedFeed = createMemo(() => {
+    const feed = featuredFeed()
+    return feed ? [...feed].sort(byStat('viewed') as (a: Shout, b: Shout) => number) : []
+  })
 
-  // Мемоизированные топовые по комментариям статьи
-  const topCommentedFeed = createMemo(() =>
-    [...(featuredFeed() || [])].sort(byStat('commented') as (a: Shout, b: Shout) => number)
-  )
+  const topCommentedFeed = createMemo(() => {
+    const feed = featuredFeed()
+    return feed ? [...feed].sort(byStat('commented') as (a: Shout, b: Shout) => number) : []
+  })
 
   return (
     <FeaturedFeedContext.Provider

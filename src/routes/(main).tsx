@@ -1,11 +1,12 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { createResource } from 'solid-js'
+import { Show, createResource } from 'solid-js'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import { Loading } from '~/components/_shared/Loading'
 import { useFeaturedFeed } from '~/context/featured'
 import { FEED_PAGE_SIZE } from '~/context/feed'
 import { loadShouts } from '~/graphql/api/public'
-import { LoadShoutsOptions, Shout, ShoutsOrderBy } from '~/graphql/schema/core.gen'
+import { LoadShoutsOptions, ShoutsOrderBy } from '~/graphql/schema/core.gen'
 import { PageLayout } from '../components/_shared/PageLayout'
 import { useLocalize } from '../context/localize'
 
@@ -55,7 +56,6 @@ export const route = {
       ...(await fetchHomeTopData()),
       featuredShouts: await featuredLoader()
     }
-    // console.log('[route.load] data:', data)
     return data
   }
 } satisfies RouteDefinition
@@ -71,35 +71,41 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
     topFeed: topRatedFeed
   } = useFeaturedFeed()
 
-  // load more featured shouts
+  const [shouts] = createResource(
+    () => {
+      if (props.data.featuredShouts) {
+        setFeaturedFeed(props.data.featuredShouts)
+      }
+      return props.data.featuredShouts
+    },
+    {
+      initialValue: props.data.featuredShouts,
+      ssrLoadFrom: 'initial'
+    }
+  )
+
   const loadMoreFeatured = async (offset?: number) => {
     const shoutsLoader = featuredLoader(offset)
     const loaded = await shoutsLoader()
-    loaded && setFeaturedFeed((prev?: Shout[]) => [...(prev || []), ...loaded])
+    if (loaded) {
+      setFeaturedFeed((prev) => [...(prev || []), ...loaded])
+    }
     return loaded as LoadMoreItems
   }
 
-  const [shouts] = createResource(async () => {
-    if (props.data.featuredShouts) {
-      setFeaturedFeed(props.data.featuredShouts)
-      return props.data.featuredShouts
-    }
-    return await loadMoreFeatured()
-  })
-
-  const SHOUTS_PER_PAGE = 20
-
   return (
     <PageLayout withPadding={true} title={t('Discours')} key="home">
-      <LoadMoreWrapper loadFunction={loadMoreFeatured} pageSize={SHOUTS_PER_PAGE} hidden={!featuredFeed()}>
-        <HomeView
-          featuredShouts={featuredFeed() || (shouts() as Shout[])}
-          topMonthShouts={topMonthFeed() as Shout[]}
-          topViewedShouts={topViewedFeed() as Shout[]}
-          topRatedShouts={topRatedFeed() as Shout[]}
-          topCommentedShouts={topCommentedFeed() as Shout[]}
-        />
-      </LoadMoreWrapper>
+      <Show when={!shouts.loading && featuredFeed()} fallback={<Loading />}>
+        <LoadMoreWrapper loadFunction={loadMoreFeatured} pageSize={FEED_PAGE_SIZE} hidden={false}>
+          <HomeView
+            featuredShouts={featuredFeed() || shouts() || []}
+            topMonthShouts={topMonthFeed() || props.data.topMonthShouts || []}
+            topViewedShouts={topViewedFeed() || []}
+            topRatedShouts={topRatedFeed() || props.data.topRatedShouts || []}
+            topCommentedShouts={topCommentedFeed() || props.data.topCommentedShouts || []}
+          />
+        </LoadMoreWrapper>
+      </Show>
     </PageLayout>
   )
 }
