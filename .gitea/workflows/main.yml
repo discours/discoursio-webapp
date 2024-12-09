@@ -32,7 +32,11 @@ jobs:
   email-templates:
     runs-on: ubuntu-latest
     name: Update templates on Mailgun
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/email-templates'
+    if: |
+      github.event_name == 'push' && 
+      github.ref == 'refs/heads/feature/email-templates' &&
+      contains(github.event.head_commit.modified, 'src/emails/') || 
+      contains(github.event.head_commit.modified, 'src/entry-email.tsx')
     continue-on-error: true
     steps:
       - uses: actions/checkout@v3
@@ -40,10 +44,21 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Run templates build
-        run: npm run templates
+      - name: Build email templates
+        run: npm run build
+        env:
+          CI: true
+
+      - name: Rename email templates
+        run: |
+          mkdir -p templates/dist
+          cp dist/public/emails/email_confirmation.html templates/dist/authorizer_email_confirmation.html
+          cp dist/public/emails/password_reset.html templates/dist/authorizer_password_reset.html
+          cp dist/public/emails/first_publication.html templates/dist/email_first_publication.html
+          cp dist/public/emails/new_comment.html templates/dist/new_comment_notification.html
 
       - name: "authorizer_email_confirmation template"
+        if: contains(github.event.head_commit.modified, 'src/emails/EmailConfirmation.tsx')
         uses: gyto/mailgun-template-action@v2
         with:
           html-file: "./templates/dist/authorizer_email_confirmation.html"
@@ -52,6 +67,7 @@ jobs:
           mailgun-template: "authorizer_email_confirmation"
 
       - name: "authorizer_password_reset template"
+        if: contains(github.event.head_commit.modified, 'src/emails/PasswordReset.tsx')
         uses: gyto/mailgun-template-action@v2
         with:
           html-file: "./templates/dist/authorizer_password_reset.html"
@@ -60,17 +76,19 @@ jobs:
           mailgun-template: "authorizer_password_reset"
 
       - name: "email_first_publication template"
+        if: contains(github.event.head_commit.modified, 'src/emails/FirstPublication.tsx')
         uses: gyto/mailgun-template-action@v2
         with:
-          html-file: "./templates/dist/authorizer_first_publication.html"
+          html-file: "./templates/dist/email_first_publication.html"
           mailgun-api-key: ${{ secrets.MAILGUN_API_KEY }}
           mailgun-domain: "discours.io"
           mailgun-template: "email_first_publication"
 
       - name: "new_comment_notification template"
+        if: contains(github.event.head_commit.modified, 'src/emails/NewComment.tsx')
         uses: gyto/mailgun-template-action@v2
         with:
-          html-file: "./templates/dist/authorizer_new_comment.html"
+          html-file: "./templates/dist/new_comment_notification.html"
           mailgun-api-key: ${{ secrets.MAILGUN_API_KEY }}
           mailgun-domain: "discours.io"
           mailgun-template: "new_comment_notification"

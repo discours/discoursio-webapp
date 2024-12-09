@@ -1,0 +1,5 @@
+export { default as EmailConfirmation } from './EmailConfirmation'
+export { default as FirstPublication } from './FirstPublication'
+export { default as NewComment } from './NewComment'
+export { default as PasswordReset } from './PasswordReset'
+export type { EmailProps } from './types'

@@ -1,8 +1,8 @@
 import { RouteDefinition, RouteSectionProps, useParams } from '@solidjs/router'
 import { Show, createResource, createSignal, onMount } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
 import { InboxView } from '~/components/Views/InboxView'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { ShowAfterMount } from '~/components/_shared/ShowAfterMount'
 import { useInbox } from '~/context/inbox'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
@@ -58,13 +58,13 @@ export const ChatPage = (props: RouteSectionProps<{ authors: Author[] }>) => {
 
   return (
     <PageLayout hideFooter={true} title={t('Inbox')}>
-      <ShowAfterMount>
+      <NoHydration>
         <Show when={!authors.loading} fallback={<div>Loading...</div>}>
           <Show when={!authors.error} fallback={<div>Error: {authors.error?.message}</div>}>
             <InboxView authors={authors() || []} chat={chat()} />
           </Show>
         </Show>
-      </ShowAfterMount>
+      </NoHydration>
     </PageLayout>
   )
 }

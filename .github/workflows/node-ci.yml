@@ -21,6 +21,43 @@ jobs:
         run: npx @biomejs/biome check src/.
       - name: Lint styles
         run: npx stylelint **/*.{scss,css}
+      - name: Build email templates
+        id: build-templates
+        if: |
+          contains(github.event.head_commit.modified, 'src/emails/') || 
+          contains(github.event.head_commit.modified, 'src/entry-email.tsx')
+        run: |
+          npm run build
+          mkdir -p templates/dist
+          # Копируем файлы с правильными именами для mailgun
+          for src in dist/public/emails/emails/*.html; do
+            name=$(basename "$src" .html)
+            case $name in
+              "email_confirmation") dst="authorizer_email_confirmation";;
+              "password_reset") dst="authorizer_password_reset";;
+              "first_publication") dst="email_first_publication";;
+              "new_comment") dst="new_comment_notification";;
+              *) continue;;
+            esac
+            cp "$src" "templates/dist/${dst}.html"
+          done
+        env:
+          CI: true
+
+      - name: Update Mailgun Templates
+        needs: build-templates
+        if: steps.build-templates.outputs.templates_changed == 'true'
+        run: |
+          for template in authorizer_email_confirmation authorizer_password_reset email_first_publication new_comment_notification; do
+            if [[ -f "templates/dist/${template}.html" ]]; then
+              echo "Updating $template in Mailgun..."
+              curl -s --user "api:${{ secrets.MAILGUN_API_KEY }}" \
+                https://api.mailgun.net/v3/discours.io/templates \
+                -F template="@templates/dist/${template}.html" \
+                -F name="$template"
+            fi
+          done
+
       - name: Test production build
         run: npm run build
 

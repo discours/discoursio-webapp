@@ -11,6 +11,7 @@ const isVercel = Boolean(process.env.VERCEL)
 const isNetlify = Boolean(process.env.NETLIFY)
 const isBun = Boolean(process.env.BUN)
 const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)
+const isEmail = Boolean(process.env.EMAIL)
 
 const preset = isNetlify ? 'netlify' : isVercel ? 'vercel_edge' : isBun ? 'bun' : 'node'
 console.info(`[app.config] solid-start preset {> ${preset} <}`)
@@ -42,7 +43,29 @@ function checkSSL(): { key: string; cert: string } | undefined {
   return undefined
 }
 
-export default defineConfig({
+export const emailConfig = defineConfig({
+  ssr: true,
+  server: {
+    prerender: {
+      routes: [
+        "/email_confirmation",
+        "/password_reset",
+        "/first_publication",
+        "/new_comment"
+      ]
+    }
+  },
+  vite: {
+    build: {
+      rollupOptions: {
+        input: 'src/entry-email.tsx',
+        external: ['solid-js', '@solidjs/router']
+      }
+    }
+  }
+}) 
+
+export const appConfig = defineConfig({
   nitro: {
     timing: true,
     compatibilityDate: '2024-11-29'
@@ -50,10 +73,11 @@ export default defineConfig({
   ssr: true,
   server: {
     preset,
-    port: 3000,
     https: checkSSL(),
     streaming: false
   },
   devOverlay: isDev,
   vite: viteConfig
 } as SolidStartInlineConfig)
+
+export default isEmail ? emailConfig : appConfig
