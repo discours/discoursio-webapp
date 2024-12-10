@@ -1,8 +1,8 @@
 import { RouteDefinition, RouteSectionProps } from '@solidjs/router'
 import { createResource } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
 import { InboxView } from '~/components/Views/InboxView'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { ShowAfterMount } from '~/components/_shared/ShowAfterMount'
 import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import { loadAuthorsAll } from '~/graphql/api/public'
@@ -39,9 +39,9 @@ export const InboxPage = (props: RouteSectionProps<{ authors: Author[] }>) => {
 
   return (
     <PageLayout hideFooter={true} title={t('Inbox')}>
-      <ShowAfterMount>
+      <NoHydration>
         <InboxView authors={authors() || []} />
-      </ShowAfterMount>
+      </NoHydration>
     </PageLayout>
   )
 }

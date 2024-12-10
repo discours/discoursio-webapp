@@ -1,7 +1,6 @@
 import { clsx } from 'clsx'
 import { Show, createEffect, createSignal } from 'solid-js'
-
-import { ShowOnlyOnClient } from '../ShowOnlyOnClient'
+import { NoHydration } from 'solid-js/web'
 
 import styles from './GrowingTextarea.module.scss'
 
@@ -44,7 +43,7 @@ export const GrowingTextarea = (props: Props) => {
   }
 
   return (
-    <ShowOnlyOnClient>
+    <NoHydration>
       <div
         class={clsx(styles.GrowingTextarea, {
           [styles.bordered]: props.variant === 'bordered',
@@ -86,7 +85,7 @@ export const GrowingTextarea = (props: Props) => {
           </div>
         </Show>
       </div>
-    </ShowOnlyOnClient>
+    </NoHydration>
   )
 }
 

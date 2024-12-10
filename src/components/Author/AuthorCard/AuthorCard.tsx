@@ -1,10 +1,10 @@
 import { redirect, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
 import { Button } from '~/components/_shared/Button'
 import { FollowingButton } from '~/components/_shared/FollowingButton'
 import { FollowingCounters } from '~/components/_shared/FollowingCounters/FollowingCounters'
-import { ShowOnlyOnClient } from '~/components/_shared/ShowOnlyOnClient'
 import { FollowsFilter, useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
@@ -194,7 +194,7 @@ export const AuthorCard = (props: Props) => {
             </div>
           </Show>
         </div>
-        <ShowOnlyOnClient>
+        <NoHydration>
           <Show when={isSessionLoaded()}>
             <Show when={props.author.links && props.author.links.length > 0}>
               <div class={styles.authorSubscribeSocial}>
@@ -258,7 +258,7 @@ export const AuthorCard = (props: Props) => {
               </div>
             </Show>
           </Show>
-        </ShowOnlyOnClient>
+        </NoHydration>
         <Show when={props.followers}>
           <Modal variant="medium" isResponsive={true} name="followers" maxHeight>
             <FollowersModalView />

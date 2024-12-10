@@ -1,6 +1,7 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
 import { useEditorContext } from '~/context/editor'
 import { useLocalize } from '~/context/localize'
 import { useNotifications } from '~/context/notifications'
@@ -13,7 +14,6 @@ import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 import { Popover } from '../_shared/Popover'
 import { Popup } from '../_shared/Popup'
-import { ShowOnlyOnClient } from '../_shared/ShowOnlyOnClient'
 
 import styles from './Header.module.scss'
 
@@ -110,7 +110,7 @@ export const HeaderAuth = (props: Props) => {
     navigate('/edit/new')
   }
   return (
-    <ShowOnlyOnClient>
+    <NoHydration>
       <Show when={isSessionLoaded()} keyed={true}>
         <div class={clsx('col-auto col-lg-7', styles.usernav)}>
           <div class={styles.userControl}>
@@ -299,6 +299,6 @@ export const HeaderAuth = (props: Props) => {
           </Show>
         </div>
       </Show>
-    </ShowOnlyOnClient>
+    </NoHydration>
   )
 }

@@ -1,12 +1,12 @@
 import { clsx } from 'clsx'
 import { For, Show, onMount } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
 import SwiperCore from 'swiper'
 import { Manipulation, Navigation, Pagination } from 'swiper/modules'
 
 import { Shout } from '~/graphql/schema/core.gen'
 import { ArticleCard } from '../../Feed/ArticleCard'
 import { Icon } from '../Icon'
-import { ShowOnlyOnClient } from '../ShowOnlyOnClient'
 
 import { SwiperRef } from './swiper'
 
@@ -33,7 +33,7 @@ export const ArticleCardSwiper = (props: Props) => {
 
   return (
     <Show when={props.slides && props.slides.length > 0}>
-      <ShowOnlyOnClient>
+      <NoHydration>
         <div
           class={clsx({
             [styles.Swiper]: props.slides?.length > 1,
@@ -110,7 +110,7 @@ export const ArticleCardSwiper = (props: Props) => {
             </Show>
           </div>
         </div>
-      </ShowOnlyOnClient>
+      </NoHydration>
     </Show>
   )
 }

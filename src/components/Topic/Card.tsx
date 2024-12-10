@@ -1,5 +1,6 @@
 import { clsx } from 'clsx'
 import { Show, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
 
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
@@ -9,7 +10,6 @@ import { capitalize } from '~/utils/capitalize'
 import { CardTopic } from '../Feed/CardTopic'
 import { CheckButton } from '../_shared/CheckButton'
 import { FollowingButton } from '../_shared/FollowingButton'
-import { ShowOnlyOnClient } from '../_shared/ShowOnlyOnClient'
 
 import styles from './Card.module.scss'
 
@@ -112,7 +112,7 @@ export const TopicCard = (props: TopicProps) => {
             'col-sm-7 col-md-6': !(props.subscribeButtonBottom || props.isNarrow || props.compact)
           }}
         >
-          <ShowOnlyOnClient>
+          <NoHydration>
             <Show when={author()}>
               <Show
                 when={!props.minimize}
@@ -127,7 +127,7 @@ export const TopicCard = (props: TopicProps) => {
                 />
               </Show>
             </Show>
-          </ShowOnlyOnClient>
+          </NoHydration>
         </div>
       </div>
     </div>

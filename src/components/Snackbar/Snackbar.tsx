@@ -1,10 +1,10 @@
 import { clsx } from 'clsx'
 import { Show } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
 import { Transition } from 'solid-transition-group'
 
 import { useSnackbar } from '~/context/ui'
 import { Icon } from '../_shared/Icon'
-import { ShowOnlyOnClient } from '../_shared/ShowOnlyOnClient'
 
 import styles from './Snackbar.module.scss'
 
@@ -18,7 +18,7 @@ export const Snackbar = () => {
         [styles.success]: snackbarMessage()?.type === 'success'
       })}
     >
-      <ShowOnlyOnClient>
+      <NoHydration>
         <Transition
           enterClass={styles.enter}
           exitToClass={styles.exitTo}
@@ -33,7 +33,7 @@ export const Snackbar = () => {
             </div>
           </Show>
         </Transition>
-      </ShowOnlyOnClient>
+      </NoHydration>
     </div>
   )
 }
