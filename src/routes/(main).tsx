@@ -18,7 +18,7 @@ const featuredLoader = (offset?: number) => {
 
 const fetchHomeTopData = async () => {
   const topCommentedLoader = loadShouts({
-    options: { filters: { featured: true }, order_by: 'comments_count' as ShoutsOrderBy, limit: 10 }
+    options: { filters: { featured: true }, order_by: ShoutsOrderBy.CommentsCount, limit: FEED_PAGE_SIZE }
   })
 
   const daysago = Date.now() - 30 * 24 * 60 * 60 * 1000
@@ -28,16 +28,16 @@ const fetchHomeTopData = async () => {
       featured: true,
       after
     },
-    order_by: 'rating' as ShoutsOrderBy,
-    limit: 10
+    order_by: ShoutsOrderBy.Rating,
+    limit: FEED_PAGE_SIZE
   }
   const topMonthLoader = loadShouts({ options })
 
   const topRatedLoader = loadShouts({
     options: {
       filters: { featured: true },
-      order_by: 'rating' as ShoutsOrderBy,
-      limit: 10
+      order_by: ShoutsOrderBy.Rating,
+      limit: FEED_PAGE_SIZE
     }
   })
   const topRatedShouts = await topRatedLoader()
@@ -48,15 +48,23 @@ const fetchHomeTopData = async () => {
 
 export const route = {
   load: async () => {
-    const limit = 20
     const featuredLoader = loadShouts({
-      options: { filters: { featured: true }, limit }
+      options: { filters: { featured: true }, limit: FEED_PAGE_SIZE }
     })
-    const data = {
-      ...(await fetchHomeTopData()),
-      featuredShouts: await featuredLoader()
+    const featuredShouts = await featuredLoader()
+    console.log('Loaded featured shouts:', featuredShouts?.length)
+
+    const topData = await fetchHomeTopData()
+    console.log('Loaded top data:', {
+      commented: topData.topCommentedShouts?.length,
+      month: topData.topMonthShouts?.length,
+      rated: topData.topRatedShouts?.length
+    })
+
+    return {
+      ...topData,
+      featuredShouts
     }
-    return data
   }
 } satisfies RouteDefinition
 
@@ -65,8 +73,11 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
   const {
     featuredFeed,
     setFeaturedFeed,
-    topMonthFeed,
+    setTopMonthFeed,
     topViewedFeed,
+    setTopCommentedFeed,
+    setTopFeed,
+    topMonthFeed,
     topCommentedFeed,
     topFeed: topRatedFeed
   } = useFeaturedFeed()
@@ -75,6 +86,15 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
     () => {
       if (props.data.featuredShouts) {
         setFeaturedFeed(props.data.featuredShouts)
+      }
+      if (props.data.topMonthShouts) {
+        setTopMonthFeed(props.data.topMonthShouts)
+      }
+      if (props.data.topCommentedShouts) {
+        setTopCommentedFeed(props.data.topCommentedShouts)
+      }
+      if (props.data.topRatedShouts) {
+        setTopFeed(props.data.topRatedShouts)
       }
       return props.data.featuredShouts
     },
@@ -98,11 +118,11 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
       <Show when={!shouts.loading && featuredFeed()} fallback={<Loading />}>
         <LoadMoreWrapper loadFunction={loadMoreFeatured} pageSize={FEED_PAGE_SIZE} hidden={false}>
           <HomeView
-            featuredShouts={featuredFeed() || shouts() || []}
-            topMonthShouts={topMonthFeed() || props.data.topMonthShouts || []}
+            featuredShouts={featuredFeed() || []}
+            topMonthShouts={topMonthFeed() || []}
             topViewedShouts={topViewedFeed() || []}
-            topRatedShouts={topRatedFeed() || props.data.topRatedShouts || []}
-            topCommentedShouts={topCommentedFeed() || props.data.topCommentedShouts || []}
+            topRatedShouts={topRatedFeed() || []}
+            topCommentedShouts={topCommentedFeed() || []}
           />
         </LoadMoreWrapper>
       </Show>

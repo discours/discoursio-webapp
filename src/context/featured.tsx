@@ -1,18 +1,19 @@
 import { Accessor, Setter, createContext, createMemo, createSignal, useContext } from 'solid-js'
 import type { JSX } from 'solid-js'
-import { loadShouts } from '~/graphql/api/public'
-import { LoadShoutsOptions, Shout } from '~/graphql/schema/core.gen'
+import { Shout } from '~/graphql/schema/core.gen'
 import { byStat } from '../utils/sort'
+import { FEED_PAGE_SIZE } from './feed'
 
 type FeaturedFeedContextType = {
   featuredFeed: Accessor<Shout[] | undefined>
   setFeaturedFeed: Setter<Shout[] | undefined>
   topMonthFeed: Accessor<Shout[] | undefined>
-  loadTopMonthFeed: () => Promise<void>
+  setTopMonthFeed: Setter<Shout[] | undefined>
   topFeed: Accessor<Shout[] | undefined>
-  loadTopFeed: () => Promise<void>
+  setTopFeed: Setter<Shout[] | undefined>
   topViewedFeed: Accessor<Shout[] | undefined>
   topCommentedFeed: Accessor<Shout[] | undefined>
+  setTopCommentedFeed: Setter<Shout[] | undefined>
 }
 
 const FeaturedFeedContext = createContext<FeaturedFeedContextType>({} as FeaturedFeedContextType)
@@ -23,56 +24,12 @@ export const FeaturedFeedProvider = (props: { children: JSX.Element }) => {
   const [featuredFeed, setFeaturedFeed] = createSignal<Shout[] | undefined>([])
   const [topMonthFeed, setTopMonthFeed] = createSignal<Shout[] | undefined>([])
   const [topFeed, setTopFeed] = createSignal<Shout[] | undefined>([])
-
-  const loadTopMonthFeed = async (): Promise<void> => {
-    if (topMonthFeed()?.length) return
-
-    const daysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
-    const after = Math.floor(daysAgo / 1000)
-    const options = {
-      filters: {
-        featured: true,
-        after
-      },
-      order_by: 'rating' as const,
-      limit: 10
-    } as LoadShoutsOptions
-
-    try {
-      const fetcher = await loadShouts({ options })
-      const result = (await fetcher()) || []
-      setTopMonthFeed(result)
-    } catch (error) {
-      console.error('Ошибка при загрузке топовых статей за месяц:', error)
-      setTopMonthFeed([])
-    }
-  }
-
-  const loadTopFeed = async (): Promise<void> => {
-    if (topFeed()?.length) return
-
-    const options = {
-      filters: { featured: true },
-      limit: 10
-    }
-    try {
-      const fetcher = await loadShouts({ options })
-      const result = (await fetcher()) || []
-      setTopFeed(result)
-    } catch (error) {
-      console.error('Ошибка при загрузке топовых статей:', error)
-      setTopFeed([])
-    }
-  }
+  const [topCommentedFeed, setTopCommentedFeed] = createSignal<Shout[] | undefined>([])
 
   const topViewedFeed = createMemo(() => {
     const feed = featuredFeed()
-    return feed ? [...feed].sort(byStat('viewed') as (a: Shout, b: Shout) => number) : []
-  })
-
-  const topCommentedFeed = createMemo(() => {
-    const feed = featuredFeed()
-    return feed ? [...feed].sort(byStat('commented') as (a: Shout, b: Shout) => number) : []
+    if (!feed?.length) return []
+    return [...feed].sort(byStat('viewed') as (a: Shout, b: Shout) => number).slice(0, FEED_PAGE_SIZE)
   })
 
   return (
@@ -81,11 +38,12 @@ export const FeaturedFeedProvider = (props: { children: JSX.Element }) => {
         featuredFeed,
         setFeaturedFeed,
         topMonthFeed,
-        loadTopMonthFeed,
+        setTopMonthFeed,
         topFeed,
-        loadTopFeed,
+        setTopFeed,
         topViewedFeed,
-        topCommentedFeed
+        topCommentedFeed,
+        setTopCommentedFeed
       }}
     >
       {props.children}

@@ -18,11 +18,11 @@ import { Loading } from '../_shared/Loading'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 import './Home.module.scss'
 
-export const SHOUTS_PER_PAGE = 20
 export const RANDOM_TOPICS_COUNT = 12
 export const RANDOM_TOPIC_SHOUTS_COUNT = 7
 const CLIENT_LOAD_ARTICLES_COUNT = 29
-const LOAD_MORE_PAGE_SIZE = 16 // Row1 + Row3 + Row2 + Beside (3 + 1) + Row1 + Row 2 + Row3
+const SHOUTS_PER_PAGE = 16 // Row1 + Row3 + Row2 + Beside (3 + 1) + Row1 + Row 2 + Row3
+const MIN_SHOUTS_FOR_FULL_VIEW = 6 // Минимальное количество статей для показа дополнительных блоков
 
 export interface HomeViewProps {
   featuredShouts: Shout[]
@@ -43,11 +43,11 @@ export const HomeView = (props: HomeViewProps) => {
   })
 
   const pages = createMemo<Shout[][]>(() =>
-    paginate(props.featuredShouts || [], SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, LOAD_MORE_PAGE_SIZE)
+    paginate(props.featuredShouts || [], SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, SHOUTS_PER_PAGE)
   )
 
   const hasFeaturedShouts = createMemo(() => (props.featuredShouts || []).length > 0)
-  const hasMoreShouts = createMemo(() => props.featuredShouts?.length > SHOUTS_PER_PAGE)
+  const hasMoreShouts = createMemo(() => (props.featuredShouts || []).length >= MIN_SHOUTS_FOR_FULL_VIEW)
 
   return (
     <Show when={hasFeaturedShouts()} fallback={<Loading />}>
@@ -95,20 +95,22 @@ export const HomeView = (props: HomeViewProps) => {
           <ArticleCardSwiper title={t('Favorite')} slides={props.topRatedShouts} />
         </Show>
 
-        <Beside
-          beside={props.featuredShouts[20]}
-          title={t('Top topics')}
-          values={topTopics().slice(0, 5)}
-          wrapper={'topic'}
-          isTopicCompact={true}
-          nodate={true}
-        />
-        <Row3 articles={props.featuredShouts.slice(21, 24)} nodate={true} />
-        <Banner />
-        <Row2 articles={props.featuredShouts.slice(24, 26)} nodate={true} />
-        <Row3 articles={props.featuredShouts.slice(26, 29)} nodate={true} />
-        <Row2 articles={props.featuredShouts.slice(29, 31)} nodate={true} />
-        <Row3 articles={props.featuredShouts.slice(31, 34)} nodate={true} />
+        <Show when={props.featuredShouts.length > SHOUTS_PER_PAGE}>
+          <Beside
+            beside={props.featuredShouts[20]}
+            title={t('Top topics')}
+            values={topTopics().slice(0, 5)}
+            wrapper={'topic'}
+            isTopicCompact={true}
+            nodate={true}
+          />
+          <Row3 articles={props.featuredShouts.slice(21, 24)} nodate={true} />
+          <Banner />
+          <Row2 articles={props.featuredShouts.slice(24, 26)} nodate={true} />
+          <Row3 articles={props.featuredShouts.slice(26, 29)} nodate={true} />
+          <Row2 articles={props.featuredShouts.slice(29, 31)} nodate={true} />
+          <Row3 articles={props.featuredShouts.slice(31, 34)} nodate={true} />
+        </Show>
       </Show>
 
       <For each={pages()}>
