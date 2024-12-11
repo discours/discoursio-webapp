@@ -179,19 +179,6 @@ export const ArticleCard = (props: ArticleCardProps) => {
 
       {/* Shout Card Content */}
       <div class={styles.shoutCardContent}>
-        {/* Author */}
-        <div data-testid="article-card-author" class={styles.shoutAuthor}>
-          <For each={props.article.authors}>
-            {(a: Maybe<Author>) => (
-              <AuthorLink
-                size={'XS'}
-                author={a as Author}
-                isFloorImportant={Boolean(props.settings?.isFloorImportant || props.settings?.isWithCover)}
-              />
-            )}
-          </For>
-        </div>
-
         {/* Shout Card Icon */}
         <Show
           when={

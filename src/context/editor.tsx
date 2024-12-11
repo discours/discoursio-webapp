@@ -162,29 +162,38 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   }
 
   const updateShout = async (formToUpdate: ShoutForm, { publish }: { publish: boolean }) => {
+    console.debug('[updateShout] formToUpdate', formToUpdate)
+    const topics = formToUpdate.selectedTopics.map((topic) => topic2topicInput(topic)) 
+      || formToUpdate.mainTopic?.slug ? [topic2topicInput(formToUpdate.mainTopic as Topic)] : []
+    if (publish && !topics) {
+      return { error: 'Please, set the main topic first' }
+    }
     if (!formToUpdate.shoutId && formToUpdate.body) {
       console.debug('[updateShout] creating a new shout', formToUpdate)
-      const topics = formToUpdate.selectedTopics.map((topic) => topic2topicInput(topic))
-      if (topics.length === 0) {
-        navigate('/editSettings')
-        return { error: 'No topics selected' }
-      }
       const resp = await client()
         ?.mutation(createShoutMutation, {
           shout: {
             layout: formToUpdate.layout,
             body: formToUpdate.body,
-            topics
+            topics,
+            slug: formToUpdate.slug,
+            subtitle: formToUpdate.subtitle,
+            title: formToUpdate.title,
+            lead: formToUpdate.lead,
+            description: formToUpdate.description,
+            cover: formToUpdate.coverImageUrl,
+            media: formToUpdate.media
           }
         })
         .toPromise()
       return resp?.data?.create_shout
     }
+    console.debug('[updateShout] updating a created shout', formToUpdate)
     const resp = await client()?.mutation(updateShoutMutation, {
       shout_id: formToUpdate.shoutId,
       shout_input: {
         body: formToUpdate.body,
-        topics: formToUpdate.selectedTopics.map((topic) => topic2topicInput(topic)),
+        topics,
         slug: formToUpdate.slug,
         subtitle: formToUpdate.subtitle,
         title: formToUpdate.title,
@@ -264,7 +273,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
       return
     }
     try {
-      const resp = await client()?.mutation(deleteShoutMutation, { shout_id, publish: true }).toPromise()
+      const resp = await client()?.mutation(updateShoutMutation, { shout_id, publish: true }).toPromise()
       const result = resp?.data?.update_shout
       if (result) {
         const { shout: newShout, error } = result

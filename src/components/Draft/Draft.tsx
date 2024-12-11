@@ -1,4 +1,4 @@
-import { A } from '@solidjs/router'
+import { A, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { useLocalize } from '~/context/localize'
 import { useSnackbar, useUI } from '~/context/ui'
@@ -17,13 +17,14 @@ export const Draft = (props: Props) => {
   const { t, formatDate } = useLocalize()
   const { showConfirm } = useUI()
   const { showSnackbar } = useSnackbar()
-
+  const navigate = useNavigate()
   const handlePublishLinkClick = (e: MouseEvent) => {
     e.preventDefault()
     if (props.shout.main_topic?.slug) {
       props.onPublish(props.shout)
     } else {
       showSnackbar({ body: t('Please, set the main topic first') })
+      navigate(`/edit/${props.shout.id}/settings`)
     }
   }
 

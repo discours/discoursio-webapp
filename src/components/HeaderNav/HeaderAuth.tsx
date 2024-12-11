@@ -2,11 +2,11 @@ import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
-import { useEditorContext } from '~/context/editor'
+import { ShoutForm, useEditorContext } from '~/context/editor'
 import { useLocalize } from '~/context/localize'
 import { useNotifications } from '~/context/notifications'
 import { useSession } from '~/context/session'
-import { useUI } from '~/context/ui'
+import { useSnackbar, useUI } from '~/context/ui'
 import type { Author } from '~/graphql/schema/core.gen'
 import { Userpic } from '../Author/Userpic'
 import { ProfilePopup } from '../ProfileNav/ProfilePopup'
@@ -109,6 +109,15 @@ export const HeaderAuth = (props: Props) => {
 
     navigate('/edit/new')
   }
+  const { showSnackbar } = useSnackbar()
+  const handlePublishClick = (form: ShoutForm) => {
+    if (form.mainTopic?.slug) {
+      publishShout(form)
+    } else {
+      showSnackbar({ body: t('Please, set the main topic first') })
+      navigate(`/edit/${form.shoutId}/settings`)
+    }
+  }
   return (
     <NoHydration>
       <Show when={isSessionLoaded()} keyed={true}>
@@ -202,7 +211,7 @@ export const HeaderAuth = (props: Props) => {
                 {renderIconedButton({
                   value: t('Publish'),
                   icon: 'publish',
-                  action: () => publishShout(form)
+                  action: () => handlePublishClick(form)
                 })}
               </div>
 
