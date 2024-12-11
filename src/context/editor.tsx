@@ -163,8 +163,10 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
 
   const updateShout = async (formToUpdate: ShoutForm, { publish }: { publish: boolean }) => {
     console.debug('[updateShout] formToUpdate', formToUpdate)
-    const topics = formToUpdate.selectedTopics.map((topic) => topic2topicInput(topic)) 
-      || formToUpdate.mainTopic?.slug ? [topic2topicInput(formToUpdate.mainTopic as Topic)] : []
+    const topics =
+      formToUpdate.selectedTopics.map((topic) => topic2topicInput(topic)) || formToUpdate.mainTopic?.slug
+        ? [topic2topicInput(formToUpdate.mainTopic as Topic)]
+        : []
     if (publish && !topics) {
       return { error: 'Please, set the main topic first' }
     }
