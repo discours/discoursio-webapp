@@ -21,8 +21,7 @@ import styles from './MiniEditor.module.scss'
 
 interface MiniEditorProps {
   content?: string
-  // onChange?: (content: string) => void
-  onSubmit?: (content: string) => void
+  onSubmit?: (content: string) => Promise<boolean>
   onCancel?: () => void
   limit?: number
   placeholder?: string
@@ -80,10 +79,14 @@ export function MiniEditor(props: MiniEditorProps): JSX.Element {
     }
   }
 
-  const handleSubmit = () => {
-    const c = editor()?.getHTML()
-    c && props.onSubmit?.(c || '')
-    editor()?.commands.clearContent(true)
+  const handleSubmit = async () => {
+    const content = editor()?.getHTML()
+    if (content && props.onSubmit) {
+      const success = await props.onSubmit(content)
+      if (success) {
+        editor()?.commands.clearContent(true)
+      }
+    }
   }
 
   const counter = createEditorTransaction(editor, (e) => e?.storage.characterCount?.characters())

@@ -103,11 +103,11 @@ export const Comment = (props: Props) => {
     }
   }
 
-  const handleCreate = async (value: string) => {
+  const handleCreate = async (value: string): Promise<boolean> => {
     try {
       setLoading(true)
       saveScrollPosition()
-      await createShoutReaction({
+      const reaction = await createShoutReaction({
         reaction: {
           kind: ReactionKind.Comment,
           reply_to: props.comment.id,
@@ -115,19 +115,27 @@ export const Comment = (props: Props) => {
           shout: props.comment.shout.id
         }
       } as MutationCreate_ReactionArgs)
-      setIsReplyVisible(false)
+      
+      if (reaction) {
+        setIsReplyVisible(false)
+        setLoading(false)
+        restoreScrollPosition()
+        return true
+      }
     } catch (error) {
       console.error('[handleCreate reaction]:', error)
+      showSnackbar?.({ type: 'error', body: t('Failed to create comment') })
     }
     setLoading(false)
-    setTimeout(() => restoreScrollPosition(), 0)
+    restoreScrollPosition()
+    return false
   }
 
   const toggleEditMode = () => {
     setEditMode((oldEditMode) => !oldEditMode)
   }
 
-  const handleUpdate = async (value: string) => {
+  const handleUpdate = async (value: string): Promise<boolean> => {
     console.log('[handleUpdate] starting with value:', value)
     setLoading(true)
     saveScrollPosition()
@@ -145,15 +153,18 @@ export const Comment = (props: Props) => {
 
       if (reaction) {
         setEditedBody(value)
-        console.log('[handleUpdate] setEditedBody called with:', value)
         setEditMode(false)
-        console.log('[handleUpdate] setEditMode called with false')
+        setLoading(false)
+        restoreScrollPosition()
+        return true
       }
     } catch (error) {
       console.error('[handleUpdate reaction]:', error)
+      showSnackbar?.({ type: 'error', body: t('Failed to update comment') })
     }
     setLoading(false)
-    setTimeout(() => restoreScrollPosition(), 0)
+    restoreScrollPosition()
+    return false
   }
 
   const handleCancel = () => {
