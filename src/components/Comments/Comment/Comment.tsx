@@ -115,7 +115,7 @@ export const Comment = (props: Props) => {
           shout: props.comment.shout.id
         }
       } as MutationCreate_ReactionArgs)
-      
+
       if (reaction) {
         setIsReplyVisible(false)
         setLoading(false)
