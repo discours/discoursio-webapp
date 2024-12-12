@@ -7,8 +7,8 @@ export type MyFeedKind = 'followed' | 'coauthored' | 'discussed' | undefined
 
 export interface FeedFilters {
   after?: number // Unix timestamp в секундах
-  featured?: boolean // Избранное
-  layouts?: InputMaybe<string>[] // Типы контента
+  featured?: boolean // отобранные публикации
+  layouts?: InputMaybe<string>[] // форматы публикаций
 }
 
 export interface CommentsFilters {

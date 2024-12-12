@@ -22,30 +22,34 @@ type Props = {
 export const FollowingButton = (props: Props) => {
   const { t } = useLocalize()
   const [inActionText, setInActionText] = createSignal('...')
-  const [caption, setCaption] = createSignal(t('Follow'))
+  const [caption, setCaption] = createSignal(props.isFollowed ? t('Unfollow') : t('Follow'))
   const [followed, setFollowed] = createSignal(props.isFollowed)
   const { followingLoading, changeFollowing } = useFollowing()
 
   const handleFollowClick = async () => {
+    const oldState = followed()
     const newState = !followed()
-    setFollowed(newState)
 
     try {
-      const serverState = await changeFollowing(newState, props.entity, props.slug)
+      const serverState = await changeFollowing(oldState, props.entity, props.slug)
       if (serverState !== newState) {
         setFollowed(serverState)
       }
     } catch (error) {
-      setFollowed(!newState)
+      setFollowed(oldState)
       console.error('Failed to change following state:', error)
     }
   }
 
   createEffect(
-    on(followed, (x) => {
-      setCaption(x ? t('Unfollow') : t('Follow'))
-      setInActionText(x ? t('Unfollowing...') : t('Following...'))
-    })
+    on(
+      () => props.isFollowed,
+      (x) => {
+        setFollowed(x)
+        setCaption(x ? t('Unfollow') : t('Follow'))
+        setInActionText(x ? t('Unfollowing...') : t('Following...'))
+      }
+    )
   )
 
   const FollowedButton = () => (

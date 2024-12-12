@@ -352,7 +352,7 @@ export const AuthorView = (props: AuthorViewProps) => {
                   >
                     <div ref={(el) => (bioContainerRef = el)} innerHTML={author()?.about || ''} />
                   </div>
-                  
+
                   <Show when={showExpandBioControl()}>
                     <button
                       class={clsx('button button--subscribe-topic', styles.longBioExpandedControl)}
