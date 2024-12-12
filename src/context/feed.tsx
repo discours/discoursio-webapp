@@ -112,22 +112,14 @@ export const useFeed = () => useContext(FeedContext)
 
 const emptyFeed: FeedStore = { shouts: [], isLoading: false, hasMore: false }
 
-// Добавляем тип для мапы сеттеров
+// Обновляем тип FeedSettersMap чтобы включить все возможные значения FeedMode
 type FeedSettersMap = {
-  recent: Setter<FeedStore>
-  hot: Setter<FeedStore>
-  top: Setter<FeedStore>
-  search: Setter<FeedStore>
-  comments: Setter<FeedStore>
+  [K in FeedMode]: Setter<FeedStore>
 }
 
-// Добавляем тип для мапы абортконтроллеров
+// Обновляем тип ControllersMap аналогично
 type ControllersMap = {
-  recent: AbortController | null
-  hot: AbortController | null
-  top: AbortController | null
-  search: AbortController | null
-  comments: AbortController | null
+  [K in FeedMode]: AbortController | null
 }
 
 // Добавим типы для полей Shout
@@ -176,16 +168,18 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     hot: null,
     top: null,
     search: null,
-    comments: null
+    comments: null,
+    about: null
   }
 
-  // Создаем мапу сеттеров
+  // Обновляем инициализацию feedSetters
   const feedSetters: FeedSettersMap = {
     recent: setRecentFeed,
     hot: setHotFeed,
     top: setTopFeed,
     search: setSearchFeed,
-    comments: setRecentFeed
+    comments: setRecentFeed,
+    about: setRecentFeed
   }
 
   const updateFeed = (

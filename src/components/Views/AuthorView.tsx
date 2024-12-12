@@ -304,6 +304,8 @@ export const AuthorView = (props: AuthorViewProps) => {
     // Если режим comments или URL содержит /comments, переключаем на таб комментариев
     if (feedMode() === 'comments' || loc.pathname.includes('/comments')) {
       setCurrentTab('comments')
+    } else if (feedMode() === 'about' || loc.pathname.includes('/about')) {
+      setCurrentTab('about')
     } else {
       setCurrentTab(mode)
     }
@@ -343,20 +345,22 @@ export const AuthorView = (props: AuthorViewProps) => {
           <div class="wide-container">
             <div class="row">
               <div class="col-md-20 col-lg-18">
-                <div
-                  ref={(el) => (bioWrapperRef = el)}
-                  class={clsx(styles.longBio, { [styles.longBioExpanded]: isBioExpanded() })}
-                >
-                  <div ref={(el) => (bioContainerRef = el)} innerHTML={author()?.about || ''} />
-                </div>
-
-                <Show when={showExpandBioControl()}>
-                  <button
-                    class={clsx('button button--subscribe-topic', styles.longBioExpandedControl)}
-                    onClick={() => setIsBioExpanded(!isBioExpanded())}
+                <Show when={author()?.about} fallback={<div>{t('No information provided')}</div>}>
+                  <div
+                    ref={(el) => (bioWrapperRef = el)}
+                    class={clsx(styles.longBio, { [styles.longBioExpanded]: isBioExpanded() })}
                   >
-                    {isBioExpanded() ? t('Show less') : t('Show more')}
-                  </button>
+                    <div ref={(el) => (bioContainerRef = el)} innerHTML={author()?.about || ''} />
+                  </div>
+                  
+                  <Show when={showExpandBioControl()}>
+                    <button
+                      class={clsx('button button--subscribe-topic', styles.longBioExpandedControl)}
+                      onClick={() => setIsBioExpanded(!isBioExpanded())}
+                    >
+                      {isBioExpanded() ? t('Show less') : t('Show more')}
+                    </button>
+                  </Show>
                 </Show>
               </div>
             </div>
