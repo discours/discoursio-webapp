@@ -96,10 +96,13 @@ export const CommentsTree = (props: Props) => {
         setTimeout(() => setNewReactions([createdReaction, ...newReactions()]), 100)
         console.debug('[handleCreate reaction]:', createdReaction)
       }
+      setPosting(false)
+      return true
     } catch (error) {
       console.error('[handleCreate reaction]:', error)
+      setPosting(false)
+      return false
     }
-    setPosting(false)
   }
 
   const FallbackMessage = () => (

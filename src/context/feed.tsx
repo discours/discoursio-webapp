@@ -130,6 +130,16 @@ type ControllersMap = {
   comments: AbortController | null
 }
 
+// Добавим типы для полей Shout
+interface ShoutStats {
+  last_commented_at: Date | null
+  rating: number
+  comments_count: number
+  created_at: Date
+}
+
+type ShoutWithStats = Shout & ShoutStats
+
 export const FeedProvider = (props: { children: JSX.Element }) => {
   const { client } = useSession()
   const loc = useLocation()
@@ -178,28 +188,16 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     comments: setRecentFeed
   }
 
-  // Modify updateFeed to be more conservative with updates
   const updateFeed = (
     name: keyof FeedSettersMap,
-    shouts: Shout[],
+    shouts: ShoutWithStats[],
     opts?: { offset?: number; limit?: number }
   ) => {
-    console.log('[FeedProvider] Updating feed:', {
-      name,
-      shoutsCount: shouts.length,
-      opts,
-      currentMode: mode()
-    })
-
     const setter = feedSetters[name]
-    if (!setter) {
-      console.warn('[FeedProvider] No setter found for feed:', name)
-      return
-    }
+    if (!setter) return
 
-    // Create new feed state outside of setter to avoid nested updates
-    const existingFeed = setter((prev) => prev)
-    const existingIds = new Set(existingFeed.shouts.map((s) => s.id))
+    const existingFeed = setter((prev: FeedStore) => prev)
+    const existingIds = new Set(existingFeed.shouts.map((s: Shout) => s.id))
     const uniqueShouts = shouts.filter((s) => !existingIds.has(s.id))
 
     if (uniqueShouts.length === 0 && !opts?.offset) {
@@ -207,41 +205,31 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     }
 
     const newShouts = opts?.offset ? [...existingFeed.shouts, ...uniqueShouts] : uniqueShouts
+
+    const sortedShouts = sortShouts(newShouts as ShoutWithStats[], name as FeedMode)
+
     const newFeed = {
-      shouts: newShouts,
+      shouts: sortedShouts,
       isLoading: false,
       hasMore: shouts.length >= (opts?.limit || FEED_PAGE_SIZE),
+      isEmpty: sortedShouts.length === 0,
       error: undefined
     }
 
-    // Only update if there are actual changes
     if (existingFeed !== newFeed) {
       setter(newFeed)
 
-      // Update feedByMode in next tick if it matches current mode
       if (name === mode()) {
         Promise.resolve().then(() => {
           setter(newFeed)
         })
       }
     }
-
-    console.log('[FeedProvider] Feed updated:', {
-      name,
-      newShoutsCount: newShouts.length,
-      hasMore: shouts.length >= (opts?.limit || FEED_PAGE_SIZE)
-    })
   }
 
-  // Simplify loadFeed to avoid nested state updates
   const loadFeed = async (name: FeedMode, opts?: Partial<LoadShoutsOptions>) => {
-    console.log('[FeedProvider] Loading feed:', { name, opts })
-
-    const currentFeed = feedSetters[name]((prev) => prev)
-    if (currentFeed.isLoading) {
-      console.log('[FeedProvider] Skip loading - already in progress:', name)
-      return
-    }
+    const currentFeed = feedSetters[name]((prev: FeedStore) => prev)
+    if (currentFeed.isLoading) return
 
     controllers[name]?.abort()
     controllers[name] = new AbortController()
@@ -249,8 +237,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     const setter = feedSetters[name]
     if (!setter) return
 
-    // Set loading state
-    setter((prev) => ({ ...prev, isLoading: true }))
+    setter((prev: FeedStore) => ({ ...prev, isLoading: true }))
 
     try {
       const result = await loadShouts({
@@ -261,21 +248,30 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
         }
       })()
 
-      console.log('[FeedProvider] Feed loaded:', {
-        name,
-        resultCount: result?.length,
-        opts
-      })
+      if (!result?.length) {
+        setter({
+          shouts: [],
+          isLoading: false,
+          hasMore: false,
+          isEmpty: true,
+          error: undefined
+        })
+        return
+      }
 
-      updateFeed(name, result || [], {
+      updateFeed(name as keyof FeedSettersMap, result as ShoutWithStats[], {
         limit: opts?.limit || FEED_PAGE_SIZE,
         offset: opts?.offset || 0
       })
     } catch (error) {
-      console.error('[FeedProvider] Error loading feed:', { name, error })
+      setter((prev: FeedStore) => ({
+        ...prev,
+        isLoading: false,
+        error: error as Error,
+        isEmpty: true
+      }))
     } finally {
       controllers[name] = null
-      setter((prev) => ({ ...prev, isLoading: false }))
     }
   }
 
@@ -451,7 +447,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     )
   )
 
-  // Мемоизируем текущий фид
+  // Модифицируем текущий фид
   const currentFeed = createMemo(() => {
     const currentMode = mode()
     const myFeedKind = myFeed()
@@ -607,6 +603,23 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
     return feed || emptyFeed
   })
+
+  const sortShouts = (shouts: ShoutWithStats[], mode: FeedMode) => {
+    if (!shouts?.length) return []
+
+    switch (mode) {
+      case 'hot':
+        return [...shouts].sort(
+          (a, b) => (b.last_commented_at?.getTime() || 0) - (a.last_commented_at?.getTime() || 0)
+        )
+      case 'top':
+        return [...shouts].sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      case 'comments':
+        return [...shouts].sort((a, b) => (b.comments_count || 0) - (a.comments_count || 0))
+      default:
+        return [...shouts].sort((a, b) => (b.created_at.getTime() || 0) - (a.created_at.getTime() || 0))
+    }
+  }
 
   return (
     <FeedContext.Provider

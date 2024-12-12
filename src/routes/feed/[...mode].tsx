@@ -23,17 +23,10 @@ export interface RouteData {
 
 export const route = {
   load: async ({ params, location: { query } }: RouteSectionProps) => {
-    console.log('[FeedPage] Route load started:', { params, query })
     const filters: LoadShoutsFilters = {}
     if (query.period) filters.after = getTimestampFromPeriod(query.period as PeriodType)
 
     try {
-      console.log('[FeedPage] Loading initial data with filters:', {
-        filters,
-        mode: params.mode,
-        orderBy: orderByMode(params.mode as FeedMode)
-      })
-
       const [shouts, recentComments, unratedShouts] = await Promise.all([
         loadShouts({
           options: {
@@ -51,13 +44,6 @@ export const route = {
         })(),
         loadUnratedShouts({ limit: 5, offset: 0 })()
       ])
-
-      console.log('[FeedPage] Initial data loaded:', {
-        shoutsCount: shouts?.length,
-        commentsCount: recentComments?.length,
-        unratedCount: unratedShouts?.length
-      })
-
       return { shouts, recentComments, unratedShouts }
     } catch (error) {
       console.error('[FeedPage] Error loading initial feed data:', error)

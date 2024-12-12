@@ -70,6 +70,7 @@ export const FullBubbleMenu = (props: FullBubbleMenuProps) => {
     }
     setFootNote()
     setFootnoteEditorOpen(false)
+    return true
   }
 
   // handle blockquote
@@ -285,7 +286,7 @@ export const FullBubbleMenu = (props: FullBubbleMenuProps) => {
       <Show when={footnoteEditorOpen()} fallback={<MainMenu />}>
         <MiniEditor
           placeholder={t('Enter footnote text')}
-          onSubmit={(value) => handleAddFootnote(value)}
+          onSubmit={handleAddFootnote}
           content={footNote()}
           onCancel={toggleFootnoteEditor}
         />

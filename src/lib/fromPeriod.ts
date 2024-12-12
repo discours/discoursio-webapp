@@ -39,15 +39,3 @@ export const getTimestampFromPeriod = (period: PeriodType) => {
 
 export const getShortDate = (date: Date) => date.toISOString().slice(0, 10) // 2023-12-31
 export const getUnixtime = (date: Date) => Math.floor(date.getTime() / 1000) as number
-
-export function getPeriodTitle(period: PeriodType): string {
-  return (
-    {
-      [PeriodType.AllTime]: 'All time',
-      [PeriodType.Day]: 'Day',
-      [PeriodType.Week]: 'Week',
-      [PeriodType.Month]: 'Month',
-      [PeriodType.Year]: 'Year'
-    }[period] || 'All time'
-  )
-}
