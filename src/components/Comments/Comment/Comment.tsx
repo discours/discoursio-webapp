@@ -236,7 +236,7 @@ export const Comment = (props: Props) => {
               <Show when={props.showArticleLink}>
                 <div class={styles.articleLink}>
                   <Icon name="arrow-right" class={styles.articleLinkIcon} />
-                  <A href={`${props.comment.shout.slug}?commentId=${props.comment.id}`}>
+                  <A href={`/${props.comment.shout.slug}?commentId=${props.comment.id}`}>
                     {props.comment.shout.title}
                   </A>
                 </div>
