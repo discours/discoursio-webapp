@@ -313,6 +313,25 @@ export const AuthorView = (props: AuthorViewProps) => {
 
   const [commentsOrder, setCommentsOrder] = createSignal<ReactionSort>(ReactionSort.Newest)
 
+  // Обновляем обработчик удаления комментария
+  const handleDeleteComment = (id: number) => {
+    setCommented((prev) => {
+      const filtered = prev.filter((c) => c.id !== id)
+      // Обновляем счетчик комментариев в статистике автора
+      if (author()) {
+        const updatedAuthor = { 
+          ...author()!, 
+          stat: { 
+            ...author()!.stat!, 
+            comments: (author()!.stat!.comments || 0) - 1 
+          } 
+        }
+        setAuthor(updatedAuthor)
+      }
+      return filtered
+    })
+  }
+
   return (
     <div class={styles.authorPage}>
       <div class="wide-container">
@@ -383,7 +402,7 @@ export const AuthorView = (props: AuthorViewProps) => {
                   withFilter={true}
                   sortOrder={commentsOrder()}
                   onFiltersChange={(filters) => setCommentsOrder(filters.sort || ReactionSort.Newest)}
-                  onDeleteComment={(id) => setCommented((prev) => prev.filter((c) => c.id !== id))}
+                  onDeleteComment={handleDeleteComment}
                   loadMoreComments={loadMoreComments}
                   loadMoreHidden={loadMoreCommentsHidden()}
                   pageSize={COMMENTS_PER_PAGE}
