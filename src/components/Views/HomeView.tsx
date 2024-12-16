@@ -16,7 +16,8 @@ import RowShort from '../Feed/RowShort'
 import { TopicsNav } from '../HeaderNav/TopicsNav'
 import { Loading } from '../_shared/Loading'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
-import './Home.module.scss'
+
+import '~/styles/views/Home.module.scss'
 
 export const RANDOM_TOPICS_COUNT = 12
 export const RANDOM_TOPIC_SHOUTS_COUNT = 7
