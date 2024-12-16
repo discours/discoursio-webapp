@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Show, createSignal, onMount } from 'solid-js'
+import { Show, createMemo, createSignal, onMount } from 'solid-js'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon/Icon'
 import { EXPO_LAYOUTS, useFeed } from '~/context/feed'
@@ -129,47 +129,61 @@ export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
     setHasChanges(true)
   }
 
-  // Создаем группы опций
-  const asOptionsGroup = (
-    opts: string[],
-    title?: string,
-    onChange?: (option: Option) => void
-  ): OptionGroup => {
-    const options = opts.map((o) => ({
+  // Мемоизируем создание опций с учетом типа OptionGroup
+  const createOptionsGroup = createMemo(() => {
+    const featuredOptions = ['all', 'featured', 'unfeatured'].map((o) => ({
       value: o,
-      title:
-        title === ''
-          ? Object.values(PeriodType).includes(o as PeriodType)
-            ? getPeriodTitle(o as PeriodType, t)
-            : t(capitalize(o))
-          : t(capitalize(o))
-    }))
+      title: t(capitalize(o))
+    })) satisfies Option[]
 
-    if (title) {
-      const layouts = currentLayouts()
-      const selected = options
-        .map((opt, index) => (layouts.includes(opt.value as ExpoLayoutType | 'article') ? index : -1))
-        .filter((index) => index !== -1)
+    const layoutOptions = ['article', ...EXPO_LAYOUTS].map((o) => ({
+      value: o,
+      title: t(capitalize(o))
+    })) satisfies Option[]
 
-      return {
-        title,
-        options,
-        selected,
-        onChange,
-        multiple: true
-      }
-    }
-
-    const selectedOption = options.find(
-      (o) => o.value === currentFeaturedFilter() || o.value === currentPeriod()
-    )
-    const selected = [selectedOption ? options.indexOf(selectedOption) : -1]
+    const periodOptions = Object.values(PeriodType).map((o) => ({
+      value: o,
+      title: getPeriodTitle(o, t)
+    })) satisfies Option[]
 
     return {
-      options,
-      selected,
-      onChange
+      featured: featuredOptions,
+      layouts: layoutOptions,
+      periods: periodOptions
     }
+  })
+
+  // Типизируем возвращаемые группы
+  const getDropdownGroups = (): OptionGroup[] => {
+    const options = createOptionsGroup()
+
+    return [
+      {
+        options: options.featured,
+        selected: [options.featured.findIndex((o) => o.value === currentFeaturedFilter())],
+        onChange: featuredFilterHandler
+      },
+      {
+        title: t('Layouts'),
+        options: options.layouts,
+        selected: currentLayouts()
+          .map((l) => options.layouts.findIndex((o) => o.value === l))
+          .filter((i) => i !== -1), // Фильтруем невалидные индексы
+        multiple: true,
+        onChange: layoutsOptionsGroupHandler
+      }
+    ]
+  }
+
+  const getPeriodGroup = (): OptionGroup[] => {
+    const options = createOptionsGroup()
+    return [
+      {
+        options: options.periods,
+        selected: [options.periods.findIndex((o) => o.value === currentPeriod())],
+        onChange: periodHandler
+      }
+    ]
   }
 
   return (
@@ -177,17 +191,14 @@ export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
       <div class={styles.dropdowns}>
         <DropDown
           popupProps={{ horizontalAnchor: 'right' }}
-          options={[
-            asOptionsGroup(['all', 'featured', 'unfeatured'], '', featuredFilterHandler),
-            asOptionsGroup(['article', ...EXPO_LAYOUTS], t('Layouts'), layoutsOptionsGroupHandler)
-          ]}
+          options={getDropdownGroups()}
           triggerCssClass={clsx(styles.periodSwitcher, {
             [styles.active]: currentLayouts().length > 0
           })}
         />
         <DropDown
           popupProps={{ horizontalAnchor: 'right' }}
-          options={[asOptionsGroup(Object.values(PeriodType), '', periodHandler)]}
+          options={getPeriodGroup()}
           triggerCssClass={clsx(styles.periodSwitcher, {
             [styles.active]: currentPeriod() && currentPeriod() !== PeriodType.AllTime
           })}
