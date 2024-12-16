@@ -319,12 +319,12 @@ export const AuthorView = (props: AuthorViewProps) => {
       const filtered = prev.filter((c) => c.id !== id)
       // Обновляем счетчик комментариев в статистике автора
       if (author()) {
-        const updatedAuthor = { 
-          ...author()!, 
-          stat: { 
-            ...author()!.stat!, 
-            comments: (author()!.stat!.comments || 0) - 1 
-          } 
+        const updatedAuthor = {
+          ...author()!,
+          stat: {
+            ...author()!.stat!,
+            comments: (author()!.stat!.comments || 0) - 1
+          }
         }
         setAuthor(updatedAuthor)
       }
