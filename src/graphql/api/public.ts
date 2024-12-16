@@ -123,8 +123,13 @@ export const loadShouts = createLoader<Shout[], QueryLoad_Shouts_ByArgs>(
  *
  * @see docs/solid-async.md для деталей работы с асинхронными ресурсами
  */
-export const useShoutsResource = (args: QueryLoad_Shouts_ByArgs) => {
-  return createResource(() => args, loadShouts(args))
+export const useShoutsResource = (initialArgs: QueryLoad_Shouts_ByArgs) => {
+  return createQueryResource<Shout[], QueryLoad_Shouts_ByArgs>(
+    loadShoutsByQuery,
+    () => initialArgs,
+    defaultClient,
+    true // withAbort
+  )
 }
 
 // Authors API
@@ -233,12 +238,17 @@ export const loadReactions = (options: QueryLoad_Reactions_ByArgs) => {
  * - Интеграция с ReactionsProvider
  */
 export const useReactionsResource = (options: QueryLoad_Reactions_ByArgs) => {
-  return createResource(() => options, loadReactions(options))
+  return createQueryResource<Reaction[], QueryLoad_Reactions_ByArgs>(
+    loadReactionsByQuery,
+    () => options,
+    defaultClient,
+    true // withAbort
+  )
 }
 
 // Single Shout API
 /**
- * Реактивный ресурс для загрузки одного шаута
+ * Реактивный ресурс дл загрузки одного шаута
  * Особенности:
  * - Автоматическое обновление при изменении slug
  * - Встроенные состояния loading/error
@@ -261,14 +271,11 @@ export const useReactionsResource = (options: QueryLoad_Reactions_ByArgs) => {
  * @see docs/solid-async.md для деталей работы с SSR
  */
 export const useShout = (options: QueryGet_ShoutArgs) => {
-  return createResource(
+  return createQueryResource<Shout, QueryGet_ShoutArgs>(
+    getShoutQuery,
     () => options,
-    (options: QueryGet_ShoutArgs) => {
-      return async () => {
-        const resp = await defaultClient.query(getShoutQuery, options).toPromise()
-        return resp?.data?.get_shout as Shout
-      }
-    }
+    defaultClient,
+    true // withAbort
   )
 }
 
@@ -299,16 +306,11 @@ export const useShout = (options: QueryGet_ShoutArgs) => {
  * ```
  */
 export const useShoutsSearch = (text: string, options: LoadShoutsOptions) => {
-  return createResource(
+  return createQueryResource<Shout[], QueryLoad_Shouts_SearchArgs>(
+    loadShoutsSearchQuery,
     () => ({ text, options }),
-    ({ text, options }) => {
-      return async () => {
-        const resp = await defaultClient
-          .query(loadShoutsSearchQuery, { text, options } as QueryLoad_Shouts_SearchArgs)
-          .toPromise()
-        return resp?.data?.load_shouts_search as Shout[]
-      }
-    }
+    defaultClient,
+    true // withAbort
   )
 }
 
@@ -319,16 +321,11 @@ export const useShoutsSearch = (text: string, options: LoadShoutsOptions) => {
  * Используется в FeedView для показа контента требующего модерации
  */
 export const useUnratedShouts = (options: LoadShoutsOptions) => {
-  return createResource(
-    () => options,
-    (options: LoadShoutsOptions) => {
-      return async () => {
-        const resp = await defaultClient
-          .query(loadShoutsUnratedQuery, { options } as QueryLoad_Shouts_UnratedArgs)
-          .toPromise()
-        return resp?.data?.load_shouts_unrated as Shout[]
-      }
-    }
+  return createQueryResource<Shout[], QueryLoad_Shouts_UnratedArgs>(
+    loadShoutsUnratedQuery,
+    () => ({ options }),
+    defaultClient,
+    true // withAbort
   )
 }
 
@@ -364,14 +361,11 @@ export const loadUnratedShouts = createLoader<Shout[], LoadShoutsOptions>(
  * ```
  */
 export const useAuthor = (options: QueryGet_AuthorArgs) => {
-  return createResource(
+  return createQueryResource<Author, QueryGet_AuthorArgs>(
+    getAuthorQuery,
     () => options,
-    (options: QueryGet_AuthorArgs) => {
-      return async () => {
-        const resp = await defaultClient.query(getAuthorQuery, options).toPromise()
-        return resp?.data?.get_author as Author
-      }
-    }
+    defaultClient,
+    true // withAbort
   )
 }
 
@@ -380,7 +374,7 @@ export const useAuthor = (options: QueryGet_AuthorArgs) => {
 
 /**
  * Прямой метод без кеширования
- * Загрузка статьи по slug
+ * Загрука статьи по slug
  * Используется для SSR и начальной загрузки данных
  *
  * @example

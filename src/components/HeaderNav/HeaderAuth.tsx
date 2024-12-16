@@ -1,6 +1,6 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
+import { Show, createEffect, createMemo, createSignal, onCleanup, untrack } from 'solid-js'
 import { ShoutForm, useEditorContext } from '~/context/editor'
 import { useLocalize } from '~/context/localize'
 import { useNotifications } from '~/context/notifications'
@@ -32,7 +32,10 @@ export const HeaderAuth = (props: Props) => {
   const { t } = useLocalize()
   const { showModal } = useUI()
   const { session } = useSession()
-  const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
+  const author = createMemo(() => {
+    const sessionData = untrack(() => session())
+    return sessionData?.user?.app_data?.profile as Author
+  })
   const { unreadNotificationsCount, showNotificationsPanel } = useNotifications()
   const { form, toggleEditorPanel, publishShout } = useEditorContext()
 
@@ -59,9 +62,10 @@ export const HeaderAuth = (props: Props) => {
   const [width, setWidth] = createSignal(0)
   const [editorMode, setEditorMode] = createSignal(t('Editing'))
 
-  onMount(() => {
+  createEffect(() => {
     const handleResize = () => setWidth(window.innerWidth)
     handleResize()
+
     window.addEventListener('resize', handleResize)
     onCleanup(() => window.removeEventListener('resize', handleResize))
   })
@@ -173,7 +177,7 @@ export const HeaderAuth = (props: Props) => {
                 <Icon name="eye" class={styles.editorModeIcon} />
                 <div class={styles.editorModeTitle}>{t('Preview')}</div>
                 <div class={styles.editorModeDescription}>
-                  Посмотрите, как материал будет выглядеть при публикации
+                  {t('Look at how the material will look when published')}
                 </div>
               </li>
               <li
@@ -182,7 +186,7 @@ export const HeaderAuth = (props: Props) => {
               >
                 <Icon name="pencil-outline" class={styles.editorModeIcon} />
                 <div class={styles.editorModeTitle}>{t('Editing')}</div>
-                <div class={styles.editorModeDescription}>Изменяйте текст напрямую в редакторе</div>
+                <div class={styles.editorModeDescription}>{t('Edit the text directly in the editor')}</div>
               </li>
               <li
                 class={clsx({ [styles.editorModesSelected]: editorMode() === t('Commenting') })}
@@ -191,7 +195,7 @@ export const HeaderAuth = (props: Props) => {
                 <Icon name="comment" class={styles.editorModeIcon} />
                 <div class={styles.editorModeTitle}>{t('Commenting')}</div>
                 <div class={styles.editorModeDescription}>
-                  Предлагайте правки и комментарии, чтобы сделать материал лучше
+                  {t('Suggest edits and comments to make the material better')}
                 </div>
               </li>
             </ul>
