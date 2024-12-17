@@ -43,7 +43,6 @@ export const AuthorView = (props: AuthorViewProps) => {
   const { t } = useLocalize()
   const loc = useLocation()
   const params = useParams()
-  const { mode } = useParams()
   const { mode: feedMode } = useFeed()
   const [currentTab, setCurrentTab] = createSignal<string | undefined>()
 
@@ -192,6 +191,40 @@ export const AuthorView = (props: AuthorViewProps) => {
     checkBioHeight()
   })
 
+  // Обновляем эффект для корректной обработки URL и состояния
+  createEffect(
+    on(
+      () => [loc.pathname, params.tab, feedMode()],
+      ([pathname]) => {
+        if (pathname.includes('/comments')) {
+          setCurrentTab('comments')
+          // Загружаем комментарии если их еще нет
+          if (!commented().length && author()) {
+            loadReactions({
+              by: {
+                kinds: [ReactionKind.Comment],
+                author: author()?.slug
+              },
+              limit: COMMENTS_PER_PAGE,
+              offset: 0
+            })().then((result) => {
+              if (result) {
+                addShoutReactions(result)
+                setCommented(result)
+                setLoadMoreCommentsHidden(result.length >= stats().comments)
+              }
+            })
+          }
+        } else if (pathname.includes('/about')) {
+          setCurrentTab('about')
+        } else {
+          setCurrentTab(undefined)
+        }
+      },
+      { defer: false }
+    )
+  )
+
   const TabNavigator = () => (
     <div class="col-md-16">
       <ul class="view-switcher">
@@ -299,25 +332,13 @@ export const AuthorView = (props: AuthorViewProps) => {
     }
   }
 
-  // Синхронизируем таб с URL
-  createEffect(() => {
-    // Если режим comments или URL содержит /comments, переключаем на таб комментариев
-    if (feedMode() === 'comments' || loc.pathname.includes('/comments')) {
-      setCurrentTab('comments')
-    } else if (feedMode() === 'about' || loc.pathname.includes('/about')) {
-      setCurrentTab('about')
-    } else {
-      setCurrentTab(mode)
-    }
-  })
-
   const [commentsOrder, setCommentsOrder] = createSignal<ReactionSort>(ReactionSort.Newest)
 
   // Обновляем обработчик удаления комментария
   const handleDeleteComment = (id: number) => {
     setCommented((prev) => {
       const filtered = prev.filter((c) => c.id !== id)
-      // Обновляем счетчик комментариев в статистике автора
+      // Обновляем счетчик коментариев в статистике автора
       if (author()) {
         const updatedAuthor = {
           ...author()!,
@@ -389,7 +410,7 @@ export const AuthorView = (props: AuthorViewProps) => {
         <Match when={currentTab() === 'comments'}>
           <Show when={me()?.slug === props.authorSlug && !me()?.stat?.comments}>
             <div class="wide-container">
-              <Placeholder type={loc?.pathname} mode="profile" />
+              <Placeholder type={'comments'} mode="profile" />
             </div>
           </Show>
 
@@ -413,14 +434,16 @@ export const AuthorView = (props: AuthorViewProps) => {
         </Match>
 
         <Match when={!currentTab()}>
-          <div class={styles.filtersContainer}>
-            <FeedSwitcher options={['recent', 'top', 'hot']} prefix={`/@${props.authorSlug}`} />
-            <FeedFiltersControl />
-          </div>
+          <Show when={sortedFeed()?.length >= 10}>
+            <div class={styles.filtersContainer}>
+              <FeedSwitcher options={['recent', 'top', 'hot']} prefix={`/@${props.authorSlug}`} />
+              <FeedFiltersControl />
+            </div>
+          </Show>
 
           <Show when={me()?.slug === props.authorSlug && !me()?.stat?.shouts}>
             <div class="wide-container">
-              <Placeholder type={loc?.pathname} mode="profile" />
+              <Placeholder type={'author'} mode="profile" />
             </div>
           </Show>
 

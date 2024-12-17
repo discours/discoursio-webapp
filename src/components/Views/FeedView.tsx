@@ -39,22 +39,20 @@ export const FeedView = (props: FeedProps) => {
   const { isFeedLoading, feedByMode, myFeed } = useFeed()
 
   const shouldShowPlaceholder = createMemo(() => {
-    const personalFeed = myFeed()
-    return personalFeed && !session()?.access_token
+    const feedType = myFeed()
+    const currentFeed = feedByMode()
+    const isAuthorized = !!session()?.access_token
+    const isEmpty = !currentFeed?.shouts?.length
+    return (
+      ['followed', 'coauthored', 'discussed', 'comments'].includes(feedType as string) &&
+      (isEmpty || !isAuthorized)
+    )
   })
 
   const placeholderType = createMemo(() => {
     const feedType = myFeed()
-    switch (feedType) {
-      case 'followed':
-        return 'feedMy'
-      case 'discussed':
-        return 'feedDiscussions'
-      case 'coauthored':
-        return 'feedCollaborations'
-      default:
-        return 'feedMy'
-    }
+    if (!session()?.access_token) return 'author'
+    return feedType || 'feed'
   })
 
   // Мемоизируем sortedFeed для оптимизации производительности
@@ -109,7 +107,7 @@ export const FeedView = (props: FeedProps) => {
 
   const [shareData, setShareData] = createSignal<Shout>()
 
-  // Мемоизируем вычисляемые знач��ния
+  // Мемоизируем вычисляемые значения
   const isLoading = createMemo(() => {
     const loading = isFeedLoading() && !sortedFeed()?.length
     console.log('[FeedView] Loading state computed:', {
@@ -262,7 +260,6 @@ export const FeedView = (props: FeedProps) => {
                         fallback={
                           <div class={styles.noContent}>
                             <p>{t('No publications yet')}</p>
-                            <p>{t('Follow authors or topics to see their publications here')}</p>
                           </div>
                         }
                       >

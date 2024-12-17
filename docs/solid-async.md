@@ -67,7 +67,7 @@ createEffect(async () => {
 })
 
 // ✅ Стало - атомарные обновления через Store
-const [feedState, setFeedState] = createStore<FeedStore>({
+const [feedState, setFeedState] = createStore<FeedState>({
   shouts: [],
   isLoading: false,
   hasMore: false,
@@ -207,7 +207,7 @@ export default function Page(props: RouteSectionProps<typeof route>) {
 
 ```typescript
 // В FeedProvider
-const [feedState, setFeedState] = createStore<FeedStore>({
+const [feedState, setFeedState] = createStore<FeedState>({
   shouts: initialData?.shouts || [], // SSR данные
   isLoading: false,
   hasMore: false

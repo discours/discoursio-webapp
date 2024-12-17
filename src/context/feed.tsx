@@ -1,4 +1,5 @@
 import { useLocation } from '@solidjs/router'
+import { Client as GraphQLClient } from '@urql/core'
 import {
   Accessor,
   JSX,
@@ -13,7 +14,14 @@ import {
 } from 'solid-js'
 import { loadCoauthoredShouts, loadDiscussedShouts, loadFollowedShouts } from '~/graphql/api/private'
 import { loadShouts, loadShoutsSearch } from '~/graphql/api/public'
-import { LoadShoutsOptions, ReactionKind, Shout, ShoutsOrderBy } from '~/graphql/schema/core.gen'
+import {
+  Author,
+  LoadShoutsOptions,
+  ReactionKind,
+  Shout,
+  ShoutsOrderBy,
+  Topic
+} from '~/graphql/schema/core.gen'
 import { FeedFilters, FeedMode, FilterState, MyFeedKind } from '~/types/filters'
 import { useSession } from './session'
 
@@ -41,7 +49,15 @@ export const orderByMode = (mode: FeedMode) => {
   }
 }
 
-interface FeedStore {
+/**
+ * Тип для хранения состояния ленты
+ * @property shouts - Массив постов
+ * @property isLoading - Флаг загрузки
+ * @property hasMore - Есть ли еще посты для загрузки
+ * @property isEmpty - Пустая ли лента
+ * @property error - Ошибка при загрузке
+ */
+interface FeedState {
   shouts: Shout[]
   isLoading: boolean
   hasMore: boolean
@@ -51,15 +67,15 @@ interface FeedStore {
 
 interface FeedContextType {
   // Основные хранилища
-  recentFeed: Accessor<FeedStore>
-  hotFeed: Accessor<FeedStore>
-  topFeed: Accessor<FeedStore>
+  recentFeed: Accessor<FeedState>
+  hotFeed: Accessor<FeedState>
+  topFeed: Accessor<FeedState>
 
   // Дополнительные хранилища для других видов выборок
-  followedFeed: Accessor<FeedStore>
-  discussedFeed: Accessor<FeedStore>
-  coauthoredFeed: Accessor<FeedStore>
-  searchFeed: Accessor<FeedStore>
+  followedFeed: Accessor<FeedState>
+  discussedFeed: Accessor<FeedState>
+  coauthoredFeed: Accessor<FeedState>
+  searchFeed: Accessor<FeedState>
 
   // Общие параметры
   mode: Accessor<FeedMode>
@@ -84,7 +100,7 @@ interface FeedContextType {
   setIsFeedLoading: Setter<boolean>
 
   // Группировка фида
-  feedByMode: Accessor<FeedStore>
+  feedByMode: Accessor<FeedState>
   feedByLayout: Accessor<Record<string, Shout[]>>
   feedByTopic: Accessor<Record<string, Shout[]>>
   feedByAuthor: Accessor<Record<string, Shout[]>>
@@ -105,55 +121,90 @@ interface FeedContextType {
 
   myFeed: Accessor<MyFeedKind>
   setMyFeed: Setter<MyFeedKind>
+
+  // Добавляем сеттеры для персональных лент
+  setFollowedFeed: Setter<FeedState>
+  setDiscussedFeed: Setter<FeedState>
+  setCoauthoredFeed: Setter<FeedState>
 }
 
 const FeedContext = createContext<FeedContextType>({} as FeedContextType)
 
 export const useFeed = () => useContext(FeedContext)
 
-const emptyFeed: FeedStore = { shouts: [], isLoading: false, hasMore: false }
+const emptyFeed: FeedState = { shouts: [], isLoading: false, hasMore: false }
 
-// Обновляем тип FeedSettersMap чтобы включить все вможные значения FeedMode
+// Обновляем тип FeedSettersMap чтобы включить все возможные значения FeedMode
 type FeedSettersMap = {
-  [K in FeedMode]: Setter<FeedStore>
+  [K in FeedMode]: Setter<FeedState>
 }
 
-// Выносим функции группировки на уровень модуля
-const groupByTopic = (shouts: Shout[]) =>
-  shouts.reduce(
-    (acc, shout) => {
-      if (shout.main_topic?.slug) {
-        acc[shout.main_topic.slug] = acc[shout.main_topic.slug] || []
-        acc[shout.main_topic.slug].push(shout)
+/**
+ * Универсальная функция для группировки постов по заданному ключу
+ *
+ * @template T - Тип элемента (наследуется от Shout)
+ * @param items - Массив элементов для группировки
+ * @param getKey - Функция получения ключа для группировки
+ * @param getItems - Опциональная функция для получения вложенных элементов
+ * @returns Record с сгруппированными элементами
+ *
+ * @example
+ * ```ts
+ * const byTopic = groupBy(shouts,
+ *   shout => shout.main_topic?.slug,
+ *   shout => shout.topics
+ * )
+ * ```
+ */
+const groupBy = <T extends Shout, S extends { slug?: string } | { id?: number | string }>(
+  items: T[],
+  getKey: (item: T) => string | undefined,
+  getItems?: (item: T) => S[]
+): Record<string, T[]> => {
+  return items.reduce(
+    (acc, item) => {
+      const processItem = (key: string | undefined, i: T) => {
+        if (key) {
+          acc[key] = acc[key] || []
+          acc[key].push(i)
+        }
       }
+
+      processItem(getKey(item), item)
+      if (getItems) {
+        getItems(item).forEach((subItem) => {
+          const key =
+            'slug' in subItem && subItem.slug
+              ? subItem.slug
+              : 'id' in subItem && subItem.id
+                ? subItem.id.toString()
+                : undefined
+          processItem(key, item)
+        })
+      }
+
       return acc
     },
-    {} as Record<string, Shout[]>
+    {} as Record<string, T[]>
+  )
+}
+
+// Теперь используем обновленную функцию
+const groupByTopic = (shouts: Shout[]) =>
+  groupBy(
+    shouts,
+    (shout) => shout.main_topic?.slug,
+    (shout) => (shout.topics || []).filter((t): t is Topic => !!t)
   )
 
 const groupByAuthor = (shouts: Shout[]) =>
-  shouts.reduce(
-    (acc, shout) => {
-      if (shout.created_by?.id) {
-        acc[shout.created_by.id] = acc[shout.created_by.id] || []
-        acc[shout.created_by.id].push(shout)
-      }
-      return acc
-    },
-    {} as Record<string, Shout[]>
+  groupBy(
+    shouts,
+    (shout) => shout.created_by?.id?.toString(),
+    (shout) => (shout.authors || []).filter((a): a is Author => !!a)
   )
 
-const groupByLayout = (shouts: Shout[]) =>
-  shouts.reduce(
-    (acc, shout) => {
-      if (shout.layout) {
-        acc[shout.layout] = acc[shout.layout] || []
-        acc[shout.layout].push(shout)
-      }
-      return acc
-    },
-    {} as Record<string, Shout[]>
-  )
+const groupByLayout = (shouts: Shout[]) => groupBy(shouts, (shout) => shout.layout)
 
 // Добавим типы для полей Shout с дополнительной статистикой
 interface ShoutStats {
@@ -171,13 +222,64 @@ type ControllersMap = {
 }
 
 /**
- * FeedProvider - основной контекст для управления лентами постов
+ * Загрузчик для персональных лент (подписки, обсуждения, соавторство)
+ *
+ * @param type - Тип персональной ленты
+ * @param setter - Функция обновления состояния
+ * @param client - GraphQL клиент
+ * @param options - Базовые опции загрузки
+ * @param opts - Дополнительные опции (пагинация и т.д.)
+ *
+ * @throws {Error} При ошибке загрузки
+ */
+const loadPersonalFeed = async (
+  type: 'followed' | 'discussed' | 'coauthored',
+  setter: Setter<FeedState>,
+  client: GraphQLClient,
+  options: LoadShoutsOptions,
+  opts?: Partial<LoadShoutsOptions>
+) => {
+  setter((prev) => ({ ...prev, isLoading: true }))
+  console.log(`[FeedProvider] Loading ${type} feed:`, { opts })
+
+  try {
+    const loaders = {
+      followed: loadFollowedShouts,
+      discussed: loadDiscussedShouts,
+      coauthored: loadCoauthoredShouts
+    }
+
+    const fetcher = await loaders[type]({ options: { ...options, ...opts } }, client)
+    const result = await fetcher()
+
+    console.log(`[FeedProvider] ${type} feed loaded:`, {
+      count: result?.length,
+      isEmpty: !result?.length,
+      hasMore: (result || []).length >= (opts?.limit || FEED_PAGE_SIZE)
+    })
+
+    setter((prev: FeedState) => ({
+      shouts: opts?.offset ? [...prev.shouts, ...(result || [])] : result || [],
+      isLoading: false,
+      hasMore: (result || []).length >= (opts?.limit || FEED_PAGE_SIZE),
+      isEmpty: !result?.length
+    }))
+  } catch (error) {
+    console.error(`[FeedProvider] Failed to load ${type} feed:`, error)
+    setter((prev) => ({ ...prev, isLoading: false, error: error as Error }))
+  }
+}
+
+/**
+ * Основной провайдер для управления лентами постов
  *
  * Возможности:
  * - Управление разными типами лент (hot, top, recent)
  * - Персональные ленты (followed, discussed, coauthored)
  * - Группировка постов по layout/topic/author
  * - Кэширование и предотвращение повторных загрузок
+ * - Синхронизация с URL
+ * - Обработка ошибок и состояний загрузки
  *
  * @example
  * ```tsx
@@ -187,20 +289,20 @@ type ControllersMap = {
  * ```
  */
 export const FeedProvider = (props: { children: JSX.Element }) => {
-  const { client } = useSession()
+  const { session, client } = useSession()
   const loc = useLocation()
   const [isFeedLoading, setIsFeedLoading] = createSignal(false)
   const [myRates, setMyRates] = createSignal<Record<number, ReactionKind>>({})
   const [myFeed, setMyFeed] = createSignal<MyFeedKind>()
 
   // Создаем отдельные хранилища для каждого типа выборки
-  const [recentFeed, setRecentFeed] = createSignal<FeedStore>(emptyFeed)
-  const [hotFeed, setHotFeed] = createSignal<FeedStore>(emptyFeed)
-  const [topFeed, setTopFeed] = createSignal<FeedStore>(emptyFeed)
-  const [followedFeed, setFollowedFeed] = createSignal<FeedStore>(emptyFeed)
-  const [discussedFeed, setDiscussedFeed] = createSignal<FeedStore>(emptyFeed)
-  const [coauthoredFeed, setCoauthoredFeed] = createSignal<FeedStore>(emptyFeed)
-  const [searchFeed, setSearchFeed] = createSignal<FeedStore>(emptyFeed)
+  const [recentFeed, setRecentFeed] = createSignal<FeedState>(emptyFeed)
+  const [hotFeed, setHotFeed] = createSignal<FeedState>(emptyFeed)
+  const [topFeed, setTopFeed] = createSignal<FeedState>(emptyFeed)
+  const [followedFeed, setFollowedFeed] = createSignal<FeedState>(emptyFeed)
+  const [discussedFeed, setDiscussedFeed] = createSignal<FeedState>(emptyFeed)
+  const [coauthoredFeed, setCoauthoredFeed] = createSignal<FeedState>(emptyFeed)
+  const [searchFeed, setSearchFeed] = createSignal<FeedState>(emptyFeed)
 
   // Хранилище для текущего фида
   const [feedByLayout, setFeedByLayout] = createSignal<Record<string, Shout[]>>({})
@@ -237,7 +339,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     const setter = feedSetters[name]
     if (!setter) return
 
-    const existingFeed = setter((prev: FeedStore) => prev)
+    const existingFeed = setter((prev: FeedState) => prev)
     const existingIds = new Set(existingFeed.shouts.map((s: Shout) => s.id))
     const uniqueShouts = shouts.filter((s) => !existingIds.has(s.id))
 
@@ -284,13 +386,14 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   /**
    * Загрузка ленты с обработкой ошибок и состояний
    *
-   * @param {FeedMode} name - Тип ленты для загрузки
-   * @param {Partial<LoadShoutsOptions>} opts - Опции загрузки
+   * Особенности:
+   * - Отмена предыдущих запросов
+   * - Обработка ошибок
+   * - Управление состоянием загрузки
+   * - Поддержка пагинации
    *
-   * @example
-   * ```ts
-   * await loadFeed('hot', { limit: 20, offset: 0 })
-   * ```
+   * @param name - Тип ленты для загрузки
+   * @param opts - Опции загрузки (limit, offset и т.д.)
    */
   const loadFeed = async (name: FeedMode, opts?: Partial<LoadShoutsOptions>) => {
     controllers[name]?.abort()
@@ -299,7 +402,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     const setter = feedSetters[name]
     if (!setter) return
 
-    setter((prev: FeedStore) => ({
+    setter((prev: FeedState) => ({
       ...prev,
       isLoading: true,
       error: undefined
@@ -323,7 +426,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
       })
     } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') return
-      setter((prev: FeedStore) => ({
+      setter((prev: FeedState) => ({
         ...prev,
         isLoading: false,
         error: error as Error
@@ -344,75 +447,15 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     setSeen((prev) => ({ ...prev, [slug]: Date.now() }))
   }
 
-  // Добавляем методы загрузки для новых типов
-  const loadFollowedFeed = async (opts?: Partial<LoadShoutsOptions>) => {
-    setFollowedFeed((prev) => ({ ...prev, isLoading: true }))
-    console.log('[FeedProvider] Loading followed feed:', { opts })
-    try {
-      const fetcher = await loadFollowedShouts({ options: { ...options(), ...opts } }, client())
-      const result = await fetcher()
-      console.log('[FeedProvider] Followed feed loaded:', {
-        count: result?.length,
-        isEmpty: !result?.length,
-        hasMore: (result || []).length >= (opts?.limit || FEED_PAGE_SIZE)
-      })
-      setFollowedFeed((prev: FeedStore) => ({
-        shouts: opts?.offset ? [...prev.shouts, ...(result || [])] : result || [],
-        isLoading: false,
-        hasMore: (result || []).length >= (opts?.limit || FEED_PAGE_SIZE),
-        isEmpty: !result?.length
-      }))
-    } catch (error) {
-      console.error('[FeedProvider] Failed to load followed feed:', error)
-      setFollowedFeed((prev) => ({ ...prev, isLoading: false, error: error as Error }))
-    }
-  }
+  // Обновляем методы загрузки персональных лент с передачей client и options
+  const loadFollowedFeed = (opts?: Partial<LoadShoutsOptions>) =>
+    loadPersonalFeed('followed', setFollowedFeed, client() as GraphQLClient, options(), opts)
 
-  const loadDiscussedFeed = async (opts?: Partial<LoadShoutsOptions>) => {
-    setDiscussedFeed((prev) => ({ ...prev, isLoading: true }))
-    console.log('[FeedProvider] Loading discussed feed:', { opts })
-    try {
-      const fetcher = await loadDiscussedShouts({ options: { ...options(), ...opts } }, client())
-      const result = await fetcher()
-      console.log('[FeedProvider] Discussed feed loaded:', {
-        count: result?.length,
-        isEmpty: !result?.length,
-        hasMore: (result || []).length >= (opts?.limit || FEED_PAGE_SIZE)
-      })
-      setDiscussedFeed((prev: FeedStore) => ({
-        shouts: opts?.offset ? [...prev.shouts, ...(result || [])] : result || [],
-        isLoading: false,
-        hasMore: (result || []).length >= (opts?.limit || FEED_PAGE_SIZE),
-        isEmpty: !result?.length
-      }))
-    } catch (error) {
-      console.error('[FeedProvider] Failed to load discussed feed:', error)
-      setDiscussedFeed((prev) => ({ ...prev, isLoading: false, error: error as Error }))
-    }
-  }
+  const loadDiscussedFeed = (opts?: Partial<LoadShoutsOptions>) =>
+    loadPersonalFeed('discussed', setDiscussedFeed, client() as GraphQLClient, options(), opts)
 
-  const loadCoauthoredFeed = async (opts?: Partial<LoadShoutsOptions>) => {
-    setCoauthoredFeed((prev) => ({ ...prev, isLoading: true }))
-    console.log('[FeedProvider] Loading coauthored feed:', { opts })
-    try {
-      const fetcher = await loadCoauthoredShouts({ options: { ...options(), ...opts } }, client())
-      const result = await fetcher()
-      console.log('[FeedProvider] Coauthored feed loaded:', {
-        count: result?.length,
-        isEmpty: !result?.length,
-        hasMore: (result || []).length >= (opts?.limit || FEED_PAGE_SIZE)
-      })
-      setCoauthoredFeed((prev: FeedStore) => ({
-        shouts: opts?.offset ? [...prev.shouts, ...(result || [])] : result || [],
-        isLoading: false,
-        hasMore: (result || []).length >= (opts?.limit || FEED_PAGE_SIZE),
-        isEmpty: !result?.length
-      }))
-    } catch (error) {
-      console.error('[FeedProvider] Failed to load coauthored feed:', error)
-      setCoauthoredFeed((prev) => ({ ...prev, isLoading: false, error: error as Error }))
-    }
-  }
+  const loadCoauthoredFeed = (opts?: Partial<LoadShoutsOptions>) =>
+    loadPersonalFeed('coauthored', setCoauthoredFeed, client() as GraphQLClient, options(), opts)
 
   const loadFeedSearch = async (text: string, options: LoadShoutsOptions) => {
     setSearchFeed((prev) => ({ ...prev, isLoading: true }))
@@ -435,12 +478,77 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   }
 
   /**
+   * Инициализация ленты данными от SSR
+   *
+   * Особенности:
+   * - Синхронная установка данных
+   * - Обновление всех группировок
+   * - Предотвращение лишних ререндеров
+   * - Батчинг обновлений состояния
+   *
+   * @param name - Тип ленты
+   * @param shouts - Посты для инициализации
+   */
+  const initializeFeed = (name: keyof FeedSettersMap, shouts: Shout[]) => {
+    const setter = feedSetters[name]
+    if (!setter) return
+
+    const newFeed = {
+      shouts,
+      isLoading: false,
+      hasMore: shouts.length >= FEED_PAGE_SIZE,
+      error: undefined
+    }
+
+    batch(() => {
+      setter(newFeed)
+      setFeedByLayout(groupByLayout(shouts))
+      setFeedByTopic(groupByTopic(shouts))
+      setFeedByAuthor(groupByAuthor(shouts))
+    })
+  }
+
+  // Добаляем фильры в зачение контекста
+  const [filterState, setFilterState] = createSignal<FilterState>({ filters: {}, timestamp: Date.now() })
+  const updateFilters = (filters: Partial<FeedFilters>) => {
+    setFilterState((prev) => ({
+      filters: { ...prev.filters, ...filters },
+      timestamp: Date.now()
+    }))
+  }
+
+  /**
+   * Сортировка постов в зависимости от режима отображения
+   *
+   * @param shouts - Массив постов для сортировки
+   * @param mode - Режим сортировки (hot/top/comments/recent)
+   * @returns Отсортированный массив постов
+   */
+  const sortShouts = (shouts: ShoutWithStats[], mode: FeedMode) => {
+    if (!shouts?.length) return []
+
+    switch (mode) {
+      case 'hot':
+        return [...shouts].sort(
+          (a, b) => (b.last_commented_at?.getTime() || 0) - (a.last_commented_at?.getTime() || 0)
+        )
+      case 'top':
+        return [...shouts].sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      case 'comments':
+        return [...shouts].sort((a, b) => (b.comments_count || 0) - (a.comments_count || 0))
+      default:
+        return [...shouts].sort((a, b) => (b.created_at.getTime() || 0) - (a.created_at.getTime() || 0))
+    }
+  }
+
+  /**
    * Эффект для предотвращения циклических обновлений при смене режима
    *
    * Особенности:
    * - Использует batch для группировки обновлений
    * - Откладывает загрузку через Promise.resolve()
    * - Предотвращает циклы через defer: true
+   * - Очищает старые данные только после успешной загрузки новых
    */
   createEffect(
     on(
@@ -487,23 +595,68 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     )
   )
 
-  // Было - создание объекта при каждом вычислении (React style)
-  const feeds: Record<FeedMode, Accessor<FeedStore>> = {
-    hot: hotFeed,
-    top: topFeed,
-    recent: recentFeed,
-    search: searchFeed,
-    comments: recentFeed,
-    about: recentFeed,
-    followed: followedFeed,
-    discussed: discussedFeed,
-    coauthored: coauthoredFeed
-  }
-
   const feedByMode = createMemo(() => {
-    const currentMode = mode()
-    return feeds[currentMode]() || recentFeed()
+    const currentMode = myFeed()
+    switch (currentMode) {
+      case 'followed':
+        return followedFeed()
+      case 'discussed':
+        return discussedFeed()
+      case 'coauthored':
+        return coauthoredFeed()
+      default:
+        switch (mode()) {
+          case 'hot':
+            return hotFeed()
+          case 'top':
+            return topFeed()
+          default:
+            return recentFeed()
+        }
+    }
   })
+
+  /**
+   * Эффект для автоматической загрузки персональной ленты
+   *
+   * Срабатывает при:
+   * - Изменении типа персональной ленты
+   * - Наличии авторизации
+   *
+   * Обеспечивает:
+   * - Загрузку соответствующих данных
+   * - Обработку состояния загрузки
+   * - Очистку при отсутствии авторизации
+   */
+  createEffect(
+    on(myFeed, async (currentFeed) => {
+      if (!(session()?.access_token && currentFeed)) return
+
+      setIsFeedLoading(true)
+      try {
+        switch (currentFeed) {
+          case 'followed': {
+            await loadFollowedFeed()
+            break
+          }
+          case 'discussed': {
+            await loadDiscussedFeed()
+            break
+          }
+          case 'coauthored': {
+            await loadCoauthoredFeed()
+            break
+          }
+          default: {
+            await loadRecentFeed()
+            break
+          }
+        }
+      } finally {
+        setIsFeedLoading(false)
+      }
+    })
+  )
 
   // Эффект для обновления группировок
   createEffect(
@@ -517,99 +670,6 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
       }
     )
   )
-
-  /**
-   * Инициализация ленты данными от SSR
-   *
-   * Особенности:
-   * - Синхронная установка данных
-   * - Обновление всех группировок
-   * - Предотвращение лишних ререндеров
-   *
-   * @param {FeedMode} name - Тип ленты
-   * @param {Shout[]} shouts - Посты для инициали��ации
-   */
-  const initializeFeed = (name: keyof FeedSettersMap, shouts: Shout[]) => {
-    const setter = feedSetters[name]
-    if (!setter) return
-
-    const newFeed = {
-      shouts,
-      isLoading: false,
-      hasMore: shouts.length >= FEED_PAGE_SIZE,
-      error: undefined
-    }
-
-    // станавливаем значения синхронно
-    setter(newFeed)
-    setter(newFeed)
-
-    // Обновляем гуппровки
-    setFeedByLayout(groupByLayout(shouts))
-
-    // Аналогично обновляем отальные группировки...
-    const groupedByTopic = shouts.reduce(
-      (acc, shout) => {
-        if (shout.main_topic) {
-          acc[shout.main_topic.slug] = acc[shout.main_topic.slug] || []
-          acc[shout.main_topic.slug].push(shout)
-        }
-        for (const topic of shout.topics || []) {
-          if (topic?.slug && topic?.title) {
-            acc[topic.slug] = acc[topic.slug] || []
-            acc[topic.slug].push(shout)
-          }
-        }
-        return acc
-      },
-      {} as Record<string, Shout[]>
-    )
-    setFeedByTopic(groupedByTopic)
-
-    const groupedByAuthor = shouts.reduce(
-      (acc, shout) => {
-        if (shout.created_by?.id) {
-          acc[shout.created_by.id] = acc[shout.created_by.id] || []
-          acc[shout.created_by.id].push(shout)
-        }
-        for (const author of shout.authors || []) {
-          if (author?.slug && author?.name) {
-            acc[author.slug] = acc[author.slug] || []
-            acc[author.slug].push(shout)
-          }
-        }
-        return acc
-      },
-      {} as Record<string, Shout[]>
-    )
-    setFeedByAuthor(groupedByAuthor)
-  }
-
-  // Добаляем фильры в зачение контекста
-  const [filterState, setFilterState] = createSignal<FilterState>({ filters: {}, timestamp: Date.now() })
-  const updateFilters = (filters: Partial<FeedFilters>) => {
-    setFilterState((prev) => ({
-      filters: { ...prev.filters, ...filters },
-      timestamp: Date.now()
-    }))
-  }
-
-  const sortShouts = (shouts: ShoutWithStats[], mode: FeedMode) => {
-    if (!shouts?.length) return []
-
-    switch (mode) {
-      case 'hot':
-        return [...shouts].sort(
-          (a, b) => (b.last_commented_at?.getTime() || 0) - (a.last_commented_at?.getTime() || 0)
-        )
-      case 'top':
-        return [...shouts].sort((a, b) => (b.rating || 0) - (a.rating || 0))
-      case 'comments':
-        return [...shouts].sort((a, b) => (b.comments_count || 0) - (a.comments_count || 0))
-      default:
-        return [...shouts].sort((a, b) => (b.created_at.getTime() || 0) - (a.created_at.getTime() || 0))
-    }
-  }
 
   return (
     <FeedContext.Provider
@@ -664,7 +724,12 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
         updateFilters,
 
         myFeed,
-        setMyFeed
+        setMyFeed,
+
+        // Добавляем сеттеры в значение контекста
+        setFollowedFeed,
+        setDiscussedFeed,
+        setCoauthoredFeed
       }}
     >
       {props.children}

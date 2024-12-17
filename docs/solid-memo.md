@@ -156,7 +156,7 @@ if (isEqual) return prevSorted()
 // В FeedProvider.tsx
 const currentMode = () => mode()
 const feedByMode = createMemo(() => {
-  const feeds: Record<FeedMode, () => FeedStore> = {
+  const feeds: Record<FeedMode, () => FeedState> = {
     hot: hotFeed,
     top: topFeed,
     recent: recentFeed,

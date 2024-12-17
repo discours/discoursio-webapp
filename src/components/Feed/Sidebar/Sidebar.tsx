@@ -1,5 +1,5 @@
 import { A } from '@solidjs/router'
-import { For, Suspense, createEffect, createSignal, on } from 'solid-js'
+import { For, Suspense, batch, createEffect, createSignal, on } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'
 import { useAuthors } from '~/context/authors'
@@ -17,7 +17,16 @@ export const Sidebar = () => {
   const { t } = useLocalize()
   const { follows } = useFollowing()
   const { session } = useSession()
-  const { feedByTopic, feedByAuthor, seen, myFeed, setMyFeed } = useFeed()
+  const {
+    feedByTopic,
+    feedByAuthor,
+    seen,
+    myFeed,
+    setMyFeed,
+    setFollowedFeed,
+    setDiscussedFeed,
+    setCoauthoredFeed
+  } = useFeed()
   const { authorsEntities } = useAuthors()
   const { topicEntities, topTopics } = useTopics()
   const [authorsList, setAuthorsList] = createSignal<Partial<Author>[]>([])
@@ -99,7 +108,29 @@ export const Sidebar = () => {
   )
 
   // Упрощенный обработчик для переключения режимов
-  const handleMyFeedSwitch = (kind: MyFeedKind) => setMyFeed(kind)
+  const handleMyFeedSwitch = (type: MyFeedKind) => {
+    batch(() => {
+      setMyFeed(type)
+      // Сбрасываем текущий фид при переключении
+      switch (type) {
+        case 'followed': {
+          setFollowedFeed({ shouts: [], isLoading: true, hasMore: false })
+          break
+        }
+        case 'discussed': {
+          setDiscussedFeed({ shouts: [], isLoading: true, hasMore: false })
+          break
+        }
+        case 'coauthored': {
+          setCoauthoredFeed({ shouts: [], isLoading: true, hasMore: false })
+          break
+        }
+        default: {
+          setMyFeed(undefined)
+        }
+      }
+    })
+  }
 
   return (
     <div class={styles.sidebar}>
