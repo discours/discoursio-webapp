@@ -64,12 +64,12 @@ export const graphqlClientCreate = (url: string, token = ''): Client => {
     fetchOptions: () => ({
       headers: {
         'content-type': 'application/json',
-        'accept': '*/*',
-        'origin': window?.location?.origin || '',
+        accept: '*/*',
+        origin: window?.location?.origin || '',
         'sec-fetch-mode': 'cors',
         'sec-fetch-site': 'same-site',
         'cache-control': 'no-cache',
-        'pragma': 'no-cache',
+        pragma: 'no-cache',
         ...(token ? { authorization: token } : {})
       },
       credentials: 'include',
