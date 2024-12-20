@@ -84,7 +84,9 @@ export default defineConfig({
       }
     }
   },
-
+  ssr: {
+    noExternal: ['@urql/core', '@urql/exchange-graphcache']
+  },
   optimizeDeps: {
     include: ['buffer']
   }
