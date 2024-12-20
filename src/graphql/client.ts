@@ -52,24 +52,30 @@ export const createQueryResource = <T, V>(
 }
 
 /**
- * Создает GraphQL клиент с опциональной авторизацией
- * Особенности:
- * - Поддержка токена авторизации
- * - Настройка кеширования через exchanges
- * - Конфигурация через options
+ * Создает GraphQL клиент с настроенными заголовками и опциональной авторизацией
+ * @param url - URL GraphQL API
+ * @param token - Токен авторизации (опционально)
+ * @returns Настроенный GraphQL клиент
+ * @example
+ * ```typescript
+ * const client = graphqlClientCreate('https://api.example.com/graphql')
+ * // С токеном авторизации
+ * const authClient = graphqlClientCreate('https://api.example.com/graphql', 'Bearer token123')
+ * ```
  */
 export const graphqlClientCreate = (url: string, token = ''): Client => {
   const exchanges = [fetchExchange, cacheExchange]
   const options: ClientOptions = {
     url,
-    exchanges
-  }
-
-  if (token) {
-    options.fetchOptions = () => ({
+    exchanges,
+    fetchOptions: () => ({
       headers: {
         'content-type': 'application/json',
-        authorization: token
+        'accept': 'application/graphql-response+json, application/graphql+json, application/json',
+        'cache-control': 'no-cache',
+        'pragma': 'no-cache',
+        'connection': 'keep-alive',
+        ...(token ? { 'authorization': token } : {})
       }
     })
   }
