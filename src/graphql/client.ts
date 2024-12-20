@@ -52,16 +52,9 @@ export const createQueryResource = <T, V>(
 }
 
 /**
- * Создает GraphQL клиент с настроенными заголовками и опциональной авторизацией
+ * Создает GraphQL клиент с настроенными заголовками
  * @param url - URL GraphQL API
  * @param token - Токен авторизации (опционально)
- * @returns Настроенный GraphQL клиент
- * @example
- * ```typescript
- * const client = graphqlClientCreate('https://api.example.com/graphql')
- * // С токеном авторизации
- * const authClient = graphqlClientCreate('https://api.example.com/graphql', 'Bearer token123')
- * ```
  */
 export const graphqlClientCreate = (url: string, token = ''): Client => {
   const exchanges = [fetchExchange, cacheExchange]
@@ -71,12 +64,16 @@ export const graphqlClientCreate = (url: string, token = ''): Client => {
     fetchOptions: () => ({
       headers: {
         'content-type': 'application/json',
-        accept: 'application/graphql-response+json, application/graphql+json, application/json',
+        'accept': '*/*',
+        'origin': window?.location?.origin || '',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
         'cache-control': 'no-cache',
-        pragma: 'no-cache',
-        connection: 'keep-alive',
+        'pragma': 'no-cache',
         ...(token ? { authorization: token } : {})
-      }
+      },
+      credentials: 'include',
+      mode: 'cors'
     })
   }
 
