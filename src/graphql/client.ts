@@ -71,11 +71,11 @@ export const graphqlClientCreate = (url: string, token = ''): Client => {
     fetchOptions: () => ({
       headers: {
         'content-type': 'application/json',
-        'accept': 'application/graphql-response+json, application/graphql+json, application/json',
+        accept: 'application/graphql-response+json, application/graphql+json, application/json',
         'cache-control': 'no-cache',
-        'pragma': 'no-cache',
-        'connection': 'keep-alive',
-        ...(token ? { 'authorization': token } : {})
+        pragma: 'no-cache',
+        connection: 'keep-alive',
+        ...(token ? { authorization: token } : {})
       }
     })
   }
