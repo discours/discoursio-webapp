@@ -55,8 +55,10 @@ export const createQueryResource = <T, V>(
  * Создает GraphQL клиент с настроенными заголовками
  * @param url - URL GraphQL API
  * @param token - Токен авторизации (опционально)
+ * @param origin - Origin заголовок (опционально)
+ * @returns Настроенный GraphQL клиент
  */
-export const graphqlClientCreate = (url: string, token = ''): Client => {
+export const graphqlClientCreate = (url: string, token = '', origin = 'discours.io'): Client => {
   const exchanges = [fetchExchange, cacheExchange]
   const options: ClientOptions = {
     url,
@@ -64,12 +66,13 @@ export const graphqlClientCreate = (url: string, token = ''): Client => {
     fetchOptions: () => ({
       headers: {
         'content-type': 'application/json',
-        accept: '*/*',
-        origin: window?.location?.origin || '',
+        'accept': 'application/graphql-response+json, application/graphql+json, application/json',
+        'origin': origin || new URL(url).origin,
         'sec-fetch-mode': 'cors',
         'sec-fetch-site': 'same-site',
+        'sec-fetch-dest': 'empty',
         'cache-control': 'no-cache',
-        pragma: 'no-cache',
+        'pragma': 'no-cache',
         ...(token ? { authorization: token } : {})
       },
       credentials: 'include',
