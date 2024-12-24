@@ -67,13 +67,11 @@ export const graphqlClientCreate = (url: string, token = '', origin = 'discours.
       headers: {
         'content-type': 'application/json',
         'accept': 'application/graphql-response+json, application/graphql+json, application/json',
-        'origin': origin || new URL(url).origin,
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-site',
-        'sec-fetch-dest': 'empty',
+        'origin': origin || (typeof window !== 'undefined' ? window.location.origin : new URL(url).origin),
         'cache-control': 'no-cache',
-        'pragma': 'no-cache',
-        ...(token ? { authorization: token } : {})
+        ...(token ? { 
+          'authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
+        } : {})
       },
       credentials: 'include',
       mode: 'cors'
@@ -83,4 +81,8 @@ export const graphqlClientCreate = (url: string, token = '', origin = 'discours.
   return createClient(options)
 }
 
-export const defaultClient: Client = graphqlClientCreate(coreApiUrl)
+export const defaultClient: Client = graphqlClientCreate(
+  coreApiUrl,
+  '',
+  typeof window !== 'undefined' ? window.location.origin : 'discours.io'
+)
