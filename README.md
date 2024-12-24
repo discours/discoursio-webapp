@@ -3,6 +3,7 @@
 ## Технологический стек
 
 - [TypeScript](https://www.typescriptlang.org/)
+- [SCSS](https://sass-lang.com/)
 - [SolidJS](https://www.solidjs.com/)
 - [SolidStart](https://start.solidjs.com/)
 - [Vinxi](https://vinxi.vercel.app/)
