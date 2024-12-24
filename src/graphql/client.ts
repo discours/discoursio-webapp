@@ -68,7 +68,6 @@ export const graphqlClientCreate = (url: string, token = '', origin = 'discours.
         'content-type': 'application/json',
         accept: 'application/graphql-response+json, application/graphql+json, application/json',
         origin: origin || (typeof window !== 'undefined' ? window.location.origin : new URL(url).origin),
-        'cache-control': 'no-cache',
         ...(token
           ? {
               authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`
