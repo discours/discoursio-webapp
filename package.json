@@ -68,7 +68,7 @@
     "@tiptap/extension-youtube": "^2.10.4",
     "@tiptap/starter-kit": "^2.10.4",
     "@types/cookie-signature": "^1.1.2",
-    "@types/node": "^22.10.1",
+    "@types/node": "^22.10.2",
     "@types/throttle-debounce": "^5.0.2",
     "@urql/core": "^5.1.0",
     "axe-playwright": "^2.0.3",
@@ -79,7 +79,7 @@
     "extended-eventsource": "^2.0.0",
     "fast-deep-equal": "^3.1.3",
     "graphql": "^16.10.0",
-    "i18next": "^24.1.2",
+    "i18next": "^24.2.0",
     "i18next-http-backend": "^3.0.1",
     "i18next-icu": "^2.3.0",
     "intl-messageformat": "^10.7.10",
@@ -106,7 +106,7 @@
     "uniqolor": "^1.1.1",
     "vinxi": "^0.4.3",
     "vite-plugin-node-polyfills": "^0.22.0",
-    "vite-plugin-sass-dts": "^1.3.29",
+    "vite-plugin-sass-dts": "^1.3.30",
     "y-prosemirror": "1.2.15",
     "yjs": "13.6.20"
   },
@@ -118,6 +118,6 @@
   "dependencies": {
     "form-data": "^4.0.1",
     "idb": "^8.0.1",
-    "mailgun.js": "^10.2.4"
+    "mailgun.js": "^10.3.0"
   }
 }
