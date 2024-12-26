@@ -21,7 +21,7 @@ import styles from './MiniEditor.module.scss'
 
 interface MiniEditorProps {
   content?: string
-  onSubmit?: (content: string) => Promise<boolean>
+  onSubmit?: (content: string) => Promise<boolean> | boolean
   onCancel?: () => void
   limit?: number
   placeholder?: string

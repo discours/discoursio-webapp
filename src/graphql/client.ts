@@ -1,6 +1,6 @@
 import { type Client, type ClientOptions, cacheExchange, createClient, fetchExchange } from '@urql/core'
 import { DocumentNode } from 'graphql'
-import { createResource as createSolidResource } from 'solid-js'
+import { ResourceFetcherInfo, createResource as createSolidResource } from 'solid-js'
 import { coreApiUrl } from '~/config'
 
 export type QueryResult<T> = { data?: { [key: string]: T } }
@@ -18,8 +18,8 @@ export const createLoader = <T, V>(
   getVariables: (args: V) => Record<string, unknown>,
   client: Client = defaultClient
 ) => {
-  return (args: V) => async () => {
-    const resp = await client.query(query, getVariables(args)).toPromise()
+  return (args: V) => async (signal?: AbortSignal) => {
+    const resp = await client.query(query, getVariables(args), { signal }).toPromise()
     const key = Object.keys(resp?.data || {})[0]
     return resp?.data?.[key] as T
   }
@@ -27,40 +27,63 @@ export const createLoader = <T, V>(
 
 /**
  * Создает реактивный ресурс для GraphQL запросов
+ * @param withAbort - Включить поддержку AbortSignal (опционально)
  */
 export const createQueryResource = <T, V>(
   query: GraphQLQuery,
   getVariables: (args: V) => Record<string, unknown>,
-  client: Client = defaultClient
+  client: Client = defaultClient,
+  withAbort?: boolean
 ) => {
   const loader = createLoader<T, V>(query, getVariables, client)
-  return (args: V) => createSolidResource(() => args, loader(args))
+  return (args: V) => {
+    const source = () => args
+    if (withAbort) {
+      return createSolidResource<T, V, unknown>(
+        source,
+        (value: V, info: ResourceFetcherInfo<T, unknown>) => {
+          const signal = (info.refetching as { signal?: AbortSignal })?.signal
+          return loader(value)(signal)
+        }
+      )
+    }
+    return createSolidResource<T, V, unknown>(source, (value: V) => loader(value)())
+  }
 }
 
 /**
- * Создает GraphQL клиент с опциональной авторизацией
- * Особенности:
- * - Поддержка токена авторизации
- * - Настройка кеширования через exchanges
- * - Конфигурация через options
+ * Создает GraphQL клиент с настроенными заголовками
+ * @param url - URL GraphQL API
+ * @param token - Токен авторизации (опционально)
+ * @param origin - Origin заголовок (опционально)
+ * @returns Настроенный GraphQL клиент
  */
-export const graphqlClientCreate = (url: string, token = ''): Client => {
+export const graphqlClientCreate = (url: string, token = '', origin = 'discours.io'): Client => {
   const exchanges = [fetchExchange, cacheExchange]
   const options: ClientOptions = {
     url,
-    exchanges
-  }
-
-  if (token) {
-    options.fetchOptions = () => ({
+    exchanges,
+    fetchOptions: () => ({
       headers: {
         'content-type': 'application/json',
-        authorization: token
-      }
+        accept: 'application/graphql-response+json, application/graphql+json, application/json',
+        origin: origin || (typeof window !== 'undefined' ? window.location.origin : new URL(url).origin),
+        ...(token
+          ? {
+              authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`
+            }
+          : {})
+      },
+      credentials: 'include',
+      mode: 'cors'
     })
   }
 
   return createClient(options)
 }
 
-export const defaultClient: Client = graphqlClientCreate(coreApiUrl)
+export const defaultClient: Client = graphqlClientCreate(
+  coreApiUrl,
+  '',
+  typeof window !== 'undefined' ? window.location.origin : 'discours.io'
+)

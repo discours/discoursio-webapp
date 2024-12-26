@@ -12,6 +12,7 @@ import { For, Show, createMemo } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
+
 import styles from './Placeholder.module.scss'
 
 type ProfileLink = {
@@ -33,12 +34,12 @@ type PlaceholderData = {
 }
 
 export type PlaceholderProps = {
-  type: keyof PlaceholderData
+  type: keyof PlaceholderData // "followed" | "coauthored" | "discussed" | "author" | "feed" | "comments"
   mode: 'feed' | 'profile'
 }
 
 const data: PlaceholderData = {
-  feedMy: {
+  followed: {
     image: 'placeholder-feed.webp',
     header: 'Feed settings',
     text: 'Placeholder feed',
@@ -46,14 +47,14 @@ const data: PlaceholderData = {
     buttonLabelFeed: 'Create own feed',
     href: '/author?by=followers'
   },
-  feedCollaborations: {
+  coauthored: {
     image: 'placeholder-experts.webp',
     header: 'Find collaborators',
     text: 'Placeholder feedCollaborations',
     buttonLabel: 'Find co-authors',
     href: '/author?by=name'
   },
-  feedDiscussions: {
+  discussed: {
     image: 'placeholder-discussions.webp',
     header: 'Participate in discussions',
     text: 'Placeholder feedDiscussions',
@@ -74,7 +75,7 @@ const data: PlaceholderData = {
       }
     ]
   },
-  authorComments: {
+  comments: {
     image: 'placeholder-discussions.webp',
     header: 'Join discussions',
     text: 'Placeholder feedDiscussions',

@@ -41,30 +41,57 @@ const topViewedShouts = createMemo(() => {
 ### 2. Управление фидами [FeedProvider.tsx](../src/context/feed.tsx)
 
 ```typescript
-// ❌ Было - смешивание вычислений и доступа к состоянию
-const feedByMode = createMemo(() => {
-  switch (mode()) {
-    case 'hot': return hotFeed()
-    case 'top': return topFeed()
-    default: return recentFeed()
-  }
-})
+// ❌ Было - создание объекта при каждом вычислении
+const feeds = {
+  recent: recentFeed,
+  hot: hotFeed,
+  top: topFeed
+}
 
-// ✅ Стало - изоляция вычислений и кэширование
-const currentMode = () => mode()
-const feedByMode = createMemo(() => {
-  const feeds: Record<FeedMode, () => FeedStore> = {
-    hot: hotFeed,
-    top: topFeed,
-    recent: recentFeed,
-    followed: followedFeed,
-    discussed: discussedFeed,
-    coauthored: coauthoredFeed,
-    search: searchFeed,
-    comments: recentFeed
-  }
-  return feeds[currentMode()]?.() || recentFeed()
-})
+// ✅ Стало - мемоизация с отложенной загрузкой
+createEffect(
+  on(
+    mode,
+    (currentMode) => {
+      console.log('[FeedProvider] Feed mode changed:', {
+        mode: currentMode,
+        client: !!client()
+      })
+
+      // Определяем тип ленты
+      const isPersonalFeed = ['followed', 'discussed', 'coauthored'].includes(currentMode)
+
+      // Сначала загружаем новые данные
+      const loadPromise = Promise.resolve().then(() => {
+        if (isPersonalFeed && !client()) return
+
+        switch (currentMode) {
+          case 'followed':
+            return loadFollowedFeed()
+          case 'discussed':
+            return loadDiscussedFeed()
+          case 'coauthored':
+            return loadCoauthoredFeed()
+          case 'hot':
+            return loadHotFeed()
+          case 'top':
+            return loadTopFeed()
+          default:
+            return loadRecentFeed()
+        }
+      })
+
+      // Только после загрузки очищаем старые данные
+      loadPromise.then(() => {
+        batch(() => {
+          setMyRates({})
+          updateOptions({ offset: 0 })
+        })
+      })
+    },
+    { defer: true }
+  )
+)
 ```
 
 ### 3. Параметры загрузки [FeedPage.tsx](../src/routes/feed/[...mode].tsx)
@@ -87,6 +114,31 @@ const loadParams = createMemo(() => ({
 }))
 ```
 
+### 4. Атомарные сигналы [TopicsProvider.tsx](../src/context/topics.tsx)
+
+```typescript
+// ❌ Было - большой монолитный стейт
+const [state, setState] = createStore({
+  entities: {},
+  sorted: [],
+  sortBy: 'shouts',
+  random: undefined,
+  loading: true
+})
+
+// ✅ Стало - атомарные сигналы и производные состояния
+const [entities, setEntities] = createSignal<Record<string, Topic>>({})
+const [sortBy, setSortBy] = createSignal<TopicSort>('shouts')
+const [loading, setLoading] = createSignal(true)
+
+// Производные состояния через createMemo
+const sorted = createMemo(() => 
+  Object.values(entities()).sort(byTopicStatDesc(sortBy()))
+)
+
+const random = createMemo(() => sorted()[0])
+```
+
 ## Рекомендации по оптимизации
 
 ### 1. Кэширование результатов
@@ -104,7 +156,16 @@ if (isEqual) return prevSorted()
 // В FeedProvider.tsx
 const currentMode = () => mode()
 const feedByMode = createMemo(() => {
-  const feeds = { /*...*/ }
+  const feeds: Record<FeedMode, () => FeedState> = {
+    hot: hotFeed,
+    top: topFeed,
+    recent: recentFeed,
+    followed: followedFeed,
+    discussed: discussedFeed,
+    coauthored: coauthoredFeed,
+    search: searchFeed,
+    comments: recentFeed
+  }
   return feeds[currentMode()]?.() || recentFeed()
 })
 ```
@@ -127,6 +188,18 @@ createEffect(() => {
 })
 ```
 
+### 3. Solid.js отличия от React:
+- Используйте атомарные сигналы вместо большого состояния
+- Применяйте createMemo для производных данных
+- Избегайте ненужной вложенности состояний
+- createStore только для вложенных объектов
+
+### 4. Оптимизация производительности:
+- Кэшируйте промежуточные результаты через сигналы
+- Проверяйте реальные изменения перед пересчетом
+- Изолируйте вычисления от состояния через untrack
+- Используйте defer для предотвращения каскадных обновлений
+
 ## Важные моменты
 
 1. **Используйте createMemo для:**
@@ -139,13 +212,22 @@ createEffect(() => {
    - Прямого доступа к сигналам
    - Единичных преобразований
 
-3. **Оптимизируйте через:**
-   - Кэширование промежуточных результатов
-   - Проверку изменений перед пересчетом
-   - Изоляцию вычислений от состояния
+3. **Solid.js отличия от React:**
+   - Используйте атомарные сигналы вместо большого состояния
+   - Применяйте createMemo для производных данных
+   - Избегайте ненужной вложенности состояний
+   - createStore только для вложенных объектов
+
+4. **Оптимизация производительности:**
+   - Кэшируйте промежуточные результаты через сигналы
+   - Проверяйте реальные изменения перед пересчетом
+   - Изолируйте вычисления от состояния через untrack
+   - Используйте defer для предотвращения каскадных обновл��ний
 
 ## Дополнительные материалы
 
 - [Fine-grained Reactivity](https://docs.solidjs.com/advanced-concepts/fine-grained-reactivity)
 - [Understanding Solid's Signals](https://docs.solidjs.com/concepts/signals)
 - [Ryan's Reactivity Deep Dive](https://dev.to/ryansolid/a-hands-on-introduction-to-fine-grained-reactivity-3ndf)
+- [Solid Store vs Signals](https://www.solidjs.com/guides/reactivity#stores)
+- [Optimizing Reactivity](https://www.solidjs.com/guides/reactivity#optimizing)

@@ -56,11 +56,11 @@
     }
   }
 
-  &.placeholder--feedMy .placeholderCover::after {
+  &.placeholder--followed .placeholderCover::after {
     background: linear-gradient(to top, #171032, rgb(23 16 50 / 0%));
   }
 
-  &.placeholder--feedCollaborations .placeholderCover::after {
+  &.placeholder--coauthored .placeholderCover::after {
     background: linear-gradient(to top, #070709, rgb(7 7 9 / 0%));
   }
 }
@@ -163,8 +163,8 @@
   padding: 1.6rem;
 }
 
-.placeholder--feedMy,
-.placeholder--feedCollaborations {
+.placeholder--followed,
+.placeholder--coauthored {
   color: var(--default-color-invert);
 
   button,
@@ -174,7 +174,7 @@
   }
 }
 
-.placeholder--feedMy {
+.placeholder--followed {
   background: #171032;
 
   .placeholderCover {
@@ -184,7 +184,7 @@
   }
 }
 
-.placeholder--feedCollaborations {
+.placeholder--coauthored {
   background: #070709;
 
   .placeholderCover {
@@ -194,7 +194,7 @@
   }
 }
 
-.placeholder--feedDiscussions {
+.placeholder--discussed {
   background: #E9E9EE;
 
   .placeholderCover {
@@ -221,7 +221,7 @@
   background: #E58B72;
 }
 
-.placeholder--authorComments {
+.placeholder--comments {
   background: #E9E9EE;
 
   .placeholderCover {

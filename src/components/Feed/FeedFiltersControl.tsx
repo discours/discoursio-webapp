@@ -1,39 +1,92 @@
-import { createSignal, onMount } from 'solid-js'
+import clsx from 'clsx'
+import { Show, createMemo, createSignal, onMount } from 'solid-js'
+import { Button } from '~/components/_shared/Button'
+import { Icon } from '~/components/_shared/Icon/Icon'
 import { EXPO_LAYOUTS, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
-import { InputMaybe } from '~/graphql/schema/core.gen'
-import { getPeriodTitle, getTimestampFromPeriod } from '~/lib/fromPeriod'
+import { getTimestampFromPeriod } from '~/lib/fromPeriod'
 import { PeriodType } from '~/lib/fromPeriod'
 import { ExpoLayoutType } from '~/types/common'
-import { CommentsFilters, FeaturedFilter, FeedFilters } from '~/types/filters'
+import { FeaturedFilter, FeedFilters } from '~/types/filters'
 import { capitalize } from '~/utils/capitalize'
 import { DropDown, OptionGroup } from '../_shared/DropDown/DropDown'
 import type { Option } from '../_shared/DropDown/DropDown'
 
+import { TFunction } from 'i18next'
 import styles from '~/styles/views/Feed.module.scss'
-
-export const isFeedFilters = (filters: FeedFilters | CommentsFilters): filters is FeedFilters => {
-  return 'featured' in filters || 'layouts' in filters || 'after' in filters
-}
 
 type FeedFiltersControlProps = {
   type?: string
   mode?: string
 }
 
+function getPeriodTitle(period: PeriodType, t: TFunction): string {
+  return (
+    {
+      [PeriodType.AllTime]: t('All time'),
+      [PeriodType.Day]: t('Day'),
+      [PeriodType.Week]: t('Week'),
+      [PeriodType.Month]: t('Month'),
+      [PeriodType.Year]: t('Year')
+    }[period] || t('All time')
+  )
+}
 export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
   const { t } = useLocalize()
-  const { filterState, updateFilters } = useFeed()
+  const { filterState, updateFilters, loadRecentFeed, loadHotFeed, loadTopFeed, mode } = useFeed()
 
   const [currentPeriod, setCurrentPeriod] = createSignal<PeriodType>(PeriodType.AllTime)
   const [currentFeaturedFilter, setCurrentFeaturedFilter] = createSignal<FeaturedFilter>('all')
+  const [currentLayouts, setCurrentLayouts] = createSignal<(ExpoLayoutType | 'article')[]>([])
+  const [hasChanges, setHasChanges] = createSignal(false)
 
-  // Синхронизируем фильтр featured при инициализации
+  // Функция для перезагрузки фида
+  const reloadFeed = () => {
+    const opts = {
+      filters: {
+        after: currentPeriod() ? getTimestampFromPeriod(currentPeriod()) : undefined,
+        featured:
+          currentFeaturedFilter() === 'featured'
+            ? true
+            : currentFeaturedFilter() === 'unfeatured'
+              ? false
+              : undefined,
+        layouts: currentLayouts()
+      }
+    }
+    switch (mode()) {
+      case 'hot':
+        loadHotFeed(opts)
+        break
+      case 'top':
+        loadTopFeed(opts)
+        break
+      default:
+        loadRecentFeed(opts)
+    }
+    setHasChanges(false)
+  }
+
+  // Синхронизируем начальные фильтры
   onMount(() => {
     const filters = filterState()?.filters as FeedFilters
-    const featured = filters.featured
-    if (featured !== undefined) {
-      setCurrentFeaturedFilter(featured === true ? 'featured' : featured === false ? 'unfeatured' : 'all')
+
+    // Синхронизация featured фильтра
+    if (filters.featured !== undefined) {
+      setCurrentFeaturedFilter(
+        filters.featured === true ? 'featured' : filters.featured === false ? 'unfeatured' : 'all'
+      )
+    }
+
+    // Синхронизация периода
+    if (filters.after !== undefined) {
+      const period = Object.values(PeriodType).find((p) => getTimestampFromPeriod(p) === filters.after)
+      if (period) setCurrentPeriod(period)
+    }
+
+    // Синхронизация layouts
+    if (filters.layouts?.length) {
+      setCurrentLayouts(filters.layouts as (ExpoLayoutType | 'article')[])
     }
   })
 
@@ -46,21 +99,23 @@ export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
     updateFilters({
       featured: mode === 'featured' ? true : mode === 'unfeatured' ? false : undefined
     })
+    setHasChanges(true)
   }
 
-  // Обработчик layouts
+  // Улучшенный обработчик layouts с поддержкой множественного выбора
   const layoutsOptionsGroupHandler = (opt: Option) => {
     if (!opt?.value) return
-    if (!isFeedFilters(filterState()?.filters)) return
 
-    const currentLayouts = (filterState()?.filters as FeedFilters).layouts || []
-    const newLayouts = currentLayouts.includes(opt.value as ExpoLayoutType | 'article')
-      ? currentLayouts.filter((x: InputMaybe<string>) => x !== opt.value)
-      : [...currentLayouts, opt.value as ExpoLayoutType | 'article']
+    const layouts = currentLayouts()
+    const newLayouts = layouts.includes(opt.value as ExpoLayoutType | 'article')
+      ? layouts.filter((x) => x !== opt.value)
+      : [...layouts, opt.value as ExpoLayoutType | 'article']
 
+    setCurrentLayouts(newLayouts)
     updateFilters({
       layouts: newLayouts.length ? newLayouts : undefined
     })
+    setHasChanges(true)
   }
 
   // Обработчик периода
@@ -71,65 +126,93 @@ export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
     updateFilters({
       after: period === PeriodType.AllTime ? undefined : getTimestampFromPeriod(period)
     })
+    setHasChanges(true)
   }
 
-  // Создаем группы опций
-  const asOptionsGroup = (
-    opts: string[],
-    title?: string,
-    onChange?: (option: Option) => void
-  ): OptionGroup => {
-    const options = opts.map((o) => ({
+  // Мемоизируем создание опций с учетом типа OptionGroup
+  const createOptionsGroup = createMemo(() => {
+    const featuredOptions = ['all', 'featured', 'unfeatured'].map((o) => ({
       value: o,
-      title:
-        title === ''
-          ? Object.values(PeriodType).includes(o as PeriodType)
-            ? getPeriodTitle(o as PeriodType)
-            : t(capitalize(o))
-          : t(capitalize(o))
-    }))
+      title: t(capitalize(o))
+    })) satisfies Option[]
 
-    if (title) {
-      const currentLayouts = (filterState()?.filters as FeedFilters).layouts || []
-      const selectedOption = options.find((o) =>
-        currentLayouts.includes(o.value as ExpoLayoutType | 'article')
-      )
-      const selected = [selectedOption ? options.indexOf(selectedOption) : -1]
-      return {
-        title,
-        options,
-        selected,
-        onChange
-      }
-    }
+    const layoutOptions = ['article', ...EXPO_LAYOUTS].map((o) => ({
+      value: o,
+      title: t(capitalize(o))
+    })) satisfies Option[]
 
-    const selectedOption = options.find(
-      (o) => o.value === currentFeaturedFilter() || o.value === currentPeriod()
-    )
-    const selected = [selectedOption ? options.indexOf(selectedOption) : -1]
+    const periodOptions = Object.values(PeriodType).map((o) => ({
+      value: o,
+      title: getPeriodTitle(o, t)
+    })) satisfies Option[]
 
     return {
-      options,
-      selected,
-      onChange
+      featured: featuredOptions,
+      layouts: layoutOptions,
+      periods: periodOptions
     }
+  })
+
+  // Типизируем возвращаемые группы
+  const getDropdownGroups = (): OptionGroup[] => {
+    const options = createOptionsGroup()
+
+    return [
+      {
+        options: options.featured,
+        selected: [options.featured.findIndex((o) => o.value === currentFeaturedFilter())],
+        onChange: featuredFilterHandler
+      },
+      {
+        title: t('Layouts'),
+        options: options.layouts,
+        selected: currentLayouts()
+          .map((l) => options.layouts.findIndex((o) => o.value === l))
+          .filter((i) => i !== -1), // Фильтруем невалидные индексы
+        multiple: true,
+        onChange: layoutsOptionsGroupHandler
+      }
+    ]
+  }
+
+  const getPeriodGroup = (): OptionGroup[] => {
+    const options = createOptionsGroup()
+    return [
+      {
+        options: options.periods,
+        selected: [options.periods.findIndex((o) => o.value === currentPeriod())],
+        onChange: periodHandler
+      }
+    ]
   }
 
   return (
-    <div class={styles.dropdowns}>
-      <DropDown
-        popupProps={{ horizontalAnchor: 'right' }}
-        options={[
-          asOptionsGroup(['all', 'featured', 'unfeatured'], '', featuredFilterHandler),
-          asOptionsGroup(['article', ...EXPO_LAYOUTS], t('Layouts'), layoutsOptionsGroupHandler)
-        ]}
-        triggerCssClass={styles.periodSwitcher}
-      />
-      <DropDown
-        popupProps={{ horizontalAnchor: 'right' }}
-        options={[asOptionsGroup(Object.values(PeriodType), '', periodHandler)]}
-        triggerCssClass={styles.periodSwitcher}
-      />
+    <div class={styles.filtersContainer}>
+      <div class={styles.dropdowns}>
+        <DropDown
+          popupProps={{ horizontalAnchor: 'right' }}
+          options={getDropdownGroups()}
+          triggerCssClass={clsx(styles.periodSwitcher, {
+            [styles.active]: currentLayouts().length > 0
+          })}
+        />
+        <DropDown
+          popupProps={{ horizontalAnchor: 'right' }}
+          options={getPeriodGroup()}
+          triggerCssClass={clsx(styles.periodSwitcher, {
+            [styles.active]: currentPeriod() && currentPeriod() !== PeriodType.AllTime
+          })}
+        />
+        <Show when={hasChanges()}>
+          <Button
+            variant="secondary"
+            class={styles.reloadButton}
+            onClick={reloadFeed}
+            title={t('Apply filters')}
+            value={<Icon name="check-subscribed-black" />}
+          />
+        </Show>
+      </div>
     </div>
   )
 }

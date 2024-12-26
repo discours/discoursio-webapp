@@ -1,4 +1,4 @@
-import { cdnDomain, cdnUrl, thumborDomain } from '~/config'
+import { cdnUrl } from '~/config'
 
 export const getFileUrl = (
   src: string,
@@ -17,8 +17,9 @@ export const getFileUrl = (
   }
   const result = `${cdnUrl}/${basename}.${extension}`
   // console.debug(`${src} -> ${result}`)
+  const cdnDomain = new URL(cdnUrl).hostname
   return result
-    .replace(thumborDomain, cdnDomain)
+    .replace('images.discours.io', cdnDomain)
     .replace('assets.discours.io', cdnDomain)
     .replace('cdn.discours.io', cdnDomain)
 }

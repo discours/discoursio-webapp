@@ -36,7 +36,24 @@ export const FeedView = (props: FeedProps) => {
   const loc = useLocation()
   const { showModal } = useUI()
   const { session, client } = useSession()
-  const { isFeedLoading, feedByMode } = useFeed()
+  const { isFeedLoading, feedByMode, myFeed } = useFeed()
+
+  const shouldShowPlaceholder = createMemo(() => {
+    const feedType = myFeed()
+    const currentFeed = feedByMode()
+    const isAuthorized = !!session()?.access_token
+    const isEmpty = !currentFeed?.shouts?.length
+    return (
+      ['followed', 'coauthored', 'discussed', 'comments'].includes(feedType as string) &&
+      (isEmpty || !isAuthorized)
+    )
+  })
+
+  const placeholderType = createMemo(() => {
+    const feedType = myFeed()
+    if (!session()?.access_token) return 'author'
+    return feedType || 'feed'
+  })
 
   // Мемоизируем sortedFeed для оптимизации производительности
   const sortedFeed = createMemo(() => {
@@ -54,7 +71,7 @@ export const FeedView = (props: FeedProps) => {
   // загрузка myRates при изменении фида или авторизации
   createEffect(
     on(
-      [sortedFeed, client],
+      [sortedFeed, () => client()],
       async ([shouts, authorizedClient]) => {
         if (!(shouts?.length && authorizedClient)) {
           setMyRates({})
@@ -80,7 +97,7 @@ export const FeedView = (props: FeedProps) => {
             setMyRates(ratesMap)
           }
         } catch (error) {
-          console.error('[FeedPage] Error loading rates:', error)
+          console.error('[FeedView] Error loading rates:', error)
           setMyRates({})
         }
       },
@@ -99,17 +116,6 @@ export const FeedView = (props: FeedProps) => {
       isLoading: loading
     })
     return loading
-  })
-
-  // Добавляем мемоизацию для проверки необходимости показа плейсхолдера
-  const showPlaceholder = createMemo(() => {
-    const shouldShow = !(session() && loc.pathname.includes('feed'))
-    console.log('[FeedView] Placeholder visibility computed:', {
-      hasSession: !!session(),
-      pathname: loc.pathname,
-      shouldShow
-    })
-    return shouldShow
   })
 
   // Компонент для комментариев
@@ -147,7 +153,7 @@ export const FeedView = (props: FeedProps) => {
       feedLength: sortedFeed()?.length,
       isLoading: isLoading(),
       pathname: loc.pathname,
-      showPlaceholder: showPlaceholder()
+      showPlaceholder: shouldShowPlaceholder()
     })
   })
 
@@ -232,26 +238,28 @@ export const FeedView = (props: FeedProps) => {
       <Show when={!isLoading() && sortedFeed()} fallback={<Loading />}>
         <div class="wide-container">
           <div class={clsx('row')}>
-            <Show when={!showPlaceholder()} fallback={<Placeholder type={loc.pathname} mode="feed" />}>
-              <div class={clsx('col-md-5 col-xl-4', styles.feedNavigation)}>
-                <Sidebar />
+            <div class={clsx('col-md-5 col-xl-4', styles.feedNavigation)}>
+              <Sidebar />
+            </div>
+
+            <div class="col-md-12 offset-xl-1">
+              <div class={styles.filtersContainer}>
+                <FeedSwitcher options={['recent', 'top', 'hot']} prefix={'/feed'} />
+                <FeedFiltersControl />
               </div>
 
-              <div class="col-md-12 offset-xl-1">
-                <div class={styles.filtersContainer}>
-                  <FeedSwitcher options={['recent', 'top', 'hot']} prefix={'/feed'} />
-                  <FeedFiltersControl />
-                </div>
-
-                <Show when={!isFeedLoading()} fallback={<Loading />}>
-                  <div class={styles.feedContent}>
+              <Show when={!isFeedLoading()} fallback={<Loading />}>
+                <div class={styles.feedContent}>
+                  <Show
+                    when={!shouldShowPlaceholder()}
+                    fallback={<Placeholder type={placeholderType()} mode="feed" />}
+                  >
                     <div class={styles.feedPage}>
                       <Show
                         when={!feedByMode().isEmpty}
                         fallback={
                           <div class={styles.noContent}>
                             <p>{t('No publications yet')}</p>
-                            <p>{t('Follow authors or topics to see their publications here')}</p>
                           </div>
                         }
                       >
@@ -260,36 +268,36 @@ export const FeedView = (props: FeedProps) => {
                         </div>
                       </Show>
                     </div>
-                  </div>
-                </Show>
-              </div>
+                  </Show>
+                </div>
+              </Show>
+            </div>
 
-              <aside class={clsx('col-md-7 col-xl-6 offset-xl-1', styles.feedAside)}>
-                <Show when={!isFeedLoading()}>
-                  <Suspense fallback={<Loading />}>
-                    <FreshestCommentsList />
-                    <UnratedArticlesList />
-                    <section class={clsx(styles.asideSection, styles.pinnedLinks)}>
-                      <h4>{t('Knowledge base')}</h4>
-                      <ul class="nodash">
-                        <li>
-                          <A href="/guide">{t('How Discours works')}</A>
-                        </li>
-                        <li>
-                          <A href="/how-to-write-a-good-article">{t('How to write a good article')}</A>
-                        </li>
-                        <li>
-                          <A href="/rules">{t('Rules of constructive discussions')}</A>
-                        </li>
-                        <li>
-                          <A href="/principles">{t('Community principles')}</A>
-                        </li>
-                      </ul>
-                    </section>
-                  </Suspense>
-                </Show>
-              </aside>
-            </Show>
+            <aside class={clsx('col-md-7 col-xl-6 offset-xl-1', styles.feedAside)}>
+              <Show when={!isFeedLoading()}>
+                <Suspense fallback={<Loading />}>
+                  <FreshestCommentsList />
+                  <UnratedArticlesList />
+                  <section class={clsx(styles.asideSection, styles.pinnedLinks)}>
+                    <h4>{t('Knowledge base')}</h4>
+                    <ul class="nodash">
+                      <li>
+                        <A href="/guide">{t('How Discours works')}</A>
+                      </li>
+                      <li>
+                        <A href="/how-to-write-a-good-article">{t('How to write a good article')}</A>
+                      </li>
+                      <li>
+                        <A href="/rules">{t('Rules of constructive discussions')}</A>
+                      </li>
+                      <li>
+                        <A href="/principles">{t('Community principles')}</A>
+                      </li>
+                    </ul>
+                  </section>
+                </Suspense>
+              </Show>
+            </aside>
           </div>
 
           <Show when={shareData()}>

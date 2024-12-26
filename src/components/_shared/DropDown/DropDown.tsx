@@ -19,6 +19,7 @@ export type OptionGroup = {
   options: Option[]
   selected: number[]
   onChange?: (option: Option) => void
+  multiple?: boolean
 }
 
 type Props = {
@@ -65,13 +66,18 @@ const OptionItem = (props: {
   option: Option
   isActive: boolean
   onClick: (option: Option) => void
+  multiple?: boolean
 }) => (
   <li>
     <button
       class={clsx(popupStyles.action, {
         [styles.active]: props.isActive
       })}
-      onClick={() => props.onClick(props.option)}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        props.onClick(props.option)
+      }}
     >
       <span>{props.option.title}</span>
       <Show when={props.isActive}>
@@ -110,6 +116,7 @@ const GroupOptions = (props: {
               console.log('TODO: implement onClick')
             })
           }
+          multiple={props.group.multiple}
         />
       )}
     </For>
@@ -130,6 +137,10 @@ export const DropDown = (props: Props) => {
 
       if (!firstGroup?.options?.length) {
         return ''
+      }
+
+      if (firstGroup.multiple && firstGroup.selected.length > 0) {
+        return `${firstGroup.selected.length} выбрано`
       }
 
       const selectedIndex = firstGroup.selected?.[0]
@@ -167,6 +178,14 @@ export const DropDown = (props: Props) => {
     )
   }
 
+  const isMultipleSelect = createMemo(() => {
+    if (isOptionGroup()) {
+      const groups = props.options as OptionGroup[]
+      return groups.some((group) => group.multiple)
+    }
+    return false
+  })
+
   return (
     <Show when={props.options.length > 0} keyed={true}>
       <Popup
@@ -181,7 +200,8 @@ export const DropDown = (props: Props) => {
           </div>
         }
         variant="tiny"
-        onVisibilityChange={(isVisible) => setIsPopupVisible(isVisible)}
+        onVisibilityChange={setIsPopupVisible}
+        keepOpen={isMultipleSelect()}
         {...props.popupProps}
       >
         <ul class="nodash">{renderContent()}</ul>

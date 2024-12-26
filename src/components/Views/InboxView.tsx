@@ -71,15 +71,21 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
     }
   }
 
-  const handleSubmit = (message: string) => {
-    sendMessage?.({
-      body: message,
-      reply_to: messageToReply()?.id,
-      chat_id: currentDialog()?.id || ''
-    } as MutationCreate_MessageArgs)
-    setMessageToReply(null)
-    if (messagesContainerRef)
-      (messagesContainerRef as HTMLDivElement).scrollTop = messagesContainerRef?.scrollHeight || 0
+  const handleSubmit = async (message: string): Promise<boolean> => {
+    try {
+      await sendMessage?.({
+        body: message,
+        reply_to: messageToReply()?.id,
+        chat_id: currentDialog()?.id || ''
+      } as MutationCreate_MessageArgs)
+      setMessageToReply(null)
+      if (messagesContainerRef)
+        (messagesContainerRef as HTMLDivElement).scrollTop = messagesContainerRef?.scrollHeight || 0
+      return true
+    } catch (error) {
+      console.error('Failed to submit message:', error)
+      return false
+    }
   }
 
   createEffect(

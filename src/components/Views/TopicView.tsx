@@ -6,6 +6,7 @@ import {
   Show,
   Suspense,
   Switch,
+  batch,
   createEffect,
   createMemo,
   createResource,
@@ -179,17 +180,22 @@ export const TopicView = (props: Props) => {
   // 5. Обновим loadMore для гарантированного обновления UI
   const loadMore = async () => {
     saveScrollPosition()
+    const currentLength = sortedFeed().length
+
     const topicShoutsFetcher = loadShouts({
       options: {
         filters: { topic: props.topicSlug },
         limit: FEED_PAGE_SIZE,
-        offset: sortedFeed().length
+        offset: currentLength
       }
     })
 
     const result = await topicShoutsFetcher()
     if (result?.length) {
-      setSortedFeed((prev) => [...prev, ...result]) // Напрямую обновляем sortedFeed
+      batch(() => {
+        setSortedFeed((prev) => [...prev, ...result])
+        setLoadMoreHidden(sortedFeed().length + result.length === (topic()?.stat?.shouts || 0))
+      })
     }
     restoreScrollPosition()
     return result as LoadMoreItems
@@ -204,7 +210,6 @@ export const TopicView = (props: Props) => {
   const topViewedShouts = createMemo(() => {
     const feed = topicFeed()
 
-    // Проверяем равенство массивов
     const isEqual =
       feed.length === prevFeed().length && feed.every((item, i) => item.id === prevFeed()[i]?.id)
 
