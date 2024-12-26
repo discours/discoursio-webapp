@@ -53,7 +53,7 @@ bun run storybook   # Запуск Storybook
 
 ## Тестирование
 
-### E2E тесты (Playwright)
+### Playwright
 
 ```bash
 bun run e2e:install  # Установка зависимостей для E2E
