@@ -140,11 +140,10 @@ export const PublishSettings = (props: Props) => {
     console.group('[handlePublishSubmit]')
     const shoutData = { ...props.form, ...settingsForm, body: editing()?.getHTML() || '' }
     console.log('Publishing data:', shoutData)
-    
+
     // Проверяем наличие выбранных топиков
-    const hasValidTopics = (shoutData.selectedTopics?.length > 0) || 
-                          (shoutData.mainTopic && shoutData.mainTopic.id)
-    
+    const hasValidTopics = shoutData.selectedTopics?.length > 0 || shoutData.mainTopic?.id
+
     console.log('Topics validation:', {
       selectedTopics: shoutData.selectedTopics,
       mainTopic: shoutData.mainTopic,
