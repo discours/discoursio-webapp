@@ -76,7 +76,7 @@ export function useEditorContext() {
 }
 
 const topic2topicInput = (topic: Topic): TopicInput | null => {
-  if (!topic?.id || !topic?.slug || !topic?.title) {
+  if (!(topic?.id && topic?.slug && topic?.title)) {
     console.warn('Invalid topic:', topic)
     return null
   }
@@ -189,7 +189,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
     console.log('Processed mainTopic:', mainTopic)
 
     // Убедимся, что topics всегда массив и содержит валидные данные
-    const topics = selectedTopics.length ? selectedTopics : (mainTopic ? [mainTopic] : [])
+    const topics = selectedTopics.length ? selectedTopics : mainTopic ? [mainTopic] : []
     console.log('Final topics array:', JSON.stringify(topics))
 
     // Проверим структуру каждого топика
@@ -233,46 +233,46 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
           media: formToUpdate.media || []
         }
 
-      console.log('Final mutation input:', JSON.stringify(input))
+    console.log('Final mutation input:', JSON.stringify(input))
 
-      try {
-        const resp = formToUpdate.shoutId
-          ? await client()
-              ?.mutation(updateShoutMutation, {
-                shout_id: formToUpdate.shoutId,
-                shout_input: input,
-                publish
-              })
-              .toPromise()
-          : await client()?.mutation(createShoutMutation, { shout: input }).toPromise()
+    try {
+      const resp = formToUpdate.shoutId
+        ? await client()
+            ?.mutation(updateShoutMutation, {
+              shout_id: formToUpdate.shoutId,
+              shout_input: input,
+              publish
+            })
+            .toPromise()
+        : await client()?.mutation(createShoutMutation, { shout: input }).toPromise()
 
-        console.log('Raw mutation response:', resp)
+      console.log('Raw mutation response:', resp)
 
-        if (resp?.error) {
-          console.error('GraphQL error:', resp.error)
-          return { error: 'Server error occurred' }
-        }
-
-        const result = resp?.data?.create_shout || resp?.data?.update_shout
-        console.log('Parsed mutation result:', result)
-
-        if (result?.error) {
-          console.error('Operation error:', result.error)
-          return { error: result.error }
-        }
-
-        if (!result?.shout) {
-          console.error('No shout data in response')
-          return { error: 'Failed to save shout' }
-        }
-
-        console.groupEnd()
-        return result
-      } catch (error) {
-        console.error('Mutation failed:', error)
-        console.groupEnd()
-        return { error: 'Failed to save changes' }
+      if (resp?.error) {
+        console.error('GraphQL error:', resp.error)
+        return { error: 'Server error occurred' }
       }
+
+      const result = resp?.data?.create_shout || resp?.data?.update_shout
+      console.log('Parsed mutation result:', result)
+
+      if (result?.error) {
+        console.error('Operation error:', result.error)
+        return { error: result.error }
+      }
+
+      if (!result?.shout) {
+        console.error('No shout data in response')
+        return { error: 'Failed to save shout' }
+      }
+
+      console.groupEnd()
+      return result
+    } catch (error) {
+      console.error('Mutation failed:', error)
+      console.groupEnd()
+      return { error: 'Failed to save changes' }
+    }
   }
 
   const saveShout = async (formToSave: ShoutForm) => {
