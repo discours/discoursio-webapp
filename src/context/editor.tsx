@@ -76,7 +76,11 @@ export function useEditorContext() {
   return useContext(EditorContext)
 }
 
-const topic2topicInput = (topic: Topic): TopicInput => {
+const topic2topicInput = (topic: Topic): TopicInput | null => {
+  if (!topic || !topic.id) {
+    console.warn('Invalid topic:', topic)
+    return null
+  }
   return {
     id: topic.id,
     slug: topic.slug,
@@ -162,72 +166,127 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   }
 
   const updateShout = async (formToUpdate: ShoutForm, { publish }: { publish: boolean }) => {
-    console.debug('[updateShout] formToUpdate', formToUpdate)
-    const topics =
-      formToUpdate.selectedTopics.map((topic) => topic2topicInput(topic)) || formToUpdate.mainTopic?.slug
-        ? [topic2topicInput(formToUpdate.mainTopic as Topic)]
-        : []
-    if (publish && !topics) {
+    console.group('[updateShout]')
+    console.log('Form data:', formToUpdate)
+    console.log('Publish mode:', publish)
+
+    // Проверяем входные данные топиков
+    console.log('Input selectedTopics:', formToUpdate.selectedTopics)
+    console.log('Input mainTopic:', formToUpdate.mainTopic)
+
+    const selectedTopics = formToUpdate.selectedTopics
+      .map((topic) => {
+        const converted = topic2topicInput(topic)
+        console.log('Converting topic:', topic, ' -> ', converted)
+        return converted
+      })
+      .filter((t): t is TopicInput => {
+        const isValid = t !== null
+        if (!isValid) console.warn('Filtered out invalid topic')
+        return isValid
+      })
+
+    const mainTopic = formToUpdate.mainTopic ? topic2topicInput(formToUpdate.mainTopic) : null
+    console.log('Processed mainTopic:', mainTopic)
+    
+    const topics = selectedTopics.length ? selectedTopics : (mainTopic ? [mainTopic] : [])
+    console.log('Final topics array:', topics)
+
+    if (publish && !topics.length) {
+      console.warn('Publication rejected: no topics selected')
+      console.groupEnd()
       return { error: 'Please, set the main topic first' }
     }
-    if (!formToUpdate.shoutId && formToUpdate.body) {
-      console.debug('[updateShout] creating a new shout', formToUpdate)
-      const resp = await client()
-        ?.mutation(createShoutMutation, {
-          shout: {
-            layout: formToUpdate.layout,
-            body: formToUpdate.body,
-            topics,
-            slug: formToUpdate.slug,
-            subtitle: formToUpdate.subtitle,
-            title: formToUpdate.title,
-            lead: formToUpdate.lead,
-            description: formToUpdate.description,
-            cover: formToUpdate.coverImageUrl,
-            media: formToUpdate.media
-          }
-        })
-        .toPromise()
-      return resp?.data?.create_shout
+
+    const input = !formToUpdate.shoutId ? {
+      layout: formToUpdate.layout,
+      body: formToUpdate.body,
+      topics: topics,
+      slug: formToUpdate.slug,
+      subtitle: formToUpdate.subtitle,
+      title: formToUpdate.title,
+      lead: formToUpdate.lead,
+      description: formToUpdate.description,
+      cover: formToUpdate.coverImageUrl,
+      media: formToUpdate.media
+    } : {
+      body: formToUpdate.body,
+      topics: topics,
+      slug: formToUpdate.slug,
+      subtitle: formToUpdate.subtitle,
+      title: formToUpdate.title,
+      lead: formToUpdate.lead,
+      description: formToUpdate.description,
+      cover: formToUpdate.coverImageUrl,
+      media: formToUpdate.media
     }
-    console.debug('[updateShout] updating a created shout', formToUpdate)
-    const resp = await client()?.mutation(updateShoutMutation, {
-      shout_id: formToUpdate.shoutId,
-      shout_input: {
-        body: formToUpdate.body,
-        topics,
-        slug: formToUpdate.slug,
-        subtitle: formToUpdate.subtitle,
-        title: formToUpdate.title,
-        lead: formToUpdate.lead,
-        description: formToUpdate.description,
-        cover: formToUpdate.coverImageUrl,
-        media: formToUpdate.media
-      },
-      publish
-    })
-    return resp?.data?.update_shout
+
+    console.log('Mutation input:', input)
+    
+    try {
+      const resp = !formToUpdate.shoutId 
+        ? await client()?.mutation(createShoutMutation, { shout: input }).toPromise()
+        : await client()?.mutation(updateShoutMutation, {
+            shout_id: formToUpdate.shoutId,
+            shout_input: input,
+            publish
+          }).toPromise()
+
+      console.log('Mutation response:', resp)
+      
+      if (resp?.error) {
+        console.error('GraphQL error:', resp.error)
+        return { error: 'Server error occurred' }
+      }
+
+      const result = resp?.data?.create_shout || resp?.data?.update_shout
+      console.log('Mutation result:', result)
+
+      if (result?.error) {
+        console.error('Operation error:', result.error)
+        return { error: result.error }
+      }
+
+      console.groupEnd()
+      return result
+    } catch (error) {
+      console.error('Mutation failed:', error)
+      console.groupEnd()
+      return { error: 'Failed to save changes' }
+    }
   }
 
   const saveShout = async (formToSave: ShoutForm) => {
+    console.group('[saveShout]')
+    console.log('Saving form:', formToSave)
+
     isEditorPanelVisible() && toggleEditorPanel()
 
     if ((matchEdit() && !validate()) || (matchEditSettings() && !validateSettings())) {
+      console.warn('Validation failed')
+      console.groupEnd()
       return
     }
 
     try {
       const { shout, error } = await updateShout(formToSave, { publish: false })
+      console.log('Save result:', { shout, error })
+      
       if (error) {
+        console.error('Save error:', error)
         snackbar?.showSnackbar({ type: 'error', body: localize?.t(error) || '' })
+        console.groupEnd()
         return
       }
+
       localStorage.removeItem(`shout-${formToSave.shoutId}`)
+      console.log('Navigating to:', shout?.published_at ? `/article/${shout.slug}` : '/edit')
       navigate(shout?.published_at ? `/article/${shout.slug}` : '/edit')
     } catch (error) {
-      console.error('[saveShout]', error)
+      console.error('Save failed:', error)
       snackbar?.showSnackbar({ type: 'error', body: localize?.t('Error') || '' })
     }
+    console.groupEnd()
   }
 
   const saveDraft = async (draftForm: ShoutForm) => {
@@ -239,34 +298,33 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   }
 
   const publishShout = async (formToPublish: ShoutForm) => {
-    isEditorPanelVisible() && toggleEditorPanel()
-
-    if ((matchEdit() && !validate()) || (matchEditSettings() && !validateSettings())) {
-      return
-    }
-
-    if (matchEdit()) {
-      const slug = slugify(form.title)
-      setForm('slug', slug)
-      navigate(`/edit/${form.shoutId}/settings`)
-      const { error } = await updateShout(formToPublish, { publish: false })
-      if (error) {
-        snackbar?.showSnackbar({ type: 'error', body: localize?.t(error) || '' })
-        return
-      }
-    }
+    console.group('[publishShout]')
+    console.log('Publishing form:', formToPublish)
 
     try {
-      const { error } = await updateShout(formToPublish, { publish: true })
-      if (error) {
-        snackbar?.showSnackbar({ type: 'error', body: localize?.t(error) || '' })
+      console.log('Publishing shout...')
+      const result = await updateShout(formToPublish, { publish: true })
+      
+      if (result?.error) {
+        console.error('Publish error:', result.error)
+        snackbar?.showSnackbar({ type: 'error', body: localize?.t(result.error) || '' })
+        console.groupEnd()
         return
       }
-      navigate('/feed')
+      
+      if (result?.shout) {
+        console.log('Publication successful, adding to feed:', result.shout)
+        addShoutsToFeed([result.shout], 'recent')
+        navigate('/feed')
+      } else {
+        console.error('No shout data in response')
+        snackbar?.showSnackbar({ type: 'error', body: localize?.t('Failed to publish') || '' })
+      }
     } catch (error) {
-      console.error('[publishShout]', error)
+      console.error('Publication failed:', error)
       snackbar?.showSnackbar({ type: 'error', body: localize?.t('Error') || '' })
     }
+    console.groupEnd()
   }
 
   const publishShoutById = async (shout_id: number) => {
