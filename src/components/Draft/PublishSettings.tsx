@@ -137,16 +137,35 @@ export const PublishSettings = (props: Props) => {
   const { editing } = useEditorContext()
 
   const handlePublishSubmit = () => {
+    console.group('[handlePublishSubmit]')
     const shoutData = { ...props.form, ...settingsForm, body: editing()?.getHTML() || '' }
-    if (shoutData?.mainTopic) {
+    console.log('Publishing data:', shoutData)
+
+    // Проверяем наличие выбранных топиков
+    const hasValidTopics = shoutData.selectedTopics?.length > 0 || shoutData.mainTopic?.id
+
+    console.log('Topics validation:', {
+      selectedTopics: shoutData.selectedTopics,
+      mainTopic: shoutData.mainTopic,
+      hasValidTopics
+    })
+
+    if (hasValidTopics) {
+      console.log('Topics validation passed, proceeding with publication')
       publishShout(shoutData)
     } else {
-      showSnackbar({ body: t('Please, set the main topic first') })
+      console.warn('Publication rejected: no valid topics')
+      showSnackbar({ body: t('Please, select at least one topic') })
     }
+    console.groupEnd()
   }
 
   const handleSaveDraft = () => {
-    saveShout({ ...props.form, ...settingsForm, body: editing()?.getHTML() || '' })
+    console.group('[handleSaveDraft]')
+    const shoutData = { ...props.form, ...settingsForm, body: editing()?.getHTML() || '' }
+    console.log('Saving draft data:', shoutData)
+    saveShout(shoutData)
+    console.groupEnd()
   }
   const removeSpecial = (ev: InputEvent) => {
     const input = ev.target as HTMLInputElement
