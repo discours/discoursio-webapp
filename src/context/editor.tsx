@@ -76,7 +76,7 @@ export function useEditorContext() {
 }
 
 const topic2topicInput = (topic: Topic): TopicInput | null => {
-  if (!(topic?.id && topic?.slug && topic?.title)) {
+  if (!topic?.id) {
     console.warn('Invalid topic:', topic)
     return null
   }
