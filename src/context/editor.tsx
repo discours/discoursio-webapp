@@ -211,14 +211,14 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
     const input = formToUpdate.shoutId
       ? {
           body: formToUpdate.body,
-          topics, // Убедимся, что topics передается как массив
+          topics,
           slug: formToUpdate.slug,
           subtitle: formToUpdate.subtitle || '',
           title: formToUpdate.title,
           lead: formToUpdate.lead || '',
           description: formToUpdate.description || '',
           cover: formToUpdate.coverImageUrl || '',
-          media: formToUpdate.media || []
+          media: formToUpdate.media || '[]'
         }
       : {
           layout: formToUpdate.layout || 'article',
@@ -230,7 +230,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
           lead: formToUpdate.lead || '',
           description: formToUpdate.description || '',
           cover: formToUpdate.coverImageUrl || '',
-          media: formToUpdate.media || []
+          media: formToUpdate.media || '[]'
         }
 
     console.log('Final mutation input:', JSON.stringify(input))
