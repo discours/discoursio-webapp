@@ -226,7 +226,7 @@ export const EditView = (props: Props) => {
 
   const debouncedAutoSave = debounce(AUTO_SAVE_DELAY, autoSave)
   const handleInputChange = (key: keyof ShoutForm, value: string) => {
-    console.log(`[handleInputChange] ${String(key)}: ${value}`)
+    // console.log(`[handleInputChange] ${String(key)}: ${value}`)
     setForm((_: ShoutForm) => ({ ..._, [key]: value }))
     setHasChanges(true)
     debouncedAutoSave()

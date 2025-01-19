@@ -267,11 +267,11 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
       }
 
       console.groupEnd()
-      return result
+      return { shout: result.shout, error: null }
     } catch (error) {
       console.error('Mutation failed:', error)
       console.groupEnd()
-      return { error: 'Failed to save changes' }
+      return { error: 'Failed to save changes', shout: null }
     }
   }
 
@@ -309,10 +309,29 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   }
 
   const saveDraft = async (draftForm: ShoutForm) => {
-    const { error } = await updateShout(draftForm, { publish: false })
-    if (error) {
-      snackbar?.showSnackbar({ type: 'error', body: localize?.t(error) || '' })
-      return
+    try {
+      console.group('[saveDraft]')
+      console.log('Saving draft:', draftForm)
+
+      const { error, shout } = await updateShout(draftForm, { publish: false })
+
+      if (error) {
+        console.error('Draft save error:', error)
+        snackbar?.showSnackbar({ type: 'error', body: localize?.t(error) || '' })
+        console.groupEnd()
+        return
+      }
+
+      // Обновляем ID материала после первого сохранения
+      if (shout?.id && !draftForm.shoutId) {
+        console.log('Updating shout ID after initial save:', shout.id)
+        setForm('shoutId', shout.id)
+      }
+
+      console.groupEnd()
+    } catch (error) {
+      console.error('[saveDraft] error:', error)
+      snackbar?.showSnackbar({ type: 'error', body: localize?.t('Error saving draft') || '' })
     }
   }
 
@@ -385,16 +404,28 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   }
 
   const debouncedAutoSave = debounce(AUTO_SAVE_DELAY, async () => {
-    console.log('autoSave called')
+    console.group('[autoSave]')
+    console.log('Auto-save triggered, hasChanges:', hasChanges())
+
     if (hasChanges()) {
       const data = { ...form, body: editing()?.getHTML() || '' }
-      console.debug('saving draft', data)
+      console.debug('Saving draft data:', data)
       setSaving(true)
-      localStorage.setItem(`shout-${form.shoutId}`, JSON.stringify(data))
-      await saveDraft(data)
-      setSaving(false)
-      setHasChanges(false)
+
+      try {
+        // Сохраняем в localStorage только если есть ID
+        if (data.shoutId) {
+          localStorage.setItem(`shout-${data.shoutId}`, JSON.stringify(data))
+        }
+
+        await saveDraft(data)
+      } finally {
+        setSaving(false)
+        setHasChanges(false)
+      }
     }
+
+    console.groupEnd()
   })
   onCleanup(debouncedAutoSave.cancel)
 
@@ -456,7 +487,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   )
 
   const handleInputChange = (key: keyof ShoutForm, value: string) => {
-    console.log(`[handleInputChange] ${key}: ${value}`)
+    // console.log(`[handleInputChange] ${key}: ${value}`)
     setForm(key, value)
     setHasChanges(true)
     debouncedAutoSave()

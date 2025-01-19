@@ -38,6 +38,13 @@ export const PRERENDERED_ARTICLES_COUNT = 12
 const COMMENTS_PER_PAGE = 12
 // const LOAD_MORE_PAGE_SIZE = 9
 
+// Добавим тип для статистики автора
+type AuthorStats = {
+  shouts: number
+  comments: number
+  rating?: number
+}
+
 export const AuthorView = (props: AuthorViewProps) => {
   // contexts
   const { t } = useLocalize()
@@ -72,10 +79,11 @@ export const AuthorView = (props: AuthorViewProps) => {
   const { commentsByAuthor, addShoutReactions } = useReactions()
   const { feedByAuthor } = useFeed()
 
-  // Создаем мемо для статистики из author.stat
-  const stats = createMemo(() => ({
-    shouts: author()?.stat?.shouts || 0,
-    comments: author()?.stat?.comments || 0
+  // Обновляем мемо для статистики с дефолтными значениями
+  const stats = createMemo<AuthorStats>(() => ({
+    shouts: author()?.stat?.shouts ?? 0,
+    comments: author()?.stat?.comments ?? 0,
+    rating: author()?.stat?.rating ?? undefined
   }))
 
   // Эффект для обработки изменения таба через браузер
@@ -147,33 +155,44 @@ export const AuthorView = (props: AuthorViewProps) => {
           setFollowersLoaded(true)
           setFollowingArray([...(myFollows?.topics || []), ...(myFollows?.authors || [])])
           setFollowingsLoaded(true)
-          // Добавить логирование для отладки
-          console.log('Current user:', meData)
-          console.log('Author slug:', slug)
+
+          // Убедимся, что статистика существует
+          if (!meData.stat) {
+            console.error('Missing stats for current user', meData)
+          }
         } else if (slug && !author()) {
           await loadAuthor({ slug })
           const foundAuthor = authorsEntities()[slug]
-          // Проверить загрузку автора
-          console.log('Loaded author:', foundAuthor)
-          setAuthor(foundAuthor)
 
           if (foundAuthor) {
-            const followsResp = await client()
-              ?.query(getAuthorFollowsQuery, { slug: foundAuthor.slug })
-              .toPromise()
-            const follows = followsResp?.data?.get_author_follows || {}
-            setFollowingArray([...(follows?.authors || []), ...(follows?.topics || [])])
-            setFollowingsLoaded(true)
+            // Инициализируем статистику если её нет
+            if (!foundAuthor.stat) {
+              console.warn('Missing stats for author, initializing defaults')
+              foundAuthor.stat = {
+                shouts: props.shouts?.length || 0,
+                comments: props.comments?.length || 0,
+                rating: 0
+              }
+            }
+            setAuthor(foundAuthor)
 
-            const followersResp = await client()
-              ?.query(getAuthorFollowersQuery, { slug: foundAuthor.slug })
-              .toPromise()
-            setFollowers(followersResp?.data?.get_author_followers || [])
-            setFollowersLoaded(true)
+            if (foundAuthor) {
+              const followsResp = await client()
+                ?.query(getAuthorFollowsQuery, { slug: foundAuthor.slug })
+                .toPromise()
+              const follows = followsResp?.data?.get_author_follows || {}
+              setFollowingArray([...(follows?.authors || []), ...(follows?.topics || [])])
+              setFollowingsLoaded(true)
+
+              const followersResp = await client()
+                ?.query(getAuthorFollowersQuery, { slug: foundAuthor.slug })
+                .toPromise()
+              setFollowers(followersResp?.data?.get_author_followers || [])
+              setFollowersLoaded(true)
+            }
           }
         }
-      },
-      {}
+      }
     )
   )
 
@@ -334,17 +353,16 @@ export const AuthorView = (props: AuthorViewProps) => {
 
   const [commentsOrder, setCommentsOrder] = createSignal<ReactionSort>(ReactionSort.Newest)
 
-  // Обновляем обработчик удаления комментария
+  // Обновляем обработчик удаления комментария с учетом статистики
   const handleDeleteComment = (id: number) => {
     setCommented((prev) => {
       const filtered = prev.filter((c) => c.id !== id)
-      // Обновляем счетчик коментариев в статистике автора
       if (author()) {
         const updatedAuthor = {
           ...author()!,
           stat: {
             ...author()!.stat!,
-            comments: (author()!.stat!.comments || 0) - 1
+            comments: Math.max(0, (author()!.stat?.comments || 1) - 1)
           }
         }
         setAuthor(updatedAuthor)
@@ -408,7 +426,7 @@ export const AuthorView = (props: AuthorViewProps) => {
         </Match>
 
         <Match when={currentTab() === 'comments'}>
-          <Show when={me()?.slug === props.authorSlug && !me()?.stat?.comments}>
+          <Show when={me() && me()?.slug === props.authorSlug && !me().stat?.comments}>
             <div class="wide-container">
               <Placeholder type={'comments'} mode="profile" />
             </div>
