@@ -1,29 +1,108 @@
-
 # Редактор discours.io
 
-## Типы редакторов
+## Режимы редактора
 
-| Тип | Назначение | Компонент |
-|-----|------------|-----------|
-| Полный редактор | Редактирование статей | `EditorComponent` |
-| Мини-редактор | Редактирование коротких текстов | `MiniEditor` |
-| Микро-редактор | Встраиваемый редактор | `MicroEditor` |
+| Функция | Полный редактор | Мини-редактор | Микро-редактор |
+|---------|-----------------|----------------|----------------|
+| **Компонент** | `EditorComponent` | `MiniEditor` | `MicroEditor` |
+| **Назначение** | Статьи, посты | Комментарии | Подписи, заметки |
+| **Форматирование** | Полное | Базовое | Минимальное |
+| **Медиа** | ✅ | ❌ | ❌ |
+| **Автосохранение** | ✅ | ❌ | ❌ |
+| **Коллаборация** | ✅ | ❌ | ❌ |
+| **Горячие клавиши** | ✅ | ✅ | ✅ |
+| **Валидация** | ✅ | ✅ | ✅ |
+| **Размер бандла** | ~100KB | ~30KB | ~15KB |
 
-## Архитектура редактора
+## Возможности форматирования
 
-### 1. Основные компоненты
+| Функция | Полный | Мини | Микро | Компонент |
+|---------|---------|------|-------|-----------|
+| Жирный текст | ✅ | ✅ | ✅ | `MicroBubbleMenu` |
+| Курсив | ✅ | ✅ | ✅ | `MicroBubbleMenu` |
+| Ссылки | ✅ | ✅ | ✅ | `MicroBubbleMenu` |
+| Заголовки (H1-H3) | ✅ | ❌ | ❌ | `FullBubbleMenu` |
+| Списки | ✅ | ❌ | ❌ | `FullBubbleMenu` |
+| Цитаты | ✅ | ✅ | ❌ | `BlockquoteBubbleMenu` |
+| Изображения | ✅ | ❌ | ❌ | `FigureBubbleMenu` |
+| Врезки | ✅ | ❌ | ❌ | `IncutBubbleMenu` |
+| Сноски | ✅ | ❌ | ❌ | `FullBubbleMenu` |
+| Подсветка текста | ✅ | ❌ | ❌ | `FullBubbleMenu` |
+
+## Архитектура
+
+### Компоненты редактора
 
 ```
 Editor/
-├── Editor.tsx # Основной редактор
-├── MiniEditor.tsx # Упрощенная версия
-├── MicroEditor.tsx # Минимальная версия
-├── Panel/ # Панель управления
+├── Editor.tsx      # Полный редактор статей
+│ ├── EditorComponent # Основной компонент
+│ ├── Panel/ # Боковая панель управления
+│ └── AutoSaveNotice # Уведомление о сохранении
+├── MiniEditor.tsx # Редактор комментариев
+│ ├── MiniEditor # Упрощенный редактор
+│ └── MicroBubbleMenu # Базовая панель инструментов
+├── MicroEditor.tsx # Встраиваемый редактор
+│ └── MicroBubbleMenu # Минимальная панель
 ├── Toolbar/ # Панели инструментов
+│ ├── FullBubbleMenu # Полная панель
+│ ├── BlockquoteBubbleMenu # Управление цитатами
+│ ├── FigureBubbleMenu # Управление изображениями
+│ ├── IncutBubbleMenu # Управление врезками
+│ └── EditorFloatingMenu # Плавающее меню
 └── extensions/ # Расширения TipTap
+├── Article # Врезки и статьи
+├── CustomBlockquote # Кастомные цитаты
+└── TrailingNode # Завершающий узел
+```
+### Контекст и состояние
+
+#### EditorContext
+- [editor.tsx](src/context/editor.tsx) - Основной контекст
+- [EditorProvider](src/context/editor.tsx#L45) - Провайдер состояния
+- [useEditorContext](src/context/editor.tsx#L25) - Хук для доступа
+
+#### Состояния редактора
+
+```typescript
+export interface EditorState {
+    isReady: boolean // Готовность к работе
+    isCollabMode: boolean // Режим коллаборации
+    saving: boolean // Идет сохранение
+    hasChanges: boolean // Есть изменения
+    content: string // Содержимое
+    selection: Selection // Текущее выделение
+}
 ```
 
-### 2. Панели инструментов
+## Режимы работы
+
+### 1. Обычный режим
+- Одиночное редактирование
+- Автосохранение черновиков
+- Полный набор инструментов
+- [EditorComponent.tsx](src/components/Editor/Editor.tsx)
+
+### 2. Коллаборативный режим
+- Совместное редактирование
+- Отображение курсоров
+- Разрешение конфликтов
+- [CollaborationExtension](src/components/Editor/extensions/Collaboration.ts)
+
+### 3. Режим комментариев
+- Упрощенный интерфейс
+- Базовое форматирование
+- Быстрое сохранение
+- [MiniEditor.tsx](src/components/Editor/MiniEditor.tsx)
+
+### 4. Встраиваемый режим
+- Минимальный функционал
+- Легкий вес
+- Простая интеграция
+- [MicroEditor.tsx](src/components/Editor/MicroEditor.tsx)
+
+
+### Панели инструментов
 
 | Компонент | Назначение |
 |-----------|------------|
@@ -34,7 +113,7 @@ Editor/
 | `IncutBubbleMenu` | Управление врезками |
 | `EditorFloatingMenu` | Плавающее меню |
 
-### 3. Возможности форматирования
+### Возможности форматирования
 
 | Функция | Описание | Компонент |
 |---------|-----------|-----------|
@@ -45,77 +124,6 @@ Editor/
 | Изображения | С подписями и выравниванием | `FigureBubbleMenu` |
 | Сноски | С редактором | `FullBubbleMenu` |
 | Врезки | С фоном и выравниванием | `IncutBubbleMenu` |
-
-### 4. Режимы работы
-
-| Режим | Описание | Компоненты |
-|-------|-----------|------------|
-| Обычный | Одиночное редактирование | `EditorComponent` |
-| Коллаборативный | Совместное редактирование | `EditorComponent + Collaboration` |
-| Автосохранение | Сохранение черновиков | `AutoSaveNotice` |
-
-## Расширение функционала
-
-### 1. Добавление нового типа контента
-
-```typescript
-// 1. Создать расширение в extensions/
-import { Node } from '@tiptap/core'
-export const CustomNode = Node.create({
-name: 'customNode',
-group: 'block',
-content: 'block+',
-// Определить HTML представление
-parseHTML() { ... },
-renderHTML() { ... },
-// Добавить атрибуты
-addAttributes() { ... },
-// Добавить команды
-addCommands() { ... }
-})
-// 2. Подключить в Editor.tsx
-extensions: [
-...base,
-CustomNode
-]
-```
-
-### 2. Добавление панели инструментов
-
-```typescript
-// 1. Создать компонент в Toolbar/
-export const CustomBubbleMenu = (props: Props) => {
-return (
-<div class={styles.BubbleMenu}>
-<ToolbarControl
-editor={props.editor}
-onChange={() => {
-// Обработка действий
-}}
-/>
-</div>
-)
-}
-// 2. Подключить в Editor.tsx
-BubbleMenu.configure({
-element: customBubbleMenuRef()!,
-shouldShow: ({ editor }) => {
-// Условия отображения
-}
-})
-```
-
-### 3. Добавление горячих клавиш
-
-```typescript
-// В Editor.tsx
-addKeyboardShortcuts() {
-    return {
-        'Mod-K': () => this.editor.commands.customCommand(),
-        'Mod-Shift-K': () => this.editor.commands.anotherCommand()
-        }
-    }
-```
 
 ## Контекст редактора
 
@@ -136,6 +144,16 @@ const {
 } = useEditorContext()
 ```
 
+
+## Тестирование
+
+```typescript
+test('Editor initialization', async ({ page }) => {
+    await page.goto('/edit/new')
+    await expect(page.locator('[data-ready="true"]')).toBeVisible()
+})
+```
+
 ## Стилизация
 
 Редактор использует CSS модули для стилизации:
@@ -143,11 +161,17 @@ const {
 - `BubbleMenu.module.scss` - Стили панелей
 - `MiniEditor.module.scss` - Стили мини-редактора
 
-## Тестирование
+### CSS модули
+- [Editor.module.scss](src/components/Editor/Editor.module.scss)
+- [MiniEditor.module.scss](src/components/Editor/MiniEditor.module.scss)
+- [Toolbar.module.scss](src/components/Editor/Toolbar/Toolbar.module.scss)
 
-```typescript
-test('Editor initialization', async ({ page }) => {
-await page.goto('/edit/new')
-await expect(page.locator('[data-ready="true"]')).toBeVisible()
-})
-```
+### Темы
+- [themes/light.scss](src/styles/themes/light.scss)
+- [themes/dark.scss](src/styles/themes/dark.scss)
+
+## Полезные ссылки
+
+- [TipTap Documentation](https://tiptap.dev/docs)
+- [SolidJS Components](https://www.solidjs.com/docs/latest/api#components)
+- [ProseMirror Guide](https://prosemirror.net/docs/guide/)
