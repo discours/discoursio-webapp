@@ -45,6 +45,6 @@ bun run e2e:tests:ci # Run tests in CI
 
 Tests are executed in GitHub Actions. Make sure `BASE_URL` is correctly configured in CI.
 
-## Version: 0.9.7
+### Version: 0.9.14
 
 [Documentation](docs/README.en.md)
