@@ -78,10 +78,10 @@ export function useEditorContext() {
 
 const topic2topicInput = (topic: Topic): TopicInput | null => {
   if (!topic) return null
-  if (!topic?.id || !topic.slug || !topic.title) {
-    console.warn('Invalid topic - missing required fields:', { 
+  if (!(topic?.id && topic.slug && topic.title)) {
+    console.warn('Invalid topic - missing required fields:', {
       id: topic?.id,
-      slug: topic?.slug, 
+      slug: topic?.slug,
       title: topic?.title
     })
     return null
@@ -190,16 +190,15 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
     const mainTopic = formToUpdate.mainTopic ? topic2topicInput(formToUpdate.mainTopic) : null
 
     const topics = selectedTopics.length ? selectedTopics : mainTopic ? [mainTopic] : []
-    
+
     if (publish && !topics.length) {
       console.warn('Publication rejected: no topics selected')
       console.groupEnd()
       return { error: 'Please, set the main topic first' }
     }
 
-    const mediaData = typeof formToUpdate.media === 'string' 
-      ? formToUpdate.media 
-      : JSON.stringify(formToUpdate.media || [])
+    const mediaData =
+      typeof formToUpdate.media === 'string' ? formToUpdate.media : JSON.stringify(formToUpdate.media || [])
 
     const input = {
       body: formToUpdate.body,

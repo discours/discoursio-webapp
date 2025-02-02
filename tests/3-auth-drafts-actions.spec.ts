@@ -6,6 +6,7 @@ import { type Page, expect, test } from '@playwright/test'
 
 const TEST_LOGIN = process.env.TEST_LOGIN
 const TEST_PASSWORD = process.env.TEST_PASSWORD
+const EXPECT_EDIT_URL = /\/edit\/[a-zA-Z0-9-]+/
 let page: Page
 
 function httpsGet(url: string): Promise<void> {
@@ -179,16 +180,16 @@ test.describe('Создание новых материалов', () => {
 
   test('Editor initialization', async ({ page }) => {
     await page.goto('/edit/new')
-    
+
     // Проверяем что страница загрузилась
     await expect(page).toHaveTitle('Дискурс :: Выберите тип публикации')
-    
+
     // Ждем готовности редактора
     await expect(page.locator('[data-ready="true"]')).toBeVisible()
-    
+
     // Проверяем что клик работает с первого раза
     await page.locator('li').filter({ hasText: 'статья' }).locator('img').click()
-    await expect(page).toHaveURL(/\/edit\/[a-zA-Z0-9-]+/)
+    await expect(page).toHaveURL(EXPECT_EDIT_URL)
   })
 })
 
