@@ -14,6 +14,7 @@ The project uses: SolidJS, Typescript, GraphQL, SASS
 
 - [View tracking system](views.md)
 - [Editor](editor.md)
+- [Collaborative editor](editor-collab.md)
 - [Analytics](analytics.md)
 - [Data caching](caching.md)
 

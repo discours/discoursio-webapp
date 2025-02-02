@@ -16,6 +16,7 @@
 - [Аналитика и метрики](analytics.md)
 - [Кеширование загружаемых данных](caching.md)
 - [Редактор discours.io](editor.md)
+- [Коллаборативный редактор](editor-collab.md)
 
 - [Общие механики лент](feed-components.md)
 - [Фильтрация и сортировка](feed-components.md#фильтрация-и-сортировка)
