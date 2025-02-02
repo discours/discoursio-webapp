@@ -176,6 +176,20 @@ test.describe('Создание новых материалов', () => {
     // Проверка создания
     await expect(page.getByText('Черновик сохранен')).toBeVisible()
   })
+
+  test('Editor initialization', async ({ page }) => {
+    await page.goto('/edit/new')
+    
+    // Проверяем что страница загрузилась
+    await expect(page).toHaveTitle('Дискурс :: Выберите тип публикации')
+    
+    // Ждем готовности редактора
+    await expect(page.locator('[data-ready="true"]')).toBeVisible()
+    
+    // Проверяем что клик работает с первого раза
+    await page.locator('li').filter({ hasText: 'статья' }).locator('img').click()
+    await expect(page).toHaveURL(/\/edit\/[a-zA-Z0-9-]+/)
+  })
 })
 
 test('Публикация темы', async ({ page }) => {

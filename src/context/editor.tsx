@@ -67,6 +67,7 @@ export type EditorContextType = {
   setIsCollabMode: SetStoreFunction<boolean>
   saving: Accessor<boolean>
   hasChanges: Accessor<boolean>
+  isReady: Accessor<boolean>
 }
 
 export const EditorContext = createContext<EditorContextType>({} as EditorContextType)
@@ -76,14 +77,19 @@ export function useEditorContext() {
 }
 
 const topic2topicInput = (topic: Topic): TopicInput | null => {
-  if (!topic?.id) {
-    console.warn('Invalid topic:', topic)
+  if (!topic) return null
+  if (!topic?.id || !topic.slug || !topic.title) {
+    console.warn('Invalid topic - missing required fields:', { 
+      id: topic?.id,
+      slug: topic?.slug, 
+      title: topic?.title
+    })
     return null
   }
   return {
-    id: topic.id,
-    slug: topic.slug,
-    title: topic.title
+    id: Number(topic.id),
+    slug: String(topic.slug),
+    title: String(topic.title)
   }
 }
 
@@ -113,12 +119,17 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   const [editing, setEditing] = createSignal<Editor | undefined>(undefined)
   const [saving, setSaving] = createSignal(false)
   const [hasChanges, setHasChanges] = createSignal(false)
+  const [isReady, setIsReady] = createSignal(false)
   const [editorsContent, setEditorsContent] = createSignal<Record<string, string>>({})
 
   const generateEditorId = ({ type, entityId, field, index }: EditorId): string => {
     const base = `${type}-${entityId}-${field}`
     return index !== undefined ? `${base}-${index}` : base
   }
+
+  createEffect(() => {
+    setIsReady(!!session() && !!client())
+  })
 
   const updateContent = (editorId: EditorId, content: string) => {
     const id = generateEditorId(editorId)
@@ -167,11 +178,6 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   const updateShout = async (formToUpdate: ShoutForm, { publish }: { publish: boolean }) => {
     console.group('[updateShout]')
     console.log('Form data:', formToUpdate)
-    console.log('Publish mode:', publish)
-
-    // Проверяем входные данные топиков
-    console.log('Input selectedTopics:', formToUpdate.selectedTopics)
-    console.log('Input mainTopic:', formToUpdate.mainTopic)
 
     const selectedTopics = formToUpdate.selectedTopics
       .map((topic) => {
@@ -179,59 +185,34 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
         console.log('Converting topic:', topic, ' -> ', converted)
         return converted
       })
-      .filter((t): t is TopicInput => {
-        const isValid = t !== null
-        if (!isValid) console.warn('Filtered out invalid topic')
-        return isValid
-      })
+      .filter((t): t is TopicInput => t !== null)
 
     const mainTopic = formToUpdate.mainTopic ? topic2topicInput(formToUpdate.mainTopic) : null
-    console.log('Processed mainTopic:', mainTopic)
 
-    // Убедимся, что topics всегда массив и содержит валидные данные
     const topics = selectedTopics.length ? selectedTopics : mainTopic ? [mainTopic] : []
-    console.log('Final topics array:', JSON.stringify(topics))
-
-    // Проверим структуру каждого топика
-    topics.forEach((topic, index) => {
-      console.log(`Topic ${index}:`, {
-        id: topic.id,
-        slug: topic.slug,
-        title: topic.title,
-        hasAllFields: !!(topic.id && topic.slug && topic.title)
-      })
-    })
-
+    
     if (publish && !topics.length) {
       console.warn('Publication rejected: no topics selected')
       console.groupEnd()
       return { error: 'Please, set the main topic first' }
     }
 
-    const input = formToUpdate.shoutId
-      ? {
-          body: formToUpdate.body,
-          topics,
-          slug: formToUpdate.slug,
-          subtitle: formToUpdate.subtitle || '',
-          title: formToUpdate.title,
-          lead: formToUpdate.lead || '',
-          description: formToUpdate.description || '',
-          cover: formToUpdate.coverImageUrl || '',
-          media: formToUpdate.media || '[]'
-        }
-      : {
-          layout: formToUpdate.layout || 'article',
-          body: formToUpdate.body,
-          topics,
-          slug: formToUpdate.slug,
-          subtitle: formToUpdate.subtitle || '',
-          title: formToUpdate.title,
-          lead: formToUpdate.lead || '',
-          description: formToUpdate.description || '',
-          cover: formToUpdate.coverImageUrl || '',
-          media: formToUpdate.media || '[]'
-        }
+    const mediaData = typeof formToUpdate.media === 'string' 
+      ? formToUpdate.media 
+      : JSON.stringify(formToUpdate.media || [])
+
+    const input = {
+      body: formToUpdate.body,
+      topics,
+      slug: formToUpdate.slug,
+      subtitle: formToUpdate.subtitle || '',
+      title: formToUpdate.title,
+      lead: formToUpdate.lead || '',
+      description: formToUpdate.description || '',
+      cover: formToUpdate.coverImageUrl || '',
+      media: mediaData,
+      ...(formToUpdate.shoutId ? {} : { layout: formToUpdate.layout || 'article' })
+    }
 
     console.log('Final mutation input:', JSON.stringify(input))
 
@@ -515,7 +496,8 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
     updateContent,
     getContent,
     markEditorDirty: () => setHasChanges(true),
-    resetEditorState
+    resetEditorState,
+    isReady
   }
 
   return <EditorContext.Provider value={value}>{props.children}</EditorContext.Provider>
