@@ -2,17 +2,17 @@ import { For, Show, createMemo, onMount } from 'solid-js'
 import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { Author, Shout } from '~/graphql/schema/core.gen'
+import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 import { paginate } from '~/utils/paginate'
 import Banner from '../Discours/Banner'
 import Hero from '../Discours/Hero'
 import { Beside } from '../Feed/Beside'
-import { TopicShoutsSwiper } from '../Feed/TopicShoutsSwiper'
 import { Row1 } from '../Feed/Row1'
 import { Row2 } from '../Feed/Row2'
 import { Row3 } from '../Feed/Row3'
 import { Row5 } from '../Feed/Row5'
 import RowShort from '../Feed/RowShort'
+import { TopicShoutsGroup } from '../Feed/TopicShoutsGroup'
 import { TopicsNav } from '../HeaderNav/TopicsNav'
 import { Loading } from '../_shared/Loading'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
@@ -92,7 +92,10 @@ export const HomeView = (props: HomeViewProps) => {
           />
         </Show>
 
-        <TopicShoutsSwiper shouts={randomTopicFeed() || []} />
+        <TopicShoutsGroup
+          shouts={randomTopicFeed()?.shouts || []}
+          topic={randomTopicFeed()?.topic as Topic}
+        />
 
         <Show when={props.topRatedShouts?.length}>
           <ArticleCardSwiper title={t('Favorite')} slides={props.topRatedShouts} />
