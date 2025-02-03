@@ -8,34 +8,17 @@ import { capitalize } from '~/utils/capitalize'
 import { Icon } from '../_shared/Icon'
 import Group from './Group'
 
-import styles from './RandomTopicSwiper.module.scss'
+import styles from './TopicShoutsSwiper.module.scss'
 
-export const RandomTopicSwiper = () => {
+export const TopicShoutsSwiper = (props: { shouts: Shout[] }) => {
   const { t } = useLocalize()
   const { randomTopic } = useTopics()
   const { addAuthors } = useAuthors()
-  const [randomTopicArticles, setRandomTopicArticles] = createSignal<Shout[]>([])
 
-  createEffect(
-    on(
-      () => randomTopic(), // NOTE: triggs once
-      async (topic?: Topic) => {
-        if (topic) {
-          const shoutsByTopicLoader = loadShouts({
-            options: { filters: { topic: topic.slug, featured: true }, limit: 5, offset: 0 }
-          })
-          const shouts = await shoutsByTopicLoader()
-          setRandomTopicArticles(shouts || [])
-          shouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
-        }
-      },
-      { defer: true }
-    )
-  )
   return (
     <Show when={Boolean(randomTopic())}>
       <Group
-        articles={randomTopicArticles() || []}
+        articles={props.shouts || []}
         header={
           <div class={styles.randomTopicHeaderContainer}>
             <div class={styles.randomTopicHeader}>{capitalize(randomTopic()?.title || '', true)}</div>

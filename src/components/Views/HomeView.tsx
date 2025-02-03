@@ -7,7 +7,7 @@ import { paginate } from '~/utils/paginate'
 import Banner from '../Discours/Banner'
 import Hero from '../Discours/Hero'
 import { Beside } from '../Feed/Beside'
-import { RandomTopicSwiper } from '../Feed/RandomTopicSwiper'
+import { TopicShoutsSwiper } from '../Feed/TopicShoutsSwiper'
 import { Row1 } from '../Feed/Row1'
 import { Row2 } from '../Feed/Row2'
 import { Row3 } from '../Feed/Row3'
@@ -18,6 +18,7 @@ import { Loading } from '../_shared/Loading'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 
 import '~/styles/views/Home.module.scss'
+import { useFeaturedFeed } from '~/context/featured'
 
 export const RANDOM_TOPICS_COUNT = 12
 export const RANDOM_TOPIC_SHOUTS_COUNT = 7
@@ -37,6 +38,7 @@ export const HomeView = (props: HomeViewProps) => {
   const { t } = useLocalize()
   const { topAuthors, addAuthors } = useAuthors()
   const { topTopics } = useTopics()
+  const { randomTopicFeed } = useFeaturedFeed()
 
   onMount(() => {
     props.featuredShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
@@ -90,7 +92,7 @@ export const HomeView = (props: HomeViewProps) => {
           />
         </Show>
 
-        <RandomTopicSwiper />
+        <TopicShoutsSwiper shouts={randomTopicFeed() || []} />
 
         <Show when={props.topRatedShouts?.length}>
           <ArticleCardSwiper title={t('Favorite')} slides={props.topRatedShouts} />
