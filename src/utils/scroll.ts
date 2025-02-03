@@ -21,6 +21,7 @@ export const scrollHandler = (elemId: string, offset = -100) => {
   const anchor = document.querySelector(`#${elemId}`)
 
   if (anchor && window) {
+    console.debug('[scrollHandler] scroll to', anchor, offset)
     window?.scrollTo?.({
       top: anchor.getBoundingClientRect().top + offset,
       behavior: 'smooth'

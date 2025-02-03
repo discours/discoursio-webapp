@@ -20,6 +20,7 @@ const isInViewport = (el: Element): boolean => {
   return rect.top <= DEFAULT_HEADER_OFFSET + 24 // default offset + 1.5em (default header margin-top)
 }
 const scrollToHeader = (element: HTMLElement) => {
+  console.debug('scroll to header in TableOfContents')
   window?.scrollTo({
     behavior: 'smooth',
     top:

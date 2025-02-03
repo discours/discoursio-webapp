@@ -26,6 +26,7 @@ import type { Author, Maybe, Shout, Topic } from '~/graphql/schema/core.gen'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { processPrepositions } from '~/intl/prepositions'
 import { isCyrillic } from '~/intl/translate'
+import { patchBodyUrls } from '~/lib/getThumbUrl'
 import { capitalize } from '~/utils/capitalize'
 import { AuthorBadge } from '../Author/AuthorBadge'
 import { CommentsTree } from '../Comments/CommentsTree'
@@ -45,7 +46,6 @@ import { AudioHeader } from './AudioHeader'
 import { AudioPlayer } from './AudioPlayer'
 import { SharePopup, getShareUrl } from './SharePopup'
 
-import { patchBodyUrls } from '~/lib/getThumbUrl'
 import stylesHeader from '../HeaderNav/Header.module.scss'
 import styles from './Article.module.scss'
 
@@ -70,7 +70,7 @@ const scrollTo = (el?: HTMLElement, isComments?: boolean) => {
 
   const { top } = el.getBoundingClientRect()
   const offset = DEFAULT_HEADER_OFFSET + (isComments ? COMMENTS_SCROLL_OFFSET : 0)
-
+  console.debug('[FullArticle] scroll to', el, top, offset)
   window.scrollTo({
     top: top + window.scrollY - offset,
     left: 0,
@@ -644,13 +644,15 @@ export const FullArticle = (props: Props) => {
             </Suspense>
 
             <div id="comments" ref={setCommentsWrapper}>
-              <Show when={isReactionsLoaded()}>
-                <CommentsTree
-                  shoutId={props.article.id}
-                  shoutSlug={props.article.slug}
-                  articleAuthors={props.article.authors as Author[]}
-                />
-              </Show>
+              <Suspense>
+                <Show when={isReactionsLoaded()}>
+                  <CommentsTree
+                    shoutId={props.article.id}
+                    shoutSlug={props.article.slug}
+                    articleAuthors={props.article.authors as Author[]}
+                  />
+                </Show>
+              </Suspense>
             </div>
           </div>
         </div>
