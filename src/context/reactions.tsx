@@ -5,11 +5,13 @@ import createReactionMutation from '~/graphql/mutation/core/reaction-create'
 import destroyReactionMutation from '~/graphql/mutation/core/reaction-destroy'
 import updateReactionMutation from '~/graphql/mutation/core/reaction-update'
 import {
+  Author,
   MutationCreate_ReactionArgs,
   MutationUpdate_ReactionArgs,
   QueryLoad_Reactions_ByArgs,
   Reaction,
-  ReactionKind
+  ReactionKind,
+  Shout
 } from '~/graphql/schema/core.gen'
 import { useLocalize } from './localize'
 import { useSession } from './session'
@@ -20,7 +22,11 @@ type ReactionsContextType = {
   commentsByAuthor: Accessor<Record<number, Reaction[]>>
   loadReactionsBy: (args: QueryLoad_Reactions_ByArgs) => Promise<Reaction[]>
   createShoutReaction: (reaction: MutationCreate_ReactionArgs) => Promise<Reaction | undefined>
-  updateShoutReaction: (reaction: MutationUpdate_ReactionArgs) => Promise<Reaction | undefined>
+  updateShoutReaction: (
+    reaction: MutationUpdate_ReactionArgs,
+    author: Author,
+    shout: Shout
+  ) => Promise<{ error?: string; reaction?: Reaction }>
   deleteShoutReaction: (id: number) => Promise<{ error: string } | null>
   addShoutReactions: (rrr: Reaction[]) => void
   reactionsLoading: Accessor<boolean>
@@ -156,17 +162,26 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
     return null
   }
 
-  const updateShoutReaction = async (input: MutationUpdate_ReactionArgs): Promise<Reaction | undefined> => {
+  const updateShoutReaction = async (
+    input: MutationUpdate_ReactionArgs,
+    author: Author,
+    shout: Shout
+  ): Promise<{ error?: string; reaction?: Reaction }> => {
     setReactionsLoading(true)
     const resp = await client()?.mutation(updateReactionMutation, input).toPromise()
     const result = resp?.data?.update_reaction
     if (!result) {
       console.error('[context.reactions] updateShoutReaction', result)
-      throw new Error('cannot update reaction')
+      return { error: 'cannot update reaction' }
     }
     const { error, reaction } = result
-    if (error) await showSnackbar({ type: 'error', body: t(error) })
+    if (error) {
+      await showSnackbar({ type: 'error', body: t(error) })
+      return { error }
+    }
     if (reaction) {
+      reaction.created_by = author
+      reaction.shout = shout
       const newReactionEntities = { ...reactionEntities() }
       newReactionEntities[reaction.id] = reaction
 
@@ -189,7 +204,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
       setReactionsByAuthor(newReactionsByAuthor)
     }
     setReactionsLoading(false)
-    return reaction
+    return { error, reaction }
   }
 
   const updateShoutInStores = (reaction: Reaction) => {

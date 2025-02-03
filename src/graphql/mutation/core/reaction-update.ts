@@ -7,18 +7,8 @@ export default gql`
       reaction {
         id
         body
+        kind
         updated_at
-        reply_to
-        created_by {
-          id
-          name
-          slug
-        }
-        shout {
-          id
-          title
-          slug
-        }
       }
     }
   }

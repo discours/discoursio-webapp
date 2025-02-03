@@ -12,8 +12,9 @@ import { useUI } from '~/context/ui'
 import { UploadedFile } from '~/types/upload'
 import { SimpleInsertLinkForm } from './SimpleInsertLinkForm'
 import { SimpleMicroBubbleMenu } from './SimpleMicroBubbleMenu'
-import styles from './SimpleRichEditor.module.scss'
 import { SimpleToolbarControl as Control } from './SimpleToolbarControl'
+
+import styles from './SimpleRichEditor.module.scss'
 
 interface SimpleEditorProps {
   content?: string
@@ -328,11 +329,18 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
   const handleSubmit = async () => {
     if (!props.onSubmit || counter() === 0) return
 
-    const success = await props.onSubmit(state.content)
-    if (success) {
-      // Очищаем редактор после успешной отправки
-      editorRef!.innerHTML = ''
-      updateState()
+    try {
+      const success = await props.onSubmit(state.content)
+      if (success) {
+        // Очищаем редактор только после успешного сохранения
+        editorRef!.innerHTML = ''
+        updateState()
+      }
+      // Если сохранение не удалось, оставляем редактор открытым
+      return success
+    } catch (error) {
+      console.error('Error submitting content:', error)
+      return false
     }
   }
 

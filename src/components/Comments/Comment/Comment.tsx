@@ -136,24 +136,41 @@ export const Comment = (props: Props) => {
     setLoading(true)
     saveScrollPosition()
     try {
-      const reaction = await updateShoutReaction({
-        reaction: {
-          id: props.comment.id || 0,
-          kind: ReactionKind.Comment,
-          body: value,
-          shout: props.comment.shout.id
-        }
-      } as MutationUpdate_ReactionArgs)
+      const response = await updateShoutReaction(
+        {
+          reaction: {
+            id: props.comment.id || 0,
+            kind: ReactionKind.Comment,
+            body: value,
+            shout: props.comment.shout.id
+          }
+        } as MutationUpdate_ReactionArgs,
+        author(),
+        props.comment.shout
+      )
 
-      console.log('[handleUpdate] got response:', reaction)
+      console.log('[handleUpdate] got response:', response)
 
-      if (reaction) {
-        setEditedBody(value)
+      if (response?.reaction) {
+        const updatedReaction = response?.reaction
+        setEditedBody(updatedReaction?.body || '')
         setEditMode(false)
         setLoading(false)
         restoreScrollPosition()
         return true
       }
+
+      if (response?.error) {
+        console.error('[handleUpdate] Server error:', response.error)
+        showSnackbar?.({
+          type: 'error',
+          body: t(response.error) || t('Failed to update comment')
+        })
+        return false
+      }
+
+      showSnackbar?.({ type: 'error', body: t('Failed to update comment') })
+      return false
     } catch (error) {
       console.error('[handleUpdate reaction]:', error)
       showSnackbar?.({ type: 'error', body: t('Failed to update comment') })
@@ -247,7 +264,7 @@ export const Comment = (props: Props) => {
                 <SimpleRichEditor
                   content={editedBody() || props.comment.body || ''}
                   placeholder={t('Write a comment...')}
-                  onSubmit={(value) => handleUpdate(value)}
+                  onSubmit={handleUpdate}
                   onCancel={handleCancel}
                 />
               </Suspense>
