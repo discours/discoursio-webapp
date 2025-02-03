@@ -6,7 +6,7 @@ import { Icon } from '~/components/_shared/Icon'
 import { Popover } from '~/components/_shared/Popover/Popover'
 import { useEditorContext } from '~/context/editor'
 import { useLocalize } from '~/context/localize'
-import { MiniEditor } from '../MiniEditor'
+import { SimpleRichEditor } from '../../SimpleRichEditor/SimpleRichEditor'
 import { MicroBubbleMenu } from './MicroBubbleMenu'
 import { ToolbarControl } from './ToolbarControl'
 
@@ -284,7 +284,7 @@ export const FullBubbleMenu = (props: FullBubbleMenuProps) => {
   return (
     <div ref={props.ref} class={clsx(styles.FullBubbleMenu, { [styles.growWidth]: footnoteEditorOpen() })}>
       <Show when={footnoteEditorOpen()} fallback={<MainMenu />}>
-        <MiniEditor
+        <SimpleRichEditor
           placeholder={t('Enter footnote text')}
           onSubmit={handleAddFootnote}
           content={footNote()}

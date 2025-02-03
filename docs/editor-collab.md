@@ -48,7 +48,7 @@ const extensions = [
         user: {
             name: userName,
             color: userColor,
-            avatar: userAvatar
+            avatar: userAvatar // TODO: добавить аватарку
         }
     })
 ]

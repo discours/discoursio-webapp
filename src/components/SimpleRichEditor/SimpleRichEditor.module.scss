@@ -1,0 +1,169 @@
+.editor {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--white-500);
+  border-radius: 8px;
+  border: 1px solid var(--black-100);
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+
+  &:hover, &.isFocused {
+    border-color: var(--black-300);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
+  }
+
+  .controls {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--black-100);
+    background: var(--black-50);
+    border-radius: 8px 8px 0 0;
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      > * {
+        padding: 0 8px;
+        border-right: 1px solid var(--black-100);
+
+        &:last-child {
+          border-right: none;
+          padding-right: 0;
+        }
+      }
+    }
+  }
+
+  .content {
+    min-height: 120px;
+    padding: 16px;
+    font-size: 1.6rem;
+    line-height: 1.5;
+    color: var(--black-900);
+    outline: none;
+
+    &:empty::before {
+      content: attr(data-placeholder);
+      color: var(--black-300);
+      pointer-events: none;
+    }
+
+    p {
+      margin: 0 0 1em;
+      &:last-child { margin-bottom: 0; }
+    }
+
+    blockquote {
+      margin: 1em 0;
+      padding: 0.5em 1em;
+      border-left: 3px solid var(--black-200);
+      background: var(--black-50);
+      color: var(--black-800);
+    }
+
+    a {
+      color: var(--blue-500);
+      text-decoration: none;
+      &:hover { text-decoration: underline; }
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      margin: 1em 0;
+      border-radius: 4px;
+    }
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid var(--black-100);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+
+    &.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+  }
+
+  .limit {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    font-size: 1.2rem;
+    color: var(--black-400);
+  }
+
+  // Анимация для формы ссылки
+  .linkInput {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+    z-index: 10;
+    background: var(--white-500);
+    border: 1px solid var(--black-100);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+
+    &.linkInputactive {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: all;
+    }
+  }
+
+  &.micro {
+    border: none;
+    background: transparent;
+    margin-bottom: 0;
+    
+    .content {
+      min-height: 34px;
+      padding: 8px 0;
+      font-size: 1.5rem;
+      line-height: 1.4;
+    }
+  }
+}
+
+// Стили для кнопок тулбара
+:global(.control) {
+  padding: 6px;
+  min-width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--black-400);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: var(--black-100);
+    color: var(--black-800);
+  }
+
+  &.active {
+    background: var(--black-100);
+    color: var(--black-800);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+} 

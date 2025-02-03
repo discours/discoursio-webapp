@@ -2,6 +2,7 @@ import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show, createEffect, createSignal, lazy, onMount } from 'solid-js'
 import { createStore } from 'solid-js/store'
+import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { UploadModalContent } from '~/components/Upload/UploadModalContent/UploadModalContent'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
@@ -19,7 +20,6 @@ import { TopicSelect } from '../_shared/TopicSelect'
 import stylesBeside from '../Feed/Beside.module.scss' // TODO: should not be here, implement more components
 import styles from './PublishSettings.module.scss'
 
-const MicroEditor = lazy(() => import('../Editor/MicroEditor'))
 const GrowingTextarea = lazy(() => import('~/components/_shared/GrowingTextarea/GrowingTextarea'))
 const DESCRIPTION_MAX_LENGTH = 400
 
@@ -248,7 +248,8 @@ export const PublishSettings = (props: Props) => {
                 allowEnterKey={false}
                 maxLength={100}
               />
-              <MicroEditor
+              <SimpleRichEditor
+                micro={true}
                 placeholder={t('Write a short introduction')}
                 content={composeDescription()}
                 onChange={(value?: string) => value && setForm('description', value)}

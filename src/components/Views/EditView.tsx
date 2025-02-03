@@ -28,7 +28,7 @@ import { Modal } from '../_shared/Modal'
 import { TableOfContents } from '../_shared/TableOfContents'
 
 import styles from '~/styles/views/EditView.module.scss'
-import MicroEditor from '../Editor/MicroEditor'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'
 
 type Props = {
@@ -324,8 +324,8 @@ export const EditView = (props: Props) => {
                     />
                   </Show>
                   <Show when={isLeadVisible()}>
-                    <MicroEditor
-                      focusOnMount={true}
+                    <SimpleRichEditor
+                      micro={true}
                       shownAsLead={isLeadVisible()}
                       placeholder={t('A short introduction to keep the reader interested')}
                       content={form.lead}

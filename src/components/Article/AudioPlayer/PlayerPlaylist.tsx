@@ -1,5 +1,6 @@
 import { For, Show, createSignal, lazy } from 'solid-js'
 
+import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { Icon } from '~/components/_shared/Icon'
 import { Popover } from '~/components/_shared/Popover'
 import { useLocalize } from '~/context/localize'
@@ -9,7 +10,6 @@ import { SharePopup, getShareUrl } from '../SharePopup'
 
 import styles from './AudioPlayer.module.scss'
 
-const MicroEditor = lazy(() => import('../../Editor/MicroEditor'))
 const GrowingTextarea = lazy(() => import('~/components/_shared/GrowingTextarea/GrowingTextarea'))
 
 type Props = {
@@ -170,7 +170,8 @@ export const PlayerPlaylist = (props: Props) => {
                 }
               >
                 <div class={styles.descriptionBlock}>
-                  <MicroEditor
+                  <SimpleRichEditor
+                    micro={true}
                     content={mi.body || ''}
                     placeholder={`${t('Description')}...`}
                     onChange={(value: string) => handleMediaItemFieldChange('body', value)}

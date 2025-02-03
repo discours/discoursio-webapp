@@ -1,8 +1,9 @@
 import { UploadFile, createFileUploader } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createSignal, lazy, on, onMount } from 'solid-js'
+import { For, Show, createEffect, createSignal, on, onMount } from 'solid-js'
 import SwiperCore from 'swiper'
 import { Manipulation, Navigation, Pagination } from 'swiper/modules'
+import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { useLocalize } from '~/context/localize'
 import { useSnackbar } from '~/context/ui'
 import { composeMediaItems } from '~/lib/composeMediaItems'
@@ -14,15 +15,12 @@ import { Icon } from '../Icon'
 import { Image } from '../Image'
 import { Loading } from '../Loading'
 import { Popover } from '../Popover'
-
 import { SwiperRef } from './swiper'
 
 import { useSession } from '~/context/session'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { UploadedFile } from '~/types/upload'
 import styles from './Swiper.module.scss'
-
-const MicroEditor = lazy(() => import('../../Editor/MicroEditor'))
 
 type Props = {
   images: MediaItem[]
@@ -315,7 +313,8 @@ export const EditorSwiper = (props: Props) => {
             value={props.images[slideIndex()]?.source || ''}
             onChange={(event) => handleSlideDescriptionChange(slideIndex(), 'source', event.target.value)}
           />
-          <MicroEditor
+          <SimpleRichEditor
+            micro={true}
             content={props.images[slideIndex()]?.body || ''}
             placeholder={t('Enter image description')}
             onChange={(value) => setSlideBody(value)}

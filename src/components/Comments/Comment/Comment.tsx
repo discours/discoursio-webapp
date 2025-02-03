@@ -1,7 +1,8 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, Suspense, createEffect, createMemo, createSignal, lazy, on } from 'solid-js'
+import { For, Show, Suspense, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { RatingControl } from '~/components/RatingControl/RatingControl'
+import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { Icon } from '~/components/_shared/Icon'
 import { ShowIfAuthenticated } from '~/components/_shared/ShowIfAuthenticated'
 import { useLocalize } from '~/context/localize'
@@ -22,9 +23,6 @@ import { Userpic } from '../../Author/Userpic'
 import { CommentDate } from '../CommentDate'
 
 import styles from './Comment.module.scss'
-
-const MiniEditor = lazy(() => import('../../Editor/MiniEditor'))
-
 type Props = {
   comment: Reaction
   compact?: boolean
@@ -50,11 +48,9 @@ export const Comment = (props: Props) => {
   const { createShoutReaction, updateShoutReaction, deleteShoutReaction } = useReactions()
   const { showConfirm } = useUI()
   const { showSnackbar } = useSnackbar()
-  const canEdit = createMemo(
-    () =>
-      Boolean(author()?.id) &&
-      (props.comment?.created_by?.slug === author()?.slug || session()?.user?.roles?.includes('editor'))
-  )
+  const canEdit = () =>
+    Boolean(author()?.id) &&
+    (props.comment?.created_by?.slug === author()?.slug || session()?.user?.roles?.includes('editor'))
 
   const body = createMemo(() => {
     const content = editedBody() ? editedBody()?.trim() : props.comment.body?.trim() || ''
@@ -248,7 +244,7 @@ export const Comment = (props: Props) => {
           <div class={styles.commentBody}>
             <Show when={editMode()} fallback={<div innerHTML={body()} />}>
               <Suspense fallback={<p>{t('Loading')}</p>}>
-                <MiniEditor
+                <SimpleRichEditor
                   content={editedBody() || props.comment.body || ''}
                   placeholder={t('Write a comment...')}
                   onSubmit={(value) => handleUpdate(value)}
@@ -312,7 +308,7 @@ export const Comment = (props: Props) => {
 
             <Show when={isReplyVisible() && props.clickedReplyId === props.comment.id}>
               <Suspense fallback={<p>{t('Loading')}</p>}>
-                <MiniEditor
+                <SimpleRichEditor
                   placeholder={t('Write a comment...')}
                   onSubmit={(value) => handleCreate(value)}
                 />

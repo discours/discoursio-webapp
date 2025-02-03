@@ -1,4 +1,4 @@
-import { ErrorBoundary, For, Show, createMemo, createResource, createSignal, onMount } from 'solid-js'
+import { ErrorBoundary, For, Show, createEffect, createMemo, createResource, createSignal } from 'solid-js'
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
@@ -6,7 +6,7 @@ import { useSession } from '~/context/session'
 import { Author, Reaction, ReactionInput, ReactionKind, ReactionSort } from '~/graphql/schema/core.gen'
 import { SortFunction } from '~/types/common'
 import { byCreated, byStat } from '~/utils/sort'
-import { MiniEditor } from '../Editor/MiniEditor'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { Loading } from '../_shared/Loading'
 import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { Comment as CommentCard } from './Comment'
@@ -33,6 +33,7 @@ export const CommentsTree = (props: Props) => {
 
   const [newReactions, setNewReactions] = createSignal<Reaction[]>([])
   const [commentsOrder, setCommentsOrder] = createSignal<ReactionSort>(ReactionSort.Newest)
+  const [isLoading, setIsLoading] = createSignal(true)
 
   const comments = createMemo(() =>
     Object.values(reactionEntities()).filter((reaction) => reaction.kind === 'COMMENT')
@@ -55,29 +56,43 @@ export const CommentsTree = (props: Props) => {
   })
   const { seen } = useFeed()
   const shoutLastSeen = createMemo(() => seen()[props.shoutSlug] ?? 0)
-  const [isLoading, setIsLoading] = createSignal(true)
 
-  onMount(async () => {
-    setIsLoading(true)
-    const currentDate = new Date()
-    const setCookie = () => localStorage?.setItem(`${props.shoutSlug}`, `${currentDate}`)
-    if (!shoutLastSeen()) {
-      setCookie()
-    } else if (currentDate.getTime() > shoutLastSeen()) {
-      const newComments = comments().filter((c) => {
-        if (
-          (session()?.user?.app_data?.profile?.id && c.reply_to) ||
-          c.created_by.id === session()?.user?.app_data?.profile?.id
-        ) {
-          return
+  const [isFirstLoad, setIsFirstLoad] = createSignal(true)
+
+  const [commentsResource, { refetch }] = createResource<Reaction[], string>(
+    () => props.shoutSlug,
+    async (slug: string) => {
+      const response = await loadReactionsBy({
+        by: {
+          shout: slug,
+          kinds: [ReactionKind.Comment]
         }
-        return (c.updated_at || c.created_at) > shoutLastSeen()
       })
-      setNewReactions(newComments)
-      setCookie()
+      return response || []
     }
-    await loadReactionsBy({ by: { shout: props.shoutSlug } })
-    setIsLoading(false)
+  )
+
+  createEffect(() => {
+    if (!commentsResource.loading && commentsResource() && isFirstLoad()) {
+      const currentDate = new Date()
+      if (!shoutLastSeen()) {
+        localStorage?.setItem(`${props.shoutSlug}`, `${currentDate}`)
+      } else if (currentDate.getTime() > shoutLastSeen()) {
+        const newComments = comments().filter((c) => {
+          if (
+            (session()?.user?.app_data?.profile?.id && c.reply_to) ||
+            c.created_by.id === session()?.user?.app_data?.profile?.id
+          ) {
+            return
+          }
+          return (c.updated_at || c.created_at) > shoutLastSeen()
+        })
+        setNewReactions(newComments)
+        localStorage?.setItem(`${props.shoutSlug}`, `${currentDate}`)
+      }
+      setIsFirstLoad(false)
+      setIsLoading(false)
+    }
   })
 
   const [posting, setPosting] = createSignal(false)
@@ -116,19 +131,6 @@ export const CommentsTree = (props: Props) => {
         {t('sign in')}
       </a>
     </div>
-  )
-
-  const [commentsResource, { refetch }] = createResource<Reaction[], string>(
-    () => props.shoutSlug,
-    async (slug: string) => {
-      const response = await loadReactionsBy({
-        by: {
-          shout: slug,
-          kinds: [ReactionKind.Comment]
-        }
-      })
-      return response || []
-    }
   )
 
   const CommentsTreeItems = (props: Props) => (
@@ -175,7 +177,11 @@ export const CommentsTree = (props: Props) => {
           </Show>
 
           <ShowIfAuthenticated fallback={<FallbackMessage />}>
-            <MiniEditor placeholder={t('Write a comment...')} onSubmit={handleSubmitComment} />
+            <SimpleRichEditor
+              placeholder={t('Write a comment...')}
+              onSubmit={handleSubmitComment}
+              autoFocus={false}
+            />
             <Show when={posting()}>
               <Loading />
             </Show>

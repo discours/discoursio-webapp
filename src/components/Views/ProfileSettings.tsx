@@ -34,8 +34,8 @@ import { Popover } from '../_shared/Popover'
 import { SocialNetworkInput } from '../_shared/SocialNetworkInput'
 
 import styles from '~/styles/views/ProfileSettings.module.scss'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 
-const MicroEditor = lazy(() => import('../Editor/MicroEditor'))
 const GrowingTextarea = lazy(() => import('~/components/_shared/GrowingTextarea/GrowingTextarea'))
 
 function filterNulls(arr: InputMaybe<string>[]): string[] {
@@ -340,11 +340,11 @@ export const ProfileSettings = () => {
                     />
 
                     <h4>{t('About')}</h4>
-                    <MicroEditor
+                    <SimpleRichEditor
+                      micro={true}
                       content={about() || ''}
                       onChange={setAbout}
                       placeholder={t('About')}
-                      bordered={true}
                     />
                     <div class={clsx(styles.multipleControls, 'pretty-form__item')}>
                       <div class={styles.multipleControlsHeader}>

@@ -1,0 +1,45 @@
+.form {
+  padding: 12px;
+  background: var(--white-500);
+  border: 1px solid var(--black-100);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+  min-width: 300px;
+
+  .inputWrapper {
+    margin-bottom: 12px;
+    position: relative;
+  }
+
+  .input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--black-100);
+    border-radius: 4px;
+    font-size: 1.4rem;
+    transition: all 0.2s ease;
+
+    &:focus {
+      outline: none;
+      border-color: var(--blue-500);
+    }
+
+    &.error {
+      border-color: var(--red-500);
+    }
+  }
+
+  .errorMessage {
+    position: absolute;
+    left: 0;
+    bottom: -18px;
+    font-size: 1.2rem;
+    color: var(--red-500);
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+} 

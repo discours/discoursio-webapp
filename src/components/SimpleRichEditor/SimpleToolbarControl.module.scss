@@ -1,0 +1,29 @@
+.control {
+  padding: 6px 8px;
+  min-width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--black-400);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: var(--black-100);
+    color: var(--black-800);
+  }
+
+  &.active {
+    background: var(--black-100);
+    color: var(--black-800);
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+} 

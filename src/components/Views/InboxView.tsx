@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createMemo, createSignal, lazy, on, onMount } from 'solid-js'
+import { For, Show, createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
 import QuotedMessage from '~/components/Inbox/QuotedMessage'
 import { Icon } from '~/components/_shared/Icon'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
@@ -23,9 +23,8 @@ import DialogHeader from '../Inbox/DialogHeader'
 import { Message } from '../Inbox/Message'
 import MessagesFallback from '../Inbox/MessagesFallback'
 import Search from '../Inbox/Search'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { Modal } from '../_shared/Modal'
-
-const MiniEditor = lazy(() => import('../Editor/MiniEditor'))
 
 const userSearch = (array: Author[], keyword: string) => {
   return array.filter((value) => new RegExp(keyword.trim(), 'gi').test(value.name || ''))
@@ -295,7 +294,7 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
                 />
               </Show>
               <div class={styles.wrapper}>
-                <MiniEditor placeholder={t('New message')} onSubmit={handleSubmit} />
+                <SimpleRichEditor placeholder={t('New message')} onSubmit={handleSubmit} />
               </div>
             </div>
           </Show>

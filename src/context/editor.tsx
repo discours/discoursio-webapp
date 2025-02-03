@@ -177,82 +177,134 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
 
   const updateShout = async (formToUpdate: ShoutForm, { publish }: { publish: boolean }) => {
     console.group('[updateShout]')
-    console.log('Form data:', formToUpdate)
+    console.log('Initial form data:', {
+      selectedTopics: formToUpdate.selectedTopics,
+      mainTopic: formToUpdate.mainTopic,
+      existingFormTopics: form.selectedTopics,
+      existingMainTopic: form.mainTopic
+    })
 
-    const selectedTopics = formToUpdate.selectedTopics
+    // Convert topics array, ensuring it's never null
+    const selectedTopics = (formToUpdate.selectedTopics || [])
       .map((topic) => {
         const converted = topic2topicInput(topic)
-        console.log('Converting topic:', topic, ' -> ', converted)
+        console.log('Converting selected topic:', { original: topic, converted })
         return converted
       })
       .filter((t): t is TopicInput => t !== null)
+    console.log('Converted selectedTopics:', selectedTopics)
 
     const mainTopic = formToUpdate.mainTopic ? topic2topicInput(formToUpdate.mainTopic) : null
+    console.log('Converted mainTopic:', mainTopic)
 
-    const topics = selectedTopics.length ? selectedTopics : mainTopic ? [mainTopic] : []
+    // Ensure topics is always an array, keeping existing topics if available
+    const existingTopics = form.selectedTopics
+      .map((topic) => {
+        const converted = topic2topicInput(topic)
+        console.log('Converting existing topic:', { original: topic, converted })
+        return converted
+      })
+      .filter((t): t is TopicInput => t !== null)
+    console.log('Converted existingTopics:', existingTopics)
 
-    if (publish && !topics.length) {
-      console.warn('Publication rejected: no topics selected')
+    const topics = selectedTopics.length
+      ? selectedTopics
+      : mainTopic
+        ? [mainTopic]
+        : existingTopics.length
+          ? existingTopics
+          : []
+    console.log('Final topics array:', topics)
+
+    // Проверяем наличие хотя бы одного топика для любого сохранения
+    if (!topics.length) {
+      console.warn('Save rejected: no topics selected')
       console.groupEnd()
-      return { error: 'Please, set the main topic first' }
+      return { error: 'Please select at least one topic' }
     }
 
-    const mediaData =
-      typeof formToUpdate.media === 'string' ? formToUpdate.media : JSON.stringify(formToUpdate.media || [])
-
-    const input = {
-      body: formToUpdate.body,
-      topics,
-      slug: formToUpdate.slug,
-      subtitle: formToUpdate.subtitle || '',
-      title: formToUpdate.title,
-      lead: formToUpdate.lead || '',
-      description: formToUpdate.description || '',
-      cover: formToUpdate.coverImageUrl || '',
-      media: mediaData,
-      ...(formToUpdate.shoutId ? {} : { layout: formToUpdate.layout || 'article' })
+    const shoutInput = {
+      slug: formToUpdate.slug || form.slug,
+      subtitle: formToUpdate.subtitle || form.subtitle || '',
+      title: formToUpdate.title || form.title,
+      body: formToUpdate.body || form.body || '',
+      lead: formToUpdate.lead || form.lead || '',
+      layout: formToUpdate.layout || form.layout || 'article',
+      description: formToUpdate.description || form.description || '',
+      cover: formToUpdate.coverImageUrl || form.coverImageUrl || '',
+      media: Array.isArray(formToUpdate.media)
+        ? JSON.stringify(formToUpdate.media)
+        : formToUpdate.media || form.media
+          ? JSON.stringify(form.media)
+          : '[]',
+      topics: topics.map((t) => ({
+        // Явно добавляем topics в shout_input
+        id: Number(t.id),
+        slug: String(t.slug),
+        title: String(t.title)
+      }))
     }
 
-    console.log('Final mutation input:', JSON.stringify(input))
+    console.log('Prepared shoutInput:', {
+      ...shoutInput,
+      topics_count: shoutInput.topics.length,
+      topics_details: shoutInput.topics.map((t) => `${t.id}:${t.slug}`)
+    })
 
-    try {
-      const resp = formToUpdate.shoutId
-        ? await client()
-            ?.mutation(updateShoutMutation, {
-              shout_id: formToUpdate.shoutId,
-              shout_input: input,
-              publish
-            })
-            .toPromise()
-        : await client()?.mutation(createShoutMutation, { shout: input }).toPromise()
+    const variables = formToUpdate.shoutId
+      ? {
+          shout_id: formToUpdate.shoutId,
+          shout_input: shoutInput,
+          publish
+        }
+      : {
+          shout: shoutInput
+        }
 
-      console.log('Raw mutation response:', resp)
+    console.log('GraphQL mutation:', formToUpdate.shoutId ? 'UpdateShoutMutation' : 'CreateShoutMutation')
+    console.log('Variables structure:', {
+      has_shout_id: !!variables.shout_id,
+      has_shout_input: !!variables.shout_input,
+      has_shout: !!variables.shout,
+      topics_included: variables.shout_input ? !!variables.shout_input.topics : !!variables.shout?.topics
+    })
+    console.log('Full mutation variables:', JSON.stringify(variables, null, 2))
 
-      if (resp?.error) {
-        console.error('GraphQL error:', resp.error)
-        return { error: 'Server error occurred' }
-      }
+    const mutation = formToUpdate.shoutId ? updateShoutMutation : createShoutMutation
+    const resp = await client()?.mutation(mutation, variables).toPromise()
 
-      const result = resp?.data?.create_shout || resp?.data?.update_shout
-      console.log('Parsed mutation result:', result)
-
-      if (result?.error) {
-        console.error('Operation error:', result.error)
-        return { error: result.error }
-      }
-
-      if (!result?.shout) {
-        console.error('No shout data in response')
-        return { error: 'Failed to save shout' }
-      }
-
-      console.groupEnd()
-      return { shout: result.shout, error: null }
-    } catch (error) {
-      console.error('Mutation failed:', error)
-      console.groupEnd()
-      return { error: 'Failed to save changes', shout: null }
+    console.log('Raw GraphQL response:', resp)
+    if (resp?.data) {
+      console.log('Response data structure:', {
+        hasUpdateShout: 'update_shout' in resp.data,
+        hasCreateShout: 'create_shout' in resp.data,
+        updateShoutKeys: resp.data.update_shout ? Object.keys(resp.data.update_shout) : null,
+        createShoutKeys: resp.data.create_shout ? Object.keys(resp.data.create_shout) : null,
+        error: resp.data.update_shout?.error || resp.data.create_shout?.error,
+        shout_topics: resp.data.update_shout?.shout?.topics || resp.data.create_shout?.shout?.topics
+      })
     }
+
+    if (resp?.error) {
+      console.error('GraphQL error:', resp.error)
+      return { error: 'Server error occurred' }
+    }
+
+    const result = resp?.data?.create_shout || resp?.data?.update_shout
+    console.log('Parsed mutation result:', result)
+
+    if (result?.error) {
+      console.error('Operation error:', result.error)
+      return { error: result.error }
+    }
+
+    if (!result?.shout) {
+      console.error('No shout data in response')
+      return { error: 'Failed to save shout' }
+    }
+
+    console.groupEnd()
+    return { shout: result.shout, error: null }
   }
 
   const saveShout = async (formToSave: ShoutForm) => {

@@ -279,12 +279,7 @@ export const ProfileSecurityView = (_props: any) => {
                       <Button
                         class={styles.cancel}
                         variant="light"
-                        value={
-                          <>
-                            <span class={styles.cancelLabel}>{t('Cancel changes')}</span>
-                            <span class={styles.cancelLabelMobile}>{t('Cancel')}</span>
-                          </>
-                        }
+                        value={<span class={styles.cancelLabel}>{t('Clear')}</span>}
                         onClick={handleCancel}
                       />
                       <Button
