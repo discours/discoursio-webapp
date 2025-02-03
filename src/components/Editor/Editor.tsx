@@ -8,7 +8,6 @@ import { createEffect, createSignal, onCleanup } from 'solid-js'
 import { createTiptapEditor } from 'solid-tiptap'
 import { sticky } from 'tippy.js'
 import { useSnackbar } from '~/context/ui'
-import { base, custom, extended } from '~/lib/editorExtensions'
 import { handleClipboardPaste } from '~/lib/handleClipboardPaste'
 import { useEditorContext } from '../../context/editor'
 import { useLocalize } from '../../context/localize'
@@ -18,6 +17,7 @@ import { EditorFloatingMenu } from './Toolbar/EditorFloatingMenu'
 import { FigureBubbleMenu } from './Toolbar/FigureBubbleMenu'
 import { FullBubbleMenu } from './Toolbar/FullBubbleMenu'
 import { IncutBubbleMenu } from './Toolbar/IncutBubbleMenu'
+import { extensions } from './editorExtensions'
 import { ArticleNode } from './extensions/Article'
 import { TrailingNode } from './extensions/TrailingNode'
 import './Editor.module.scss'
@@ -60,9 +60,7 @@ export const EditorComponent = (props: Props) => {
       }
     },
     extensions: [
-      ...base,
-      ...custom,
-      ...extended,
+      ...extensions,
       Placeholder.configure({
         placeholder: t('Add a link or click plus to embed media')
       }),

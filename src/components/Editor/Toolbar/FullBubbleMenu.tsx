@@ -7,7 +7,7 @@ import { Popover } from '~/components/_shared/Popover/Popover'
 import { useEditorContext } from '~/context/editor'
 import { useLocalize } from '~/context/localize'
 import { SimpleRichEditor } from '../../SimpleRichEditor/SimpleRichEditor'
-import { MicroBubbleMenu } from './MicroBubbleMenu'
+import MicroBubbleMenu from './MicroBubbleMenu'
 import { ToolbarControl } from './ToolbarControl'
 
 import styles from './FullBubbleMenu.module.scss'

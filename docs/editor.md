@@ -59,30 +59,28 @@
 ### Компоненты редактора
 
 ```
-Editor/
-├── Editor.tsx        # Полный редактор статей
-│ ├── EditorComponent # Основной компонент
-│ ├── Panel/         # Боковая панель управления
-│ └── AutoSaveNotice # Уведомление о сохранении
-├── MiniEditor.tsx   # Редактор комментариев
-│ ├── MiniEditor     # Упрощенный редактор
-│ └── MicroBubbleMenu # Базовая панель инструментов
+
 ├── SimpleRichEditor/ # Легковесный редактор
-│ ├── SimpleRichEditor.tsx # Основной компонент
-│ ├── SimpleToolbarControl # Кнопки тулбара
-│ └── SimpleInsertLinkForm # Форма для ссылок
-├── MicroEditor.tsx  # Встраиваемый редактор
-│ └── MicroBubbleMenu # Минимальная панель
-├── Toolbar/         # Панели инструментов
-│ ├── FullBubbleMenu # Полная панель
-│ ├── BlockquoteBubbleMenu # Управление цитатами
-│ ├── FigureBubbleMenu # Управление изображениями
-│ ├── IncutBubbleMenu # Управление врезками
-│ └── EditorFloatingMenu # Плавающее меню
-└── extensions/ # Расширения TipTap
-├── Article # Врезки и статьи
-├── CustomBlockquote # Кастомные цитаты
-└── TrailingNode # Завершающий узел
+│   ├── SimpleRichEditor.tsx # Основной компонент
+│   ├── SimpleToolbarControl # Кнопки тулбара
+│   └── SimpleInsertLinkForm # Форма для ссылок
+...
+├── Editor/
+    ├── Editor.tsx        # Полный редактор статей
+    │ ├── EditorComponent # Основной компонент
+    │ ├── Panel/         # Боковая панель управления
+    │ └── AutoSaveNotice # Уведомление о сохранении
+    ├── Toolbar/         # Панели инструментов
+    │ ├── FullBubbleMenu # Полная панель
+    │ ├── BlockquoteBubbleMenu # Управление цитатами
+    │ ├── FigureBubbleMenu # Управление изображениями
+    │ ├── IncutBubbleMenu # Управление врезками
+    │ └── EditorFloatingMenu # Плавающее меню
+    └── extensions/ # Расширения TipTap
+    ├── Article # Врезки и статьи
+    ├── CustomBlockquote # Кастомные цитаты
+    └── TrailingNode # Завершающий узел
+...
 ```
 ### Контекст и состояние
 

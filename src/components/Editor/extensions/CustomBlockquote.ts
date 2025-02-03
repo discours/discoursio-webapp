@@ -24,24 +24,18 @@ export const CustomBlockquote = Blockquote.extend({
 
   addAttributes() {
     return {
-      'data-float': {
-        default: null
-      },
-      'data-type': {
-        default: null
-      }
+      type: { default: 'quote' },
+      float: { default: null }
     }
   },
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   addCommands() {
     return {
       toggleBlockquote:
-        (type) =>
+        (type?: QuoteTypes) =>
         ({ commands }) =>
-          commands.toggleWrap(this.name, { 'data-type': type }),
+          commands.toggleWrap(this.name, type ? { 'data-type': type } : {}),
       setBlockQuoteFloat:
-        (value) =>
+        (value: null | 'left' | 'right') =>
         ({ commands }) =>
           commands.updateAttributes(this.name, { 'data-float': value })
     }

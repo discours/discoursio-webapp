@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.9.15] - 2025-02-03
+- `SimpleRichEditor` на замену `MiniEditor` и `MicroEditor`
+
+
 ## [0.9.14] - 2024-02-01
 ### Добавлено
 - Состояние `isReady` в EditorContext для отслеживания инициализации
