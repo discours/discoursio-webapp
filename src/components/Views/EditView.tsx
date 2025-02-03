@@ -213,14 +213,29 @@ export const EditView = (props: Props) => {
   const autoSave = async () => {
     console.log('autoSave called')
     if (hasChanges()) {
-      const data = { ...form, body: editing()?.getHTML() || '' }
-      console.debug('saving draft', data)
+      const data = {
+        ...form,
+        body: editing()?.getHTML() || form.body || '',
+        lead: form.lead || '',
+        subtitle: form.subtitle || '',
+        title: form.title || ''
+      }
+      console.debug('Saving draft data:', {
+        bodyLength: data.body.length,
+        leadLength: data.lead?.length
+      })
       setSaving(true)
-      localStorage.setItem(`shout-${data.shoutId}`, JSON.stringify(data))
-      await saveDraft(data)
-      setPrevForm(clone(data))
-      setSaving(false)
-      setHasChanges(false)
+
+      try {
+        if (data.shoutId) {
+          localStorage.setItem(`shout-${data.shoutId}`, JSON.stringify(data))
+        }
+        await saveDraft(data)
+        setPrevForm(clone(data))
+      } finally {
+        setSaving(false)
+        setHasChanges(false)
+      }
     }
   }
 
@@ -330,7 +345,10 @@ export const EditView = (props: Props) => {
                       placeholder={t('A short introduction to keep the reader interested')}
                       content={form.lead}
                       onBlur={hideLeadInput}
-                      onChange={(value: string) => handleInputChange('lead', value)}
+                      onChange={(value: string) => {
+                        handleInputChange('lead', value)
+                        debouncedAutoSave()
+                      }}
                     />
                   </Show>
                 </Show>

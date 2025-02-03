@@ -181,7 +181,11 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
       selectedTopics: formToUpdate.selectedTopics,
       mainTopic: formToUpdate.mainTopic,
       existingFormTopics: form.selectedTopics,
-      existingMainTopic: form.mainTopic
+      existingMainTopic: form.mainTopic,
+      lead: formToUpdate.lead,
+      body: formToUpdate.body?.length,
+      subtitle: formToUpdate.subtitle?.length,
+      title: formToUpdate.title?.length
     })
 
     // Convert topics array, ensuring it's never null
@@ -238,7 +242,6 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
           ? JSON.stringify(form.media)
           : '[]',
       topics: topics.map((t) => ({
-        // Явно добавляем topics в shout_input
         id: Number(t.id),
         slug: String(t.slug),
         title: String(t.title)
@@ -247,6 +250,8 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
 
     console.log('Prepared shoutInput:', {
       ...shoutInput,
+      bodyLength: shoutInput.body.length,
+      leadLength: shoutInput.lead.length,
       topics_count: shoutInput.topics.length,
       topics_details: shoutInput.topics.map((t) => `${t.id}:${t.slug}`)
     })
@@ -343,15 +348,37 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
   const saveDraft = async (draftForm: ShoutForm) => {
     try {
       console.group('[saveDraft]')
-      console.log('Saving draft:', draftForm)
+      // Get the latest editor content
+      const currentBody = editing()?.getHTML() || ''
 
-      const { error, shout } = await updateShout(draftForm, { publish: false })
+      const dataToSave = {
+        ...draftForm,
+        body: currentBody, // Include latest editor content
+        lead: draftForm.lead || form.lead // Ensure lead is included
+      }
+
+      console.log('Saving draft:', {
+        bodyLength: dataToSave.body.length,
+        leadLength: dataToSave.lead?.length,
+        shoutId: dataToSave.shoutId
+      })
+
+      const { error, shout } = await updateShout(dataToSave, { publish: false })
 
       if (error) {
         console.error('Draft save error:', error)
         snackbar?.showSnackbar({ type: 'error', body: localize?.t(error) || '' })
         console.groupEnd()
         return
+      }
+
+      // Update form with saved data
+      if (shout) {
+        setForm((prev) => ({
+          ...prev,
+          body: shout.body || prev.body,
+          lead: shout.lead || prev.lead
+        }))
       }
 
       // Обновляем ID материала после первого сохранения
@@ -440,7 +467,7 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
     console.log('Auto-save triggered, hasChanges:', hasChanges())
 
     if (hasChanges()) {
-      const data = { 
+      const data = {
         ...form,
         body: editing()?.getHTML() || '',
         lead: form.lead

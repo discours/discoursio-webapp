@@ -216,8 +216,8 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
     const content = editorRef.innerHTML
     setState('content', content)
 
-    // Вызываем onChange только если контент изменился
-    if (props.onChange && content !== props.content) {
+    // Always call onChange with the latest content
+    if (props.onChange) {
       props.onChange(content)
     }
 
