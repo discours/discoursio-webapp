@@ -331,8 +331,8 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
       }
 
       localStorage.removeItem(`shout-${formToSave.shoutId}`)
-      console.log('Navigating to:', shout?.published_at ? `/article/${shout.slug}` : '/edit')
-      navigate(shout?.published_at ? `/article/${shout.slug}` : '/edit')
+      console.log('Navigating to:', shout?.published_at ? `/${shout.slug}` : '/edit')
+      navigate(shout?.published_at ? `/${shout.slug}` : '/edit')
     } catch (error) {
       console.error('Save failed:', error)
       snackbar?.showSnackbar({ type: 'error', body: localize?.t('Error') || '' })
@@ -440,7 +440,11 @@ export const EditorProvider = (props: { children: JSX.Element }) => {
     console.log('Auto-save triggered, hasChanges:', hasChanges())
 
     if (hasChanges()) {
-      const data = { ...form, body: editing()?.getHTML() || '' }
+      const data = { 
+        ...form,
+        body: editing()?.getHTML() || '',
+        lead: form.lead
+      }
       console.debug('Saving draft data:', data)
       setSaving(true)
 

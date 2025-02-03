@@ -73,7 +73,7 @@ export const NotificationGroup = (props: NotificationGroupProps) => {
                 <GroupAvatar authors={n.authors as Author[]} />
               </div>
               <div>
-                <A href={`/article/${n.shout?.slug || ''}`} onClick={handleLinkClick}>
+                <A href={`/${n.shout?.slug || ''}`} onClick={handleLinkClick}>
                   {getTitle(n.shout?.title || '')}
                 </A>{' '}
                 {t('from')}{' '}

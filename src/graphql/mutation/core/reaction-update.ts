@@ -8,6 +8,7 @@ export default gql`
         id
         body
         kind
+        created_at
         updated_at
       }
     }
