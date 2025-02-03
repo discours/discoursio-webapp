@@ -11,8 +11,8 @@ type ProfileContextType = {
   author: Accessor<Author>
   setAuthor: (a: Author) => void
   form: ProfileInput
-  setForm: (profile: ProfileInput) => void
-  submit: (profile: ProfileInput) => Promise<void>
+  setForm: (profile: Partial<ProfileInput>) => void
+  submit: (profile: ProfileInput) => Promise<Author | undefined>
   updateFormField: (fieldName: string, value: string, remove?: boolean) => void
 }
 
@@ -27,6 +27,19 @@ const userpicUrl = (userpic: string) => {
     return userpic.replace('100x', '500x500')
   }
   return userpic
+}
+
+const filterProfileInput = (profile: Partial<ProfileInput>): ProfileInput => {
+  const filtered = {
+    name: profile.name || '',
+    slug: profile.slug || '',
+    bio: profile.bio || '',
+    about: profile.about || '',
+    pic: profile.pic || '',
+    links: Array.isArray(profile.links) ? (profile.links.filter(Boolean) as string[]) : []
+  }
+  console.log('Filtered profile input:', filtered)
+  return filtered
 }
 
 export const ProfileProvider = (props: { children: JSX.Element }) => {
@@ -53,10 +66,27 @@ export const ProfileProvider = (props: { children: JSX.Element }) => {
   )
 
   const submit = async (profile: ProfileInput) => {
-    const response = await client()?.mutation(updateAuthorMuatation, profile).toPromise()
-    if (response?.error) {
-      console.error(response.error)
-      throw response.error
+    try {
+      const filteredProfile = filterProfileInput(profile)
+      console.log('Submitting profile:', {
+        original: profile,
+        filtered: filteredProfile
+      })
+
+      const response = await client()
+        ?.mutation(updateAuthorMuatation, {
+          profile: filteredProfile
+        })
+        .toPromise()
+
+      if (response?.error) {
+        console.error('GraphQL error:', response.error)
+        throw response.error
+      }
+      return response?.data?.update_author?.author
+    } catch (error) {
+      console.error('Submit error:', error)
+      throw error
     }
   }
 
@@ -77,6 +107,7 @@ export const ProfileProvider = (props: { children: JSX.Element }) => {
   // TODO: validation error for `!` and `@`
 
   const updateFormField = (fieldName: string, value: string, remove?: boolean) => {
+    console.log(`Updating form field ${fieldName}:`, value)
     let val = value
     if (fieldName === 'slug' && value.startsWith('@')) val = value.substring(1)
     if (fieldName === 'slug' && value.startsWith('!')) val = value.substring(1)
@@ -96,9 +127,12 @@ export const ProfileProvider = (props: { children: JSX.Element }) => {
     author,
     setAuthor,
     form,
+    setForm: (profile: Partial<ProfileInput>) => {
+      const filteredProfile = filterProfileInput(profile)
+      setForm((prev) => ({ ...prev, ...filteredProfile }))
+    },
     submit,
-    updateFormField,
-    setForm
+    updateFormField
   }
 
   return <ProfileContext.Provider value={value}>{props.children}</ProfileContext.Provider>

@@ -11,6 +11,7 @@ import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
 import { UploadedFile } from '~/types/upload'
 import { SimpleInsertLinkForm } from './SimpleInsertLinkForm'
+import { SimpleMicroBubbleMenu } from './SimpleMicroBubbleMenu'
 import styles from './SimpleRichEditor.module.scss'
 import { SimpleToolbarControl as Control } from './SimpleToolbarControl'
 
@@ -48,6 +49,8 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
   const [showLinkForm, setShowLinkForm] = createSignal(false)
   const [isBlurred, setIsBlurred] = createSignal(false)
   const [counter, setCounter] = createSignal(0)
+  const [showBubbleMenu, setShowBubbleMenu] = createSignal(false)
+  const [bubbleMenuPosition, setBubbleMenuPosition] = createSignal({ top: 0, left: 0 })
 
   // Улучшенная работа с выделением
   const getSelectedRange = () => {
@@ -339,6 +342,32 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
     props.onCancel?.()
   }
 
+  // Add function to update bubble menu position
+  const updateBubbleMenuPosition = () => {
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed) {
+      setShowBubbleMenu(false)
+      return
+    }
+
+    const range = selection.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
+
+    setBubbleMenuPosition({
+      top: rect.top - 40, // Adjust this value to position menu above selection
+      left: rect.left + rect.width / 2
+    })
+    setShowBubbleMenu(true)
+  }
+
+  // Update existing selection handlers
+  const handleSelectionChange = () => {
+    if (props.micro) {
+      updateBubbleMenuPosition()
+    }
+    updateState()
+  }
+
   // Инициализация и очистка
   onMount(() => {
     if (!editorRef) return
@@ -360,6 +389,8 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
 
     // Инициализируем состояние
     updateState()
+
+    document.addEventListener('selectionchange', handleSelectionChange)
   })
 
   onCleanup(() => {
@@ -369,6 +400,7 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
     if (editorRef) {
       editorRef.removeEventListener('input', updateState)
     }
+    document.removeEventListener('selectionchange', handleSelectionChange)
   })
 
   // Обработка клика для выхода из blockquote
@@ -449,7 +481,22 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
         [styles.isFocused]: !isBlurred()
       })}
     >
-      <SimpleToolbar />
+      <Show when={!props.micro}>
+        <SimpleToolbar />
+      </Show>
+
+      <Show when={props.micro && showBubbleMenu()}>
+        <Portal>
+          <SimpleMicroBubbleMenu
+            position={bubbleMenuPosition()}
+            onBold={() => execCommand('bold')}
+            onItalic={() => execCommand('italic')}
+            onLink={handleLinkButtonClick}
+            format={state.format}
+            onClose={() => setShowBubbleMenu(false)}
+          />
+        </Portal>
+      </Show>
 
       <Portal>
         <Modal variant="narrow" name="editorUploadImage">

@@ -57,7 +57,6 @@ export const ProfileSettings = () => {
   const [slugError, setSlugError] = createSignal<string>()
   const [nameError, setNameError] = createSignal<string>()
   const { form, submit, updateFormField, setForm } = useProfile()
-  const [about, setAbout] = createSignal(form.about)
   const { showSnackbar } = useSnackbar()
   const { loadSession, session } = useSession()
   const [prevForm, setPrevForm] = createStore<ProfileInput>()
@@ -93,6 +92,16 @@ export const ProfileSettings = () => {
     }
   }
 
+  const handleAboutSubmit = (content: string) => {
+    try {
+      updateFormField('about', content)
+      return true
+    } catch (error) {
+      console.error('Failed to update about:', error)
+      return false
+    }
+  }
+
   const handleSubmit = async (event: MouseEvent | undefined) => {
     event?.preventDefault()
     setIsSaving(true)
@@ -110,9 +119,9 @@ export const ProfileSettings = () => {
     }
 
     try {
+      // Отправляем все данные формы, включая bio
       await submit(form)
       setPrevForm(clone(form))
-      setAbout(form.about)
       showSnackbar({ body: t('Profile successfully saved') })
     } catch (error) {
       if (error?.toString().search('duplicate_slug')) {
@@ -333,17 +342,18 @@ export const ProfileSettings = () => {
                     <GrowingTextarea
                       variant="bordered"
                       placeholder={t('Introduce')}
-                      value={(value) => updateFormField('bio', value)}
                       initialValue={form.bio || ''}
                       allowEnterKey={false}
                       maxLength={120}
+                      value={(value) => updateFormField('bio', value)}
                     />
 
                     <h4>{t('About')}</h4>
                     <SimpleRichEditor
                       micro={true}
-                      content={about() || ''}
-                      onChange={setAbout}
+                      content={form.about || ''}
+                      onChange={(content) => updateFormField('about', content)}
+                      onSubmit={handleAboutSubmit}
                       placeholder={t('About')}
                     />
                     <div class={clsx(styles.multipleControls, 'pretty-form__item')}>

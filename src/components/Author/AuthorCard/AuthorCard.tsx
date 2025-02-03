@@ -1,4 +1,4 @@
-import { redirect, useNavigate } from '@solidjs/router'
+import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
@@ -7,6 +7,7 @@ import { FollowingButton } from '~/components/_shared/FollowingButton'
 import { FollowingCounters } from '~/components/_shared/FollowingCounters/FollowingCounters'
 import { FollowsFilter, useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
+import { useProfile } from '~/context/profile'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import type { Author, Community, Topic } from '~/graphql/schema/core.gen'
@@ -33,6 +34,7 @@ export const AuthorCard = (props: Props) => {
   const { t, lang } = useLocalize()
   const navigate = useNavigate()
   const { session, isSessionLoaded, requireAuthentication } = useSession()
+  const { setForm } = useProfile()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
   const [authorSubs, setAuthorSubs] = createSignal<Array<Author | Topic | Community>>(
     props.flatFollows || []
@@ -65,6 +67,25 @@ export const AuthorCard = (props: Props) => {
     requireAuthentication(() => {
       props.author?.id && navigate(`/inbox/${props.author?.id}`, { replace: true })
     }, 'discussions')
+  }
+
+  const navigateToSettings = () => {
+    console.log('Attempting to navigate to settings')
+    console.log('Session state:', session())
+    requireAuthentication(() => {
+      if (author() && setForm) {
+        setForm({
+          name: author()?.name || '',
+          slug: author()?.slug || '',
+          bio: author()?.bio || '',
+          about: author()?.about || '',
+          pic: author()?.pic || '',
+          links: author()?.links || []
+        })
+      }
+      console.log('Authentication successful, navigating...')
+      navigate('/settings', { replace: true })
+    }, 'profile')
   }
 
   createEffect(
@@ -238,7 +259,7 @@ export const AuthorCard = (props: Props) => {
               <div class={styles.authorActions}>
                 <Button
                   variant="secondary"
-                  onClick={() => redirect('/settings')}
+                  onClick={navigateToSettings}
                   value={
                     <>
                       <span class={styles.authorActionsLabel}>{t('Edit profile')}</span>

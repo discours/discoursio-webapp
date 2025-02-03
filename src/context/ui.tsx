@@ -79,6 +79,7 @@ export type ModalSource =
   | 'create'
   | 'authguard'
   | 'edit'
+  | 'profile'
 
 export type ModalType =
   | 'auth'
