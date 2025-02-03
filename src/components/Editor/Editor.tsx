@@ -17,9 +17,10 @@ import { EditorFloatingMenu } from './Toolbar/EditorFloatingMenu'
 import { FigureBubbleMenu } from './Toolbar/FigureBubbleMenu'
 import { FullBubbleMenu } from './Toolbar/FullBubbleMenu'
 import { IncutBubbleMenu } from './Toolbar/IncutBubbleMenu'
-import { extensions } from './editorExtensions'
+import { extensions } from './extensions'
 import { ArticleNode } from './extensions/Article'
 import { TrailingNode } from './extensions/TrailingNode'
+
 import './Editor.module.scss'
 
 type Props = {
@@ -29,6 +30,8 @@ type Props = {
 }
 
 // Editor uses context/editor to keep content
+
+// TODO: call updateEditorExtensions to add collab extensions
 
 export const EditorComponent = (props: Props) => {
   const { t } = useLocalize()
