@@ -5,9 +5,9 @@
     "ignore": ["./dist", "./node_modules", ".husky", "docs", "gen", "*.gen.ts", "*.d.ts"]
   },
   "vcs": {
+    "enabled": true,
     "defaultBranch": "dev",
     "useIgnoreFile": true,
-    "enabled": true,
     "clientKind": "git"
   },
   "organizeImports": {
@@ -15,6 +15,7 @@
     "ignore": ["./gen"]
   },
   "formatter": {
+    "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 108,
@@ -22,17 +23,17 @@
   },
   "javascript": {
     "formatter": {
+      "enabled": true,
       "semicolons": "asNeeded",
       "quoteStyle": "single",
-      "enabled": true,
       "jsxQuoteStyle": "double",
       "arrowParentheses": "always",
       "trailingCommas": "none"
     }
   },
   "linter": {
-    "ignore": ["*.scss", "*.md", ".DS_Store", "*.svg", "*.d.ts"],
     "enabled": true,
+    "ignore": ["*.scss", "*.md", ".DS_Store", "*.svg", "*.d.ts"],
     "rules": {
       "all": true,
       "complexity": {
