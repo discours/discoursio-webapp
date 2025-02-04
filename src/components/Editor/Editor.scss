@@ -1,0 +1,314 @@
+.ProseMirror {
+  font-size: 1.6rem;
+  outline: none;
+  min-height: 300px;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+// Keeping the cursor active when moving outside the editable area
+
+/* Give a remote user a caret */
+.collaboration-cursor__caret {
+  border-left: 1px solid #0d0d0d;
+  border-right: 1px solid #0d0d0d;
+  margin-left: -1px;
+  margin-right: -1px;
+  pointer-events: none;
+  position: relative;
+  word-break: normal;
+}
+
+/* Render the username above the caret */
+.collaboration-cursor__label {
+  border-radius: 3px 3px 3px 0;
+  color: #0d0d0d;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  left: -1px;
+  line-height: normal;
+  padding: 0.1rem 0.3rem;
+  position: absolute;
+  top: -1.4em;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.embed-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: #f1f1f1;
+  margin: 4rem 0;
+
+  iframe {
+    border: none;
+    overflow: hidden;
+  }
+}
+
+.horizontalRule {
+  border-top: 2px solid #000;
+}
+
+mark.highlight {
+  box-decoration-break: clone;
+  padding: 0.2em 0;
+}
+
+// custom atibutes fro TipTap Nodes
+
+@include media-breakpoint-up(sm) {
+  [data-float] {
+    max-width: 50%;
+  }
+
+  [data-float='left'] {
+    float: left;
+    max-width: 35%;
+    margin: 1rem 2.2em 0 0;
+    clear: left;
+  }
+
+  [data-float='right'] {
+    float: right;
+    margin: 1rem 0 1rem 2.2em;
+    max-width: 35%;
+    clear: right;
+  }
+
+  [data-float='half-left'] {
+    float: left;
+    margin: 1rem 1rem 0;
+    clear: left;
+
+    @include media-breakpoint-up(md) {
+      max-width: 50%;
+      min-width: 30%;
+    }
+  }
+
+  [data-float='half-right'] {
+    float: right;
+    margin: 1rem 0;
+    clear: right;
+
+    @include media-breakpoint-up(md) {
+      max-width: 50%;
+      min-width: 30%;
+    }
+  }
+}
+
+.ProseMirror blockquote {
+  p:last-child {
+    margin-bottom: 0;
+  }
+
+  &[data-type='quote'] {
+    font-size: 1.4rem;
+    border: solid #000;
+    border-width: 0 0 0 2px;
+    margin: 1.6rem 0;
+    padding: 0 0 0 1.5em;
+
+    &[data-float='left'] {
+      padding-left: 0;
+      padding-right: 0;
+      margin-right: 1.6rem;
+      border-width: 0 2px 0 0;
+      clear: left;
+    }
+
+    &[data-float='right'] {
+      margin-left: 1.6rem;
+      border-width: 0 0 0 2px;
+      clear: right;
+    }
+  }
+
+  &[data-type='punchline'] {
+    border: solid #000;
+    border-width: 2px 0;
+    font-size: 3.2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 1em 0;
+    padding: 2.4rem 0;
+
+    &[data-float='left'],
+    &[data-float='right'] {
+      font-size: 2.2rem;
+      line-height: 1.4;
+    }
+
+    @include media-breakpoint-up(sm) {
+      &[data-float='left'] {
+        margin-right: 1.5em;
+        clear: left;
+      }
+
+      &[data-float='right'] {
+        margin-left: 1.5em;
+        clear: right;
+      }
+    }
+  }
+}
+
+.ProseMirror article[data-type='incut'] {
+  background: #f1f2f3;
+  font-size: 1.4rem;
+  margin: 1em -1rem;
+  padding: 2em 2rem;
+  transition: background 0.3s ease-in-out;
+
+  @include media-breakpoint-up(sm) {
+    margin-left: -2rem;
+    margin-right: -2rem;
+  }
+
+  @include media-breakpoint-up(lg) {
+    margin-right: -6%;
+    padding-left: 3em;
+    padding-right: 3em;
+  }
+
+  @include media-breakpoint-up(lg) {
+    margin-left: -3em;
+    margin-right: -3em;
+  }
+
+  &[data-float] img {
+    float: none;
+    max-width: unset;
+    width: 100% !important;
+    margin: 0;
+  }
+
+  &[data-float='left'],
+  &[data-float='half-left'] {
+    margin-left: -1rem;
+    clear: left;
+
+    @include media-breakpoint-up(sm) {
+      margin-left: -2rem;
+      margin-right: 2rem;
+    }
+
+    @include media-breakpoint-up(lg) {
+      margin-left: -6%;
+    }
+
+    @include media-breakpoint-up(xl) {
+      margin-left: -12.5%;
+    }
+  }
+
+  &[data-float='right'],
+  &[data-float='half-right'] {
+    margin-right: -1rem;
+    clear: right;
+
+    @include media-breakpoint-up(sm) {
+      margin-left: 2rem;
+      margin-right: -2rem;
+    }
+
+    @include media-breakpoint-up(lg) {
+      margin-right: -6%;
+    }
+
+    @include media-breakpoint-up(xl) {
+      margin-right: -12.5%;
+    }
+  }
+
+  *:last-child {
+    margin-bottom: 0;
+  }
+
+  &[data-bg='black'] {
+    background: #000;
+    color: #fff;
+  }
+
+  &[data-bg='yellow'] {
+    background: #f6e3a1;
+  }
+
+  &[data-bg='pink'] {
+    background: #f1b5bc;
+  }
+
+  &[data-bg='green'] {
+    background: #eafff2;
+  }
+
+  &[data-bg='white'] {
+    background: #fff;
+    box-shadow: 0 0 0 1px #000;
+  }
+}
+
+.ProseMirror-hideselection figure[data-type='figure'] {
+  & > figcaption {
+    --selection-color: rgb(0 0 0 / 60%);
+  }
+}
+
+figure[data-type='figure'] {
+  width: 100% !important;
+
+  .iframe-wrapper {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: auto;
+
+    iframe {
+      display: block;
+      width: 100%;
+    }
+  }
+}
+
+/* stylelint-disable-next-line selector-type-no-unknown */
+footnote {
+  display: inline-flex;
+  position: relative;
+  cursor: pointer;
+  width: 0.8rem;
+  height: 1em;
+
+  &::before {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    top: -2px;
+    border: unset;
+    background-size: 10px;
+    background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/PjxzdmcgY2xhc3M9ImJpIGJpLWluZm8tY2lyY2xlIiBmaWxsPSJjdXJyZW50Q29sb3IiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik04IDE1QTcgNyAwIDEgMSA4IDFhNyA3IDAgMCAxIDAgMTR6bTAgMUE4IDggMCAxIDAgOCAwYTggOCAwIDAgMCAwIDE2eiIvPjxwYXRoIGQ9Im04LjkzIDYuNTg4LTIuMjkuMjg3LS4wODIuMzguNDUuMDgzYy4yOTQuMDcuMzUyLjE3Ni4yODguNDY5bC0uNzM4IDMuNDY4Yy0uMTk0Ljg5Ny4xMDUgMS4zMTkuODA4IDEuMzE5LjU0NSAwIDEuMTc4LS4yNTIgMS40NjUtLjU5OGwuMDg4LS40MTZjLS4yLjE3Ni0uNDkyLjI0Ni0uNjg2LjI0Ni0uMjc1IDAtLjM3NS0uMTkzLS4zMDQtLjUzM0w4LjkzIDYuNTg4ek05IDQuNWExIDEgMCAxIDEtMiAwIDEgMSAwIDAgMSAyIDB6Ii8+PC9zdmc+');
+  }
+
+  &:hover {
+    background-color: unset;
+  }
+}
+
+.highlight-fake-selection {
+  background: var(--selection-background);
+  color: var(--selection-color);
+  border: solid var(--selection-background);
+  border-width: 0;
+}
