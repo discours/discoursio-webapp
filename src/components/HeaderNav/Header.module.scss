@@ -5,9 +5,12 @@
   color: var(--default-color);
   font-size: 1.4rem;
   margin-bottom: 2.2rem;
-  position: absolute;
+  position: sticky;
+  top: 0;
   width: 100%;
-  z-index: 10003;
+  z-index: 100;
+  transition: transform 0.3s ease;
+  will-change: transform;
 
   .wide-container {
     @include media-breakpoint-down(lg) {
@@ -15,6 +18,14 @@
     }
 
     background: var(--background-color);
+  }
+
+  &.headerScrolledBottom {
+    transform: translateY(-100%);
+  }
+  
+  &.headerScrolledTop {
+    transform: translateY(0);
   }
 }
 

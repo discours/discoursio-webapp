@@ -47,6 +47,7 @@ export const Header = (props: Props) => {
   const [fixed, setFixed] = createSignal(false)
   const [isSharePopupVisible, setIsSharePopupVisible] = createSignal(false)
   const [isProfilePopupVisible, setIsProfilePopupVisible] = createSignal(false)
+  const [isInitialLoad, setIsInitialLoad] = createSignal(true)
 
   let windowScrollTop = 0
   let timer: number | NodeJS.Timeout | undefined
@@ -63,7 +64,13 @@ export const Header = (props: Props) => {
     const mainContent = document.querySelector<HTMLDivElement>('.main-content')
 
     if (fixed() || modal() !== null) {
-      console.debug('scroll to top in Header: fixed and modal not null')
+      console.debug('Header effect:', {
+        isInitialLoad: isInitialLoad(),
+        fixed: fixed(),
+        modal: modal(),
+        windowScrollTop
+      })
+
       windowScrollTop = window?.scrollY || 0
       if (mainContent) mainContent.style.marginTop = `-${windowScrollTop}px`
     }
@@ -72,24 +79,57 @@ export const Header = (props: Props) => {
     document.body.classList.toggle(styles.fixed, fixed() && !modal())
 
     if (!(fixed() || modal())) {
-      console.debug('scroll to top in Header: not fixed and not modal')
-      window?.scrollTo(0, windowScrollTop)
+      if (!isInitialLoad()) {
+        window?.scrollTo(0, windowScrollTop)
+      }
       if (mainContent) mainContent.style.marginTop = ''
     }
   })
 
   onMount(() => {
-    let scrollTop = window.scrollY
+    const headerRef = document.querySelector(`.${styles.mainHeader}`)
+    if (!headerRef) return
 
-    const handleScroll = () => {
-      setIsScrollingBottom(window.scrollY > scrollTop)
-      setIsScrolled(window.scrollY > 0)
-      scrollTop = window.scrollY
-    }
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        console.debug('Header size changed:', {
+          height: entry.contentRect.height,
+          isInitialLoad: isInitialLoad()
+        })
+      }
+    })
 
-    window.addEventListener('scroll', handleScroll, { passive: true })
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          console.debug('Header intersection:', {
+            isIntersecting: entry.isIntersecting,
+            isInitialLoad: isInitialLoad()
+          })
+
+          if (!isInitialLoad()) {
+            setIsScrolled(!entry.isIntersecting)
+            setIsScrollingBottom(!entry.isIntersecting && entry.boundingClientRect.y < 0)
+          }
+        })
+      },
+      {
+        threshold: [0, 1],
+        rootMargin: '-1px 0px 0px 0px'
+      }
+    )
+
+    resizeObserver.observe(headerRef)
+    intersectionObserver.observe(headerRef)
+
+    setTimeout(() => {
+      setIsInitialLoad(false)
+      console.debug('Initial load completed')
+    }, 100)
+
     onCleanup(() => {
-      window.removeEventListener('scroll', handleScroll)
+      resizeObserver.disconnect()
+      intersectionObserver.disconnect()
     })
   })
 
@@ -105,10 +145,9 @@ export const Header = (props: Props) => {
   }
 
   const hideSubnavigation = (_ev?: MouseEvent) => {
-    // Добавляем задержку перед скрытием подменю
     hideTimer = window.setTimeout(() => {
       setActiveSubmenu(null)
-    }, 200) // 200ms задержка
+    }, 200)
   }
 
   const { showModal } = useUI()
@@ -122,6 +161,16 @@ export const Header = (props: Props) => {
 
     redirect('/edit/new')
   }
+
+  createEffect(() => {
+    console.debug('Header state updated:', {
+      isScrollingBottom: getIsScrollingBottom(),
+      isScrolled: getIsScrolled(),
+      fixed: fixed(),
+      modal: modal()
+    })
+  })
+
   return (
     <header
       class={styles.mainHeader}
