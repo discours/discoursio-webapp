@@ -20,7 +20,8 @@ import { FullBubbleMenu } from './Toolbar/FullBubbleMenu'
 import { IncutBubbleMenu } from './Toolbar/IncutBubbleMenu'
 import { ArticleNode } from './extensions/Article'
 import { TrailingNode } from './extensions/TrailingNode'
-import './Editor.scss'
+import './Editor.module.scss'
+import './EditorProseMirror.scss'
 
 type Props = {
   shoutId: number
