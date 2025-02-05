@@ -17,7 +17,7 @@ interface Props {
   isMultiply: boolean
   fileType: FileType
   // biome-ignore lint/suspicious/noExplicitAny: json response
-  onUpload: (value: any[]) => void
+  onUpload?: (value: any[]) => void
   description?: string | JSX.Element
   isSquare?: boolean
 }

@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import { Component, JSX } from 'solid-js'
+
 import styles from './SimpleToolbarControl.module.scss'
 
 interface ToolbarControlProps {

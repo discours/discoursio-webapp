@@ -1,5 +1,5 @@
 import { Editor } from '@tiptap/core'
-import { allowedImageTypes, handleFileUpload } from './handleFileUpload'
+import { allowedImageTypes, handleFileUpload } from '../../lib/handleFileUpload'
 
 export const handleClipboardPaste = async (editor?: Editor, token = '') => {
   try {

@@ -3,7 +3,6 @@ import deepEqual from 'fast-deep-equal'
 import { Show, createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { debounce } from 'throttle-debounce'
-import { EditorComponent } from '~/components/Editor/Editor'
 import { DropArea } from '~/components/_shared/DropArea'
 import { Icon } from '~/components/_shared/Icon'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
@@ -20,14 +19,15 @@ import { getFileUrl } from '~/lib/getThumbUrl'
 import { isDesktop } from '~/lib/mediaQuery'
 import { LayoutType } from '~/types/common'
 import { clone } from '~/utils/clone'
-import { AutoSaveNotice } from '../Editor/AutoSaveNotice'
-import { Panel } from '../Editor/Toolbar/Panel'
+import { AutoSaveNotice } from '../AutoSaveNotice'
+import { Panel } from '../Sidebar/Sidebar'
 import { AudioUploader } from '../Upload/AudioUploader'
 import { VideoUploader } from '../Upload/VideoUploader'
 import { Modal } from '../_shared/Modal'
 import { TableOfContents } from '../_shared/TableOfContents'
 
 import styles from '~/styles/views/EditView.module.scss'
+import { RichEditor } from '../SimpleRichEditor/RichEditor'
 import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'
 
@@ -457,9 +457,9 @@ export const EditView = (props: Props) => {
               <HeadingActions />
             </div>
             <Show when={draft()?.id} fallback={<Loading />}>
-              <EditorComponent
+              <RichEditor
                 shoutId={form.shoutId}
-                initialContent={form.body}
+                content={form.body}
                 //onChange={(body: string) => handleInputChange('body', body)}
               />
               <Show when={draft()?.id}>

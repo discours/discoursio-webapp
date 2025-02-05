@@ -12,7 +12,7 @@ import { useUI } from '~/context/ui'
 import { useEscKeyDownHandler } from '~/lib/useEscKeyDownHandler'
 import { useOutsideClickHandler } from '~/lib/useOutsideClickHandler'
 
-import styles from './Panel.module.scss'
+import styles from './Sidebar.module.scss'
 
 const typograf = new Typograf({ locale: ['ru', 'en-US'] })
 

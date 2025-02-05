@@ -1,7 +1,10 @@
 # Changelog
 
-## [0.9.15] - 2025-02-03
+## [0.9.15] - 2025-02-05
 - `SimpleRichEditor` на замену `MiniEditor` и `MicroEditor`
+- `RichEditor` на замену `Editor`
+- `@solid-primitives/selection` используется в редакторе
+- поддержка встраивания видео и превью ссылок при вставке из буфера
 
 
 ## [0.9.14] - 2024-02-01

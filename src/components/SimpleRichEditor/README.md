@@ -1,40 +1,63 @@
 # SimpleRichEditor
 
-## Описание
+Легкий WYSIWYG редактор без внешних зависимостей, использующий нативные браузерные API.
 
-Легковесный редактор для форматированного текста без внешних зависимостей:
+## Особенности
 
-- Использует нативный contentEditable
-- Реактивное состояние на SolidJS
-- Минимальный размер бандла (~5KB)
-- Имитирует API [MiniEditor](src/components/Editor/MiniEditor.tsx) для совместимости
-- Имитирует API [MicroEditor](src/components/Editor/MicroEditor.tsx) для совместимости
-
-## Возможности
-
-- Базовое форматирование (bold, italic)
-- Микро-режим
-- Ссылки с валидацией
-- Цитаты (blockquote)
-- Вставка изображений
-- Горячие клавиши
-- Автофокус и восстановление выделения
-- Сохранение черновиков
+- Реализация с использованием `contentEditable`
+- Поддержка основных форматов текста (bold, italic, underline)
+- Поддержка ссылок и цитат
+- Загрузка изображений через drag&drop
+- Вставка видео (YouTube, Vimeo)
+- Всплывающее меню форматирования
+- Поддержка горячих клавиш
+- Автосохранение
+- Счетчик символов
+- Валидация контента
+- Микро-режим для комментариев
 
 ## Использование
 
 ```tsx
-import { SimpleRichEditor } from '~/components/SimpleRichEditor'
+import { SimpleRichEditor } from './SimpleRichEditor'
 
 <SimpleRichEditor
-  content="Начальный текст"
-  onSubmit={(content) => handleSubmit(content)}
-  onCancel={() => handleCancel()}
-  placeholder="Введите текст..."
-  autoFocus={true}
-  limit={1000} // Опционально
+  content="Initial content"
+  onChange={(content) => console.log(content)}
+  onSubmit={async (content) => {
+    await saveContent(content)
+    return true
+  }}
+  placeholder="Start typing..."
+  limit={1000}
+  micro={true}
 />
 ```
+
+## API
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| content | string | Начальный контент |
+| onChange | (content: string) => void | Колбэк изменения контента |
+| onSubmit | (content: string) => Promise<boolean> | Колбэк сохранения |
+| onCancel | () => void | Колбэк отмены |
+| onBlur | () => void | Колбэк потери фокуса |
+| placeholder | string | Плейсхолдер |
+| limit | number | Лимит символов |
+| autoFocus | boolean | Автофокус |
+| micro | boolean | Микро-режим для комментариев |
+| readOnly | boolean | Режим только для чтения |
+
+### Горячие клавиши
+
+- `⌘/Ctrl + B` - Bold
+- `⌘/Ctrl + I` - Italic  
+- `⌘/Ctrl + U` - Underline
+- `⌘/Ctrl + K` - Link
+- `⌘/Ctrl + Enter` - Submit
 
 ## Преимущества
 
@@ -43,6 +66,11 @@ import { SimpleRichEditor } from '~/components/SimpleRichEditor'
 - Простая кодовая база
 - Быстрая инициализация
 - Легкая кастомизация
+
+## Ограничения
+
+- Хранит историю изменений глубиной в 20 состояний
+
 
 ## Рекомендации по использованию
 

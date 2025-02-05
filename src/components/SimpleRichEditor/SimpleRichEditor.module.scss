@@ -59,7 +59,7 @@
     color: var(--black-900);
     outline: none;
 
-    &:empty::before {
+    &[data-placeholder]:empty::before {
       content: attr(data-placeholder);
       color: var(--black-300);
       pointer-events: none;
@@ -89,6 +89,13 @@
       height: auto;
       margin: 1em 0;
       border-radius: 4px;
+    }
+
+    figcaption {
+      font-size: 0.9em;
+      color: var(--black-600);
+      text-align: center;
+      margin-top: 0.5em;
     }
   }
 
@@ -150,6 +157,21 @@
       line-height: 1.4;
     }
   }
+
+  // Add styles from Editor.module.scss
+  .ProseMirror-like {
+    font-size: 1.6rem;
+    outline: none;
+    min-height: 300px;
+
+    &[data-placeholder]:empty::before {
+      content: attr(data-placeholder);
+      float: left;
+      height: 0;
+      pointer-events: none;
+      opacity: 0.3;
+    }
+  }
 }
 
 // Стили для кнопок тулбара
@@ -180,5 +202,57 @@
   svg {
     width: 18px;
     height: 18px;
+  }
+}
+
+.preview {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  margin: 1rem 0;
+
+  img {
+    max-width: 120px;
+    height: auto;
+    object-fit: cover;
+  }
+}
+
+.previewContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  a {
+    color: var(--color-text);
+    font-weight: 500;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  p {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    margin: 0;
+  }
+}
+
+.video-embed {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 */
+  height: 0;
+  margin: 1rem 0;
+
+  iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
   }
 } 

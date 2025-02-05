@@ -1,7 +1,7 @@
-const audioExts = /\.(wav|flac|mp3|aac|jpg|jpeg|png|gif)$/i
+export const AUDIO_REGEX = /\.(mp3|wav|ogg|m4a)$/i
 
 const removeMediaFileExtension = (fileName: string) => {
-  return fileName.replace(audioExts, '')
+  return fileName.replace(AUDIO_REGEX, '')
 }
 
 export const composeMediaItems = (
