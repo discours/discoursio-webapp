@@ -22,6 +22,7 @@ import { TrailingNode } from './extensions/TrailingNode'
 import { handleClipboardPaste } from './handleClipboardPaste'
 
 import './Editor.module.scss'
+import './EditorProseMirror.scss'
 
 type Props = {
   shoutId: number
