@@ -1,48 +1,78 @@
 import { clsx } from 'clsx'
 import sanitizeHtml from 'sanitize-html'
-import { Component, createSignal, onMount } from 'solid-js'
+import { Component, createSignal, onCleanup, onMount } from 'solid-js'
 import { Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
 
 import { Button } from '~/components/_shared/Button'
 import { useLocalize } from '~/context/localize'
 import { useSnackbar, useUI } from '~/context/ui'
+import { useDropFiles } from './lib/drop'
 import { handleContentPaste } from './lib/embed'
 import { useKeyboardHandlers } from './lib/keyboard'
 import { useEditor } from './lib/state'
 import { EditorBubbleMenu } from './menu/EditorBubbleMenu'
-import { EditorToolbar } from './menu/EditorToolbar'
+import { EditorFloatingMenu } from './menu/EditorFloatingMenu'
 
 import styles from './RichEditor.module.scss'
 
+/**
+ * Rich text editor component with formatting controls and content management
+ *
+ * Features:
+ * - Basic text formatting (bold, italic, links)
+ * - Block elements (headings, quotes)
+ * - Media embedding (images, videos)
+ * - Content autosave
+ * - Character counter
+ * - Paste handling
+ * - Keyboard shortcuts
+ * - Sliding toolbar animation
+ *
+ * @example
+ * ```tsx
+ * <RichEditor
+ *   content="Initial content"
+ *   onChange={(content) => console.log(content)}
+ *   onSubmit={async (content) => {
+ *     await saveContent(content)
+ *     return true
+ *   }}
+ *   placeholder="Start typing..."
+ *   limit={1000}
+ * />
+ * ```
+ */
 export interface RichEditorProps {
+  /** Initial HTML content */
   content?: string
+  /** Called when content changes */
   onChange?: (content: string) => void
+  /** Called when Save button clicked. Should return true if save successful */
   onSubmit?: (content: string) => Promise<boolean>
+  /** Called when Cancel button clicked */
   onCancel?: () => void
+  /** Called when editor loses focus */
   onBlur?: () => void
+  /** Placeholder text shown when editor is empty */
   placeholder?: string
+  /** Whether to focus editor on mount */
   autoFocus?: boolean
+  /** Whether editor is in read-only mode */
   readOnly?: boolean
+  /** Maximum character count limit */
   limit?: number
-  shoutId?: number // TODO: use or remove
+  /** ID for autosave storage key */
+  shoutId?: number
 }
 
 export const RichEditor: Component<RichEditorProps> = (props) => {
   const { t } = useLocalize()
   const { showSnackbar } = useSnackbar()
   const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
+  const [isFocused, setIsFocused] = createSignal(false)
 
-  const {
-    state,
-    updateState,
-    isBlurred,
-    setIsBlurred,
-    counter,
-    showBubbleMenu,
-    setShowBubbleMenu,
-    handleImageUploadWithSnackbar
-  } = useEditor(
+  const { state, updateState, setIsBlurred, counter } = useEditor(
     {
       content: props.content,
       storageKey: `rich-editor-${props.shoutId || 'new'}`,
@@ -99,12 +129,53 @@ export const RichEditor: Component<RichEditorProps> = (props) => {
     showModal('insertLink')
   )
 
+  const { handleDropFiles } = useDropFiles()
+
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault()
+    const editor = editorRef()
+    if (editor) {
+      editor.classList.add(styles.dragover)
+    }
+  }
+
+  const handleDragLeave = (e: DragEvent) => {
+    e.preventDefault()
+    const editor = editorRef()
+    if (editor) {
+      editor.classList.remove(styles.dragover)
+    }
+  }
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault()
+    const editor = editorRef()
+    if (editor) {
+      editor.classList.remove(styles.dragover)
+      if (e.dataTransfer?.files) {
+        handleDropFiles(e.dataTransfer.files)
+      }
+    }
+  }
+
   onMount(() => {
     const editor = editorRef()
     if (!editor) return
 
     if (props.placeholder) {
       editor.setAttribute('data-placeholder', props.placeholder)
+
+      const updateEmptyClass = () => {
+        const isEmpty = !editor.textContent?.trim()
+        editor.classList.toggle('empty', isEmpty)
+      }
+
+      editor.addEventListener('input', updateEmptyClass)
+      updateEmptyClass()
+
+      onCleanup(() => {
+        editor.removeEventListener('input', updateEmptyClass)
+      })
     }
 
     if (props.autoFocus) {
@@ -118,32 +189,61 @@ export const RichEditor: Component<RichEditorProps> = (props) => {
     <div
       class={clsx(styles.richEditor, {
         [styles.readOnly]: props.readOnly,
-        [styles.focused]: !isBlurred()
+        [styles.focused]: isFocused()
       })}
     >
-      <Show when={!props.readOnly}>
-        <EditorToolbar
-          state={state}
-          execCommand={execCommand}
-          handleImageUpload={handleImageUploadWithSnackbar}
-          handleLinkButtonClick={() => showModal('insertLink')}
-        />
-      </Show>
-
       <div
         ref={setEditorRef}
         class={styles.content}
         contentEditable={!props.readOnly}
-        onFocus={() => setIsBlurred(false)}
-        onBlur={() => setIsBlurred(true)}
+        onFocus={() => {
+          setIsFocused(true)
+          setIsBlurred(false)
+        }}
+        onBlur={() => {
+          setIsFocused(false)
+          setIsBlurred(true)
+        }}
         onInput={updateState}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         data-placeholder={props.placeholder}
         data-drop-text={t('Drop images here')}
       />
 
+      <Portal>
+        <Show when={!props.readOnly && state.selection.isEmpty}>
+          <EditorFloatingMenu
+            position={state.selection.position || { top: 0, left: 0 }}
+            onAddImage={() => showModal('uploadImage')}
+            onAddVideo={() => showModal('insertVideo')}
+            onAddLink={() => showModal('insertLink')}
+            onAddHeading={(level) => execCommand('formatBlock', `<h${level}>`)}
+          />
+
+          <EditorBubbleMenu
+            position={state.selection.position || { top: 0, left: 0 }}
+            format={state.format}
+            execCommand={execCommand}
+            onBold={() => execCommand('bold')}
+            onItalic={() => execCommand('italic')}
+            onLink={() => showModal('insertLink')}
+            onBlockquote={() => execCommand('formatBlock', '<blockquote>')}
+          />
+        </Show>
+      </Portal>
+
       <Show when={!props.readOnly}>
+        <EditorFloatingMenu
+          position={state.selection.position || { top: 0, left: 0 }}
+          onAddImage={() => showModal('uploadImage')}
+          onAddVideo={() => showModal('insertVideo')}
+          onAddLink={() => showModal('insertLink')}
+          onAddHeading={(level) => execCommand('formatBlock', `<h${level}>`)}
+        />
         <div class={styles.footer}>
           <div class={styles.counter}>
             {counter()} / {props.limit || '∞'}
@@ -154,21 +254,6 @@ export const RichEditor: Component<RichEditorProps> = (props) => {
           </div>
         </div>
       </Show>
-
-      <Portal>
-        <Show when={showBubbleMenu() && !isBlurred()}>
-          <EditorBubbleMenu
-            position={state.selection.position || { top: 0, left: 0 }}
-            format={state.format}
-            execCommand={execCommand}
-            onClose={() => setShowBubbleMenu(false)}
-            onBold={() => execCommand('bold')}
-            onItalic={() => execCommand('italic')}
-            onLink={() => execCommand('link')}
-            onBlockquote={() => execCommand('blockquote')}
-          />
-        </Show>
-      </Portal>
     </div>
   )
 }

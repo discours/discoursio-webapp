@@ -1,6 +1,8 @@
 .form {
   width: 100%;
   position: relative;
+  padding: 8px;
+  min-width: 280px;
 
   &.hasError {
     .inputWrapper {
@@ -14,59 +16,61 @@
   align-items: center;
   background: var(--white-500);
   border: 1px solid var(--black-100);
-  border-radius: 24px;
+  border-radius: 4px;
   transition: all 0.2s ease;
 
   &:focus-within {
     border-color: var(--black-300);
   }
+}
 
-  .input {
-    flex: 1;
-    border: none;
-    background: none;
-    padding: 8px 16px;
-    font-size: 1.6rem;
+.input {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  font-size: 1.4rem;
+  color: var(--black-900);
+  outline: none;
+
+  &::placeholder {
+    color: var(--black-400);
+  }
+}
+
+.submitButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 0 4px 4px 0;
+  background: none;
+  color: var(--black-500);
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: var(--black-50);
     color: var(--black-900);
-    outline: none;
-
-    &::placeholder {
-      color: var(--black-300);
-    }
   }
 
-  .submitButton {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--black-500);
-    cursor: pointer;
-    transition: all 0.2s ease;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-    &:hover:not(:disabled) {
-      color: var(--black-900);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    svg {
-      width: 20px;
-      height: 20px;
-    }
+  svg {
+    width: 20px;
+    height: 20px;
   }
 }
 
 .error {
   position: absolute;
-  left: 16px;
+  left: 8px;
   bottom: -20px;
   font-size: 1.2rem;
   color: var(--color-error);

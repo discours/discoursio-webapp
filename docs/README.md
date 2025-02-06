@@ -2,21 +2,18 @@
 
 Проект использует: SolidJS, Typescript, GraphQL, SASS
 
-## Статьи про SolidJS
-
-- Как работают [асинхронные наблюдатели](solid-async.md)
-- [Кешируемое состояние компонентов](solid-memo.md)
-- [Паттерны загрузки данных](api-patterns.md)
-- [Борьба с циклическими эффектами](solid-effects.md)
-
-## Статьи про проект
-
-- [Система учёта просмотров](views.md)
 - [Функциональные возможности](features.md)
+- [Система учёта просмотров](views.md)
 - [Аналитика и метрики](analytics.md)
 - [Кеширование загружаемых данных](caching.md)
-- [Редактор discours.io](editor.md)
-- [Коллаборативный редактор](editor-collab.md)
+
+## Редакторы
+
+- [Редактор на основе TipTap](../src/components/Editor/README.md)
+- [Коллаборативный режим TipTap](../src/components/Editor/editor-collab.md)
+- [Легковесный нативный редактор](../src/components/SimpleRichEditor/README.md)
+
+## Ленты
 
 - [Общие механики лент](feed-components.md)
 - [Фильтрация и сортировка](feed-components.md#фильтрация-и-сортировка)
@@ -25,9 +22,18 @@
 - [Оптимизация SSR](feed-components.md#оптимизация-ssr)
 - [Управление состояниями](feed-components.md#управление-состояниями)
 
+## Комментарии
+
 - [Фильтры комментариев](comments-filter.md)
 - [Фильтрация и сортировка](comments-filter.md#фильтрация-и-сортировка)
 - [Управление состоянием](comments-filter.md#управление-состоянием)
+
+## Статьи про SolidJS
+
+- Как работают [асинхронные наблюдатели](solid-async.md)
+- [Кешируемое состояние компонентов](solid-memo.md)
+- [Паттерны загрузки данных](api-patterns.md)
+- [Борьба с циклическими эффектами](solid-effects.md)
 
 ## Статьи про процесс разработки
 

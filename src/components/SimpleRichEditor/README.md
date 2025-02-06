@@ -1,22 +1,22 @@
-# SimpleRichEditor
+# Rich Text Editors
 
-Легкий WYSIWYG редактор без внешних зависимостей, использующий нативные браузерные API.
+В проекте есть два редактора: RichEditor и SimpleRichEditor. Оба используют нативные браузерные API без внешних зависимостей.
 
-## Особенности
+## SimpleRichEditor
 
-- Реализация с использованием `contentEditable`
-- Поддержка основных форматов текста (bold, italic, underline)
-- Поддержка ссылок и цитат
-- Загрузка изображений через drag&drop
-- Вставка видео (YouTube, Vimeo)
+Легкий WYSIWYG редактор для комментариев и простых форм.
+
+### Особенности
+
+- Минималистичный интерфейс
+- Базовое форматирование (bold, italic, link)
 - Всплывающее меню форматирования
-- Поддержка горячих клавиш
 - Автосохранение
 - Счетчик символов
-- Валидация контента
 - Микро-режим для комментариев
+- Нет хранения истории изменений
 
-## Использование
+### Использование
 
 ```tsx
 import { SimpleRichEditor } from './SimpleRichEditor'
@@ -30,11 +30,41 @@ import { SimpleRichEditor } from './SimpleRichEditor'
   }}
   placeholder="Start typing..."
   limit={1000}
-  micro={true}
+  bubble={true}
 />
 ```
 
-## API
+## RichEditor
+
+Расширенный редактор для полноценных публикаций.
+
+### Дополнительные возможности
+
+- Поддержка заголовков (H1-H3)
+- Загрузка изображений через drag&drop
+- Вставка видео (YouTube, Vimeo)
+- Цитаты и списки
+- История изменений
+- Валидация контента
+
+### Использование
+
+```tsx
+import { RichEditor } from './RichEditor'
+
+<RichEditor
+  content="Initial content"
+  onChange={(content) => console.log(content)}
+  onSubmit={async (content) => {
+    await saveContent(content)
+    return true
+  }}
+  placeholder="Write your story..."
+  autoFocus={true}
+/>
+```
+
+## Общие возможности
 
 ### Props
 
@@ -48,16 +78,23 @@ import { SimpleRichEditor } from './SimpleRichEditor'
 | placeholder | string | Плейсхолдер |
 | limit | number | Лимит символов |
 | autoFocus | boolean | Автофокус |
-| micro | boolean | Микро-режим для комментариев |
-| readOnly | boolean | Режим только для чтения |
 
 ### Горячие клавиши
 
 - `⌘/Ctrl + B` - Bold
 - `⌘/Ctrl + I` - Italic  
-- `⌘/Ctrl + U` - Underline
+- `⌘/Ctrl + U` - Underline (только RichEditor)
 - `⌘/Ctrl + K` - Link
 - `⌘/Ctrl + Enter` - Submit
+
+## Архитектура
+
+- `state.ts` - Управление состоянием редактора
+- `commands.ts` - Команды форматирования
+- `embed.ts` - Обработка вставки медиа
+- `format.ts` - Определение текущего форматирования
+- `keyboard.ts` - Обработка горячих клавиш
+- `selection.ts` - Работа с выделением текста
 
 ## Преимущества
 
@@ -70,14 +107,15 @@ import { SimpleRichEditor } from './SimpleRichEditor'
 ## Ограничения
 
 - Хранит историю изменений глубиной в 20 состояний
-
+- Ограниченная поддержка сложного форматирования
+- Нет поддержки таблиц и сложных списков
 
 ## Рекомендации по использованию
 
-- Для комментариев и небольших форм
-- Когда не требуется сложное форматирование
+- SimpleRichEditor для комментариев и небольших форм
+- RichEditor для полноценных публикаций и статей
 - При ограничениях по размеру бандла
-- Для простых редакторов с базовым функционалом
+- Когда не требуется сложное форматирование
 
 
 

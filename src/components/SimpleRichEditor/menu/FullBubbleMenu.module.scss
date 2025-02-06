@@ -1,0 +1,42 @@
+.FullBubbleMenu {
+  display: flex;
+  align-items: center;
+  background-color: var(--background-color);
+  padding: 5px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px var(--shadow-color-light), 0 10px 20px var(--shadow-color-medium);
+  z-index: 50;
+
+  .mainControls,
+  .blockControls {
+    display: flex;
+    gap: 4px;
+  }
+
+  .actionButton {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+    border-radius: 4px;
+
+    &:hover,
+    &[data-active="true"] {
+      opacity: 1;
+      background: var(--black-50);
+    }
+  }
+
+  .delimiter {
+    width: 1px;
+    height: 24px;
+    background: var(--black-100);
+    margin: 0 8px;
+  }
+} 

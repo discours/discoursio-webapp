@@ -1,26 +1,62 @@
 import { Component, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
+import { useLocalize } from '~/context/localize'
 import { EditorState } from '../lib/state'
 import { SimpleInsertLinkForm } from './SimpleInsertLinkForm'
 import { SimpleToolbarControl as Control } from './SimpleToolbarControl'
 
 import styles from './EditorBubbleMenu.module.scss'
 
+/**
+ * Bubble menu component that appears when text is selected
+ *
+ * Features:
+ * - Text formatting controls (bold, italic)
+ * - Link insertion
+ * - Blockquote toggling
+ * - Keyboard shortcuts hints
+ * - Position following selection
+ * - Micro/rich variants
+ *
+ * @example
+ * ```tsx
+ * <EditorBubbleMenu
+ *   position={{ top: 100, left: 200 }}
+ *   format={editorState.format}
+ *   onBold={() => execCommand('bold')}
+ *   onItalic={() => execCommand('italic')}
+ *   onLink={() => showLinkForm()}
+ *   variant="rich"
+ * />
+ * ```
+ */
 interface BubbleMenuProps {
+  /** Position where menu should be rendered */
   position: { top: number; left: number }
+  /** Current text formatting state */
   format: EditorState['format']
+  /** Called when bold button clicked */
   onBold: () => void
+  /** Called when italic button clicked */
   onItalic: () => void
+  /** Called when link button clicked */
   onLink: () => void
+  /** Called when blockquote button clicked */
   onBlockquote?: () => void
-  onClose: () => void
+  /** Called when menu should close */
+  onClose?: () => void
+  /** Whether to show link form instead of controls */
   showLinkForm?: boolean
+  /** Called when link form closed */
   onLinkFormClose?: () => void
+  /** Menu variant - micro has minimal controls */
   variant?: 'micro' | 'rich'
+  /** Function to execute editor commands */
   execCommand: (command: string, value?: string) => void
 }
 
 export const EditorBubbleMenu: Component<BubbleMenuProps> = (props) => {
+  const { t } = useLocalize()
   return (
     <div
       class={styles.bubbleMenu}
@@ -41,8 +77,9 @@ export const EditorBubbleMenu: Component<BubbleMenuProps> = (props) => {
               props.onLinkFormClose?.()
               props.execCommand('createLink', url)
             }}
-            onClick={(e) => e.stopPropagation()}
-          />
+          >
+            {(setAnchorEl) => <button ref={setAnchorEl}>{t('Add link')}</button>}
+          </SimpleInsertLinkForm>
         }
       >
         <div class={styles.controls}>
@@ -66,9 +103,9 @@ export const EditorBubbleMenu: Component<BubbleMenuProps> = (props) => {
           <Show when={props.format.block.blockquote && props.onBlockquote}>
             <Control
               key="blockquote"
+              caption={t('Remove blockquote')}
               isActive={props.format.block.blockquote}
-              onChange={props.onBlockquote}
-              caption="Remove blockquote"
+              onChange={() => props.onBlockquote?.()}
             >
               <Icon name="editor-quote" />
             </Control>

@@ -34,3 +34,4 @@ edge.*
 storybook-static
 app.config.*.js
 *.log
+venv

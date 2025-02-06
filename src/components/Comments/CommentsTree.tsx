@@ -177,14 +177,16 @@ export const CommentsTree = (props: Props) => {
           </Show>
 
           <ShowIfAuthenticated fallback={<FallbackMessage />}>
-            <SimpleRichEditor
-              placeholder={t('Write a comment...')}
-              onSubmit={handleSubmitComment}
-              autoFocus={false}
-            />
-            <Show when={posting()}>
-              <Loading />
-            </Show>
+            <div class={styles.editorWrapper}>
+              <SimpleRichEditor
+                placeholder={t('Write a comment...')}
+                onSubmit={handleSubmitComment}
+                autoFocus={false}
+              />
+              <Show when={posting()}>
+                <Loading />
+              </Show>
+            </div>
           </ShowIfAuthenticated>
         </Show>
       </div>

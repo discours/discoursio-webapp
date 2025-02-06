@@ -1,11 +1,8 @@
-import { Accessor, createMemo, createSignal } from 'solid-js'
+import { createMemo, createSignal } from 'solid-js'
 import { SetStoreFunction, createStore } from 'solid-js/store'
 import { debounce } from 'throttle-debounce'
 import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
 import { useSnackbar } from '~/context/ui'
-import { handleImageUpload } from '~/lib/handleFileUpload'
-import { selectedTextToImage } from './embed'
 import { getFormatStates } from './format'
 
 // Типы для состояния редактора
@@ -85,10 +82,12 @@ export const defaultEditorState: EditorState = {
   }
 }
 
-interface EditorConfig {
-  storageKey?: string // уникальный ключ для localStorage
-  content?: string // начальный контент
-  autoSave?: boolean // нужно ли автосохранение
+interface EditorOptions {
+  content?: string
+  storageKey?: string
+  autoSave?: boolean
+  onSaveStart?: () => void
+  onSaveEnd?: () => void
 }
 
 // Создаем фабрику для дебаунсированного сохранения
@@ -113,14 +112,17 @@ const updateEditorState = (
 ) => {
   const content = editor.innerHTML
 
+  // Проверяем есть ли выделение и диапазоны в нем
+  const hasValidRange = selection && selection.rangeCount > 0
+
   setState({
     content,
     format: getFormatStates(selection, editor),
     selection: {
-      range: selection?.getRangeAt(0) || null,
+      range: hasValidRange ? selection.getRangeAt(0) : null,
       text: selection?.toString() || '',
-      isEmpty: selection?.isCollapsed ?? true,
-      position: selection?.getRangeAt(0)?.getBoundingClientRect() || { top: 0, left: 0 }
+      isEmpty: !hasValidRange || selection.isCollapsed,
+      position: hasValidRange ? selection.getRangeAt(0).getBoundingClientRect() : { top: 0, left: 0 }
     }
   })
 
@@ -130,22 +132,21 @@ const updateEditorState = (
 /**
  * Hook for managing editor state
  */
-export function useEditor(config: EditorConfig, editorRef: Accessor<HTMLDivElement | undefined>) {
-  const { session } = useSession()
+export const useEditor = (options: EditorOptions, editorRef: () => HTMLDivElement | undefined) => {
   const { t } = useLocalize()
   const { showSnackbar } = useSnackbar()
-  const storageKey = config.storageKey
+  const storageKey = options.storageKey
 
   // Создаем обработчик сохранения, если включено автосохранение
   const storageHandler = createMemo(() => {
-    if (!(config.autoSave && storageKey)) return null
+    if (!(options.autoSave && storageKey)) return null
     return createStorageHandler(storageKey)
   })
 
   // Читаем сохраненный контент только один раз при инициализации
   const initialContent = createMemo(() => {
-    if (!(config.autoSave && storageKey)) return config.content || ''
-    return config.content || localStorage.getItem(storageKey) || ''
+    if (!(options.autoSave && storageKey)) return options.content || ''
+    return options.content || localStorage.getItem(storageKey) || ''
   })
 
   const [state, setState] = createStore<EditorState>({
@@ -156,8 +157,6 @@ export function useEditor(config: EditorConfig, editorRef: Accessor<HTMLDivEleme
   // UI state
   const [isBlurred, setIsBlurred] = createSignal(false)
   const [counter, setCounter] = createSignal(0)
-  const [showBubbleMenu, setShowBubbleMenu] = createSignal(false)
-  const [showLinkForm, setShowLinkForm] = createSignal(false)
 
   // History management
   let historyTimeout: number
@@ -191,27 +190,65 @@ export function useEditor(config: EditorConfig, editorRef: Accessor<HTMLDivEleme
     }
   })
 
-  // Image upload handling
-  const handleImageUploadWithSnackbar = async (files: File[]) => {
+  /**
+   * Загружает изображения с отображением уведомлений о прогрессе
+   * @param files Массив файлов для загрузки
+   * @returns Массив URL загруженных изображений
+   */
+  const handleImageUploadWithSnackbar = async (files: File[]): Promise<string[]> => {
     try {
-      const result = await handleImageUpload(files, session()?.access_token || '')
-      if (result && Array.isArray(result)) {
-        result.forEach((file) => {
-          const image = selectedTextToImage(file.url, file.originalFilename)
-          const editor = editorRef()
-          if (editor) {
-            editor.focus()
-            document.execCommand('insertHTML', false, image)
-          }
+      showSnackbar({ body: t('Uploading images...') })
+
+      // Здесь должна быть реальная загрузка файлов на сервер
+      // Например через API или S3
+      const uploadPromises = files.map(async (file) => {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
         })
-        showSnackbar({ body: t('Images uploaded') })
-      } else if (typeof result === 'string') {
-        showSnackbar({ body: t(result), type: 'error' })
-      }
+
+        if (!response.ok) {
+          throw new Error('Upload failed')
+        }
+
+        const { url } = await response.json()
+        return url
+      })
+
+      const uploadedUrls = await Promise.all(uploadPromises)
+
+      showSnackbar({
+        body: t('Images uploaded successfully'),
+        type: 'success'
+      })
+
+      return uploadedUrls
     } catch (error) {
-      console.error('Upload error:', error)
-      showSnackbar({ body: t('Upload failed'), type: 'error' })
+      console.error('Error uploading images:', error)
+      showSnackbar({
+        body: t('Failed to upload images'),
+        type: 'error'
+      })
+      return []
     }
+  }
+
+  const saveContent = () => {
+    if (!options.autoSave || !options.storageKey) return
+
+    options.onSaveStart?.()
+
+    try {
+      const content = editorRef()?.innerHTML || ''
+      localStorage.setItem(options.storageKey, content)
+    } catch (error) {
+      console.error('Failed to save content:', error)
+    }
+
+    options.onSaveEnd?.()
   }
 
   return {
@@ -221,11 +258,8 @@ export function useEditor(config: EditorConfig, editorRef: Accessor<HTMLDivEleme
     setIsBlurred,
     counter,
     setCounter,
-    showBubbleMenu,
-    setShowBubbleMenu,
-    showLinkForm,
-    setShowLinkForm,
     updateState,
-    handleImageUploadWithSnackbar
+    handleImageUploadWithSnackbar,
+    saveContent
   }
 }

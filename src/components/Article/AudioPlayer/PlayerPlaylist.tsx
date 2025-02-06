@@ -171,7 +171,7 @@ export const PlayerPlaylist = (props: Props) => {
               >
                 <div class={styles.descriptionBlock}>
                   <SimpleRichEditor
-                    micro={true}
+                    bubble={true}
                     content={mi.body || ''}
                     placeholder={`${t('Description')}...`}
                     onChange={(value: string) => handleMediaItemFieldChange('body', value)}

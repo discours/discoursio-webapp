@@ -1,19 +1,30 @@
 import clsx from 'clsx'
-import { Component, JSX, Show, createSignal } from 'solid-js'
+import { Component, createSignal } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 
 import styles from './SimpleInsert.module.scss'
 
-interface SimpleInsertProps {
-  placeholder: string
-  onSubmit: (value: string) => void
-  validate?: (value: string) => string
-  class?: string
-  icon?: string
-  autofocus?: boolean
-  initialText?: string
-}
-
+/**
+ * Generic form component for inserting content with validation
+ *
+ * Features:
+ * - Input with validation
+ * - Submit button
+ * - Error display
+ * - Keyboard handling (Enter to submit, Escape to cancel)
+ * - Autofocus
+ *
+ * @example
+ * ```tsx
+ * <SimpleInsert
+ *   placeholder="Enter URL"
+ *   onSubmit={(url) => insertLink(url)}
+ *   validate={(url) => validateUrl(url)}
+ *   icon="link"
+ *   autofocus
+ * />
+ * ```
+ */
 export const SimpleInsert: Component<SimpleInsertProps> = (props) => {
   const [value, setValue] = createSignal(props.initialText || '')
   const [error, setError] = createSignal('')
@@ -21,31 +32,38 @@ export const SimpleInsert: Component<SimpleInsertProps> = (props) => {
 
   const handleSubmit = (e: Event) => {
     e.preventDefault()
-    const validationError = props.validate?.(value()) || ''
+    const trimmedValue = value().trim()
 
-    if (validationError) {
-      setError(validationError)
-      return
+    if (props.validate) {
+      const error = props.validate(trimmedValue)
+      if (error) {
+        setError(error)
+        return
+      }
     }
 
-    props.onSubmit(value())
+    props.onSubmit(trimmedValue)
     setValue('')
     setError('')
   }
 
-  const handleInput: JSX.EventHandler<HTMLInputElement, InputEvent> = (e) => {
-    setValue(e.currentTarget.value)
-    if (error()) setError('')
+  const handleInput = (e: InputEvent) => {
+    const target = e.target as HTMLInputElement
+    setValue(target.value)
+    setError('')
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter' && !error() && value().trim()) {
-      handleSubmit(e)
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setValue('')
+      setError('')
+      inputRef?.blur()
     }
   }
 
   return (
-    <form class={clsx(styles.form, props.class, { [styles.hasError]: !!error() })} onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} class={clsx(styles.form, props.class, { [styles.hasError]: error() })}>
       <div class={styles.inputWrapper}>
         <input
           ref={inputRef}
@@ -63,9 +81,24 @@ export const SimpleInsert: Component<SimpleInsertProps> = (props) => {
           <Icon name={props.icon || 'arrow-right'} />
         </button>
       </div>
-      <Show when={error()}>
-        <div class={styles.error}>{error()}</div>
-      </Show>
+      {error() && <div class={styles.error}>{error()}</div>}
     </form>
   )
+}
+
+interface SimpleInsertProps {
+  /** Placeholder text for input */
+  placeholder: string
+  /** Called when form submitted with validated value */
+  onSubmit: (value: string) => void
+  /** Optional validation function, returns error message or empty string */
+  validate?: (value: string) => string
+  /** Additional CSS class */
+  class?: string
+  /** Icon name for submit button */
+  icon?: string
+  /** Whether to focus input on mount */
+  autofocus?: boolean
+  /** Initial input value */
+  initialText?: string
 }

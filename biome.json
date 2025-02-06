@@ -40,7 +40,8 @@
         "noForEach": "off",
         "useOptionalChain": "warn",
         "useLiteralKeys": "off",
-        "noExcessiveCognitiveComplexity": "off"
+        "noExcessiveCognitiveComplexity": "off",
+        "useSimplifiedLogicExpression": "off"
       },
       "correctness": {
         "useHookAtTopLevel": "off",

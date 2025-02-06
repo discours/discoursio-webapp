@@ -340,8 +340,8 @@ export const EditView = (props: Props) => {
                   </Show>
                   <Show when={isLeadVisible()}>
                     <SimpleRichEditor
-                      micro={true}
-                      shownAsLead={isLeadVisible()}
+                      bubble={true}
+                      commands={['bold', 'italic', 'link', 'blockquote', 'image']}
                       placeholder={t('A short introduction to keep the reader interested')}
                       content={form.lead}
                       onBlur={hideLeadInput}

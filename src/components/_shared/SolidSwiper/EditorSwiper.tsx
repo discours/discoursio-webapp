@@ -314,7 +314,7 @@ export const EditorSwiper = (props: Props) => {
             onChange={(event) => handleSlideDescriptionChange(slideIndex(), 'source', event.target.value)}
           />
           <SimpleRichEditor
-            micro={true}
+            bubble={true}
             content={props.images[slideIndex()]?.body || ''}
             placeholder={t('Enter image description')}
             onChange={(value) => setSlideBody(value)}

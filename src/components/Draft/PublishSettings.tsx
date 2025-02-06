@@ -249,7 +249,7 @@ export const PublishSettings = (props: Props) => {
                 maxLength={100}
               />
               <SimpleRichEditor
-                micro={true}
+                bubble={true}
                 placeholder={t('Write a short introduction')}
                 content={composeDescription()}
                 onChange={(value?: string) => value && setForm('description', value)}
