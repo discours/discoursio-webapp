@@ -530,14 +530,14 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     switch (mode) {
       case 'hot':
         return [...shouts].sort(
-          (a, b) => (b.last_commented_at?.getTime() || 0) - (a.last_commented_at?.getTime() || 0)
+          (a, b) => Number(b.last_commented_at || 0) - Number(a.last_commented_at || 0)
         )
       case 'top':
-        return [...shouts].sort((a, b) => (b.rating || 0) - (a.rating || 0))
+        return [...shouts].sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
       case 'comments':
-        return [...shouts].sort((a, b) => (b.comments_count || 0) - (a.comments_count || 0))
+        return [...shouts].sort((a, b) => Number(b.comments_count || 0) - Number(a.comments_count || 0))
       default:
-        return [...shouts].sort((a, b) => (b.created_at.getTime() || 0) - (a.created_at.getTime() || 0))
+        return [...shouts].sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0))
     }
   }
 
