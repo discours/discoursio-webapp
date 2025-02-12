@@ -1,10 +1,10 @@
 import { gql } from 'graphql-tag'
 
 export default gql`
-  mutation UpdateShoutMutation($shout_id: Int!, $shout_input: ShoutInput!, $publish: Boolean) {
-    update_shout(shout_id: $shout_id, shout_input: $shout_input, publish: $publish) {
+  mutation UpdateDraftMutation($draft_id: Int!, $draft_input: DraftInput!) {
+    update_draft(draft_id: $draft_id, draft_input: $draft_input) {
       error
-      shout {
+      draft {
         id
         slug
         title
@@ -25,8 +25,6 @@ export default gql`
         }
         created_at
         updated_at
-        published_at
-        featured_at
       }
     }
   }

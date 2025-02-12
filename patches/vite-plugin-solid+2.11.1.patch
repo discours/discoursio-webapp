@@ -1,0 +1,16 @@
+diff --git a/node_modules/vite-plugin-solid/dist/esm/index.mjs b/node_modules/vite-plugin-solid/dist/esm/index.mjs
+index 09ee7bb..86d33f6 100644
+--- a/node_modules/vite-plugin-solid/dist/esm/index.mjs
++++ b/node_modules/vite-plugin-solid/dist/esm/index.mjs
+@@ -122,8 +122,10 @@ function solidPlugin(options = {}) {
+         } = await import('vite');
+         if (config.consumer === 'client' || name === 'client' || opts.isSsrTargetWebworker) {
+           config.resolve.conditions = [...defaultClientConditions];
+-        } else {
++        } else if (Array.isArray(defaultServerConditions)) {
+           config.resolve.conditions = [...defaultServerConditions];
++        } else {
++          config.resolve.conditions = [];
+         }
+       }
+       config.resolve.conditions = ['solid', ...(replaceDev ? ['development'] : []), ...(isTestMode && !opts.isSsrTargetWebworker ? ['browser'] : []), ...config.resolve.conditions];
