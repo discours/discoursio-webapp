@@ -27,7 +27,7 @@ export const ExpoNav = (props: { layout: ExpoLayoutType | '' }) => {
           {(layoutKey) => (
             <li class={clsx({ 'view-switcher__item--selected': props.layout === layoutKey })}>
               {props.layout !== layoutKey ? (
-                <A href={`/expo/${layoutKey}`}>
+                <A href={layoutKey ? `/expo/${layoutKey}` : '/expo'}>
                   <span class="linkReplacement">
                     {layoutKey in EXPO_TITLES ? t(EXPO_TITLES[layoutKey as ExpoLayoutType]) : t('All')}
                   </span>

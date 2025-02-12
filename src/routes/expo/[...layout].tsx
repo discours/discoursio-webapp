@@ -1,5 +1,5 @@
 import { Params, RouteSectionProps } from '@solidjs/router'
-import { Show, createEffect, createMemo, createResource, createSignal, on } from 'solid-js'
+import { Suspense, createEffect, createMemo, createResource, createSignal, on } from 'solid-js'
 import { TopicsNav } from '~/components/HeaderNav/TopicsNav'
 import { Expo, ExpoNav } from '~/components/Views/ExpoView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
@@ -119,15 +119,13 @@ export default (props: RouteSectionProps<Shout[]>) => {
       zeroBottomPadding={true}
       title={`${t('Discours')} :: ${getTitle()(currentLayout())}`}
     >
-      <Show when={!shouts.loading} fallback={<Loading />}>
-        <Show when={!shouts.error} fallback={<div>Error: {shouts.error?.message}</div>}>
-          <TopicsNav />
-          <ExpoNav layout={currentLayout()} />
-          <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={!loadMoreVisible()}>
-            <Expo shouts={feed()} layout={currentLayout()} />
-          </LoadMoreWrapper>
-        </Show>
-      </Show>
+      <Suspense fallback={<Loading />}>
+        <TopicsNav />
+        <ExpoNav layout={currentLayout()} />
+        <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={!loadMoreVisible()}>
+          <Expo shouts={feed()} layout={currentLayout()} />
+        </LoadMoreWrapper>
+      </Suspense>
     </PageLayout>
   )
 }
