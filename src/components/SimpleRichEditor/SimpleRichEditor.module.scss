@@ -23,6 +23,20 @@
     background-color: var(--background-hover);
   }
 
+  &.collaborative {
+    // Add styles for collaborative mode
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary-color), transparent);
+      opacity: 0.5;
+    }
+  }
+
   // Счетчик символов
   .counter {
     position: absolute;

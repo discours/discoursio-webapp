@@ -2,6 +2,7 @@ import { clsx } from 'clsx'
 import { Component, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import { Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
+import { debounce } from 'throttle-debounce'
 
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
@@ -41,6 +42,7 @@ export interface SimpleRichEditorProps {
   onCancel?: () => void
   collaborative?: boolean
   fieldId?: string
+  onCollabCursorUpdate?: (position: Position) => void
 }
 
 // Типы для структуры меню
@@ -52,6 +54,15 @@ export type MenuGroup = {
   icon?: string // для dropdown кнопок
   commands?: EditorCommandId[][]
 }
+
+// Add new types
+interface EditorState {
+  content: string
+  selection: Selection
+  cursorPosition?: Position
+}
+
+export const CURSOR_UPDATE_PERIOD = 1000
 
 /**
  * Универсальный rich text редактор с различными режимами отображения
@@ -100,6 +111,19 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [showFootnoteEditor, setShowFootnoteEditor] = createSignal(false)
   const [hasFocus, setHasFocus] = createSignal(false)
   let blurTimer: number
+
+  // New collaborative state management
+  const [editorState, setEditorState] = createSignal<EditorState>({
+    content: props.content || '',
+    selection: new Selection()
+  })
+
+  // Debounced state updates
+  const debouncedStateUpdate = debounce(1000, (state: EditorState) => {
+    if (state.cursorPosition) {
+      props.onCollabCursorUpdate?.(state.cursorPosition)
+    }
+  })
 
   // Базовое состояние
   const [content, setContent] = createSignal(props.content || '')
@@ -190,6 +214,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     props.onCancel?.()
   }
 
+  // Handle selection changes
   const handleSelectionChange = () => {
     const selection = window.getSelection()
     if (!selection || selection.isCollapsed || !isSelectionInEditor()) {
@@ -197,16 +222,27 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       return
     }
 
-    // Only calculate bubble menu position if bubble mode is enabled
+    // Calculate bubble menu position
     if (props.bubble) {
       const range = selection.getRangeAt(0)
       const editorRect = editorRef()!.getBoundingClientRect()
       const rect = range.getBoundingClientRect()
 
-      setBubbleMenuPosition({
-        top: rect.top - editorRect.top - 50, // Position above selection
-        left: rect.left - editorRect.left + rect.width / 2 // Center horizontally
-      })
+      const position = {
+        top: rect.top - editorRect.top - 50,
+        left: rect.left - editorRect.left + rect.width / 2
+      }
+      setBubbleMenuPosition(position)
+
+      // Update collaborative cursor position
+      if (props.collaborative) {
+        const newState = {
+          ...editorState(),
+          cursorPosition: position
+        }
+        setEditorState(newState)
+        debouncedStateUpdate(newState)
+      }
     }
 
     updateActiveFormats()
@@ -260,6 +296,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   onCleanup(() => {
     clearTimeout(blurTimer)
     document.removeEventListener('selectionchange', handleSelectionChange)
+    debouncedStateUpdate.cancel()
   })
 
   const [showingInsert, showInsert] = createSignal<string | undefined>()
@@ -381,10 +418,21 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     setShowFootnoteEditor(false)
   }
 
+  // Handle content changes
   const handleChange = () => {
     const html = editorRef()?.innerHTML || ''
     setContent(html)
     props.onChange?.(html)
+
+    // Update collaborative state
+    if (props.collaborative) {
+      const newState = {
+        ...editorState(),
+        content: html
+      }
+      setEditorState(newState)
+      debouncedStateUpdate(newState)
+    }
   }
 
   // Add the change handler to the editor element
@@ -405,7 +453,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         [styles.focused]: hasFocus(),
         [styles.hasContent]: content().length > 0,
         [styles.hasSelection]: !selection().isEmpty,
-        [styles.readOnly]: props.readOnly
+        [styles.readOnly]: props.readOnly,
+        [styles.collaborative]: props.collaborative
       })}
       data-editor-id={props.editorId}
     >
