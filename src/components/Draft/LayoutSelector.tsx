@@ -5,7 +5,7 @@ import { For } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useSnackbar } from '~/context/ui'
-import createShoutMutation from '~/graphql/mutation/core/article-create'
+import createDraftMutation from '~/graphql/mutation/core/draft-create'
 import { LayoutType } from '~/types/common'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
@@ -21,7 +21,7 @@ export const LayoutSelector = () => {
   const handleCreate = async (layout: LayoutType) => {
     console.debug('[routes : edit/new] handling create click...')
     const result = await client()
-      ?.mutation(createShoutMutation, { shout: { layout: layout } })
+      ?.mutation(createDraftMutation, { shout: { layout: layout } })
       .toPromise()
     if (result) {
       // console.debug(result)
