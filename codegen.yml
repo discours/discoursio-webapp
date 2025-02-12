@@ -1,20 +1,20 @@
 overwrite: true
 generates:
   # Generate types for chat
-  src/graphql/schema/chat.gen.ts:
-    schema: 'https://chat.discours.io'
-    documents: 
-      - 'src/graphql/query/chat/**/*.ts'
-      - 'src/graphql/mutation/chat/**/*.ts'
-    plugins:
-      - 'typescript'
-      - 'typescript-operations'
-    config:
-      skipTypename: true
-      useTypeImports: true
-      outputPath: './src/graphql/types/chat.gen.ts'
-      scalars:
-        DateTime: string
+  # src/graphql/schema/chat.gen.ts:
+  #   schema: 'https://chat.discours.io'
+  #   documents: 
+  #     - 'src/graphql/query/chat/**/*.ts'
+  #     - 'src/graphql/mutation/chat/**/*.ts'
+  #   plugins:
+  #     - 'typescript'
+  #     - 'typescript-operations'
+  #   config:
+  #     skipTypename: true
+  #     useTypeImports: true
+  #     outputPath: './src/graphql/types/chat.gen.ts'
+  #     scalars:
+  #       DateTime: string
 
   # Generate types for core
   src/graphql/schema/core.gen.ts:

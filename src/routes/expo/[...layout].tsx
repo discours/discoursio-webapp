@@ -123,14 +123,9 @@ export default (props: RouteSectionProps<Shout[]>) => {
         <Show when={!shouts.error} fallback={<div>Error: {shouts.error?.message}</div>}>
           <TopicsNav />
           <ExpoNav layout={currentLayout()} />
-          <Expo shouts={feed()} layout={currentLayout()} />
-          <Show when={loadMoreVisible()}>
-            <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE}>
-              <div onClick={loadMore} class="load-more-items">
-                {t('Load more')}
-              </div>
-            </LoadMoreWrapper>
-          </Show>
+          <LoadMoreWrapper loadFunction={loadMore} pageSize={SHOUTS_PER_PAGE} hidden={!loadMoreVisible()}>
+            <Expo shouts={feed()} layout={currentLayout()} />
+          </LoadMoreWrapper>
         </Show>
       </Show>
     </PageLayout>

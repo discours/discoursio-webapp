@@ -5,7 +5,7 @@
     "jsxImportSource": "solid-js",
     "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "esModuleInterop": true,
     "allowJs": true,
     "strict": true,
