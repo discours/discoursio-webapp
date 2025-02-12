@@ -7,12 +7,11 @@ import { fileURLToPath } from 'node:url'
 import { SolidStartInlineConfig, defineConfig } from '@solidjs/start/config'
 import viteConfig, { isDev } from './vite.config'
 
-const isVercel = Boolean(process.env.VERCEL)
-const isNetlify = Boolean(process.env.NETLIFY)
-const isBun = Boolean(process.env.BUN)
 const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)
 
-const preset = isNetlify ? 'netlify' : isVercel ? 'vercel_edge' : isBun ? 'bun' : 'node'
+const isVercel = Boolean(process.env.VERCEL)
+const isNetlify = Boolean(process.env.NETLIFY)
+const preset = isNetlify ? 'netlify' : isVercel ? 'vercel_edge' : 'node'
 console.info(`[app.config] solid-start preset {> ${preset} <}`)
 
 // certs for local development
