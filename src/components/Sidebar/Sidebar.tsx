@@ -1,72 +1,63 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createSignal } from 'solid-js'
-import { createEditorTransaction, useEditorHTML } from 'solid-tiptap'
+import { Show, createEffect, createSignal, on } from 'solid-js'
 import Typograf from 'typograf'
 import { Button } from '~/components/_shared/Button'
 import { DarkModeToggle } from '~/components/_shared/DarkModeToggle'
 import { Icon } from '~/components/_shared/Icon'
-import { useEditorContext } from '~/context/editor'
+import { DraftInput, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
 import { useEscKeyDownHandler } from '~/lib/useEscKeyDownHandler'
 import { useOutsideClickHandler } from '~/lib/useOutsideClickHandler'
 
+import { Draft } from '~/graphql/schema/core.gen'
 import styles from './Sidebar.module.scss'
 
 const typograf = new Typograf({ locale: ['ru', 'en-US'] })
 
 type Props = {
-  shoutId: number
+  shoutId?: number
 }
 
 export const Panel = (props: Props) => {
   const { t } = useLocalize()
   const { showModal } = useUI()
-  const {
-    setIsCollabMode,
-    isEditorPanelVisible,
-    form,
-    toggleEditorPanel,
-    saveShout,
-    saveDraft,
-    publishShout,
-    editing: editor
-  } = useEditorContext()
   const [containerRef, setAsideContainerRef] = createSignal<HTMLElement | undefined>()
   const [isShortcutsVisible, setIsShortcutsVisible] = createSignal(false)
   const [isTypographyFixed, setIsTypographyFixed] = createSignal(false)
+  const { publishDraft, currentDraft, updateDraft, isEditorPanelVisible, toggleEditorPanel } = useDrafts()
+  const [body, setBody] = createSignal('')
+  const [chars, setChars] = createSignal(0)
+  const [words, setWords] = createSignal(0)
 
+  createEffect(
+    on(currentDraft, (d?: Draft) => {
+      if (!d) return
+      setBody(d.body || '')
+      const div = document.createElement('div')
+      div.innerHTML = d.body || ''
+      setChars(div.textContent?.length || 0)
+      setWords(div.textContent?.split(' ').length || 0)
+    })
+  )
+
+  useEscKeyDownHandler(() => isEditorPanelVisible() && toggleEditorPanel())
   useOutsideClickHandler({
     containerRef: containerRef(),
     predicate: () => isEditorPanelVisible(),
     handler: () => toggleEditorPanel()
   })
 
-  useEscKeyDownHandler(() => {
-    if (isEditorPanelVisible()) {
-      toggleEditorPanel()
-    }
-  })
-
   const handleSaveClick = () => {
-    const hasTopics = form.selectedTopics?.length > 0
-    const data = { ...form, body: editor()?.getHTML() || '' }
-    if (hasTopics) {
-      saveShout(data)
-    } else {
-      saveDraft(data)
-    }
+    const d = currentDraft()
+    updateDraft(d as DraftInput)
   }
-
-  const html = useEditorHTML(editor)
 
   const handleFixTypographyClick = () => {
-    editor()?.commands.setContent(typograf.execute(html() || '')) // here too
+    setBody(typograf.execute(body() || ''))
     setIsTypographyFixed(true)
   }
-
-  const counter = createEditorTransaction(editor, (e) => e?.storage.characterCount)
 
   return (
     <aside
@@ -82,7 +73,7 @@ export const Panel = (props: Props) => {
       <div class={clsx(styles.actionsHolder, styles.scrolled, { hidden: isShortcutsVisible() })}>
         <section>
           <p>
-            <span class={styles.link} onClick={() => publishShout(form)}>
+            <span class={styles.link} onClick={() => publishDraft(currentDraft()?.id || 0)}>
               {t('Publish')}
             </span>
           </p>
@@ -99,13 +90,6 @@ export const Panel = (props: Props) => {
               {t('Invite co-authors')}
             </span>
           </p>
-          {/* TODO: <Show when={coauthorsCount() > 0}> */}
-          <p>
-            <span class={styles.link} onClick={() => setIsCollabMode((x) => !x)}>
-              {t('Collaborative mode')}
-            </span>
-          </p>
-          {/*</Show> */}
           <p>
             <A
               class={styles.link}
@@ -158,10 +142,10 @@ export const Panel = (props: Props) => {
 
         <div class={styles.stats}>
           <div>
-            {t('Characters')}: <em>{counter()?.characters()}</em>
+            {t('Characters')}: <em>{chars()}</em>
           </div>
           <div>
-            {t('Words')}: <em>{counter()?.words()}</em>
+            {t('Words')}: <em>{words()}</em>
           </div>
           {/*<div>*/}
           {/*  {t('Last rev.')}: <em>22.03.22 в 18:20</em>*/}

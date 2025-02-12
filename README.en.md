@@ -8,7 +8,6 @@
 - [SCSS](https://sass-lang.com/)
 - [URQL](https://formidable.com/open-source/urql/)
 - [i18next](https://www.i18next.com/)
-- [Tiptap](https://tiptap.dev/)
 - [Playwright](https://playwright.dev/)
 - [Stylelint](https://stylelint.io/)
 - [Biome](https://biomejs.dev/)

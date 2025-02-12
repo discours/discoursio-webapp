@@ -1,8 +1,8 @@
 import { gql } from 'graphql-tag'
 
 export default gql`
-  mutation CommunityUpdateMutation($input: CommunityInput!) {
-    update_community(input: $input) {
+  mutation CommunityUpdateMutation($community_input: CommunityInput!) {
+    update_community(community_input: $community_input) {
       error
       community {
         id

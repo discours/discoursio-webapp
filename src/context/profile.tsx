@@ -1,11 +1,10 @@
 import type { Author, ProfileInput } from '~/graphql/schema/core.gen'
 
-import { AuthToken } from '@authorizerdev/authorizer-js'
 import { Accessor, JSX, createContext, createEffect, createSignal, on, useContext } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import updateAuthorMuatation from '~/graphql/mutation/core/author-update'
 import { useAuthors } from './authors'
-import { useSession } from './session'
+import { AuthToken, useSession } from './session'
 
 type ProfileContextType = {
   author: Accessor<Author>

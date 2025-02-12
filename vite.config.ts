@@ -1,14 +1,16 @@
 // biome-ignore lint/correctness/noNodejsModules: build
 import { existsSync } from 'node:fs'
 // biome-ignore lint/correctness/noNodejsModules: build
-import path, { resolve } from 'node:path'
+import { resolve } from 'node:path'
+// biome-ignore lint/correctness/noNodejsModules: build
+import { fileURLToPath } from 'node:url'
 import { config } from 'dotenv'
-import { CSSOptions, LogLevel, LoggerOptions, createLogger, defineConfig } from 'vite'
+import { CSSOptions, defineConfig } from 'vite'
 import { PolyfillOptions, nodePolyfills } from 'vite-plugin-node-polyfills'
 import sassDts from 'vite-plugin-sass-dts'
 
 // Загружаем .env файл с выводом информации о статусе
-const envPath = path.resolve(process.cwd(), '.env')
+const envPath = resolve(process.cwd(), '.env')
 if (existsSync(envPath)) {
   console.log('[vite.config] Loading .env file from:', envPath)
   config({ path: envPath })
@@ -27,28 +29,10 @@ const polyfillOptions = {
   protocolImports: true
 } as PolyfillOptions
 
-// Базовая конфигурация логгера
-const customLogger = createLogger(
-  'info' as LogLevel,
-  {
-    warn: (message: string, options: LoggerOptions) => {
-      // Игнорируем определенные предупреждения
-      if (
-        message.includes('legacy JS API') ||
-        message.includes('mixed-decls') ||
-        message.startsWith('Future global-builtin')
-      ) {
-        return
-      }
-      console.warn(message, options)
-    }
-  } as LoggerOptions
-)
-
 export default defineConfig({
   resolve: {
     alias: {
-      '~': resolve('./src'),
+      '~': fileURLToPath(new URL('./src', import.meta.url)),
       '@': resolve('./public'),
       '/icons': resolve('./public/icons'),
       '/fonts': resolve('./public/fonts')
@@ -66,7 +50,6 @@ export default defineConfig({
       }
     } as CSSOptions['preprocessorOptions']
   },
-  customLogger,
   plugins: [nodePolyfills(polyfillOptions), sassDts()],
   build: {
     target: 'esnext',
@@ -85,10 +68,10 @@ export default defineConfig({
     }
   },
   ssr: {
-    noExternal: ['@urql/core', '@urql/exchange-graphcache'],
+    noExternal: ['@urql/core', '@solidjs/meta', '@solidjs/router'],
     target: 'node',
     optimizeDeps: {
-      include: ['@urql/core', '@urql/exchange-graphcache']
+      include: ['@urql/core']
     }
   },
   optimizeDeps: {

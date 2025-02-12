@@ -3,10 +3,10 @@ import { Router } from '@solidjs/router'
 import { FileRoutes } from '@solidjs/start/router'
 import { Component, type JSX, Suspense } from 'solid-js'
 
-import { AuthToken } from '@authorizerdev/authorizer-js'
+import { sessionStateChanged } from '~/context/session'
 import { Loading } from './components/_shared/Loading'
 import { AuthorsProvider } from './context/authors'
-import { EditorProvider } from './context/editor'
+import { DraftsProvider } from './context/drafts'
 import { FeaturedFeedProvider } from './context/featured'
 import { FeedProvider } from './context/feed'
 import { FollowingProvider } from './context/following'
@@ -18,10 +18,6 @@ import { UIProvider } from './context/ui'
 import '~/styles/app.scss'
 
 export const Providers: Component<{ children?: JSX.Element }> = (props) => {
-  const sessionStateChanged = (payload: AuthToken) => {
-    console.log('[app] Session state changed:', payload)
-  }
-
   return (
     <LocalizeProvider>
       <SessionProvider onStateChangeCallback={sessionStateChanged}>
@@ -29,7 +25,7 @@ export const Providers: Component<{ children?: JSX.Element }> = (props) => {
           <TopicsProvider>
             <AuthorsProvider>
               <FeedProvider>
-                <EditorProvider>
+                <DraftsProvider>
                   <FeaturedFeedProvider>
                     <FollowingProvider>
                       <MetaProvider>
@@ -37,7 +33,7 @@ export const Providers: Component<{ children?: JSX.Element }> = (props) => {
                       </MetaProvider>
                     </FollowingProvider>
                   </FeaturedFeedProvider>
-                </EditorProvider>
+                </DraftsProvider>
               </FeedProvider>
             </AuthorsProvider>
           </TopicsProvider>

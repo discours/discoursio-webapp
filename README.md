@@ -10,7 +10,6 @@
 - [SCSS](https://sass-lang.com/)
 - [URQL](https://formidable.com/open-source/urql/)
 - [i18next](https://www.i18next.com/)
-- [Tiptap](https://tiptap.dev/)
 - [Playwright](https://playwright.dev/)
 - [Stylelint](https://stylelint.io/)
 - [Biome](https://biomejs.dev/)
@@ -65,6 +64,6 @@ bun run e2e:tests:ci # Запуск тестов в CI
 
 Тесты выполняются в GitHub Actions. Убедитесь, что `BASE_URL` корректно настроен в CI.
 
-### Версия: 0.9.14
+### Версия: 0.9.16
 
 [Документация](docs/README.md)

@@ -1,7 +1,7 @@
 import { gql } from 'graphql-tag'
 
 export default gql`
-  query LoadDraftsQuery {
+  query GetShoutsDrafts {
     get_shouts_drafts {
       error
       shouts {

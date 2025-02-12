@@ -266,6 +266,7 @@ export const Comment = (props: Props) => {
                   placeholder={t('Write a comment...')}
                   onSubmit={handleUpdate}
                   onCancel={handleCancel}
+                  commands={['bold', 'italic', 'link', 'image', 'blockquote']}
                 />
               </Suspense>
             </Show>
@@ -328,6 +329,7 @@ export const Comment = (props: Props) => {
                 <SimpleRichEditor
                   placeholder={t('Write a comment...')}
                   onSubmit={(value) => handleCreate(value)}
+                  commands={['bold', 'italic', 'link']}
                 />
               </Suspense>
             </Show>

@@ -1,4 +1,3 @@
-import { UpdateProfileInput } from '@authorizerdev/authorizer-js'
 import { clsx } from 'clsx'
 import { Show, createEffect, createSignal, on } from 'solid-js'
 import { AuthGuard } from '~/components/AuthGuard'
@@ -8,7 +7,7 @@ import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'
 import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
+import { UpdateProfileInput, useSession } from '~/context/session'
 import { DEFAULT_HEADER_OFFSET, useSnackbar, useUI } from '~/context/ui'
 import { validateEmail } from '~/utils/validate'
 

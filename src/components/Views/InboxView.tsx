@@ -294,7 +294,11 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
                 />
               </Show>
               <div class={styles.wrapper}>
-                <SimpleRichEditor placeholder={t('New message')} onSubmit={handleSubmit} />
+                <SimpleRichEditor
+                  placeholder={t('New message')}
+                  onSubmit={handleSubmit}
+                  commands={['bold', 'italic', 'link', 'image', 'video', 'audio', 'blockquote']}
+                />
               </div>
             </div>
           </Show>

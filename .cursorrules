@@ -1,1 +1,0 @@
-R6: use SolidJS, not React. createMemo works differently in solidjs, use SolidStart instead of NextJS 

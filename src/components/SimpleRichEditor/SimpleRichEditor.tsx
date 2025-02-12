@@ -1,259 +1,260 @@
 import { clsx } from 'clsx'
-import { Component, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
+import { Component, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import { Show } from 'solid-js'
+import { Portal } from 'solid-js/web'
 
-import { Button } from '~/components/_shared/Button'
 import { useLocalize } from '~/context/localize'
-import { useSnackbar, useUI } from '~/context/ui'
-import { handleContentPaste } from './lib/embed'
-import { useKeyboardHandlers } from './lib/keyboard'
-import { useEditor } from './lib/state'
-import { EditorCommand, MenuProps } from './lib/types'
+import { useUI } from '~/context/ui'
+import { Button } from '../_shared/Button'
+import { CommandGroupType, CommandType, MENU_GROUPS, isGroup } from './lib/commands'
+import { useDropFiles } from './lib/drop'
+import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
+import { insertFootnote } from './lib/footnotes'
+import { applyFormatting, getActiveFormats, hasFormatting, removeFormatting } from './lib/format'
+import { useSelection } from './lib/selection'
+import { Position } from './lib/types'
+import { SimpleInsert } from './menu/SimpleInsert'
+import { SimpleToolbar } from './menu/SimpleToolbar'
 
 import styles from './SimpleRichEditor.module.scss'
-import { EditorToolbar } from './menu/EditorToolbar'
-import { BubbleMenu } from './menu/BubbleMenu'
+
+export type EditorCommandId = keyof typeof MENU_GROUPS
+export type EditorCommandGroup = EditorCommandId[]
+export type EditorCommands = EditorCommandId[] | EditorCommandGroup[]
+
+export interface SimpleRichEditorProps {
+  hideButtons?: boolean
+  commands?: CommandType[] | CommandGroupType[]
+  bubble?: boolean
+  plus?: boolean
+  squib?: boolean
+  editorId?: string
+  commentId?: number | string
+  content?: string
+  readOnly?: boolean
+  limit?: number
+  placeholder?: string
+  autofocus?: boolean
+  onBlur?: () => void
+  onChange?: (content: string) => void
+  onSubmit?: (content: string) => Promise<boolean> | boolean
+  onCancel?: () => void
+  collaborative?: boolean
+  fieldId?: string
+}
+
+// Типы для структуры меню
+export type MenuGroupId = keyof typeof MENU_GROUPS
+export type MenuItemType = 'button' | 'dropdown'
+export type MenuGroup = {
+  id: MenuGroupId
+  type: MenuItemType
+  icon?: string // для dropdown кнопок
+  commands?: EditorCommandId[][]
+}
 
 /**
- * Main rich text editor component with formatting and content management
+ * Универсальный rich text редактор с различными режимами отображения
  *
- * Features:
- * - WYSIWYG editing
- * - Formatting toolbar
- * - Media embedding
- * - Link handling
- * - Keyboard shortcuts
- * - Autosave in localStorage
- * - Character counter
+ * Возможности:
+ * - Базовое форматирование текста (bold, italic, ссылки)
+ * - Блочные элементы (цитаты, заголовки)
+ * - Вставка медиа (изображения, видео)
+ * - Автосохранение
+ * - Счетчик символов
+ * - Обработка вставки
+ * - Горячие клавиши
+ * - Различные режимы меню:
+ *   - Фиксированный тулбар (bubble=false|undefined)
+ *   - Всплывающее меню при выделении (bubble=true)
+ *   - Плавающее меню с "+" (plus=true)
  *
  * @example
  * ```tsx
  * <SimpleRichEditor
- *   content={initialContent}
- *   onChange={(html) => updateContent(html)}
- *   onSubmit={async (html) => {
- *     await saveContent(html)
- *     return true
- *   }}
- *   placeholder="Start writing..."
- *   limit={1000}
+ *   commands={['bold', 'italic', 'link']}
+ * />
+ *
+ * // Редактор с всплывающим меню
+ * <SimpleRichEditor
+ *   commands={['bold', 'italic', 'link']}
+ *   bubble={true}
+ * />
+ *
+ * // Полный редактор со всеми меню
+ * <SimpleRichEditor
+ *   commands={['bold', 'italic', 'link', 'blockquote', 'image']}
+ *   bubble={true}
+ *   plus={true}
  * />
  * ```
  */
-interface SimpleRichEditorProps {
-  /** Initial HTML content */
-  content?: string
-  /** Called when content changes */
-  onChange?: (content: string) => void
-  /** Called when editor submitted, should return success status */
-  onSubmit?: (content: string) => Promise<boolean> | boolean
-  /** Called when editing cancelled */
-  onCancel?: () => void
-  /** Called when editor loses focus */
-  onBlur?: () => void
-  /** Placeholder text when empty */
-  placeholder?: string
-  /** Whether to focus on mount */
-  autoFocus?: boolean
-  /** Whether editor is read-only */
-  readOnly?: boolean
-  /** Maximum character limit */
-  limit?: number
-  /** ID for autosave storage */
-  shoutId?: number
-  /** Whether editor is showing bubble menu */
-  bubble?: boolean
-  /** Commands to show in the toolbar */
-  commands?: string[]
-}
 
 export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const { t } = useLocalize()
-  const { showSnackbar } = useSnackbar()
   const { showModal } = useUI()
-  
-  let editorRef: HTMLDivElement | undefined
-  let blurTimer: number
-  
+  const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
   const [menuVisible, setMenuVisible] = createSignal(false)
-  const [bubbleMenuPosition, setBubbleMenuPosition] = createSignal({ top: 0, left: 0 })
-  
+  const [bubbleMenuPosition, setBubbleMenuPosition] = createSignal<Position>({ top: 0, left: 0 })
+  const [showSquibEditor, setShowSquibEditor] = createSignal(false)
+  const [showFootnoteEditor, setShowFootnoteEditor] = createSignal(false)
+  const [hasFocus, setHasFocus] = createSignal(false)
+  let blurTimer: number
+
+  // Базовое состояние
+  const [content, setContent] = createSignal(props.content || '')
+  const [selection, setSelection] = createSignal({ text: '', isEmpty: true })
   const {
-    state,
-    updateState,
-    isBlurred,
-    setIsBlurred,
-    counter,
-    handleImageUploadWithSnackbar,
-  } = useEditor(
-    {
-      content: props.content,
-      storageKey: 'simple-editor',
-      autoSave: true
-    },
-    () => editorRef
-  )
-  
-  const execCommand = (command: string, value?: string) => {
-    if (!editorRef) return false
+    updateActiveFormats,
+    activeFormats,
+    menuPosition,
+    isSelectionInEditor,
+    saveSelection,
+    restoreSelection
+  } = useSelection(editorRef)
+  const { handleDropFiles } = useDropFiles()
 
-    try {
-      editorRef.focus()
-      const result = document.execCommand(command, false, value)
-      updateState()
-      return result
-    } catch (e) {
-      console.error(`Failed to execute command ${command}:`, e)
-      return false
+  const updateSelection = () => {
+    const sel = window.getSelection()
+    if (!sel) return
+
+    setSelection({
+      text: sel.toString(),
+      isEmpty: sel.isCollapsed
+    })
+
+    // Обновляем активные форматы
+    const formats = new Set(Object.keys(getActiveFormats(sel)))
+    updateActiveFormats()
+
+    // Проверяем, что выделение внутри редактора
+    if (!isSelectionInEditor()) {
+      setMenuVisible(false)
+      return
     }
+
+    const range = sel.getRangeAt(0)
+    const editorRect = editorRef()!.getBoundingClientRect()
+
+    // Сохраняем выделение
+    saveSelection()
+
+    // Обновляем форматы
+    if (formats) {
+      updateActiveFormats()
+    }
+
+    // Обновляем позицию bubble menu
+    if (props.bubble && !sel.isCollapsed) {
+      const rect = range.getBoundingClientRect()
+
+      setBubbleMenuPosition({
+        top: rect.top - editorRect.top - 50, // Поднимаем выше
+        left: rect.left - editorRect.left + rect.width / 2
+      })
+      setMenuVisible(true)
+    } else {
+      setMenuVisible(false)
+    }
+
+    // Обновляем контент
+    const content = editorRef()!.innerHTML
+    setContent(content)
+    props.onChange?.(content)
   }
-
-
-  const editorClasses = createMemo(() => ({
-    [styles.bubble]: props.bubble,
-    [styles.isFocused]: !isBlurred()
-  }))
-
-  const buttonsVisible = createMemo(() => counter() > 1)
-
-  const limitText = createMemo(() => `${counter()} / ${props.limit || '∞'}`)
 
   const handleSubmit = async () => {
-    if (!props.onSubmit || counter() === 0) return
-
-    try {
-      const success = await props.onSubmit(state.content)
+    if (props.onSubmit) {
+      const success = await props.onSubmit(content())
       if (success) {
-        editorRef!.innerHTML = ''
-        updateState()
+        setContent('')
+        setMenuVisible(false)
+        setHasFocus(false)
       }
-      return success
-    } catch (error) {
-      console.error('Error submitting content:', error)
-      return false
     }
   }
 
+  // Menu modes
+  // micro: bold, italic, link
+  // mini: bold, italic, link, blockquote, image
+  // full:
+  //  - blocks: [[h1, h2, h3], [blockuote, punchline, incut]],
+  //  - text: bold, italic, highlight
+  //  - links: link, footnote
+  //  - lists: image, video, file
+
   const handleClear = () => {
-    editorRef!.innerHTML = ''
-    updateState()
+    // state.setContent('')
+    setMenuVisible(false)
+    setHasFocus(false)
     props.onCancel?.()
   }
 
   const handleSelectionChange = () => {
-    if (!props.bubble) return
-    
     const selection = window.getSelection()
-    if (!selection || selection.isCollapsed || !selection.rangeCount) {
+    if (!selection || selection.isCollapsed || !isSelectionInEditor()) {
       setMenuVisible(false)
       return
     }
 
-    const range = selection.getRangeAt(0)
-    const rect = range.getBoundingClientRect()
-    const editorRect = editorRef?.getBoundingClientRect()
-    
-    if (!editorRect) return
+    // Only calculate bubble menu position if bubble mode is enabled
+    if (props.bubble) {
+      const range = selection.getRangeAt(0)
+      const editorRect = editorRef()!.getBoundingClientRect()
+      const rect = range.getBoundingClientRect()
 
-    setBubbleMenuPosition({
-      top: editorRect.bottom + 8,
-      left: editorRect.left + 8
-    })
+      setBubbleMenuPosition({
+        top: rect.top - editorRect.top - 50, // Position above selection
+        left: rect.left - editorRect.left + rect.width / 2 // Center horizontally
+      })
+    }
+
+    updateActiveFormats()
     setMenuVisible(true)
   }
 
+  // Focus and blur
   const handleFocus = () => {
     clearTimeout(blurTimer)
-    setIsBlurred(false)
-    if (!props.bubble) {
-      setMenuVisible(true)
-    }
-    document.addEventListener('selectionchange', handleSelectionChange)
+    setHasFocus(true)
+    setMenuVisible(true)
   }
 
-  const handleBlur = (e: FocusEvent) => {
-    // Проверяем, что клик был не по тулбару
-    const isToolbarClick = (e.relatedTarget as HTMLElement)?.closest(`.${styles.toolbar}`)
-    if (isToolbarClick) {
-      e.preventDefault()
-      return
-    }
-
+  const handleBlur = () => {
     blurTimer = window.setTimeout(() => {
-      setIsBlurred(true)
+      setHasFocus(false)
       setMenuVisible(false)
-      updateState()
-
-      if (counter() === 0) {
-        props.onBlur?.()
-      }
-    }, 100)
+      props.onBlur?.()
+    }, 200)
   }
 
   const handlePaste = async (e: ClipboardEvent) => {
     e.preventDefault()
-
-    const text = e.clipboardData?.getData('text/plain')
+    const text = e.clipboardData?.getData('text')
     if (!text) return
 
-    await handleContentPaste(text, {
-      showLoading: () => showSnackbar({ body: t('Analyzing content...') }),
-      insertText: (text) => execCommand('insertText', text),
-      insertHtml: (html) => execCommand('insertHTML', html)
+    handleContentPaste(text, {
+      insertText: (text) => {
+        document.execCommand('insertText', false, text)
+      },
+      insertHtml: (html) => {
+        document.execCommand('insertHTML', false, html)
+      }
     })
   }
 
-  const { handleKeyDown } = useKeyboardHandlers(state, execCommand, handleSubmit, () =>
-    showModal('insertLink')
-  )
-
-  const handleDropFiles = async (files: File[]) => {
-    try {
-      const uploadedUrls = await handleImageUploadWithSnackbar(files)
-      
-      uploadedUrls.forEach((url) => {
-        const imageHtml = `<img src="${url}" alt="" />`
-        execCommand('insertHTML', imageHtml)
-      })
-    } catch (error) {
-      console.error('Error handling dropped files:', error)
-    }
-  }
-
-  // Наборы команд для разных режимов
-  const microCommands: EditorCommand[] = ['bold', 'italic', 'link']
-  const fullCommands: EditorCommand[] = ['bold', 'italic', 'link', 'blockquote', 'image']
-
-  // Базовая конфигурация команд
-  const commandConfig = {
-    bold: { icon: 'editor-bold', title: 'Bold', shortcut: '⌘B' },
-    italic: { icon: 'editor-italic', title: 'Italic', shortcut: '⌘I' },
-    link: { icon: 'editor-link', title: 'Link', shortcut: '⌘K' },
-    blockquote: { icon: 'editor-quote', title: 'Quote' },
-    image: { icon: 'editor-image', title: 'Image' }
-  }
-
-  // Действия для команд
-  const commandActions = {
-    bold: () => execCommand('bold'),
-    italic: () => execCommand('italic'),
-    link: () => showModal('insertLink'),
-    blockquote: () => execCommand('blockquote'),
-    image: () => showModal('uploadImage')
-  }
-
   onMount(() => {
-    if (!editorRef) return
+    if (!editorRef()) return
 
     if (props.placeholder) {
-      editorRef.setAttribute('data-placeholder', props.placeholder)
+      editorRef()!.setAttribute('data-placeholder', props.placeholder)
     }
 
-    if (props.autoFocus) {
-      editorRef.focus()
+    if (props.autofocus) {
+      editorRef()!.focus()
     }
 
-    updateState()
+    document.addEventListener('selectionchange', handleSelectionChange)
   })
 
   onCleanup(() => {
@@ -261,50 +262,253 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     document.removeEventListener('selectionchange', handleSelectionChange)
   })
 
+  const [showingInsert, showInsert] = createSignal<string | undefined>()
+  const handleAction = (action: CommandType | CommandGroupType) => {
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed) return
+
+    if (isGroup(action)) {
+      // Группы обрабатываются через DropDown в SimpleToolbar
+      return
+    }
+
+    switch (action) {
+      case 'bold':
+      case 'italic':
+      case 'link':
+      case 'blockquote':
+      case 'h1':
+      case 'h2':
+      case 'h3': {
+        // Проверяем текущее состояние форматирования
+        if (hasFormatting(action, selection)) {
+          removeFormatting(action, {
+            range: selection.getRangeAt(0),
+            text: selection.toString(),
+            isEmpty: selection.isCollapsed,
+            position: { top: selection.anchorOffset, left: selection.anchorOffset }
+          })
+        } else {
+          applyFormatting(action, {
+            range: selection.getRangeAt(0),
+            text: selection.toString(),
+            isEmpty: selection.isCollapsed,
+            position: { top: selection.anchorOffset, left: selection.anchorOffset }
+          })
+        }
+        break
+      }
+
+      case 'image': {
+        showModal('editorUploadImage')
+        break
+      }
+
+      case 'video':
+      case 'footnote': {
+        showInsert(action)
+        break
+      }
+
+      default: {
+        console.warn(`Unsupported action: ${action}`)
+        break
+      }
+    }
+
+    // Обновляем состояние после форматирования
+    updateActiveFormats()
+
+    // Обновляем контент
+    const content = editorRef()!.innerHTML
+    setContent(content)
+    props.onChange?.(content)
+  }
+
+  /**
+   * Заменяет текущее выделение HTML контентом
+   * @param html HTML строка для вставки
+   * @returns true если замена успешна
+   */
+  const replaceSelection = (html: string): boolean => {
+    if (!restoreSelection()) return false
+
+    const selection = window.getSelection()
+    if (!selection || !selection.rangeCount) return false
+
+    const range = selection.getRangeAt(0)
+
+    // Создаем временный контейнер для HTML
+    const temp = document.createElement('div')
+    temp.innerHTML = html
+
+    // Очищаем текущее выделение
+    range.deleteContents()
+
+    // Вставляем новый контент
+    const fragment = document.createDocumentFragment()
+    while (temp.firstChild) {
+      fragment.appendChild(temp.firstChild)
+    }
+
+    range.insertNode(fragment)
+
+    // Перемещаем курсор в конец вставленного контента
+    range.collapse(false)
+    selection.removeAllRanges()
+    selection.addRange(range)
+
+    // Обновляем состояние редактора
+    updateSelection()
+
+    return true
+  }
+
+  const handleSquibSubmit = (content: string) => {
+    replaceSelection(content)
+    setShowSquibEditor(false)
+  }
+
+  const handleFootnoteSubmit = (content: string) => {
+    const editor = editorRef()
+    const selection = window.getSelection()
+
+    if (editor && selection) {
+      insertFootnote(editor, content, selection)
+      updateSelection()
+    }
+
+    setShowFootnoteEditor(false)
+  }
+
+  const handleChange = () => {
+    const html = editorRef()?.innerHTML || ''
+    setContent(html)
+    props.onChange?.(html)
+  }
+
+  // Add the change handler to the editor element
+  createEffect(() => {
+    const editor = editorRef()
+    if (editor) {
+      editor.addEventListener('input', handleChange)
+
+      onCleanup(() => {
+        editor.removeEventListener('input', handleChange)
+      })
+    }
+  })
+
   return (
-    <div class={clsx(styles.editor, editorClasses())}>
+    <div
+      class={clsx(styles.editor, {
+        [styles.focused]: hasFocus(),
+        [styles.hasContent]: content().length > 0,
+        [styles.hasSelection]: !selection().isEmpty,
+        [styles.readOnly]: props.readOnly
+      })}
+      data-editor-id={props.editorId}
+    >
       <div class={styles.limitContainer}>
-        <small class={styles.limit}>{limitText()}</small>
+        <small class={styles.limit}>
+          {content().length} / {props.limit || '∞'}
+        </small>
       </div>
+
       <div
-        ref={editorRef}
+        ref={setEditorRef}
         class={styles.content}
-        contentEditable
+        contentEditable={!props.readOnly}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        onInput={updateState}
-        onKeyDown={handleKeyDown}
+        onInput={updateSelection}
+        onSelect={updateSelection}
         onPaste={handlePaste}
+        onDrop={(e) => {
+          e.preventDefault()
+          handleDropFiles(e.dataTransfer?.files || [])
+        }}
         data-placeholder={props.placeholder}
       />
 
       <div class={styles.actions}>
-        <Show when={props.bubble} fallback={
-          <EditorToolbar
-            commands={fullCommands}
-            config={commandConfig}
-            state={state}
-            isVisible={true}
-            execCommand={execCommand}
-            handleDropFiles={handleDropFiles}
-            handleLinkButtonClick={() => showModal('insertLink')}
-            restoreSelection={() => editorRef?.focus()}
-            actions={commandActions}
-          />}>
-          <BubbleMenu
-            commands={microCommands}
-            config={commandConfig}
-            state={state}
-            position={bubbleMenuPosition()}
-            isVisible={menuVisible()}
-            onClose={() => setMenuVisible(false)}
-            actions={commandActions}
+        <div
+          class={clsx(styles.toolbarContainer, {
+            [styles.visible]: menuVisible() && !selection().isEmpty && hasFocus(),
+            [styles.bubble]: props.bubble
+          })}
+          style={
+            props.bubble
+              ? {
+                  top: `${bubbleMenuPosition().top}px`,
+                  left: `${bubbleMenuPosition().left}px`,
+                  transform: 'translate(-50%, -100%)'
+                }
+              : undefined
+          }
+        >
+          <SimpleToolbar
+            position={props.bubble ? undefined : menuPosition()}
+            commands={props.commands as CommandType[]}
+            onAction={handleAction}
+            currentFormats={activeFormats()}
           />
+        </div>
+
+        {/* Кнопки действий */}
+        <Show when={!props.hideButtons && !props.readOnly && content().length > 0}>
+          <div class={styles.buttons}>
+            <Button value={t('Cancel')} variant="secondary" onClick={handleClear} />
+            <Button value={t('Submit')} variant="primary" onClick={handleSubmit} />
+          </div>
         </Show>
-        <Button value={t('Отмена')} disabled={counter() === 0} variant='secondary' onClick={handleClear} />
-        <Button value={t('Отправить')} disabled={counter() === 0} variant="primary" onClick={handleSubmit} />
       </div>
 
+      <Portal>
+        <Show when={showingInsert() === 'link'}>
+          <SimpleInsert
+            initialValue={selection().text}
+            icon="link"
+            placeholder={t('Enter URL')}
+            onSubmit={(url) => replaceSelection(`<a href="${url}">${selection().text}</a>`)}
+            onClose={() => showInsert(undefined)}
+          />
+        </Show>
+        <Show when={showingInsert() === 'video'}>
+          <SimpleInsert
+            initialValue={selection().text}
+            icon="video"
+            placeholder={t('YouTube or Vimeo URL')}
+            onSubmit={(url) => replaceSelection(createVideoEmbed(url, detectVideoPlatform(url)))}
+            onClose={() => showInsert(undefined)}
+          />
+        </Show>
+        <Show when={showSquibEditor()}>
+          <SimpleRichEditor
+            content={selection().text}
+            squib={true}
+            placeholder={t('Enter text...')}
+            onSubmit={(content) => {
+              handleSquibSubmit(content)
+              return true
+            }}
+            onCancel={() => setShowSquibEditor(false)}
+          />
+        </Show>
+        <Show when={showFootnoteEditor()}>
+          <SimpleRichEditor
+            commands={['bold', 'italic', 'highlight', 'link']}
+            bubble={true}
+            content={selection().text}
+            placeholder={t('Enter text...')}
+            onSubmit={(content) => {
+              handleFootnoteSubmit(content)
+              return true
+            }}
+            onCancel={() => setShowFootnoteEditor(false)}
+          />
+        </Show>
+      </Portal>
     </div>
   )
 }

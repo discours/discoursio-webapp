@@ -1,11 +1,10 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show, createEffect, createMemo, createSignal, onCleanup, untrack } from 'solid-js'
-import { ShoutForm, useEditorContext } from '~/context/editor'
 import { useLocalize } from '~/context/localize'
 import { useNotifications } from '~/context/notifications'
 import { useSession } from '~/context/session'
-import { useSnackbar, useUI } from '~/context/ui'
+import { useUI } from '~/context/ui'
 import type { Author } from '~/graphql/schema/core.gen'
 import { Userpic } from '../Author/Userpic'
 import { ProfilePopup } from '../ProfileNav/ProfilePopup'
@@ -14,6 +13,7 @@ import { Icon } from '../_shared/Icon'
 import { Popover } from '../_shared/Popover'
 import { Popup } from '../_shared/Popup'
 
+import { useDrafts } from '~/context/drafts'
 import styles from './Header.module.scss'
 
 type Props = {
@@ -37,8 +37,6 @@ export const HeaderAuth = (props: Props) => {
     return sessionData?.user?.app_data?.profile as Author
   })
   const { unreadNotificationsCount, showNotificationsPanel } = useNotifications()
-  const { form, toggleEditorPanel, publishShout } = useEditorContext()
-
   const handleBellIconClick = (event: Event) => {
     event.preventDefault()
 
@@ -54,11 +52,6 @@ export const HeaderAuth = (props: Props) => {
   const isNotificationsVisible = createMemo(() => session()?.access_token && !isEditorPage())
   const isSaveButtonVisible = createMemo(() => session()?.access_token && isEditorPage())
   const isCreatePostButtonVisible = createMemo(() => !isEditorPage())
-
-  const handleBurgerButtonClick = () => {
-    toggleEditorPanel()
-  }
-
   const [width, setWidth] = createSignal(0)
   const [editorMode, setEditorMode] = createSignal(t('Editing'))
 
@@ -109,15 +102,8 @@ export const HeaderAuth = (props: Props) => {
 
     navigate('/edit/new')
   }
-  const { showSnackbar } = useSnackbar()
-  const handlePublishClick = (form: ShoutForm) => {
-    if (form.mainTopic?.slug) {
-      publishShout(form)
-    } else {
-      showSnackbar({ body: t('Please, set the main topic first') })
-      navigate(`/edit/${form.shoutId}/settings`)
-    }
-  }
+
+  const { publishDraft, currentDraft, toggleEditorPanel } = useDrafts()
   return (
     <div class={clsx('col-auto col-lg-7', styles.usernav)}>
       <div class={styles.userControl}>
@@ -205,7 +191,7 @@ export const HeaderAuth = (props: Props) => {
             {renderIconedButton({
               value: t('Publish'),
               icon: 'publish',
-              action: () => handlePublishClick(form)
+              action: () => publishDraft(currentDraft()?.id || 0)
             })}
           </div>
 
@@ -222,7 +208,7 @@ export const HeaderAuth = (props: Props) => {
                   ref={ref}
                   value={<Icon name="ellipsis" />}
                   variant={'light'}
-                  onClick={handleBurgerButtonClick}
+                  onClick={toggleEditorPanel}
                   class={styles.settingsControl}
                 />
               )}

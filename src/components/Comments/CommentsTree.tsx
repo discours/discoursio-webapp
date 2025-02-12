@@ -179,9 +179,10 @@ export const CommentsTree = (props: Props) => {
           <ShowIfAuthenticated fallback={<FallbackMessage />}>
             <div class={styles.editorWrapper}>
               <SimpleRichEditor
+                commands={['bold', 'italic', 'link', 'blockquote', 'image']}
                 placeholder={t('Write a comment...')}
                 onSubmit={handleSubmitComment}
-                autoFocus={false}
+                onChange={(value) => console.log('onChange', value)}
               />
               <Show when={posting()}>
                 <Loading />

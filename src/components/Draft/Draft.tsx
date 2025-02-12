@@ -2,29 +2,42 @@ import { A, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { useLocalize } from '~/context/localize'
 import { useSnackbar, useUI } from '~/context/ui'
-import type { Shout } from '~/graphql/schema/core.gen'
+import type { Draft } from '~/graphql/schema/core.gen'
 import { Icon } from '../_shared/Icon'
 
 import styles from './Draft.module.scss'
 
 type Props = {
-  shout: Shout
-  onPublish: (shout: Shout) => void
-  onDelete: (shout: Shout) => void
+  draft: Draft
+  onPublish: () => void
+  onDelete: () => void
 }
 
-export const Draft = (props: Props) => {
+/**
+ * Компонент для отображения черновика
+ * @component
+ * @example
+ * ```tsx
+ * <DraftComponent
+ *   draft={draftData}
+ *   onDelete={() => handleDelete(draftId)}
+ *   onPublish={() => handlePublish(draftId)}
+ * />
+ * ```
+ */
+
+export const DraftComponent = (props: Props) => {
   const { t, formatDate } = useLocalize()
   const { showConfirm } = useUI()
   const { showSnackbar } = useSnackbar()
   const navigate = useNavigate()
   const handlePublishLinkClick = (e: MouseEvent) => {
     e.preventDefault()
-    if (props.shout.main_topic?.slug) {
-      props.onPublish(props.shout)
+    if (props.draft.topics?.[0]?.slug) {
+      props.onPublish()
     } else {
       showSnackbar({ body: t('Please, set the main topic first') })
-      navigate(`/edit/${props.shout.id}/settings`)
+      navigate(`/edit/${props.draft.id}/settings`)
     }
   }
 
@@ -38,7 +51,7 @@ export const Draft = (props: Props) => {
       declineButtonVariant: 'primary'
     })
     if (isConfirmed) {
-      props.onDelete(props.shout)
+      props.onDelete()
 
       await showSnackbar({ body: t('Draft successfully deleted') })
     }
@@ -48,13 +61,13 @@ export const Draft = (props: Props) => {
     <div class={styles.draft}>
       <div class={styles.created}>
         <Icon name="pencil-outline" class={styles.icon} />{' '}
-        {formatDate(new Date(props.shout.created_at * 1000), { hour: '2-digit', minute: '2-digit' })}
+        {formatDate(new Date(props.draft.created_at * 1000), { hour: '2-digit', minute: '2-digit' })}
       </div>
       <div class={styles.titleContainer}>
-        <span class={styles.title}>{props.shout.title || t('Unnamed draft')}</span> {props.shout.subtitle}
+        <span class={styles.title}>{props.draft.title || t('Unnamed draft')}</span> {props.draft.subtitle}
       </div>
       <div class={styles.actions}>
-        <A class={styles.actionItem} href={`/edit/${props.shout?.id.toString()}`}>
+        <A class={styles.actionItem} href={`/edit/${props.draft?.id.toString()}`}>
           {t('Edit')}
         </A>
         <span onClick={handlePublishLinkClick} class={clsx(styles.actionItem, styles.publish)}>

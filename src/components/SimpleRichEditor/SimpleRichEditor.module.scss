@@ -1,45 +1,189 @@
-.content {
-  min-height: 100px;
-  padding: 12px;
-  outline: none;
-  
-  &[data-placeholder]:empty::before {
-    content: attr(data-placeholder);
-    color: var(--color-text-secondary);
-  }
-}
-
 .editor {
   position: relative;
   width: 100%;
-  background: var(--white-500);
-  border: 1px solid var(--black-100);
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   transition: all 0.2s ease;
-
-  &:hover {
-    border-color: var(--black-200);
+  
+  // Состояния
+  &.focused {
+    border-color: var(--primary-color);
+  }
+  
+  &.readOnly {
+    border: none;
+    background: none;
   }
 
-  &:focus-within {
-    border-color: var(--black-300);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  &.dragover {
+    border-color: var(--primary-color);
+    background-color: var(--background-hover);
   }
 
+  // Счетчик символов
+  .counter {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 1.2rem;
+    color: var(--black-600);
+    padding: 4px 8px;
+    background: var(--white-500);
+    border-radius: 4px;
+    z-index: 1;
+  }
+
+  // Основной контент
   .content {
+    position: relative;
     min-height: 120px;
-    padding: 16px;
+    padding: 16px 16px 48px;
     outline: none;
-    font-size: 1.5rem;
+    font-size: 14px;
     line-height: 1.5;
-    
+    color: var(--color-text);
+
+    // Плейсхолдер
     &[data-placeholder]:empty::before {
       content: attr(data-placeholder);
-      color: var(--black-400);
-      pointer-events: none;
+      color: var(--color-text-secondary);
+      opacity: 0.6;
+    }
+
+    // Базовые стили контента
+    p {
+      margin: 0 0 0.8em;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    h1, h2, h3 {
+      font-weight: 600;
+      margin: 1.5em 0 0.8em;
+
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+
+    h1 { font-size: 2.4rem; }
+    h2 { font-size: 2rem; }
+    h3 { font-size: 1.8rem; }
+
+    blockquote {
+      margin: 1.5em 0;
+      padding: 0.8em 1.2em;
+      border-left: 4px solid var(--black-200);
+      background: var(--black-50);
+      color: var(--black-800);
+      font-style: italic;
+    }
+
+    a {
+      color: var(--blue-500);
+      text-decoration: none;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      margin: 1em 0;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+      
+      &.uploading {
+        opacity: 0.5;
+        filter: grayscale(1);
+      }
+    }
+
+    figure {
+      margin: 2em 0;
+      
+      figcaption {
+        margin-top: 0.5em;
+        text-align: center;
+        color: var(--black-600);
+        font-size: 0.9em;
+      }
+    }
+
+    .focused & {
+      background: var(--background-color-hover);
     }
   }
 
+  // Нижняя панель с кнопками
+  .actions {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 16px;
+    border-top: 1px solid var(--color-border);
+    background: white;
+    border-radius: 0 0 8px 8px;
+
+    // Контейнер для тулбара
+    .toolbarContainer {
+      flex: 1;
+      position: relative;
+      min-width: 0; // Для корректного flex-shrink
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+
+      &.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      &.bubble {
+        position: absolute;
+        z-index: 100;
+        pointer-events: all;
+        transition: opacity 0.2s ease;
+        opacity: 0;
+        visibility: hidden;
+
+        &.visible {
+          opacity: 1;
+          visibility: visible;
+        }
+      }
+    }
+
+    // Контейнер для кнопок
+    .buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 16px; // Отступ от тулбара
+      flex-shrink: 0; // Предотвращаем сжатие кнопок
+      margin-top: 8px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+
+      .hasContent & {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
+  }
+
+  // Тулбар
   .toolbar {
     display: flex;
     align-items: center;
@@ -89,83 +233,86 @@
     }
   }
 
-  .actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 8px;
-    border-top: 1px solid var(--black-100);
-  }
-
-  .limit {
-    padding: 4px 8px;
-    color: var(--black-500);
-    font-size: 1.2rem;
-  }
-
+  // Счетчик лимита
   .limitContainer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 8px;
-    margin-bottom: -18px;
-    transition: all 0.2s ease;
-    pointer-events: none;
-    z-index: 10;
-  }
-
-  // Анимация для формы ссылки
-  .linkInput {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    opacity: 0;
-    transform: translateY(-4px);
-    transition: all 0.2s ease;
-    pointer-events: none;
-    z-index: 10;
-    background: var(--white-500);
-    border: 1px solid var(--black-100);
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
-
-    &.linkInputactive {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: all;
+    padding: 8px 16px 0;
+    text-align: right;
+    
+    .limit {
+      font-size: 12px;
+      color: var(--color-text-secondary);
     }
   }
+
+  .footnotes {
+    margin-top: 2em;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.9em;
+    color: var(--color-text-secondary);
+
+    hr {
+      display: none;
+    }
+
+    ol {
+      padding-left: 2em;
+    }
+
+    li {
+      position: relative;
+      margin-bottom: 0.5em;
+
+      &::marker {
+        color: var(--color-text-secondary);
+      }
+
+      p {
+        margin: 0;
+        display: inline;
+      }
+    }
+  }
+
+  [data-bg="yellow"] { background-color: var(--color-yellow-100); }
+  [data-bg="red"] { background-color: var(--color-red-100); }
+  [data-bg="green"] { background-color: var(--color-green-100); }
+  [data-bg="blue"] { background-color: var(--color-blue-100); }
+  [data-bg="purple"] { background-color: var(--color-purple-100); }
+  [data-bg="orange"] { background-color: var(--color-orange-100); }
+  [data-bg="pink"] { background-color: var(--color-pink-100); }
+  [data-bg="gray"] { background-color: var(--color-gray-100); }
+  [data-bg="brown"] { background-color: var(--color-brown-100); }
+  [data-bg="black"] { background-color: var(--color-black-100); }
+  [data-bg="white"] { background-color: var(--color-white-100); }
+  
 }
 
-// Микро-режим
-.micro {
-  border: none;
-  background: transparent;
-  
-  .content {
-    min-height: 34px;
-    padding: 8px 0;
-  }
-  
-  .toolbar {
-    display: none;
-  }
-}
-
-// Bubble menu
-.bubbleMenu {
+// Уведомление об автосохранении
+.autosaveNotice {
   position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px;
-  background: var(--white-500);
-  border: 1px solid var(--black-100);
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 100;
+  top: -30px;
+  right: 0;
+  font-size: 1.4rem;
+  color: var(--black-600);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.2s, transform 0.2s;
+
+  &:global(.visible) {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.content {
+  min-height: 100px;
+  padding: 12px;
+  outline: none;
+  
+  &[data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: var(--color-text-secondary);
+  }
 }
 
 .preview {
@@ -204,18 +351,3 @@
     margin: 0;
   }
 }
-
-.video-embed {
-  position: relative;
-  padding-bottom: 56.25%; /* 16:9 */
-  height: 0;
-  margin: 1rem 0;
-
-  iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-  }
-} 

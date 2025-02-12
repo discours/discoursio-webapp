@@ -7,7 +7,7 @@ import { UploadModalContent } from '~/components/Upload/UploadModalContent/Uploa
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import { Image } from '~/components/_shared/Image'
-import { ShoutForm, useEditorContext } from '~/context/editor'
+import { DraftInput, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useTopics } from '~/context/topics'
@@ -17,16 +17,13 @@ import { UploadedFile } from '~/types/upload'
 import { Modal } from '../_shared/Modal'
 import { TopicSelect } from '../_shared/TopicSelect'
 
-import stylesBeside from '../Feed/Beside.module.scss' // TODO: should not be here, implement more components
+// TODO: should not be here, implement more components
+import stylesBeside from '../Feed/Beside.module.scss'
 import styles from './PublishSettings.module.scss'
 
 const GrowingTextarea = lazy(() => import('~/components/_shared/GrowingTextarea/GrowingTextarea'))
-const DESCRIPTION_MAX_LENGTH = 400
-
-type Props = {
-  shoutId: number
-  form: ShoutForm
-}
+const DESCRIPTION_MAX_LENGTH = 40
+const EMPTY_TOPIC: Topic = { id: -1, slug: '' }
 
 const shorten = (str: string, maxLen: number) => {
   if (str.length <= maxLen) return str
@@ -34,32 +31,20 @@ const shorten = (str: string, maxLen: number) => {
   return `${result}...`
 }
 
-const EMPTY_TOPIC: Topic = {
-  id: -1,
-  slug: ''
-}
-
-interface FormConfig {
-  coverImageUrl?: string
-  mainTopic?: Topic
-  slug?: string
-  title?: string
-  subtitle?: string
-  description?: string
-  selectedTopics?: Topic[]
-}
-
-const emptyConfig: FormConfig = {
-  coverImageUrl: '',
+const emptyConfig: DraftInput = {
+  cover: '',
   mainTopic: EMPTY_TOPIC,
   slug: '',
   title: '',
   subtitle: '',
   description: '',
-  selectedTopics: []
+  topics: [],
+  body: '',
+  layout: 'article',
+  id: -1
 }
 
-export const PublishSettings = (props: Props) => {
+export const PublishSettings = () => {
   const { t } = useLocalize()
   const { showModal, hideModal } = useUI()
   const navigate = useNavigate()
@@ -67,50 +52,37 @@ export const PublishSettings = (props: Props) => {
   const { sortedTopics } = useTopics()
   const { showSnackbar } = useSnackbar()
   const [topics, setTopics] = createSignal<Topic[]>(sortedTopics())
+  const [settingsForm, setSettingsForm] = createStore<DraftInput>(emptyConfig)
+  const [formErrors, setFormErrors] = createStore({} as Record<keyof DraftInput, string>)
+  const { currentDraft } = useDrafts()
+  onMount(() => setSettingsForm(currentDraft() as DraftInput))
 
   const composeDescription = () => {
-    if (!props.form.description) {
-      const cleanFootnotes = props.form.body.replaceAll(/<footnote data-value=".*?">(.*?)<\/footnote>/g, '')
-      const leadText = cleanFootnotes.replaceAll(/<\/?[^>]+(>|$)/gi, ' ')
+    if (!currentDraft()?.description) {
+      const cleanFootnotes = currentDraft()?.body?.replaceAll(
+        /<footnote data-value=".*?">(.*?)<\/footnote>/g,
+        ''
+      )
+      const leadText = cleanFootnotes?.replaceAll(/<\/?[^>]+(>|$)/gi, ' ') || ''
       return shorten(leadText, DESCRIPTION_MAX_LENGTH).trim()
     }
-    return props.form.description
+    return currentDraft()?.description
   }
-
-  const initialData = () => {
-    return {
-      coverImageUrl: props.form?.coverImageUrl,
-      mainTopic: props.form?.mainTopic || EMPTY_TOPIC,
-      slug: props.form?.slug || '',
-      title: props.form?.title || '',
-      subtitle: props.form?.subtitle || '',
-      description: composeDescription() || '',
-      selectedTopics: []
-    }
-  }
-
-  const [settingsForm, setSettingsForm] = createStore<FormConfig>(emptyConfig)
-
-  onMount(() => {
-    setSettingsForm(initialData())
-  })
 
   createEffect(() => setTopics(sortedTopics()))
 
-  const { formErrors, setForm, setFormErrors, saveShout, publishShout } = useEditorContext()
-
   const handleUploadModalContentCloseSetCover = (image: UploadedFile | undefined) => {
     hideModal()
-    setSettingsForm('coverImageUrl', image?.url)
+    setSettingsForm('cover', image?.url)
   }
   const handleDeleteCoverImage = () => {
-    setSettingsForm('coverImageUrl', '')
+    setSettingsForm('cover', '')
   }
 
   const handleTopicSelectChange = (newSelectedTopics: Topic[]) => {
     if (
-      props.form.selectedTopics.length === 0 ||
-      newSelectedTopics.every((topic: Topic) => topic.id !== props.form.mainTopic?.id)
+      currentDraft()?.topics?.length === 0 ||
+      newSelectedTopics.every((topic: Topic) => topic.id !== currentDraft()?.topics?.[0]?.id)
     ) {
       setSettingsForm((prev) => {
         return {
@@ -121,38 +93,43 @@ export const PublishSettings = (props: Props) => {
     }
 
     if (newSelectedTopics.length > 0) {
-      setFormErrors('selectedTopics', '')
+      setFormErrors('topics', '')
     }
-    setForm('selectedTopics', newSelectedTopics)
+    setSettingsForm('topics', newSelectedTopics)
   }
 
   const handleBackClick = () => {
-    navigate(`/edit/${props.shoutId}`)
+    navigate(`/edit/${currentDraft()?.id}`)
   }
   const handleCancelClick = () => {
-    setSettingsForm(initialData())
+    setSettingsForm(currentDraft() as DraftInput)
     handleBackClick()
   }
 
-  const { editing } = useEditorContext()
+  const { drafts, updateDraft, publishDraft } = useDrafts()
 
   const handlePublishSubmit = () => {
+    const draft = drafts().find((d) => d.id === currentDraft()?.id)
     console.group('[handlePublishSubmit]')
-    const shoutData = { ...props.form, ...settingsForm, body: editing()?.getHTML() || '' }
-    console.log('Publishing data:', shoutData)
+    const updatedDraft = { ...currentDraft(), ...settingsForm, ...draft }
+
+    console.log('updating draft: ', updatedDraft)
+    updateDraft(updatedDraft as DraftInput)
+
+    console.log('Publishing data:', updatedDraft)
 
     // Проверяем наличие выбранных топиков
-    const hasValidTopics = shoutData.selectedTopics?.length > 0 || shoutData.mainTopic?.id
+    const hasValidTopics = (updatedDraft.topics || []).length > 0 || updatedDraft.mainTopic?.id
 
     console.log('Topics validation:', {
-      selectedTopics: shoutData.selectedTopics,
-      mainTopic: shoutData.mainTopic,
+      selectedTopics: updatedDraft.topics,
+      mainTopic: updatedDraft.mainTopic,
       hasValidTopics
     })
 
     if (hasValidTopics) {
       console.log('Topics validation passed, proceeding with publication')
-      publishShout(shoutData)
+      publishDraft(currentDraft()?.id || -1)
     } else {
       console.warn('Publication rejected: no valid topics')
       showSnackbar({ body: t('Please, select at least one topic') })
@@ -160,13 +137,8 @@ export const PublishSettings = (props: Props) => {
     console.groupEnd()
   }
 
-  const handleSaveDraft = () => {
-    console.group('[handleSaveDraft]')
-    const shoutData = { ...props.form, ...settingsForm, body: editing()?.getHTML() || '' }
-    console.log('Saving draft data:', shoutData)
-    saveShout(shoutData)
-    console.groupEnd()
-  }
+  const handleSaveDraft = () => updateDraft(drafts().find((d) => d.id === currentDraft()?.id) as DraftInput)
+
   const removeSpecial = (ev: InputEvent) => {
     const input = ev.target as HTMLInputElement
     const value = input.value
@@ -191,20 +163,20 @@ export const PublishSettings = (props: Props) => {
                 <Button
                   variant="primary"
                   onClick={() => showModal('uploadCoverImage')}
-                  value={settingsForm.coverImageUrl ? t('Add another image') : t('Add image')}
+                  value={settingsForm.cover ? t('Add another image') : t('Add image')}
                 />
-                <Show when={settingsForm.coverImageUrl}>
+                <Show when={settingsForm.cover}>
                   <Button variant="secondary" onClick={handleDeleteCoverImage} value={t('Delete cover')} />
                 </Show>
               </div>
               <div
                 class={clsx(styles.shoutCardCoverContainer, {
-                  [styles.hasImage]: settingsForm.coverImageUrl
+                  [styles.hasImage]: settingsForm.cover
                 })}
               >
-                <Show when={settingsForm.coverImageUrl ?? initialData().coverImageUrl}>
+                <Show when={settingsForm.cover}>
                   <div class={styles.shoutCardCover}>
-                    <Image src={settingsForm.coverImageUrl} alt={initialData().title} width={800} />
+                    <Image src={settingsForm.cover} alt={settingsForm.title || ''} width={800} />
                   </div>
                 </Show>
                 <div class={styles.text}>
@@ -250,9 +222,10 @@ export const PublishSettings = (props: Props) => {
               />
               <SimpleRichEditor
                 bubble={true}
+                commands={['bold', 'italic']}
                 placeholder={t('Write a short introduction')}
-                content={composeDescription()}
-                onChange={(value?: string) => value && setForm('description', value)}
+                content={composeDescription() || ''}
+                onChange={(value?: string) => value && setSettingsForm('description', value)}
               />
             </div>
 
@@ -282,14 +255,14 @@ export const PublishSettings = (props: Props) => {
                   <TopicSelect
                     topics={topics()}
                     onChange={handleTopicSelectChange}
-                    selectedTopics={props.form.selectedTopics}
-                    onMainTopicChange={(mainTopic) => setForm('mainTopic', mainTopic)}
-                    mainTopic={props.form.mainTopic}
+                    selectedTopics={settingsForm.topics || []}
+                    onMainTopicChange={(mainTopic) => setSettingsForm('mainTopic', mainTopic)}
+                    mainTopic={settingsForm.mainTopic}
                   />
                 </Show>
               </div>
-              <Show when={formErrors.selectedTopics}>
-                <div class={styles.validationError}>{formErrors.selectedTopics}</div>
+              <Show when={formErrors.topics}>
+                <div class={styles.validationError}>{formErrors.topics}</div>
               </Show>
             </div>
             <h4>{t('Collaborators')}</h4>

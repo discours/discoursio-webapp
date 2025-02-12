@@ -504,3 +504,9 @@ export const SessionProvider = (props: {
 
   return <SessionContext.Provider value={value}>{props.children}</SessionContext.Provider>
 }
+
+export const sessionStateChanged = (payload: AuthToken) => {
+  console.log('[session] Session state changed:', payload)
+}
+
+export type { AuthToken, UpdateProfileInput }

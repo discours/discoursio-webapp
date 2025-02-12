@@ -1,8 +1,9 @@
+import { CommandGroupType, CommandType } from './commands'
 import { EditorState } from './state'
 
 export const useKeyboardHandlers = (
   state: EditorState,
-  execCommand: (command: string, value?: string) => void,
+  format: (cmd: CommandType, kind: CommandGroupType) => void,
   handleSubmit: () => void,
   handleLinkButtonClick: () => void,
   handleRedo?: () => void,
@@ -13,7 +14,6 @@ export const useKeyboardHandlers = (
     Shift + Enter - вставляет блок цитаты
     Ctrl + B - жирный текст
     Ctrl + I - курсив
-    Ctrl + U - подчеркнутый текст
     Ctrl + K - ссылка
     Ctrl + Y - повторить (Redo)
     Ctrl + Z - отмена (Undo)
@@ -25,13 +25,13 @@ export const useKeyboardHandlers = (
       return
     }
 
-    if (e.key === 'Enter' && e.shiftKey && state.format.block.blockquote) {
+    if (e.key === 'Enter' && e.shiftKey && state.activeFormats.has('blockquote')) {
       e.preventDefault()
-      execCommand('formatBlock', '<p>')
+      format('p', 'text')
       return
     }
 
-    if (e.key === 'Enter' && !e.shiftKey && state.format.block.blockquote) {
+    if (e.key === 'Enter' && !e.shiftKey && state.format?.block?.blockquote) {
       const selection = window.getSelection()
       if (!selection) return
 
@@ -40,7 +40,7 @@ export const useKeyboardHandlers = (
 
       if (blockquote && range.startContainer.textContent?.trim() === '') {
         e.preventDefault()
-        execCommand('formatBlock', '<p>')
+        format('p', 'text')
 
         const emptyP = blockquote.querySelector('p:empty')
         if (emptyP) {
@@ -53,17 +53,12 @@ export const useKeyboardHandlers = (
       switch (e.key.toLowerCase()) {
         case 'b': {
           e.preventDefault()
-          execCommand('bold')
+          format('bold', 'text')
           break
         }
         case 'i': {
           e.preventDefault()
-          execCommand('italic')
-          break
-        }
-        case 'u': {
-          e.preventDefault()
-          execCommand('underline')
+          format('italic', 'text')
           break
         }
         case 'k': {

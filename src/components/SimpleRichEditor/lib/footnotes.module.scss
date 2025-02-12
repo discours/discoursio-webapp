@@ -1,0 +1,25 @@
+.footnote-ref {
+    font-size: 0.75em;
+    line-height: 0;
+    position: relative;
+    top: -0.5em;
+
+    a {
+        color: var(--color-primary);
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}
+
+.footnote-backref {
+    margin-left: 0.5em;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+
+    &:hover {
+        color: var(--color-primary);
+    }
+}

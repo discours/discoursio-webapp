@@ -1,15 +1,39 @@
+import { CommandType } from './commands'
 import styles from './embed.module.scss'
 
-// Добавляем регулярное выражение на верхний уровень
-export const IMAGE_REGEX = /\.(jpe?g|png|gif|webp|avif)$/i
-export const VIMEO_REGEX = /^(?:https?:\/\/)?(?:www\.|player\.)?vimeo\.com\/(?:video\/)?(\d+)$/
-export const YOUTUBE_REGEX =
-  /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})$/
-export const URL_REGEX = /^(https?:\/\/)?(www\.)?[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/
-export const AUDIO_REGEX = /\.(mp3|wav|ogg|m4a)$/i
+/**
+ * @module embed
+ * @description Модуль для встраивания внешнего контента
+ *
+ * Поддерживает:
+ * - Видео (YouTube, Vimeo)
+ * - Изображения
+ * - Ссылки
+ * - Форматированный текст
+ *
+ * @example
+ * ```ts
+ * handleContentPaste(text, {
+ *   insertText: (text) => execCommand('insertText', text),
+ *   insertHtml: (html) => execCommand('insertHTML', html)
+ * })
+ * ```
+ */
+
+// Регулярные выражения для определения типа контента по ссылке
+export const CONTENT_REGEX = {
+  IMAGE: /\.(jpe?g|png|gif|webp|avif)$/i,
+  VIMEO: /^(?:https?:\/\/)?(?:www\.|player\.)?vimeo\.com\/(?:video\/)?(\d+)$/,
+  YOUTUBE:
+    /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})$/,
+  URL: /^(https?:\/\/)?(www\.)?[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/,
+  AUDIO: /\.(mp3|wav|ogg|m4a)$/i
+} as const
+
+export type ContentType = 'link' | 'image' | 'video' | 'audio'
 
 export interface EmbedContent {
-  type: 'link' | 'image' | 'video' | 'audio'
+  type: ContentType
   url: string
   title?: string
   description?: string
@@ -27,7 +51,17 @@ export interface EmbedOptions {
 }
 
 /**
- * Normalizes URL by adding protocol if missing
+ * Создает HTML элемент с заданными атрибутами
+ */
+const createElement = (tag: string, attrs: Record<string, string> = {}, content?: string): HTMLElement => {
+  const el = document.createElement(tag)
+  Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value))
+  if (content) el.textContent = content
+  return el
+}
+
+/**
+ * Нормализует URL, добавляя протокол если отсутствует
  */
 export const normalizeUrl = (url: string): string => {
   if (!url) return url
@@ -35,187 +69,153 @@ export const normalizeUrl = (url: string): string => {
 }
 
 /**
- * Creates HTML element with given attributes
+ * Создает HTML разметку для встраивания видео
  */
-const createElement = (tag: string, attrs: Record<string, string> = {}) => {
-  const el = document.createElement(tag)
-  Object.entries(attrs).forEach(([key, value]) => {
-    el.setAttribute(key, value)
+export const createVideoEmbed = (videoId: string, platform: 'youtube' | 'vimeo'): string => {
+  const wrapper = createElement('div', { class: styles['video-embed'] })
+  const iframe = createElement('iframe', {
+    src:
+      platform === 'youtube'
+        ? `https://www.youtube.com/embed/${videoId}`
+        : `https://player.vimeo.com/video/${videoId}`,
+    frameborder: '0',
+    allowfullscreen: 'true'
   })
-  return el
+  wrapper.appendChild(iframe)
+  return wrapper.outerHTML
 }
 
 /**
- * Selected text into the link
- * @param url - Link URL
- * @param text - Link text
- * @returns HTML string for embedding
+ * Создает HTML разметку для встраивания изображения
  */
-export const selectedTextToLink = (url: string, text?: string) => {
-  const normalized = normalizeUrl(url)
-  const link = createElement('a', { href: normalized })
-  link.textContent = text || normalized
-  return link.outerHTML
-}
-
-/**
- * Selected text into the image
- * @param url - Link URL
- * @param text - Link text
- * @returns HTML string for embedding
- */
-export const selectedTextToImage = (url: string, text?: string) => {
+export const createImageEmbed = (content: EmbedContent): string => {
+  const figure = createElement('figure')
   const img = createElement('img', {
-    src: url,
-    alt: text || ''
+    src: content.url,
+    alt: content.title || '',
+    ...(content.width ? { width: content.width.toString() } : {}),
+    ...(content.height ? { height: content.height.toString() } : {})
   })
-  return img.outerHTML
+  figure.appendChild(img)
+  if (content.title) {
+    const caption = createElement('figcaption', {}, content.title)
+    figure.appendChild(caption)
+  }
+  return figure.outerHTML
 }
 
 /**
- * Selected text into the image
- * @param url - Link URL
- * @param text - Link text
- * @returns HTML string for embedding
+ * Создает HTML разметку для встраивания аудио
  */
-export const selectedTextToVideo = (url: string) => {
-  if (!url) return url
-  const selection = window.getSelection()
-  if (!selection) return url
-  const range = selection.getRangeAt(0)
-  range.deleteContents()
+export const createAudioEmbed = (url: string): string => {
+  const audio = createElement('audio', { controls: 'true' })
+  const source = createElement('source', {
+    src: url,
+    type: `audio/${url.split('.').pop()}`
+  })
+  audio.appendChild(source)
+  return audio.outerHTML
+}
 
-  return patchVideo(url)
+export const detectVideoPlatform = (url: string): 'youtube' | 'vimeo' => {
+  if (CONTENT_REGEX.VIMEO.test(url)) {
+    return 'vimeo'
+  }
+  if (CONTENT_REGEX.YOUTUBE.test(url)) {
+    return 'youtube'
+  }
+  throw new Error('Unsupported video platform')
 }
 
 /**
- * Patches a video into the text
- * @param url - Video URL
- * @returns HTML string for embedding
+ * Создает HTML разметку для встраивания ссылки с превью
  */
-export const patchVideo = (url: string) => {
-  const youtubeMatch = url.match(YOUTUBE_REGEX)
-  const vimeoMatch = url.match(VIMEO_REGEX)
-  const videoId = youtubeMatch?.[1] || vimeoMatch?.[1]
-  return youtubeMatch
-    ? `
-  <iframe 
-      src="https://www.youtube.com/embed/${videoId}"
-      width="100%"
-      height="100%"
-      frameborder="0"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-    allowfullscreen
-    ></iframe>
-  `
-    : vimeoMatch
-      ? `
-  <iframe 
-    src="https://player.vimeo.com/video/${videoId}"
-    width="100%"
-    height="100%"
-    frameborder="0"
-    allow="autoplay; fullscreen; picture-in-picture"
-    allowfullscreen
-  ></iframe>
-  `
-      : ''
+export const createLinkPreview = (content: EmbedContent): string => {
+  const preview = createElement('div', { class: styles.preview })
+
+  if (content.image) {
+    const img = createElement('img', {
+      src: content.image,
+      alt: content.title || ''
+    })
+    preview.appendChild(img)
+  }
+
+  const previewContent = createElement('div', { class: styles.previewContent })
+  const link = createElement(
+    'a',
+    {
+      href: content.url,
+      target: '_blank',
+      rel: 'noopener noreferrer'
+    },
+    content.title || content.url
+  )
+  previewContent.appendChild(link)
+
+  if (content.description) {
+    const desc = createElement('p', {}, content.description)
+    previewContent.appendChild(desc)
+  }
+
+  preview.appendChild(previewContent)
+  return preview.outerHTML
 }
 
 /**
- * Creates HTML for embedding different types of content
- * @param content - Recognized content from URL
- * @returns HTML string for embedding
+ * Определяет тип контента по URL и создает объект EmbedContent
  */
-export const createEmbedHtml = (content: EmbedContent): string => {
-  switch (content.type) {
-    case 'video': {
-      return `
-        <div class="${styles['video-embed']}">
-          ${patchVideo(content.url)}
-        </div>
-      `
-    }
-    case 'image': {
-      return `
-        <figure>
-          <img 
-            src="${content.url}" 
-            alt="${content.title || ''}"
-            ${content.width ? `width="${content.width}"` : ''}
-            ${content.height ? `height="${content.height}"` : ''}
-          />
-          ${content.title ? `<figcaption>${content.title}</figcaption>` : ''}
-        </figure>`
-    }
-    case 'audio': {
-      return `
-        <audio controls>
-          <source src="${content.url}" type="audio/${content.url.split('.').pop()}">
-          ${'Your browser does not support the audio element.'}
-        </audio>`
-    }
-    case 'link': {
-      return `
-        <div class="${styles.preview}">
-          ${content.image ? `<img src="${content.image}" alt="${content.title || ''}" />` : ''}
-          <div class="${styles.previewContent}">
-            <a href="${content.url}" target="_blank" rel="noopener noreferrer">
-              ${content.title || content.url}
-            </a>
-            ${content.description ? `<p>${content.description}</p>` : ''}
-          </div>
-        </div>`
-    }
-    default: {
-      return ''
+export const recognizeCommand = (url: string): CommandType | undefined => {
+  let action: CommandType | undefined
+  for (const [type, regex] of [
+    ['video', CONTENT_REGEX.VIMEO],
+    ['video', CONTENT_REGEX.YOUTUBE],
+    ['image', CONTENT_REGEX.IMAGE],
+    // ['audio', CONTENT_REGEX.AUDIO],
+    ['link', CONTENT_REGEX.URL]
+  ]) {
+    const match = url.match(regex)
+    if (match) {
+      action = type as CommandType
+      break
     }
   }
-}
-
-export const recognizeContent = async (text: string): Promise<EmbedContent | undefined> => {
-  const regexes = [IMAGE_REGEX, VIMEO_REGEX, YOUTUBE_REGEX, URL_REGEX, AUDIO_REGEX]
-  const regex = regexes.find((regex) => regex.test(text))
-  if (!regex) return
-
-  const matchedUrl = text.match(regex)?.[0]
-  if (matchedUrl) {
-    // использовать matchedUrl
-  }
+  return action
 }
 
 /**
- * Handles pasting content with URL recognition
- * @param text - Pasted text
- * @param options - Handler options
- * @returns Promise resolving to HTML string or null
+ * Обрабатывает вставку контента с распознаванием URL
  */
-export const handleContentPaste = async (
+export const handleContentPaste = (
   text: string,
   options: {
     showLoading?: () => void
     insertText: (text: string) => void
     insertHtml: (html: string) => void
   }
-): Promise<void> => {
+) => {
   const { showLoading, insertText, insertHtml } = options
 
   try {
-    insertText(new URL(text).toString())
-    showLoading?.()
-
-    const content = await recognizeContent(text)
-    if (!content) {
+    const action = recognizeCommand(text)
+    if (!action) {
       insertText(text)
       return
     }
-
-    const html = createEmbedHtml(content)
-    if (html) {
-      insertHtml(html)
-    } else {
-      insertText(text)
+    let embedHtml = ''
+    showLoading?.()
+    if (action === 'video') {
+      if (CONTENT_REGEX.VIMEO.test(text)) {
+        embedHtml = createVideoEmbed(text, 'vimeo')
+      } else if (CONTENT_REGEX.YOUTUBE.test(text)) {
+        embedHtml = createVideoEmbed(text, 'youtube')
+      }
+    } else if (action === 'image') {
+      embedHtml = createImageEmbed({ url: text, type: 'image' })
+    } else if (action === 'link') {
+      embedHtml = createLinkPreview({ url: text, type: 'link' })
     }
+    insertHtml(embedHtml)
   } catch {
     insertText(text)
   }

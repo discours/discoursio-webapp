@@ -1,13 +1,10 @@
-import { Show } from 'solid-js'
 import { AuthGuard } from '~/components/AuthGuard'
 import { LayoutSelector } from '~/components/Draft/LayoutSelector'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { useEditorContext } from '~/context/editor'
 import { useLocalize } from '~/context/localize'
 
 export default () => {
   const { t } = useLocalize()
-  const { isReady } = useEditorContext()
 
   return (
     <PageLayout
@@ -16,9 +13,7 @@ export default () => {
       desc={t('Participate in the Discours: share information, join the editorial team')}
     >
       <AuthGuard>
-        <Show when={isReady()} fallback={<div>Loading...</div>}>
-          <LayoutSelector />
-        </Show>
+        <LayoutSelector />
       </AuthGuard>
     </PageLayout>
   )

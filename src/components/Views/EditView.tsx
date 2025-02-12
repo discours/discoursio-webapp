@@ -1,47 +1,34 @@
 import { clsx } from 'clsx'
-import deepEqual from 'fast-deep-equal'
 import { Show, createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
-import { createStore } from 'solid-js/store'
-import { debounce } from 'throttle-debounce'
 import { DropArea } from '~/components/_shared/DropArea'
 import { Icon } from '~/components/_shared/Icon'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
 import { Popover } from '~/components/_shared/Popover'
 import { EditorSwiper } from '~/components/_shared/SolidSwiper'
-import { ShoutForm, useEditorContext } from '~/context/editor'
 import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
-import getMyShoutQuery from '~/graphql/query/core/article-my'
-import type { MediaItem, Shout, Topic } from '~/graphql/schema/core.gen'
+import type { Draft, MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { isDesktop } from '~/lib/mediaQuery'
 import { LayoutType } from '~/types/common'
-import { clone } from '~/utils/clone'
-import { AutoSaveNotice } from '../AutoSaveNotice'
+import { AutoSave } from '../AutoSave'
 import { Panel } from '../Sidebar/Sidebar'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { AudioUploader } from '../Upload/AudioUploader'
 import { VideoUploader } from '../Upload/VideoUploader'
+import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'
 import { Modal } from '../_shared/Modal'
 import { TableOfContents } from '../_shared/TableOfContents'
 
+import { DraftInput, useDrafts } from '~/context/drafts'
 import styles from '~/styles/views/EditView.module.scss'
-import { RichEditor } from '../SimpleRichEditor/RichEditor'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
-import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'
-
-type Props = {
-  shout: Shout
-}
 
 export const MAX_HEADER_LIMIT = 100
 export const EMPTY_TOPIC: Topic = {
   id: -1,
   slug: ''
 }
-
-const AUTO_SAVE_DELAY = 3000
 
 const handleScrollTopButtonClick = (ev: MouseEvent | TouchEvent) => {
   ev.preventDefault()
@@ -51,114 +38,40 @@ const handleScrollTopButtonClick = (ev: MouseEvent | TouchEvent) => {
   })
 }
 
-export const EditView = (props: Props) => {
+/**
+ * EditView component
+ *
+ * @returns EditView component
+ */
+export const EditView = () => {
   const { t } = useLocalize()
-  const { client } = useSession()
-  const { form, formErrors, setForm, setFormErrors, saveDraft } = useEditorContext()
-
+  const { updateDraft, currentDraft } = useDrafts()
+  const [inputDataErrors, setFormErrors] = createSignal({} as Record<keyof DraftInput, string>)
   const [subtitleInput, setSubtitleInput] = createSignal<HTMLTextAreaElement | undefined>()
-  const [prevForm, setPrevForm] = createStore<ShoutForm>(clone(form))
-  const [saving, setSaving] = createSignal(false)
-  const [isSubtitleVisible, setIsSubtitleVisible] = createSignal(Boolean(form.subtitle))
-  const [isLeadVisible, setIsLeadVisible] = createSignal(Boolean(form.lead))
-  const [isScrolled, setIsScrolled] = createSignal(false)
-  const [shoutTopics, setShoutTopics] = createSignal<Topic[]>([])
-  const [draft, setDraft] = createSignal<Shout>(props.shout)
+
+  // Handling when draft data is changed
+  const [isSubtitleVisible, setIsSubtitleVisible] = createSignal(false)
+  const [isLeadVisible, setIsLeadVisible] = createSignal(false)
   const [mediaItems, setMediaItems] = createSignal<MediaItem[]>([])
-
-  createEffect(() => setMediaItems((form.media || []) as MediaItem[]))
-
   createEffect(
-    on(
-      () => props.shout,
-      (shout) => {
-        if (shout) {
-          setShoutTopics((shout.topics as Topic[]) || [])
-          const stored = localStorage.getItem(`shout-${shout.id}`) || '{}'
-          if (stored) {
-            setDraft((old) => ({ ...old, ...JSON.parse(stored) }) as Shout)
-          } else {
-            const draftForm = {
-              slug: shout.slug || '',
-              shoutId: shout.id || 0,
-              title: shout.title || '',
-              lead: shout.lead || '',
-              description: shout.description || '',
-              subtitle: shout.subtitle || '',
-              selectedTopics: (shoutTopics() || []) as Topic[],
-              mainTopic: shoutTopics()[0] || '',
-              body: shout.body || '',
-              coverImageUrl: shout.cover || '',
-              media: (shout.media || []) as MediaItem[],
-              layout: shout.layout || ''
-            }
-            setForm((_: ShoutForm) => draftForm)
-          }
-        }
-      },
-      { defer: true }
-    )
-  )
-
-  createEffect(
-    on(
-      draft,
-      (d) => {
-        if (d) {
-          const draftForm = Object.keys(d) ? d : { shoutId: props.shout.id }
-          setForm(draftForm as ShoutForm)
-        }
-      },
-      { defer: true }
-    )
-  )
-
-  createEffect(
-    on(
-      () => props.shout?.id,
-      async (shoutId) => {
-        if (shoutId) {
-          const resp = await client()?.query(getMyShoutQuery, { shout_id: shoutId })
-          const result = resp?.data?.get_my_shout
-          if (result) {
-            const { shout: loadedShout, error } = result
-            setDraft(loadedShout)
-            error && console.log(error)
-          }
-        }
-      },
-      { defer: true }
-    )
-  )
-
-  onMount(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 0)
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    onCleanup(() => {
-      window.removeEventListener('scroll', handleScroll)
+    on(currentDraft, (d?: Draft) => {
+      if (!d) return
+      setIsSubtitleVisible(Boolean(d?.subtitle))
+      setIsLeadVisible(Boolean(d?.lead))
+      setMediaItems((d?.media || []) as MediaItem[])
     })
+  )
 
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!deepEqual(prevForm, form)) {
-        event.returnValue = t(
-          'There are unsaved changes in your publishing settings. Are you sure you want to leave the page without saving?'
-        )
-      }
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    onCleanup(() => window.removeEventListener('beforeunload', handleBeforeUnload))
-  })
+  // Handle scroll
+  const [isScrolled, setIsScrolled] = createSignal(false)
+  const handleScroll = () => setIsScrolled(window.scrollY > 0)
+  onMount(() => window.addEventListener('scroll', handleScroll, { passive: true }))
+  onCleanup(() => window.removeEventListener('scroll', handleScroll))
 
   const handleTitleInputChange = (value: string) => {
     handleInputChange('title', value)
     handleInputChange('slug', slugify(value))
-    if (value) {
-      setFormErrors('title', '')
-    }
+    value && setFormErrors((prev) => ({ ...prev, title: '' }))
   }
 
   const handleAddMedia = (data: MediaItem[]) => {
@@ -196,7 +109,7 @@ export const EditView = (props: Props) => {
   }
 
   const articleTitle = () => {
-    switch (props.shout.layout as LayoutType) {
+    switch (currentDraft()?.layout as LayoutType) {
       case 'audio': {
         return t('Album name')
       }
@@ -208,50 +121,17 @@ export const EditView = (props: Props) => {
       }
     }
   }
-  const [hasChanges, setHasChanges] = createSignal(false)
-  const { editing } = useEditorContext()
-  const autoSave = async () => {
-    console.log('autoSave called')
-    if (hasChanges()) {
-      const data = {
-        ...form,
-        body: editing()?.getHTML() || form.body || '',
-        lead: form.lead || '',
-        subtitle: form.subtitle || '',
-        title: form.title || ''
-      }
-      console.debug('Saving draft data:', {
-        bodyLength: data.body.length,
-        leadLength: data.lead?.length
-      })
-      setSaving(true)
 
-      try {
-        if (data.shoutId) {
-          localStorage.setItem(`shout-${data.shoutId}`, JSON.stringify(data))
-        }
-        await saveDraft(data)
-        setPrevForm(clone(data))
-      } finally {
-        setSaving(false)
-        setHasChanges(false)
-      }
+  const handleInputChange = (key: keyof DraftInput, value: string) => {
+    // console.log(`[handleInputChange] ${String(key)}: ${value}`)
+    if (key === 'title') {
+      handleInputChange('slug', slugify(value))
+    }
+    const draft = currentDraft()
+    if (draft) {
+      updateDraft({ ...draft, [key]: value } as DraftInput)
     }
   }
-
-  const debouncedAutoSave = debounce(AUTO_SAVE_DELAY, autoSave)
-  const handleInputChange = (key: keyof ShoutForm, value: string) => {
-    // console.log(`[handleInputChange] ${String(key)}: ${value}`)
-    setForm((_: ShoutForm) => ({ ..._, [key]: value }))
-    setHasChanges(true)
-    debouncedAutoSave()
-  }
-
-  onMount(() => {
-    onCleanup(() => {
-      debouncedAutoSave.cancel()
-    })
-  })
 
   const showSubtitleInput = () => {
     setIsSubtitleVisible(true)
@@ -269,36 +149,40 @@ export const EditView = (props: Props) => {
   const HeadingActions = () => {
     return (
       <div class="col-md-19 col-lg-18 col-xl-16 offset-md-5">
-        <Show when={props.shout}>
+        <Show when={currentDraft()}>
+          <AutoSave
+            cacheId={() => `draft:${currentDraft()?.id}`}
+            data={() => JSON.stringify(currentDraft())}
+          />
           <div class={styles.headingActions}>
-            <Show when={!isSubtitleVisible() && props.shout.layout !== 'audio'}>
+            <Show when={!isSubtitleVisible() && currentDraft()?.layout !== 'audio'}>
               <div class={styles.action} onClick={showSubtitleInput}>
                 {t('Add subtitle')}
               </div>
             </Show>
-            <Show when={!isLeadVisible() && props.shout.layout !== 'audio'}>
+            <Show when={!isLeadVisible() && currentDraft()?.layout !== 'audio'}>
               <div class={styles.action} onClick={showLeadInput}>
                 {t('Add intro')}
               </div>
             </Show>
           </div>
           <>
-            <div class={clsx({ [styles.audioHeader]: props.shout.layout === 'audio' })}>
+            <div class={clsx({ [styles.audioHeader]: currentDraft()?.layout === 'audio' })}>
               <div class={styles.inputContainer}>
                 <GrowingTextarea
                   allowEnterKey={true}
                   value={(value) => handleTitleInputChange(value)}
                   class={styles.titleInput}
                   placeholder={articleTitle()}
-                  initialValue={form.title}
+                  initialValue={currentDraft()?.title || ''}
                   maxLength={MAX_HEADER_LIMIT}
                 />
 
-                <Show when={formErrors.title}>
-                  <div class={styles.validationError}>{formErrors.title}</div>
+                <Show when={inputDataErrors().title}>
+                  <div class={styles.validationError}>{inputDataErrors().title}</div>
                 </Show>
 
-                <Show when={props.shout.layout === 'audio'}>
+                <Show when={currentDraft()?.layout === 'audio'}>
                   <div class={styles.additional}>
                     <input
                       type="text"
@@ -326,7 +210,7 @@ export const EditView = (props: Props) => {
                     />
                   </div>
                 </Show>
-                <Show when={props.shout.layout !== 'audio'}>
+                <Show when={currentDraft()?.layout !== 'audio'}>
                   <Show when={isSubtitleVisible()}>
                     <GrowingTextarea
                       textAreaRef={setSubtitleInput}
@@ -334,28 +218,26 @@ export const EditView = (props: Props) => {
                       value={(value) => handleInputChange('subtitle', value || '')}
                       class={styles.subtitleInput}
                       placeholder={t('Subheader')}
-                      initialValue={form.subtitle || ''}
+                      initialValue={currentDraft()?.subtitle || ''}
                       maxLength={MAX_HEADER_LIMIT}
                     />
                   </Show>
                   <Show when={isLeadVisible()}>
                     <SimpleRichEditor
                       bubble={true}
-                      commands={['bold', 'italic', 'link', 'blockquote', 'image']}
+                      hideButtons={true}
+                      commands={['bold', 'italic', 'link']}
                       placeholder={t('A short introduction to keep the reader interested')}
-                      content={form.lead}
-                      onBlur={hideLeadInput}
-                      onChange={(value: string) => {
-                        handleInputChange('lead', value)
-                        debouncedAutoSave()
-                      }}
+                      content={currentDraft()?.lead || ''}
+                      onBlur={() => hideLeadInput()}
+                      onChange={(value: string) => handleInputChange('lead', value)}
                     />
                   </Show>
                 </Show>
               </div>
-              <Show when={props.shout.layout === 'audio'}>
+              <Show when={currentDraft()?.layout === 'audio'}>
                 <Show
-                  when={form.coverImageUrl}
+                  when={currentDraft()?.cover}
                   fallback={
                     <DropArea
                       isSquare={true}
@@ -369,14 +251,14 @@ export const EditView = (props: Props) => {
                       }
                       isMultiply={false}
                       fileType={'image'}
-                      onUpload={(val: { url: string }[]) => handleInputChange('coverImageUrl', val[0].url)}
+                      onUpload={(val: { url: string }[]) => handleInputChange('cover', val[0].url)}
                     />
                   }
                 >
                   <div
                     class={styles.cover}
                     style={{
-                      'background-image': `url(${getFileUrl(form.coverImageUrl || '', {
+                      'background-image': `url(${getFileUrl(currentDraft()?.cover || '', {
                         width: 1600
                       })})`
                     }}
@@ -386,7 +268,7 @@ export const EditView = (props: Props) => {
                         <div
                           ref={triggerRef}
                           class={styles.delete}
-                          onClick={() => handleInputChange('coverImageUrl', '')}
+                          onClick={() => handleInputChange('cover', '')}
                         >
                           <Icon name="close-white" />
                         </div>
@@ -397,7 +279,7 @@ export const EditView = (props: Props) => {
               </Show>
             </div>
 
-            <Show when={props.shout.layout === 'image'}>
+            <Show when={currentDraft()?.layout === 'image'}>
               <EditorSwiper
                 images={mediaItems()}
                 onImageChange={handleMediaChange}
@@ -407,7 +289,7 @@ export const EditView = (props: Props) => {
               />
             </Show>
 
-            <Show when={props.shout.layout === 'video'}>
+            <Show when={currentDraft()?.layout === 'video'}>
               <VideoUploader
                 video={mediaItems()}
                 onVideoAdd={(data: MediaItem[]) => handleAddMedia(data)}
@@ -415,7 +297,7 @@ export const EditView = (props: Props) => {
               />
             </Show>
 
-            <Show when={props.shout.layout === 'audio'}>
+            <Show when={currentDraft()?.layout === 'audio'}>
               <AudioUploader
                 audio={mediaItems()}
                 baseFields={baseAudioFields()}
@@ -429,6 +311,8 @@ export const EditView = (props: Props) => {
       </div>
     )
   }
+
+  const handleEditorChange = (content: string) => handleInputChange('body', content)
 
   return (
     <>
@@ -445,25 +329,40 @@ export const EditView = (props: Props) => {
               <span class={styles.scrollTopButtonLabel}>{t('Scroll up')}</span>
             </button>
 
-            <AutoSaveNotice active={saving()} />
-
             <div class={styles.wrapperTableOfContents}>
-              <Show when={isDesktop() && form.body}>
-                <TableOfContents variant="editor" parentSelector="#editorBody" body={form.body} />
+              <Show when={isDesktop() && currentDraft()?.body}>
+                <TableOfContents
+                  variant="editor"
+                  parentSelector="#editorBody"
+                  body={currentDraft()?.body || ''}
+                />
               </Show>
             </div>
 
             <div class="row">
               <HeadingActions />
             </div>
-            <Show when={draft()?.id} fallback={<Loading />}>
-              <RichEditor
-                shoutId={form.shoutId}
-                content={form.body}
-                //onChange={(body: string) => handleInputChange('body', body)}
+            <Show when={currentDraft()?.id} fallback={<Loading />}>
+              <SimpleRichEditor
+                commands={['bold', 'italic', 'link', 'blockquote', 'image']}
+                plus={true}
+                bubble={true}
+                editorId={`editor-${currentDraft()?.id}`}
+                content={currentDraft()?.body || ''}
+                readOnly={false}
+                limit={10000}
+                onChange={handleEditorChange}
+                onSubmit={async (content: string) => {
+                  if (currentDraft()) {
+                    handleInputChange('body', content)
+                    await updateDraft({ ...currentDraft(), body: content } as DraftInput)
+                    return true
+                  }
+                  return false
+                }}
               />
-              <Show when={draft()?.id}>
-                <Panel shoutId={draft()?.id} />
+              <Show when={currentDraft()?.id}>
+                <Panel shoutId={currentDraft()?.id} />
               </Show>
             </Show>
           </div>

@@ -19,7 +19,7 @@ export interface SSEMessage {
   seen?: boolean
 }
 
-type MessageHandler = (m: SSEMessage) => void
+export type MessageHandler = (m: SSEMessage) => void
 
 export interface ConnectContextType {
   addHandler: (handler: MessageHandler) => void

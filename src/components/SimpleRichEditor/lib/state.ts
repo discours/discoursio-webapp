@@ -1,265 +1,259 @@
-import { createMemo, createSignal } from 'solid-js'
-import { SetStoreFunction, createStore } from 'solid-js/store'
+import { Accessor, createMemo, createSignal } from 'solid-js'
+import { createStore } from 'solid-js/store'
 import { debounce } from 'throttle-debounce'
-import { useLocalize } from '~/context/localize'
-import { useSnackbar } from '~/context/ui'
-import { getFormatStates } from './format'
+import { CommandType, getCommandType } from './commands'
+import {
+  applyFormatting as applyFormat,
+  getActiveFormats,
+  removeFormatting as removeFormat,
+  resetFormat
+} from './format'
 
-// Типы для состояния редактора
+/**
+ * @module state
+ * @description Модуль управления состоянием rich text редактора
+ *
+ * Основные возможности:
+ * - Управление форматированием текста
+ * - История изменений (undo/redo)
+ * - Автосохранение в localStorage
+ * - Отслеживание выделения
+ * - Подсчет символов
+ *
+ * @example
+ * ```tsx
+ * const { state, format, updateState } = useEditor({
+ *   id: 'my-editor',
+ *   content: initialContent,
+ *   editorRef,
+ *   onChange: (content) => console.log(content)
+ * })
+ * ```
+ */
+
+/**
+ * Состояние редактора
+ */
 export interface EditorState {
+  id: string
   content: string
-  format: {
-    text: {
-      bold: boolean
-      italic: boolean
-      underline?: boolean
-      link: boolean
-      strikethrough?: boolean
-    }
-    block: {
-      h1?: boolean
-      h2?: boolean
-      h3?: boolean
+  selection: {
+    range: Range | null
+    text: string
+    isEmpty: boolean
+    position: { top: number; left: number }
+  }
+  activeFormats: Set<CommandType>
+  format?: {
+    block?: {
       blockquote?: boolean
-      orderedList?: boolean
-      unorderedList?: boolean
+      punchline?: boolean
       incut?: boolean
     }
-    media: {
+    text?: {
+      bold?: boolean
+      italic?: boolean
+      link?: boolean
+      highlight?: boolean
+    }
+    media?: {
       image?: boolean
       video?: boolean
-      figcaption?: boolean
     }
   }
-  selection: {
-    range?: Range | null
-    text?: string
-    isEmpty?: boolean
-    position?: { top: number; left: number }
-  }
-  history?: {
+  history: {
     undo: string[]
     redo: string[]
   }
-  handleImageUploadWithSnackbar?: (files: File[]) => Promise<void>
+  isBlurred: boolean
+  setActiveFormats: (formats: Set<CommandType>) => void
+  setContent: (content: string) => void
+  setIsBlurred: (isBlurred: boolean) => void
 }
 
-// Начальное состояние редактора
-export const defaultEditorState: EditorState = {
-  content: '',
-  format: {
-    text: {
-      bold: false,
-      italic: false,
-      underline: false,
-      link: false,
-      strikethrough: false
-    },
-    block: {
-      h1: false,
-      h2: false,
-      h3: false,
-      blockquote: false,
-      orderedList: false,
-      unorderedList: false,
-      incut: false
-    },
-    media: {
-      image: false,
-      video: false,
-      figcaption: false
-    }
-  },
-  selection: {
-    range: null,
-    text: '',
-    isEmpty: true,
-    position: { top: 0, left: 0 }
-  },
-  history: {
-    undo: [],
-    redo: []
-  }
-}
-
-interface EditorOptions {
+/**
+ * Пропсы редактора
+ */
+export interface EditorProps {
+  id?: string
   content?: string
-  storageKey?: string
-  autoSave?: boolean
+  editorRef: Accessor<HTMLDivElement | undefined>
+  onChange: (content: string) => void
+  onShowModal?: (type: string) => void
+  limit?: number
   onSaveStart?: () => void
   onSaveEnd?: () => void
 }
 
-// Создаем фабрику для дебаунсированного сохранения
-const createStorageHandler = (storageKey: string) =>
-  debounce(500, (content: string) => {
-    if (!storageKey) return
-    try {
-      localStorage.setItem(storageKey, content)
-    } catch (e) {
-      console.warn(`Failed to save editor content for ${storageKey}:`, e)
-    }
-  })
+const MAX_HISTORY_LENGTH = 100
 
 /**
- * Updates editor state with current selection and content
+ * Хук управления состоянием редактора
  */
-const updateEditorState = (
-  editor: HTMLElement,
-  selection: Selection | null,
-  setState: SetStoreFunction<EditorState>,
-  setCounter?: (count: number) => void
-) => {
-  const content = editor.innerHTML
-
-  // Проверяем есть ли выделение и диапазоны в нем
-  const hasValidRange = selection && selection.rangeCount > 0
-
-  setState({
-    content,
-    format: getFormatStates(selection, editor),
-    selection: {
-      range: hasValidRange ? selection.getRangeAt(0) : null,
-      text: selection?.toString() || '',
-      isEmpty: !hasValidRange || selection.isCollapsed,
-      position: hasValidRange ? selection.getRangeAt(0).getBoundingClientRect() : { top: 0, left: 0 }
-    }
-  })
-
-  setCounter?.(editor.textContent?.trim().length || 0)
-}
-
-/**
- * Hook for managing editor state
- */
-export const useEditor = (options: EditorOptions, editorRef: () => HTMLDivElement | undefined) => {
-  const { t } = useLocalize()
-  const { showSnackbar } = useSnackbar()
-  const storageKey = options.storageKey
-
-  // Создаем обработчик сохранения, если включено автосохранение
-  const storageHandler = createMemo(() => {
-    if (!(options.autoSave && storageKey)) return null
-    return createStorageHandler(storageKey)
-  })
-
-  // Читаем сохраненный контент только один раз при инициализации
-  const initialContent = createMemo(() => {
-    if (!(options.autoSave && storageKey)) return options.content || ''
-    return options.content || localStorage.getItem(storageKey) || ''
-  })
-
-  const [state, setState] = createStore<EditorState>({
-    ...defaultEditorState,
-    content: initialContent()
-  })
-
-  // UI state
-  const [isBlurred, setIsBlurred] = createSignal(false)
+export const useEditor = (props: EditorProps) => {
   const [counter, setCounter] = createSignal(0)
 
-  // History management
-  let historyTimeout: number
-  const saveToHistory = debounce(500, () => {
-    const editor = editorRef()
-    if (!editor) return
+  // Ключ для автосохранения
+  const storageKey = createMemo(() => (props.id ? `editor-${props.id}` : ''))
 
-    clearTimeout(historyTimeout)
-    historyTimeout = window.setTimeout(() => {
-      const content = editor.innerHTML
-      if (content !== state.content) {
-        setState('history', 'undo', (prev: string[]) => [...prev.slice(-20), content])
-        setState('history', 'redo', (r: string[]) => r.slice(0, -1))
-      }
-    }, 100)
+  // Начальное состояние
+  const [state, setState] = createStore<EditorState>({
+    id: props.id || `editor-${Math.random().toString(36).slice(2)}`,
+    content: props.content || '',
+    selection: {
+      range: null,
+      text: '',
+      isEmpty: true,
+      position: { top: 0, left: 0 }
+    },
+    activeFormats: new Set(),
+    history: {
+      undo: [],
+      redo: []
+    },
+    isBlurred: false,
+    setActiveFormats: (formats) => setState('activeFormats', formats),
+    setContent: (content) => setState('content', content),
+    setIsBlurred: (isBlurred) => setState('isBlurred', isBlurred)
   })
 
-  // Обновляем State updates с поддержкой автосохранения
-  const updateState = debounce(100, () => {
-    const editor = editorRef()
-    if (!editor) return
-
-    const sel = window.getSelection()
-    updateEditorState(editor, sel, setState, setCounter)
-    saveToHistory()
-
-    // Вызываем автосохранение, если оно включено
-    const storage = storageHandler()
-    if (storage && editor.innerHTML) {
-      storage(editor.innerHTML)
+  // Дебаунсированное сохранение
+  const saveToStorage = debounce(500, (content: string) => {
+    const key = storageKey()
+    if (!key) return
+    try {
+      localStorage.setItem(key, content)
+    } catch (e) {
+      console.warn('Failed to save editor content:', e)
     }
   })
 
   /**
-   * Загружает изображения с отображением уведомлений о прогрессе
-   * @param files Массив файлов для загрузки
-   * @returns Массив URL загруженных изображений
+   * Обновляет состояние редактора
    */
-  const handleImageUploadWithSnackbar = async (files: File[]): Promise<string[]> => {
-    try {
-      showSnackbar({ body: t('Uploading images...') })
+  const updateState = debounce(100, () => {
+    const editor = props.editorRef()
+    if (!editor) return
 
-      // Здесь должна быть реальная загрузка файлов на сервер
-      // Например через API или S3
-      const uploadPromises = files.map(async (file) => {
-        const formData = new FormData()
-        formData.append('file', file)
+    const selection = window.getSelection()
+    const content = editor.innerHTML
+    const hasValidRange = selection && selection.rangeCount > 0
 
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        })
+    setState({
+      content,
+      format: getActiveFormats(selection),
+      selection: {
+        range: hasValidRange ? selection.getRangeAt(0) : null,
+        text: selection?.toString() || '',
+        isEmpty: !hasValidRange || selection.isCollapsed,
+        position: hasValidRange ? selection.getRangeAt(0).getBoundingClientRect() : { top: 0, left: 0 }
+      }
+    })
 
-        if (!response.ok) {
-          throw new Error('Upload failed')
-        }
+    setCounter(editor.textContent?.trim().length || 0)
+    saveToStorage(content)
+    saveToHistory()
+  })
 
-        const { url } = await response.json()
-        return url
-      })
+  /**
+   * Форматирование текста
+   */
+  const format = (cmd: CommandType) => {
+    const editor = props.editorRef()
+    if (!editor) return
 
-      const uploadedUrls = await Promise.all(uploadPromises)
+    const kind = getCommandType(cmd)
+    const { range } = state.selection
+    if (!range) return
 
-      showSnackbar({
-        body: t('Images uploaded successfully'),
-        type: 'success'
-      })
-
-      return uploadedUrls
-    } catch (error) {
-      console.error('Error uploading images:', error)
-      showSnackbar({
-        body: t('Failed to upload images'),
-        type: 'error'
-      })
-      return []
-    }
-  }
-
-  const saveContent = () => {
-    if (!options.autoSave || !options.storageKey) return
-
-    options.onSaveStart?.()
-
-    try {
-      const content = editorRef()?.innerHTML || ''
-      localStorage.setItem(options.storageKey, content)
-    } catch (error) {
-      console.error('Failed to save content:', error)
+    // Сброс форматирования
+    if (cmd === 'p') {
+      resetFormat(editor, range)
+      setState('activeFormats', new Set())
+      props.onChange(editor.innerHTML)
+      return
     }
 
-    options.onSaveEnd?.()
+    // Модальные команды
+    if (kind === 'links' || kind === 'media') {
+      props.onShowModal?.(cmd)
+      return
+    }
+
+    // Применение/удаление форматирования
+    const isActive = state.activeFormats.has(cmd)
+    if (isActive) {
+      removeFormat(cmd, state.selection)
+      setState('activeFormats', (formats) => {
+        const newFormats = new Set(formats)
+        newFormats.delete(cmd)
+        return newFormats
+      })
+    } else {
+      applyFormat(cmd, state.selection)
+      setState('activeFormats', (formats) => {
+        const newFormats = new Set(formats)
+        newFormats.add(cmd)
+        return newFormats
+      })
+    }
+
+    props.onChange(editor.innerHTML)
   }
+
+  /**
+   * История изменений
+   */
+  const undo = () => {
+    const editor = props.editorRef()
+    if (!editor || state.history.undo.length === 0) return
+
+    const currentContent = editor.innerHTML
+    const previousContent = state.history.undo[state.history.undo.length - 1]
+
+    setState('history', (history) => ({
+      undo: history.undo.slice(0, -1),
+      redo: [...history.redo, currentContent].slice(-MAX_HISTORY_LENGTH)
+    }))
+
+    editor.innerHTML = previousContent
+    props.onChange(previousContent)
+  }
+
+  const redo = () => {
+    const editor = props.editorRef()
+    if (!editor || state.history.redo.length === 0) return
+
+    const currentContent = editor.innerHTML
+    const nextContent = state.history.redo[state.history.redo.length - 1]
+
+    setState('history', (history) => ({
+      undo: [...history.undo, currentContent].slice(-MAX_HISTORY_LENGTH),
+      redo: history.redo.slice(0, -1)
+    }))
+
+    editor.innerHTML = nextContent
+    props.onChange(nextContent)
+  }
+
+  const saveToHistory = debounce(500, () => {
+    const editor = props.editorRef()
+    if (!editor) return
+
+    setState('history', (history) => ({
+      undo: [...history.undo, editor.innerHTML].slice(-MAX_HISTORY_LENGTH),
+      redo: []
+    }))
+  })
 
   return {
     state,
-    setState,
-    isBlurred,
-    setIsBlurred,
-    counter,
-    setCounter,
+    format,
     updateState,
-    handleImageUploadWithSnackbar,
-    saveContent
+    counter,
+    undo,
+    redo
+    // updateSelection,
+    //restoreSelection
   }
 }

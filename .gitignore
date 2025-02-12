@@ -35,3 +35,4 @@ storybook-static
 app.config.*.js
 *.log
 venv
+.cursor

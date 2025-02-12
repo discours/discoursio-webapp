@@ -1,1 +1,1 @@
-export { Draft } from './Draft'
+export { DraftComponent } from './Draft'

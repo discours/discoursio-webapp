@@ -1,5 +1,25 @@
-import { createSelection, getTextNodes } from '@solid-primitives/selection'
-import { Accessor, createEffect, createMemo, onCleanup } from 'solid-js'
+import { Accessor, createSignal } from 'solid-js'
+import { CommandType, MENU_GROUPS } from './commands'
+import { hasFormatting } from './format'
+import { Position } from './types'
+
+/**
+ * @module selection
+ * @description Модуль для работы с выделением текста
+ *
+ * Функционал:
+ * - Сохранение/восстановление выделения
+ * - Получение информации о выделении
+ * - Позиционирование меню относительно выделения
+ * - Обработка изменений выделения
+ *
+ * @example
+ * ```ts
+ * const selection = saveSelection()
+ * // ... выполняем операции
+ * restoreSelection(selection)
+ * ```
+ */
 
 export const filterTextNodes = (nodes: Node[]): Text[] =>
   nodes.filter((node): node is Text => node.nodeType === Node.TEXT_NODE)
@@ -49,76 +69,108 @@ export const getRangePos = (container: Node, offset: number, textNodes: Text[]):
 }
 
 /**
- * Хук для работы с выделением в редакторе
+ * Хук для работы с выделением текста
+ *
+ * @param editorRef Реф на редактор
+ * @returns Методы для работы с выделением
  */
-export const useEditorSelection = (editorRef: Accessor<HTMLDivElement | undefined>) => {
-  const [selection, setSelection] = createSelection()
+export const useSelection = (editorRef: Accessor<HTMLDivElement | undefined>) => {
+  const [savedRange, setSavedRange] = createSignal<Range | null>(null)
+  const [activeFormats, setActiveFormats] = createSignal<Set<CommandType>>(new Set())
 
-  // Мемоизируем состояние выделения
-  const selectionState = createMemo(() => {
-    const sel = selection()
-    if (!(sel && editorRef())) return null
+  // Add position tracking for menu
+  const [menuPosition, setMenuPosition] = createSignal<Position>({ top: 0, left: 0 })
 
-    const [node, start, end] = sel
-    if (!(node && node === editorRef())) return null
+  const isSelectionInEditor = () => {
+    const selection = window.getSelection()
+    if (!selection || !selection.rangeCount) return false
 
-    // Получаем Range из позиций
-    const range = document.createRange()
-    const textNodes = filterTextNodes(getTextNodes(node))
+    const range = selection.getRangeAt(0)
+    const editor = editorRef()
+    if (!editor) return false
 
-    const [startNode, startOffset] = getRangeArgs(start, textNodes)
-    const [endNode, endOffset] = getRangeArgs(end, textNodes)
-
-    if (!(startNode && endNode)) return null
-
-    range.setStart(startNode, startOffset)
-    range.setEnd(endNode, endOffset)
-
-    const rect = range.getBoundingClientRect()
-
-    return {
-      range,
-      text: range.toString(),
-      isEmpty: start === end,
-      position: {
-        top: rect.top,
-        left: rect.left + rect.width / 2
-      }
-    }
-  })
-
-  const handleSelectionChange = () => {
-    const state = selectionState()
-    if (!state) return null
-    return window.getSelection()
+    // Проверяем, что выделение полностью внутри редактора
+    return editor.contains(range.commonAncestorContainer)
   }
 
-  createEffect(() => {
-    const handler = () => {
-      const sel = window.getSelection()
-      if (!(sel?.rangeCount && editorRef())) return
-
-      const range = sel.getRangeAt(0)
-      if (!editorRef()?.contains(range.commonAncestorContainer)) return
-
-      const textNodes = filterTextNodes(getTextNodes(editorRef()!))
-      const [, startOffset] = getRangePos(range.startContainer, range.startOffset, textNodes)
-      const [, endOffset] = getRangePos(range.endContainer, range.endOffset, textNodes)
-
-      setSelection([editorRef()!, startOffset, endOffset])
+  const saveSelection = () => {
+    const selection = window.getSelection()
+    if (!selection || !selection.rangeCount || !isSelectionInEditor()) {
+      setSavedRange(null)
+      return false
     }
 
-    document.addEventListener('selectionchange', handler)
-    onCleanup(() => document.removeEventListener('selectionchange', handler))
-  })
+    const range = selection.getRangeAt(0)
+    setSavedRange(range.cloneRange())
+    return true
+  }
+
+  /**
+   * Восстанавливает сохраненное выделение
+   * @returns true если выделение восстановлено
+   */
+  const restoreSelection = () => {
+    const range = savedRange()
+    if (!range || !isSelectionInEditor()) {
+      return false
+    }
+
+    try {
+      const selection = window.getSelection()
+      if (!selection) return false
+
+      selection.removeAllRanges()
+      selection.addRange(range.cloneRange())
+      return true
+    } catch (error) {
+      console.error('Error restoring selection:', error)
+      return false
+    }
+  }
+
+  /**
+   * Обновляет состояние активных форматов
+   */
+  const updateActiveFormats = () => {
+    const selection = window.getSelection()
+    if (!selection || !editorRef()) return
+
+    // Update menu position when selection changes
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const rect = range.getBoundingClientRect()
+      setMenuPosition({
+        top: rect.top - 10,
+        left: rect.left + rect.width / 2
+      })
+    }
+
+    const formats = new Set<CommandType>()
+    Object.entries(MENU_GROUPS).forEach(([_group, commands]) => {
+      commands.forEach((cmd) => {
+        if (hasFormatting(cmd as CommandType, selection)) {
+          formats.add(cmd as CommandType)
+        }
+      })
+    })
+
+    setActiveFormats(formats)
+    return formats
+  }
 
   return {
-    selection,
-    selectionState,
-    handleSelectionChange
+    saveSelection,
+    restoreSelection,
+    updateActiveFormats,
+    activeFormats,
+    menuPosition,
+    isSelectionInEditor
   }
 }
 
+/**
+ * Проверяет активность ссылки в текущем выделении
+ */
 export const isLinkActive = () => {
   const sel = window.getSelection()
   if (!sel?.rangeCount) return false
