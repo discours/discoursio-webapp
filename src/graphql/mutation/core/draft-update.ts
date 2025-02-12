@@ -1,8 +1,8 @@
 import { gql } from 'graphql-tag'
 
 export default gql`
-  mutation UpdateDraftMutation($draft_id: Int!, $input: DraftInput!) {
-    update_draft(draft_id: $draft_id, input: $input) {
+  mutation UpdateDraftMutation($draft_id: Int!, $draft_input: DraftInput!) {
+    update_draft(draft_id: $draft_id, draft_input: $draft_input) {
       error
       draft {
         id
