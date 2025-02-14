@@ -4,6 +4,7 @@ import {
   ErrorBoundary,
   Match,
   Show,
+  Suspense,
   Switch,
   createEffect,
   createResource,
@@ -108,24 +109,22 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   )
 
   return (
-    <Show when={!data.loading} fallback={<Loading />}>
-      <Show when={!data.error} fallback={<div>Error: {data.error?.message}</div>}>
-        <Show when={data()} fallback={<FourOuFourView />}>
-          <ReactionsProvider>
-            <PageLayout
-              title={`${t('Discours')}${data()?.title ? ' :: ' : ''}${data()?.title || ''}`}
-              desc={descFromBody(data()?.body || '')}
-              keywords={keywordsFromTopics((data()?.topics || []) as { title: string }[])}
-              headerTitle={data()?.title || ''}
-              slug={data()?.slug}
-              cover={data()?.cover || ''}
-            >
-              <FullArticle article={data()!} />
-            </PageLayout>
-          </ReactionsProvider>
-        </Show>
+    <Suspense fallback={<Loading />}>
+      <Show when={data()} fallback={<FourOuFourView />}>
+        <ReactionsProvider>
+          <PageLayout
+            title={`${t('Discours')}${data()?.title ? ' :: ' : ''}${data()?.title || ''}`}
+            desc={descFromBody(data()?.body || '')}
+            keywords={keywordsFromTopics((data()?.topics || []) as { title: string }[])}
+            headerTitle={data()?.title || ''}
+            slug={data()?.slug}
+            cover={data()?.cover || ''}
+          >
+            <FullArticle article={data()!} />
+          </PageLayout>
+        </ReactionsProvider>
       </Show>
-    </Show>
+    </Suspense>
   )
 }
 
