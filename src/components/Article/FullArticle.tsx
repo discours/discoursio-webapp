@@ -63,7 +63,7 @@ export type ArticlePageSearchParams = {
   slide?: string
 }
 
-const COMMENTS_SCROLL_OFFSET = 420 // Дополнительный отступ для комментариев
+const COMMENTS_SCROLL_OFFSET = 20 // Дополнительный отступ для комментариев
 
 const scrollTo = (el?: HTMLElement, isComments?: boolean) => {
   if (!(el && window)) return
