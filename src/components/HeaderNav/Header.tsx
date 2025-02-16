@@ -120,6 +120,17 @@ export const Header = (props: Props) => {
 
     redirect('/edit/new')
   }
+
+  //the comments section is scrolled to when the comments icon is clicked
+  const handleCommentClick = () => {
+    // Always ensure scroll to comments happens
+    const commentsSection = document.querySelector('#comments')
+    if (commentsSection) {
+      commentsSection.scrollIntoView({ behavior: 'smooth' })
+    }
+    // Update search params to maintain the URL state
+    changeSearchParams({ commentId: 0 })
+  }
   return (
     <header
       class={styles.mainHeader}
@@ -296,7 +307,7 @@ export const Header = (props: Props) => {
                   </>
                 }
               />
-              <div onClick={() => changeSearchParams({ commentId: 0 })} class={styles.control}>
+              <div onClick={handleCommentClick} class={styles.control}>
                 <Icon name="comment" class={styles.icon} />
                 <Icon name="comment-hover" class={clsx(styles.icon, styles.iconHover)} />
               </div>
