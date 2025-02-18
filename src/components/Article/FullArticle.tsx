@@ -63,7 +63,7 @@ export type ArticlePageSearchParams = {
   slide?: string
 }
 
-const COMMENTS_SCROLL_OFFSET = 420 // Дополнительный отступ для комментариев
+const COMMENTS_SCROLL_OFFSET = 20 // Дополнительный отступ для комментариев
 
 const scrollTo = (el?: HTMLElement, isComments?: boolean) => {
   if (!(el && window)) return
@@ -158,10 +158,29 @@ export const FullArticle = (props: Props) => {
   createEffect(
     on([() => searchParams?.commentId, commentsWrapper, isReactionsLoaded], ([cid, wrapper, loaded]) => {
       if (!(cid && loaded && wrapper)) return
-      console.debug('comment id is in link, scroll to')
-      const scrollToComment =
-        document.querySelector<HTMLElement>(`[id='comment_${cid}']`) || wrapper || document.body
-      requestAnimationFrame(() => scrollTo(scrollToComment, true))
+
+      // First scroll - immediately go to comments section
+      scrollTo(wrapper, true)
+
+      // Set up observer to watch for DOM changes
+      const observer = new MutationObserver(() => {
+        const commentEl = document.querySelector<HTMLElement>(`[id='comment_${cid}']`)
+        if (commentEl) {
+          // Second scroll - when specific comment appears
+          scrollTo(commentEl, true)
+          // Stop observing once we find the comment
+          observer.disconnect()
+        }
+      })
+
+      // Start observing the comments wrapper for any changes to its children
+      observer.observe(wrapper, {
+        childList: true, // watch for changes to immediate children
+        subtree: true // watch for changes to descendants
+      })
+
+      // Clean up observer when effect re-runs or unmounts
+      onCleanup(() => observer.disconnect())
     })
   )
 
