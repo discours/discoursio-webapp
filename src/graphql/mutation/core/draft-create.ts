@@ -1,10 +1,10 @@
 import { gql } from 'graphql-tag'
 
 export default gql`
-  mutation CreateShoutMutation($shout: ShoutInput!) {
-    create_shout(inp: $shout) {
+  mutation CreateDraftMutation($draft_input: DraftInput!) {
+    create_draft(draft_input: $draft_input) {
       error
-      shout {
+      draft {
         id
         slug
         title
