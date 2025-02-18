@@ -18,6 +18,7 @@ type Props = {
   articleAuthors: Author[]
   shoutSlug: string
   shoutId: number
+  onReply?: (id: number) => void
 }
 
 interface ErrorBoundaryError extends Error {
@@ -96,6 +97,8 @@ export const CommentsTree = (props: Props) => {
   })
 
   const [posting, setPosting] = createSignal(false)
+  const [replyTo, setReplyTo] = createSignal<number | null>(null)
+  
   const handleSubmitComment = async (value: string) => {
     setPosting(true)
     try {
@@ -103,13 +106,14 @@ export const CommentsTree = (props: Props) => {
         reaction: {
           kind: ReactionKind.Comment,
           body: value,
-          shout: props.shoutId
+          shout: props.shoutId,
+          reply_to: replyTo()
         } as ReactionInput
       })
-      // await loadReactionsBy({ by: { shout: props.shoutSlug, kinds: [ReactionKind.Comment] } })
+      
       if (createdReaction) {
         setTimeout(() => setNewReactions([createdReaction, ...newReactions()]), 100)
-        console.debug('[handleCreate reaction]:', createdReaction)
+        setReplyTo(null)
       }
       setPosting(false)
       return true
@@ -172,7 +176,10 @@ export const CommentsTree = (props: Props) => {
 
           <Show when={!commentsResource.loading} fallback={<Loading />}>
             <Show when={commentsResource()} fallback={<div>{t('No comments yet')}</div>}>
-              <CommentsTreeItems {...props} />
+              <CommentsTreeItems 
+                {...props} 
+                onReply={(id: number) => setReplyTo(id)}
+              />
             </Show>
           </Show>
 
@@ -180,10 +187,22 @@ export const CommentsTree = (props: Props) => {
             <div class={styles.editorWrapper}>
               <SimpleRichEditor
                 commands={['bold', 'italic', 'link', 'blockquote', 'image']}
-                placeholder={t('Write a comment...')}
+                placeholder={replyTo() 
+                  ? t('Write a reply...') 
+                  : t('Write a comment...')
+                }
                 onSubmit={handleSubmitComment}
                 onChange={(value) => console.log('onChange', value)}
+                bubble={false}
               />
+              <Show when={replyTo()}>
+                <button 
+                  class={styles.cancelReply}
+                  onClick={() => setReplyTo(null)}
+                >
+                  {t('Cancel reply')}
+                </button>
+              </Show>
               <Show when={posting()}>
                 <Loading />
               </Show>
