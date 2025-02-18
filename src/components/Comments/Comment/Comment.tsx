@@ -264,9 +264,8 @@ export const Comment = (props: Props) => {
                 <SimpleRichEditor
                   content={editedBody() || props.comment.body || ''}
                   placeholder={t('Write a comment...')}
-                  onSubmit={handleUpdate}
-                  onCancel={handleCancel}
                   commands={['bold', 'italic', 'link', 'image', 'blockquote']}
+                  onChange={setEditedBody}
                 />
               </Suspense>
             </Show>
@@ -328,8 +327,8 @@ export const Comment = (props: Props) => {
               <Suspense fallback={<p>{t('Loading')}</p>}>
                 <SimpleRichEditor
                   placeholder={t('Write a comment...')}
-                  onSubmit={(value) => handleCreate(value)}
-                  commands={['bold', 'italic', 'link']}
+                  onChange={setEditedBody}
+                  commands={['bold', 'italic', 'link', 'image', 'blockquote']}
                 />
               </Suspense>
             </Show>

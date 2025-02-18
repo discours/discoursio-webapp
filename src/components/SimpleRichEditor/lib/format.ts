@@ -105,33 +105,12 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
   const content = range.extractContents()
   const wrapper = createElement(command)
 
-  // Проверяем, есть ли уже такое форматирование
-  const selection = window.getSelection()
-  if (selection && hasFormatting(command, selection)) {
-    // Если есть - удаляем его
-    const fragment = document.createDocumentFragment()
-    const tempDiv = document.createElement('div')
-    tempDiv.appendChild(content)
+  wrapper.appendChild(content)
+  range.insertNode(wrapper)
 
-    // Находим все элементы с данным форматированием
-    const elements = Array.from(tempDiv.getElementsByTagName(FORMAT_CONFIG[command].tag))
-    elements.forEach((element) => {
-      while (element.firstChild) {
-        fragment.appendChild(element.firstChild)
-      }
-      element.remove()
-    })
-
-    range.insertNode(fragment)
-  } else {
-    // Если нет - добавляем
-    wrapper.appendChild(content)
-    range.insertNode(wrapper)
-  }
-
-  // Восстанавливаем выделение
-  selection?.removeAllRanges()
-  selection?.addRange(range)
+  // Keep original selection instead of selecting whole formatted content
+  range.setStartBefore(wrapper)
+  range.setEndAfter(wrapper)
 }
 
 /**
@@ -140,26 +119,61 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
 export const removeFormatting = (command: CommandType, state: SelectionState) => {
   if (!state.range) return
 
-  const range = state.range
-  const content = range.extractContents()
-  const fragment = document.createDocumentFragment()
-  const tempDiv = document.createElement('div')
-  tempDiv.appendChild(content)
+  console.log('Starting removeFormatting for:', command)
+  console.log('Initial text:', state.text)
 
-  const config = FORMAT_CONFIG[command as keyof typeof FORMAT_CONFIG]
-  if (config) {
-    const elements = tempDiv.getElementsByTagName(config.tag)
-    while (elements.length > 0) {
-      const element = elements[0]
-      while (element.firstChild) {
-        fragment.appendChild(element.firstChild)
-      }
-      element.remove()
+  const range = state.range.cloneRange()
+  const content = range.extractContents()
+  
+  // Create a temporary container
+  const tempDiv = document.createElement('div')
+  tempDiv.appendChild(content.cloneNode(true))
+  
+  console.log('Content in temp div:', tempDiv.innerHTML)
+
+  // Find the formatting element
+  const config = FORMAT_CONFIG[command]
+  if (!config) {
+    console.log('No config found for command:', command)
+    range.insertNode(content)
+    return
+  }
+
+  // Try to find the formatted element
+  const formattedElement = tempDiv.querySelector(config.tag)
+  if (!formattedElement) {
+    console.log('No formatted element found, keeping original content')
+    range.insertNode(content)
+    return
+  }
+
+  // Create fragment for the unformatted content
+  const fragment = document.createDocumentFragment()
+  
+  // If the formatted element contains the text directly
+  if (formattedElement.textContent === state.text) {
+    console.log('Direct text match found')
+    fragment.textContent = state.text
+  } 
+  // If we need to preserve nested formatting
+  else {
+    console.log('Preserving nested formatting')
+    while (formattedElement.firstChild) {
+      fragment.appendChild(formattedElement.firstChild)
     }
   }
 
+  console.log('Final fragment content:', fragment.textContent)
+
+  // Insert the unformatted content
   range.insertNode(fragment)
-  manageSelection(range)
+  
+  // Keep original selection instead of selecting inserted content
+  range.setStart(fragment.firstChild!, 0)
+  range.setEnd(fragment.lastChild!, fragment.lastChild!.textContent?.length || 0)
+
+  // Log final state
+  console.log('Final range content:', range.toString())
 }
 
 // Проверяем наличие форматирования в текущем диапазоне
@@ -188,27 +202,28 @@ export const hasFormatting = (format: CommandType, selection: Selection | null):
   if (!selection || selection.rangeCount === 0) return false
 
   const range = selection.getRangeAt(0)
-  const parentElement = range.commonAncestorContainer as HTMLElement
+  const config = FORMAT_CONFIG[format]
+  if (!config) return false
 
-  // Получаем ближайший HTML элемент
-  const element = parentElement.nodeType === Node.ELEMENT_NODE ? parentElement : parentElement.parentElement
+  // Get the common ancestor
+  const container = range.commonAncestorContainer
+  const element = container.nodeType === Node.ELEMENT_NODE 
+    ? container as HTMLElement 
+    : container.parentElement
 
   if (!element) return false
 
-  switch (format) {
-    case 'bold':
-      return checkFormat('strong', range)
-    case 'italic':
-      return checkFormat('em', range)
-    case 'link':
-      return checkFormat('a', range)
-    case 'blockquote':
-      return checkFormat('blockquote', range)
-    case 'punchline':
-      return checkFormat('[data-type="punchline"]', range)
-    default:
-      return false
+  // Check if the element or its parents have the formatting
+  const formattedElement = element.closest(config.tag)
+  
+  // Check if the formatted element contains the selection
+  if (formattedElement) {
+    const formattedRange = document.createRange()
+    formattedRange.selectNodeContents(formattedElement)
+    return formattedRange.commonAncestorContainer.contains(range.commonAncestorContainer)
   }
+
+  return false
 }
 
 // Move this helper function to the top, before it's used

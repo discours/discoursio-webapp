@@ -8,8 +8,8 @@
   white-space: nowrap;
 
   &.primary {
-    background: var(--background-color-invert);
-    color: var(--default-color-invert);
+    background: var(--background-color);
+    color: var(--default-color);
 
     &:hover {
       color: #ccc;

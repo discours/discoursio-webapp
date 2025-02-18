@@ -1,305 +1,165 @@
-.editor {
+.editorWrapper {
   position: relative;
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  margin: 1rem 0;
   
-  // Состояния
-  &.focused {
-    border-color: var(--primary-color);
-  }
-  
-  &.readOnly {
-    border: none;
-    background: none;
-  }
+  .editor {
+    position: relative;
+    width: 100%;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    background: var(--white-500);
+    transition: all 0.15s ease;
 
-  &.dragover {
-    border-color: var(--primary-color);
-    background-color: var(--background-hover);
-  }
+    .content {
+      position: relative;
+      min-height: 120px;
+      padding: 16px;
+      padding-bottom: 56px;
+      outline: none;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--gray-900);
 
-  &.collaborative {
-    // Add styles for collaborative mode
-    &::before {
-      content: '';
+      // Плейсхолдер
+      &[data-placeholder]:empty::before {
+        content: attr(data-placeholder);
+        color: var(--gray-400);
+        position: absolute;
+        pointer-events: none;
+      }
+
+      // Базовые стили форматирования
+      p { 
+        margin: 0 0 0.8em;
+        &:last-child { margin-bottom: 0; }
+      }
+
+      blockquote {
+        margin: 1em 0;
+        padding: 0.8em 1.2em;
+        border-left: 4px solid var(--gray-200);
+        color: var(--gray-700);
+      }
+
+      a {
+        color: var(--primary-500);
+        text-decoration: none;
+        &:hover { text-decoration: underline; }
+      }
+    }
+
+    // Панель управления как оверлей
+    .controls {
       position: absolute;
-      top: 0;
       left: 0;
       right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--primary-color), transparent);
-      opacity: 0.5;
-    }
-  }
-
-  // Счетчик символов
-  .counter {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    font-size: 1.2rem;
-    color: var(--black-600);
-    padding: 4px 8px;
-    background: var(--white-500);
-    border-radius: 4px;
-    z-index: 1;
-  }
-
-  // Основной контент
-  .content {
-    position: relative;
-    min-height: 120px;
-    padding: 16px 16px 48px;
-    outline: none;
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--color-text);
-
-    // Плейсхолдер
-    &[data-placeholder]:empty::before {
-      content: attr(data-placeholder);
-      color: var(--color-text-secondary);
-      opacity: 0.6;
-    }
-
-    // Базовые стили контента
-    p {
-      margin: 0 0 0.8em;
-      
-      &:last-child {
-        margin-bottom: 0;
-      }
-    }
-
-    h1, h2, h3 {
-      font-weight: 600;
-      margin: 1.5em 0 0.8em;
-
-      &:first-child {
-        margin-top: 0;
-      }
-    }
-
-    h1 { font-size: 2.4rem; }
-    h2 { font-size: 2rem; }
-    h3 { font-size: 1.8rem; }
-
-    blockquote {
-      margin: 1.5em 0;
-      padding: 0.8em 1.2em;
-      border-left: 4px solid var(--black-200);
-      background: var(--black-50);
-      color: var(--black-800);
-      font-style: italic;
-    }
-
-    a {
-      color: var(--blue-500);
-      text-decoration: none;
-      
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-
-    img {
-      max-width: 100%;
-      height: auto;
-      margin: 1em 0;
-      border-radius: 4px;
-      box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
-      
-      &.uploading {
-        opacity: 0.5;
-        filter: grayscale(1);
-      }
-    }
-
-    figure {
-      margin: 2em 0;
-      
-      figcaption {
-        margin-top: 0.5em;
-        text-align: center;
-        color: var(--black-600);
-        font-size: 0.9em;
-      }
-    }
-
-    .focused & {
-      background: var(--background-color-hover);
-    }
-  }
-
-  // Нижняя панель с кнопками
-  .actions {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    min-height: 48px;
-    padding: 0 16px;
-    border-top: 1px solid var(--color-border);
-    background: white;
-    border-radius: 0 0 8px 8px;
-
-    // Контейнер для тулбара
-    .toolbarContainer {
-      flex: 1;
-      position: relative;
-      min-width: 0; // Для корректного flex-shrink
+      bottom: 0;
       opacity: 0;
+      margin-top: -2.5em;
+      margin-left: 0.5em;
       visibility: hidden;
-      transition: opacity 0.2s, visibility 0.2s;
+      transform: translateY(8px);
+      transition: all 0.2s ease;
+      pointer-events: none;
 
-      &.visible {
-        opacity: 1;
-        visibility: visible;
-      }
+      .actions {
+        position: relative;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        background: var(--white-500);
+        border-top: 1px solid var(--gray-100);
+        border-radius: 0 0 12px 12px;
+        pointer-events: auto;
 
-      &.bubble {
-        position: absolute;
-        z-index: 100;
-        pointer-events: all;
-        transition: opacity 0.2s ease;
-        opacity: 0;
-        visibility: hidden;
+        .toolbarContainer {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 2px;
 
-        &.visible {
-          opacity: 1;
-          visibility: visible;
+          &.bubble {
+            position: absolute;
+            background: var(--white-500);
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            z-index: 100;
+          }
+
+          .toolbar {
+            display: flex;
+            gap: 2px;
+            
+            .button {
+              width: 28px;
+              height: 28px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 0;
+              border: none;
+              border-radius: 6px;
+              background: none;
+              color: var(--gray-500);
+              cursor: pointer;
+              transition: all 0.15s ease;
+
+              svg {
+                width: 16px;
+                height: 16px;
+                fill: currentColor;
+              }
+
+              &:hover {
+                background: var(--gray-50);
+                color: var(--gray-900);
+              }
+
+              &[data-active="true"] {
+                background: var(--gray-50);
+                color: var(--gray-900);
+              }
+            }
+          }
         }
       }
     }
 
-    // Контейнер для кнопок
-    .buttons {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-left: 16px; // Отступ от тулбара
-      flex-shrink: 0; // Предотвращаем сжатие кнопок
-      margin-top: 8px;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.2s, visibility 0.2s;
-
-      .hasContent & {
+    // Показываем панель при фокусе или ховере
+    &:hover,
+    &:focus-within {
+      .controls {
         opacity: 1;
         visibility: visible;
+        transform: translateY(0);
       }
     }
   }
-
-  // Тулбар
-  .toolbar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px;
-    border-bottom: 1px solid var(--black-100);
-    background: var(--black-50);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-4px);
-    transition: all 0.2s ease;
-
-    &.visible {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-    }
-
-    .button {
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      background: none;
-      border: none;
-      border-radius: 4px;
-      color: var(--black-700);
-      cursor: pointer;
-      transition: all 0.15s ease;
-
-      &:hover {
-        background: var(--black-100);
-        color: var(--black-900);
-      }
-
-      &[data-active="true"] {
-        background: var(--black-100);
-        color: var(--black-900);
-      }
-
-      svg {
-        width: 18px;
-        height: 18px;
-      }
-    }
-  }
-
-  // Счетчик лимита
-  .limitContainer {
-    padding: 8px 16px 0;
-    text-align: right;
-    
-    .limit {
-      font-size: 12px;
-      color: var(--color-text-secondary);
-    }
-  }
-
-  .footnotes {
-    margin-top: 2em;
-    border-top: 1px solid var(--color-border);
-    font-size: 0.9em;
-    color: var(--color-text-secondary);
-
-    hr {
-      display: none;
-    }
-
-    ol {
-      padding-left: 2em;
-    }
-
-    li {
-      position: relative;
-      margin-bottom: 0.5em;
-
-      &::marker {
-        color: var(--color-text-secondary);
-      }
-
-      p {
-        margin: 0;
-        display: inline;
-      }
-    }
-  }
-
-  [data-bg="yellow"] { background-color: var(--color-yellow-100); }
-  [data-bg="red"] { background-color: var(--color-red-100); }
-  [data-bg="green"] { background-color: var(--color-green-100); }
-  [data-bg="blue"] { background-color: var(--color-blue-100); }
-  [data-bg="purple"] { background-color: var(--color-purple-100); }
-  [data-bg="orange"] { background-color: var(--color-orange-100); }
-  [data-bg="pink"] { background-color: var(--color-pink-100); }
-  [data-bg="gray"] { background-color: var(--color-gray-100); }
-  [data-bg="brown"] { background-color: var(--color-brown-100); }
-  [data-bg="black"] { background-color: var(--color-black-100); }
-  [data-bg="white"] { background-color: var(--color-white-100); }
-  
 }
+
+// Вспомогательные стили
+.group {
+  display: flex;
+  gap: 4px;
+  user-select: none;
+}
+
+// Цветовые варианты фона
+[data-bg] {
+  border-radius: 4px;
+  padding: 0 4px;
+  margin: 0 -4px;
+}
+
+[data-bg="yellow"] { background: var(--yellow-100); }
+[data-bg="red"] { background: var(--red-100); }
+[data-bg="green"] { background: var(--green-100); }
+[data-bg="gray"] { background: var(--gray-100); }
+[data-bg="white"] { background: var(--white-500); }
 
 // Уведомление об автосохранении
 .autosaveNotice {

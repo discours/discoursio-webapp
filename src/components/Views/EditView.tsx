@@ -14,7 +14,7 @@ import { isDesktop } from '~/lib/mediaQuery'
 import { LayoutType } from '~/types/common'
 import { AutoSave } from '../AutoSave'
 import { Panel } from '../Sidebar/Sidebar'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { AudioUploader } from '../Upload/AudioUploader'
 import { VideoUploader } from '../Upload/VideoUploader'
 import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'
@@ -171,7 +171,7 @@ export const EditView = () => {
               <div class={styles.inputContainer}>
                 <GrowingTextarea
                   allowEnterKey={true}
-                  value={(value) => handleTitleInputChange(value)}
+                  onChange={(value) => handleTitleInputChange(value)}
                   class={styles.titleInput}
                   placeholder={articleTitle()}
                   initialValue={currentDraft()?.title || ''}
@@ -215,7 +215,7 @@ export const EditView = () => {
                     <GrowingTextarea
                       textAreaRef={setSubtitleInput}
                       allowEnterKey={false}
-                      value={(value) => handleInputChange('subtitle', value || '')}
+                      onChange={(value: string) => handleInputChange('subtitle', value || '')}
                       class={styles.subtitleInput}
                       placeholder={t('Subheader')}
                       initialValue={currentDraft()?.subtitle || ''}
@@ -230,7 +230,7 @@ export const EditView = () => {
                       placeholder={t('A short introduction to keep the reader interested')}
                       content={currentDraft()?.lead || ''}
                       onBlur={() => hideLeadInput()}
-                      onChange={(value: string) => handleInputChange('lead', value)}
+                      onChange={(data: EditorData) => handleInputChange('lead', data.content)}
                     />
                   </Show>
                 </Show>
@@ -351,15 +351,7 @@ export const EditView = () => {
                 content={currentDraft()?.body || ''}
                 readOnly={false}
                 limit={10000}
-                onChange={handleEditorChange}
-                onSubmit={async (content: string) => {
-                  if (currentDraft()) {
-                    handleInputChange('body', content)
-                    await updateDraft({ ...currentDraft(), body: content } as DraftInput)
-                    return true
-                  }
-                  return false
-                }}
+                onChange={(data: EditorData) => handleInputChange('body', data.content)}
               />
               <Show when={currentDraft()?.id}>
                 <Panel shoutId={currentDraft()?.id} />

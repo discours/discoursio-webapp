@@ -1,27 +1,42 @@
 import { clsx } from 'clsx'
-import { Component, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
+import { Component, createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
 import { Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
 
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
-import { Button } from '../_shared/Button'
+import { Button, type ButtonVariant } from '../_shared/Button'
 import { CommandGroupType, CommandType, MENU_GROUPS, isGroup } from './lib/commands'
 import { useDropFiles } from './lib/drop'
 import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
 import { insertFootnote } from './lib/footnotes'
-import { applyFormatting, getActiveFormats, hasFormatting, removeFormatting } from './lib/format'
+import { applyFormatting, hasFormatting, removeFormatting } from './lib/format'
 import { useSelection } from './lib/selection'
 import { Position } from './lib/types'
 import { SimpleInsert } from './menu/SimpleInsert'
 import { SimpleToolbar } from './menu/SimpleToolbar'
 
 import styles from './SimpleRichEditor.module.scss'
+import { createTextChangeRange } from 'typescript'
 
 export type EditorCommandId = keyof typeof MENU_GROUPS
 export type EditorCommandGroup = EditorCommandId[]
 export type EditorCommands = EditorCommandId[] | EditorCommandGroup[]
+
+export interface EditorData {
+  content: string               // HTML контент
+  plainText: string            // Чистый текст
+  length: number              // Длина текста
+  isEmpty: boolean           // Пустой ли редактор
+  selection?: {              // Информация о выделении
+    text: string
+    isEmpty: boolean
+    position?: Position
+  }
+}
+
+export type EditorMode = 'micro' | 'mini' | 'full'
 
 export interface SimpleRichEditorProps {
   hideButtons?: boolean
@@ -37,12 +52,11 @@ export interface SimpleRichEditorProps {
   placeholder?: string
   autofocus?: boolean
   onBlur?: () => void
-  onChange?: (content: string) => void
-  onSubmit?: (content: string) => Promise<boolean> | boolean
-  onCancel?: () => void
+  onChange: (data: EditorData) => void
   collaborative?: boolean
   fieldId?: string
   onCollabCursorUpdate?: (position: Position) => void
+  showToolbar?: boolean
 }
 
 // Типы для структуры меню
@@ -58,7 +72,7 @@ export type MenuGroup = {
 // Add new types
 interface EditorState {
   content: string
-  selection: Selection
+  selection?: Selection
   cursorPosition?: Position
 }
 
@@ -79,14 +93,26 @@ export const CURSOR_UPDATE_PERIOD = 1000
  *   - Фиксированный тулбар (bubble=false|undefined)
  *   - Всплывающее меню при выделении (bubble=true)
  *   - Плавающее меню с "+" (plus=true)
- *
+ * 
+ * @param props.bubble - Режим отображения тулбара:
+ *   - false (по умолчанию): показывает фиксированный тулбар над редактором
+ *   - true: показывает всплывающий тулбар только при выделении текста
+ * @param props.commands - Список доступных команд форматирования
+ * @param props.content - Начальное содержимое редактора
+ * @param props.placeholder - Текст-подсказка
+ * @param props.onSubmit - Колбэк при отправке формы
+ * @param props.onCancel - Колбэк при отмене
+ * @param props.onChange - Колбэк при изменении содержимого
+ * 
  * @example
  * ```tsx
+ * // Редактор с фиксированным тулбаром
  * <SimpleRichEditor
  *   commands={['bold', 'italic', 'link']}
+ *   bubble={false}
  * />
- *
- * // Редактор с всплывающим меню
+ * 
+ * // Редактор с всплывающим тулбаром
  * <SimpleRichEditor
  *   commands={['bold', 'italic', 'link']}
  *   bubble={true}
@@ -115,7 +141,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   // New collaborative state management
   const [editorState, setEditorState] = createSignal<EditorState>({
     content: props.content || '',
-    selection: new Selection()
+    cursorPosition: undefined
   })
 
   // Debounced state updates
@@ -138,64 +164,107 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   } = useSelection(editorRef)
   const { handleDropFiles } = useDropFiles()
 
-  const updateSelection = () => {
-    const sel = window.getSelection()
-    if (!sel) return
+  const [squibContent, setSquibContent] = createSignal('')
+  const [footnoteContent, setFootnoteContent] = createSignal('')
 
-    setSelection({
-      text: sel.toString(),
-      isEmpty: sel.isCollapsed
+  createEffect(on(squibContent, (s?: string) => {
+    if (!s) return
+    console.log('squibContent', s)
+    props.onChange({
+      content: s,
+      plainText: s,
+      length: s.length,
+      isEmpty: s.trim().length === 0,
+      selection: { text: s, isEmpty: s.trim().length === 0 }
     })
+  }))
 
-    // Обновляем активные форматы
-    const formats = new Set(Object.keys(getActiveFormats(sel)))
+  createEffect(on(footnoteContent, (s?: string) => {
+    if (!s) return
+    console.log('footnoteContent', s)
+    props.onChange({
+      content: s,
+      plainText: s,
+      length: s.length,
+      isEmpty: s.trim().length === 0,
+      selection: { text: s, isEmpty: s.trim().length === 0 }
+    })
+  }))
+  
+  // Handle selection changes and content updates
+  const handleChange = (_ev?: Event) => {
+    const selection = window.getSelection()
+    if (!selection) return
+
+    // Update selection state
+    const selectionData = {
+      text: selection.toString(),
+      isEmpty: selection.isCollapsed
+    }
+    setSelection(selectionData)
+
+    // Update active formats
     updateActiveFormats()
 
-    // Проверяем, что выделение внутри редактора
-    if (!isSelectionInEditor()) {
-      setMenuVisible(false)
-      return
+    // Get content and update state
+    const contentHtml = editorRef()?.innerHTML || ''
+    const contentText = editorRef()?.textContent || ''
+    
+    setContent(contentHtml)
+
+    // Prepare editor data
+    const editorData: EditorData = {
+      content: contentHtml,
+      plainText: contentText,
+      length: contentText.length,
+      isEmpty: contentText.trim().length === 0,
+      selection: selectionData
     }
 
-    const range = sel.getRangeAt(0)
-    const editorRect = editorRef()!.getBoundingClientRect()
+    // Handle bubble menu positioning if needed
+    if (props.bubble && isSelectionInEditor()) {
+      if (!selection.isCollapsed) {
+        const range = selection.getRangeAt(0)
+        const editorRect = editorRef()!.getBoundingClientRect()
+        const rect = range.getBoundingClientRect()
 
-    // Сохраняем выделение
-    saveSelection()
-
-    // Обновляем форматы
-    if (formats) {
-      updateActiveFormats()
-    }
-
-    // Обновляем позицию bubble menu
-    if (props.bubble && !sel.isCollapsed) {
-      const rect = range.getBoundingClientRect()
-
-      setBubbleMenuPosition({
-        top: rect.top - editorRect.top - 50, // Поднимаем выше
-        left: rect.left - editorRect.left + rect.width / 2
-      })
-      setMenuVisible(true)
-    } else {
-      setMenuVisible(false)
-    }
-
-    // Обновляем контент
-    const content = editorRef()!.innerHTML
-    setContent(content)
-    props.onChange?.(content)
-  }
-
-  const handleSubmit = async () => {
-    if (props.onSubmit) {
-      const success = await props.onSubmit(content())
-      if (success) {
-        setContent('')
+        const position = {
+          top: rect.top - editorRect.top - 50,
+          left: rect.left - editorRect.left + rect.width / 2
+        }
+        setBubbleMenuPosition(position)
+        
+        // Update collaborative state if needed
+        if (props.collaborative) {
+          const newState = {
+            ...editorState(),
+            cursorPosition: position
+          }
+          setEditorState(newState)
+          debouncedStateUpdate(newState)
+        }
+        editorData.selection!.position = position
+        setMenuVisible(true)
+      } else {
         setMenuVisible(false)
-        setHasFocus(false)
       }
     }
+
+    // Notify parent with complete data
+    props.onChange(editorData)
+  }
+
+  // Handle input changes
+  const handleInput = () => {
+    const content = editorRef()?.innerHTML || ''
+    setContent(content)
+    props.onChange({
+      content: content,
+      plainText: content,
+      length: content.length,
+      isEmpty: content.trim().length === 0,
+      selection: { text: content, isEmpty: content.trim().length === 0 }
+    })
   }
 
   // Menu modes
@@ -207,61 +276,25 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   //  - links: link, footnote
   //  - lists: image, video, file
 
-  const handleClear = () => {
-    // state.setContent('')
-    setMenuVisible(false)
-    setHasFocus(false)
-    props.onCancel?.()
-  }
-
-  // Handle selection changes
-  const handleSelectionChange = () => {
-    const selection = window.getSelection()
-    if (!selection || selection.isCollapsed || !isSelectionInEditor()) {
-      setMenuVisible(false)
-      return
-    }
-
-    // Calculate bubble menu position
-    if (props.bubble) {
-      const range = selection.getRangeAt(0)
-      const editorRect = editorRef()!.getBoundingClientRect()
-      const rect = range.getBoundingClientRect()
-
-      const position = {
-        top: rect.top - editorRect.top - 50,
-        left: rect.left - editorRect.left + rect.width / 2
-      }
-      setBubbleMenuPosition(position)
-
-      // Update collaborative cursor position
-      if (props.collaborative) {
-        const newState = {
-          ...editorState(),
-          cursorPosition: position
-        }
-        setEditorState(newState)
-        debouncedStateUpdate(newState)
-      }
-    }
-
-    updateActiveFormats()
-    setMenuVisible(true)
-  }
-
   // Focus and blur
   const handleFocus = () => {
     clearTimeout(blurTimer)
     setHasFocus(true)
-    setMenuVisible(true)
+    
+    // Show fixed toolbar immediately on focus if not in bubble mode
+    if (!props.bubble) {
+      setMenuVisible(true)
+    }
   }
 
-  const handleBlur = () => {
-    blurTimer = window.setTimeout(() => {
-      setHasFocus(false)
-      setMenuVisible(false)
-      props.onBlur?.()
-    }, 200)
+  const handleBlur = (e: FocusEvent) => {
+    if (!editorRef()?.contains(e.relatedTarget as Node)) {
+      blurTimer = window.setTimeout(() => {
+        setHasFocus(false)
+        setMenuVisible(false)
+        props.onBlur?.()
+      }, 200)
+    }
   }
 
   const handlePaste = async (e: ClipboardEvent) => {
@@ -290,76 +323,84 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       editorRef()!.focus()
     }
 
-    document.addEventListener('selectionchange', handleSelectionChange)
+    document.addEventListener('selectionchange', handleChange)
   })
 
   onCleanup(() => {
     clearTimeout(blurTimer)
-    document.removeEventListener('selectionchange', handleSelectionChange)
+    document.removeEventListener('selectionchange', handleChange)
     debouncedStateUpdate.cancel()
   })
 
   const [showingInsert, showInsert] = createSignal<string | undefined>()
-  const handleAction = (action: CommandType | CommandGroupType) => {
+  const handleAction = (action: CommandType) => {
+    console.log('Editor handling action:', action)
+    
     const selection = window.getSelection()
-    if (!selection || selection.isCollapsed) return
-
-    if (isGroup(action)) {
-      // Группы обрабатываются через DropDown в SimpleToolbar
+    if (!selection || !selection.rangeCount) {
+      console.log('No selection found')
       return
     }
 
-    switch (action) {
-      case 'bold':
-      case 'italic':
-      case 'link':
-      case 'blockquote':
-      case 'h1':
-      case 'h2':
-      case 'h3': {
-        // Проверяем текущее состояние форматирования
-        if (hasFormatting(action, selection)) {
-          removeFormatting(action, {
-            range: selection.getRangeAt(0),
-            text: selection.toString(),
-            isEmpty: selection.isCollapsed,
-            position: { top: selection.anchorOffset, left: selection.anchorOffset }
-          })
-        } else {
-          applyFormatting(action, {
-            range: selection.getRangeAt(0),
-            text: selection.toString(),
-            isEmpty: selection.isCollapsed,
-            position: { top: selection.anchorOffset, left: selection.anchorOffset }
-          })
-        }
-        break
-      }
+    // Save the current selection
+    const range = selection.getRangeAt(0).cloneRange()
+    console.log('Selection range:', {
+      startOffset: range.startOffset,
+      endOffset: range.endOffset,
+      text: selection.toString()
+    })
 
-      case 'image': {
-        showModal('editorUploadImage')
-        break
-      }
+    // Save the selected text for verification
+    const selectedText = selection.toString()
 
-      case 'video':
-      case 'footnote': {
-        showInsert(action)
-        break
-      }
-
-      default: {
-        console.warn(`Unsupported action: ${action}`)
-        break
-      }
+    // Apply formatting without losing selection
+    if (hasFormatting(action, selection)) {
+      console.log('Removing formatting:', action)
+      removeFormatting(action, {
+        range,
+        text: selectedText,
+        isEmpty: selection.isCollapsed,
+        position: { top: selection.anchorOffset, left: selection.anchorOffset }
+      })
+    } else {
+      console.log('Applying formatting:', action)
+      applyFormatting(action, {
+        range,
+        text: selectedText,
+        isEmpty: selection.isCollapsed,
+        position: { top: selection.anchorOffset, left: selection.anchorOffset }
+      })
     }
 
-    // Обновляем состояние после форматирования
-    updateActiveFormats()
+    // Verify content wasn't lost
+    const newContent = editorRef()!.innerHTML
+    console.log('Content after formatting:', newContent)
+    
+    // Only update if content wasn't lost
+    if (newContent.trim()) {
+      setContent(newContent)
+      props.onChange({
+        content: newContent,
+        plainText: newContent,
+        length: newContent.length,
+        isEmpty: newContent.trim().length === 0,
+        selection: { text: newContent, isEmpty: newContent.trim().length === 0 }
+      })
+    } else {
+      console.error('Content was lost during formatting, restoring...')
+      // Restore the original content if it was lost
+      const textNode = document.createTextNode(selectedText)
+      range.insertNode(textNode)
+      range.selectNode(textNode)
+    }
 
-    // Обновляем контент
-    const content = editorRef()!.innerHTML
-    setContent(content)
-    props.onChange?.(content)
+    // Restore the selection
+    selection.removeAllRanges()
+    selection.addRange(range)
+    
+    // Keep menu visible and focused
+    setMenuVisible(true)
+    editorRef()?.focus()
   }
 
   /**
@@ -396,7 +437,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     selection.addRange(range)
 
     // Обновляем состояние редактора
-    updateSelection()
+    handleChange()
 
     return true
   }
@@ -412,105 +453,66 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
     if (editor && selection) {
       insertFootnote(editor, content, selection)
-      updateSelection()
+      handleChange()
     }
 
     setShowFootnoteEditor(false)
   }
 
-  // Handle content changes
-  const handleChange = () => {
-    const html = editorRef()?.innerHTML || ''
-    setContent(html)
-    props.onChange?.(html)
-
-    // Update collaborative state
-    if (props.collaborative) {
-      const newState = {
-        ...editorState(),
-        content: html
-      }
-      setEditorState(newState)
-      debouncedStateUpdate(newState)
-    }
-  }
-
-  // Add the change handler to the editor element
-  createEffect(() => {
-    const editor = editorRef()
-    if (editor) {
-      editor.addEventListener('input', handleChange)
-
-      onCleanup(() => {
-        editor.removeEventListener('input', handleChange)
-      })
-    }
-  })
-
   return (
-    <div
-      class={clsx(styles.editor, {
-        [styles.focused]: hasFocus(),
-        [styles.hasContent]: content().length > 0,
-        [styles.hasSelection]: !selection().isEmpty,
-        [styles.readOnly]: props.readOnly,
-        [styles.collaborative]: props.collaborative
-      })}
-      data-editor-id={props.editorId}
-    >
-      <div class={styles.limitContainer}>
-        <small class={styles.limit}>
-          {content().length} / {props.limit || '∞'}
-        </small>
+    <div class={styles.editorWrapper}>
+      {/* Редактируемая область только для контента */}
+      <div class={styles.editor}>
+        <div 
+          ref={setEditorRef}
+          class={styles.content}
+          contentEditable={!props.readOnly}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onInput={handleInput}
+          onSelect={handleChange}
+          onPaste={handlePaste}
+          onDrop={handleDropFiles}
+          data-placeholder={props.placeholder}
+        />
       </div>
 
-      <div
-        ref={setEditorRef}
-        class={styles.content}
-        contentEditable={!props.readOnly}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onInput={updateSelection}
-        onSelect={updateSelection}
-        onPaste={handlePaste}
-        onDrop={(e) => {
-          e.preventDefault()
-          handleDropFiles(e.dataTransfer?.files || [])
-        }}
-        data-placeholder={props.placeholder}
-      />
-
-      <div class={styles.actions}>
-        <div
-          class={clsx(styles.toolbarContainer, {
-            [styles.visible]: menuVisible() && !selection().isEmpty && hasFocus(),
-            [styles.bubble]: props.bubble
-          })}
-          style={
-            props.bubble
-              ? {
-                  top: `${bubbleMenuPosition().top}px`,
-                  left: `${bubbleMenuPosition().left}px`,
-                  transform: 'translate(-50%, -100%)'
-                }
-              : undefined
-          }
-        >
-          <SimpleToolbar
-            position={props.bubble ? undefined : menuPosition()}
-            commands={props.commands as CommandType[]}
-            onAction={handleAction}
-            currentFormats={activeFormats()}
-          />
-        </div>
-
-        {/* Кнопки действий */}
-        <Show when={!props.hideButtons && !props.readOnly && content().length > 0}>
-          <div class={styles.buttons}>
-            <Button value={t('Cancel')} variant="secondary" onClick={handleClear} />
-            <Button value={t('Submit')} variant="primary" onClick={handleSubmit} />
+      {/* Панель управления как оверлей */}
+      <div class={clsx(styles.controls, { [styles.visible]: menuVisible() })}>
+        <Show when={props.limit}>
+          <div class={styles.limitContainer}>
+            <small class={styles.limit}>
+              {content().length} / {props.limit || '∞'}
+            </small>
           </div>
         </Show>
+
+        <div class={styles.actions}>
+          <Show when={props.commands && props.commands.length > 0}>
+            <div
+              class={clsx(styles.toolbarContainer, {
+                [styles.bubble]: props.bubble,
+                [styles.fixed]: !props.bubble
+              })}
+              style={
+                props.bubble
+                  ? {
+                      top: `${bubbleMenuPosition().top}px`,
+                      left: `${bubbleMenuPosition().left}px`,
+                      transform: 'translate(-50%, -100%)'
+                    }
+                  : undefined
+              }
+            >
+              <SimpleToolbar
+                commands={props.commands || []}
+                onAction={(action: CommandType | CommandGroupType) => handleAction(action as CommandType)}
+                currentFormats={activeFormats()}
+                isVisible={menuVisible()}
+              />
+            </div>
+          </Show>
+        </div>
       </div>
 
       <Portal>
@@ -537,11 +539,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             content={selection().text}
             squib={true}
             placeholder={t('Enter text...')}
-            onSubmit={(content) => {
-              handleSquibSubmit(content)
-              return true
-            }}
-            onCancel={() => setShowSquibEditor(false)}
+            onChange={(content) => setSquibContent(content.content)}
           />
         </Show>
         <Show when={showFootnoteEditor()}>
@@ -550,11 +548,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             bubble={true}
             content={selection().text}
             placeholder={t('Enter text...')}
-            onSubmit={(content) => {
-              handleFootnoteSubmit(content)
-              return true
-            }}
-            onCancel={() => setShowFootnoteEditor(false)}
+            onChange={(content) => setFootnoteContent(content.content)}
           />
         </Show>
       </Portal>

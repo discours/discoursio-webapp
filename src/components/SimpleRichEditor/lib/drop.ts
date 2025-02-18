@@ -55,8 +55,11 @@ export const useDropFiles = () => {
   /**
    * Handle dropped/selected files
    */
-  const handleDropFiles = async (files: FileList | File[]) => {
+  const handleDropFiles = async (ev: DragEvent) => {
     saveSelection()
+
+    const files = ev.dataTransfer?.files
+    if (!files) return
 
     const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'))
 

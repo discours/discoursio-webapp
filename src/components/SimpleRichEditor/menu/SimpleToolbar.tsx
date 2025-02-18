@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Component, For } from 'solid-js'
+import { Component, For, Show } from 'solid-js'
 import { DropDown, Option, OptionGroup } from '~/components/_shared/DropDown/DropDown'
 import { Icon } from '~/components/_shared/Icon'
 import { Popover } from '~/components/_shared/Popover'
@@ -79,25 +79,54 @@ export interface SimpleToolbarProps {
 }
 
 export const SimpleToolbar: Component<SimpleToolbarProps> = (props) => {
+  const handleAction = (action: CommandType | CommandGroupType, e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation() // Предотвращаем всплытие
+    console.log('Toolbar action clicked:', action)
+    console.log('Current formats:', props.currentFormats)
+    props.onAction(action)
+  }
+
   return (
-    <div
-      class={clsx(styles.toolbar, props.class, { [styles.visible]: props.isVisible })}
-      style={{
-        top: `${props.position?.top || 'auto'}px`,
-        left: `${props.position?.left || 'auto'}px`,
-        bottom: `${props.position?.bottom || 'auto'}px`,
-        right: `${props.position?.right || 'auto'}px`
-      }}
+    <div 
+      class={clsx(styles.toolbar, props.class, {
+        [styles.visible]: props.isVisible
+      })}
+      style={props.position ? `top: ${props.position.top}px; left: ${props.position.left}px` : undefined}
+      onClick={(e) => e.stopPropagation()} // Предотвращаем закрытие при клике на тулбар
     >
       <For each={props.commands}>
-        {(action) => (
-          <ToolbarControl
-            action={action}
-            onAction={props.onAction}
-            currentFormats={props.currentFormats}
-            isVisible={props.isVisible}
-            onClose={props.onClose}
-          />
+        {(command) => (
+          <Show 
+            when={!isGroup(command)} 
+            fallback={
+              <div class={styles.group}>
+                <For each={MENU_GROUPS[command as CommandGroupType]}>
+                  {(groupCommand) => (
+                    <button
+                      class={clsx(styles.button, {
+                        [styles.active]: props.currentFormats.has(groupCommand as CommandType)
+                      })}
+                      onClick={(e) => handleAction(groupCommand, e)}
+                      type="button"
+                    >
+                      <Icon name={`editor-${groupCommand}`} />
+                    </button>
+                  )}
+                </For>
+              </div>
+            }
+          >
+            <button
+              class={clsx(styles.button, {
+                [styles.active]: props.currentFormats.has(command as CommandType)
+              })}
+              onClick={(e) => handleAction(command, e)}
+              type="button"
+            >
+              <Icon name={`editor-${command  == 'blockquote' ? 'quote' : command}`} />
+            </button>
+          </Show>
         )}
       </For>
     </div>

@@ -1,0 +1,40 @@
+.editorWrapper {
+  position: relative;
+  
+  .buttons {
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    display: flex;
+    gap: 8px;
+    z-index: 1;
+
+    button {
+      min-width: 80px;
+      height: 32px;
+      padding: 0 16px;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+
+      &:first-child {
+        color: var(--gray-700);
+        background: transparent;
+        
+        &:hover {
+          background: var(--gray-50);
+        }
+      }
+
+      &:last-child {
+        color: var(--white-500);
+        background: var(--black-900);
+        
+        &:hover {
+          background: var(--black-800);
+        }
+      }
+    }
+  }
+} 

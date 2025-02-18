@@ -8,7 +8,7 @@ type Props = {
   class?: string
   placeholder: string
   initialValue?: string
-  value: (s: string) => void
+  onChange: (s: string) => void
   maxLength?: number
   allowEnterKey: boolean
   variant?: 'bordered'
@@ -29,7 +29,7 @@ export const GrowingTextarea = (props: Props) => {
   })
   const handleChangeValue = (textareaValue: string) => {
     setValue(textareaValue)
-    props.value(textareaValue)
+    props.onChange(textareaValue)
   }
 
   const handleKeyDown = (event: KeyboardEvent) => {

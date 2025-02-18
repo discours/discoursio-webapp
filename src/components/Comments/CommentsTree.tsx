@@ -1,4 +1,15 @@
-import { ErrorBoundary, For, Show, createEffect, createMemo, createResource, createSignal } from 'solid-js'
+import { 
+  ErrorBoundary, 
+  For, 
+  Show, 
+  createEffect, 
+  createMemo, 
+  createResource, 
+  createSignal, 
+  batch, 
+  untrack, 
+  on 
+} from 'solid-js'
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
@@ -11,8 +22,9 @@ import { Loading } from '../_shared/Loading'
 import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { Comment as CommentCard } from './Comment'
 import { CommentsHeader } from './CommentsHeader'
+import { Button } from '../_shared/Button'
 
-import styles from '../Article/Article.module.scss'
+import styles from './CommentsTree.module.scss'
 
 type Props = {
   articleAuthors: Author[]
@@ -98,8 +110,9 @@ export const CommentsTree = (props: Props) => {
 
   const [posting, setPosting] = createSignal(false)
   const [replyTo, setReplyTo] = createSignal<number | null>(null)
+  const [editorContent, setEditorContent] = createSignal('')
   
-  const handleSubmitComment = async (value: string) => {
+  const handleSubmitCommentValue = async (value: string) => {
     setPosting(true)
     try {
       const createdReaction = await createShoutReaction({
@@ -122,6 +135,43 @@ export const CommentsTree = (props: Props) => {
       setPosting(false)
       return false
     }
+  }
+
+  createEffect(
+    on(editorContent, (content) => {
+      if (!content) return
+      console.log('[CommentsTree] Editor content updated:', content)
+    }, { defer: true })
+  )
+
+  const handleSubmitComment = async () => {
+    const content = editorContent()
+    if (!content) return
+
+    batch(() => {
+      setPosting(true)
+      const currentReplyTo = replyTo()
+
+      handleSubmitCommentValue(content)
+        .then((success) => {
+          if (success) {
+            setEditorContent('')
+            if (currentReplyTo) {
+              setReplyTo(null)
+            }
+          }
+        })
+        .finally(() => {
+          setPosting(false)
+        })
+    })
+  }
+
+  const handleClear = () => {
+    batch(() => {
+      setEditorContent('')
+      setReplyTo(null)
+    })
   }
 
   const FallbackMessage = () => (
@@ -186,26 +236,28 @@ export const CommentsTree = (props: Props) => {
           <ShowIfAuthenticated fallback={<FallbackMessage />}>
             <div class={styles.editorWrapper}>
               <SimpleRichEditor
-                commands={['bold', 'italic', 'link', 'blockquote', 'image']}
-                placeholder={replyTo() 
-                  ? t('Write a reply...') 
-                  : t('Write a comment...')
-                }
-                onSubmit={handleSubmitComment}
-                onChange={(value) => console.log('onChange', value)}
+                commands={['bold', 'italic', 'link', 'image', 'blockquote']}
+                placeholder={replyTo() ? t('Write a reply...') : t('Write a comment...')}
+                onChange={(data) => {
+                  untrack(() => {
+                    setEditorContent(data.content)
+                  })
+                }}
                 bubble={false}
               />
-              <Show when={replyTo()}>
-                <button 
-                  class={styles.cancelReply}
-                  onClick={() => setReplyTo(null)}
-                >
-                  {t('Cancel reply')}
-                </button>
-              </Show>
-              <Show when={posting()}>
-                <Loading />
-              </Show>
+              
+              <div class={styles.buttons}>
+                <Button 
+                  value={t('Cancel')} 
+                  variant="secondary"
+                  onClick={handleClear}
+                />
+                <Button 
+                  value={t('Submit')} 
+                  variant="primary"
+                  onClick={handleSubmitComment}
+                />
+              </div>
             </div>
           </ShowIfAuthenticated>
         </Show>
