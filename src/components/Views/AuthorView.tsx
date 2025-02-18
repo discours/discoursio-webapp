@@ -18,8 +18,6 @@ import type { Author, Reaction, Shout, Topic } from '~/graphql/schema/core.gen'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { AuthorCard } from '../Author/AuthorCard'
 import { AuthorShoutsRating } from '../Author/AuthorShoutsRating'
-import FeedFiltersControl from '../Feed/FeedFiltersControl'
-import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 import { Placeholder } from '../Feed/Placeholder'
 import { Row1 } from '../Feed/Row1'
 import { Row2 } from '../Feed/Row2'
@@ -452,13 +450,6 @@ export const AuthorView = (props: AuthorViewProps) => {
         </Match>
 
         <Match when={!currentTab()}>
-          <Show when={sortedFeed()?.length >= 10}>
-            <div class={styles.filtersContainer}>
-              <FeedSwitcher options={['recent', 'top', 'hot']} prefix={`/@${props.authorSlug}`} />
-              <FeedFiltersControl />
-            </div>
-          </Show>
-
           <Show when={me()?.slug === props.authorSlug && !me()?.stat?.shouts}>
             <div class="wide-container">
               <Placeholder type={'author'} mode="profile" />
