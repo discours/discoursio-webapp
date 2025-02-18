@@ -6,7 +6,7 @@
     background: var(--white-500);
     border: 1px solid var(--gray-200);
     border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 5%);
 
     .group {
         display: flex;
@@ -87,7 +87,7 @@
         position: absolute;
         background: var(--white-500);
         border: 1px solid var(--gray-200);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
         padding: 4px;
         z-index: 100;
     }
@@ -210,7 +210,7 @@
     background: var(--white-500);
     border: 1px solid var(--gray-200);
     border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
     z-index: 100;
 }
   

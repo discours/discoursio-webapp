@@ -312,8 +312,6 @@ export const EditView = () => {
     )
   }
 
-  const handleEditorChange = (content: string) => handleInputChange('body', content)
-
   return (
     <>
       <div class={styles.container}>

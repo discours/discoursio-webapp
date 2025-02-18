@@ -10,13 +10,7 @@ import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { useSnackbar, useUI } from '~/context/ui'
 import { loadCommentsMyRates } from '~/graphql/api/private'
-import {
-  Author,
-  MutationCreate_ReactionArgs,
-  MutationUpdate_ReactionArgs,
-  Reaction,
-  ReactionKind
-} from '~/graphql/schema/core.gen'
+import { Author, Reaction, ReactionKind } from '~/graphql/schema/core.gen'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { AuthorLink } from '../../Author/AuthorLink'
 import { Userpic } from '../../Author/Userpic'
@@ -45,7 +39,7 @@ export const Comment = (props: Props) => {
   const [editedBody, setEditedBody] = createSignal<string>()
   const { session, client } = useSession()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
-  const { createShoutReaction, updateShoutReaction, deleteShoutReaction } = useReactions()
+  const { deleteShoutReaction } = useReactions()
   const { showConfirm } = useUI()
   const { showSnackbar } = useSnackbar()
   const canEdit = () =>
@@ -99,91 +93,8 @@ export const Comment = (props: Props) => {
     }
   }
 
-  const handleCreate = async (value: string): Promise<boolean> => {
-    try {
-      setLoading(true)
-      saveScrollPosition()
-      const reaction = await createShoutReaction({
-        reaction: {
-          kind: ReactionKind.Comment,
-          reply_to: props.comment.id,
-          body: value,
-          shout: props.comment.shout.id
-        }
-      } as MutationCreate_ReactionArgs)
-
-      if (reaction) {
-        setIsReplyVisible(false)
-        setLoading(false)
-        restoreScrollPosition()
-        return true
-      }
-    } catch (error) {
-      console.error('[handleCreate reaction]:', error)
-      showSnackbar?.({ type: 'error', body: t('Failed to create comment') })
-    }
-    setLoading(false)
-    restoreScrollPosition()
-    return false
-  }
-
   const toggleEditMode = () => {
     setEditMode((oldEditMode) => !oldEditMode)
-  }
-
-  const handleUpdate = async (value: string): Promise<boolean> => {
-    console.log('[handleUpdate] starting with value:', value)
-    setLoading(true)
-    saveScrollPosition()
-    try {
-      const response = await updateShoutReaction(
-        {
-          reaction: {
-            id: props.comment.id || 0,
-            kind: ReactionKind.Comment,
-            body: value,
-            shout: props.comment.shout.id
-          }
-        } as MutationUpdate_ReactionArgs,
-        author(),
-        props.comment.shout
-      )
-
-      console.log('[handleUpdate] got response:', response)
-
-      if (response?.reaction) {
-        const updatedReaction = response?.reaction
-        setEditedBody(updatedReaction?.body || '')
-        setEditMode(false)
-        setLoading(false)
-        restoreScrollPosition()
-        return true
-      }
-
-      if (response?.error) {
-        console.error('[handleUpdate] Server error:', response.error)
-        showSnackbar?.({
-          type: 'error',
-          body: t(response.error) || t('Failed to update comment')
-        })
-        return false
-      }
-
-      showSnackbar?.({ type: 'error', body: t('Failed to update comment') })
-      return false
-    } catch (error) {
-      console.error('[handleUpdate reaction]:', error)
-      showSnackbar?.({ type: 'error', body: t('Failed to update comment') })
-    }
-    setLoading(false)
-    restoreScrollPosition()
-    return false
-  }
-
-  const handleCancel = () => {
-    saveScrollPosition()
-    setEditMode(false)
-    setTimeout(() => restoreScrollPosition(), 0)
   }
 
   const [commentsMyrates, setCommentsMyrates] = createSignal<Record<number, ReactionKind>>({})
@@ -265,7 +176,7 @@ export const Comment = (props: Props) => {
                   content={editedBody() || props.comment.body || ''}
                   placeholder={t('Write a comment...')}
                   commands={['bold', 'italic', 'link', 'image', 'blockquote']}
-                  onChange={setEditedBody}
+                  onChange={(data) => setEditedBody(data.content)}
                 />
               </Suspense>
             </Show>
@@ -327,8 +238,8 @@ export const Comment = (props: Props) => {
               <Suspense fallback={<p>{t('Loading')}</p>}>
                 <SimpleRichEditor
                   placeholder={t('Write a comment...')}
-                  onChange={setEditedBody}
                   commands={['bold', 'italic', 'link', 'image', 'blockquote']}
+                  onChange={(data) => setEditedBody(data.content)}
                 />
               </Suspense>
             </Show>

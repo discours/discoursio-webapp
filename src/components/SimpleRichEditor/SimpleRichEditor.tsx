@@ -6,8 +6,7 @@ import { debounce } from 'throttle-debounce'
 
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
-import { Button, type ButtonVariant } from '../_shared/Button'
-import { CommandGroupType, CommandType, MENU_GROUPS, isGroup } from './lib/commands'
+import { CommandGroupType, CommandType, MENU_GROUPS } from './lib/commands'
 import { useDropFiles } from './lib/drop'
 import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
 import { insertFootnote } from './lib/footnotes'
@@ -18,18 +17,18 @@ import { SimpleInsert } from './menu/SimpleInsert'
 import { SimpleToolbar } from './menu/SimpleToolbar'
 
 import styles from './SimpleRichEditor.module.scss'
-import { createTextChangeRange } from 'typescript'
 
 export type EditorCommandId = keyof typeof MENU_GROUPS
 export type EditorCommandGroup = EditorCommandId[]
 export type EditorCommands = EditorCommandId[] | EditorCommandGroup[]
 
 export interface EditorData {
-  content: string               // HTML контент
-  plainText: string            // Чистый текст
-  length: number              // Длина текста
-  isEmpty: boolean           // Пустой ли редактор
-  selection?: {              // Информация о выделении
+  content: string // HTML контент
+  plainText: string // Чистый текст
+  length: number // Длина текста
+  isEmpty: boolean // Пустой ли редактор
+  selection?: {
+    // Информация о выделении
     text: string
     isEmpty: boolean
     position?: Position
@@ -93,7 +92,7 @@ export const CURSOR_UPDATE_PERIOD = 1000
  *   - Фиксированный тулбар (bubble=false|undefined)
  *   - Всплывающее меню при выделении (bubble=true)
  *   - Плавающее меню с "+" (plus=true)
- * 
+ *
  * @param props.bubble - Режим отображения тулбара:
  *   - false (по умолчанию): показывает фиксированный тулбар над редактором
  *   - true: показывает всплывающий тулбар только при выделении текста
@@ -103,7 +102,7 @@ export const CURSOR_UPDATE_PERIOD = 1000
  * @param props.onSubmit - Колбэк при отправке формы
  * @param props.onCancel - Колбэк при отмене
  * @param props.onChange - Колбэк при изменении содержимого
- * 
+ *
  * @example
  * ```tsx
  * // Редактор с фиксированным тулбаром
@@ -111,7 +110,7 @@ export const CURSOR_UPDATE_PERIOD = 1000
  *   commands={['bold', 'italic', 'link']}
  *   bubble={false}
  * />
- * 
+ *
  * // Редактор с всплывающим тулбаром
  * <SimpleRichEditor
  *   commands={['bold', 'italic', 'link']}
@@ -132,7 +131,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const { showModal } = useUI()
   const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
   const [menuVisible, setMenuVisible] = createSignal(false)
-  const [bubbleMenuPosition, setBubbleMenuPosition] = createSignal<Position>({ top: 0, left: 0 })
   const [showSquibEditor, setShowSquibEditor] = createSignal(false)
   const [showFootnoteEditor, setShowFootnoteEditor] = createSignal(false)
   const [hasFocus, setHasFocus] = createSignal(false)
@@ -167,30 +165,34 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [squibContent, setSquibContent] = createSignal('')
   const [footnoteContent, setFootnoteContent] = createSignal('')
 
-  createEffect(on(squibContent, (s?: string) => {
-    if (!s) return
-    console.log('squibContent', s)
-    props.onChange({
-      content: s,
-      plainText: s,
-      length: s.length,
-      isEmpty: s.trim().length === 0,
-      selection: { text: s, isEmpty: s.trim().length === 0 }
+  createEffect(
+    on(squibContent, (s?: string) => {
+      if (!s) return
+      console.log('squibContent', s)
+      props.onChange({
+        content: s,
+        plainText: s,
+        length: s.length,
+        isEmpty: s.trim().length === 0,
+        selection: { text: s, isEmpty: s.trim().length === 0 }
+      })
     })
-  }))
+  )
 
-  createEffect(on(footnoteContent, (s?: string) => {
-    if (!s) return
-    console.log('footnoteContent', s)
-    props.onChange({
-      content: s,
-      plainText: s,
-      length: s.length,
-      isEmpty: s.trim().length === 0,
-      selection: { text: s, isEmpty: s.trim().length === 0 }
+  createEffect(
+    on(footnoteContent, (s?: string) => {
+      if (!s) return
+      console.log('footnoteContent', s)
+      props.onChange({
+        content: s,
+        plainText: s,
+        length: s.length,
+        isEmpty: s.trim().length === 0,
+        selection: { text: s, isEmpty: s.trim().length === 0 }
+      })
     })
-  }))
-  
+  )
+
   // Handle selection changes and content updates
   const handleChange = (_ev?: Event) => {
     const selection = window.getSelection()
@@ -209,7 +211,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     // Get content and update state
     const contentHtml = editorRef()?.innerHTML || ''
     const contentText = editorRef()?.textContent || ''
-    
+
     setContent(contentHtml)
 
     // Prepare editor data
@@ -223,7 +225,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
     // Handle bubble menu positioning if needed
     if (props.bubble && isSelectionInEditor()) {
-      if (!selection.isCollapsed) {
+      if (selection.isCollapsed) {
+        setMenuVisible(false)
+      } else {
         const range = selection.getRangeAt(0)
         const editorRect = editorRef()!.getBoundingClientRect()
         const rect = range.getBoundingClientRect()
@@ -232,8 +236,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           top: rect.top - editorRect.top - 50,
           left: rect.left - editorRect.left + rect.width / 2
         }
-        setBubbleMenuPosition(position)
-        
+
         // Update collaborative state if needed
         if (props.collaborative) {
           const newState = {
@@ -245,8 +248,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         }
         editorData.selection!.position = position
         setMenuVisible(true)
-      } else {
-        setMenuVisible(false)
       }
     }
 
@@ -280,7 +281,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const handleFocus = () => {
     clearTimeout(blurTimer)
     setHasFocus(true)
-    
+
     // Show fixed toolbar immediately on focus if not in bubble mode
     if (!props.bubble) {
       setMenuVisible(true)
@@ -334,8 +335,16 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
   const [showingInsert, showInsert] = createSignal<string | undefined>()
   const handleAction = (action: CommandType) => {
+    if (action === 'image') {
+      showModal('uploadImage')
+      return
+    }
+    if (action === 'video') {
+      // TODO: use SimlpeInsert for video link
+      return
+    }
     console.log('Editor handling action:', action)
-    
+
     const selection = window.getSelection()
     if (!selection || !selection.rangeCount) {
       console.log('No selection found')
@@ -375,7 +384,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     // Verify content wasn't lost
     const newContent = editorRef()!.innerHTML
     console.log('Content after formatting:', newContent)
-    
+
     // Only update if content wasn't lost
     if (newContent.trim()) {
       setContent(newContent)
@@ -397,7 +406,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     // Restore the selection
     selection.removeAllRanges()
     selection.addRange(range)
-    
+
     // Keep menu visible and focused
     setMenuVisible(true)
     editorRef()?.focus()
@@ -443,27 +452,40 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   }
 
   const handleSquibSubmit = (content: string) => {
+    saveSelection()
     replaceSelection(content)
     setShowSquibEditor(false)
+    restoreSelection()
   }
 
   const handleFootnoteSubmit = (content: string) => {
     const editor = editorRef()
-    const selection = window.getSelection()
+    if (!editor) return
 
-    if (editor && selection) {
-      insertFootnote(editor, content, selection)
-      handleChange()
-    }
-
+    saveSelection()
+    const sel = window.getSelection()
+    insertFootnote(editor, content, sel as Selection)
     setShowFootnoteEditor(false)
+    restoreSelection()
   }
+
+  createEffect(() => {
+    if (hasFocus() && !props.bubble) {
+      setMenuVisible(true)
+    } else {
+      setMenuVisible(false)
+    }
+  })
 
   return (
     <div class={styles.editorWrapper}>
       {/* Редактируемая область только для контента */}
-      <div class={styles.editor}>
-        <div 
+      <div
+        class={clsx(styles.editor, {
+          [styles.focused]: hasFocus()
+        })}
+      >
+        <div
           ref={setEditorRef}
           class={styles.content}
           contentEditable={!props.readOnly}
@@ -497,8 +519,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
               style={
                 props.bubble
                   ? {
-                      top: `${bubbleMenuPosition().top}px`,
-                      left: `${bubbleMenuPosition().left}px`,
+                      top: `${menuPosition().top}px`,
+                      left: `${menuPosition().left}px`,
                       transform: 'translate(-50%, -100%)'
                     }
                   : undefined
@@ -540,6 +562,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             squib={true}
             placeholder={t('Enter text...')}
             onChange={(content) => setSquibContent(content.content)}
+            onBlur={() => handleSquibSubmit(squibContent())}
           />
         </Show>
         <Show when={showFootnoteEditor()}>
@@ -549,6 +572,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             content={selection().text}
             placeholder={t('Enter text...')}
             onChange={(content) => setFootnoteContent(content.content)}
+            onBlur={() => handleFootnoteSubmit(footnoteContent())}
           />
         </Show>
       </Portal>

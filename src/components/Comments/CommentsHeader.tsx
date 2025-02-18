@@ -21,12 +21,12 @@ export const CommentsHeader = (props: Props) => {
   return (
     <div class={styles.commentsHeaderWrapper}>
       <Show when={(props.comments || []).length > 0}>
-      <h2 class={styles.commentsHeader}>
-        {t('Comments')} {props.comments.length.toString() || ''}
-        <Show when={props.newComments.length > 0}>
-          <span class={styles.newReactions}>{` +${props.newComments.length}`}</span>
-        </Show>
-      </h2>
+        <h2 class={styles.commentsHeader}>
+          {t('Comments')} {props.comments.length.toString() || ''}
+          <Show when={props.newComments.length > 0}>
+            <span class={styles.newReactions}>{` +${props.newComments.length}`}</span>
+          </Show>
+        </h2>
       </Show>
       <Show when={props.comments.length > 0}>
         <ul class={clsx(styles.commentsFeedSwitcher, 'view-switcher')}>

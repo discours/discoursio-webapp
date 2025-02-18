@@ -124,11 +124,11 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
 
   const range = state.range.cloneRange()
   const content = range.extractContents()
-  
+
   // Create a temporary container
   const tempDiv = document.createElement('div')
   tempDiv.appendChild(content.cloneNode(true))
-  
+
   console.log('Content in temp div:', tempDiv.innerHTML)
 
   // Find the formatting element
@@ -149,12 +149,12 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
 
   // Create fragment for the unformatted content
   const fragment = document.createDocumentFragment()
-  
+
   // If the formatted element contains the text directly
   if (formattedElement.textContent === state.text) {
     console.log('Direct text match found')
     fragment.textContent = state.text
-  } 
+  }
   // If we need to preserve nested formatting
   else {
     console.log('Preserving nested formatting')
@@ -167,7 +167,7 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
 
   // Insert the unformatted content
   range.insertNode(fragment)
-  
+
   // Keep original selection instead of selecting inserted content
   range.setStart(fragment.firstChild!, 0)
   range.setEnd(fragment.lastChild!, fragment.lastChild!.textContent?.length || 0)
@@ -207,15 +207,14 @@ export const hasFormatting = (format: CommandType, selection: Selection | null):
 
   // Get the common ancestor
   const container = range.commonAncestorContainer
-  const element = container.nodeType === Node.ELEMENT_NODE 
-    ? container as HTMLElement 
-    : container.parentElement
+  const element =
+    container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
 
   if (!element) return false
 
   // Check if the element or its parents have the formatting
   const formattedElement = element.closest(config.tag)
-  
+
   // Check if the formatted element contains the selection
   if (formattedElement) {
     const formattedRange = document.createRange()

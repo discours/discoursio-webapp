@@ -5,13 +5,11 @@ import createReactionMutation from '~/graphql/mutation/core/reaction-create'
 import destroyReactionMutation from '~/graphql/mutation/core/reaction-destroy'
 import updateReactionMutation from '~/graphql/mutation/core/reaction-update'
 import {
-  Author,
   MutationCreate_ReactionArgs,
   MutationUpdate_ReactionArgs,
   QueryLoad_Reactions_ByArgs,
   Reaction,
-  ReactionKind,
-  Shout
+  ReactionKind
 } from '~/graphql/schema/core.gen'
 import { useLocalize } from './localize'
 import { useSession } from './session'
@@ -23,9 +21,7 @@ type ReactionsContextType = {
   loadReactionsBy: (args: QueryLoad_Reactions_ByArgs) => Promise<Reaction[]>
   createShoutReaction: (reaction: MutationCreate_ReactionArgs) => Promise<Reaction | undefined>
   updateShoutReaction: (
-    reaction: MutationUpdate_ReactionArgs,
-    author: Author,
-    shout: Shout
+    reaction: MutationUpdate_ReactionArgs
   ) => Promise<{ error?: string; reaction?: Reaction }>
   deleteShoutReaction: (id: number) => Promise<{ error: string } | null>
   addShoutReactions: (rrr: Reaction[]) => void
@@ -163,9 +159,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
   }
 
   const updateShoutReaction = async (
-    input: MutationUpdate_ReactionArgs,
-    author: Author,
-    shout: Shout
+    input: MutationUpdate_ReactionArgs
   ): Promise<{ error?: string; reaction?: Reaction }> => {
     setReactionsLoading(true)
     const resp = await client()?.mutation(updateReactionMutation, input).toPromise()
@@ -180,8 +174,6 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
       return { error }
     }
     if (reaction) {
-      reaction.created_by = author
-      reaction.shout = shout
       const newReactionEntities = { ...reactionEntities() }
       newReactionEntities[reaction.id] = reaction
 

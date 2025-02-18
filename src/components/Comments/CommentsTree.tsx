@@ -1,28 +1,35 @@
-import { 
-  ErrorBoundary, 
-  For, 
-  Show, 
-  createEffect, 
-  createMemo, 
-  createResource, 
-  createSignal, 
-  batch, 
-  untrack, 
-  on 
+import {
+  ErrorBoundary,
+  For,
+  Show,
+  batch,
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  on,
+  untrack
 } from 'solid-js'
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { Author, Reaction, ReactionInput, ReactionKind, ReactionSort } from '~/graphql/schema/core.gen'
+import {
+  Author,
+  MutationUpdate_ReactionArgs,
+  Reaction,
+  ReactionInput,
+  ReactionKind,
+  ReactionSort
+} from '~/graphql/schema/core.gen'
 import { SortFunction } from '~/types/common'
 import { byCreated, byStat } from '~/utils/sort'
 import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { Button } from '../_shared/Button'
 import { Loading } from '../_shared/Loading'
 import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { Comment as CommentCard } from './Comment'
 import { CommentsHeader } from './CommentsHeader'
-import { Button } from '../_shared/Button'
 
 import styles from './CommentsTree.module.scss'
 
@@ -42,7 +49,7 @@ export const CommentsTree = (props: Props) => {
   const { t } = useLocalize()
   const [onlyNew, setOnlyNew] = createSignal(false)
   const [clickedReplyId, setClickedReplyId] = createSignal<number>()
-  const { reactionEntities, createShoutReaction, loadReactionsBy } = useReactions()
+  const { reactionEntities, createShoutReaction, updateShoutReaction, loadReactionsBy } = useReactions()
 
   const [newReactions, setNewReactions] = createSignal<Reaction[]>([])
   const [commentsOrder, setCommentsOrder] = createSignal<ReactionSort>(ReactionSort.Newest)
@@ -111,60 +118,86 @@ export const CommentsTree = (props: Props) => {
   const [posting, setPosting] = createSignal(false)
   const [replyTo, setReplyTo] = createSignal<number | null>(null)
   const [editorContent, setEditorContent] = createSignal('')
-  
-  const handleSubmitCommentValue = async (value: string) => {
+
+  const handleSubmitCommentValue = async (value: string, commentId?: number) => {
     setPosting(true)
     try {
-      const createdReaction = await createShoutReaction({
-        reaction: {
-          kind: ReactionKind.Comment,
-          body: value,
-          shout: props.shoutId,
-          reply_to: replyTo()
-        } as ReactionInput
-      })
-      
-      if (createdReaction) {
-        setTimeout(() => setNewReactions([createdReaction, ...newReactions()]), 100)
-        setReplyTo(null)
+      if (commentId) {
+        // Update existing comment
+        const response = await updateShoutReaction({
+          reaction: {
+            id: commentId,
+            kind: ReactionKind.Comment,
+            body: value,
+            shout: props.shoutId
+          }
+        } as MutationUpdate_ReactionArgs)
+
+        if (response?.reaction) {
+          // Update in the list
+          setNewReactions((ccc: Reaction[]) =>
+            (ccc as Reaction[]).map((c: Reaction) =>
+              c.id === commentId ? (response.reaction as Reaction) : c
+            )
+          )
+          setReplyTo(null)
+          return true
+        }
+      } else {
+        // Create new comment
+        const createdReaction = await createShoutReaction({
+          reaction: {
+            kind: ReactionKind.Comment,
+            body: value,
+            shout: props.shoutId,
+            reply_to: replyTo()
+          } as ReactionInput
+        })
+
+        if (createdReaction) {
+          setTimeout(() => setNewReactions([createdReaction, ...newReactions()]), 100)
+          setReplyTo(null)
+          return true
+        }
       }
-      setPosting(false)
-      return true
-    } catch (error) {
-      console.error('[handleCreate reaction]:', error)
-      setPosting(false)
+
       return false
+    } catch (error) {
+      console.error('[handleSubmitCommentValue]:', error)
+      return false
+    } finally {
+      setPosting(false)
     }
   }
 
   createEffect(
-    on(editorContent, (content) => {
-      if (!content) return
-      console.log('[CommentsTree] Editor content updated:', content)
-    }, { defer: true })
+    on(
+      editorContent,
+      (content) => {
+        if (!content) return
+        console.log('[CommentsTree] Editor content updated:', content)
+      },
+      { defer: true }
+    )
   )
 
-  const handleSubmitComment = async () => {
-    const content = editorContent()
-    if (!content) return
+  const handleSubmitComment = async (commentId?: number) => {
+    if (!editorContent()) return
 
-    batch(() => {
-      setPosting(true)
-      const currentReplyTo = replyTo()
-
-      handleSubmitCommentValue(content)
-        .then((success) => {
-          if (success) {
-            setEditorContent('')
-            if (currentReplyTo) {
-              setReplyTo(null)
-            }
-          }
-        })
-        .finally(() => {
-          setPosting(false)
-        })
-    })
+    setPosting(true)
+    try {
+      await handleSubmitCommentValue(editorContent(), commentId)
+      batch(() => {
+        setEditorContent('')
+        setReplyTo(null)
+      })
+      return true
+    } catch (error) {
+      console.error(error)
+      return false
+    } finally {
+      setPosting(false)
+    }
   }
 
   const handleClear = () => {
@@ -226,10 +259,7 @@ export const CommentsTree = (props: Props) => {
 
           <Show when={!commentsResource.loading} fallback={<Loading />}>
             <Show when={commentsResource()} fallback={<div>{t('No comments yet')}</div>}>
-              <CommentsTreeItems 
-                {...props} 
-                onReply={(id: number) => setReplyTo(id)}
-              />
+              <CommentsTreeItems {...props} onReply={(id: number) => setReplyTo(id)} />
             </Show>
           </Show>
 
@@ -245,17 +275,14 @@ export const CommentsTree = (props: Props) => {
                 }}
                 bubble={false}
               />
-              
+
               <div class={styles.buttons}>
-                <Button 
-                  value={t('Cancel')} 
-                  variant="secondary"
-                  onClick={handleClear}
-                />
-                <Button 
-                  value={t('Submit')} 
+                <Button value={t('Cancel')} variant="secondary" onClick={handleClear} />
+                <Button
+                  value={posting() ? t('Saving...') : t('Save')}
                   variant="primary"
-                  onClick={handleSubmitComment}
+                  onClick={() => handleSubmitComment(clickedReplyId())}
+                  disabled={posting()}
                 />
               </div>
             </div>

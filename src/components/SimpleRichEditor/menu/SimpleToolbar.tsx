@@ -88,7 +88,7 @@ export const SimpleToolbar: Component<SimpleToolbarProps> = (props) => {
   }
 
   return (
-    <div 
+    <div
       class={clsx(styles.toolbar, props.class, {
         [styles.visible]: props.isVisible
       })}
@@ -97,8 +97,8 @@ export const SimpleToolbar: Component<SimpleToolbarProps> = (props) => {
     >
       <For each={props.commands}>
         {(command) => (
-          <Show 
-            when={!isGroup(command)} 
+          <Show
+            when={!isGroup(command)}
             fallback={
               <div class={styles.group}>
                 <For each={MENU_GROUPS[command as CommandGroupType]}>
@@ -124,7 +124,7 @@ export const SimpleToolbar: Component<SimpleToolbarProps> = (props) => {
               onClick={(e) => handleAction(command, e)}
               type="button"
             >
-              <Icon name={`editor-${command  == 'blockquote' ? 'quote' : command}`} />
+              <Icon name={`editor-${command === 'blockquote' ? 'quote' : command}`} />
             </button>
           </Show>
         )}
