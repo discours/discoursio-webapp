@@ -25,6 +25,7 @@ import {
 import { SortFunction } from '~/types/common'
 import { byCreated, byStat } from '~/utils/sort'
 import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { Button } from '../_shared/Button'
 import { Loading } from '../_shared/Loading'
 import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
@@ -122,13 +123,16 @@ export const CommentsTree = (props: Props) => {
   const handleSubmitCommentValue = async (value: string, commentId?: number) => {
     setPosting(true)
     try {
+      // Sanitize content before sending
+      const sanitizedContent = sanitizeHtml(value)
+
       if (commentId) {
         // Update existing comment
         const response = await updateShoutReaction({
           reaction: {
             id: commentId,
             kind: ReactionKind.Comment,
-            body: value,
+            body: sanitizedContent,
             shout: props.shoutId
           }
         } as MutationUpdate_ReactionArgs)
@@ -148,7 +152,7 @@ export const CommentsTree = (props: Props) => {
         const createdReaction = await createShoutReaction({
           reaction: {
             kind: ReactionKind.Comment,
-            body: value,
+            body: sanitizedContent,
             shout: props.shoutId,
             reply_to: replyTo()
           } as ReactionInput

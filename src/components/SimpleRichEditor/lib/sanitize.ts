@@ -1,0 +1,118 @@
+import type { Config } from 'dompurify'
+import DOMPurify from 'isomorphic-dompurify'
+
+// Список разрешенных доменов для iframe
+const ALLOWED_IFRAME_DOMAINS = [
+  'youtube.com',
+  'youtube-nocookie.com',
+  'youtu.be',
+  'vimeo.com',
+  'player.vimeo.com'
+]
+
+/**
+ * Конфигурация разрешенных HTML тегов и атрибутов
+ * в соответствии с возможностями редактора
+ */
+const ALLOWED_TAGS = [
+  // Базовая разметка
+  'p',
+  'br',
+  'div',
+  // Форматирование текста
+  'b',
+  'strong',
+  'i',
+  'em',
+  'u',
+  'strike',
+  // Ссылки и медиа
+  'a',
+  'img',
+  'video',
+  'iframe' // Фильтруется дополнительно
+]
+
+const ALLOWED_ATTR = [
+  // Ссылки
+  'href',
+  'target',
+  'rel',
+  // Изображения
+  'src',
+  'alt',
+  'title',
+  // Видео
+  'width',
+  'height',
+  'frameborder',
+  'allowfullscreen'
+]
+
+// Базовая конфигурация согласно документации DOMPurify
+const BASE_CONFIG: Config = {
+  ALLOWED_TAGS,
+  ALLOWED_ATTR,
+  ADD_TAGS: ['iframe'],
+  ADD_ATTR: ['sandbox', 'loading', 'referrerpolicy'],
+  ALLOW_DATA_ATTR: false, // Запрещаем data-* атрибуты
+  ALLOW_UNKNOWN_PROTOCOLS: false, // Разрешаем только стандартные протоколы
+  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  SANITIZE_DOM: true,
+  USE_PROFILES: { html: true }, // Используем только HTML профиль
+  WHOLE_DOCUMENT: false,
+  RETURN_DOM: false,
+  RETURN_DOM_FRAGMENT: false,
+  RETURN_TRUSTED_TYPE: true // Включаем поддержку Trusted Types
+}
+
+// Добавляем хук для обработки iframe
+DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
+  if (node.tagName.toLowerCase() === 'iframe') {
+    const src = node.getAttribute('src')
+    if (!src) {
+      node.remove()
+      return
+    }
+
+    try {
+      const url = new URL(src)
+      if (!ALLOWED_IFRAME_DOMAINS.some((domain) => url.hostname.endsWith(domain))) {
+        node.remove()
+        return
+      }
+
+      // Устанавливаем безопасные атрибуты согласно рекомендациям
+      node.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups')
+      node.setAttribute('loading', 'lazy')
+      node.setAttribute('referrerpolicy', 'no-referrer')
+      node.removeAttribute('allow') // Удаляем потенциально опасный атрибут
+    } catch {
+      node.remove()
+    }
+  }
+})
+
+/**
+ * Санитизация HTML контента
+ * @param html Исходный HTML
+ * @returns Очищенный HTML
+ */
+export const sanitizeHtml = (html: string): string => {
+  return DOMPurify.sanitize(html, BASE_CONFIG)
+}
+
+/**
+ * Санитизация HTML для рендера с бекенда
+ * Используется при первом рендере контента с сервера
+ */
+export const sanitizeServerHtml = (html: string): string => {
+  return DOMPurify.sanitize(html, BASE_CONFIG)
+}
+
+/**
+ * Проверка поддержки санитайзера
+ */
+export const isSanitizationSupported = (): boolean => {
+  return DOMPurify.isSupported
+}

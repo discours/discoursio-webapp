@@ -34,7 +34,8 @@ import { Popover } from '../_shared/Popover'
 import { SocialNetworkInput } from '../_shared/SocialNetworkInput'
 
 import styles from '~/styles/views/ProfileSettings.module.scss'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 
 const GrowingTextarea = lazy(() => import('~/components/_shared/GrowingTextarea/GrowingTextarea'))
 
@@ -89,16 +90,6 @@ export const ProfileSettings = () => {
       setAddLinkForm(false)
     } else {
       setIncorrectUrl(true)
-    }
-  }
-
-  const handleAboutSubmit = (content: string) => {
-    try {
-      updateFormField('about', content)
-      return true
-    } catch (error) {
-      console.error('Failed to update about:', error)
-      return false
     }
   }
 
@@ -345,7 +336,7 @@ export const ProfileSettings = () => {
                       initialValue={form.bio || ''}
                       allowEnterKey={false}
                       maxLength={120}
-                      value={(value) => updateFormField('bio', value)}
+                      onChange={(value) => updateFormField('bio', sanitizeHtml(value))}
                     />
 
                     <h4>{t('About')}</h4>
@@ -353,8 +344,7 @@ export const ProfileSettings = () => {
                       bubble={true}
                       content={form.about || ''}
                       commands={['bold', 'italic', 'link', 'blockquote', 'image']}
-                      onChange={(content) => updateFormField('about', content)}
-                      onSubmit={handleAboutSubmit}
+                      onChange={(data: EditorData) => updateFormField('about', sanitizeHtml(data.content))}
                       placeholder={t('About')}
                     />
                     <div class={clsx(styles.multipleControls, 'pretty-form__item')}>

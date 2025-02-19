@@ -23,6 +23,7 @@ import { TableOfContents } from '../_shared/TableOfContents'
 
 import { DraftInput, useDrafts } from '~/context/drafts'
 import styles from '~/styles/views/EditView.module.scss'
+import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 
 export const MAX_HEADER_LIMIT = 100
 export const EMPTY_TOPIC: Topic = {
@@ -122,11 +123,16 @@ export const EditView = () => {
     }
   }
 
-  const handleInputChange = (key: keyof DraftInput, value: string) => {
-    // console.log(`[handleInputChange] ${String(key)}: ${value}`)
+  const handleInputChange = (key: keyof DraftInput, val: string) => {
+    let value = val
+    if (key === 'body' || key === 'lead') {
+      value = sanitizeHtml(val)
+    }
+
     if (key === 'title') {
       handleInputChange('slug', slugify(value))
     }
+
     const draft = currentDraft()
     if (draft) {
       updateDraft({ ...draft, [key]: value } as DraftInput)
