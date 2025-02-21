@@ -1,40 +1,112 @@
-.editorWrapper {
+.comments {
   position: relative;
-  
-  .buttons {
-    position: absolute;
-    right: 12px;
-    bottom: 8px;
-    display: flex;
-    gap: 8px;
-    z-index: 1;
+  margin-top: 2rem;
+}
 
-    button {
-      min-width: 80px;
-      height: 32px;
-      padding: 0 16px;
-      border-radius: 16px;
-      font-size: 14px;
-      font-weight: 500;
-      transition: all 0.15s ease;
+.editorButtonsWrapper {
+  margin-top: 1rem;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
-      &:first-child {
-        color: var(--gray-700);
-        background: transparent;
-        
-        &:hover {
-          background: var(--gray-50);
-        }
-      }
+  :global(.ProseMirror) {
+    min-height: 120px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
+    font-size: 0.875rem;
+    line-height: 1.6;
 
-      &:last-child {
-        color: var(--white-500);
-        background: var(--black-900);
-        
-        &:hover {
-          background: var(--black-800);
-        }
-      }
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px var(--color-primary-light);
+    }
+
+    p.is-editor-empty:first-child::before {
+      content: attr(data-placeholder);
+      float: left;
+      color: var(--color-text-secondary);
+      pointer-events: none;
+      height: 0;
     }
   }
+
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+}
+
+.commentsList {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    position: relative;
+    margin-left: 2.5rem;
+    
+    // Вертикальная линия для вложенности
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -1.5rem;
+      bottom: 0;
+      width: 1px;
+      background: var(--color-border);
+    }
+
+    // Горизонтальная линия для связи
+    &::after {
+      content: '';
+      position: absolute;
+      top: 1.5rem;
+      left: -1.5rem;
+      width: 1rem;
+      height: 1px;
+      background: var(--color-border);
+    }
+
+    &:last-child::before {
+      height: 1.5rem;
+    }
+  }
+}
+
+.noComments {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.signInMessage {
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+
+  .link {
+    color: var(--color-primary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: var(--color-text-secondary);
 } 

@@ -86,34 +86,28 @@ export const AuthorView = (props: AuthorViewProps) => {
 
   // Эффект для обработки изменения таба через браузер
   createEffect(
-    on(
-      () => params.tab,
-      async (newTab) => {
-        setCurrentTab(newTab)
+    on([currentTab, author], async ([tab, currentAuthor]) => {
+      if (tab === 'comments' && currentAuthor && !commented().length) {
+        try {
+          const result = await loadReactions({
+            by: {
+              kinds: [ReactionKind.Comment],
+              author: currentAuthor.slug
+            },
+            limit: COMMENTS_PER_PAGE,
+            offset: 0
+          })()
 
-        // Если переключились на комментарии и они еще не загружены
-        if (newTab === 'comments' && !commented().length && author()) {
-          try {
-            const result = await loadReactions({
-              by: {
-                kinds: [ReactionKind.Comment],
-                author: author()?.slug
-              },
-              limit: COMMENTS_PER_PAGE,
-              offset: 0
-            })()
-
-            if (result) {
-              addShoutReactions(result)
-              setCommented(result)
-              setLoadMoreCommentsHidden(result.length >= stats().comments)
-            }
-          } catch (error) {
-            console.error('[AuthorView] Error loading comments:', error)
+          if (result) {
+            addShoutReactions(result)
+            setCommented(result)
+            setLoadMoreCommentsHidden(result.length >= (currentAuthor.stat?.comments || 0))
           }
+        } catch (error) {
+          console.error('[AuthorView] Error loading comments:', error)
         }
       }
-    )
+    })
   )
 
   // Эффект для обновления комментариев при изменении автора или commentsByAuthor

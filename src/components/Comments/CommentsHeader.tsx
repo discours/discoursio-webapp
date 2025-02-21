@@ -24,17 +24,14 @@ export const CommentsHeader = (props: Props) => {
         <h2 class={styles.commentsHeader}>
           {t('Comments')} {props.comments.length.toString() || ''}
           <Show when={props.newComments.length > 0}>
-            <span class={styles.newReactions}>{` +${props.newComments.length}`}</span>
+            <span onClick={props.toggleNewOnly} class={styles.newReactions}>
+              {` +${props.newComments.length}`} {props.onlyNew ? `(${t('New only').toLowerCase()})` : ''}
+            </span>
           </Show>
         </h2>
       </Show>
       <Show when={props.comments.length > 0}>
         <ul class={clsx(styles.commentsFeedSwitcher, 'view-switcher')}>
-          <Show when={props.newComments.length > 0}>
-            <li classList={{ 'view-switcher__item--selected': props.onlyNew }}>
-              <Button variant="light" value={t('New only')} onClick={props.toggleNewOnly} />
-            </li>
-          </Show>
           <li classList={{ 'view-switcher__item--selected': props.order === ReactionSort.Newest }}>
             <Button
               variant="light"

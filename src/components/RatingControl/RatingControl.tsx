@@ -166,19 +166,6 @@ export const RatingControl = (props: Props) => {
     }
     setVotersListVisible(visible)
   }
-
-  const Trigger = () => (
-    <div
-      onClick={handleRatingClick}
-      class={clsx(props.comment ? styles.commentRatingValue : styles.ratingValue, {
-        [styles.commentRatingPositive]: props.comment && total() > 0,
-        [styles.commentRatingNegative]: props.comment && total() < 0
-      })}
-    >
-      {total()}
-    </div>
-  )
-
   const { t } = useLocalize()
 
   const loadMoreRatings = async () => {
@@ -191,21 +178,23 @@ export const RatingControl = (props: Props) => {
   }
 
   return (
-    <div class={clsx(props.comment ? styles.commentRating : styles.shoutRating, props.class)}>
-      <button
-        onClick={() => handleRatingChange(false)}
-        disabled={reactionsLoading()}
-        class={clsx({
-          [styles.commentRatingControl]: props.comment,
-          [styles.commentRatingControlDown]: props.comment && currentRate() === ReactionKind.Dislike
-        })}
-      >
-        <Show when={currentRate() === ReactionKind.Dislike} fallback={<Icon name="rating-control-less" />}>
+    <div class={clsx(styles.shoutRating, props.class)}>
+      <button onClick={() => handleRatingChange(false)} disabled={reactionsLoading()}>
+        <Show
+          when={currentRate() === ReactionKind.Dislike}
+          fallback={<Icon name="rating-control-less" />}>
           <Icon name="rating-control-checked" />
         </Show>
       </button>
 
-      <Popup trigger={<Trigger />} variant="tiny" onVisibilityChange={toggleVotersListVisibility}>
+      <Popup 
+        variant="tiny" 
+        onVisibilityChange={toggleVotersListVisibility} 
+        trigger={
+          <div onClick={handleRatingClick} class={clsx(styles.ratingValue)}>
+            {total()}
+          </div>
+        }>
         <div class={styles.votersListContainer}>
           <Show
             when={session()?.access_token}

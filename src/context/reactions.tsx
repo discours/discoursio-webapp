@@ -1,5 +1,5 @@
 import type { Accessor, JSX } from 'solid-js'
-import { createContext, createSignal, onCleanup, useContext } from 'solid-js'
+import { createContext, createEffect, createSignal, onCleanup, useContext } from 'solid-js'
 import { loadReactions } from '~/graphql/api/public'
 import createReactionMutation from '~/graphql/mutation/core/reaction-create'
 import destroyReactionMutation from '~/graphql/mutation/core/reaction-destroy'
@@ -8,8 +8,7 @@ import {
   MutationCreate_ReactionArgs,
   MutationUpdate_ReactionArgs,
   QueryLoad_Reactions_ByArgs,
-  Reaction,
-  ReactionKind
+  Reaction
 } from '~/graphql/schema/core.gen'
 import { useLocalize } from './localize'
 import { useSession } from './session'
@@ -30,8 +29,17 @@ type ReactionsContextType = {
 
 const ReactionsContext = createContext<ReactionsContextType>({} as ReactionsContextType)
 
-export function useReactions() {
-  return useContext(ReactionsContext)
+export const useReactions = () => {
+  const context = useContext(ReactionsContext)
+
+  createEffect(() => {
+    console.log('[ReactionsContext] State:', {
+      entitiesCount: Object.keys(context.reactionEntities).length,
+      entities: context.reactionEntities
+    })
+  })
+
+  return context
 }
 
 export const ReactionsProvider = (props: { children: JSX.Element }) => {
@@ -45,43 +53,74 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
   const { client } = useSession()
 
   const addShoutReactions = (rrr: Reaction[]) => {
+    console.log('[ReactionsProvider] Adding reactions:', {
+      count: rrr.length,
+      reactions: rrr
+    })
+
     const newReactionEntities = { ...reactionEntities() }
     const newReactionsByShout = { ...reactionsByShout() }
-    const newReactionsByAuthor = { ...reactionsByAuthor() }
 
     rrr.forEach((reaction) => {
+      // Проверяем валидность данных
+      if (!reaction.id || !reaction.shout?.id) {
+        console.warn('[ReactionsProvider] Invalid reaction:', reaction)
+        return
+      }
+
       newReactionEntities[reaction.id] = reaction
 
-      if (!newReactionsByShout[reaction.shout.id]) newReactionsByShout[reaction.shout.id] = []
-      newReactionsByShout[reaction.shout.id].push(reaction)
+      if (!newReactionsByShout[reaction.shout.id]) {
+        newReactionsByShout[reaction.shout.id] = []
+      }
 
-      if (!newReactionsByAuthor[reaction.created_by.id]) newReactionsByAuthor[reaction.created_by.id] = []
-      newReactionsByAuthor[reaction.created_by.id].push(reaction)
+      // Проверяем на дубликаты
+      const existingIndex = newReactionsByShout[reaction.shout.id].findIndex((r) => r.id === reaction.id)
+
+      if (existingIndex === -1) {
+        newReactionsByShout[reaction.shout.id].push(reaction)
+      } else {
+        newReactionsByShout[reaction.shout.id][existingIndex] = reaction
+      }
+    })
+
+    console.log('[ReactionsProvider] Updated state:', {
+      entities: Object.keys(newReactionEntities).length,
+      byShout: Object.keys(newReactionsByShout).length
     })
 
     setReactionEntities(newReactionEntities)
     setReactionsByShout(newReactionsByShout)
-    setReactionsByAuthor(newReactionsByAuthor)
-
-    const newCommentsByAuthor = Object.fromEntries(
-      Object.entries(newReactionsByAuthor).map(([authorId, reactions]) => [
-        authorId,
-        reactions.filter((x) => x.kind === ReactionKind.Comment)
-      ])
-    )
-
-    setCommentsByAuthor(newCommentsByAuthor)
   }
 
   const loadReactionsBy = async (opts: QueryLoad_Reactions_ByArgs): Promise<Reaction[]> => {
+    console.log('[ReactionsProvider] Loading reactions:', opts)
     setReactionsLoading(true)
-    if (!opts.by) console.warn('reactions provider got wrong opts')
-    const fetcher = await loadReactions(opts)
-    const result = (await fetcher()) || []
-    // console.debug('[context.reactions] loaded', result)
-    if (result) addShoutReactions(result)
-    setReactionsLoading(false)
-    return result
+
+    try {
+      if (!opts.by) {
+        throw new Error('reactions provider got wrong opts')
+      }
+
+      const fetcher = await loadReactions(opts)
+      const result = await fetcher()
+
+      console.log('[ReactionsProvider] Loaded reactions:', {
+        count: result?.length,
+        data: result
+      })
+
+      if (result?.length) {
+        addShoutReactions(result)
+      }
+
+      return result || []
+    } catch (error) {
+      console.error('[ReactionsProvider] Load error:', error)
+      return []
+    } finally {
+      setReactionsLoading(false)
+    }
   }
 
   const createShoutReaction = async (input: MutationCreate_ReactionArgs): Promise<Reaction | undefined> => {
