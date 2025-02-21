@@ -1,11 +1,11 @@
-import { For, Show, createMemo } from 'solid-js'
 import { Reaction, ReactionSort } from '~/graphql/schema/core.gen'
+import { createMemo, For, Show } from 'solid-js'
 import { byCreated } from '~/utils/sort'
-import stylesArticle from '../Article/Article.module.scss'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
-import { Comment } from './Comment'
+import { CommentCard } from './CommentCard'
 
 import styles from './CommentsList.module.scss'
+import stylesArticle from '../Article/Article.module.scss'
 
 export interface CommentsListProps {
   comments: Reaction[]
@@ -14,8 +14,8 @@ export interface CommentsListProps {
   pageSize?: number
   showArticleLink?: boolean
   withFilter?: boolean
-  onFiltersChange?: (filters: { sort?: ReactionSort }) => void
   onDeleteComment?: (id: number) => void
+  onFiltersChange?: (filters: { sort?: ReactionSort }) => void
   sortOrder?: ReactionSort
 }
 
@@ -39,7 +39,7 @@ export const CommentsList = (props: CommentsListProps) => {
           <ul class={stylesArticle.comments}>
             <For each={sortedComments()}>
               {(comment) => (
-                <Comment
+                <CommentCard
                   comment={comment}
                   showArticleLink={props.showArticleLink}
                   onDelete={props.onDeleteComment}

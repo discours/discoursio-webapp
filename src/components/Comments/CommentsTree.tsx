@@ -10,6 +10,7 @@ import {
   on,
   untrack
 } from 'solid-js'
+import { useDrafts } from '~/context/drafts'
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
@@ -29,7 +30,7 @@ import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { Button } from '../_shared/Button'
 import { Loading } from '../_shared/Loading'
 import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
-import { Comment as CommentCard } from './Comment'
+import { CommentCard } from './CommentCard'
 import { CommentsHeader } from './CommentsHeader'
 
 import styles from './CommentsTree.module.scss'
@@ -48,6 +49,7 @@ interface ErrorBoundaryError extends Error {
 export const CommentsTree = (props: Props) => {
   const { session } = useSession()
   const { t } = useLocalize()
+  const { getEditorContent, setEditorContent } = useDrafts()
   const [onlyNew, setOnlyNew] = createSignal(false)
   const [clickedReplyId, setClickedReplyId] = createSignal<number>()
   const { reactionEntities, createShoutReaction, updateShoutReaction, loadReactionsBy } = useReactions()
@@ -118,7 +120,6 @@ export const CommentsTree = (props: Props) => {
 
   const [posting, setPosting] = createSignal(false)
   const [replyTo, setReplyTo] = createSignal<number | null>(null)
-  const [editorContent, setEditorContent] = createSignal('')
 
   const handleSubmitCommentValue = async (value: string, commentId?: number) => {
     setPosting(true)
@@ -176,7 +177,7 @@ export const CommentsTree = (props: Props) => {
 
   createEffect(
     on(
-      editorContent,
+      () => getEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId() || 'new'}`),
       (content) => {
         if (!content) return
         console.log('[CommentsTree] Editor content updated:', content)
@@ -186,16 +187,22 @@ export const CommentsTree = (props: Props) => {
   )
 
   const handleSubmitComment = async (commentId?: number) => {
-    if (!editorContent()) return
+    if (!getEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId() || 'new'}`)) return
 
     setPosting(true)
     try {
-      await handleSubmitCommentValue(editorContent(), commentId)
-      batch(() => {
-        setEditorContent('')
-        setReplyTo(null)
-      })
-      return true
+      const success = await handleSubmitCommentValue(
+        getEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId() || 'new'}`),
+        commentId
+      )
+
+      if (success) {
+        batch(() => {
+          setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId() || 'new'}`, '')
+          setReplyTo(null)
+        })
+      }
+      return success
     } catch (error) {
       console.error(error)
       return false
@@ -206,7 +213,7 @@ export const CommentsTree = (props: Props) => {
 
   const handleClear = () => {
     batch(() => {
-      setEditorContent('')
+      setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId() || 'new'}`, '')
       setReplyTo(null)
     })
   }
@@ -273,9 +280,12 @@ export const CommentsTree = (props: Props) => {
                 commands={['bold', 'italic', 'link', 'image', 'blockquote']}
                 placeholder={replyTo() ? t('Write a reply...') : t('Write a comment...')}
                 onChange={(data) => {
-                  untrack(() => {
-                    setEditorContent(data.content)
-                  })
+                  untrack(() =>
+                    setEditorContent(
+                      `draft-${props.shoutId}-comment-${clickedReplyId() || 'new'}`,
+                      data.content
+                    )
+                  )
                 }}
                 bubble={false}
               />

@@ -31,9 +31,9 @@ export type DraftInput = {
 }
 
 type DraftsContextType = {
-  currentDraft: Accessor<Draft | undefined>
-  setCurrentDraft: (draft: Draft | undefined) => Promise<void>
   drafts: Accessor<Draft[]>
+  getEditorContent: (editorId: string) => string
+  setEditorContent: (editorId: string, content: string) => void
   loadDrafts: () => Promise<void>
   createDraft: (draft: DraftInput) => Promise<void>
   updateDraft: (draft: DraftInput) => Promise<void>
@@ -51,8 +51,28 @@ export const DraftsContext = createContext<DraftsContextType>({} as DraftsContex
 
 export const DraftsProvider = (props: { children: JSX.Element }) => {
   const { client } = useSession()
+  // все доступные для редактирования черновики
   const [drafts, setDrafts] = createSignal<Draft[]>([])
-  const [currentDraft, setCurrentDraft] = createSignal<Draft | undefined>(undefined)
+  // содержимое всех редакторов
+  const [editorsContent, setEditorsContent] = createSignal<Record<string, string>>({})
+
+  const getEditorContent = (editorId: string) => {
+    const cachedContent = localStorage.getItem(editorId)
+    if (cachedContent) {
+      return cachedContent
+    }
+    return editorId in editorsContent() ? editorsContent()[editorId] : ''
+  }
+
+  const setEditorContent = (editorId: string, content: string) => {
+    setEditorsContent({ ...editorsContent(), [editorId]: content })
+    if (content) {
+      localStorage.setItem(editorId, content)
+    } else {
+      localStorage.removeItem(editorId)
+    }
+  }
+
   const loadDrafts = async () => {
     const response = await client()?.query(loadDraftsQuery, {}, { fetchPolicy: 'network-only' })
     if (response?.data?.drafts) {
@@ -132,8 +152,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     unpublishDraft,
     publishShout,
     unpublishShout,
-    currentDraft,
-    setCurrentDraft,
+    getEditorContent,
+    setEditorContent,
     isEditorPanelVisible,
     setIsEditorPanelVisible,
     toggleEditorPanel

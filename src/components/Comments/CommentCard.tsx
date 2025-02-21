@@ -1,6 +1,6 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, Suspense, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { For, JSX, Show, Suspense, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { Icon } from '~/components/_shared/Icon'
@@ -12,11 +12,13 @@ import { useSnackbar, useUI } from '~/context/ui'
 import { loadCommentsMyRates } from '~/graphql/api/private'
 import { Author, Reaction, ReactionKind } from '~/graphql/schema/core.gen'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { AuthorLink } from '../../Author/AuthorLink'
-import { Userpic } from '../../Author/Userpic'
-import { CommentDate } from '../CommentDate'
+import { AuthorLink } from '../Author/AuthorLink'
+import { Userpic } from '../Author/Userpic'
+import { CommentDate } from './CommentDate'
+import { useDrafts } from '~/context/drafts'
 
-import styles from './Comment.module.scss'
+import styles from './CommentCard.module.scss'
+
 type Props = {
   comment: Reaction
   compact?: boolean
@@ -31,30 +33,21 @@ type Props = {
   onDelete?: (id: number) => void
 }
 
-export const Comment = (props: Props) => {
+export const CommentCard = (props: Props): JSX.Element => {
   const { t } = useLocalize()
   const [isReplyVisible, setIsReplyVisible] = createSignal(false)
   const [loading, setLoading] = createSignal(false)
   const [editMode, setEditMode] = createSignal(false)
-  const [editedBody, setEditedBody] = createSignal<string>()
+  const [body, setEditedBody] = createSignal<string>()
   const { session, client } = useSession()
   const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
   const { deleteShoutReaction } = useReactions()
   const { showConfirm } = useUI()
   const { showSnackbar } = useSnackbar()
+  const { setEditorContent } = useDrafts()
   const canEdit = () =>
     Boolean(author()?.id) &&
     (props.comment?.created_by?.slug === author()?.slug || session()?.user?.roles?.includes('editor'))
-
-  const body = createMemo(() => {
-    const content = editedBody() ? editedBody()?.trim() : props.comment.body?.trim() || ''
-    // console.log('[Comment] body memo recalculated:', {
-    //   editedBody: editedBody(),
-    //   commentBody: props.comment.body,
-    //   result: content
-    // })
-    return content
-  })
 
   const handleDelete = async () => {
     if (props.comment?.id) {
@@ -121,6 +114,31 @@ export const Comment = (props: Props) => {
       { defer: true }
     )
   )
+
+  const handleReplySubmit = () => {
+    console.log('handleReplySubmit')
+    setIsReplyVisible(false)
+    setEditorContent(`shout-${props.comment.shout.id}-comment-${props.clickedReplyId}`, body() || '')
+  }
+
+  const handleReplyCancel = () => {
+    console.log('handleReplyCancel')
+    setIsReplyVisible(false)
+    setEditorContent(`shout-${props.comment.shout.id}-comment-${props.comment.id}`, body() || '')
+  }
+
+  const handleEditCancel = () => {
+    console.log('handleEditCancel')
+    setEditMode(false)
+    setEditedBody(body())
+  }
+
+  const handleEditSubmit = () => {
+    console.log('handleEditSubmit')
+    setEditMode(false)
+    setEditorContent(`shout-${props.comment.shout.id}-comment-${props.comment.id}`, body() || '')
+  }
+
   return (
     <li
       id={`comment_${props.comment.id}`}
@@ -173,11 +191,21 @@ export const Comment = (props: Props) => {
             <Show when={editMode()} fallback={<div innerHTML={body()} />}>
               <Suspense fallback={<p>{t('Loading')}</p>}>
                 <SimpleRichEditor
-                  content={editedBody() || props.comment.body || ''}
+                  content={body() || props.comment.body || ''}
+                  editorId={`shout-${props.comment.shout.id}-comment-${props.comment.id}`}
                   placeholder={t('Write a comment...')}
                   commands={['bold', 'italic', 'link', 'image', 'blockquote']}
                   onChange={(data) => setEditedBody(data.content)}
                 />
+
+                <div class={styles.editButtons}>
+                  <button class={styles.editButton} onClick={handleEditSubmit}>
+                    {t('Reply')}
+                  </button>
+                  <button class={styles.editButton} onClick={handleEditCancel}>
+                    {t('Cancel')}
+                  </button>
+                </div>
               </Suspense>
             </Show>
           </div>
@@ -237,10 +265,19 @@ export const Comment = (props: Props) => {
             <Show when={isReplyVisible() && props.clickedReplyId === props.comment.id}>
               <Suspense fallback={<p>{t('Loading')}</p>}>
                 <SimpleRichEditor
+                  editorId={`shout-${props.comment.shout.id}-comment-${props.comment.id}`}
                   placeholder={t('Write a comment...')}
                   commands={['bold', 'italic', 'link', 'image', 'blockquote']}
                   onChange={(data) => setEditedBody(data.content)}
                 />
+                <div class={styles.replyButtons}>
+                  <button class={styles.replyButton} onClick={handleReplySubmit}>
+                    {t('Reply')}
+                  </button>
+                  <button class={styles.replyButton} onClick={handleReplyCancel}>
+                    {t('Cancel')}
+                  </button>
+                </div>
               </Suspense>
             </Show>
           </Show>
@@ -249,8 +286,8 @@ export const Comment = (props: Props) => {
       <Show when={props.sortedComments}>
         <ul>
           <For each={props.sortedComments?.filter((r) => r.reply_to === props.comment.id)}>
-            {(c) => (
-              <Comment
+            {(c: Reaction) => (
+              <CommentCard
                 sortedComments={props.sortedComments}
                 isArticleAuthor={props.isArticleAuthor}
                 comment={c}

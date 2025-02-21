@@ -1,5 +1,5 @@
 import { RouteSectionProps, redirect } from '@solidjs/router'
-import { createEffect, createMemo, lazy, on } from 'solid-js'
+import { createEffect, createMemo, createSignal, lazy, on } from 'solid-js'
 import { AuthGuard } from '~/components/AuthGuard'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { useDrafts } from '~/context/drafts'
@@ -11,8 +11,8 @@ const EditView = lazy(() => import('~/components/Views/EditView'))
 
 export default (props: RouteSectionProps) => {
   const { t } = useLocalize()
-  const { currentDraft, drafts, setCurrentDraft } = useDrafts()
-
+  const { drafts } = useDrafts()
+  const [currentDraft, setCurrentDraft] = createSignal<Draft>()
   createEffect(
     on(
       () => props.params.id,
@@ -52,7 +52,7 @@ export default (props: RouteSectionProps) => {
   return (
     <PageLayout title={`${t('Discours')} :: ${t(title())}`}>
       <AuthGuard>
-        <EditView />
+        <EditView draft={currentDraft() as Draft} />
       </AuthGuard>
     </PageLayout>
   )

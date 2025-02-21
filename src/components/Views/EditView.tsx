@@ -44,12 +44,12 @@ const handleScrollTopButtonClick = (ev: MouseEvent | TouchEvent) => {
  *
  * @returns EditView component
  */
-export const EditView = () => {
+export const EditView = (props: { draft: Draft }) => {
   const { t } = useLocalize()
-  const { updateDraft, currentDraft } = useDrafts()
+  const { updateDraft, getEditorContent, setEditorContent } = useDrafts()
   const [inputDataErrors, setFormErrors] = createSignal({} as Record<keyof DraftInput, string>)
   const [subtitleInput, setSubtitleInput] = createSignal<HTMLTextAreaElement | undefined>()
-
+  const [currentDraft, setCurrentDraft] = createSignal<Draft>(props.draft)
   // Handling when draft data is changed
   const [isSubtitleVisible, setIsSubtitleVisible] = createSignal(false)
   const [isLeadVisible, setIsLeadVisible] = createSignal(false)
@@ -127,6 +127,7 @@ export const EditView = () => {
     let value = val
     if (key === 'body' || key === 'lead') {
       value = sanitizeHtml(val)
+      setEditorContent(`draft-${currentDraft()?.id}-${key}`, value)
     }
 
     if (key === 'title') {
@@ -135,7 +136,9 @@ export const EditView = () => {
 
     const draft = currentDraft()
     if (draft) {
-      updateDraft({ ...draft, [key]: value } as DraftInput)
+      const updated = { ...draft, [key]: value } as Draft
+      setCurrentDraft(updated)
+      updateDraft({ ...updated } as DraftInput)
     }
   }
 
@@ -230,11 +233,12 @@ export const EditView = () => {
                   </Show>
                   <Show when={isLeadVisible()}>
                     <SimpleRichEditor
+                      editorId={`draft-${currentDraft()?.id}-lead`}
                       bubble={true}
                       hideButtons={true}
                       commands={['bold', 'italic', 'link']}
                       placeholder={t('A short introduction to keep the reader interested')}
-                      content={currentDraft()?.lead || ''}
+                      content={getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''}
                       onBlur={() => hideLeadInput()}
                       onChange={(data: EditorData) => handleInputChange('lead', data.content)}
                     />
@@ -351,8 +355,8 @@ export const EditView = () => {
                 commands={['bold', 'italic', 'link', 'blockquote', 'image']}
                 plus={true}
                 bubble={true}
-                editorId={`editor-${currentDraft()?.id}`}
-                content={currentDraft()?.body || ''}
+                editorId={`draft-${currentDraft()?.id}-body`}
+                content={getEditorContent(`draft-${currentDraft()?.id}-body`) || ''}
                 readOnly={false}
                 limit={10000}
                 onChange={(data: EditorData) => handleInputChange('body', data.content)}
