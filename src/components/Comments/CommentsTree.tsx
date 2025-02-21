@@ -332,18 +332,27 @@ export const CommentsTree = (props: Props) => {
   const handleDelete = async (id: number) => {
     if (!id) return
 
+    if (isLoading()) return
+
     setIsLoading(true)
-    saveScrollPosition() // Сохраняем позицию скролла
+    saveScrollPosition()
 
     try {
-      const isConfirmed = await showConfirm({
-        confirmBody: t('Are you sure you want to delete this comment?'),
-        confirmButtonLabel: t('Delete'),
-        confirmButtonVariant: 'danger',
-        declineButtonVariant: 'primary'
-      })
+      let confirmed = false
 
-      if (isConfirmed) {
+      try {
+        confirmed = await showConfirm({
+          confirmBody: t('Are you sure you want to delete this comment?'),
+          confirmButtonLabel: t('Delete'),
+          confirmButtonVariant: 'danger',
+          declineButtonVariant: 'primary'
+        })
+      } catch (error) {
+        console.error('[CommentsTree] Confirm dialog error:', error)
+        return
+      }
+
+      if (confirmed) {
         const result = await deleteShoutReaction(id)
         const notificationType = result?.error ? 'error' : 'success'
         const notificationMessage = result?.error
@@ -357,7 +366,7 @@ export const CommentsTree = (props: Props) => {
         })
 
         if (!result?.error) {
-          await refetch() // Обновляем список после успешного удаления
+          await refetch()
         }
       }
     } catch (error) {
@@ -368,11 +377,11 @@ export const CommentsTree = (props: Props) => {
       })
     } finally {
       setIsLoading(false)
-      restoreScrollPosition() // Восстанавливаем позицию скролла
+      restoreScrollPosition()
     }
   }
 
-  const CommentBranch = (props: { parentId: number, shoutId: number }) => {
+  const CommentBranch = (props: { parentId: number; shoutId: number }) => {
     const children = createMemo(() => commentTree()[props.parentId] || [])
 
     return (
@@ -466,12 +475,7 @@ export const CommentsTree = (props: Props) => {
                   commands={['bold', 'italic', 'link', 'image', 'blockquote']}
                   placeholder={t('Write a comment...')}
                   onChange={(data) => {
-                    untrack(() =>
-                      setEditorContent(
-                        `draft-${props.shoutId}-comment-new`,
-                        data.content
-                      )
-                    )
+                    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, data.content))
                   }}
                 />
                 <div class={styles.buttons}>

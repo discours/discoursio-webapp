@@ -62,7 +62,8 @@ export const CommentCard = (props: Props) => {
     return lastSeen > commentDate
   })
 
-  const handleDelete = async () => {
+  const handleDelete = async (ev?: MouseEvent) => {
+    ev?.stopPropagation()
     if (props.comment?.id) {
       setLoading(true)
       saveScrollPosition()
@@ -232,13 +233,12 @@ export const CommentCard = (props: Props) => {
               >
                 <Icon name="edit" class={styles.icon} />
               </button>
-              <button
-                class={clsx(styles.commentControl, styles.commentControlDelete)}
-                onClick={handleDelete}
+              <Button
+                variant="danger"
+                onClick={() => handleDelete()}
                 disabled={loading()}
-              >
-                <Icon name="delete" class={styles.icon} />
-              </button>
+                value={<Icon name="delete" class={styles.icon} />}
+              />
             </div>
           </Show>
 

@@ -90,7 +90,14 @@ export const CommentsList = (props: CommentsListProps) => {
                         }}
                       />
                       <div class={styles.replyButtons}>
-                        <Button value={t('Cancel')} variant="secondary" onClick={() => setReplyTo(null)} />
+                        <Button
+                          value={t('Cancel')}
+                          variant="secondary"
+                          onClick={(ev?: MouseEvent) => {
+                            ev?.stopPropagation()
+                            setReplyTo(null)
+                          }}
+                        />
                         <Button
                           value={t('Reply')}
                           variant="primary"
