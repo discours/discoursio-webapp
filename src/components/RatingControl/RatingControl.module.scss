@@ -14,55 +14,6 @@
     }
 }
 
-.commentRating {
-    align-items: center;
-    display: flex;
-    font-weight: bold;
-
-    .commentRatingValue {
-        padding: 0 0.3em;
-        margin: 0 0.6rem;
-        font-size: 1.2rem;
-        cursor: pointer;
-        transition: opacity 0.3s ease-in-out;
-
-        &:hover {
-            opacity: 0.5;
-        }
-    }
-
-    .commentRatingPositive {
-        color: #2bb452;
-    }
-
-    .commentRatingNegative {
-        color: #d00820;
-    }
-
-    .commentRatingControl {
-        border-left: 6px solid transparent;
-        border-right: 6px solid transparent;
-        height: 0;
-        width: 0;
-    }
-
-    .commentRatingControlUp {
-        border-bottom: 8px solid rgb(0 0 0 / 40%);
-
-        &.voted {
-            border-bottom-color: #2bb452;
-        }
-    }
-
-    .commentRatingControlDown {
-        border-top: 8px solid rgb(0 0 0 / 40%);
-
-        &.voted {
-            border-top-color: #d00820;
-        }
-    }
-}
-
 .votersListContainer {
     max-height: 300px;
     overflow-y: auto;

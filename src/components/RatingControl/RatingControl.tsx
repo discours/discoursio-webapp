@@ -180,21 +180,20 @@ export const RatingControl = (props: Props) => {
   return (
     <div class={clsx(styles.shoutRating, props.class)}>
       <button onClick={() => handleRatingChange(false)} disabled={reactionsLoading()}>
-        <Show
-          when={currentRate() === ReactionKind.Dislike}
-          fallback={<Icon name="rating-control-less" />}>
+        <Show when={currentRate() === ReactionKind.Dislike} fallback={<Icon name="rating-control-less" />}>
           <Icon name="rating-control-checked" />
         </Show>
       </button>
 
-      <Popup 
-        variant="tiny" 
-        onVisibilityChange={toggleVotersListVisibility} 
+      <Popup
+        variant="tiny"
+        onVisibilityChange={toggleVotersListVisibility}
         trigger={
           <div onClick={handleRatingClick} class={clsx(styles.ratingValue)}>
             {total()}
           </div>
-        }>
+        }
+      >
         <div class={styles.votersListContainer}>
           <Show
             when={session()?.access_token}
@@ -218,14 +217,7 @@ export const RatingControl = (props: Props) => {
         </div>
       </Popup>
 
-      <button
-        onClick={() => handleRatingChange(true)}
-        disabled={reactionsLoading()}
-        class={clsx({
-          [styles.commentRatingControl]: props.comment,
-          [styles.commentRatingControlUp]: props.comment && currentRate() === ReactionKind.Like
-        })}
-      >
+      <button onClick={() => handleRatingChange(true)} disabled={reactionsLoading()}>
         <Show when={currentRate() === ReactionKind.Like} fallback={<Icon name="rating-control-more" />}>
           <Icon name="rating-control-checked" />
         </Show>

@@ -77,7 +77,7 @@ export const CommentsList = (props: CommentsListProps) => {
                   showArticleLink={props.showArticleLink}
                   onDelete={props.onDeleteComment}
                   onReply={handleReply}
-                  clickedReplyId={clickedReplyId()}
+                  clickedReplyId={clickedReplyId}
                 >
                   <Show when={replyTo() === comment.id}>
                     <div class={styles.replyEditor}>

@@ -26,7 +26,7 @@ import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { Button } from '../_shared/Button'
-import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
+import { LoadMoreItems } from '../_shared/LoadMoreWrapper'
 import { Loading } from '../_shared/Loading'
 import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { CommentCard } from './CommentCard'
@@ -41,10 +41,6 @@ type Props = {
   shoutSlug: string
   shoutId: number
   onReply?: (id: number) => void
-}
-
-interface ErrorBoundaryError extends Error {
-  message: string
 }
 
 export const CommentsTree = (props: Props) => {
@@ -128,9 +124,7 @@ export const CommentsTree = (props: Props) => {
 
   const { seen } = useFeed()
   const shoutLastSeen = createMemo(() => seen()[props.shoutSlug] ?? 0)
-
   const [isFirstLoad, setIsFirstLoad] = createSignal(true)
-
   const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
 
   const [commentsResource, { refetch }] = createResource<Reaction[], string>(
@@ -292,7 +286,7 @@ export const CommentsTree = (props: Props) => {
       setReplyTo(commentId)
       setClickedReplyId(commentId)
       // Очищаем предыдущий черновик
-      setEditorContent(`draft-${props.shoutId}-comment-${commentId}`, '')
+      setEditorContent(`draft-${props.shoutId}-comment-${commentId}-reply`, '')
     })
   }
 
@@ -309,6 +303,7 @@ export const CommentsTree = (props: Props) => {
     </div>
   )
 
+  // TODO: use loadMoreComments
   const loadMoreComments = async (offset: number): Promise<LoadMoreItems | undefined> => {
     try {
       const response = await loadReactionsBy({
@@ -377,12 +372,41 @@ export const CommentsTree = (props: Props) => {
     }
   }
 
-  const CommentBranch = (props: { parentId: number }) => {
+  const CommentBranch = (props: { parentId: number, shoutId: number }) => {
     const children = createMemo(() => commentTree()[props.parentId] || [])
 
     return (
-      <Show when={children().length > 0}>
+      <Show when={children().length > 0 || clickedReplyId() === props.parentId}>
         <ul class={styles.commentsList}>
+          <Show when={clickedReplyId() === props.parentId}>
+            <li class={styles.replyEditor}>
+              <div class={styles.editorButtonsWrapper}>
+                <SimpleRichEditor
+                  editorId={`draft-${props.shoutId}-comment-${clickedReplyId()}`}
+                  commands={['bold', 'italic', 'link', 'image', 'blockquote']}
+                  placeholder={t('Write a reply...')}
+                  onChange={(data) => {
+                    untrack(() =>
+                      setEditorContent(
+                        `draft-${props.shoutId}-comment-${clickedReplyId()}-reply`,
+                        data.content
+                      )
+                    )
+                  }}
+                  bubble={false}
+                />
+                <div class={styles.buttons}>
+                  <Button value={t('Cancel')} variant="secondary" onClick={handleClear} />
+                  <Button
+                    value={posting() ? t('Saving...') : t('Save')}
+                    variant="primary"
+                    onClick={() => handleSubmitComment(clickedReplyId())}
+                    disabled={posting()}
+                  />
+                </div>
+              </div>
+            </li>
+          </Show>
           <For each={children()}>
             {(comment) => (
               <CommentCard
@@ -391,9 +415,9 @@ export const CommentsTree = (props: Props) => {
                 lastSeen={shoutLastSeen()}
                 onDelete={handleDelete}
                 onReply={handleReply}
-                clickedReplyId={clickedReplyId()}
+                clickedReplyId={clickedReplyId}
               >
-                <CommentBranch parentId={comment.id} />
+                <CommentBranch parentId={comment.id} shoutId={props.shoutId} />
               </CommentCard>
             )}
           </For>
@@ -425,42 +449,43 @@ export const CommentsTree = (props: Props) => {
                     lastSeen={shoutLastSeen()}
                     onDelete={handleDelete}
                     onReply={handleReply}
-                    clickedReplyId={clickedReplyId()}
+                    clickedReplyId={clickedReplyId}
                   >
-                    <CommentBranch parentId={comment.id} />
+                    <CommentBranch parentId={comment.id} shoutId={props.shoutId} />
                   </CommentCard>
                 )}
               </For>
             </ul>
           </Show>
 
-          <ShowIfAuthenticated fallback={<FallbackMessage />}>
-            <div class={styles.editorButtonsWrapper}>
-              <SimpleRichEditor
-                editorId={`draft-${props.shoutId}-comment-${clickedReplyId() || 'new'}`}
-                commands={['bold', 'italic', 'link', 'image', 'blockquote']}
-                placeholder={replyTo() ? t('Write a reply...') : t('Write a comment...')}
-                onChange={(data) => {
-                  untrack(() =>
-                    setEditorContent(
-                      `draft-${props.shoutId}-comment-${clickedReplyId() || 'new'}`,
-                      data.content
+          <Show when={!clickedReplyId()}>
+            <ShowIfAuthenticated fallback={<FallbackMessage />}>
+              <div class={styles.editorButtonsWrapper}>
+                <SimpleRichEditor
+                  editorId={`draft-${props.shoutId}-comment-new`}
+                  commands={['bold', 'italic', 'link', 'image', 'blockquote']}
+                  placeholder={t('Write a comment...')}
+                  onChange={(data) => {
+                    untrack(() =>
+                      setEditorContent(
+                        `draft-${props.shoutId}-comment-new`,
+                        data.content
+                      )
                     )
-                  )
-                }}
-                bubble={false}
-              />
-              <div class={styles.buttons}>
-                <Button value={t('Cancel')} variant="secondary" onClick={handleClear} />
-                <Button
-                  value={posting() ? t('Saving...') : t('Save')}
-                  variant="primary"
-                  onClick={() => handleSubmitComment(clickedReplyId())}
-                  disabled={posting()}
+                  }}
                 />
+                <div class={styles.buttons}>
+                  <Button value={t('Cancel')} variant="secondary" onClick={handleClear} />
+                  <Button
+                    value={posting() ? t('Saving...') : t('Save')}
+                    variant="primary"
+                    onClick={() => handleSubmitComment()}
+                    disabled={posting()}
+                  />
+                </div>
               </div>
-            </div>
-          </ShowIfAuthenticated>
+            </ShowIfAuthenticated>
+          </Show>
         </Show>
       </div>
     </ErrorBoundary>

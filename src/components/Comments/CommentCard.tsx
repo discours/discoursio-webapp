@@ -1,6 +1,6 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { JSX, Show, batch, createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
+import { Accessor, JSX, Show, batch, createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
 import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { Button } from '~/components/_shared/Button'
@@ -29,7 +29,7 @@ type Props = {
   showArticleLink?: boolean
   myRate?: ReactionKind
   onReply?: (id: number) => void
-  clickedReplyId?: number
+  clickedReplyId?: Accessor<number | undefined>
   onDelete?: (id: number) => void
   children?: JSX.Element
 }
