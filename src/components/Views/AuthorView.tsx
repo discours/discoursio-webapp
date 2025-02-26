@@ -1,6 +1,6 @@
 import { A, useLocation, useParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, createResource, Suspense } from 'solid-js'
 import { CommentsList } from '~/components/Comments/CommentsList'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
@@ -24,6 +24,8 @@ import { Placeholder } from '../Feed/Placeholder'
 import { Row1 } from '../Feed/Row1'
 import { Row2 } from '../Feed/Row2'
 import { Row3 } from '../Feed/Row3'
+
+import loadAuthorFollowsQuery from '~/graphql/query/core/author-follows'
 
 import styles from '~/styles/views/Author.module.scss'
 
@@ -78,6 +80,15 @@ export const AuthorView = (props: AuthorViewProps) => {
 
   const { commentsByAuthor, addShoutReactions } = useReactions()
   const { feedByAuthor } = useFeed()
+
+  const [myFollowsResource] = createResource(
+    () => session()?.user?.app_data?.profile?.slug,
+    async (slug) => {
+      if (!slug || !client()) return null
+      const response = await client()?.query(loadAuthorFollowsQuery, { slug }).toPromise()
+      return response?.data?.get_author_follows || { authors: [], topics: [] }
+    }
+  )
 
   // Обновляем мемо для статистики с дефолтными значениями
   const stats = createMemo<AuthorStats>(() => ({
@@ -145,17 +156,29 @@ export const AuthorView = (props: AuthorViewProps) => {
   // Объединенный эффект для загрузки автора и его подписок
   createEffect(
     on(
-      () => session()?.user?.app_data?.profile,
-      async (meData?: Author) => {
+      [
+        () => session()?.user?.app_data?.profile,
+        () => myFollowers(),
+        () => myFollowsResource()
+      ],
+      async ([meData, followers, follows]) => {
         const slug = props.authorSlug
 
         if (slug && meData?.slug === slug) {
           setAuthor(meData)
-          setFollowers(myFollowers() || [])
-          setFollowersLoaded(true)
-          setFollowingArray([...(myFollows?.topics || []), ...(myFollows?.authors || [])])
-          setFollowingsLoaded(true)
-
+          
+          // Only set followers when they're available
+          if (followers) {
+            setFollowers(followers)
+            setFollowersLoaded(true)
+          }
+          
+          // Only set follows when they're available
+          if (follows) {
+            setFollowingArray([...(follows.authors || []), ...(follows.topics || [])])
+            setFollowingsLoaded(true)
+          }
+  
           // Убедимся, что статистика существует
           if (!meData.stat) {
             console.error('Missing stats for current user', meData)
@@ -374,28 +397,30 @@ export const AuthorView = (props: AuthorViewProps) => {
   return (
     <div class={styles.authorPage}>
       <div class="wide-container">
-        <Show when={author() && followersLoaded() && followingsLoaded()} fallback={<Loading />}>
-          <>
-            <div class={styles.authorHeader}>
-              <AuthorCard
-                author={author() as Author}
-                followers={followers() || []}
-                flatFollows={followingArray() || []}
-              />
-            </div>
-            <div class={clsx(styles.groupControls, 'row')}>
-              <TabNavigator />
-              <div class={clsx('col-md-8', styles.additionalControls)}>
-                <Show when={typeof author()?.stat?.rating === 'number'}>
-                  <div class={styles.ratingContainer}>
-                    {t('All posts rating')}
-                    <AuthorShoutsRating author={author() as Author} class={styles.ratingControl} />
-                  </div>
-                </Show>
+        <Suspense fallback={<Loading />}>
+          <Show when={author() && followersLoaded() && followingsLoaded()}>
+            <>
+              <div class={styles.authorHeader}>
+                <AuthorCard
+                  author={author() as Author}
+                  followers={followers() || []}
+                  flatFollows={followingArray() || []}
+                />
               </div>
-            </div>
-          </>
-        </Show>
+              <div class={clsx(styles.groupControls, 'row')}>
+                <TabNavigator />
+                <div class={clsx('col-md-8', styles.additionalControls)}>
+                  <Show when={typeof author()?.stat?.rating === 'number'}>
+                    <div class={styles.ratingContainer}>
+                      {t('All posts rating')}
+                      <AuthorShoutsRating author={author() as Author} class={styles.ratingControl} />
+                    </div>
+                  </Show>
+                </div>
+              </div>
+            </>
+          </Show>
+        </Suspense>
       </div>
 
       <Switch>
