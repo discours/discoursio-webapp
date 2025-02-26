@@ -1,6 +1,6 @@
 import { A, useLocation, useParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, createResource, Suspense } from 'solid-js'
+import { For, Match, Show, Suspense, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { CommentsList } from '~/components/Comments/CommentsList'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
@@ -24,8 +24,6 @@ import { Placeholder } from '../Feed/Placeholder'
 import { Row1 } from '../Feed/Row1'
 import { Row2 } from '../Feed/Row2'
 import { Row3 } from '../Feed/Row3'
-
-import loadAuthorFollowsQuery from '~/graphql/query/core/author-follows'
 
 import styles from '~/styles/views/Author.module.scss'
 
@@ -58,7 +56,7 @@ export const AuthorView = (props: AuthorViewProps) => {
   const { session, client } = useSession()
 
   const { loadAuthor, authorsEntities } = useAuthors()
-  const { followers: myFollowers, follows: myFollows } = useFollowing()
+  const { followers: myFollowers, followsResource } = useFollowing()
 
   // signals
   const [isBioExpanded, setIsBioExpanded] = createSignal(false)
@@ -80,15 +78,6 @@ export const AuthorView = (props: AuthorViewProps) => {
 
   const { commentsByAuthor, addShoutReactions } = useReactions()
   const { feedByAuthor } = useFeed()
-
-  const [myFollowsResource] = createResource(
-    () => session()?.user?.app_data?.profile?.slug,
-    async (slug) => {
-      if (!slug || !client()) return null
-      const response = await client()?.query(loadAuthorFollowsQuery, { slug }).toPromise()
-      return response?.data?.get_author_follows || { authors: [], topics: [] }
-    }
-  )
 
   // Обновляем мемо для статистики с дефолтными значениями
   const stats = createMemo<AuthorStats>(() => ({
@@ -156,29 +145,25 @@ export const AuthorView = (props: AuthorViewProps) => {
   // Объединенный эффект для загрузки автора и его подписок
   createEffect(
     on(
-      [
-        () => session()?.user?.app_data?.profile,
-        () => myFollowers(),
-        () => myFollowsResource()
-      ],
+      [() => session()?.user?.app_data?.profile, () => myFollowers(), () => followsResource()],
       async ([meData, followers, follows]) => {
         const slug = props.authorSlug
 
         if (slug && meData?.slug === slug) {
           setAuthor(meData)
-          
+
           // Only set followers when they're available
           if (followers) {
             setFollowers(followers)
             setFollowersLoaded(true)
           }
-          
+
           // Only set follows when they're available
           if (follows) {
             setFollowingArray([...(follows.authors || []), ...(follows.topics || [])])
             setFollowingsLoaded(true)
           }
-  
+
           // Убедимся, что статистика существует
           if (!meData.stat) {
             console.error('Missing stats for current user', meData)
