@@ -403,30 +403,28 @@ export const AuthorView = (props: AuthorViewProps) => {
   return (
     <div class={styles.authorPage}>
       <div class="wide-container">
-        <Suspense fallback={<Loading />}>
-          <Show when={author() && followersLoaded() && followingsLoaded()}>
-            <>
-              <div class={styles.authorHeader}>
-                <AuthorCard
-                  author={author() as Author}
-                  followers={followers() || []}
-                  flatFollows={followingArray() || []}
-                />
+        <Show when={author() && followersLoaded() && followingsLoaded()} fallback={<Loading />}>
+          <>
+            <div class={styles.authorHeader}>
+              <AuthorCard
+                author={author() as Author}
+                followers={followers() || []}
+                flatFollows={followingArray() || []}
+              />
+            </div>
+            <div class={clsx(styles.groupControls, 'row')}>
+              <TabNavigator />
+              <div class={clsx('col-md-8', styles.additionalControls)}>
+                <Show when={typeof author()?.stat?.rating === 'number'}>
+                  <div class={styles.ratingContainer}>
+                    {t('All posts rating')}
+                    <AuthorShoutsRating author={author() as Author} class={styles.ratingControl} />
+                  </div>
+                </Show>
               </div>
-              <div class={clsx(styles.groupControls, 'row')}>
-                <TabNavigator />
-                <div class={clsx('col-md-8', styles.additionalControls)}>
-                  <Show when={typeof author()?.stat?.rating === 'number'}>
-                    <div class={styles.ratingContainer}>
-                      {t('All posts rating')}
-                      <AuthorShoutsRating author={author() as Author} class={styles.ratingControl} />
-                    </div>
-                  </Show>
-                </div>
-              </div>
-            </>
-          </Show>
-        </Suspense>
+            </div>
+          </>
+        </Show>
       </div>
 
       <Switch>
