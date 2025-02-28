@@ -135,7 +135,11 @@ export const AuthorView = (props: AuthorViewProps) => {
       (authorFeed) => {
         if (authorFeed?.length) {
           setSortedFeed(authorFeed)
+          if (stats().shouts > 0) {
           setLoadMoreHidden(authorFeed.length >= stats().shouts)
+          } else {
+            setLoadMoreHidden(authorFeed.length < FEED_PAGE_SIZE)
+          }
         }
       },
       { defer: false }
@@ -300,8 +304,13 @@ export const AuthorView = (props: AuthorViewProps) => {
         const newShouts = result.filter((shout: Shout) => !currentSlugs.has(shout.slug))
 
         if (newShouts.length) {
-          setSortedFeed((prev) => [...prev, ...newShouts])
-          setLoadMoreHidden(sortedFeed().length >= stats().shouts)
+          setSortedFeed((prev) => {
+            const updatedFeed = [...prev, ...newShouts]
+            return updatedFeed
+          })
+          setLoadMoreHidden(newShouts.length < FEED_PAGE_SIZE)
+        } else {
+          setLoadMoreHidden(true)
         }
       }
 
@@ -312,6 +321,18 @@ export const AuthorView = (props: AuthorViewProps) => {
       return []
     }
   }
+
+  // Add an effect to update loadMoreHidden when author stats change:
+  createEffect(
+    on(
+      () => stats().shouts,
+      (totalShouts) => {
+        if (totalShouts > 0) {
+          setLoadMoreHidden(sortedFeed().length >= totalShouts)
+        }
+      }
+    )
+  )
 
   const [loadMoreCommentsHidden, setLoadMoreCommentsHidden] = createSignal(
     Boolean(author()?.stat && author()?.stat?.comments === 0)
