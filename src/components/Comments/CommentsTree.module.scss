@@ -167,4 +167,18 @@
       gap: 0.5rem;
     }
   }
+}
+
+.editingComment {
+  position: relative;
+  margin-bottom: 1rem;
+  
+  .editorButtonsWrapper {
+    margin-top: 0;
+    padding: 1rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
 } 

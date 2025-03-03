@@ -36,7 +36,7 @@
     "@solid-primitives/upload": "^0.1.0",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.3",
-    "@solidjs/start": "^1.1.0",
+    "@solidjs/start": "^1.1.1",
     "@types/cookie-signature": "^1.1.2",
     "@types/node": "^22.13.1",
     "@types/sanitize-html": "2.13.0",
@@ -72,12 +72,17 @@
     "typescript": "^5.7.2",
     "typograf": "^7.4.1",
     "uniqolor": "^1.1.1",
-    "vite-plugin-node-polyfills": "^0.22.0",
+    "vite-plugin-node-polyfills": "^0.23.0",
     "vite-plugin-sass-dts": "^1.3.30",
     "y-protocols": "1.0.6",
     "yjs": "13.6.23"
   },
-  "trustedDependencies": ["@biomejs/biome", "@swc/core", "esbuild", "protobufjs"],
+  "trustedDependencies": [
+    "@biomejs/biome",
+    "@swc/core",
+    "esbuild",
+    "protobufjs"
+  ],
   "dependencies": {
     "form-data": "^4.0.1",
     "idb": "^8.0.1",

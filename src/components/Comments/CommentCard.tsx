@@ -31,6 +31,7 @@ type Props = {
   onReply?: (id: number) => void
   clickedReplyId?: Accessor<number | undefined>
   onDelete?: (id: number) => void
+  onEdit?: (id: number) => void
   children?: JSX.Element
 }
 
@@ -41,7 +42,7 @@ export const CommentCard = (props: Props) => {
   const [editMode, setEditMode] = createSignal(false)
   const [body, setEditedBody] = createSignal<string>()
   const { session, client } = useSession()
-  const { deleteShoutReaction } = useReactions()
+  const { deleteShoutReaction, likeReaction, unlikeReaction } = useReactions()
   const isArticleAuthor = createMemo(
     () => props.comment.created_by.slug === session()?.user?.app_data?.profile?.slug
   )
@@ -157,6 +158,13 @@ export const CommentCard = (props: Props) => {
     setEditMode(false)
     setEditorContent(`shout-${props.comment.shout.id}-comment-${props.comment.id}`, body() || '')
   }
+
+  const [liked, setLiked] = createSignal(false)
+  const [likesCount, setLikesCount] = createSignal(props.comment.stat?.rating || 0)
+
+  const isAuthor = createMemo(() => {
+    return session()?.user?.app_data?.profile?.id === props.comment.created_by.id
+  })
 
   onMount(() => {
     console.log('[CommentCard] Mounted:', {
@@ -277,6 +285,45 @@ export const CommentCard = (props: Props) => {
               <Button value={t('Save')} variant="primary" onClick={handleEditSubmit} disabled={loading()} />
             </div>
           </Show>
+
+          <Show when={isAuthor()}>
+            <Button
+              variant="text"
+              onClick={() => props.onEdit?.(props.comment.id)}
+              class={styles.actionButton}
+            >
+              <Icon name="edit" size="small" />
+              <span class={styles.actionText}>{t('Edit')}</span>
+            </Button>
+            <Button
+              variant="text"
+              onClick={() => props.onDelete?.(props.comment.id)}
+              class={styles.actionButton}
+            >
+              <Icon name="delete" size="small" />
+              <span class={styles.actionText}>{t('Delete')}</span>
+            </Button>
+          </Show>
+
+          <Button
+            variant="text"
+            onClick={() => props.onReply?.(props.comment.id)}
+            class={styles.actionButton}
+          >
+            <Icon name="reply" size="small" />
+            <span class={styles.actionText}>{t('Reply')}</span>
+          </Button>
+
+          <Button
+            variant="text"
+            onClick={() => likeReaction(props.comment.id)}
+            class={`${styles.actionButton} ${liked() ? styles.liked : ''}`}
+          >
+            <Icon name={liked() ? 'heart-filled' : 'heart'} size="small" />
+            <span class={styles.actionText}>
+              {liked() ? t('Liked') : t('Like')} {likesCount() > 0 && `(${likesCount()})`}
+            </span>
+          </Button>
         </div>
       </div>
 
