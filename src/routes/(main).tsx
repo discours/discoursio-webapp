@@ -1,5 +1,5 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { Show, createResource } from 'solid-js'
+import { Suspense, createEffect, createResource, on } from 'solid-js'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
@@ -82,26 +82,30 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
     topFeed: topRatedFeed
   } = useFeaturedFeed()
 
-  const [shouts] = createResource(
-    () => {
-      if (props.data.featuredShouts) {
-        setFeaturedFeed(props.data.featuredShouts)
-      }
-      if (props.data.topMonthShouts) {
-        setTopMonthFeed(props.data.topMonthShouts)
-      }
-      if (props.data.topCommentedShouts) {
-        setTopCommentedFeed(props.data.topCommentedShouts)
-      }
-      if (props.data.topRatedShouts) {
-        setTopFeed(props.data.topRatedShouts)
-      }
-      return props.data.featuredShouts
-    },
-    {
-      initialValue: props.data.featuredShouts,
-      ssrLoadFrom: 'initial'
+  // 1. Create Resources for data loading
+  const [featuredShouts] = createResource(() => props.data.featuredShouts, {
+    initialValue: props.data.featuredShouts,
+    ssrLoadFrom: 'initial'
+  })
+
+  const [topData] = createResource(async () => await fetchHomeTopData(), {
+    initialValue: {
+      topMonthShouts: props.data.topMonthShouts,
+      topCommentedShouts: props.data.topCommentedShouts,
+      topRatedShouts: props.data.topRatedShouts
     }
+  })
+
+  // 2. Effect to update signals if data changes
+  createEffect(
+    on([featuredShouts, topData], ([featured, top]) => {
+      if (featured) setFeaturedFeed(featured)
+      if (top) {
+        setTopMonthFeed(top.topMonthShouts)
+        setTopCommentedFeed(top.topCommentedShouts)
+        setTopFeed(top.topRatedShouts)
+      }
+    })
   )
 
   const loadMoreFeatured = async (offset?: number) => {
@@ -115,7 +119,7 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
 
   return (
     <PageLayout withPadding={true} title={t('Discours')} key="home">
-      <Show when={!shouts.loading && featuredFeed()} fallback={<Loading />}>
+      <Suspense fallback={<Loading />}>
         <LoadMoreWrapper loadFunction={loadMoreFeatured} pageSize={FEED_PAGE_SIZE} hidden={false}>
           <HomeView
             featuredShouts={featuredFeed() || []}
@@ -125,7 +129,7 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
             topCommentedShouts={topCommentedFeed() || []}
           />
         </LoadMoreWrapper>
-      </Show>
+      </Suspense>
     </PageLayout>
   )
 }

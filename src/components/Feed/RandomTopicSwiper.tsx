@@ -1,4 +1,4 @@
-import { Show, createEffect, createSignal, on } from 'solid-js'
+import { Show, Suspense, createResource } from 'solid-js'
 import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
@@ -14,39 +14,40 @@ export const RandomTopicSwiper = () => {
   const { t } = useLocalize()
   const { randomTopic } = useTopics()
   const { addAuthors } = useAuthors()
-  const [randomTopicArticles, setRandomTopicArticles] = createSignal<Shout[]>([])
-
-  createEffect(
-    on(
-      () => randomTopic(), // NOTE: triggs once
-      async (topic?: Topic) => {
-        if (topic) {
-          const shoutsByTopicLoader = loadShouts({
-            options: { filters: { topic: topic.slug, featured: true }, limit: 5, offset: 0 }
-          })
-          const shouts = await shoutsByTopicLoader()
-          setRandomTopicArticles(shouts || [])
-          shouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
+  
+  const [articles] = createResource(
+    randomTopic,
+    async (topic: Topic) => {
+      const shoutsByTopicLoader = loadShouts({
+        options: { 
+          filters: { topic: topic.slug, featured: true }, 
+          limit: 5, 
+          offset: 0 
         }
-      },
-      { defer: true }
-    )
+      })
+      const shouts = await shoutsByTopicLoader()
+      shouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
+      return shouts || []
+    }
   )
+
   return (
-    <Show when={Boolean(randomTopic())}>
-      <Group
-        articles={randomTopicArticles() || []}
-        header={
-          <div class={styles.randomTopicHeaderContainer}>
-            <div class={styles.randomTopicHeader}>{capitalize(randomTopic()?.title || '', true)}</div>
-            <div>
-              <a class={styles.randomTopicHeaderLink} href={`/topic/${randomTopic()?.slug || ''}`}>
-                {t('All articles')} <Icon class={styles.icon} name="arrow-right" />
-              </a>
+    <Show when={randomTopic()}>
+      <Suspense>
+        <Group
+          articles={articles() || []}
+          header={
+            <div class={styles.randomTopicHeaderContainer}>
+              <div class={styles.randomTopicHeader}>{capitalize(randomTopic()?.title || '', true)}</div>
+              <div>
+                <a class={styles.randomTopicHeaderLink} href={`/topic/${randomTopic()?.slug || ''}`}>
+                  {t('All articles')} <Icon class={styles.icon} name="arrow-right" />
+                </a>
+              </div>
             </div>
-          </div>
-        }
-      />
+          }
+        />
+      </Suspense>
     </Show>
   )
 }
