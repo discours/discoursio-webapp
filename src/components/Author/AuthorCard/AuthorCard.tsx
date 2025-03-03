@@ -90,14 +90,10 @@ export const AuthorCard = (props: Props) => {
 
   createEffect(
     on(
-      [followsFilter, () => props.flatFollows],
-      ([flt = 'all', ff = []]) => {
+      () => props.flatFollows,
+      (ff = []) => {
         if (!ff) return
-
-        const subs =
-          flt !== 'all' ? ff.filter((sub) => (flt === 'authors' ? 'name' in sub : 'title' in sub)) : ff
-
-        setAuthorSubs(subs)
+        setAuthorSubs(ff)
       },
       { defer: true }
     )
