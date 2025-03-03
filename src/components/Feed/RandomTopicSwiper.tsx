@@ -14,22 +14,19 @@ export const RandomTopicSwiper = () => {
   const { t } = useLocalize()
   const { randomTopic } = useTopics()
   const { addAuthors } = useAuthors()
-  
-  const [articles] = createResource(
-    randomTopic,
-    async (topic: Topic) => {
-      const shoutsByTopicLoader = loadShouts({
-        options: { 
-          filters: { topic: topic.slug, featured: true }, 
-          limit: 5, 
-          offset: 0 
-        }
-      })
-      const shouts = await shoutsByTopicLoader()
-      shouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
-      return shouts || []
-    }
-  )
+
+  const [articles] = createResource(randomTopic, async (topic: Topic) => {
+    const shoutsByTopicLoader = loadShouts({
+      options: {
+        filters: { topic: topic.slug, featured: true },
+        limit: 5,
+        offset: 0
+      }
+    })
+    const shouts = await shoutsByTopicLoader()
+    shouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
+    return shouts || []
+  })
 
   return (
     <Show when={randomTopic()}>

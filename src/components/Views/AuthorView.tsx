@@ -1,6 +1,6 @@
 import { A, useLocation, useParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Match, Show, Suspense, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { CommentsList } from '~/components/Comments/CommentsList'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
@@ -136,7 +136,7 @@ export const AuthorView = (props: AuthorViewProps) => {
         if (authorFeed?.length) {
           setSortedFeed(authorFeed)
           if (stats().shouts > 0) {
-          setLoadMoreHidden(authorFeed.length >= stats().shouts)
+            setLoadMoreHidden(authorFeed.length >= stats().shouts)
           } else {
             setLoadMoreHidden(authorFeed.length < FEED_PAGE_SIZE)
           }
