@@ -1,6 +1,6 @@
 import { A, useLocation, useParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { For, Match, Show, Suspense, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { CommentsList } from '~/components/Comments/CommentsList'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
@@ -56,7 +56,7 @@ export const AuthorView = (props: AuthorViewProps) => {
   const { session, client } = useSession()
 
   const { loadAuthor, authorsEntities } = useAuthors()
-  const { followers: myFollowers, follows: myFollows } = useFollowing()
+  const { followers: myFollowers, followsResource } = useFollowing()
 
   // signals
   const [isBioExpanded, setIsBioExpanded] = createSignal(false)
@@ -135,7 +135,11 @@ export const AuthorView = (props: AuthorViewProps) => {
       (authorFeed) => {
         if (authorFeed?.length) {
           setSortedFeed(authorFeed)
+          if (stats().shouts > 0) {
           setLoadMoreHidden(authorFeed.length >= stats().shouts)
+          } else {
+            setLoadMoreHidden(authorFeed.length < FEED_PAGE_SIZE)
+          }
         }
       },
       { defer: false }
@@ -145,16 +149,24 @@ export const AuthorView = (props: AuthorViewProps) => {
   // Объединенный эффект для загрузки автора и его подписок
   createEffect(
     on(
-      () => session()?.user?.app_data?.profile,
-      async (meData?: Author) => {
+      [() => session()?.user?.app_data?.profile, () => myFollowers(), () => followsResource()],
+      async ([meData, followers, follows]) => {
         const slug = props.authorSlug
 
         if (slug && meData?.slug === slug) {
           setAuthor(meData)
-          setFollowers(myFollowers() || [])
-          setFollowersLoaded(true)
-          setFollowingArray([...(myFollows?.topics || []), ...(myFollows?.authors || [])])
-          setFollowingsLoaded(true)
+
+          // Only set followers when they're available
+          if (followers) {
+            setFollowers(followers)
+            setFollowersLoaded(true)
+          }
+
+          // Only set follows when they're available
+          if (follows) {
+            setFollowingArray([...(follows.authors || []), ...(follows.topics || [])])
+            setFollowingsLoaded(true)
+          }
 
           // Убедимся, что статистика существует
           if (!meData.stat) {
@@ -292,8 +304,13 @@ export const AuthorView = (props: AuthorViewProps) => {
         const newShouts = result.filter((shout: Shout) => !currentSlugs.has(shout.slug))
 
         if (newShouts.length) {
-          setSortedFeed((prev) => [...prev, ...newShouts])
-          setLoadMoreHidden(sortedFeed().length >= stats().shouts)
+          setSortedFeed((prev) => {
+            const updatedFeed = [...prev, ...newShouts]
+            return updatedFeed
+          })
+          setLoadMoreHidden(newShouts.length < FEED_PAGE_SIZE)
+        } else {
+          setLoadMoreHidden(true)
         }
       }
 
@@ -304,6 +321,18 @@ export const AuthorView = (props: AuthorViewProps) => {
       return []
     }
   }
+
+  // Add an effect to update loadMoreHidden when author stats change:
+  createEffect(
+    on(
+      () => stats().shouts,
+      (totalShouts) => {
+        if (totalShouts > 0) {
+          setLoadMoreHidden(sortedFeed().length >= totalShouts)
+        }
+      }
+    )
+  )
 
   const [loadMoreCommentsHidden, setLoadMoreCommentsHidden] = createSignal(
     Boolean(author()?.stat && author()?.stat?.comments === 0)

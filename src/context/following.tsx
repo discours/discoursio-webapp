@@ -2,6 +2,7 @@ import {
   Accessor,
   Component,
   JSX,
+  Resource,
   batch,
   createContext,
   createEffect,
@@ -15,6 +16,7 @@ import { createStore } from 'solid-js/store'
 import followMutation from '~/graphql/mutation/core/follow'
 import unfollowMutation from '~/graphql/mutation/core/unfollow'
 import loadAuthorFollowers from '~/graphql/query/core/author-followers'
+import loadAuthorFollowsQuery from '~/graphql/query/core/author-follows'
 import { Author, CommonResult, Community, FollowingEntity, Topic } from '~/graphql/schema/core.gen'
 import { useSession } from './session'
 import { useUI } from './ui'
@@ -31,6 +33,8 @@ interface FollowingContextType {
   unfollow: (what: FollowingEntity, slug: string) => Promise<CommonResult | undefined>
   followingLoading: Accessor<boolean>
   changeFollowing: (isFollowed: boolean, what: FollowingEntity, slug: string) => Promise<boolean>
+  // Resourse for follows
+  followsResource: Resource<{ authors: Author[]; topics: Topic[] } | null>
 }
 
 const FollowingContext = createContext<FollowingContextType>({
@@ -79,20 +83,29 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
     return result?.data || null
   })
 
+  const [followsResource] = createResource(
+    () => session()?.user?.app_data?.profile?.slug,
+    async (slug) => {
+      if (!(slug && client())) return null
+      const response = await client()?.query(loadAuthorFollowsQuery, { slug }).toPromise()
+      return response?.data?.get_author_follows || { authors: [], topics: [] }
+    }
+  )
+
   createEffect(
     on(
-      follows,
-      (data) => {
-        if (!data) return
+      [follows, followsResource],
+      ([followsData, resourceData]) => {
+        if (!(followsData || resourceData)) return
         batch(() => {
           setState((prev) => ({
             ...prev,
-            authors: data.authors || [],
-            topics: data.topics || [],
-            communities: data.communities || []
+            authors: resourceData?.authors || followsData?.authors || [],
+            topics: resourceData?.topics || followsData?.topics || [],
+            communities: followsData?.communities || []
           }))
-          if (data.followers) {
-            setFollowers(data.followers)
+          if (followsData?.followers) {
+            setFollowers(followsData.followers)
           }
         })
       },
@@ -226,7 +239,9 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
     follow,
     unfollow,
     followingLoading,
-    changeFollowing
+    changeFollowing,
+    // Resourse for follows
+    followsResource
   }
 
   return <FollowingContext.Provider value={value}>{props.children}</FollowingContext.Provider>
