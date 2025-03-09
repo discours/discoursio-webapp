@@ -14,7 +14,7 @@ import { useSession } from './session'
 export const AUTO_SAVE_DELAY = 3000
 
 export type DraftInput = {
-  id: number
+  id?: number
   layout: string
   shoutId?: number
   slug?: string
@@ -52,7 +52,7 @@ type DraftsContextType = {
 export const DraftsContext = createContext<DraftsContextType>({} as DraftsContextType)
 
 export const DraftsProvider = (props: { children: JSX.Element }) => {
-  const { client } = useSession()
+  const { client, session } = useSession()
   // все доступные для редактирования черновики
   const [drafts, setDrafts] = createSignal<Draft[]>([])
   // текущий редактируемый черновик
@@ -82,22 +82,74 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       console.warn('[drafts] client is not ready')
       return
     }
-    const response = await client()?.query(loadDraftsQuery, {}, { fetchPolicy: 'network-only' })
-    if (response?.data?.drafts) {
-      setDrafts(response.data.drafts)
+    console.log('[drafts] loading drafts, session:', !!session()?.access_token)
+
+    // Проверяем состояние клиента
+    const currentClient = client()
+    if (!currentClient) {
+      console.warn('[drafts] client is null')
+      return
+    }
+
+    try {
+      const response = await currentClient.query(
+        loadDraftsQuery,
+        {},
+        {
+          fetchPolicy: 'network-only',
+          requestPolicy: 'network-only'
+        }
+      )
+      console.log('[drafts] full response:', JSON.stringify(response, null, 2))
+
+      // Проверяем наличие данных в ответе
+      if (!response?.data) {
+        console.warn('[drafts] no data in response')
+        if (response.error) {
+          console.error('[drafts] GraphQL error:', response.error)
+        }
+        return
+      }
+
+      // Проверяем структуру ответа
+      const loadDraftsResponse = response.data.load_drafts
+      if (!loadDraftsResponse) {
+        console.warn('[drafts] no load_drafts in response data:', response.data)
+        return
+      }
+
+      // Проверяем наличие массива черновиков
+      const serverDrafts = loadDraftsResponse.drafts
+      if (!Array.isArray(serverDrafts)) {
+        console.warn('[drafts] drafts is not an array:', serverDrafts)
+        return
+      }
+
+      // Если с сервера пришел пустой список, но у нас есть локальные черновики - используем их
+      if (serverDrafts.length === 0 && drafts().length > 0) {
+        console.log('[drafts] using local drafts:', drafts())
+        return
+      }
+
+      // Обновляем список черновиков
+      console.log('[drafts] setting drafts:', serverDrafts)
+      setDrafts(serverDrafts)
+    } catch (error) {
+      console.error('[drafts] error loading drafts:', error)
     }
   }
 
   const createDraft = async (draft: DraftInput) => {
     console.log('[drafts] creating draft', draft)
     const response = await client()?.mutation(createDraftMutation, { draft_input: draft })
-    console.log('[drafts] response', response)
+    console.log('[drafts] create response:', JSON.stringify(response, null, 2))
     if (response?.data?.create_draft?.draft) {
-      console.log('[drafts] setting drafts', [...drafts(), response.data.create_draft.draft])
-      setDrafts([...drafts(), response.data.create_draft.draft])
+      const newDraft = response.data.create_draft.draft
+      console.log('[drafts] setting drafts with new draft:', newDraft)
+      setDrafts([...drafts(), newDraft])
       return response.data.create_draft
     }
-    console.log('[drafts] error', response?.error)
+    console.error('[drafts] error creating draft:', response?.error)
     return null
   }
 

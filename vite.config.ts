@@ -63,7 +63,35 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        sourcemapExcludeSources: true
+        sourcemapExcludeSources: true,
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('swiper')) {
+              return 'swiper'
+            }
+
+            if (id.includes('typograf')) {
+              return 'typograf'
+            }
+
+            if (id.includes('i18next')) {
+              return 'i18next'
+            }
+
+            if (id.includes('graphql')) {
+              return 'graphql'
+            }
+
+            if (id.includes('@solidjs/start')) {
+              return 'solid-start'
+            }
+
+            if (id.includes('solid')) {
+              return 'solid'
+            } 
+            
+          }
+        }
       }
     }
   },

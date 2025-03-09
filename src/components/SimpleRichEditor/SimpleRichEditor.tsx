@@ -559,14 +559,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
       {/* Панель управления как оверлей */}
       <div class={clsx(styles.controls, { [styles.visible]: menuVisible() })}>
-        <Show when={props.limit}>
-          <div class={styles.limitContainer}>
-            <small class={styles.limit}>
-              {content().length} / {props.limit || '∞'}
-            </small>
-          </div>
-        </Show>
-
         <div class={styles.actions}>
           <Show when={props.commands && props.commands.length > 0}>
             <div

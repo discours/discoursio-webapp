@@ -5,7 +5,7 @@ import { useSnackbar, useUI } from '~/context/ui'
 import type { Draft } from '~/graphql/schema/core.gen'
 import { Icon } from '../_shared/Icon'
 
-import styles from './Draft.module.scss'
+import styles from './DraftCard.module.scss'
 
 type Props = {
   draft: Draft
@@ -18,7 +18,7 @@ type Props = {
  * @component
  * @example
  * ```tsx
- * <DraftComponent
+ * <DraftCard
  *   draft={draftData}
  *   onDelete={() => handleDelete(draftId)}
  *   onPublish={() => handlePublish(draftId)}
@@ -26,7 +26,7 @@ type Props = {
  * ```
  */
 
-export const DraftComponent = (props: Props) => {
+export const DraftCard = (props: Props) => {
   const { t, formatDate } = useLocalize()
   const { showConfirm } = useUI()
   const { showSnackbar } = useSnackbar()

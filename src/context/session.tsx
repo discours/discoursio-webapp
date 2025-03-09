@@ -473,9 +473,16 @@ export const SessionProvider = (props: {
   // authorized graphql client
   const [client, setClient] = createSignal<Client>()
   createEffect(
-    on(session, (s?: AuthToken) => {
-      const tkn = s?.access_token
-      setClient((_c?: Client) => graphqlClientCreate(coreApiUrl, tkn))
+    on(session, (token) => {
+      console.log('[session] Creating GraphQL client with token:', !!token?.access_token)
+      if (token?.access_token) {
+        const newClient = graphqlClientCreate(coreApiUrl, token.access_token)
+        console.log('[session] New GraphQL client created')
+        setClient(() => newClient)
+      } else {
+        console.log('[session] Using default client (no token)')
+        setClient(() => graphqlClientCreate(coreApiUrl))
+      }
     })
   )
 

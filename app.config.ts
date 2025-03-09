@@ -44,7 +44,7 @@ function checkSSL(): { key: string; cert: string } | undefined {
 export default defineConfig({
   nitro: {
     timing: true,
-    compatibilityDate: '2024-11-29'
+    compatibilityDate: '2025-03-09'
   },
   ssr: true,
   server: {

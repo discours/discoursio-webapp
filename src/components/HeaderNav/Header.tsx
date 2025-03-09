@@ -14,7 +14,7 @@ import { ConfirmModal } from '../_shared/ConfirmModal'
 import { Icon } from '../_shared/Icon'
 import { Modal } from '../_shared/Modal'
 import { Newsletter } from '../_shared/Newsletter'
-import { HeaderAuth } from './HeaderAuth'
+import { HeaderControls } from './HeaderControls'
 import { TopicsNav } from './TopicsNav'
 
 import stylesFeedSwitcher from '../Feed/FeedSwitcher/FeedSwitcher.module.scss'
@@ -288,7 +288,9 @@ export const Header = (props: Props) => {
               </div>
             </div>
           </div>
-          <HeaderAuth showInboxButton={false} setIsProfilePopupVisible={setIsProfilePopupVisible} />
+
+          <HeaderControls showInboxButton={false} setIsProfilePopupVisible={setIsProfilePopupVisible} />
+
           <Show when={props.title}>
             <div
               class={clsx(styles.articleControls, 'col-auto', {

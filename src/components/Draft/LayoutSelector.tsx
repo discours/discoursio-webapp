@@ -2,28 +2,43 @@ import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For } from 'solid-js'
 
+import { DraftInput, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { LayoutType } from '~/types/common'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 
-import { DraftInput, useDrafts } from '~/context/drafts'
 import styles from './LayoutSelector.module.scss'
-import { Draft } from '~/graphql/schema/core.gen'
 
 export const LayoutSelector = () => {
   const { t } = useLocalize()
-  const { createDraft } = useDrafts()
+  const { createDraft, loadDrafts } = useDrafts()
   const navigate = useNavigate()
 
   const handleCreate = async (layout: LayoutType) => {
-    console.debug('[routes : edit/new] handling create click...')
-    const result = await createDraft({ layout } as DraftInput)
-    console.log('[routes : edit/new] result', result)
-    if (result?.draft) {
-      navigate(`/edit/${result.draft.id}`, { replace: true }) // drafts list here
+    try {
+      console.debug('[routes : edit/new] handling create click...')
+      const result = await createDraft({ layout } as DraftInput)
+      console.log('[routes : edit/new] result', result)
+
+      if (result?.draft) {
+        // Даем время серверу на сохранение черновика
+        console.log('[routes : edit/new] waiting before loading drafts...')
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+        console.log('[routes : edit/new] loading drafts...')
+        await loadDrafts()
+
+        console.log('[routes : edit/new] navigating to /edit...')
+        await navigate(`/edit/${result.draft.id}`, { replace: true })
+      } else {
+        console.warn('[routes : edit/new] failed to create draft:', result)
+      }
+    } catch (error) {
+      console.error('[routes : edit/new] error:', error)
     }
   }
+
   return (
     <article class={clsx('wide-container', 'container--static-page', styles.Create)}>
       <h1>{t('Choose a post type')}</h1>
