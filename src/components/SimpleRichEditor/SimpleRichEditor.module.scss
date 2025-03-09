@@ -6,10 +6,16 @@
   .editor {
     position: relative;
     width: 100%;
-    border: 1px solid var(--gray-200);
+    border: none;
     border-radius: 12px;
-    background: var(--white-500);
+    background: transparent;
     transition: all 0.15s ease;
+    box-shadow: none;
+    
+    &:focus-within {
+      border-color: transparent;
+      box-shadow: none;
+    }
 
     .content {
       position: relative;
@@ -17,16 +23,17 @@
       padding: 16px;
       padding-bottom: 56px;
       outline: none;
-      font-size: 14px;
+      font-size: 15px;
       line-height: 1.5;
-      color: var(--gray-900);
+      color: #111827;
 
       // Плейсхолдер
       &[data-placeholder]:empty::before {
         content: attr(data-placeholder);
-        color: var(--gray-400);
+        color: #9ca3af;
         position: absolute;
         pointer-events: none;
+        font-style: italic;
       }
 
       // Базовые стили форматирования
@@ -38,14 +45,21 @@
       blockquote {
         margin: 1em 0;
         padding: 0.8em 1.2em;
-        border-left: 4px solid var(--gray-200);
-        color: var(--gray-700);
+        border-left: 4px solid #e5e7eb;
+        color: #374151;
+        background: #f9fafb;
+        border-radius: 0 6px 6px 0;
       }
 
       a {
-        color: var(--primary-500);
+        color: #444;
         text-decoration: none;
-        &:hover { text-decoration: underline; }
+        border-bottom: 1px dotted #d1d5db;
+
+        &:hover { 
+          text-decoration: none;
+          border-bottom: 1px solid #666;
+        }
       }
     }
 
@@ -55,48 +69,52 @@
       left: 0;
       right: 0;
       bottom: 0;
-      opacity: 0;
-      margin-top: -2.5em;
-      margin-left: 0.5em;
-      visibility: hidden;
-      transform: translateY(8px);
-      transition: all 0.2s ease;
-      pointer-events: none;
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      transition: none;
+      pointer-events: all;
+      margin-top: 0;
+      margin-left: 0;
 
       .actions {
+        margin-top: -50px;
         position: relative;
         height: 48px;
         display: flex;
         align-items: center;
         padding: 0 12px;
-        background: var(--white-500);
-        border-top: 1px solid var(--gray-100);
+        background: rgb(255 255 255 / 90%);
+        backdrop-filter: blur(6px);
+        border-top: 1px solid rgb(243 244 246 / 60%);
         border-radius: 0 0 12px 12px;
         pointer-events: auto;
+        box-shadow: 0 1px 6px rgb(0 0 0 / 3%);
 
         .toolbarContainer {
           flex: 1;
           display: flex;
           align-items: center;
-          gap: 2px;
+          gap: 4px;
 
           &.bubble {
             position: absolute;
-            background: var(--white-500);
-            border: 1px solid var(--gray-200);
-            border-radius: 6px;
-            padding: 4px;
-            box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+            background: rgb(255 255 255 / 95%);
+            backdrop-filter: blur(6px);
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 6px;
+            box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
             z-index: 100;
           }
 
           .toolbar {
             display: flex;
-            gap: 2px;
+            gap: 4px;
             
             .button {
-              width: 28px;
-              height: 28px;
+              width: 32px;
+              height: 32px;
               display: flex;
               align-items: center;
               justify-content: center;
@@ -104,7 +122,7 @@
               border: none;
               border-radius: 6px;
               background: none;
-              color: var(--gray-500);
+              color: #6b7280;
               cursor: pointer;
               transition: all 0.15s ease;
 
@@ -112,16 +130,21 @@
                 width: 16px;
                 height: 16px;
                 fill: currentcolor;
+                transition: transform 0.2s ease;
               }
 
               &:hover {
-                background: var(--gray-50);
-                color: var(--gray-900);
+                background: #f3f4f6;
+                color: #111827;
+                
+                svg {
+                  transform: scale(1.1);
+                }
               }
 
               &[data-active="true"] {
-                background: var(--gray-50);
-                color: var(--gray-900);
+                background: #f3f4f6;
+                color: #333;
               }
             }
           }
@@ -129,7 +152,7 @@
       }
     }
 
-    // Показываем панель при фокусе или ховере
+    // Тулбар всегда видим
     &:hover,
     &:focus-within {
       .controls {
@@ -144,7 +167,7 @@
 // Вспомогательные стили
 .group {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   user-select: none;
 }
 
@@ -155,22 +178,26 @@
   margin: 0 -4px;
 }
 
-[data-bg="yellow"] { background: var(--yellow-100); }
-[data-bg="red"] { background: var(--red-100); }
-[data-bg="green"] { background: var(--green-100); }
-[data-bg="gray"] { background: var(--gray-100); }
-[data-bg="white"] { background: var(--white-500); }
+[data-bg="yellow"] { background: #f3f4f6; }
+[data-bg="red"] { background: #f3f4f6; }
+[data-bg="green"] { background: #f3f4f6; }
+[data-bg="gray"] { background: #f3f4f6; }
+[data-bg="white"] { background: #fff; }
 
 // Уведомление об автосохранении
 .autosaveNotice {
   position: absolute;
   top: -30px;
   right: 0;
-  font-size: 1.4rem;
-  color: var(--black-600);
+  font-size: 1.3rem;
+  color: #4b5563;
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 0.2s, transform 0.2s;
+  padding: 4px 8px;
+  background: #f9fafb;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
 
   &:global(.visible) {
     opacity: 1;
@@ -180,12 +207,13 @@
 
 .content {
   min-height: 100px;
-  padding: 12px;
+  padding: 16px;
   outline: none;
   
   &[data-placeholder]:empty::before {
     content: attr(data-placeholder);
-    color: var(--color-text-secondary);
+    color: #9ca3af;
+    font-style: italic;
   }
 }
 
@@ -193,14 +221,16 @@
   display: flex;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   margin: 1rem 0;
+  background: #f9fafb;
 
   img {
     max-width: 120px;
     height: auto;
     object-fit: cover;
+    border-radius: 6px;
   }
 }
 
@@ -210,18 +240,20 @@
   gap: 0.5rem;
 
   a {
-    color: var(--color-text);
+    color: #111827;
     font-weight: 500;
     text-decoration: none;
 
     &:hover {
-      text-decoration: underline;
+      color: #333;
+      text-decoration: none;
     }
   }
 
   p {
-    color: var(--color-text-secondary);
+    color: #4b5563;
     font-size: 0.875rem;
     margin: 0;
+    line-height: 1.5;
   }
 }

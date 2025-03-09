@@ -1,7 +1,7 @@
 import type { PopupProps } from '../Popup'
 
 import { clsx } from 'clsx'
-import { For, Show, createMemo, createSignal } from 'solid-js'
+import { For, JSX, Show, createMemo, createSignal } from 'solid-js'
 
 import { Popup } from '../Popup'
 
@@ -27,6 +27,7 @@ type Props = {
   popupProps?: Partial<PopupProps>
   options: OptionGroup[] | Option[]
   triggerCssClass?: string
+  triggerContent?: JSX.Element
   onChange?: (option: Option) => void
 }
 
@@ -186,19 +187,27 @@ export const DropDown = (props: Props) => {
     return false
   })
 
+  const renderTrigger = () => {
+    if (props.triggerContent) {
+      return props.triggerContent
+    }
+
+    return (
+      <div class={clsx(styles.trigger, props.triggerCssClass, styles.nonSelectable)}>
+        {getDisplayTitle()}{' '}
+        <Chevron
+          class={clsx(styles.chevron, {
+            [styles.rotate]: isPopupVisible()
+          })}
+        />
+      </div>
+    )
+  }
+
   return (
     <Show when={props.options.length > 0} keyed={true}>
       <Popup
-        trigger={
-          <div class={clsx(styles.trigger, props.triggerCssClass, styles.nonSelectable)}>
-            {getDisplayTitle()}{' '}
-            <Chevron
-              class={clsx(styles.chevron, {
-                [styles.rotate]: isPopupVisible()
-              })}
-            />
-          </div>
-        }
+        trigger={renderTrigger()}
         variant="tiny"
         onVisibilityChange={setIsPopupVisible}
         keepOpen={isMultipleSelect()}

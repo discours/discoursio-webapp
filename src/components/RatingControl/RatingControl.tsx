@@ -67,40 +67,73 @@ export const RatingControl = (props: Props) => {
   const handleRatingChange = async (isUpvote: boolean) => {
     if (ratings().length === 0) await loadRatings()
     const kind = isUpvote ? ReactionKind.Like : ReactionKind.Dislike
-    await requireAuthentication(async () => {
-      if (!(props.shout || props.comment)) return
-      const storedTotal = total()
-      const storedRate = currentRate()
-
-      // Сохраняем текущие рейтинги перед изменением
-      const currentRatings = ratings()
-
-      if (!storedRate && props.shout) {
-        // Оптимистичное обновление UI
-        setTotal((t) => t + (isUpvote ? 1 : -1))
-        const reaction = await createShoutReaction({ reaction: { kind, shout: props.shout.id } })
-
-        if (reaction) {
-          console.warn('[RatingControl] created reaction: ', reaction)
-          // Добавляем новую реакцию в список
-          setRatings((prev) => [...prev, reaction])
-          setCurrentRate(kind)
-        } else {
-          // Откатываем изменения если произошла ошибка
-          console.error('[RatingControl] error creating reaction')
-          setTotal(storedTotal)
-        }
-      } else if (storedRate === kind) {
-        console.log('[RatingControl] Same rate clicked, ignoring')
+    requireAuthentication(async () => {
+      if (!(props.shout || props.comment)) {
+        console.error('[RatingControl] No shout or comment provided')
         return
-      } else {
+      }
+
+      try {
+        const storedTotal = total()
+        const storedRate = currentRate()
+        const currentRatings = ratings()
+
+        // Получаем корректный shout.id
+        const shoutId = props.shout?.id || props.comment?.shout?.id
+
+        if (!shoutId) {
+          console.error('[RatingControl] Invalid shout id:', {
+            shout: props.shout,
+            comment: props.comment
+          })
+          return
+        }
+
+        // Подготавливаем базовые данные для реакции
+        const baseReactionData = {
+          kind,
+          shout: shoutId,
+          reply_to: props.comment?.id
+        }
+
+        console.log('[RatingControl] Preparing reaction:', {
+          baseReactionData,
+          currentRate: storedRate,
+          isUpvote,
+          currentRatings
+        })
+
+        // Если нет текущей оценки - создаем новую
+        if (!storedRate) {
+          setTotal((t) => t + (isUpvote ? 1 : -1))
+
+          const reaction = await createShoutReaction({ reaction: baseReactionData })
+          console.log('[RatingControl] Create reaction response:', reaction)
+
+          if (reaction) {
+            setRatings((prev) => [...prev, reaction])
+            setCurrentRate(kind)
+          } else {
+            console.error('[RatingControl] Failed to create reaction')
+            setTotal(storedTotal)
+          }
+          return
+        }
+
+        // Если нажали на ту же кнопку - игнорируем
+        if (storedRate === kind) {
+          console.log('[RatingControl] Same rate clicked, ignoring')
+          return
+        }
+
+        // Если меняем существующую оценку
         console.log('[RatingControl] Changing existing rate', {
           from: storedRate,
           to: kind,
-          currentRatings // Добавляем лог текущих рейтингов
+          currentRatings
         })
 
-        // Используем сохраненные рейтинги для поиска
+        // Ищем существующую реакцию для удаления
         const reactionToDelete = currentRatings.find(
           (r) =>
             r.kind === storedRate &&
@@ -109,19 +142,51 @@ export const RatingControl = (props: Props) => {
         )
 
         if (reactionToDelete) {
-          setTotal((t) => t + (isUpvote ? 1 : -1))
-          const result = await deleteShoutReaction(reactionToDelete.id)
-          if (result?.error) {
+          setTotal((t) => t + (isUpvote ? 2 : -2))
+          const deleteResult = await deleteShoutReaction(reactionToDelete.id)
+
+          if (deleteResult?.error) {
+            console.error('[RatingControl] Error removing reaction:', deleteResult.error)
             setTotal(storedTotal)
             setCurrentRate(storedRate)
-            console.error(`[RatingControl] error removing reaction ${storedRate}`, result.error)
+            return
+          }
+
+          // Удаляем старую реакцию из списка
+          setRatings((prev) => prev.filter((r) => r.id !== reactionToDelete.id))
+
+          // Создаем новую реакцию
+          const newReaction = await createShoutReaction({ reaction: baseReactionData })
+          console.log('[RatingControl] Create new reaction after delete:', newReaction)
+
+          if (newReaction) {
+            setRatings((prev) => [...prev, newReaction])
+            setCurrentRate(kind)
           } else {
-            setRatings((prev) => prev.filter((r) => r.id !== reactionToDelete.id))
-            setCurrentRate(undefined)
+            setTotal(storedTotal)
+            setCurrentRate(storedRate)
           }
         } else {
           console.error('[RatingControl] Could not find reaction to delete', currentRatings)
+
+          // Если не нашли реакцию для удаления, попробуем создать новую
+          console.log('[RatingControl] Creating new reaction without delete')
+          setTotal((t) => t + (isUpvote ? 1 : -1))
+
+          const reaction = await createShoutReaction({ reaction: baseReactionData })
+          console.log('[RatingControl] Create reaction response:', reaction)
+
+          if (reaction) {
+            setRatings((prev) => [...prev, reaction])
+            setCurrentRate(kind)
+          } else {
+            setTotal(storedTotal)
+          }
         }
+      } catch (error) {
+        console.error('[RatingControl] Error in handleRatingChange:', error)
+        setTotal(total()) // Восстанавливаем предыдущее значение
+        setCurrentRate(currentRate()) // Восстанавливаем предыдущую оценку
       }
     }, 'vote')
   }

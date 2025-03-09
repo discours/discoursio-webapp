@@ -149,6 +149,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     }
   })
 
+  // Флаг для отслеживания источника изменений
+  const [isInternalChange, setIsInternalChange] = createSignal(false)
+
   // Базовое состояние
   const [content, setContent] = createSignal(props.content || '')
   const [selection, setSelection] = createSignal({ text: '', isEmpty: true })
@@ -161,6 +164,35 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     restoreSelection
   } = useSelection(editorRef)
   const { handleDropFiles } = useDropFiles()
+
+  // Эффект для обновления содержимого при изменении props.content
+  // Отслеживаем ТОЛЬКО изменения props.content, НЕ отслеживаем content()
+  createEffect(
+    on(
+      () => props.content,
+      (newContent) => {
+        const safeNewContent = newContent || ''
+        const currentContent = content()
+
+        console.log('SimpleRichEditor: content prop changed', {
+          newContent: safeNewContent,
+          currentContent,
+          editorMounted: !!editorRef(),
+          isInternalChange: isInternalChange()
+        })
+
+        // Обновляем только если содержимое изменилось, редактор смонтирован
+        // и изменение пришло извне (не от пользовательского ввода)
+        if (safeNewContent !== currentContent && editorRef() && !isInternalChange()) {
+          setContent(safeNewContent)
+          editorRef()!.innerHTML = safeNewContent
+        }
+
+        // Сбрасываем флаг внутреннего изменения
+        setIsInternalChange(false)
+      }
+    )
+  )
 
   const [squibContent, setSquibContent] = createSignal('')
   const [footnoteContent, setFootnoteContent] = createSignal('')
@@ -257,15 +289,35 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
   // Handle input changes
   const handleInput = () => {
-    const content = editorRef()?.innerHTML || ''
-    setContent(content)
+    if (!editorRef()) return
+
+    // Устанавливаем флаг внутреннего изменения
+    setIsInternalChange(true)
+
+    const html = editorRef()!.innerHTML || ''
+    setContent(html)
+
+    // Обновляем состояние выделения
+    updateActiveFormats()
+
+    // Отправляем данные родителю
+    const plainText = editorRef()!.innerText || ''
+    const isEmpty = plainText.trim().length === 0
+
     props.onChange({
-      content: content,
-      plainText: content,
-      length: content.length,
-      isEmpty: content.trim().length === 0,
-      selection: { text: content, isEmpty: content.trim().length === 0 }
+      content: html,
+      plainText,
+      length: plainText.length,
+      isEmpty,
+      selection: selection()
     })
+
+    // Обновляем состояние для совместного редактирования
+    if (props.collaborative) {
+      debouncedStateUpdate({
+        content: html
+      })
+    }
   }
 
   // Menu modes
@@ -318,6 +370,12 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
     if (props.placeholder) {
       editorRef()!.setAttribute('data-placeholder', props.placeholder)
+    }
+
+    // Инициализируем содержимое при монтировании
+    if (props.content && editorRef()) {
+      editorRef()!.innerHTML = props.content
+      setContent(props.content)
     }
 
     if (props.autofocus) {

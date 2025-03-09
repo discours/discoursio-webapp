@@ -1,45 +1,62 @@
+// Variables
+$comment-branch-color: var(--color-border);
+$comment-branch-width: 2px;
+$comment-branch-radius: 1.2rem;
+$comment-indent: 1rem;
+$comment-margin: 1.5rem;
+
+// Mixins
+@mixin comment-branch {
+  content: '';
+  position: absolute;
+  background: $comment-branch-color;
+}
+
+@mixin editor-wrapper {
+  padding: 1rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+}
+
+@mixin prose-mirror-base {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-primary);
+  font-size: 0.875rem;
+  line-height: 1.6;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+  }
+}
+
+// Styles
 .comments {
   position: relative;
   margin-top: 2rem;
+  padding: 0 1rem;
 }
 
 .editorButtonsWrapper {
   margin-top: 1rem;
-  padding: 1.5rem;
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-secondary);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
 
-  :global(.ProseMirror) {
-    min-height: 120px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg-primary);
-    font-size: 0.875rem;
-    line-height: 1.6;
-
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 2px var(--color-primary-light);
-    }
-
-    p.is-editor-empty:first-child::before {
-      content: attr(data-placeholder);
-      float: left;
-      color: var(--color-text-secondary);
-      pointer-events: none;
-      height: 0;
-    }
-  }
+  @include editor-wrapper;
 
   .buttons {
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
-    margin-top: 1rem;
+    margin-top: -5rem;
+
+    :global(.button) {
+      border-radius: 10px;
+      padding: 10px 20px;
+    }
   }
 }
 
@@ -51,49 +68,49 @@
 
   li {
     position: relative;
-    margin-left: 2.5rem;
-    margin-bottom: 1rem;
-    
+    margin-bottom: $comment-margin;
+
     &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -1.5rem;
-      bottom: 0;
-      width: 2px;
-      background: var(--color-border);
+      @include comment-branch;
+
+      left: -14px;
+      border-bottom: $comment-branch-width solid $comment-branch-color;
+      border-left: $comment-branch-width solid $comment-branch-color;
+      border-radius: 0 0 0 $comment-branch-radius;
+      top: -24px;
+      height: 50px;
+      width: 12px;
     }
 
-    &::after {
-      content: '';
-      position: absolute;
-      top: 1.5rem;
-      left: -1.5rem;
-      width: 1rem;
-      height: 2px;
-      background: var(--color-border);
+    &.rootComment {
+      &::before {
+        display: none;
+      }
     }
 
-    &:last-child::before {
-      height: 1.5rem;
+    .commentsList {
+      margin-left: $comment-indent;
+      padding-left: $comment-indent;
     }
   }
 }
 
-.noComments {
-  padding: 2rem;
+.noComments,
+.signInMessage {
+  padding: 1.5rem;
   text-align: center;
   color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  margin-top: 1rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
 .signInMessage {
-  padding: 1rem;
-  text-align: center;
-  color: var(--color-text-secondary);
-
   .link {
     color: var(--color-primary);
     text-decoration: none;
+    font-weight: 500;
 
     &:hover {
       text-decoration: underline;
@@ -110,57 +127,40 @@
   color: var(--color-text-secondary);
 }
 
-.loadMoreWrapper {
+.loadMoreContainer {
   display: flex;
   justify-content: center;
-  margin: 1rem 0;
+  margin: 2rem 0;
 }
 
-.replyEditor {
+.replyEditor,
+.editingComment {
   position: relative;
-  margin-bottom: 1rem;
+  margin-bottom: $comment-margin;
   margin-left: 2.5rem;
   
   &::before {
-    content: '';
-    position: absolute;
+    @include comment-branch;
+
     top: -1rem;
     left: -1.5rem;
     bottom: 50%;
-    width: 2px;
-    background: var(--color-border);
+    width: $comment-branch-width;
   }
 
   &::after {
-    content: '';
-    position: absolute;
+    @include comment-branch;
+
     top: 1.5rem;
     left: -1.5rem;
     width: 1rem;
-    height: 2px;
-    background: var(--color-border);
+    height: $comment-branch-width;
   }
 
   .editorButtonsWrapper {
     margin-top: 0;
-    padding: 1rem;
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: none;
 
-    :global(.ProseMirror) {
-      min-height: 80px;
-      margin-bottom: 0.5rem;
-      padding: 0.5rem;
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      
-      &:focus {
-        box-shadow: none;
-      }
-    }
+    @include editor-wrapper;
 
     .buttons {
       margin-top: 0.5rem;
@@ -168,17 +168,3 @@
     }
   }
 }
-
-.editingComment {
-  position: relative;
-  margin-bottom: 1rem;
-  
-  .editorButtonsWrapper {
-    margin-top: 0;
-    padding: 1rem;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-} 

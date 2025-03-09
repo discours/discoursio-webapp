@@ -1,16 +1,17 @@
 .commentDates {
   color: var(--secondary-color);
   display: flex;
-  justify-content: center;
-  flex-direction: column;
-  flex: 1;
-  flex-wrap: wrap;
-  font-size: 1.2rem;
+  justify-content: flex-start;
+  flex-direction: row;
+  align-items: center;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
 
   .date {
-    font-weight: 500;
-    margin-right: 1rem;
+    font-weight: 400;
+    margin-right: 0.5rem;
     position: relative;
+    opacity: 0.8;
   }
 
   &.showOnHover {

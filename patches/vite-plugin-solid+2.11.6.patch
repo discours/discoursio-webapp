@@ -1,8 +1,8 @@
 diff --git a/node_modules/vite-plugin-solid/dist/esm/index.mjs b/node_modules/vite-plugin-solid/dist/esm/index.mjs
-index 09ee7bb..242aa84 100644
+index 735444a..bb94e84 100644
 --- a/node_modules/vite-plugin-solid/dist/esm/index.mjs
 +++ b/node_modules/vite-plugin-solid/dist/esm/index.mjs
-@@ -123,7 +123,7 @@ function solidPlugin(options = {}) {
+@@ -130,7 +130,7 @@ function solidPlugin(options = {}) {
          if (config.consumer === 'client' || name === 'client' || opts.isSsrTargetWebworker) {
            config.resolve.conditions = [...defaultClientConditions];
          } else {

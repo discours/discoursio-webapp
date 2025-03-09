@@ -46,6 +46,7 @@ import { AudioPlayer } from './AudioPlayer'
 import { SharePopup, getShareUrl } from './SharePopup'
 
 import stylesHeader from '../HeaderNav/Header.module.scss'
+import { Loading } from '../_shared/Loading'
 import styles from './Article.module.scss'
 
 type Props = {
@@ -598,12 +599,12 @@ export const FullArticle = (props: Props) => {
               </div>
             </Show>
 
-            <Show when={body()}>
+            <Show when={body() && props.article.layout !== 'audio' && props.article.layout !== 'video'}>
               <div id="shoutBody" class={styles.shoutBody} innerHTML={body()} />
             </Show>
           </article>
 
-          <Show when={body()}>
+          <Show when={body() && props.article.layout !== 'audio' && props.article.layout !== 'video'}>
             <div class="col-md-6 offset-md-1">
               <TableOfContents variant="article" parentSelector="#shoutBody" body={body()} />
             </div>
@@ -662,15 +663,13 @@ export const FullArticle = (props: Props) => {
             </Suspense>
 
             <div id="comments" ref={setCommentsWrapper}>
-              <Suspense>
-                <Show when={isReactionsLoaded()}>
-                  <CommentsTree
-                    shoutId={props.article.id}
-                    shoutSlug={props.article.slug}
-                    articleAuthors={props.article.authors as Author[]}
-                  />
-                </Show>
-              </Suspense>
+              <Show when={isReactionsLoaded()} fallback={<Loading />}>
+                <CommentsTree
+                  shoutId={props.article.id}
+                  shoutSlug={props.article.slug}
+                  articleAuthors={props.article.authors as Author[]}
+                />
+              </Show>
             </div>
           </div>
         </div>

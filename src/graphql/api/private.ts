@@ -194,21 +194,19 @@ export const useShoutsMyRates = (shoutIds: number[], client?: Client) => {
  * - Автоматическое обновление при изменении commentIds/client
  */
 export const useCommentsMyRates = (comments: number[], signedClient: Client | undefined) => {
-  type RateResult = { comment: number; my_rate: ReactionKind }
-
   return createResource(
     () => [comments, signedClient] as ResourceArgs<number[]>,
     async ([ids, client]) => {
       if (!(client && ids?.length)) return
       const resp = await client.query(loadCommentsMyRatesQuery, { comments: ids }).toPromise()
-      return resp?.data?.get_my_rates_comments as RateResult[]
+      return resp?.data?.get_my_rates_comments
     }
   )
 }
 
 /**
  * Реактивный ресурс для загрузки реакций
- * Кешируемый метод с авт����атическим обновлением при изменении параметров
+ * Кешируемый метод с автоматическим обновлением при изменении параметров
  * Особенности:
  * - Автоматическое обновление при изменении параметров
 + *

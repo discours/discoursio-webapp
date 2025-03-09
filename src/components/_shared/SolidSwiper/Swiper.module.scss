@@ -1,13 +1,3 @@
-:root {
-  @include media-breakpoint-up(md) {
-    --slide-height: 500px;
-    --navigation-reserve: 56px;
-  }
-
-  --slide-height: 300px;
-  --navigation-reserve: 48px;
-}
-
 .Swiper {
   display: block;
   margin: 2rem 0;

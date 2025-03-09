@@ -269,6 +269,10 @@ export const SessionProvider = (props: {
   ) => {
     console.info('require auth in ', modalSource)
     try {
+      if (!client()) {
+        console.warn('[requireAuthentication] client is not ready')
+        return
+      }
       if (session()?.access_token) {
         await callback()
       } else {
@@ -279,7 +283,6 @@ export const SessionProvider = (props: {
           },
           { replace: true }
         )
-        return
       }
     } catch (error) {
       console.error('Ошибка в requireAuthentication:', error)

@@ -1,26 +1,37 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Accessor, JSX, Show, batch, createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
+import { Accessor, JSX, Show, createEffect, createMemo, createSignal, onMount } from 'solid-js'
 import { RatingControl } from '~/components/RatingControl/RatingControl'
-import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
-import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
-import { ShowIfAuthenticated } from '~/components/_shared/ShowIfAuthenticated'
-import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
-import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { useSnackbar, useUI } from '~/context/ui'
-import { loadCommentsMyRates } from '~/graphql/api/private'
 import { Reaction, ReactionKind } from '~/graphql/schema/core.gen'
-import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { AuthorLink } from '../Author/AuthorLink'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { CommentDate } from './CommentDate'
 
+import { saveScrollPosition } from '~/utils/scroll'
 import styles from './CommentCard.module.scss'
 
-type Props = {
+/**
+ * Свойства компонента CommentCard
+ * @typedef {Object} CommentCardProps
+ * @property {Reaction} comment - Объект комментария для отображения
+ * @property {boolean} [compact] - Флаг компактного отображения
+ * @property {Reaction[]} [sortedComments] - Отсортированный список комментариев
+ * @property {number} [lastSeen] - Временная метка последнего просмотра для определения новых комментариев
+ * @property {string} [class] - Дополнительные CSS классы
+ * @property {boolean} [showArticleLink] - Флаг отображения ссылки на статью
+ * @property {ReactionKind} [myRate] - Оценка текущего пользователя для комментария
+ * @property {Function} [onReply] - Обработчик ответа на комментарий
+ * @property {Accessor<number | undefined>} [clickedReplyId] - ID комментария, на который отвечают
+ * @property {Function} [onDelete] - Обработчик удаления комментария
+ * @property {Function} [onEdit] - Обработчик редактирования комментария
+ * @property {JSX.Element} [children] - Дочерние элементы
+ * @property {Author[]} [articleAuthors] - Авторы статьи
+ */
+type CommentCardProps = {
   comment: Reaction
   compact?: boolean
   sortedComments?: Reaction[]
@@ -33,144 +44,76 @@ type Props = {
   onDelete?: (id: number) => void
   onEdit?: (id: number) => void
   children?: JSX.Element
+  articleAuthors?: { slug: string }[]
 }
 
-export const CommentCard = (props: Props) => {
+/**
+ * Компонент карточки комментария
+ *
+ * Отображает комментарий с информацией об авторе, текстом, датой и элементами управления.
+ * Поддерживает редактирование, удаление, ответы на комментарии и оценки.
+ *
+ * @example
+ * ```tsx
+ * <CommentCard
+ *   comment={commentData}
+ *   onReply={(id) => handleReply(id)}
+ *   onDelete={(id) => handleDelete(id)}
+ *   onEdit={(id) => handleEdit(id)}
+ * />
+ * ```
+ *
+ * @param {CommentCardProps} props - Свойства компонента
+ * @returns {JSX.Element} Элемент карточки комментария
+ */
+export const CommentCard = (props: CommentCardProps): JSX.Element => {
   const { t } = useLocalize()
-  const [isReplyVisible, setIsReplyVisible] = createSignal(false)
-  const [loading, setLoading] = createSignal(false)
-  const [editMode, setEditMode] = createSignal(false)
-  const [body, setEditedBody] = createSignal<string>()
-  const { session, client } = useSession()
-  const { deleteShoutReaction, likeReaction, unlikeReaction } = useReactions()
-  const isArticleAuthor = createMemo(
-    () => props.comment.created_by.slug === session()?.user?.app_data?.profile?.slug
-  )
-  const { showConfirm } = useUI()
+  const { showConfirm, showModal } = useUI()
   const { showSnackbar } = useSnackbar()
-  const { setEditorContent } = useDrafts()
+  const { session } = useSession()
+  const [isExpanded, setExpanded] = createSignal(true)
+  /**
+   * Проверяет, может ли текущий пользователь редактировать комментарий
+   */
   const canEdit = createMemo(() => {
     const currentAuthor = session()?.user?.app_data?.profile
     return (
       Boolean(currentAuthor?.id) &&
-      (props.comment.created_by.slug === currentAuthor.slug || session()?.user?.roles?.includes('editor'))
+      (props.comment.created_by?.slug === currentAuthor?.slug || session()?.user?.roles?.includes('editor'))
     )
   })
 
+  /**
+   * Определяет, является ли комментарий новым для пользователя
+   */
   const isNew = createMemo(() => {
     const lastSeen = props.lastSeen || Date.now()
     const commentDate = props.comment.updated_at || props.comment.created_at
-    return lastSeen > commentDate
+    return lastSeen - commentDate < 1000 * 60 * 1
   })
 
-  const handleDelete = async (ev?: MouseEvent) => {
-    ev?.stopPropagation()
-    if (props.comment?.id) {
-      setLoading(true)
-      saveScrollPosition()
-      try {
-        const isConfirmed = await showConfirm({
-          confirmBody: t('Are you sure you want to delete this comment?'),
-          confirmButtonLabel: t('Delete'),
-          confirmButtonVariant: 'danger',
-          declineButtonVariant: 'primary'
-        })
-
-        if (isConfirmed) {
-          const result = await deleteShoutReaction(props.comment.id)
-          const notificationType = result?.error ? 'error' : 'success'
-          const notificationMessage = result?.error
-            ? t('Failed to delete comment')
-            : t('Comment successfully deleted')
-          await showSnackbar({
-            type: notificationType,
-            body: notificationMessage,
-            duration: 3
-          })
-
-          if (!result?.error && props.onDelete) {
-            props.onDelete(props.comment.id)
-          }
-        }
-      } catch (error) {
-        await showSnackbar({ body: 'error' })
-        console.error('[deleteReaction]', error)
-      }
-      setLoading(false)
-      restoreScrollPosition()
-    }
-  }
-
-  const toggleEditMode = () => {
-    setEditMode((oldEditMode) => !oldEditMode)
-  }
-
-  const [commentsMyrates, setCommentsMyrates] = createSignal<Record<number, ReactionKind>>({})
-  createEffect(
-    on(
-      [() => props.sortedComments, client],
-      async ([ccc, api]) => {
-        if (ccc) {
-          const commentsRatesFetcher = loadCommentsMyRates(
-            ccc.map((c) => c.id),
-            api
-          )
-          const myratesData = await commentsRatesFetcher()
-          const myrates = myratesData?.reduce(
-            (acc, row) => {
-              acc[row.comment] = row.my_rate
-              return acc
-            },
-            {} as Record<number, ReactionKind>
-          )
-          myrates && setCommentsMyrates((prev) => ({ ...prev, ...myrates }))
-        }
-      },
-      { defer: true }
-    )
-  )
-
-  const handleReplySubmit = () => {
-    if (!props.onReply) return
-
-    batch(() => {
-      setIsReplyVisible(false)
-      props.onReply?.(props.comment.id)
-      setEditorContent(`shout-${props.comment.shout.id}-comment-${props.clickedReplyId}`, body() || '')
-    })
-  }
-
-  const handleReplyCancel = () => {
-    batch(() => {
-      setIsReplyVisible(false)
-      setEditorContent(`shout-${props.comment.shout.id}-comment-${props.comment.id}`, '')
-    })
-  }
-
-  const handleEditCancel = () => {
-    console.log('handleEditCancel')
-    setEditMode(false)
-    setEditedBody(body())
-  }
-
-  const handleEditSubmit = () => {
-    console.log('handleEditSubmit')
-    setEditMode(false)
-    setEditorContent(`shout-${props.comment.shout.id}-comment-${props.comment.id}`, body() || '')
-  }
-
-  const [liked, setLiked] = createSignal(false)
-  const [likesCount, setLikesCount] = createSignal(props.comment.stat?.rating || 0)
-
+  /**
+   * Проверяет, является ли текущий пользователь автором комментария
+   */
   const isAuthor = createMemo(() => {
-    return session()?.user?.app_data?.profile?.id === props.comment.created_by.id
+    return props.comment.created_by?.slug === session()?.user?.app_data?.profile?.slug
+  })
+
+  /**
+   * Проверяет, является ли автор комментария автором статьи
+   */
+  const isArticleAuthor = createMemo(() => {
+    if (props.articleAuthors?.length && props.comment.created_by) {
+      return props.articleAuthors.some((author) => author.slug === props.comment.created_by?.slug)
+    }
+    return false
   })
 
   onMount(() => {
     console.log('[CommentCard] Mounted:', {
       id: props.comment.id,
       body: props.comment.body,
-      author: props.comment.created_by
+      author: props.comment.created_by || 'unknown'
     })
   })
 
@@ -182,161 +125,182 @@ export const CommentCard = (props: Props) => {
     })
   })
 
-  const [isExpanded, setExpanded] = createSignal(true)
+  /**
+   * Обработчик для удаления комментария с подтверждением
+   */
+  const handleDelete = async (ev?: MouseEvent) => {
+    ev?.preventDefault()
+    if (!canEdit()) {
+      console.warn('[CommentCard] User cannot delete this comment')
+      showSnackbar({ type: 'error', body: t('You cannot delete this comment') })
+      return
+    }
+    if (!props.onDelete) {
+      console.warn('[CommentCard] Delete handler not provided')
+      return
+    }
+
+    console.log('[CommentCard] Attempting to delete comment:', props.comment.id)
+
+    const confirmed = await showConfirm({
+      confirmBody: t('Are you sure you want to delete this comment?'),
+      confirmButtonLabel: t('Delete'),
+      confirmButtonVariant: 'danger',
+      declineButtonLabel: t('Cancel'),
+      declineButtonVariant: 'secondary'
+    })
+
+    if (confirmed) {
+      props.onDelete(props.comment.id)
+    } else {
+      console.log('[CommentCard] Delete cancelled')
+    }
+  }
+
+  /**
+   * Обработчик для показа редактора в режиме ответа
+   */
+  const handleReply = () => {
+    if (!session()?.access_token) {
+      saveScrollPosition() // TODO: call restoreScrollPosition() after modal is closed
+      showModal('auth')
+      return
+    }
+    console.log('[CommentCard] Opening reply editor for comment:', props.comment.id)
+    if (!props.onReply) {
+      console.warn('[CommentCard] Reply handler not provided')
+      return
+    }
+    props.onReply(props.comment.id)
+  }
+
+  /**
+   * Обработчик для показа редактора в режиме редактирования
+   */
+  const handleEdit = () => {
+    console.log('[CommentCard] Opening edit editor for comment:', props.comment.id)
+    if (!canEdit()) {
+      console.warn('[CommentCard] User cannot edit this comment')
+      showSnackbar({ type: 'error', body: t('You cannot edit this comment') })
+      return
+    }
+    if (!props.onEdit) {
+      console.warn('[CommentCard] Edit handler not provided')
+      return
+    }
+    props.onEdit(props.comment.id)
+  }
+
+  /**
+   * Обработчик для показа шаринга комментария
+   */
+  const handleShare = () => {
+    console.log('[CommentCard] Opening share dialog for comment:', props.comment.id)
+    const commentUrl = `${window.location.href}#comment-${props.comment.id}`
+
+    if (navigator.share) {
+      navigator
+        .share({
+          title: t('Share comment'),
+          text: props.comment.body || '',
+          url: commentUrl
+        })
+        .catch((error) => {
+          console.error('[CommentCard] Share error:', error)
+          // Fallback to clipboard if share fails
+          handleClipboardCopy(commentUrl)
+        })
+    } else {
+      handleClipboardCopy(commentUrl)
+    }
+  }
+
+  /**
+   * Вспомогательная функция для копирования в буфер обмена
+   */
+  const handleClipboardCopy = (text: string) => {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        showSnackbar({ type: 'success', body: t('Link copied to clipboard') })
+      })
+      .catch((error) => {
+        console.error('[CommentCard] Copy error:', error)
+        showSnackbar({ type: 'error', body: t('Failed to copy link') })
+      })
+  }
   return (
-    <li
-      id={`comment_${props.comment.id}`}
-      class={clsx(styles.comment, props.class, {
-        [styles.isNew]: isNew(),
-        [styles.isReply]: !!props.comment.reply_to
-      })}
+    <div
+      class={clsx(
+        styles.comment,
+        {
+          [styles.rootComment]: !props.comment.reply_to,
+          [styles.isNew]: isNew(),
+          [styles.isReply]: props.compact
+        },
+        props.class
+      )}
     >
-      <div class={styles.commentContent}>
-        <div class={styles.commentHeader}>
-          <div class={styles.authorInfo}>
-            <AuthorLink author={props.comment.created_by} />
-            <Show when={isArticleAuthor()}>
-              <span class={styles.authorBadge}>{t('Author')}</span>
-            </Show>
+      <Show when={isExpanded()} fallback={<hr onClick={() => setExpanded(true)} />}>
+        <div class={styles.commentContent}>
+          <div class={styles.commentHeader}>
+            <div class={styles.authorInfo}>
+              <div>
+                <Show when={props.comment.created_by}>
+                  <AuthorLink author={props.comment.created_by} />
+                  <Show when={isArticleAuthor()}>
+                    <span class={styles.authorBadge}>{t('Author')}</span>
+                  </Show>
+                  <Show when={isAuthor()}>
+                    <span class={styles.authorBadge}>{t('Your comment')}</span>
+                  </Show>
+                </Show>
+                <CommentDate comment={props.comment} isShort={true} />
+              </div>
+            </div>
           </div>
-          <CommentDate comment={props.comment} isShort={true} />
-        </div>
 
-        <div class={styles.commentBody}>
-          <Show
-            when={!editMode()}
-            fallback={
-              <SimpleRichEditor
-                editorId={`edit-comment-${props.comment.id}`}
-                content={props.comment.body || ''}
-                placeholder={t('Edit comment...')}
-                commands={['bold', 'italic', 'link', 'image', 'blockquote']}
-                onChange={(data) => setEditedBody(data.content)}
-              />
-            }
-          >
-            <div innerHTML={sanitizeHtml(props.comment.body || '')} />
-          </Show>
-        </div>
+          <div class={styles.commentText} innerHTML={sanitizeHtml(props.comment.body || '')} />
 
-        <div class={styles.commentActions}>
-          <RatingControl comment={props.comment} myRate={commentsMyrates()[props.comment.id]} />
-
-          <ShowIfAuthenticated>
-            <button
-              class={clsx(styles.commentControl, styles.commentControlReply)}
-              onClick={handleReplySubmit}
-              disabled={loading()}
-            >
-              {loading() ? t('Loading...') : t('Reply')}
-            </button>
-          </ShowIfAuthenticated>
-
-          <Show when={canEdit()}>
-            <div class={styles.commentAuthorControls}>
-              <button
-                class={clsx(styles.commentControl, styles.commentControlEdit)}
-                onClick={toggleEditMode}
-                disabled={loading()}
-              >
-                <Icon name="edit" class={styles.icon} />
+          <div class={styles.commentActions}>
+            <div class={styles.leftControls}>
+              <RatingControl comment={props.comment} myRate={props.myRate} />
+              <button class={clsx(styles.commentControl, styles.commentControlReply)} onClick={handleReply}>
+                {t('Reply')}
               </button>
-              <Button
-                variant="danger"
-                onClick={() => handleDelete()}
-                disabled={loading()}
-                value={<Icon name="delete" class={styles.icon} />}
-              />
             </div>
-          </Show>
 
-          <button
-            class={clsx(styles.commentControl, styles.commentControlExpand)}
-            onClick={() => setExpanded((e) => !e)}
-          >
-            <Icon name={isExpanded() ? 'collapse' : 'expand'} class={styles.icon} />
-          </button>
+            <div class={styles.actionsSpacer} />
 
-          <Show when={isReplyVisible()}>
-            <div class={styles.replyButtons}>
-              <Button
-                value={t('Cancel')}
-                variant="secondary"
-                onClick={handleReplyCancel}
-                disabled={loading()}
-              />
-              <Button
-                value={t('Reply')}
-                variant="primary"
-                onClick={handleReplySubmit}
-                disabled={loading()}
-              />
+            <div class={styles.rightControls}>
+              <button class={clsx(styles.commentControl, styles.commentControlShare)} onClick={handleShare}>
+                <Icon name="share" class={styles.icon} />
+              </button>
+              <Show when={canEdit()}>
+                <button class={clsx(styles.commentControl, styles.commentControlEdit)} onClick={handleEdit}>
+                  <Icon name="edit" class={styles.icon} />
+                </button>
+
+                <button
+                  class={clsx(styles.commentControl, styles.commentControlDelete)}
+                  onClick={handleDelete}
+                >
+                  <Icon name="delete" class={styles.icon} />
+                </button>
+              </Show>
             </div>
+          </div>
+
+          <Show when={props.showArticleLink && props.comment.shout}>
+            <A href={`/${props.comment.shout?.slug}`} class={styles.articleLink}>
+              <Icon name="article" class={styles.articleLinkIcon} />
+              {props.comment.shout?.title}
+            </A>
           </Show>
-
-          <Show when={editMode()}>
-            <div class={styles.editButtons}>
-              <Button
-                value={t('Cancel')}
-                variant="secondary"
-                onClick={handleEditCancel}
-                disabled={loading()}
-              />
-              <Button value={t('Save')} variant="primary" onClick={handleEditSubmit} disabled={loading()} />
-            </div>
-          </Show>
-
-          <Show when={isAuthor()}>
-            <Button
-              variant="text"
-              onClick={() => props.onEdit?.(props.comment.id)}
-              class={styles.actionButton}
-            >
-              <Icon name="edit" size="small" />
-              <span class={styles.actionText}>{t('Edit')}</span>
-            </Button>
-            <Button
-              variant="text"
-              onClick={() => props.onDelete?.(props.comment.id)}
-              class={styles.actionButton}
-            >
-              <Icon name="delete" size="small" />
-              <span class={styles.actionText}>{t('Delete')}</span>
-            </Button>
-          </Show>
-
-          <Button
-            variant="text"
-            onClick={() => props.onReply?.(props.comment.id)}
-            class={styles.actionButton}
-          >
-            <Icon name="reply" size="small" />
-            <span class={styles.actionText}>{t('Reply')}</span>
-          </Button>
-
-          <Button
-            variant="text"
-            onClick={() => likeReaction(props.comment.id)}
-            class={`${styles.actionButton} ${liked() ? styles.liked : ''}`}
-          >
-            <Icon name={liked() ? 'heart-filled' : 'heart'} size="small" />
-            <span class={styles.actionText}>
-              {liked() ? t('Liked') : t('Like')} {likesCount() > 0 && `(${likesCount()})`}
-            </span>
-          </Button>
         </div>
-      </div>
 
-      <Show when={isExpanded()}>{props.children}</Show>
-
-      <Show when={props.showArticleLink}>
-        <div class={styles.articleLink}>
-          <Icon name="arrow-right" class={styles.articleLinkIcon} />
-          <A href={`/${props.comment.shout.slug}?commentId=${props.comment.id}`}>
-            {props.comment.shout.title}
-          </A>
-        </div>
+        {props.children}
       </Show>
-    </li>
+    </div>
   )
 }

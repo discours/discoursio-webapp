@@ -8,7 +8,7 @@ import publishDraftMutation from '~/graphql/mutation/core/draft-publish'
 import unpublishDraftMutation from '~/graphql/mutation/core/draft-unpublish'
 import updateDraftMutation from '~/graphql/mutation/core/draft-update'
 import loadDraftsQuery from '~/graphql/query/core/drafts-load'
-import type { Draft, MediaItem, Topic } from '~/graphql/schema/core.gen'
+import type { CommonResult, Draft, MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { useSession } from './session'
 
 export const AUTO_SAVE_DELAY = 3000
@@ -32,10 +32,12 @@ export type DraftInput = {
 
 type DraftsContextType = {
   drafts: Accessor<Draft[]>
+  currentDraft: Accessor<Draft | undefined>
+  setCurrentDraft: (draft: Draft | undefined) => void
   getEditorContent: (editorId: string) => string
   setEditorContent: (editorId: string, content: string) => void
   loadDrafts: () => Promise<void>
-  createDraft: (draft: DraftInput) => Promise<void>
+  createDraft: (draft: DraftInput) => Promise<CommonResult | null>
   updateDraft: (draft: DraftInput) => Promise<void>
   deleteDraft: (id: number) => Promise<boolean>
   publishDraft: (draftId: number) => Promise<void>
@@ -53,6 +55,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   const { client } = useSession()
   // все доступные для редактирования черновики
   const [drafts, setDrafts] = createSignal<Draft[]>([])
+  // текущий редактируемый черновик
+  const [currentDraft, setCurrentDraft] = createSignal<Draft>()
   // содержимое всех редакторов
   const [editorsContent, setEditorsContent] = createSignal<Record<string, string>>({})
 
@@ -74,6 +78,10 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   }
 
   const loadDrafts = async () => {
+    if (!client()) {
+      console.warn('[drafts] client is not ready')
+      return
+    }
     const response = await client()?.query(loadDraftsQuery, {}, { fetchPolicy: 'network-only' })
     if (response?.data?.drafts) {
       setDrafts(response.data.drafts)
@@ -84,12 +92,13 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     console.log('[drafts] creating draft', draft)
     const response = await client()?.mutation(createDraftMutation, { draft_input: draft })
     console.log('[drafts] response', response)
-    if (response?.data?.create_draft) {
-      console.log('[drafts] setting drafts', [...drafts(), response.data.create_draft])
-      setDrafts([...drafts(), response.data.create_draft])
-    } else {
-      console.log('[drafts] error', response?.error)
+    if (response?.data?.create_draft?.draft) {
+      console.log('[drafts] setting drafts', [...drafts(), response.data.create_draft.draft])
+      setDrafts([...drafts(), response.data.create_draft.draft])
+      return response.data.create_draft
     }
+    console.log('[drafts] error', response?.error)
+    return null
   }
 
   const updateDraft = async (draft: DraftInput) => {
@@ -144,6 +153,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   const toggleEditorPanel = () => setIsEditorPanelVisible(!isEditorPanelVisible())
   const value = {
     drafts,
+    currentDraft,
+    setCurrentDraft,
     loadDrafts,
     createDraft,
     updateDraft,

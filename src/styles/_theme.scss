@@ -1,3 +1,4 @@
+
 :root {
   --background-color-invert: #000;
   --background-color: #fff;
@@ -33,6 +34,34 @@
   --blue-500: #2638d9;
   --yellow-50: #fffbeb;
   --gray-100: #f3f4f6;
+
+  // comments
+  --comment-color-text: #1f2937;
+  --comment-color-text-muted: #6b7280;
+  --comment-color-border: #e5e7eb;
+  --comment-color-hover: rgb(243 244 246 / 60%);
+  --comment-color-bg: transparent;
+  --comment-color-bg-new: #fae7eb;
+  --comment-color-bg-quote: rgb(249 250 251 / 60%);
+  --comment-color-badge: rgb(128 128 128 / 90%);
+  --comment-color-badge-text: #fff;
+  --comment-shadow-sm: 0 1px 2px rgb(0 0 0 / 10%);
+  --comment-shadow-md: 0 2px 4px rgb(0 0 0 / 3%);
+  --comment-shadow-lg: 0 3px 6px rgb(0 0 0 / 5%);
+  --comment-transition: all 0.2s ease;
+  --comment-spacing-xs: 0.25rem;
+  --comment-spacing-sm: 0.5rem;
+  --comment-spacing-md: 0.75rem;
+  --comment-spacing-lg: 1rem;
+  --comment-spacing-xl: 1.25rem;
+  --comment-spacing-xxl: 1.5rem;
+  --comment-radius-sm: 4px;
+  --comment-radius-md: 8px;
+  --comment-radius-lg: 12px;
+
+  // swiper
+  --slide-height: 300px;
+  --navigation-reserve: 48px;
 }
 
 [data-theme='dark'] {

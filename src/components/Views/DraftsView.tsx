@@ -6,11 +6,20 @@ import { useSession } from '~/context/session'
 import { Draft } from '~/graphql/schema/core.gen'
 
 export const DraftsView = (_props: { drafts?: Draft[] }) => {
-  const { requireAuthentication } = useSession()
-  onMount(() => requireAuthentication(loadDrafts, 'edit'))
+  const { requireAuthentication, client } = useSession()
   const { t } = useLocalize()
   const { publishDraft, deleteDraft, drafts, loadDrafts } = useDrafts()
+
   const handleDraftDelete = async (d: Draft) => await deleteDraft(d.id)
+
+  onMount(async () => {
+    if (!client()) {
+      console.warn('[DraftsView] client is not ready')
+      return
+    }
+    await requireAuthentication(loadDrafts, 'edit')
+  })
+
   return (
     <div>
       <div class="wide-container">

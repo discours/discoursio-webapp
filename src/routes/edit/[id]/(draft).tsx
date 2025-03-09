@@ -1,5 +1,5 @@
 import { RouteSectionProps, redirect } from '@solidjs/router'
-import { createEffect, createMemo, createSignal, lazy, on } from 'solid-js'
+import { createEffect, createMemo, lazy, on } from 'solid-js'
 import { AuthGuard } from '~/components/AuthGuard'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { useDrafts } from '~/context/drafts'
@@ -11,8 +11,8 @@ const EditView = lazy(() => import('~/components/Views/EditView'))
 
 export default (props: RouteSectionProps) => {
   const { t } = useLocalize()
-  const { drafts } = useDrafts()
-  const [currentDraft, setCurrentDraft] = createSignal<Draft>()
+  const { drafts, setCurrentDraft } = useDrafts()
+
   createEffect(
     on(
       () => props.params.id,
@@ -36,8 +36,9 @@ export default (props: RouteSectionProps) => {
   )
 
   const title = createMemo(() => {
-    const layout = (currentDraft()?.layout as LayoutType) || 'article'
-    if (!currentDraft()) return 'Create post'
+    const currentDraft = drafts()?.find((draft: Draft) => draft.id === Number.parseInt(props.params.id))
+    const layout = (currentDraft?.layout as LayoutType) || 'article'
+    if (!currentDraft) return 'Create post'
     return (
       {
         article: 'Write an article',
@@ -52,7 +53,9 @@ export default (props: RouteSectionProps) => {
   return (
     <PageLayout title={`${t('Discours')} :: ${t(title())}`}>
       <AuthGuard>
-        <EditView draft={currentDraft() as Draft} />
+        <EditView
+          draft={drafts()?.find((draft: Draft) => draft.id === Number.parseInt(props.params.id)) as Draft}
+        />
       </AuthGuard>
     </PageLayout>
   )

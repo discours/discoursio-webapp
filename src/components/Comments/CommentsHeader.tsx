@@ -3,8 +3,9 @@ import { Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Reaction, ReactionSort } from '~/graphql/schema/core.gen'
 import { Button } from '../_shared/Button'
+import { Icon } from '../_shared/Icon'
 
-import styles from '../Article/Article.module.scss'
+import styles from './CommentsHeader.module.scss'
 
 type Props = {
   onlyNew: boolean
@@ -22,7 +23,9 @@ export const CommentsHeader = (props: Props) => {
     <div class={styles.commentsHeaderWrapper}>
       <Show when={(props.comments || []).length > 0}>
         <h2 class={styles.commentsHeader}>
-          {t('Comments')} {props.comments.length.toString() || ''}
+          <Icon name="comments" class={styles.commentsIcon} />
+          {t('Comments')}
+          <span class={styles.commentsCount}>{props.comments.length.toString() || ''}</span>
           <Show when={props.newComments.length > 0}>
             <span onClick={props.toggleNewOnly} class={styles.newReactions}>
               {` +${props.newComments.length}`} {props.onlyNew ? `(${t('New only').toLowerCase()})` : ''}

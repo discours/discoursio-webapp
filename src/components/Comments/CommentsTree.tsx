@@ -15,6 +15,7 @@ import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { useSnackbar, useUI } from '~/context/ui'
+import { useCommentsMyRates } from '~/graphql/api/private'
 import {
   Author,
   MutationUpdate_ReactionArgs,
@@ -22,8 +23,8 @@ import {
   ReactionKind,
   ReactionSort
 } from '~/graphql/schema/core.gen'
-import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { MutationCreate_ReactionArgs } from '~/graphql/schema/core.gen'
+import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { Button } from '../_shared/Button'
 import { LoadMoreItems } from '../_shared/LoadMoreWrapper'
@@ -32,19 +33,42 @@ import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { CommentCard } from './CommentCard'
 import { CommentsHeader } from './CommentsHeader'
 
+import clsx from 'clsx'
 import styles from './CommentsTree.module.scss'
 
 const COMMENTS_PER_PAGE = 20
 
-type Props = {
+/**
+ * Параметры компонента дерева комментариев
+ * @interface CommentsTreeProps
+ * @property {Author[]} articleAuthors - Авторы статьи для определения специальных меток
+ * @property {string} shoutSlug - Уникальный идентификатор статьи
+ * @property {number} shoutId - ID статьи
+ * @property {function} [onDeleteComment] - Callback при удалении комментария
+ */
+interface CommentsTreeProps {
   articleAuthors: Author[]
   shoutSlug: string
   shoutId: number
-  onReply?: (id: number) => void
+  onDeleteComment?: (id: number) => void
 }
 
-export const CommentsTree = (props: Props) => {
-  const { session } = useSession()
+/**
+ * Компонент дерева комментариев
+ * Отображает иерархическую структуру комментариев с возможностью создания,
+ * редактирования, удаления и ответов на комментарии.
+ *
+ * @component
+ * @example
+ * <CommentsTree
+ *   articleAuthors={authors}
+ *   shoutSlug="article-slug"
+ *   shoutId={123}
+ *   onDeleteComment={(id) => console.log('Comment deleted:', id)}
+ * />
+ */
+export const CommentsTree = (props: CommentsTreeProps) => {
+  const { session, client } = useSession()
   const { t } = useLocalize()
   const { getEditorContent, setEditorContent } = useDrafts()
   const [onlyNew, setOnlyNew] = createSignal(false)
@@ -63,109 +87,71 @@ export const CommentsTree = (props: Props) => {
   const [isLoading, setIsLoading] = createSignal(true)
   const { showConfirm } = useUI()
 
-  // Добавим сигнал для отслеживания режима редактирования
+  // Состояния редактора
   const [editingCommentId, setEditingCommentId] = createSignal<number>()
+  const [localContent, setLocalContent] = createSignal('')
+  const [posting, setPosting] = createSignal(false)
 
-  // Добавляем сигнал для отслеживания контента редактора
-  const [editorContent, setLocalEditorContent] = createSignal<string>('');
-
+  // Мемоизированные значения
   const comments = createMemo(() => {
     const allReactions = Object.values(reactionEntities())
-    console.log('[CommentsTree] Filtering comments:', {
-      total: allReactions.length,
-      shoutSlug: props.shoutSlug,
-      reactions: allReactions
-    })
     return allReactions.filter((r) => r.kind === ReactionKind.Comment && r.shout?.slug === props.shoutSlug)
   })
 
-  const toggleNewOnly = () => setOnlyNew(!onlyNew())
-
   const sortedComments = createMemo(() => {
     const currentComments = comments()
-    console.log('[CommentsTree] Sorting comments:', {
-      count: currentComments.length,
-      comments: currentComments
-    })
-
     if (!currentComments.length) return []
 
-    let sorted: Reaction[]
     if (onlyNew()) {
-      sorted = newComments().sort(
+      return newComments().sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
-    } else {
-      sorted = [...currentComments].sort((a, b) => {
-        if (commentsOrder() === ReactionSort.Like) {
-          return (b.stat?.rating || 0) - (a.stat?.rating || 0)
-        }
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      })
     }
 
-    return sorted
+    return [...currentComments].sort((a, b) => {
+      if (commentsOrder() === ReactionSort.Like) {
+        return (b.stat?.rating || 0) - (a.stat?.rating || 0)
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
   })
 
   const commentTree = createMemo(() => {
     const sorted = sortedComments()
-    console.log('[CommentsTree] Building tree:', {
-      sortedCount: sorted.length,
-      sorted
-    })
-
     const tree: Record<number, Reaction[]> = {}
 
     sorted.forEach((comment) => {
       const parentId = comment.reply_to || 0
-      if (!tree[parentId]) {
-        tree[parentId] = []
-      }
+      if (!tree[parentId]) tree[parentId] = []
       tree[parentId].push(comment)
     })
 
-    console.log('[CommentsTree] Tree built:', tree)
     return tree
   })
 
-  const { seen } = useFeed()
-  const shoutLastSeen = createMemo(() => seen()[props.shoutSlug] ?? 0)
-  const [isFirstLoad, setIsFirstLoad] = createSignal(true)
-  const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
-
-  const [commentsResource, { refetch }] = createResource<Reaction[], string>(
+  // Загрузка комментариев
+  const [commentsResource, { refetch }] = createResource(
     () => props.shoutSlug,
-    async (slug: string) => {
-      console.log('[CommentsTree] Loading comments for slug:', slug)
+    async (slug) => {
       setIsLoading(true)
-
       try {
         const response = await loadReactionsBy({
-          by: {
-            shout: slug,
-            kinds: [ReactionKind.Comment]
-          },
+          by: { shout: slug, kinds: [ReactionKind.Comment] },
           limit: COMMENTS_PER_PAGE,
           offset: 0
         })
 
-        console.log('[CommentsTree] Response:', {
-          success: !!response,
-          count: response?.length,
-          data: response
-        })
-
         if (response?.length) {
-          batch(() => {
+          untrack(() => {
             addShoutReactions(response)
-            setNewComments(response)
             setLoadMoreHidden(response.length < COMMENTS_PER_PAGE)
           })
         }
 
         return response || []
       } catch (error) {
-        console.error('[CommentsTree] Error:', error)
+        console.error('[CommentsTree] Error loading comments:', error)
+        showSnackbar({ type: 'error', body: t('Failed to load comments') })
         return []
       } finally {
         setIsLoading(false)
@@ -173,242 +159,238 @@ export const CommentsTree = (props: Props) => {
     }
   )
 
-  createEffect(() => {
-    const entities = reactionEntities()
-    console.log('[CommentsTree] Reactions updated:', {
-      total: Object.keys(entities).length,
-      forCurrentShout: comments()?.length
-    })
-  })
+  // Загружаем рейтинги для всех комментариев сразу
+  const [myRates, { refetch: refetchRates }] = useCommentsMyRates(
+    comments().map((c) => c.id),
+    client()
+  )
 
-  createEffect(() => {
-    if (!commentsResource.loading && commentsResource() && isFirstLoad()) {
-      const currentDate = new Date()
-      if (!shoutLastSeen()) {
-        localStorage?.setItem(`${props.shoutSlug}`, `${currentDate}`)
-      } else if (currentDate.getTime() > shoutLastSeen()) {
-        const newComments = comments().filter((c) => {
-          if (
-            (session()?.user?.app_data?.profile?.id && c.reply_to) ||
-            c.created_by.id === session()?.user?.app_data?.profile?.id
-          ) {
-            return
-          }
-          return (c.updated_at || c.created_at) > shoutLastSeen()
-        })
-        setNewComments(newComments)
-        localStorage?.setItem(`${props.shoutSlug}`, `${currentDate}`)
-      }
-      setIsFirstLoad(false)
-      setIsLoading(false)
-    }
-  })
-
-  const [posting, setPosting] = createSignal(false)
-
-  const handleSubmitComment = async (commentId?: number) => {
-    setPosting(true)
-    try {
-      console.log('[CommentsTree] Submitting comment:', { 
-        commentId, 
-        isEditing: editingCommentId() === commentId,
-        clickedReplyId: clickedReplyId()
-      });
-      
-      // Определяем, редактируем ли мы существующий комментарий
-      const isEditing = editingCommentId() === commentId;
-      const isReply = !isEditing && commentId !== undefined;
-      
-      // Выбираем правильный ключ черновика в зависимости от режима
-      let draftKey;
-      if (isEditing) {
-        draftKey = `draft-${props.shoutId}-comment-edit-${commentId}`;
-      } else if (isReply) {
-        draftKey = `draft-${props.shoutId}-comment-${commentId}`;
-      } else {
-        draftKey = `draft-${props.shoutId}-comment-new`;
-      }
-      
-      console.log('[CommentsTree] Using draft key:', { draftKey });
-      
-      // Получаем контент напрямую из DOM, если черновик пуст
-      let content = getEditorContent(draftKey);
-      
-      // Проверяем, есть ли контент в редакторе
-      if (!content || content.trim() === '') {
-        // Пробуем получить контент из DOM-элемента редактора
-        const editorId = isEditing 
-          ? `draft-${props.shoutId}-comment-edit-${commentId}`
-          : (isReply ? `draft-${props.shoutId}-comment-${commentId}` : `draft-${props.shoutId}-comment-new`);
-        
-        const editorElement = document.getElementById(editorId);
-        if (editorElement) {
-          content = editorElement.innerHTML;
-          console.log('[CommentsTree] Got content from DOM:', { content });
-        }
-      }
-      
-      console.log('[CommentsTree] Content to submit:', { content, length: content?.length });
-
-      if (!content || content.trim() === '') {
-        await showSnackbar({ type: 'error', body: t('Comment cannot be empty') });
-        setPosting(false);
-        return false;
-      }
-
-      // Если редактируем, то передаем id комментария, а не reply_to
-      // Если отвечаем, то передаем reply_to
-      const targetId = isEditing ? commentId : (isReply ? commentId : undefined);
-      const success = await handleSubmitCommentValue(content, isReply ? targetId : undefined);
-
-      if (success) {
-        batch(() => {
-          setEditorContent(draftKey, '');
-          setClickedReplyId(undefined);
-          setEditingCommentId(undefined);
-        });
-      }
-      return success;
-    } catch (error) {
-      console.error('[CommentsTree] Submit error:', error);
-      return false;
-    } finally {
-      setPosting(false);
-    }
+  // Получаем рейтинг для конкретного комментария
+  const getCommentRate = (commentId: number) => {
+    const rates = myRates()
+    if (!rates) return undefined
+    const rate = rates.find((r: { comment: number; my_rate: ReactionKind }) => r.comment === commentId)
+    return rate?.my_rate
   }
 
-  const handleSubmitCommentValue = async (content: string, replyToId?: number) => {
-    console.log('[CommentsTree] Submitting comment value:', { content, replyToId });
-    
-    if (!content?.trim()) {
-      await showSnackbar({ type: 'error', body: t('Comment cannot be empty') });
-      return false;
+  // Обновляем рейтинги при изменении списка комментариев
+  createEffect(() => {
+    if (sortedComments().length > 0) {
+      refetchRates()
+    }
+  })
+
+  // Обработчики
+  const handleSubmitComment = async (parentId?: number) => {
+    if (!session()?.user) {
+      showSnackbar({ type: 'error', body: t('Please sign in to comment') })
+      return
     }
 
+    const content = localContent().trim()
+    if (!content) {
+      showSnackbar({ type: 'error', body: t('Comment cannot be empty') })
+      return
+    }
+
+    setPosting(true)
+    const scrollPosition = window.scrollY
+
     try {
-      // Sanitize content before sending
-      const sanitizedContent = sanitizeHtml(content);
-      console.log('[CommentsTree] Sanitized content:', { sanitizedContent });
-      
-      if (editingCommentId()) {
-        // Редактирование существующего комментария
-        const commentToEdit = comments().find(c => c.id === editingCommentId());
-        if (!commentToEdit) {
-          console.error('[CommentsTree] Comment to edit not found:', editingCommentId());
-          return false;
-        }
-        
-        console.log('[CommentsTree] Updating comment:', { 
-          id: editingCommentId(),
-          body: sanitizedContent,
-          reply_to: commentToEdit.reply_to
-        });
-        
-        const result = await updateShoutReaction({
-          id: editingCommentId(),
-          reaction: {
-            body: sanitizedContent,
-            shout: props.shoutId,
-            kind: ReactionKind.Comment,
-            reply_to: commentToEdit.reply_to
-          }
-        } as MutationUpdate_ReactionArgs);
+      const sanitizedContent = sanitizeHtml(content)
+      const commentId = editingCommentId()
+      const isEditing = commentId !== undefined
 
-        if (result.error) {
-          await showSnackbar({ type: 'error', body: t(result.error) });
-          return false;
-        }
-      } else if (replyToId) {
-        // Создание ответа на комментарий
-        console.log('[CommentsTree] Creating reply:', { 
-          body: sanitizedContent,
-          shout: props.shoutId,
-          reply_to: replyToId
-        });
-        
-        const newComment = await createShoutReaction({
-          reaction: {
-            body: sanitizedContent,
-            shout: props.shoutId,
-            kind: ReactionKind.Comment,
-            reply_to: replyToId
-          }
-        });
-
-        if (!newComment) {
-          await showSnackbar({ type: 'error', body: t('Failed to create comment') });
-          return false;
-        }
-      } else {
-        // Создание нового комментария
-        console.log('[CommentsTree] Creating new comment:', { 
-          body: sanitizedContent,
-          shout: props.shoutId
-        });
-        
-        const newComment = await createShoutReaction({
-          reaction: {
-            body: sanitizedContent,
-            shout: props.shoutId,
-            kind: ReactionKind.Comment
-          }
-        });
-
-        if (!newComment) {
-          await showSnackbar({ type: 'error', body: t('Failed to create comment') });
-          return false;
-        }
+      const commentToEdit = isEditing ? comments().find((c) => c.id === commentId) : undefined
+      if (isEditing && !commentToEdit) {
+        showSnackbar({ type: 'error', body: t('Comment not found') })
+        return
       }
 
-      await refetch();
-      return true;
+      const input = isEditing
+        ? ({
+            reaction: {
+              id: commentId,
+              body: sanitizedContent,
+              kind: ReactionKind.Comment,
+              shout: props.shoutId,
+              reply_to: commentToEdit?.reply_to
+            }
+          } as MutationUpdate_ReactionArgs)
+        : ({
+            reaction: {
+              body: sanitizedContent,
+              kind: ReactionKind.Comment,
+              shout: props.shoutId,
+              reply_to: parentId
+            }
+          } as MutationCreate_ReactionArgs)
+
+      const result = isEditing ? await updateShoutReaction(input) : await createShoutReaction(input)
+
+      if (result && 'error' in result && result.error) {
+        showSnackbar({ type: 'error', body: result.error })
+        return
+      }
+
+      handleClear()
+      await refetch()
+      showSnackbar({ type: 'success', body: t(isEditing ? 'Comment updated' : 'Comment saved') })
+      window.scrollTo(0, scrollPosition)
     } catch (error) {
-      console.error('[CommentsTree] Submit error:', error);
-      await showSnackbar({ type: 'error', body: t('Failed to save comment') });
-      return false;
+      console.error('[CommentsTree] Error submitting comment:', error)
+      showSnackbar({ type: 'error', body: t('Failed to save comment') })
+    } finally {
+      setPosting(false)
     }
   }
 
   const handleClear = () => {
+    const commentId = editingCommentId()
+    const replyId = clickedReplyId()
+
+    // Очищаем черновик
+    const draftKey =
+      commentId !== undefined
+        ? `draft-${props.shoutId}-comment-edit-${commentId}`
+        : replyId !== undefined
+          ? `draft-${props.shoutId}-comment-${replyId}`
+          : `draft-${props.shoutId}-comment-new`
+
+    setEditorContent(draftKey, '')
+
+    // Сбрасываем состояния атомарно
     batch(() => {
-      if (editingCommentId()) {
-        setEditorContent(`draft-${props.shoutId}-comment-edit-${editingCommentId()}`, '')
-        setEditingCommentId(undefined)
-      } else {
-        setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId() || 'new'}`, '')
-        setClickedReplyId(undefined)
-      }
+      setEditingCommentId(undefined)
+      setClickedReplyId(undefined)
+      setLocalContent('')
     })
   }
 
-  // Обработчик для ответа на комментарий
   const handleReply = (commentId: number) => {
+    if (!commentId) return
+    if (!session()?.user) {
+      showSnackbar({ type: 'error', body: t('Please sign in to reply') })
+      return
+    }
+
     batch(() => {
-      setClickedReplyId(commentId);
-      setEditingCommentId(undefined);
-      
-      // Очищаем предыдущий черновик для нового ответа
-      setEditorContent(`draft-${props.shoutId}-comment-${commentId}`, '');
-    });
+      setClickedReplyId(commentId)
+      setEditingCommentId(undefined)
+      setLocalContent('')
+      setEditorContent(`draft-${props.shoutId}-comment-${commentId}`, '')
+    })
   }
 
-  // Новый обработчик для редактирования комментария
   const handleEdit = (commentId: number) => {
+    if (!commentId) return
+    if (!session()?.user) {
+      showSnackbar({ type: 'error', body: t('Please sign in to edit') })
+      return
+    }
+
+    const commentToEdit = comments().find((c) => c.id === commentId)
+    if (!commentToEdit) {
+      showSnackbar({ type: 'error', body: t('Comment not found') })
+      return
+    }
+
     batch(() => {
       setEditingCommentId(commentId)
       setClickedReplyId(undefined)
-      
-      // Находим комментарий для редактирования
-      const commentToEdit = comments().find(c => c.id === commentId);
-      if (commentToEdit) {
-        // Устанавливаем содержимое редактора из текста комментария
-        setEditorContent(
-          `draft-${props.shoutId}-comment-edit-${commentId}`, 
-          commentToEdit.body || ''
-        );
-      }
+      const content = commentToEdit.body || ''
+      setLocalContent(content)
+      setEditorContent(`draft-${props.shoutId}-comment-edit-${commentId}`, content)
     })
   }
+
+  const handleDelete = async (id: number) => {
+    if (!id) return
+    if (!session()?.user) {
+      showSnackbar({ type: 'error', body: t('Please sign in to delete') })
+      return
+    }
+
+    const confirmed = await showConfirm({
+      confirmBody: t('Are you sure you want to delete this comment?'),
+      confirmButtonLabel: t('Delete'),
+      confirmButtonVariant: 'danger',
+      declineButtonLabel: t('Cancel')
+    })
+
+    if (!confirmed) return
+
+    try {
+      const result = await deleteShoutReaction(id)
+      if (result?.error) {
+        showSnackbar({ type: 'error', body: t('Failed to delete comment') })
+        return
+      }
+
+      showSnackbar({ type: 'success', body: t('Comment deleted') })
+      if (props.onDeleteComment) {
+        props.onDeleteComment(id)
+      }
+      await refetch()
+    } catch (error) {
+      console.error('[CommentsTree] Error deleting comment:', error)
+      showSnackbar({ type: 'error', body: t('Failed to delete comment') })
+    }
+  }
+
+  const loadMoreComments = async (offset: number): Promise<LoadMoreItems | undefined> => {
+    try {
+      const response = await loadReactionsBy({
+        by: { shout: props.shoutSlug, kinds: [ReactionKind.Comment] },
+        limit: COMMENTS_PER_PAGE,
+        offset
+      })
+
+      if (response?.length) {
+        untrack(() => {
+          addShoutReactions(response)
+          setLoadMoreHidden(response.length < COMMENTS_PER_PAGE)
+        })
+        return response as LoadMoreItems
+      }
+    } catch (error) {
+      console.error('[CommentsTree] Error loading more comments:', error)
+      showSnackbar({ type: 'error', body: t('Failed to load more comments') })
+    }
+    return undefined
+  }
+
+  const toggleNewOnly = () => setOnlyNew(!onlyNew())
+
+  const { seen } = useFeed()
+  const shoutLastSeen = createMemo(() => seen()[props.shoutSlug] ?? 0)
+  const [isFirstLoad, setIsFirstLoad] = createSignal(true)
+  const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
+
+  createEffect(() => {
+    if (!commentsResource.loading && commentsResource() && isFirstLoad()) {
+      const currentDate = new Date()
+      untrack(() => {
+        if (!shoutLastSeen()) {
+          localStorage?.setItem(`${props.shoutSlug}`, `${currentDate}`)
+        } else if (currentDate.getTime() > shoutLastSeen()) {
+          const newComments = comments().filter((c) => {
+            if (
+              (session()?.user?.app_data?.profile?.id && c.reply_to) ||
+              c.created_by.id === session()?.user?.app_data?.profile?.id
+            ) {
+              return
+            }
+            return (c.updated_at || c.created_at) > shoutLastSeen()
+          })
+          setNewComments(newComments)
+          localStorage?.setItem(`${props.shoutSlug}`, `${currentDate}`)
+        }
+        setIsFirstLoad(false)
+        setIsLoading(false)
+      })
+    }
+  })
 
   const FallbackMessage = () => (
     <div class={styles.signInMessage}>
@@ -423,95 +405,24 @@ export const CommentsTree = (props: Props) => {
     </div>
   )
 
-  // TODO: use loadMoreComments
-  const loadMoreComments = async (offset: number): Promise<LoadMoreItems | undefined> => {
-    try {
-      const response = await loadReactionsBy({
-        by: {
-          shout: props.shoutSlug,
-          kinds: [ReactionKind.Comment]
-        },
-        limit: COMMENTS_PER_PAGE,
-        offset
+  /**
+   * Компонент ветки комментариев
+   * Отображает дочерние комментарии и форму ответа
+   */
+  const CommentBranch = (props: { parentId: number; shoutId: number; articleAuthors?: Author[] }) => {
+    console.log('[CommentBranch] Rendering branch:', {
+      parentId: props.parentId,
+      shoutId: props.shoutId
+    })
+
+    const children = createMemo(() => {
+      const branch = commentTree()[props.parentId] || []
+      console.log('[CommentBranch] Children:', {
+        parentId: props.parentId,
+        count: branch.length
       })
-
-      if (response?.length) {
-        batch(() => {
-          addShoutReactions(response)
-          setLoadMoreHidden(response.length < COMMENTS_PER_PAGE)
-        })
-
-        return response as LoadMoreItems
-      }
-    } catch (error) {
-      console.error('[CommentsTree] Error loading more comments:', error)
-    }
-    return undefined
-  }
-
-  const handleDelete = async (id: number) => {
-    if (!id) return
-
-    // Сохраняем позицию скролла перед показом модального окна
-    saveScrollPosition()
-
-    try {
-      let confirmed = false
-
-      try {
-        confirmed = await showConfirm({
-          confirmBody: t('Are you sure you want to delete this comment?'),
-          confirmButtonLabel: t('Delete'),
-          confirmButtonVariant: 'danger',
-          declineButtonVariant: 'primary'
-        })
-      } catch (error) {
-        console.error('[CommentsTree] Confirm dialog error:', error)
-        // Восстанавливаем позицию скролла при ошибке
-        restoreScrollPosition()
-        return
-      }
-
-      // Если пользователь отменил удаление, восстанавливаем позицию скролла
-      if (!confirmed) {
-        restoreScrollPosition()
-        return
-      }
-
-      // Показываем индикатор загрузки только если пользователь подтвердил удаление
-      setIsLoading(true)
-
-      const result = await deleteShoutReaction(id)
-      const notificationType = result?.error ? 'error' : 'success'
-      const notificationMessage = result?.error
-        ? t('Failed to delete comment')
-        : t('Comment successfully deleted')
-
-      await showSnackbar({
-        type: notificationType,
-        body: notificationMessage,
-        duration: 3
-      })
-
-      if (!result?.error) {
-        await refetch()
-      }
-    } catch (error) {
-      console.error('[CommentsTree] Delete error:', error)
-      await showSnackbar({
-        type: 'error',
-        body: t('Failed to delete comment')
-      })
-    } finally {
-      setIsLoading(false)
-      // Восстанавливаем позицию скролла после всех операций
-      restoreScrollPosition()
-    }
-  }
-
-  const CommentBranch = (props: { parentId: number; shoutId: number }) => {
-    const children = createMemo(() => commentTree()[props.parentId] || [])
-    const [localContent, setLocalContent] = createSignal('');
+      return branch
+    })
 
     return (
       <Show when={children().length > 0 || clickedReplyId() === props.parentId}>
@@ -524,26 +435,31 @@ export const CommentsTree = (props: Props) => {
                   commands={['bold', 'italic', 'link', 'image', 'blockquote']}
                   placeholder={t('Write a reply...')}
                   onChange={(data) => {
-                    console.log('[CommentsTree] Reply editor onChange:', { content: data.content });
-                    setLocalContent(data.content);
+                    console.log('[CommentsTree] Reply editor onChange:', {
+                      replyTo: clickedReplyId(),
+                      content: data.content,
+                      isEmpty: data.isEmpty
+                    })
+                    setLocalContent(data.content)
                     untrack(() =>
-                      setEditorContent(
-                        `draft-${props.shoutId}-comment-${clickedReplyId()}`,
-                        data.content
-                      )
+                      setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`, data.content)
                     )
                   }}
+                  content={getEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`)}
                   bubble={false}
                 />
                 <Show when={localContent().trim().length > 0}>
                   <div class={styles.buttons}>
-                    <Button value={t('Cancel')} variant="secondary" onClick={handleClear} />
-                    <Button
-                      value={posting() ? t('Saving...') : t('Save')}
-                      variant="primary"
-                      onClick={() => handleSubmitComment(clickedReplyId())}
+                    <button class="button button--secondary" onClick={handleClear}>
+                      {t('Cancel')}
+                    </button>
+                    <button
+                      class="button button--primary"
+                      onClick={() => handleSubmitComment(clickedReplyId() as number)}
                       disabled={posting()}
-                    />
+                    >
+                      {t(posting() ? 'Saving...' : 'Save')}
+                    </button>
                   </div>
                 </Show>
               </div>
@@ -561,8 +477,14 @@ export const CommentsTree = (props: Props) => {
                     onReply={handleReply}
                     onEdit={handleEdit}
                     clickedReplyId={clickedReplyId}
+                    articleAuthors={props.articleAuthors}
+                    myRate={getCommentRate(comment.id)}
                   >
-                    <CommentBranch parentId={comment.id} shoutId={props.shoutId} />
+                    <CommentBranch
+                      parentId={comment.id}
+                      shoutId={props.shoutId}
+                      articleAuthors={props.articleAuthors}
+                    />
                   </CommentCard>
                 </Show>
                 <Show when={editingCommentId() === comment.id}>
@@ -573,8 +495,13 @@ export const CommentsTree = (props: Props) => {
                         commands={['bold', 'italic', 'link', 'image', 'blockquote']}
                         placeholder={t('Edit your comment...')}
                         onChange={(data) => {
-                          console.log('[CommentsTree] Edit editor onChange:', { content: data.content });
-                          setLocalContent(data.content);
+                          console.log('[CommentsTree] Edit editor onChange:', {
+                            commentId: comment.id,
+                            content: data.content,
+                            isEmpty: data.isEmpty,
+                            plainText: data.plainText
+                          })
+                          setLocalContent(data.content)
                           untrack(() =>
                             setEditorContent(
                               `draft-${props.shoutId}-comment-edit-${comment.id}`,
@@ -585,17 +512,22 @@ export const CommentsTree = (props: Props) => {
                         content={getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)}
                         bubble={false}
                       />
-                      <Show when={localContent().trim().length > 0}>
-                        <div class={styles.buttons}>
-                          <Button value={t('Cancel')} variant="secondary" onClick={handleClear} />
-                          <Button
-                            value={posting() ? t('Saving...') : t('Save')}
-                            variant="primary"
-                            onClick={() => handleSubmitComment(comment.id)}
-                            disabled={posting()}
-                          />
-                        </div>
-                      </Show>
+                      <div
+                        class={clsx(styles.buttons, {
+                          [styles.buttonsActive]: localContent().trim().length > 0
+                        })}
+                      >
+                        <button class="button button--secondary" onClick={handleClear}>
+                          {t('Cancel')}
+                        </button>
+                        <button
+                          class="button button--primary"
+                          onClick={() => handleSubmitComment(undefined)}
+                          disabled={posting()}
+                        >
+                          {t(posting() ? 'Saving...' : 'Save')}
+                        </button>
+                      </div>
                     </div>
                   </li>
                 </Show>
@@ -605,6 +537,15 @@ export const CommentsTree = (props: Props) => {
         </ul>
       </Show>
     )
+  }
+
+  const handleEditorChange = (data: EditorData) => {
+    console.log('[CommentsTree] New comment editor onChange:', {
+      content: data.content,
+      isEmpty: data.isEmpty
+    })
+    setLocalContent(data.content)
+    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, data.content))
   }
 
   return (
@@ -632,12 +573,28 @@ export const CommentsTree = (props: Props) => {
                     onReply={handleReply}
                     onEdit={handleEdit}
                     clickedReplyId={clickedReplyId}
+                    articleAuthors={props.articleAuthors}
+                    myRate={getCommentRate(comment.id)}
                   >
-                    <CommentBranch parentId={comment.id} shoutId={props.shoutId} />
+                    <CommentBranch
+                      parentId={comment.id}
+                      shoutId={props.shoutId}
+                      articleAuthors={props.articleAuthors}
+                    />
                   </CommentCard>
                 )}
               </For>
             </ul>
+          </Show>
+
+          <Show when={!loadMoreHidden() && comments().length >= COMMENTS_PER_PAGE}>
+            <div class={styles.loadMoreContainer}>
+              <Button
+                variant="secondary"
+                onClick={() => loadMoreComments(comments().length)}
+                value={t('Load more comments')}
+              />
+            </div>
           </Show>
 
           <Show when={!clickedReplyId()}>
@@ -647,23 +604,32 @@ export const CommentsTree = (props: Props) => {
                   editorId={`draft-${props.shoutId}-comment-new`}
                   commands={['bold', 'italic', 'link', 'image', 'blockquote']}
                   placeholder={t('Write a comment...')}
-                  onChange={(data) => {
-                    console.log('[CommentsTree] New comment editor onChange:', { content: data.content });
-                    setLocalEditorContent(data.content);
-                    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, data.content))
-                  }}
+                  onChange={handleEditorChange}
+                  content={getEditorContent(`draft-${props.shoutId}-comment-new`)}
                 />
-                <Show when={editorContent().trim().length > 0}>
-                  <div class={styles.buttons}>
-                    <Button value={t('Cancel')} variant="secondary" onClick={handleClear} />
-                    <Button
-                      value={posting() ? t('Saving...') : t('Save')}
-                      variant="primary"
-                      onClick={() => handleSubmitComment()}
-                      disabled={posting()}
-                    />
-                  </div>
-                </Show>
+                <div
+                  class={clsx(styles.newCommentButtons, {
+                    [styles.buttonsActive]: localContent().trim().length > 0
+                  })}
+                >
+                  <button
+                    class={clsx('button', 'button--secondary', {
+                      [styles.buttonsActive]: localContent().trim().length > 0
+                    })}
+                    onClick={handleClear}
+                  >
+                    {t('Cancel')}
+                  </button>
+                  <button
+                    class={clsx('button', 'button--primary', {
+                      [styles.buttonsActive]: localContent().trim().length > 0
+                    })}
+                    onClick={() => handleSubmitComment(undefined)}
+                    disabled={posting()}
+                  >
+                    {t(posting() ? 'Saving...' : 'Save')}
+                  </button>
+                </div>
               </div>
             </ShowIfAuthenticated>
           </Show>

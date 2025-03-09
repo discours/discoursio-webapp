@@ -1,3 +1,4 @@
+import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For } from 'solid-js'
 
@@ -8,14 +9,20 @@ import { Icon } from '../_shared/Icon'
 
 import { DraftInput, useDrafts } from '~/context/drafts'
 import styles from './LayoutSelector.module.scss'
+import { Draft } from '~/graphql/schema/core.gen'
 
 export const LayoutSelector = () => {
   const { t } = useLocalize()
   const { createDraft } = useDrafts()
+  const navigate = useNavigate()
 
-  const handleCreate = (layout: LayoutType) => {
+  const handleCreate = async (layout: LayoutType) => {
     console.debug('[routes : edit/new] handling create click...')
-    createDraft({ layout } as DraftInput)
+    const result = await createDraft({ layout } as DraftInput)
+    console.log('[routes : edit/new] result', result)
+    if (result?.draft) {
+      navigate(`/edit/${result.draft.id}`, { replace: true }) // drafts list here
+    }
   }
   return (
     <article class={clsx('wide-container', 'container--static-page', styles.Create)}>

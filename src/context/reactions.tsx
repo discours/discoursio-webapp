@@ -53,11 +53,6 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
   const { client } = useSession()
 
   const addShoutReactions = (rrr: Reaction[]) => {
-    console.log('[ReactionsProvider] Adding reactions:', {
-      count: rrr.length,
-      reactions: rrr
-    })
-
     const newReactionEntities = { ...reactionEntities() }
     const newReactionsByShout = { ...reactionsByShout() }
 
@@ -94,7 +89,6 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
   }
 
   const loadReactionsBy = async (opts: QueryLoad_Reactions_ByArgs): Promise<Reaction[]> => {
-    console.log('[ReactionsProvider] Loading reactions:', opts)
     setReactionsLoading(true)
 
     try {
