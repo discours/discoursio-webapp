@@ -405,7 +405,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     debouncedStateUpdate.cancel()
   })
 
-  const [showingInsert, setShowingInsert] = createSignal<string | undefined>()
+  const [showingInsert, showInsert] = createSignal<string | undefined>()
   const [insertPosition, setInsertPosition] = createSignal<{ top: number; left: number } | undefined>()
 
   // Функция для вычисления позиции относительно кнопки или выделения
@@ -484,27 +484,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     
     return ''
   }
-
-  // Обработчик показа формы вставки
-  const showInsert = (type: string | undefined) => {
-    // Сохраняем выделение перед открытием формы
-    if (type) {
-      saveSelection();
-    }
-    
-    setShowingInsert(type);
-    
-    // Даем немного времени для рендеринга формы
-    if (type) {
-      setTimeout(() => {
-        // Найти input в форме и установить фокус
-        const input = document.querySelector('.inlineFormWrapper input');
-        if (input) {
-          (input as HTMLInputElement).focus();
-        }
-      }, 10);
-    }
-  };
 
   const handleAction = (action: CommandType) => {
     if (action === 'image') {
@@ -720,7 +699,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           <div 
             class={styles.inlineFormWrapper} 
             style={insertPosition() ? `position: absolute; top: ${insertPosition()?.top}px; left: ${insertPosition()?.left}px; z-index: 100;` : ''}
-            onClick={(e) => e.stopPropagation()}
           >
             <InlineForm
               placeholder={t('Enter link...')}
@@ -733,14 +711,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
                 showInsert(undefined);
                 editorRef()?.focus();
               }}
-              onClose={() => {
-                showInsert(undefined);
-                editorRef()?.focus();
-              }}
-              onFocus={(e) => {
-                // Предотвращаем всплытие для предотвращения обработки фокуса редактором
-                e.stopPropagation();
-              }}
+              onClose={() => showInsert(undefined)}
             />
           </div>
         </Show>
@@ -748,7 +719,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           <div 
             class={styles.inlineFormWrapper} 
             style={insertPosition() ? `position: absolute; top: ${insertPosition()?.top}px; left: ${insertPosition()?.left}px; z-index: 100;` : ''}
-            onClick={(e) => e.stopPropagation()}
           >
             <InlineForm
               placeholder={t('Enter YouTube or Vimeo link...')}
@@ -760,14 +730,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
                 showInsert(undefined);
                 editorRef()?.focus();
               }}
-              onClose={() => {
-                showInsert(undefined);
-                editorRef()?.focus();
-              }}
-              onFocus={(e) => {
-                // Предотвращаем всплытие для предотвращения обработки фокуса редактором
-                e.stopPropagation();
-              }}
+              onClose={() => showInsert(undefined)}
             />
           </div>
         </Show>
