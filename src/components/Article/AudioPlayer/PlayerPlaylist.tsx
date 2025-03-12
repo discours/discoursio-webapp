@@ -171,17 +171,16 @@ export const PlayerPlaylist = (props: Props) => {
               >
                 <div class={styles.descriptionBlock}>
                   <SimpleRichEditor
-                    bubble={true}
                     commands={['bold', 'italic', 'link', 'image']}
                     content={mi.body || ''}
                     placeholder={`${t('Description')}...`}
-                    onChange={(value: string) => handleMediaItemFieldChange('body', value)}
+                    onChange={(value) => handleMediaItemFieldChange('body', value.content)}
                   />
                   <GrowingTextarea
                     allowEnterKey={true}
                     class={styles.lyrics}
                     placeholder={t('Song lyrics')}
-                    value={(value) => handleMediaItemFieldChange('lyrics', value)}
+                    onChange={(value) => handleMediaItemFieldChange('lyrics', value)}
                     initialValue={mi.lyrics || ''}
                   />
                 </div>

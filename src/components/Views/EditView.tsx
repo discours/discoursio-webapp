@@ -234,8 +234,6 @@ export const EditView = (props: { draft: Draft }) => {
                   <Show when={isLeadVisible()}>
                     <SimpleRichEditor
                       editorId={`draft-${currentDraft()?.id}-lead`}
-                      bubble={true}
-                      hideButtons={true}
                       commands={['bold', 'italic', 'link']}
                       placeholder={t('A short introduction to keep the reader interested')}
                       content={getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''}
@@ -354,11 +352,8 @@ export const EditView = (props: { draft: Draft }) => {
               <SimpleRichEditor
                 commands={['bold', 'italic', 'link', 'blockquote', 'image']}
                 plus={true}
-                bubble={true}
                 editorId={`draft-${currentDraft()?.id}-body`}
                 content={getEditorContent(`draft-${currentDraft()?.id}-body`) || ''}
-                readOnly={false}
-                limit={10000}
                 onChange={(data: EditorData) => handleInputChange('body', data.content)}
               />
               <Show when={currentDraft()?.id}>

@@ -23,7 +23,8 @@ import DialogHeader from '../Inbox/DialogHeader'
 import { Message } from '../Inbox/Message'
 import MessagesFallback from '../Inbox/MessagesFallback'
 import Search from '../Inbox/Search'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { Button } from '../_shared/Button'
 import { Modal } from '../_shared/Modal'
 
 const userSearch = (array: Author[], keyword: string) => {
@@ -85,6 +86,15 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
       console.error('Failed to submit message:', error)
       return false
     }
+  }
+
+  const handleMessageChange = (value: EditorData) => {
+    const msg = {
+      body: value.content,
+      reply_to: messageToReply()?.id,
+      chat_id: currentDialog()?.id || ''
+    } as MessageType
+    setMessageToReply(msg)
   }
 
   createEffect(
@@ -296,10 +306,15 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
               <div class={styles.wrapper}>
                 <SimpleRichEditor
                   placeholder={t('New message')}
-                  onSubmit={handleSubmit}
+                  onChange={handleMessageChange}
                   commands={['bold', 'italic', 'link', 'image', 'video', 'audio', 'blockquote']}
                 />
               </div>
+              <Button
+                variant="primary"
+                value={t('Send')}
+                onClick={() => handleSubmit(messageToReply()?.body || '')}
+              />
             </div>
           </Show>
         </div>

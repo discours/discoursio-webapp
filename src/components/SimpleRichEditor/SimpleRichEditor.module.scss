@@ -6,15 +6,61 @@
   .editor {
     position: relative;
     width: 100%;
-    border: none;
-    border-radius: 12px;
-    background: transparent;
-    transition: all 0.15s ease;
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
     box-shadow: none;
     
     &:focus-within {
-      border-color: transparent;
-      box-shadow: none;
+      border-color: var(--color-primary);
+    }
+
+    &.withBottomToolbar {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      border-bottom: none;
+
+      .toolbar {
+        position: relative;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--color-gray-50);
+        border: 1px solid var(--color-gray-200);
+        border-top: none;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        padding: 8px 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+
+        button {
+          width: 24px;
+          height: 24px;
+          padding: 4px;
+          border-radius: 4px;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s ease-in-out;
+
+          &:hover {
+            background: var(--color-gray-100);
+          }
+
+          &.active {
+            background: var(--color-gray-200);
+          }
+
+          svg {
+            width: 16px;
+            height: 16px;
+            color: var(--color-gray-700);
+          }
+        }
+      }
     }
 
     .content {
@@ -79,6 +125,7 @@
 
       .actions {
         margin-top: -50px;
+        right: 0;
         position: relative;
         height: 48px;
         display: flex;
@@ -257,3 +304,34 @@
     line-height: 1.5;
   }
 }
+
+.toolbarContainer {
+  position: relative;
+  z-index: 2;
+  
+  &.toolbarTop {
+    order: -1;
+    position: sticky;
+    top: 0;
+    background: var(--bg-color);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+  }
+  
+  &.toolbarBottom {
+    order: 2;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-color);
+    box-shadow: 0 -2px 4px rgb(0 0 0 / 10%);
+  }
+  
+  &.toolbarFloat {
+    position: absolute;
+    bottom: 0;
+    background: var(--bg-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+    padding: 4px;
+  }
+}
+

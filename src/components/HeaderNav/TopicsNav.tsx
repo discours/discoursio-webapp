@@ -4,10 +4,10 @@ import { Accessor, For, createEffect, createSignal, untrack } from 'solid-js'
 
 import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
+import { useTopics } from '~/context/topics'
 import type { Topic } from '~/graphql/schema/core.gen'
 import { capitalize } from '~/utils/capitalize'
 import { getRandomItemsFromArray } from '~/utils/random'
-import { useTopics } from '~/context/topics'
 
 import styles from './TopicsNav.module.scss'
 

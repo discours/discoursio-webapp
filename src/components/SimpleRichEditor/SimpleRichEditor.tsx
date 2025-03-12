@@ -35,12 +35,8 @@ export interface EditorData {
   }
 }
 
-export type EditorMode = 'micro' | 'mini' | 'full'
-
 export interface SimpleRichEditorProps {
-  hideButtons?: boolean
   commands?: CommandType[] | CommandGroupType[]
-  bubble?: boolean
   plus?: boolean
   squib?: boolean
   editorId?: string
@@ -55,7 +51,7 @@ export interface SimpleRichEditorProps {
   collaborative?: boolean
   fieldId?: string
   onCollabCursorUpdate?: (position: Position) => void
-  showToolbar?: boolean
+  toolbar?: 'top' | 'bottom' | 'float' | 'hidden'
 }
 
 // Типы для структуры меню
@@ -89,8 +85,8 @@ export const CURSOR_UPDATE_PERIOD = 1000
  * - Обработка вставки
  * - Горячие клавиши
  * - Различные режимы меню:
- *   - Фиксированный тулбар (bubble=false|undefined)
- *   - Всплывающее меню при выделении (bubble=true)
+ *   - Фиксированный тулбар (top|bottom)
+ *   - Всплывающее меню при выделении (float)
  *   - Плавающее меню с "+" (plus=true)
  *
  * @param props.bubble - Режим отображения тулбара:
@@ -108,19 +104,18 @@ export const CURSOR_UPDATE_PERIOD = 1000
  * // Редактор с фиксированным тулбаром
  * <SimpleRichEditor
  *   commands={['bold', 'italic', 'link']}
- *   bubble={false}
+ *   toolbar="top"
  * />
  *
  * // Редактор с всплывающим тулбаром
  * <SimpleRichEditor
  *   commands={['bold', 'italic', 'link']}
- *   bubble={true}
+ *   toolbar="float" // default
  * />
  *
  * // Полный редактор со всеми меню
  * <SimpleRichEditor
  *   commands={['bold', 'italic', 'link', 'blockquote', 'image']}
- *   bubble={true}
  *   plus={true}
  * />
  * ```
@@ -130,7 +125,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const { t } = useLocalize()
   const { showModal } = useUI()
   const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
-  const [menuVisible, setMenuVisible] = createSignal(false)
+  const [toolbar, setToolbar] = createSignal<SimpleRichEditorProps['toolbar']>('float')
   const [showSquibEditor, setShowSquibEditor] = createSignal(false)
   const [showFootnoteEditor, setShowFootnoteEditor] = createSignal(false)
   const [hasFocus, setHasFocus] = createSignal(false)
@@ -155,15 +150,22 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   // Базовое состояние
   const [content, setContent] = createSignal(props.content || '')
   const [selection, setSelection] = createSignal({ text: '', isEmpty: true })
-  const {
-    updateActiveFormats,
-    activeFormats,
-    menuPosition,
-    isSelectionInEditor,
-    saveSelection,
-    restoreSelection
-  } = useSelection(editorRef)
+  const { updateActiveFormats, activeFormats, isSelectionInEditor, saveSelection, restoreSelection } =
+    useSelection(editorRef)
   const { handleDropFiles } = useDropFiles()
+
+  /**
+   * Проверяет, является ли контент действительно пустым (включая пустые теги)
+   */
+  const isEmptyContent = (content: string | null | undefined): boolean => {
+    if (!content) return true
+    // Удаляем все пробелы и переносы строк
+    const cleanContent = content.replace(/\s/g, '')
+    // Проверяем на пустые параграфы и другие пустые HTML теги
+    const div = document.createElement('div')
+    div.innerHTML = cleanContent
+    return div.textContent?.trim().length === 0
+  }
 
   // Эффект для обновления содержимого при изменении props.content
   // Отслеживаем ТОЛЬКО изменения props.content, НЕ отслеживаем content()
@@ -178,8 +180,18 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           newContent: safeNewContent,
           currentContent,
           editorMounted: !!editorRef(),
-          isInternalChange: isInternalChange()
+          isInternalChange: isInternalChange(),
+          isEmpty: isEmptyContent(safeNewContent)
         })
+
+        // Если контент пустой - очищаем редактор
+        if (isEmptyContent(safeNewContent)) {
+          setContent('')
+          if (editorRef()) {
+            editorRef()!.innerHTML = ''
+          }
+          return
+        }
 
         // Обновляем только если содержимое изменилось, редактор смонтирован
         // и изменение пришло извне (не от пользовательского ввода)
@@ -241,8 +253,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     updateActiveFormats()
 
     // Get content and update state
-    const contentHtml = editorRef()?.innerHTML || ''
     const contentText = editorRef()?.textContent || ''
+    const contentHtml = contentText ? editorRef()?.innerHTML || '' : ''
 
     setContent(contentHtml)
 
@@ -256,9 +268,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     }
 
     // Handle bubble menu positioning if needed
-    if (props.bubble && isSelectionInEditor()) {
+    if (props.toolbar === 'float' && isSelectionInEditor()) {
       if (selection.isCollapsed) {
-        setMenuVisible(false)
+        setToolbar('hidden')
       } else {
         const range = selection.getRangeAt(0)
         const editorRect = editorRef()!.getBoundingClientRect()
@@ -279,7 +291,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           debouncedStateUpdate(newState)
         }
         editorData.selection!.position = position
-        setMenuVisible(true)
+        setToolbar(props.toolbar || 'float')
       }
     }
 
@@ -335,16 +347,14 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     setHasFocus(true)
 
     // Show fixed toolbar immediately on focus if not in bubble mode
-    if (!props.bubble) {
-      setMenuVisible(true)
-    }
+    setToolbar(props.toolbar || 'float')
   }
 
   const handleBlur = (e: FocusEvent) => {
     if (!editorRef()?.contains(e.relatedTarget as Node)) {
       blurTimer = window.setTimeout(() => {
         setHasFocus(false)
-        setMenuVisible(false)
+        setToolbar('hidden')
         props.onBlur?.()
       }, 200)
     }
@@ -398,7 +408,15 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       return
     }
     if (action === 'video') {
-      // TODO: use SimlpeInsert for video link
+      showInsert('video')
+      return
+    }
+    if (action === 'link') {
+      showInsert('link')
+      return
+    }
+    if (action === 'footnote') {
+      setShowFootnoteEditor(true)
       return
     }
     console.log('Editor handling action:', action)
@@ -411,6 +429,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
     // Save the current selection
     const range = selection.getRangeAt(0).cloneRange()
+    saveSelection()
     console.log('Selection range:', {
       startOffset: range.startOffset,
       endOffset: range.endOffset,
@@ -466,7 +485,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     selection.addRange(range)
 
     // Keep menu visible and focused
-    setMenuVisible(true)
+    setToolbar(props.toolbar || 'float')
     editorRef()?.focus()
   }
 
@@ -527,14 +546,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     restoreSelection()
   }
 
-  createEffect(() => {
-    if (hasFocus() && !props.bubble) {
-      setMenuVisible(true)
-    } else {
-      setMenuVisible(false)
-    }
-  })
-
   return (
     <div class={styles.editorWrapper}>
       {/* Редактируемая область только для контента */}
@@ -558,29 +569,23 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       </div>
 
       {/* Панель управления как оверлей */}
-      <div class={clsx(styles.controls, { [styles.visible]: menuVisible() })}>
+      <div class={clsx(styles.controls, { [styles.visible]: toolbar() && toolbar() !== 'hidden' })}>
         <div class={styles.actions}>
-          <Show when={props.commands && props.commands.length > 0}>
+          <Show
+            when={!props.readOnly && toolbar() !== 'hidden' && props.commands && props.commands.length > 0}
+          >
             <div
               class={clsx(styles.toolbarContainer, {
-                [styles.bubble]: props.bubble,
-                [styles.fixed]: !props.bubble
+                [styles.toolbarTop]: props.toolbar === 'top',
+                [styles.toolbarBottom]: props.toolbar === 'bottom',
+                [styles.toolbarFloat]: !props.toolbar || props.toolbar === 'float'
               })}
-              style={
-                props.bubble
-                  ? {
-                      top: `${menuPosition().top}px`,
-                      left: `${menuPosition().left}px`,
-                      transform: 'translate(-50%, -100%)'
-                    }
-                  : undefined
-              }
             >
               <SimpleToolbar
                 commands={props.commands || []}
                 onAction={(action: CommandType | CommandGroupType) => handleAction(action as CommandType)}
                 currentFormats={activeFormats()}
-                isVisible={menuVisible()}
+                isVisible={toolbar() !== 'hidden'}
               />
             </div>
           </Show>
@@ -592,8 +597,15 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           <SimpleInsert
             initialValue={selection().text}
             icon="link"
-            placeholder={t('Enter URL')}
-            onSubmit={(url) => replaceSelection(`<a href="${url}">${selection().text}</a>`)}
+            placeholder={t('Enter link...')}
+            submitTooltip={t('Insert link')}
+            cancelTooltip={t('Cancel')}
+            onSubmit={(url) => {
+              const linkText = selection().text || url;
+              replaceSelection(`<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`);
+              showInsert(undefined);
+              editorRef()?.focus();
+            }}
             onClose={() => showInsert(undefined)}
           />
         </Show>
@@ -601,8 +613,15 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           <SimpleInsert
             initialValue={selection().text}
             icon="video"
-            placeholder={t('YouTube or Vimeo URL')}
-            onSubmit={(url) => replaceSelection(createVideoEmbed(url, detectVideoPlatform(url)))}
+            placeholder={t('Enter YouTube or Vimeo link...')}
+            description={t('Insert a YouTube or Vimeo video link')}
+            submitTooltip={t('Insert video')}
+            cancelTooltip={t('Cancel')}
+            onSubmit={(url) => {
+              replaceSelection(createVideoEmbed(url, detectVideoPlatform(url)));
+              showInsert(undefined);
+              editorRef()?.focus();
+            }}
             onClose={() => showInsert(undefined)}
           />
         </Show>
@@ -618,7 +637,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         <Show when={showFootnoteEditor()}>
           <SimpleRichEditor
             commands={['bold', 'italic', 'highlight', 'link']}
-            bubble={true}
             content={selection().text}
             placeholder={t('Enter text...')}
             onChange={(content) => setFootnoteContent(content.content)}

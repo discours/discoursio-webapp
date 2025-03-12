@@ -341,7 +341,6 @@ export const ProfileSettings = () => {
 
                     <h4>{t('About')}</h4>
                     <SimpleRichEditor
-                      bubble={true}
                       content={form.about || ''}
                       commands={['bold', 'italic', 'link', 'blockquote', 'image']}
                       onChange={(data: EditorData) => updateFormField('about', sanitizeHtml(data.content))}

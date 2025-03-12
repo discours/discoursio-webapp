@@ -8,15 +8,6 @@
  * - Предустановленные наборы команд
  * - Горячие клавиши
  * - Маппинг команд в HTML теги
- *
- * @example
- * ```ts
- * // Использование предустановленных команд
- * <SimpleRichEditor commands={MICRO_COMMANDS} />
- *
- * // Получение типа команды
- * const type = getCommandType('bold') // 'text'
- * ```
  */
 
 /**
