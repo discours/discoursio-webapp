@@ -6,6 +6,7 @@ import { debounce } from 'throttle-debounce'
 
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
+import { MODALS } from '~/context/ui'
 import { CommandGroupType, CommandType, MENU_GROUPS } from './lib/commands'
 import { useDropFiles } from './lib/drop'
 import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
@@ -13,8 +14,11 @@ import { insertFootnote } from './lib/footnotes'
 import { applyFormatting, hasFormatting, removeFormatting } from './lib/format'
 import { useSelection } from './lib/selection'
 import { Position } from './lib/types'
-import { SimpleInsert } from './menu/SimpleInsert'
 import { SimpleToolbar } from './menu/SimpleToolbar'
+import { Modal } from '~/components/_shared/Modal'
+import { InlineForm } from '~/components/_shared/InlineForm'
+import { UploadModalContent } from '~/components/Upload/UploadModalContent/UploadModalContent'
+import { UploadedFile } from '~/types/upload'
 
 import styles from './SimpleRichEditor.module.scss'
 
@@ -123,7 +127,7 @@ export const CURSOR_UPDATE_PERIOD = 1000
 
 export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const { t } = useLocalize()
-  const { showModal } = useUI()
+  const { showModal, hideModal } = useUI()
   const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
   const [toolbar, setToolbar] = createSignal<SimpleRichEditorProps['toolbar']>('float')
   const [showSquibEditor, setShowSquibEditor] = createSignal(false)
@@ -401,17 +405,119 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     debouncedStateUpdate.cancel()
   })
 
-  const [showingInsert, showInsert] = createSignal<string | undefined>()
+  const [showingInsert, setShowingInsert] = createSignal<string | undefined>()
+  const [insertPosition, setInsertPosition] = createSignal<{ top: number; left: number } | undefined>()
+
+  // Функция для вычисления позиции относительно кнопки или выделения
+  const calculateInsertPosition = () => {
+    // Пытаемся найти активный элемент в тулбаре (кнопку, которая была нажата)
+    const activeButton = document.querySelector('.SimpleRichEditor_active__control')
+    if (activeButton) {
+      const rect = activeButton.getBoundingClientRect()
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const scrollLeft = window.scrollX || document.documentElement.scrollLeft
+      return {
+        top: rect.top + scrollTop,
+        left: rect.left + scrollLeft
+      }
+    }
+
+    // Если кнопка не найдена, используем позицию курсора
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount) {
+      const range = selection.getRangeAt(0)
+      const rect = range.getBoundingClientRect()
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const scrollLeft = window.scrollX || document.documentElement.scrollLeft
+      return {
+        top: rect.bottom + scrollTop + 5, // Немного ниже курсора
+        left: rect.left + scrollLeft
+      }
+    }
+
+    // Если ничего не найдено, позиционируем по центру редактора
+    if (editorRef()) {
+      const rect = editorRef()!.getBoundingClientRect()
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const scrollLeft = window.scrollX || document.documentElement.scrollLeft
+      return {
+        top: rect.top + scrollTop + 50,
+        left: rect.left + scrollLeft + rect.width / 2 - 140 // приблизительно половина ширины InlineForm
+      }
+    }
+
+    return undefined
+  }
+  
+  // Функция для валидации URL
+  const validateUrl = (url: string): string => {
+    if (!url) {
+      return t('URL cannot be empty')
+    }
+    
+    try {
+      // Проверяем, что URL начинается с http:// или https://
+      if (!url.match(/^https?:\/\//)) {
+        return t('URL must start with http:// or https://')
+      }
+      
+      // Пробуем создать объект URL для проверки валидности
+      new URL(url)
+      return ''
+    } catch (e) {
+      return t('Invalid URL format')
+    }
+  }
+  
+  // Функция для валидации ссылок на видео
+  const validateVideoUrl = (url: string): string => {
+    const urlError = validateUrl(url)
+    if (urlError) return urlError
+    
+    // Проверяем, что это ссылка на YouTube или Vimeo
+    const isYouTube = url.includes('youtube.com') || url.includes('youtu.be')
+    const isVimeo = url.includes('vimeo.com')
+    
+    if (!isYouTube && !isVimeo) {
+      return t('Only YouTube and Vimeo links are supported')
+    }
+    
+    return ''
+  }
+
+  // Обработчик показа формы вставки
+  const showInsert = (type: string | undefined) => {
+    // Сохраняем выделение перед открытием формы
+    if (type) {
+      saveSelection();
+    }
+    
+    setShowingInsert(type);
+    
+    // Даем немного времени для рендеринга формы
+    if (type) {
+      setTimeout(() => {
+        // Найти input в форме и установить фокус
+        const input = document.querySelector('.inlineFormWrapper input');
+        if (input) {
+          (input as HTMLInputElement).focus();
+        }
+      }, 10);
+    }
+  };
+
   const handleAction = (action: CommandType) => {
     if (action === 'image') {
-      showModal('uploadImage')
+      showModal(MODALS.uploadImage)
       return
     }
     if (action === 'video') {
+      setInsertPosition(calculateInsertPosition())
       showInsert('video')
       return
     }
     if (action === 'link') {
+      setInsertPosition(calculateInsertPosition())
       showInsert('link')
       return
     }
@@ -546,6 +652,23 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     restoreSelection()
   }
 
+  // Обработчик вставки изображения после загрузки
+  const handleImageUpload = (uploadedFile?: UploadedFile) => {
+    if (!uploadedFile) return
+    
+    // Генерируем HTML для вставки изображения
+    const imgHtml = `<img src="${uploadedFile.url}" alt="${uploadedFile.originalFilename || 'Uploaded image'}" />`
+    
+    // Вставляем в редактор
+    replaceSelection(imgHtml)
+    
+    // Закрываем модальное окно
+    hideModal()
+    
+    // Возвращаем фокус в редактор
+    editorRef()?.focus()
+  }
+
   return (
     <div class={styles.editorWrapper}>
       {/* Редактируемая область только для контента */}
@@ -594,36 +717,59 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
       <Portal>
         <Show when={showingInsert() === 'link'}>
-          <SimpleInsert
-            initialValue={selection().text}
-            icon="link"
-            placeholder={t('Enter link...')}
-            submitTooltip={t('Insert link')}
-            cancelTooltip={t('Cancel')}
-            onSubmit={(url) => {
-              const linkText = selection().text || url;
-              replaceSelection(`<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`);
-              showInsert(undefined);
-              editorRef()?.focus();
-            }}
-            onClose={() => showInsert(undefined)}
-          />
+          <div 
+            class={styles.inlineFormWrapper} 
+            style={insertPosition() ? `position: absolute; top: ${insertPosition()?.top}px; left: ${insertPosition()?.left}px; z-index: 100;` : ''}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <InlineForm
+              placeholder={t('Enter link...')}
+              initialValue={selection().text}
+              showInput={true}
+              validate={validateUrl}
+              onSubmit={(url) => {
+                const linkText = selection().text || url;
+                replaceSelection(`<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`);
+                showInsert(undefined);
+                editorRef()?.focus();
+              }}
+              onClose={() => {
+                showInsert(undefined);
+                editorRef()?.focus();
+              }}
+              onFocus={(e) => {
+                // Предотвращаем всплытие для предотвращения обработки фокуса редактором
+                e.stopPropagation();
+              }}
+            />
+          </div>
         </Show>
         <Show when={showingInsert() === 'video'}>
-          <SimpleInsert
-            initialValue={selection().text}
-            icon="video"
-            placeholder={t('Enter YouTube or Vimeo link...')}
-            description={t('Insert a YouTube or Vimeo video link')}
-            submitTooltip={t('Insert video')}
-            cancelTooltip={t('Cancel')}
-            onSubmit={(url) => {
-              replaceSelection(createVideoEmbed(url, detectVideoPlatform(url)));
-              showInsert(undefined);
-              editorRef()?.focus();
-            }}
-            onClose={() => showInsert(undefined)}
-          />
+          <div 
+            class={styles.inlineFormWrapper} 
+            style={insertPosition() ? `position: absolute; top: ${insertPosition()?.top}px; left: ${insertPosition()?.left}px; z-index: 100;` : ''}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <InlineForm
+              placeholder={t('Enter YouTube or Vimeo link...')}
+              initialValue={selection().text}
+              showInput={true}
+              validate={validateVideoUrl}
+              onSubmit={(url) => {
+                replaceSelection(createVideoEmbed(url, detectVideoPlatform(url)));
+                showInsert(undefined);
+                editorRef()?.focus();
+              }}
+              onClose={() => {
+                showInsert(undefined);
+                editorRef()?.focus();
+              }}
+              onFocus={(e) => {
+                // Предотвращаем всплытие для предотвращения обработки фокуса редактором
+                e.stopPropagation();
+              }}
+            />
+          </div>
         </Show>
         <Show when={showSquibEditor()}>
           <SimpleRichEditor
@@ -643,6 +789,11 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             onBlur={() => handleFootnoteSubmit(footnoteContent())}
           />
         </Show>
+        
+        {/* Модальное окно загрузки изображений */}
+        <Modal name={MODALS.uploadImage} variant="narrow">
+          <UploadModalContent onClose={handleImageUpload} />
+        </Modal>
       </Portal>
     </div>
   )
