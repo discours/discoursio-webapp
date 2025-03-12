@@ -88,8 +88,7 @@ export default defineConfig({
 
             if (id.includes('solid')) {
               return 'solid'
-            } 
-            
+            }
           }
         }
       }

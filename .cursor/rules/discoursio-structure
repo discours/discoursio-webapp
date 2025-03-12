@@ -1,3 +1,5 @@
+FIGMA0: всегда опирайся на существующие апи, структуры, термины и приёмы реактивности, не удаляй существующие технические решения, но используй дизайн из фигмы для сверки с результатом отображения
+
 R0: Keep all code comments strictly, add useful docstrings with doctests
 R1: Always respond in русский
 R2: NEVER remove or brake working code, read it, care about it, reuse it, improve it, comment it
