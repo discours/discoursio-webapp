@@ -6,14 +6,14 @@ import { useLocalize } from '~/context/localize'
 
 import styles from './CommentDate.module.scss'
 
-type Props = {
+type CommentDateProps = {
   comment: Reaction
   isShort?: boolean
   isLastInRow?: boolean
   showOnHover?: boolean
 }
 
-export const CommentDate = (props: Props) => {
+export const CommentDate = (props: CommentDateProps) => {
   const { formatDate } = useLocalize()
 
   const formattedDate = (date: number) => {

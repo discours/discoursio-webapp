@@ -5,6 +5,9 @@ $spacing-md: 0.75rem;
 $spacing-lg: 1rem;
 $spacing-xl: 1.25rem;
 $spacing-xxl: 1.5rem;
+$comment-branch-color: var(--color-gray-200);
+$comment-branch-width: 1px;
+$comment-indent: 2.5rem;
 
 
 // Миксины для повторяющихся паттернов
@@ -37,84 +40,36 @@ $spacing-xxl: 1.5rem;
 .comment {
   position: relative;
   margin-bottom: $spacing-xl;
-  padding: $spacing-xl;
-  border-radius: 12px;
+  padding: 5px 0 10px;
   background: transparent;
-  box-shadow: none;
-  transition: all 0.2s ease;
+  transition: opacity 0.3s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease, transform 0.3s ease;
+  max-height: 2000px;
+  transform-origin: top;
+  will-change: opacity, max-height, transform;
 
-  &:hover {
-    border: 1px solid #ccc;
-    box-shadow: none;
-  }
-
-  &::before:not(.rootComment) {
-    border-bottom: 2px solid #ccc;
-    border-left: 2px solid #ccc;
-    border-radius: 0 0 0 1.2rem;
-    top: -24px;
-    height: 50px;
-    width: 12px;
-    content: '';
-    position: absolute;
-    left: -12px;
-  }
-  
-  &.isNew {
-    background: #fae7eb;
+  .commentActions {
+    opacity: 1;
   }
 
   &.isReply {
-    margin-left: 2.5rem;
-    padding: $spacing-xl;
-
-    &::before {
-      border-bottom: 2px solid #ccc;
-      border-left: 2px solid #ccc;
-      border-radius: 0 0 0 1.2rem;
-      top: -24px;
-      height: 50px;
-      width: 12px;
-    }
-
-    &::after {
-      display: none;
-    }
+    margin-left: $comment-indent;
+    padding: 5px 0 10px;
+    position: relative;
   }
-
-  .commentAuthorControls {
-    opacity: 0;
-    user-select: none;
-    position: absolute;
-
-    @include flex-gap;
-
-    top: $spacing-lg;
-    right: $spacing-lg;
-    transition: opacity ease-out .2s;
-
-    &:hover {
-      opacity: 1;
-    }
-  }
-}
-
-.commentContent {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
 }
 
 .commentHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: $spacing-md;
+  gap: 249px;
+  padding: 10px 0 5px;
 }
 
 .authorInfo {
-  @include flex-gap($spacing-sm);
-
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -131,33 +86,29 @@ $spacing-xxl: 1.5rem;
     border: 2px solid rgb(255 255 255 / 80%);
     box-shadow: 0 2px 4px rgb(0 0 0 / 3%);
     transition: all 0.2s ease;
-    
-    &:hover {
-      box-shadow: 0 3px 6px rgb(0 0 0 / 5%);
-      transform: scale(1.02);
-    }
   }
 }
 
 .authorBadge {
-  padding: $spacing-xs $spacing-sm;
-  border-radius: 4px;
-  background: rgb(128 128 128 / 90%);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 500;
+  padding: 4px 6px 2px;
+  border-radius: 8px;
+  background: var(--color-gray-50);
+  color: var(--color-gray-700);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.333;
+  letter-spacing: 0.3%;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  backdrop-filter: blur(3px);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
 }
 
 .commentText {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: #1f2937;
+  font-family: Muller, sans-serif;
+  font-size: 14px;
+  line-height: 1.286;
+  letter-spacing: -1%;
+  color: #000;
   word-break: break-word;
-  margin: $spacing-md 0;
+  margin: 5px 0;
   
   p {
     margin-bottom: $spacing-md;
@@ -167,33 +118,109 @@ $spacing-xxl: 1.5rem;
     }
   }
   
-  a {
-    color: #444;
-    text-decoration: none;
-    
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-  
-  img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    margin: $spacing-md 0;
-  }
-  
   blockquote {
     margin: $spacing-lg 0;
-    padding-left: $spacing-lg;
-    border-left: 3px solid #e5e7eb;
-    color: #4b5563;
+    padding: $spacing-md $spacing-lg;
+    border-left: 3px solid var(--color-gray-200);
+    color: var(--color-gray-600);
     font-style: italic;
-    background: rgb(249 250 251 / 60%);
+    background: var(--color-gray-50);
     border-radius: 0 4px 4px 0;
-    padding-top: $spacing-md;
-    padding-right: $spacing-lg;
-    padding-bottom: $spacing-md;
+  }
+}
+
+.commentActions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 0 10px;
+  opacity: 1;
+}
+
+.commentControl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2.5px 0 1.5px;
+  border: none;
+  background: transparent;
+  color: var(--color-gray-700);
+  white-space: nowrap;
+  font-family: Muller, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.333;
+  letter-spacing: 0.3%;
+  
+  &:hover {
+    color: var(--color-gray-900);
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+  
+  &:hover .icon {
+    opacity: 1;
+  }
+}
+
+.replyEditor {
+  margin-top: $spacing-lg;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  position: relative;
+  
+  &::before {
+    content: '';
+    display: block;
+    height: 1px;
+    background: var(--color-gray-100);
+    margin-bottom: $spacing-md;
+  }
+
+  :global {
+    .editor-content {
+      &:focus-within {
+        background: var(--color-gray-50);
+        border-radius: 8px;
+      }
+
+      &::selection,
+      *::selection {
+        background: rgb(0 0 0 / 10%);
+      }
+    }
+    
+    .editor-toolbar {
+      background: transparent;
+      box-shadow: none;
+      border: none;
+      opacity: 1;
+    }
+
+    // Убираем тени и бордеры у элементов тулбара
+    .editor-toolbar button,
+    .editor-toolbar .button {
+      background: transparent;
+      box-shadow: none;
+      border: none;
+    }
+
+    // Стили для верхнего и нижнего тулбара
+    .toolbarTop,
+    .toolbarBottom {
+      position: relative;
+      width: 100%;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
   }
 }
 
@@ -210,20 +237,6 @@ $spacing-xxl: 1.5rem;
   }
 }
 
-.commentActions {
-  @include flex-gap;
-
-  flex-wrap: nowrap;
-  margin-top: -$spacing-xl;
-  padding-top: $spacing-md;
-  border-top: 1px solid #f3f4f6;
-  
-  @media (width <= 576px) {
-    flex-wrap: wrap;
-    row-gap: $spacing-md;
-  }
-}
-
 .leftControls,
 .rightControls {
   @include flex-gap;
@@ -235,74 +248,16 @@ $spacing-xxl: 1.5rem;
   }
 }
 
+.rightControls {
+  position: relative;
+  z-index: 2;
+}
+
 .actionsSpacer {
   flex: 1;
   
   @media (width <= 576px) {
     display: none;
-  }
-}
-
-.commentControl {
-  @include flex-gap($spacing-sm);
-  @include interactive-element;
-
-  padding: $spacing-sm $spacing-md;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #6b7280;
-  white-space: nowrap;
-  font-size: 0.85rem;
-  transition: all 0.2s ease;
-
-  .icon {
-    width: $spacing-lg;
-    height: $spacing-lg;
-    opacity: 0.7;
-    transition: all 0.2s ease;
-  }
-  
-  &:hover {
-    background: rgb(243 244 246 / 60%);
-    color: #333;
-    
-    .icon {
-      opacity: 1;
-      transform: scale(1.05);
-    }
-  }
-  
-  &.commentControlReply,
-  &.commentControlShare {
-    padding: $spacing-sm;
-    background: transparent;
-    
-    @media (width >= 768px) {
-      padding: $spacing-sm $spacing-md;
-    }
-  }
-  
-  &.commentControlEdit,
-  &.commentControlRemove {
-    color: #6b7280;
-    
-    &:hover {
-      color: #333;
-    }
-  }
-  
-  &.commentControlLike,
-  &.commentControlDislike {
-    &.liked {
-      color: #333;
-      background: rgb(240 240 240 / 60%);
-    }
-    
-    &.disliked {
-      color: #333;
-      background: rgb(240 240 240 / 60%);
-    }
   }
 }
 
@@ -384,18 +339,381 @@ $spacing-xxl: 1.5rem;
   }
 }
 
-.replyEditor {
-  margin-top: $spacing-lg;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
+.isDeleting {
+  opacity: 0;
+  max-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  transform: scaleY(0.8);
+}
+
+.isAppearing {
+  animation: appearIn 0.3s ease-out;
+}
+
+@keyframes appearIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes branchAppear {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.deleteConfirm {
+  position: fixed;
+  z-index: 9999;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.confirmDeleteLink,
+.cancelDeleteLink {
+  margin-left: 8px;
+  text-decoration: none;
   
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.confirmDeleteLink {
+  color: red;
+  font-weight: 500;
+}
+
+.cancelDeleteLink {
+  color: #666;
+}
+
+.deleteAction {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+
+  .deleteButton {
+    color: var(--color-red-600);
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+
+    &:hover {
+      background: var(--color-red-50);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .deleteConfirm {
+    position: absolute;
+    top: 0;
+    right: calc(100% + 8px);
+    background: white;
+    border: 1px solid var(--color-red-200);
+    border-radius: 4px;
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+    white-space: nowrap;
+    animation: fadeIn 0.2s ease-out;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      right: -5px;
+      transform: translateY(-50%) rotate(45deg);
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-top: 1px solid var(--color-red-200);
+      border-right: 1px solid var(--color-red-200);
+    }
+
+    .confirmButton {
+      color: white;
+      background: var(--color-red-600);
+      border: none;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+
+      &:hover {
+        background: var(--color-red-700);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    .cancelButton {
+      color: var(--color-gray-600);
+      background: var(--color-gray-100);
+      border: none;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+
+      &:hover {
+        background: var(--color-gray-200);
+      }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.commentControlMore {
+  padding: 4px;
+  color: var(--color-gray-500);
+  position: relative;
+  z-index: 2;
+
+  &:hover {
+    color: var(--color-gray-700);
+    background: var(--color-gray-100);
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.hiddenComment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  color: var(--color-gray-500);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 8px;
+  background: var(--color-gray-50);
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    background: var(--color-gray-100);
+    color: var(--color-gray-700);
+  }
+
+  .icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+  }
+
+  &:hover .icon {
+    opacity: 1;
+  }
+}
+
+.moreMenu {
+  min-width: 140px;
+  padding: 4px;
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+  position: absolute;
+  z-index: 1000;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+
   &::before {
     content: '';
-    display: block;
-    height: 1px;
-    background: #f3f4f6;
-    margin-bottom: $spacing-md;
+    position: absolute;
+    top: -4px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-left: 1px solid var(--color-gray-200);
+    border-top: 1px solid var(--color-gray-200);
+    transform: rotate(45deg);
+  }
+
+  .menuItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px;
+    border: none;
+    background: none;
+    color: var(--color-gray-700);
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--color-gray-100);
+      color: var(--color-gray-900);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .menuItemIcon {
+      width: 16px;
+      height: 16px;
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+
+    &:hover .menuItemIcon {
+      opacity: 1;
+    }
+
+    &[data-action="delete"] {
+      color: var(--color-red-600);
+
+      &:hover {
+        background: var(--color-red-50);
+      }
+
+      .menuItemIcon {
+        color: var(--color-red-600);
+      }
+    }
+
+    &[data-action="hide"] {
+      color: var(--color-gray-600);
+
+      &:hover {
+        background: var(--color-gray-100);
+      }
+    }
+  }
+
+  .deleteConfirm {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--color-gray-200);
+    display: flex;
+    gap: 4px;
+
+    button {
+      flex: 1;
+      padding: 6px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+
+      &.confirmButton {
+        background: var(--color-red-600);
+        color: white;
+
+        &:hover {
+          background: var(--color-red-700);
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+
+      &.cancelButton {
+        background: var(--color-gray-100);
+        color: var(--color-gray-600);
+
+        &:hover {
+          background: var(--color-gray-200);
+        }
+      }
+    }
+  }
+}
+
+.moreMenuPopup {
+  z-index: 1000;
+  position: absolute;
+}
+
+.moreMenuOverlay {
+  z-index: 999;
+}
+
+// Добавляем глобальные стили для редактора в CommentsTree
+:global {
+  .SimpleRichEditor_editor__r7opp {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+
+    &.SimpleRichEditor_focused__bdbdd {
+      background: var(--color-gray-50);
+      border-radius: 8px;
+    }
+  }
+
+  .SimpleRichEditor_toolbarContainer__ofdcc {
+    background: transparent;
+    box-shadow: none;
+    border: none;
+  }
+
+  .SimpleRichEditor_controls__qg0dw {
+    &.SimpleRichEditor_visible__uw6vl {
+      opacity: 1;
+    }
+  }
+
+  .SimpleRichEditor_content__e3pox:focus-within {
+    background: var(--color-gray-50);
+    border-radius: 8px;
   }
 }

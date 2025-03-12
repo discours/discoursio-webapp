@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import {
   ErrorBoundary,
   For,
@@ -14,7 +15,7 @@ import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { useSnackbar, useUI } from '~/context/ui'
+import { useSnackbar } from '~/context/ui'
 import { useCommentsMyRates } from '~/graphql/api/private'
 import {
   Author,
@@ -33,7 +34,6 @@ import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { CommentCard } from './CommentCard'
 import { CommentsHeader } from './CommentsHeader'
 
-import clsx from 'clsx'
 import styles from './CommentsTree.module.scss'
 
 const COMMENTS_PER_PAGE = 20
@@ -85,16 +85,24 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   const [newComments, setNewComments] = createSignal<Reaction[]>([])
   const [commentsOrder, setCommentsOrder] = createSignal<ReactionSort>(ReactionSort.Newest)
   const [isLoading, setIsLoading] = createSignal(true)
-  const { showConfirm } = useUI()
 
   // Состояния редактора
   const [editingCommentId, setEditingCommentId] = createSignal<number>()
   const [localContent, setLocalContent] = createSignal('')
   const [posting, setPosting] = createSignal(false)
 
-  // Мемоизированные значения
+  // Функция для проверки пустоты контента
+  const isContentEmpty = (content: string) => {
+    const div = document.createElement('div')
+    div.innerHTML = content
+    return !div.textContent?.trim()
+  }
+
+  // Обновляем мемоизированные значения для учета оптимистичных комментариев
   const comments = createMemo(() => {
     const allReactions = Object.values(reactionEntities())
+
+    // Фильтруем и объединяем реальные и оптимистичные комментарии
     return allReactions.filter((r) => r.kind === ReactionKind.Comment && r.shout?.slug === props.shoutSlug)
   })
 
@@ -104,7 +112,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
     if (onlyNew()) {
       return newComments().sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       )
     }
 
@@ -112,7 +120,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       if (commentsOrder() === ReactionSort.Like) {
         return (b.stat?.rating || 0) - (a.stat?.rating || 0)
       }
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     })
   })
 
@@ -180,15 +188,30 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     }
   })
 
-  // Обработчики
+  createEffect(() => {
+    if (isContentEmpty(localContent())) {
+      untrack(() => setLocalContent(''))
+    }
+  })
+
+  /**
+   * Обработчик для отправки комментария
+   */
   const handleSubmitComment = async (parentId?: number) => {
+    console.log('[CommentsTree] Starting comment submission:', {
+      parentId,
+      editingCommentId: editingCommentId(),
+      content: localContent(),
+      isContentEmpty: isContentEmpty(localContent())
+    })
+
     if (!session()?.user) {
       showSnackbar({ type: 'error', body: t('Please sign in to comment') })
       return
     }
 
     const content = localContent().trim()
-    if (!content) {
+    if (isContentEmpty(content)) {
       showSnackbar({ type: 'error', body: t('Comment cannot be empty') })
       return
     }
@@ -201,12 +224,20 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       const commentId = editingCommentId()
       const isEditing = commentId !== undefined
 
+      console.log('[CommentsTree] Processing edit:', {
+        commentId,
+        isEditing,
+        sanitizedContent
+      })
+
       const commentToEdit = isEditing ? comments().find((c) => c.id === commentId) : undefined
       if (isEditing && !commentToEdit) {
+        console.error('[CommentsTree] Comment not found for editing:', commentId)
         showSnackbar({ type: 'error', body: t('Comment not found') })
         return
       }
 
+      // Отправляем запрос на сервер
       const input = isEditing
         ? ({
             reaction: {
@@ -226,15 +257,27 @@ export const CommentsTree = (props: CommentsTreeProps) => {
             }
           } as MutationCreate_ReactionArgs)
 
+      console.log('[CommentsTree] Sending request:', {
+        input,
+        isEditing
+      })
+
       const result = isEditing ? await updateShoutReaction(input) : await createShoutReaction(input)
 
+      console.log('[CommentsTree] Got response:', result)
+
       if (result && 'error' in result && result.error) {
+        console.error('[CommentsTree] Error in response:', result.error)
         showSnackbar({ type: 'error', body: result.error })
         return
       }
 
+      // Очищаем форму и состояния
       handleClear()
+
+      // Тихо обновляем данные с сервера
       await refetch()
+
       showSnackbar({ type: 'success', body: t(isEditing ? 'Comment updated' : 'Comment saved') })
       window.scrollTo(0, scrollPosition)
     } catch (error) {
@@ -304,21 +347,15 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     })
   }
 
+  /**
+   * Обработчик для удаления комментария
+   */
   const handleDelete = async (id: number) => {
     if (!id) return
     if (!session()?.user) {
       showSnackbar({ type: 'error', body: t('Please sign in to delete') })
       return
     }
-
-    const confirmed = await showConfirm({
-      confirmBody: t('Are you sure you want to delete this comment?'),
-      confirmButtonLabel: t('Delete'),
-      confirmButtonVariant: 'danger',
-      declineButtonLabel: t('Cancel')
-    })
-
-    if (!confirmed) return
 
     try {
       const result = await deleteShoutReaction(id)
@@ -429,7 +466,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         <ul class={styles.commentsList}>
           <Show when={clickedReplyId() === props.parentId}>
             <li class={styles.replyEditor}>
-              <div class={styles.editorButtonsWrapper}>
+              <div>
                 <SimpleRichEditor
                   editorId={`draft-${props.shoutId}-comment-${clickedReplyId()}`}
                   commands={['bold', 'italic', 'link', 'image', 'blockquote']}
@@ -445,23 +482,24 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                       setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`, data.content)
                     )
                   }}
+                  onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-${clickedReplyId()}`)}
                   content={getEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`)}
-                  bubble={false}
+                  toolbar="bottom"
                 />
-                <Show when={localContent().trim().length > 0}>
-                  <div class={styles.buttons}>
-                    <button class="button button--secondary" onClick={handleClear}>
-                      {t('Cancel')}
-                    </button>
-                    <button
-                      class="button button--primary"
-                      onClick={() => handleSubmitComment(clickedReplyId() as number)}
-                      disabled={posting()}
-                    >
-                      {t(posting() ? 'Saving...' : 'Save')}
-                    </button>
-                  </div>
-                </Show>
+                <div
+                  class={styles.editingButtonsWrapper}
+                >
+                  <button class="button button--secondary" onClick={handleClear}>
+                    {t('Cancel')}
+                  </button>
+                  <button
+                    class="button button--primary"
+                    onClick={() => handleSubmitComment(clickedReplyId() as number)}
+                    disabled={posting() || isContentEmpty(localContent())}
+                  >
+                    {t(posting() ? 'Saving...' : 'Save')}
+                  </button>
+                </div>
               </div>
             </li>
           </Show>
@@ -489,7 +527,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                 </Show>
                 <Show when={editingCommentId() === comment.id}>
                   <li class={styles.editingComment}>
-                    <div class={styles.editorButtonsWrapper}>
+                    <div>
                       <SimpleRichEditor
                         editorId={`draft-${props.shoutId}-comment-edit-${comment.id}`}
                         commands={['bold', 'italic', 'link', 'image', 'blockquote']}
@@ -510,11 +548,11 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                           )
                         }}
                         content={getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)}
-                        bubble={false}
+                        toolbar="bottom"
                       />
                       <div
-                        class={clsx(styles.buttons, {
-                          [styles.buttonsActive]: localContent().trim().length > 0
+                        class={clsx(styles.editingButtonsWrapper, styles.editingButtonsWrapperEdit, {
+                          [styles.hidden]: !editingCommentId() || isContentEmpty(localContent())
                         })}
                       >
                         <button class="button button--secondary" onClick={handleClear}>
@@ -522,8 +560,11 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                         </button>
                         <button
                           class="button button--primary"
-                          onClick={() => handleSubmitComment(undefined)}
-                          disabled={posting()}
+                          onClick={() => {
+                            console.log('[CommentsTree] Save button clicked in edit mode')
+                            handleSubmitComment(undefined)
+                          }}
+                          disabled={posting() || isContentEmpty(localContent())}
                         >
                           {t(posting() ? 'Saving...' : 'Save')}
                         </button>
@@ -537,6 +578,21 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         </ul>
       </Show>
     )
+  }
+
+  const handleEditorBlur = (draftKey: string) => {
+    const content = getEditorContent(draftKey)
+    if (content) {
+      const div = document.createElement('div')
+      div.innerHTML = content
+      if (!div.textContent) {
+        // Если после очистки контент пустой - очищаем редактор
+        batch(() => {
+          setLocalContent('')
+          setEditorContent(draftKey, '')
+        })
+      }
+    }
   }
 
   const handleEditorChange = (data: EditorData) => {
@@ -565,23 +621,72 @@ export const CommentsTree = (props: CommentsTreeProps) => {
             <ul class={styles.commentsList}>
               <For each={commentTree()[0] || []}>
                 {(comment) => (
-                  <CommentCard
-                    comment={comment}
-                    sortedComments={sortedComments()}
-                    lastSeen={shoutLastSeen()}
-                    onDelete={handleDelete}
-                    onReply={handleReply}
-                    onEdit={handleEdit}
-                    clickedReplyId={clickedReplyId}
-                    articleAuthors={props.articleAuthors}
-                    myRate={getCommentRate(comment.id)}
-                  >
-                    <CommentBranch
-                      parentId={comment.id}
-                      shoutId={props.shoutId}
-                      articleAuthors={props.articleAuthors}
-                    />
-                  </CommentCard>
+                  <>
+                    <Show when={editingCommentId() !== comment.id}>
+                      <CommentCard
+                        comment={comment}
+                        sortedComments={sortedComments()}
+                        lastSeen={shoutLastSeen()}
+                        onDelete={handleDelete}
+                        onReply={handleReply}
+                        onEdit={handleEdit}
+                        clickedReplyId={clickedReplyId}
+                        articleAuthors={props.articleAuthors}
+                        myRate={getCommentRate(comment.id)}
+                      >
+                        <CommentBranch
+                          parentId={comment.id}
+                          shoutId={props.shoutId}
+                          articleAuthors={props.articleAuthors}
+                        />
+                      </CommentCard>
+                    </Show>
+                    <Show when={editingCommentId() === comment.id}>
+                      <li class={styles.editingComment}>
+                        <div>
+                          <SimpleRichEditor
+                            editorId={`draft-${props.shoutId}-comment-edit-${comment.id}`}
+                            commands={['bold', 'italic', 'link', 'image', 'blockquote']}
+                            placeholder={t('Edit your comment...')}
+                            onChange={(data) => {
+                              console.log('[CommentsTree] Edit editor onChange:', {
+                                commentId: comment.id,
+                                content: data.content,
+                                isEmpty: data.isEmpty,
+                                plainText: data.plainText
+                              })
+                              setLocalContent(data.content)
+                              untrack(() =>
+                                setEditorContent(
+                                  `draft-${props.shoutId}-comment-edit-${comment.id}`,
+                                  data.content
+                                )
+                              )
+                            }}
+                            content={getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)}
+                            toolbar="bottom"
+                          />
+                          <div
+                            class={styles.editingButtonsWrapper}
+                          >
+                            <button class="button button--secondary" onClick={handleClear}>
+                              {t('Cancel')}
+                            </button>
+                            <button
+                              class="button button--primary"
+                              onClick={() => {
+                                console.log('[CommentsTree] Save button clicked in edit mode')
+                                handleSubmitComment(undefined)
+                              }}
+                              disabled={posting() || isContentEmpty(localContent())}
+                            >
+                              {t(posting() ? 'Saving...' : 'Save')}
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    </Show>
+                  </>
                 )}
               </For>
             </ul>
@@ -599,33 +704,25 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
           <Show when={!clickedReplyId()}>
             <ShowIfAuthenticated fallback={<FallbackMessage />}>
-              <div class={styles.editorButtonsWrapper}>
+              <div>
                 <SimpleRichEditor
                   editorId={`draft-${props.shoutId}-comment-new`}
-                  commands={['bold', 'italic', 'link', 'image', 'blockquote']}
+                  commands={['bold', 'italic', 'link', 'blockquote', 'image']}
                   placeholder={t('Write a comment...')}
                   onChange={handleEditorChange}
+                  onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-new`)}
                   content={getEditorContent(`draft-${props.shoutId}-comment-new`)}
                 />
                 <div
-                  class={clsx(styles.newCommentButtons, {
-                    [styles.buttonsActive]: localContent().trim().length > 0
-                  })}
+                  class={styles.editingButtonsWrapper}
                 >
-                  <button
-                    class={clsx('button', 'button--secondary', {
-                      [styles.buttonsActive]: localContent().trim().length > 0
-                    })}
-                    onClick={handleClear}
-                  >
+                  <button class={clsx('button', 'button--secondary')} onClick={handleClear}>
                     {t('Cancel')}
                   </button>
                   <button
-                    class={clsx('button', 'button--primary', {
-                      [styles.buttonsActive]: localContent().trim().length > 0
-                    })}
+                    class={clsx('button', 'button--primary')}
                     onClick={() => handleSubmitComment(undefined)}
-                    disabled={posting()}
+                    disabled={posting() || isContentEmpty(localContent())}
                   >
                     {t(posting() ? 'Saving...' : 'Save')}
                   </button>

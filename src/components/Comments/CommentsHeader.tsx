@@ -7,7 +7,7 @@ import { Icon } from '../_shared/Icon'
 
 import styles from './CommentsHeader.module.scss'
 
-type Props = {
+type CommentsHeaderProps = {
   onlyNew: boolean
   comments: Reaction[]
   newComments: Reaction[]
@@ -16,14 +16,14 @@ type Props = {
   toggleNewOnly: () => void
 }
 
-export const CommentsHeader = (props: Props) => {
+export const CommentsHeader = (props: CommentsHeaderProps) => {
   const { t } = useLocalize()
 
   return (
     <div class={styles.commentsHeaderWrapper}>
       <Show when={(props.comments || []).length > 0}>
         <h2 class={styles.commentsHeader}>
-          <Icon name="comments" class={styles.commentsIcon} />
+          <Icon name="comments-outline" class={styles.commentsIcon} />
           {t('Comments')}
           <span class={styles.commentsCount}>{props.comments.length.toString() || ''}</span>
           <Show when={props.newComments.length > 0}>

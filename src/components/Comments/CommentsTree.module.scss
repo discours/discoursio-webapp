@@ -1,8 +1,8 @@
 // Variables
-$comment-branch-color: var(--color-border);
-$comment-branch-width: 2px;
+$comment-branch-color: gray;
+$comment-branch-width: 3px;
 $comment-branch-radius: 1.2rem;
-$comment-indent: 1rem;
+$comment-indent: 2.5rem;
 $comment-margin: 1.5rem;
 
 // Mixins
@@ -35,62 +35,110 @@ $comment-margin: 1.5rem;
   }
 }
 
-// Styles
-.comments {
-  position: relative;
-  margin-top: 2rem;
-  padding: 0 1rem;
-}
-
-.editorButtonsWrapper {
-  margin-top: 1rem;
-
-  @include editor-wrapper;
-
-  .buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    margin-top: -5rem;
-
-    :global(.button) {
-      border-radius: 10px;
-      padding: 10px 20px;
-    }
-  }
-}
-
 .commentsList {
-  position: relative;
-  margin: 0;
-  padding: 0;
   list-style: none;
+  padding: 0;
+  margin: 0;
+  position: relative;
 
-  li {
+  // Стили для вложенных списков
+  .commentsList {
+    margin-left: $comment-indent;
     position: relative;
-    margin-bottom: $comment-margin;
-
+    
+    // Вертикальная линия для ветки
     &::before {
-      @include comment-branch;
-
-      left: -14px;
-      border-bottom: $comment-branch-width solid $comment-branch-color;
-      border-left: $comment-branch-width solid $comment-branch-color;
-      border-radius: 0 0 0 $comment-branch-radius;
-      top: -24px;
-      height: 50px;
-      width: 12px;
+      content: '';
+      position: absolute;
+      left: -$comment-indent;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: lightgray;
     }
 
-    &.rootComment {
+    // Соединительная линия для каждого комментария
+    > li {
+      position: relative;
+      
       &::before {
-        display: none;
+        content: '';
+        position: absolute;
+        left: -$comment-indent;
+        top: 1.75rem;
+        width: 1.25rem;
+        height: 1px;
+        background: lightgray;
+      }
+
+      // Последний элемент в ветке - закругленное завершение
+      &:last-child {
+        &::before {
+          border-radius: 0 0 0 4px;
+          border-left: 1px solid lightgray;
+          border-bottom: 1px solid lightgray;
+          background: none;
+          width: 1.25rem;
+          height: 1.25rem;
+          top: 1.75rem;
+        }
+
+        // Скрываем вертикальную линию после последнего комментария
+        &::after {
+          content: '';
+          position: absolute;
+          left: -$comment-indent;
+          top: 3rem;
+          bottom: 0;
+          width: 1px;
+          background: var(--color-background);
+        }
       }
     }
+  }
 
-    .commentsList {
-      margin-left: $comment-indent;
-      padding-left: $comment-indent;
+  .replyEditor,
+  .editingComment {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    position: relative;
+
+    :global {
+      .editor-content {
+        min-height: 80px;
+        font-family: Muller, sans-serif;
+        font-size: 14px;
+        line-height: 1.286;
+        letter-spacing: -1%;
+        
+        &:focus-within {
+          background: var(--color-gray-50);
+          border-radius: 8px;
+        }
+      }
+
+      .editor-toolbar {
+        opacity: 1;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+
+        button {
+          background: transparent;
+          box-shadow: none;
+          border: none;
+        }
+      }
+      
+      .SimpleRichEditor_toolbarContainer__ofdcc {
+        &.SimpleRichEditor_toolbarTop__a76vn,
+        &.SimpleRichEditor_toolbarBottom__lndbp {
+          position: relative;
+          background: transparent;
+          box-shadow: none;
+          border: none;
+        }
+      }
     }
   }
 }
@@ -136,35 +184,262 @@ $comment-margin: 1.5rem;
 .replyEditor,
 .editingComment {
   position: relative;
-  margin-bottom: $comment-margin;
-  margin-left: 2.5rem;
+  margin-bottom: 1.5rem;
+  margin-left: $comment-indent;
   
   &::before {
     @include comment-branch;
+    left: -$comment-indent;
+    top: 1.75rem;
+    width: 1.25rem;
+    height: $comment-branch-width;
+  }
+}
 
-    top: -1rem;
-    left: -1.5rem;
-    bottom: 50%;
-    width: $comment-branch-width;
+.editorButtonsWrapper {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  
+  &.active {
+    opacity: 1;
+  }
+}
+
+// Отдельные стили для кнопок в режиме редактирования
+.editingButtonsWrapper {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+  opacity: 1;
+  transition: opacity 0.4s ease-in-out;
+
+  &.hidden {
+    opacity: 0;
+  }
+  
+  button {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    
+    &:first-child {
+      background: var(--color-gray-100);
+      color: var(--color-gray-700);
+      
+      &:hover {
+        background: var(--color-gray-200);
+      }
+    }
+    
+    &:last-child {
+      background: var(--color-gray-800);
+      color: white;
+      
+      &:hover {
+        background: var(--color-gray-900);
+      }
+      
+      &:disabled {
+        opacity: 0.5;
+        background: var(--color-gray-400);
+      }
+    }
   }
 
-  &::after {
-    @include comment-branch;
+}
 
-    top: 1.5rem;
-    left: -1.5rem;
-    width: 1rem;
+// Стили для основного редактора комментариев
+.comments {
+  :global {
+    .SimpleRichEditor_editorWrapper__vfq7n {
+      margin-top: 1rem;
+    }
+
+    .SimpleRichEditor_editor__r7opp {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+
+      &.SimpleRichEditor_focused__bdbdd {
+        background: var(--color-gray-50);
+        border-radius: 8px;
+      }
+    }
+
+    .SimpleRichEditor_content__e3pox {
+      min-height: 80px;
+      font-family: Muller, sans-serif;
+      font-size: 14px;
+      line-height: 1.286;
+      letter-spacing: -1%;
+      
+      &:focus-within {
+        background: var(--color-gray-50);
+        border-radius: 8px;
+        padding: 8px;
+      }
+
+      &::selection,
+      *::selection {
+        background: rgb(0 0 0 / 10%);
+      }
+    }
+
+    .SimpleRichEditor_toolbarContainer__ofdcc {
+      background: transparent;
+      box-shadow: none;
+      border: none;
+
+      button {
+        background: transparent;
+        box-shadow: none;
+        border: none;
+      }
+    }
+  }
+}
+
+// Анимация появления ветки
+@keyframes branchAppear {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+// Стили для редактора ответов с анимацией
+.replyEditor {
+  position: relative;
+  margin: 1rem 0 1rem $comment-indent;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    left: -$comment-indent;
+    top: 1.75rem;
+    width: 1.25rem;
     height: $comment-branch-width;
+    background: $comment-branch-color;
+    opacity: 0;
+    transform-origin: left;
+    animation: branchAppear 0.3s ease-out forwards;
+  }
+}
+
+// Анимация появления редактора
+@keyframes editorAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Анимация исчезновения комментария
+@keyframes commentDisappear {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.editingComment {
+  position: relative;
+  margin: 1rem 0;
+  animation: editorAppear 0.2s ease-out forwards;
+  
+  :global {
+    .editor-content {
+      min-height: 80px;
+      font-family: Muller, sans-serif;
+      font-size: 14px;
+      line-height: 1.286;
+      letter-spacing: -1%;
+      padding: 8px;
+      background: var(--color-gray-50);
+      border-radius: 8px;
+      
+      &:focus-within {
+        background: var(--color-gray-50);
+      }
+    }
+
+    .editor-toolbar {
+      opacity: 1;
+      background: transparent;
+      box-shadow: none;
+      border: none;
+      margin-top: 8px;
+
+      button {
+        background: transparent;
+        box-shadow: none;
+        border: none;
+      }
+    }
   }
 
   .editorButtonsWrapper {
-    margin-top: 0;
-
-    @include editor-wrapper;
-
-    .buttons {
-      margin-top: 0.5rem;
-      gap: 0.5rem;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+    opacity: 1 !important;
+    
+    button {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      
+      &:first-child {
+        background: var(--color-gray-100);
+        color: var(--color-gray-700);
+        
+        &:hover {
+          background: var(--color-gray-200);
+        }
+      }
+      
+      &:last-child {
+        background: var(--color-gray-800);
+        color: white;
+        
+        &:hover {
+          background: var(--color-gray-900);
+        }
+        
+        &:disabled {
+          opacity: 0.5;
+          background: var(--color-gray-400);
+        }
+      }
     }
+  }
+}
+
+// Добавляем анимацию исчезновения для комментария при редактировании
+.comment {
+  &.isEditing {
+    animation: commentDisappear 0.2s ease-out forwards;
   }
 }

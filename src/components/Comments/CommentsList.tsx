@@ -82,6 +82,7 @@ export const CommentsList = (props: CommentsListProps) => {
                   <Show when={replyTo() === comment.id}>
                     <div class={styles.replyEditor}>
                       <SimpleRichEditor
+                        toolbar="bottom"
                         editorId={`draft-comment-${comment.id}`}
                         placeholder={t('Write a reply...')}
                         commands={['bold', 'italic', 'link', 'image', 'blockquote']}
