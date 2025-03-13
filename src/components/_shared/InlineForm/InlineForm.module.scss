@@ -18,7 +18,7 @@
       display: block;
 
       &::placeholder {
-        color: rgba(#000, 0.3);
+        color: var(--black-100);
       }
 
       &:focus {
@@ -33,7 +33,7 @@
 
   .linkError {
     padding: 6px 11px;
-    color: red;
+    color: var(--default-color);
     font-size: 0.7em;
     position: absolute;
     bottom: -3rem;

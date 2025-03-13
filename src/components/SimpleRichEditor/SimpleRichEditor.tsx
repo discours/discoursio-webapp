@@ -2,6 +2,7 @@ import { clsx } from 'clsx'
 import { Component, createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
 import { Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
+import { isServer } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
 
 import { UploadModalContent } from '~/components/Upload/UploadModalContent/UploadModalContent'
@@ -253,6 +254,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
   // Реактивное отслеживание выделения и позиции курсора
   const trackSelectionAndCursor = () => {
+    if (isServer) return
     const windowSelection = window.getSelection()
     if (!windowSelection || !editorRef()) return
 
@@ -473,7 +475,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
   // Функция для обработки клика по элементам в редакторе
   const handleContentClick = (e: MouseEvent) => {
-    if (!editorRef() || props.readOnly) return
+    if (isServer || !editorRef() || props.readOnly) return
 
     const target = e.target as HTMLElement
 
@@ -668,6 +670,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   }
 
   const handleAction = (action: CommandType) => {
+    if (isServer) return
     if (action === 'image') {
       showModal(MODALS.uploadImage)
       return
@@ -802,6 +805,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
    * @returns true если замена успешна
    */
   const replaceSelection = (html: string): boolean => {
+    if (isServer) return false
     if (!restoreSelection()) return false
 
     const windowSelection = window.getSelection()
@@ -959,27 +963,20 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       </div>
 
       {/* Панель управления как оверлей */}
-      <div class={clsx(styles.controls, { [styles.visible]: toolbar() && toolbar() !== 'hidden' })}>
-        <div class={styles.actions}>
-          <Show
-            when={!props.readOnly && toolbar() !== 'hidden' && props.commands && props.commands.length > 0}
-          >
-            <div
-              class={clsx(styles.toolbarContainer, {
-                [styles.toolbarTop]: props.toolbar === 'top',
-                [styles.toolbarBottom]: props.toolbar === 'bottom',
-                [styles.toolbarFloat]: !props.toolbar || props.toolbar === 'float'
-              })}
-            >
-              <SimpleToolbar
-                commands={props.commands || []}
-                onAction={(action: CommandType | CommandGroupType) => handleAction(action as CommandType)}
-                currentFormats={activeFormats()}
-                isVisible={toolbar() !== 'hidden'}
-              />
-            </div>
-          </Show>
-        </div>
+      <div
+        class={clsx(styles.toolbarContainer, {
+          [styles.toolbarTop]: props.toolbar === 'top',
+          [styles.toolbarBottom]: props.toolbar === 'bottom',
+          [styles.toolbarFloat]: !props.toolbar || props.toolbar === 'float',
+          [styles.visible]: toolbar() && toolbar() !== 'hidden'
+        })}
+      >
+        <SimpleToolbar
+          commands={props.commands || []}
+          onAction={(action: CommandType | CommandGroupType) => handleAction(action as CommandType)}
+          currentFormats={activeFormats()}
+          isVisible={toolbar() !== 'hidden'}
+        />
       </div>
 
       <Portal>

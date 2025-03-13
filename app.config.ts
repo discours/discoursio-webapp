@@ -49,17 +49,17 @@ export default defineConfig({
   server: {
     preset,
     port: 3000,
-    https: checkSSL(),
-    streaming: false,
-    rollupConfig: {
-      external: ['whatwg-url']
-    }
+    https: checkSSL()
   },
   devOverlay: isDev,
   vite: viteConfig,
-  edge: true,
+  edge: isVercel,
   experimental: {
-    streaming: true,
-    islands: true
+    streaming: false,
+    islands: false,
+    hydration: true,
+    router: {
+      ssr: true
+    }
   }
 } as SolidStartInlineConfig)

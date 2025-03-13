@@ -97,9 +97,7 @@
 .unratedArticle {
   padding: 24px 0;
   border-bottom: 1px solid var(--border-color);
-  background: fit left / 40px auto;
-  background-repeat: no-repeat;
-  background-size: auto;
+  background: no-repeat left / 40px auto;
   padding-left: 50px;
 
   a {

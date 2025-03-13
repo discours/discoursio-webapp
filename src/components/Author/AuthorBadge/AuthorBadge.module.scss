@@ -63,7 +63,7 @@
     font-weight: 500;
     gap: 1rem;
     max-width: 100%;
-    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .actions {

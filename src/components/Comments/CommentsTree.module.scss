@@ -242,7 +242,7 @@ $comment-margin: 1.5rem;
 // Стили для редактора ответов с анимацией
 .replyEditor {
   position: relative;
-  margin: 1rem 0 1rem $comment-indent;
+  margin: 1rem 0 1rem var(--comment-indent);
   
   &::before {
     content: '';

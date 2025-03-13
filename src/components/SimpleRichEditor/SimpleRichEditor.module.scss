@@ -228,6 +228,8 @@
 .toolbarContainer {
   position: relative;
   z-index: 2;
+  transition: all 0.2s ease-in-out;
+  opacity: 0;
   
   &.toolbarTop {
     order: -1;
@@ -253,9 +255,15 @@
     box-shadow: var(--editor-shadow);
     padding: 4px;
   }
+  
+  &.visible {
+    opacity: 1 !important;
+  }
 }
 
-// Состояния
-.visible {
-  opacity: 1 !important;
+.inlineFormWrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 100;
 }
