@@ -338,7 +338,7 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
               </div>
             </div>
 
-            <div class={styles.commentText} innerHTML={sanitizeHtml(props.comment.body || '')} />
+            <div class={styles.commentText} innerHTML={String(sanitizeHtml(props.comment.body || ''))} />
 
             <div class={styles.commentActions}>
               <div class={styles.leftControls}>

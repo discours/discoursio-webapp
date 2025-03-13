@@ -336,14 +336,16 @@ export const ProfileSettings = () => {
                       initialValue={form.bio || ''}
                       allowEnterKey={false}
                       maxLength={120}
-                      onChange={(value) => updateFormField('bio', sanitizeHtml(value))}
+                      onChange={(value) => updateFormField('bio', String(sanitizeHtml(value)))}
                     />
 
                     <h4>{t('About')}</h4>
                     <SimpleRichEditor
                       content={form.about || ''}
                       commands={['bold', 'italic', 'link', 'blockquote', 'image']}
-                      onChange={(data: EditorData) => updateFormField('about', sanitizeHtml(data.content))}
+                      onChange={(data: EditorData) =>
+                        updateFormField('about', String(sanitizeHtml(data.content)))
+                      }
                       placeholder={t('About')}
                     />
                     <div class={clsx(styles.multipleControls, 'pretty-form__item')}>

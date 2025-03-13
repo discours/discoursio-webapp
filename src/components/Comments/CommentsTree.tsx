@@ -220,7 +220,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     const scrollPosition = window.scrollY
 
     try {
-      const sanitizedContent = sanitizeHtml(content)
+      const sanitizedContent = String(sanitizeHtml(content))
       const commentId = editingCommentId()
       const isEditing = commentId !== undefined
 

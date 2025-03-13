@@ -124,7 +124,7 @@ export const EditView = (props: { draft: Draft }) => {
   }
 
   const handleInputChange = (key: keyof DraftInput, val: string) => {
-    let value = val
+    let value = String(sanitizeHtml(val))
     if (key === 'body' || key === 'lead') {
       value = sanitizeHtml(val)
       setEditorContent(`draft-${currentDraft()?.id}-${key}`, value)
