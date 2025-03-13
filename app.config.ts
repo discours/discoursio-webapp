@@ -9,8 +9,8 @@ import viteConfig, { isDev } from './vite.config'
 
 const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)
 
-const isVercel = Boolean(process.env.VERCEL)
-const isNetlify = Boolean(process.env.NETLIFY)
+const isVercel = false // Boolean(process.env.VERCEL)
+const isNetlify = false // Boolean(process.env.NETLIFY)
 const preset = isNetlify ? 'netlify' : isVercel ? 'vercel-edge' : 'node'
 console.info(`[app.config] solid-start preset {> ${preset} <}`)
 
