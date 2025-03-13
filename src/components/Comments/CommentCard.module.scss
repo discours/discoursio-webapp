@@ -175,53 +175,7 @@ $comment-indent: 2.5rem;
   flex-direction: column;
   gap: $spacing-md;
   position: relative;
-  
-  &::before {
-    content: '';
-    display: block;
-    height: 1px;
-    background: var(--color-gray-100);
-    margin-bottom: $spacing-md;
-  }
 
-  :global {
-    .editor-content {
-      &:focus-within {
-        background: var(--color-gray-50);
-        border-radius: 8px;
-      }
-
-      &::selection,
-      *::selection {
-        background: rgb(0 0 0 / 10%);
-      }
-    }
-    
-    .editor-toolbar {
-      background: transparent;
-      box-shadow: none;
-      border: none;
-      opacity: 1;
-    }
-
-    // Убираем тени и бордеры у элементов тулбара
-    .editor-toolbar button,
-    .editor-toolbar .button {
-      background: transparent;
-      box-shadow: none;
-      border: none;
-    }
-
-    // Стили для верхнего и нижнего тулбара
-    .toolbarTop,
-    .toolbarBottom {
-      position: relative;
-      width: 100%;
-      background: transparent;
-      border: none;
-      box-shadow: none;
-    }
-  }
 }
 
 .commentBody {
@@ -279,40 +233,6 @@ $comment-indent: 2.5rem;
   button {
     border-radius: 8px;
     transition: all 0.15s ease;
-    
-    &:first-child {
-      background-color: transparent;
-      border: 1px solid rgb(229 231 235 / 60%);
-      color: #4b5563;
-      
-      &:hover {
-        background-color: rgb(249 250 251 / 60%);
-        border-color: #d1d5db;
-      }
-    }
-    
-    &:last-child {
-      background-color: #666;
-      color: #fff;
-      
-      &:hover {
-        background-color: #444;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgb(0 0 0 / 20%);
-      }
-      
-      &:active {
-        transform: translateY(0);
-      }
-      
-      &:disabled {
-        opacity: 0.6;
-        background-color: #d1d5db;
-        color: #4b5563;
-        transform: none;
-        box-shadow: none;
-      }
-    }
   }
 }
 
@@ -370,6 +290,7 @@ $comment-indent: 2.5rem;
     opacity: 0;
     transform: scaleX(0);
   }
+
   100% {
     opacity: 1;
     transform: scaleX(1);
@@ -685,35 +606,4 @@ $comment-indent: 2.5rem;
 
 .moreMenuOverlay {
   z-index: 999;
-}
-
-// Добавляем глобальные стили для редактора в CommentsTree
-:global {
-  .SimpleRichEditor_editor__r7opp {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-
-    &.SimpleRichEditor_focused__bdbdd {
-      background: var(--color-gray-50);
-      border-radius: 8px;
-    }
-  }
-
-  .SimpleRichEditor_toolbarContainer__ofdcc {
-    background: transparent;
-    box-shadow: none;
-    border: none;
-  }
-
-  .SimpleRichEditor_controls__qg0dw {
-    &.SimpleRichEditor_visible__uw6vl {
-      opacity: 1;
-    }
-  }
-
-  .SimpleRichEditor_content__e3pox:focus-within {
-    background: var(--color-gray-50);
-    border-radius: 8px;
-  }
 }

@@ -33,7 +33,7 @@ export type SelectionState = {
 }
 
 // Mapping commands to HTML elements configuration
-const FORMAT_CONFIG: Record<CommandType, { tag: string; attributes?: Record<string, string> }> = {
+export const FORMAT_CONFIG: Record<CommandType, { tag: string; attributes?: Record<string, string> }> = {
   bold: { tag: 'strong', attributes: {} },
   italic: { tag: 'em', attributes: {} },
   link: {
@@ -102,13 +102,59 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
   if (!state.range) return
 
   const range = state.range.cloneRange()
+
+  // Если нет выделения (курсор)
+  if (state.isEmpty) {
+    const container = range.startContainer
+    const element =
+      container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
+
+    if (!element) return
+
+    const config = FORMAT_CONFIG[command]
+    const formattedElement = element.closest(config.tag)
+
+    // Если курсор внутри форматированного элемента - разделяем
+    if (formattedElement) {
+      const splitPoint = range.startOffset
+      const textNode = range.startContainer
+
+      // Проверяем что это текстовый узел
+      if (textNode.nodeType === Node.TEXT_NODE) {
+        // Разделяем текстовый узел
+        const secondPart = (textNode as Text).splitText(splitPoint)
+
+        // Клонируем форматированный элемент
+        const secondElement = formattedElement.cloneNode(false) as HTMLElement
+
+        // Перемещаем вторую часть в новый элемент
+        formattedElement.parentNode?.insertBefore(secondElement, formattedElement.nextSibling)
+        secondElement.appendChild(secondPart)
+
+        // Устанавливаем курсор между элементами
+        range.setStartAfter(formattedElement)
+        range.setEndAfter(formattedElement)
+      }
+    } else {
+      // Создаем новый форматированный элемент
+      const wrapper = createElement(command)
+      wrapper.textContent = '\u200B' // Zero-width space
+
+      range.insertNode(wrapper)
+      range.selectNodeContents(wrapper)
+      range.collapse(true)
+    }
+
+    return
+  }
+
+  // Стандартная логика для выделенного текста
   const content = range.extractContents()
   const wrapper = createElement(command)
-
   wrapper.appendChild(content)
   range.insertNode(wrapper)
 
-  // Keep original selection instead of selecting whole formatted content
+  // Keep original selection
   range.setStartBefore(wrapper)
   range.setEndAfter(wrapper)
 }
@@ -123,6 +169,24 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
   console.log('Initial text:', state.text)
 
   const range = state.range.cloneRange()
+
+  // Если выделение схлопнуто (курсор), ищем ближайший форматированный элемент
+  if (state.isEmpty) {
+    const container = range.startContainer
+    const element =
+      container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
+
+    if (element) {
+      const config = FORMAT_CONFIG[command]
+      const formattedElement = element.closest(config.tag)
+
+      if (formattedElement) {
+        // Расширяем выделение на весь форматированный элемент
+        range.selectNodeContents(formattedElement)
+      }
+    }
+  }
+
   const content = range.extractContents()
 
   // Create a temporary container
@@ -169,8 +233,10 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
   range.insertNode(fragment)
 
   // Keep original selection instead of selecting inserted content
-  range.setStart(fragment.firstChild!, 0)
-  range.setEnd(fragment.lastChild!, fragment.lastChild!.textContent?.length || 0)
+  if (fragment.firstChild && fragment.lastChild) {
+    range.setStart(fragment.firstChild, 0)
+    range.setEnd(fragment.lastChild, fragment.lastChild.textContent?.length || 0)
+  }
 
   // Log final state
   console.log('Final range content:', range.toString())
@@ -212,7 +278,7 @@ export const hasFormatting = (format: CommandType, selection: Selection | null):
 
   if (!element) return false
 
-  // Check if the element or its parents have the formatting
+  // Проверяем только по HTML тегу
   const formattedElement = element.closest(config.tag)
 
   // Check if the formatted element contains the selection

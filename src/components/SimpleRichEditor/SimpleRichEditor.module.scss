@@ -1,3 +1,35 @@
+// Переменные
+:root {
+  --editor-border-radius: 8px;
+  --editor-padding: 16px;
+  --editor-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+  --editor-transition: all 0.2s ease-in-out;
+  --toolbar-height: 48px;
+}
+
+// Миксины
+@mixin interactive-element {
+  &:focus, &:hover {
+    outline: 2px dashed var(--color-primary, #36f);
+    outline-offset: 2px;
+    position: relative;
+  }
+}
+
+@mixin toolbar-button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  transition: var(--editor-transition);
+}
+
 .editorWrapper {
   position: relative;
   width: 100%;
@@ -6,10 +38,9 @@
   .editor {
     position: relative;
     width: 100%;
-    background: var(--color-white);
-    border: 1px solid var(--color-gray-200);
-    border-radius: 8px;
-    transition: all 0.2s ease-in-out;
+    border-radius: var(--editor-border-radius);
+    transition: var(--editor-transition);
+    background: rgb(0 0 0 / 6%);
     box-shadow: none;
     
     &:focus-within {
@@ -26,11 +57,7 @@
         bottom: 0;
         left: 0;
         right: 0;
-        background: var(--color-gray-50);
-        border: 1px solid var(--color-gray-200);
-        border-top: none;
-        border-bottom-left-radius: 8px;
-        border-bottom-right-radius: 8px;
+        border: none;
         padding: 8px 12px;
         display: flex;
         gap: 8px;
@@ -40,19 +67,9 @@
           width: 24px;
           height: 24px;
           padding: 4px;
-          border-radius: 4px;
-          background: transparent;
           border: none;
           cursor: pointer;
           transition: all 0.2s ease-in-out;
-
-          &:hover {
-            background: var(--color-gray-100);
-          }
-
-          &.active {
-            background: var(--color-gray-200);
-          }
 
           svg {
             width: 16px;
@@ -66,8 +83,8 @@
     .content {
       position: relative;
       min-height: 120px;
-      padding: 16px;
-      padding-bottom: 56px;
+      padding: var(--editor-padding);
+      padding-bottom: calc(var(--editor-padding) + var(--toolbar-height));
       outline: none;
       font-size: 15px;
       line-height: 1.5;
@@ -98,114 +115,37 @@
       }
 
       a {
-        color: #444;
+        color: var(--blue-500);
         text-decoration: none;
-        border-bottom: 1px dotted #d1d5db;
+        cursor: pointer;
 
-        &:hover { 
-          text-decoration: none;
-          border-bottom: 1px solid #666;
+        &:hover {
+          text-decoration: underline;
         }
+
+        @include interactive-element;
       }
-    }
 
-    // Панель управления как оверлей
-    .controls {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-      transition: none;
-      pointer-events: all;
-      margin-top: 0;
-      margin-left: 0;
+      img {
+        max-width: 100%;
+        height: auto;
+        margin: 1em 0;
+        border-radius: 4px;
+        box-shadow: var(--editor-shadow);
+        cursor: pointer;
 
-      .actions {
-        margin-top: -50px;
-        right: 0;
-        position: relative;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        padding: 0 12px;
-        background: rgb(255 255 255 / 90%);
-        backdrop-filter: blur(6px);
-        border-top: 1px solid rgb(243 244 246 / 60%);
-        border-radius: 0 0 12px 12px;
-        pointer-events: auto;
-        box-shadow: 0 1px 6px rgb(0 0 0 / 3%);
-
-        .toolbarContainer {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-
-          &.bubble {
-            position: absolute;
-            background: rgb(255 255 255 / 95%);
-            backdrop-filter: blur(6px);
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 6px;
-            box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
-            z-index: 100;
-          }
-
-          .toolbar {
-            display: flex;
-            gap: 4px;
-            
-            .button {
-              width: 32px;
-              height: 32px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              padding: 0;
-              border: none;
-              border-radius: 6px;
-              background: none;
-              color: #6b7280;
-              cursor: pointer;
-              transition: all 0.15s ease;
-
-              svg {
-                width: 16px;
-                height: 16px;
-                fill: currentcolor;
-                transition: transform 0.2s ease;
-              }
-
-              &:hover {
-                background: #f3f4f6;
-                color: #111827;
-                
-                svg {
-                  transform: scale(1.1);
-                }
-              }
-
-              &[data-active="true"] {
-                background: #f3f4f6;
-                color: #333;
-              }
-            }
-          }
+        &.uploading {
+          opacity: 0.5;
+          filter: grayscale(1);
         }
-      }
-    }
 
-    // Тулбар всегда видим
-    &:hover,
-    &:focus-within {
-      .controls {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
+        @include interactive-element;
+      }
+
+      [data-footnote] {
+        cursor: pointer;
+
+        @include interactive-element;
       }
     }
   }
@@ -230,27 +170,6 @@
 [data-bg="green"] { background: #f3f4f6; }
 [data-bg="gray"] { background: #f3f4f6; }
 [data-bg="white"] { background: #fff; }
-
-// Уведомление об автосохранении
-.autosaveNotice {
-  position: absolute;
-  top: -30px;
-  right: 0;
-  font-size: 1.3rem;
-  color: #4b5563;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.2s, transform 0.2s;
-  padding: 4px 8px;
-  background: #f9fafb;
-  border-radius: 4px;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
-
-  &:global(.visible) {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .content {
   min-height: 100px;
@@ -305,6 +224,7 @@
   }
 }
 
+// Позиционирование тулбара
 .toolbarContainer {
   position: relative;
   z-index: 2;
@@ -313,113 +233,29 @@
     order: -1;
     position: sticky;
     top: 0;
-    background: var(--bg-color);
-    box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+    margin-bottom: -2em;
+    box-shadow: none;
   }
   
   &.toolbarBottom {
     order: 2;
     position: sticky;
     bottom: 0;
-    background: var(--bg-color);
-    box-shadow: 0 -2px 4px rgb(0 0 0 / 10%);
+    margin-top: -2em;
+    box-shadow: none;
   }
   
   &.toolbarFloat {
     position: absolute;
     bottom: 0;
     background: var(--bg-color);
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+    border-radius: var(--editor-border-radius);
+    box-shadow: var(--editor-shadow);
     padding: 4px;
   }
 }
 
+// Состояния
 .visible {
   opacity: 1 !important;
 }
-
-.inlineFormWrapper {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
-  width: auto;
-  min-width: 280px;
-  border: 1px solid var(--color-gray-100);
-  
-  :global {
-    .InlineForm_InlineForm__SnKE4 {
-      margin: 0;
-      border: none !important;
-    }
-    
-    .InlineForm_form__HEfxz {
-      margin: 0;
-      padding: 8px;
-    }
-    
-    input {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid var(--color-gray-200) !important;
-      border-radius: 6px;
-      font-size: 14px;
-      color: var(--color-gray-900);
-      background: var(--color-gray-50);
-      
-      &:focus {
-        border-color: var(--color-gray-400) !important;
-        outline: none;
-        background: white;
-      }
-    }
-    
-    button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      padding: 0;
-      border-radius: 4px;
-      background: var(--color-gray-100);
-      border: none;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      
-      &:first-of-type {
-        background: var(--color-gray-800);
-        color: white;
-        
-        &:hover {
-          background: var(--color-gray-900);
-        }
-      }
-      
-      &:last-of-type {
-        background: var(--color-gray-100);
-        color: var(--color-gray-700);
-        
-        &:hover {
-          background: var(--color-gray-200);
-        }
-      }
-      
-      svg {
-        width: 18px;
-        height: 18px;
-      }
-    }
-    
-    .InlineForm_linkError__vngwN {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      margin-top: 4px;
-      font-size: 12px;
-    }
-  }
-}
-

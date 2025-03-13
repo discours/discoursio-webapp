@@ -22,11 +22,16 @@ const createFootnoteRef = (number: number): HTMLElement => {
   const footnoteRef = document.createElement('sup')
   footnoteRef.className = styles['footnote-ref']
   footnoteRef.id = `fnref:${number}`
+  footnoteRef.setAttribute('data-footnote', 'ref')
+  footnoteRef.setAttribute('data-footnote-id', number.toString())
 
   const refLink = document.createElement('a')
   refLink.href = `#fn:${number}`
   refLink.textContent = number.toString()
   refLink.setAttribute('aria-describedby', 'footnote-label')
+  refLink.setAttribute('data-footnote', 'ref-link')
+  refLink.setAttribute('data-footnote-id', number.toString())
+
   footnoteRef.appendChild(refLink)
 
   return footnoteRef
@@ -39,15 +44,20 @@ const createFootnoteItem = (number: number, content: string): HTMLElement => {
   const footnoteItem = document.createElement('li')
   footnoteItem.id = `fn:${number}`
   footnoteItem.setAttribute('role', 'doc-endnote')
+  footnoteItem.setAttribute('data-footnote', 'item')
+  footnoteItem.setAttribute('data-footnote-id', number.toString())
 
   const footnoteContent = document.createElement('p')
   footnoteContent.innerHTML = content
+  footnoteContent.setAttribute('data-footnote-content', number.toString())
 
   const backlink = document.createElement('a')
   backlink.href = `#fnref:${number}`
   backlink.className = styles['footnote-backref']
   backlink.setAttribute('role', 'doc-backlink')
   backlink.setAttribute('aria-label', 'Back to content')
+  backlink.setAttribute('data-footnote', 'backlink')
+  backlink.setAttribute('data-footnote-id', number.toString())
   backlink.innerHTML = '↩'
 
   footnoteContent.appendChild(backlink)
