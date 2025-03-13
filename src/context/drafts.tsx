@@ -154,7 +154,10 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   }
 
   const updateDraft = async (draft: DraftInput) => {
-    const response = await client()?.mutation(updateDraftMutation, { draft_id: draft.id, draft_input: draft })
+    const response = await client()?.mutation(updateDraftMutation, {
+      draft_id: draft.id,
+      draft_input: draft
+    })
     if (response?.data?.update_draft) {
       setDrafts(drafts().map((d) => (d.id === draft.id ? response.data.update_draft : d)))
     }
