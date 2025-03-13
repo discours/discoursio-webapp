@@ -451,7 +451,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     return (
       <div
         class={clsx(styles.editingButtonsWrapper, {
-          [styles.editingButtonsWrapperHidden]: props.isDisabled
+          [styles.hidden]: props.isDisabled
         })}
       >
         <Button variant="secondary" value={t('Cancel')} onClick={handleClear} />
@@ -634,7 +634,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
   return (
     <ErrorBoundary fallback={(err) => <div>Error: {err.toString()}</div>}>
-      <div class={styles.comments}>
+      <div>
         <Show when={!isLoading()} fallback={<Loading />}>
           <CommentsHeader
             comments={comments()}

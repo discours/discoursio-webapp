@@ -326,6 +326,10 @@ $comment-margin: 1.5rem;
     justify-content: flex-end;
     margin-top: 8px;
     opacity: 1 !important;
+
+    &.hidden {
+      opacity: 0 !important;
+    }
     
     button {
       padding: 6px 12px;

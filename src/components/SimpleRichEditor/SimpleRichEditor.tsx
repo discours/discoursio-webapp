@@ -174,8 +174,13 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
    */
   const isEmptyContent = (content: string | null | undefined): boolean => {
     if (!content) return true
+    
+    // Убедимся что content это строка
+    const contentStr = String(content)
+    
     // Удаляем все пробелы и переносы строк
-    const cleanContent = content.replace(/\s/g, '')
+    const cleanContent = contentStr.replace(/\s/g, '')
+    
     // Проверяем на пустые параграфы и другие пустые HTML теги
     const div = document.createElement('div')
     div.innerHTML = cleanContent
