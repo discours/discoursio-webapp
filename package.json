@@ -56,7 +56,7 @@
     "intl-messageformat": "^10.7.15",
     "isomorphic-dompurify": "^2.22.0",
     "javascript-time-ago": "^2.5.11",
-    "nitropack": "latest",
+    "nitropack": "2.11.6",
     "patch-package": "8.0.0",
     "sass": "1.85.1",
     "solid-js": "^1.9.3",
@@ -80,11 +80,11 @@
     "yjs": "13.6.24"
   },
   "resolutions": {
-    "nitropack": "latest",
+    "nitropack": "2.11.6",
     "unenv": "1.10.0"
   },
   "overrides": {
-    "nitropack": "latest",
+    "nitropack": "2.11.6",
     "unenv": "1.10.0"
   },
   "dependencies": {
