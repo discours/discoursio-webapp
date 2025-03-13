@@ -11,7 +11,7 @@ const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)
 
 const isVercel = Boolean(process.env.VERCEL)
 const isNetlify = Boolean(process.env.NETLIFY)
-const preset = isNetlify ? 'netlify' : isVercel ? 'vercel_edge' : 'node'
+const preset = isNetlify ? 'netlify' : isVercel ? 'vercel-edge' : 'node'
 console.info(`[app.config] solid-start preset {> ${preset} <}`)
 
 // certs for local development
@@ -50,8 +50,16 @@ export default defineConfig({
     preset,
     port: 3000,
     https: checkSSL(),
-    streaming: false
+    streaming: false,
+    rollupConfig: {
+      external: ['whatwg-url']
+    }
   },
   devOverlay: isDev,
-  vite: viteConfig
+  vite: viteConfig,
+  edge: true,
+  experimental: {
+    streaming: true,
+    islands: true
+  }
 } as SolidStartInlineConfig)
