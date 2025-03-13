@@ -11,7 +11,7 @@ const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)
 
 const isVercel = Boolean(process.env.VERCEL)
 const isNetlify = Boolean(process.env.NETLIFY)
-const preset = isNetlify ? 'netlify' : isVercel ? 'vercel-edge' : 'node'
+const preset = isNetlify ? 'netlify' : isVercel ? 'vercel' : 'node'
 console.info(`[app.config] solid-start preset {> ${preset} <}`)
 
 // certs for local development
