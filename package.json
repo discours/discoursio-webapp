@@ -36,7 +36,7 @@
     "@solid-primitives/upload": "^0.1.0",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.3",
-    "@solidjs/start": "^1.1.3",
+    "@solidjs/start": "1.1.2",
     "@types/cookie-signature": "^1.1.2",
     "@types/node": "^22.13.1",
     "@types/sanitize-html": "2.13.0",
@@ -56,7 +56,6 @@
     "intl-messageformat": "^10.7.15",
     "isomorphic-dompurify": "^2.22.0",
     "javascript-time-ago": "^2.5.11",
-    "nitropack": "2.11.6",
     "patch-package": "8.0.0",
     "sass": "1.85.1",
     "solid-js": "^1.9.3",
@@ -72,20 +71,11 @@
     "tslib": "^2.8.1",
     "typescript": "^5.7.2",
     "typograf": "^7.4.1",
-    "unenv": "1.10.0",
     "uniqolor": "^1.1.1",
     "vite-plugin-node-polyfills": "^0.23.0",
     "vite-plugin-sass-dts": "^1.3.30",
     "y-protocols": "1.0.6",
     "yjs": "13.6.24"
-  },
-  "resolutions": {
-    "nitropack": "2.11.6",
-    "unenv": "1.10.0"
-  },
-  "overrides": {
-    "nitropack": "2.11.6",
-    "unenv": "1.10.0"
   },
   "dependencies": {
     "form-data": "^4.0.1",
