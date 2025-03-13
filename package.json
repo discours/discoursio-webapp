@@ -36,7 +36,7 @@
     "@solid-primitives/upload": "^0.1.0",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.3",
-    "@solidjs/start": "1.1.2",
+    "@solidjs/start": "1.1.1",
     "@types/cookie-signature": "^1.1.2",
     "@types/node": "^22.13.1",
     "@types/sanitize-html": "2.13.0",
