@@ -1,16 +1,18 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Accessor, JSX, Show, createEffect, createMemo, createSignal, onMount } from 'solid-js'
+import { Accessor, JSX, Show, createMemo, createSignal, onMount } from 'solid-js'
 
 import { RatingControl } from '~/components/RatingControl/RatingControl'
+import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import { Popup } from '~/components/_shared/Popup/Popup'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useSnackbar, useUI } from '~/context/ui'
-import { Reaction, ReactionKind } from '~/graphql/schema/core.gen'
+import { Author, Reaction, ReactionKind } from '~/graphql/schema/core.gen'
 import { saveScrollPosition } from '~/utils/scroll'
 import { AuthorLink } from '../Author/AuthorLink'
+import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { CommentDate } from './CommentDate'
 
@@ -33,8 +35,9 @@ import styles from './CommentCard.module.scss'
  * @property {JSX.Element} [children] - Дочерние элементы
  * @property {Author[]} [articleAuthors] - Авторы статьи
  * @property {boolean} [isNew] - Флаг нового комментария для анимации
+ * @property {string} [content] - Содержимое редактора при редактировании комментария
  */
-type CommentCardProps = {
+export type CommentCardProps = {
   comment: Reaction
   compact?: boolean
   sortedComments?: Reaction[]
@@ -46,9 +49,15 @@ type CommentCardProps = {
   clickedReplyId?: Accessor<number | undefined>
   onDelete?: (id: number) => void
   onEdit?: (id: number) => void
+  onEditorChange?: (data: EditorData) => void
+  onCancelEdit?: () => void
+  onSaveEdit?: () => void
+  onCancelReply?: () => void
+  onSaveReply?: () => void
   children?: JSX.Element
   articleAuthors?: { slug: string }[]
   isNew?: boolean
+  content?: string
 }
 
 /**
@@ -79,11 +88,9 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
   const [showDeleteConfirm, setShowDeleteConfirm] = createSignal(false)
   const [isDeleting, setIsDeleting] = createSignal(false)
   const [isAppearing, setIsAppearing] = createSignal(props.isNew || false)
-  const [isHidden, setIsHidden] = createSignal(false)
-  const [isReplying, setIsReplying] = createSignal(false)
   const [isEditing, setIsEditing] = createSignal(false)
+  const [menuOpen, setMenuOpen] = createSignal(false)
 
-  let confirmRef: HTMLDivElement | undefined
   let commentRef: HTMLDivElement | undefined
 
   /**
@@ -111,47 +118,31 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
   /**
    * Проверяет, является ли текущий пользователь автором комментария
    */
-  const isAuthor = createMemo(() => {
-    return props.comment.created_by?.slug === session()?.user?.app_data?.profile?.slug
-  })
+  const isAuthor = (author: Author) => {
+    return props.articleAuthors?.some((a) => a.slug === author.slug) || false
+  }
 
   /**
    * Проверяет, является ли автор комментария автором статьи
    */
   const isArticleAuthor = createMemo(() => {
     if (props.articleAuthors?.length && props.comment.created_by) {
-      return props.articleAuthors.some((author) => author.slug === props.comment.created_by?.slug)
+      return isAuthor(props.comment.created_by)
     }
     return false
   })
 
   onMount(() => {
-    // Запускаем анимацию появления для новых комментариев
+    // Проверяем, является ли комментарий новым
     if (props.isNew) {
       setIsAppearing(true)
-      // Удаляем флаг "новый" через короткое время после анимации
       setTimeout(() => {
         setIsAppearing(false)
-      }, 1000)
+      }, 2000)
     }
 
-    // При монтировании проверяем, был ли комментарий скрыт ранее
-    const hiddenComments = JSON.parse(localStorage.getItem('hiddenComments') || '[]')
-    setIsHidden(hiddenComments.includes(props.comment.id))
-
-    console.log('[CommentCard] Mounted:', {
-      id: props.comment.id,
-      body: props.comment.body,
-      author: props.comment.created_by || 'unknown'
-    })
-  })
-
-  createEffect(() => {
-    console.log('[CommentCard] Props updated:', {
-      id: props.comment.id,
-      hasBody: !!props.comment.body,
-      sortedCommentsLength: props.sortedComments?.length
-    })
+    // Устанавливаем ссылку на комментарий
+    commentRef = document.getElementById(`comment-${props.comment.id}`) as HTMLDivElement
   })
 
   /**
@@ -161,22 +152,37 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
     e.preventDefault()
     e.stopPropagation()
 
-    if (!showDeleteConfirm()) {
-      setShowDeleteConfirm(true)
-      return
-    }
-
-    setIsDeleting(true)
-    props.onDelete?.(props.comment.id)
+    // Показываем подтверждение в том же пункте меню
+    setShowDeleteConfirm(true)
   }
 
   /**
-   * Обработчик для отмены удаления комментария
+   * Обработчик для подтверждения удаления комментария
    */
-  const handleCancelDelete = (e: MouseEvent) => {
+  const handleConfirmDelete = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setShowDeleteConfirm(false)
+
+    // Устанавливаем состояние удаления для визуальной индикации
+    setIsDeleting(true)
+    setMenuOpen(false) // Закрываем меню
+
+    // Анимируем скрытие комментария перед фактическим удалением
+    if (commentRef) {
+      commentRef.style.transition =
+        'opacity 0.3s ease, max-height 0.5s ease, padding 0.5s ease, margin 0.5s ease'
+      commentRef.style.opacity = '0'
+      commentRef.style.maxHeight = '0'
+      commentRef.style.overflow = 'hidden'
+      commentRef.style.padding = '0'
+      commentRef.style.margin = '0'
+      commentRef.style.border = 'none'
+    }
+
+    // Вызываем удаление с небольшой задержкой для завершения анимации
+    setTimeout(() => {
+      props.onDelete?.(props.comment.id)
+    }, 300)
   }
 
   /**
@@ -193,7 +199,7 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
       console.warn('[CommentCard] Reply handler not provided')
       return
     }
-    setIsReplying(true)
+    // Не устанавливаем локальный флаг, так как форма отображается через CommentBranch
     props.onReply(props.comment.id)
   }
 
@@ -266,39 +272,17 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
       })
   }
 
-  /**
-   * Обработчик для скрытия комментария
-   */
-  const handleHide = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleReport = () => {
+    console.log('[CommentCard] Reporting comment:', props.comment.id)
 
-    const hiddenComments = JSON.parse(localStorage.getItem('hiddenComments') || '[]')
-    const updatedHiddenComments = [...hiddenComments, props.comment.id]
-    localStorage.setItem('hiddenComments', JSON.stringify(updatedHiddenComments))
-
-    setIsHidden(true)
-    showSnackbar({ type: 'success', body: t('Comment hidden') })
-  }
-
-  /**
-   * Обработчик для показа скрытого комментария
-   */
-  const handleUnhide = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    const hiddenComments = JSON.parse(localStorage.getItem('hiddenComments') || '[]')
-    const updatedHiddenComments = hiddenComments.filter((id: number) => id !== props.comment.id)
-    localStorage.setItem('hiddenComments', JSON.stringify(updatedHiddenComments))
-
-    setIsHidden(false)
-    showSnackbar({ type: 'success', body: t('Comment unhidden') })
+    // TODO: Implement report handling
   }
 
   return (
     <div
       ref={commentRef}
+      id={`comment-${props.comment.id}`}
+      data-comment-id={props.comment.id}
       class={clsx(
         styles.comment,
         {
@@ -306,133 +290,212 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
           [styles.isNew]: isNew(),
           [styles.isReply]: props.compact,
           [styles.isDeleting]: isDeleting(),
-          [styles.isAppearing]: isAppearing(),
-          [styles.isHidden]: isHidden(),
-          [styles.isEditing]: isEditing()
+          [styles.isAppearing]: isAppearing()
         },
         props.class
       )}
     >
-      <Show
-        when={!isHidden()}
-        fallback={
-          <div class={styles.hiddenComment} onClick={handleUnhide}>
-            <Icon name="eye-off" class={styles.icon} />
-            {t('Comment hidden')}
+      <Show when={isExpanded()} fallback={<hr onClick={() => setExpanded(true)} />}>
+        {/* Шапка комментария всегда видима */}
+        <div class={styles.commentHeader}>
+          <div class={styles.authorInfo}>
+            <div>
+              <Show when={props.comment.created_by}>
+                <AuthorLink author={props.comment.created_by} />
+                <Show when={isArticleAuthor()}>
+                  <span class={styles.authorBadge}>{t('Author')}</span>
+                </Show>
+              </Show>
+            </div>
           </div>
-        }
-      >
-        <Show when={isExpanded()} fallback={<hr onClick={() => setExpanded(true)} />}>
-          <div class={styles.commentContent}>
-            <div class={styles.commentHeader}>
-              <div class={styles.authorInfo}>
-                <div>
-                  <Show when={props.comment.created_by}>
-                    <AuthorLink author={props.comment.created_by} />
-                    <Show when={isArticleAuthor()}>
-                      <span class={styles.authorBadge}>{t('Author')}</span>
-                    </Show>
-                  </Show>
-                  <CommentDate comment={props.comment} isShort={true} />
+          <CommentDate comment={props.comment} isShort={true} />
+        </div>
+
+        {/* Тело комментария с возможностью редактирования */}
+        <div class={clsx(styles.commentBody, { [styles.isEditing]: isEditing() })}>
+          <Show
+            when={!isEditing()}
+            fallback={
+              <div class={styles.editingContent}>
+                <SimpleRichEditor
+                  editorId={`draft-${props.comment.id}-edit`}
+                  commands={['bold', 'italic', 'link', 'image', 'blockquote']}
+                  placeholder={t('Edit your comment...')}
+                  onChange={(data) => {
+                    console.log('[CommentCard] Editor onChange:', {
+                      commentId: props.comment.id,
+                      content: data.content,
+                      isEmpty: data.isEmpty
+                    })
+                    props.onEditorChange?.(data)
+                  }}
+                  content={props.content || props.comment.body || ''}
+                  toolbar="bottom"
+                />
+                <div
+                  class={clsx(styles.editingButtonsWrapper, {
+                    [styles.hidden]: props.content === '' || props.content === '<p><br></p>'
+                  })}
+                >
+                  <Button
+                    variant="secondary"
+                    value={t('Cancel')}
+                    onClick={() => {
+                      // Сначала вызываем внешний обработчик, потом обновляем локальное состояние
+                      props.onCancelEdit?.()
+                      // Сбрасываем локальный флаг редактирования с небольшой задержкой для плавного перехода
+                      setTimeout(() => setIsEditing(false), 50)
+                    }}
+                  />
+                  <Button
+                    value={t('Save')}
+                    variant="primary"
+                    onClick={() => {
+                      // Сначала вызываем внешний обработчик, потом обновляем локальное состояние
+                      props.onSaveEdit?.()
+                      // Сбрасываем локальный флаг редактирования с небольшой задержкой для плавного перехода
+                      setTimeout(() => setIsEditing(false), 50)
+                    }}
+                  />
                 </div>
               </div>
-            </div>
+            }
+          >
+            <div class={styles.commentContent}>
+              <div class={styles.commentText} innerHTML={String(sanitizeHtml(props.comment.body || ''))} />
 
-            <div class={styles.commentText} innerHTML={String(sanitizeHtml(props.comment.body || ''))} />
-
-            <div class={styles.commentActions}>
-              <div class={styles.leftControls}>
-                <RatingControl comment={props.comment} myRate={props.myRate} />
-                <button
-                  class={clsx(styles.commentControl, styles.commentControlReply)}
-                  onClick={handleReply}
-                >
-                  {t('Reply')}
-                </button>
-              </div>
-
-              <div class={styles.actionsSpacer} />
-
-              <div class={styles.rightControls}>
-                <Show when={canEdit()}>
+              <div class={styles.commentActions}>
+                <div class={styles.leftControls}>
+                  <RatingControl comment={props.comment} myRate={props.myRate} />
                   <button
-                    class={clsx(styles.commentControl, styles.commentControlEdit)}
-                    onClick={(e) => handleEdit(e)}
-                    title={t('Edit comment')}
+                    class={clsx(styles.commentControl, styles.commentControlReply)}
+                    onClick={handleReply}
                   >
-                    <Icon name="pencil-outline" class={styles.icon} />
+                    {t('Reply')}
                   </button>
-                </Show>
+                </div>
 
-                <button
-                  class={clsx(styles.commentControl, styles.commentControlShare)}
-                  onClick={() => handleShare()}
-                >
-                  <Icon name="share-outline" class={styles.icon} />
-                </button>
+                <div class={styles.actionsSpacer} />
 
-                <Popup
-                  trigger={
-                    <button class={clsx(styles.commentControl, styles.commentControlMore)}>
-                      <Icon name="ellipsis" class={styles.icon} />
-                    </button>
-                  }
-                  variant="tiny"
-                  horizontalAnchor="right"
-                  containerCssClass={styles.moreMenuContainer}
-                  popupCssClass={styles.moreMenuPopup}
-                  onVisibilityChange={(isVisible) => {
-                    console.log('[CommentCard] More menu visibility changed:', isVisible)
-                  }}
-                  closePopup={true}
-                >
-                  <div class={styles.moreMenu}>
-                    <Show
-                      when={isAuthor()}
-                      fallback={
-                        <button class={styles.menuItem} onClick={handleHide}>
-                          <Icon name="eye-off" class={styles.menuItemIcon} />
-                          {t('Hide comment')}
-                        </button>
-                      }
+                <div class={styles.rightControls}>
+                  <Show when={canEdit()}>
+                    <button
+                      class={clsx(styles.commentControl, styles.commentControlEdit)}
+                      onClick={(e) => handleEdit(e)}
+                      title={t('Edit comment')}
                     >
-                      <button class={styles.menuItem} onClick={handleDelete} disabled={isDeleting()}>
-                        <Icon name="delete" class={styles.menuItemIcon} />
-                        {t('Delete')}
+                      <Icon name="pencil-outline" class={styles.icon} />
+                    </button>
+                  </Show>
+                  <button
+                    class={clsx(styles.commentControl, styles.commentControlShare)}
+                    onClick={() => handleShare()}
+                  >
+                    <Icon name="share-outline" class={styles.icon} />
+                  </button>
+
+                  <Popup
+                    trigger={
+                      <button class={clsx(styles.commentControl, styles.commentControlMore)}>
+                        <Icon name="ellipsis" class={styles.icon} />
                       </button>
-                      <Show when={showDeleteConfirm()}>
-                        <div ref={confirmRef} class={styles.deleteConfirm}>
-                          <button class={styles.cancelButton} onClick={handleCancelDelete}>
-                            {t('Cancel')}
-                          </button>
+                    }
+                    variant="tiny"
+                    horizontalAnchor="right"
+                    containerCssClass={styles.moreMenuContainer}
+                    popupCssClass={styles.moreMenuPopup}
+                    keepOpen={showDeleteConfirm()}
+                    onVisibilityChange={(visible) => {
+                      setMenuOpen(visible)
+                      if (!visible) {
+                        // Сбрасываем подтверждение при закрытии меню
+                        setShowDeleteConfirm(false)
+                      }
+                    }}
+                    closePopup={!menuOpen()}
+                  >
+                    <div
+                      class={styles.moreMenu}
+                      onClick={(e) => {
+                        // Предотвращаем закрытие меню при клике на его содержимое
+                        e.stopPropagation()
+                      }}
+                    >
+                      <Show
+                        when={!showDeleteConfirm()}
+                        fallback={
                           <button
-                            class={styles.confirmButton}
-                            onClick={handleDelete}
+                            class={clsx(styles.menuItem, styles.menuItemConfirm)}
+                            onClick={(e) => {
+                              e.stopPropagation() // Предотвращаем всплытие события
+                              handleConfirmDelete(e)
+                            }}
                             disabled={isDeleting()}
+                            data-action="delete"
                           >
+                            <Icon name="delete" class={styles.menuItemIcon} />
+                            {t('Confirm deletion')}
+                          </button>
+                        }
+                      >
+                        {/* Стандартные пункты меню */}
+
+                        {/* Кнопка удаления */}
+                        <Show when={canEdit()}>
+                          <button
+                            class={styles.menuItem}
+                            onClick={(e) => {
+                              e.stopPropagation() // Предотвращаем всплытие события
+                              handleDelete(e)
+                            }}
+                            disabled={isDeleting()}
+                            data-action="delete"
+                          >
+                            <Icon name="delete" class={styles.menuItemIcon} />
                             {t('Delete')}
                           </button>
-                        </div>
+                        </Show>
+
+                        {/* Кнопка жалобы (только для чужих комментариев и не-редакторов) */}
+                        <Show
+                          when={
+                            // Комментарий принадлежит не текущему пользователю
+                            session()?.user?.app_data?.profile?.slug !== props.comment.created_by?.slug &&
+                            // И текущий пользователь не редактор
+                            !session()?.user?.roles?.includes('editor')
+                          }
+                        >
+                          <button
+                            class={styles.menuItem}
+                            onClick={(e) => {
+                              e.stopPropagation() // Предотвращаем всплытие события
+                              handleReport()
+                            }}
+                            data-action="report"
+                          >
+                            <Icon name="red-megaphone" class={styles.menuItemIcon} />
+                            {t('Report')}
+                          </button>
+                        </Show>
                       </Show>
-                    </Show>
-                  </div>
-                </Popup>
+                    </div>
+                  </Popup>
+                </div>
               </div>
-            </div>
 
-            <Show when={props.showArticleLink && props.comment.shout}>
-              <A href={`/${props.comment.shout?.slug}`} class={styles.articleLink}>
-                <Icon name="article" class={styles.articleLinkIcon} />
-                {props.comment.shout?.title}
-              </A>
-            </Show>
-          </div>
-
-          <Show when={props.children}>
-            <div class={clsx(styles.replyEditor, { [styles.isReplying]: isReplying() })}>
-              {props.children}
+              <Show when={props.showArticleLink && props.comment.shout}>
+                <A href={`/${props.comment.shout?.slug}`} class={styles.articleLink}>
+                  <Icon name="article" class={styles.articleLinkIcon} />
+                  {props.comment.shout?.title}
+                </A>
+              </Show>
             </div>
           </Show>
+        </div>
+
+        {/* Дочерние комментарии всегда видимы */}
+        <Show when={props.children}>
+          <div class={styles.childComments}>{props.children}</div>
         </Show>
       </Show>
     </div>

@@ -28,6 +28,8 @@ export type EditorCommandGroup = EditorCommandId[]
 export type EditorCommands = EditorCommandId[] | EditorCommandGroup[]
 
 const WEB_URL_REGEX = /^(https|http)?:\/\//
+const VIMEO_URL_REGEX = /^(https?:\/\/)?(www\.)?vimeo\.com\/([0-9]+)/
+const YOUTUBE_URL_REGEX = /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/
 
 export interface EditorData {
   content: string // HTML контент
@@ -336,9 +338,77 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const handleChange = (_ev?: Event) => {
     trackSelectionAndCursor()
 
-    // Get content and update state
+    // Get content and normalize HTML
+    let contentHtml = editorRef()?.innerHTML || ''
+
+    // Нормализация HTML - замена устаревших тегов на семантические
+    if (contentHtml) {
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = contentHtml
+      let hasChanges = false
+
+      // Замена <i> на <em>
+      const iTags = tempDiv.querySelectorAll('i')
+      if (iTags.length > 0) {
+        iTags.forEach((tag) => {
+          const em = document.createElement('em')
+          // Копируем все дочерние элементы
+          while (tag.firstChild) {
+            em.appendChild(tag.firstChild)
+          }
+          // Копируем атрибуты
+          Array.from(tag.attributes).forEach((attr) => {
+            em.setAttribute(attr.name, attr.value)
+          })
+          // Заменяем тег
+          tag.parentNode?.replaceChild(em, tag)
+        })
+        hasChanges = true
+        console.log(`Нормализация HTML: заменено ${iTags.length} тегов <i> на <em>`)
+      }
+
+      // Замена <b> на <strong>
+      const bTags = tempDiv.querySelectorAll('b')
+      if (bTags.length > 0) {
+        bTags.forEach((tag) => {
+          const strong = document.createElement('strong')
+          // Копируем все дочерние элементы
+          while (tag.firstChild) {
+            strong.appendChild(tag.firstChild)
+          }
+          // Копируем атрибуты
+          Array.from(tag.attributes).forEach((attr) => {
+            strong.setAttribute(attr.name, attr.value)
+          })
+          // Заменяем тег
+          tag.parentNode?.replaceChild(strong, tag)
+        })
+        hasChanges = true
+        console.log(`Нормализация HTML: заменено ${bTags.length} тегов <b> на <strong>`)
+      }
+
+      // Удаление пустых тегов форматирования
+      const emptyTags = tempDiv.querySelectorAll('em:empty, strong:empty, i:empty, b:empty')
+      if (emptyTags.length > 0) {
+        emptyTags.forEach((tag) => {
+          if (!tag.textContent || tag.textContent === '\u200B') {
+            tag.remove()
+          }
+        })
+        hasChanges = true
+        console.log(`Удалено ${emptyTags.length} пустых тегов форматирования`)
+      }
+
+      // Если были изменения, обновляем контент
+      if (hasChanges) {
+        contentHtml = tempDiv.innerHTML
+        if (editorRef()) {
+          editorRef()!.innerHTML = contentHtml
+        }
+      }
+    }
+
     const contentText = editorRef()?.textContent || ''
-    const contentHtml = contentText ? editorRef()?.innerHTML || '' : ''
     setContent(contentHtml)
 
     // Prepare editor data
@@ -433,10 +503,77 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
   const handlePaste = async (e: ClipboardEvent) => {
     e.preventDefault()
-    const text = e.clipboardData?.getData('text')
-    if (!text) return
 
-    handleContentPaste(text, {
+    // Попробуем получить HTML из буфера обмена для более точной обработки форматирования
+    const html = e.clipboardData?.getData('text/html')
+    const text = e.clipboardData?.getData('text')
+
+    if (!text && !html) return
+
+    // Если есть HTML, нормализуем его перед вставкой
+    if (html) {
+      console.log('Вставка HTML из буфера обмена')
+
+      // Нормализуем HTML перед вставкой
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = html
+
+      // Замена <i> на <em>
+      const iTags = tempDiv.querySelectorAll('i')
+      iTags.forEach((tag) => {
+        const em = document.createElement('em')
+        while (tag.firstChild) {
+          em.appendChild(tag.firstChild)
+        }
+        Array.from(tag.attributes).forEach((attr) => {
+          em.setAttribute(attr.name, attr.value)
+        })
+        tag.parentNode?.replaceChild(em, tag)
+      })
+
+      // Замена <b> на <strong>
+      const bTags = tempDiv.querySelectorAll('b')
+      bTags.forEach((tag) => {
+        const strong = document.createElement('strong')
+        while (tag.firstChild) {
+          strong.appendChild(tag.firstChild)
+        }
+        Array.from(tag.attributes).forEach((attr) => {
+          strong.setAttribute(attr.name, attr.value)
+        })
+        tag.parentNode?.replaceChild(strong, tag)
+      })
+
+      // Удаление пустых тегов форматирования
+      const emptyTags = tempDiv.querySelectorAll('em:empty, strong:empty, i:empty, b:empty, span:empty')
+      emptyTags.forEach((tag) => {
+        if (!tag.textContent || tag.textContent === '\u200B') {
+          tag.remove()
+        }
+      })
+
+      // Вставляем нормализованный HTML
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+
+        const fragment = document.createDocumentFragment()
+        while (tempDiv.firstChild) {
+          fragment.appendChild(tempDiv.firstChild)
+        }
+
+        range.insertNode(fragment)
+        range.collapse(false)
+
+        // Обновляем состояние редактора
+        handleChange()
+        return
+      }
+    }
+
+    // Если нет HTML или не удалось вставить, используем обычный текст
+    handleContentPaste(text || '', {
       insertText: (text) => {
         const selection = window.getSelection()
         if (!selection || !selection.rangeCount) return
@@ -677,20 +814,72 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const handleAction = (action: CommandType) => {
     if (isServer) return
     if (action === 'image') {
+      // Сохраняем выделение перед открытием модального окна
+      saveSelection()
       showModal(MODALS.uploadImage)
       return
     }
     if (action === 'video') {
+      // Сохраняем выделение перед открытием формы
+      saveSelection()
+
+      // Добавляем класс выделения для визуальной индикации
+      const windowSelection = window.getSelection()
+      if (windowSelection && windowSelection.rangeCount > 0) {
+        // Вместо удаления выделения, добавляем временную CSS-подсветку
+        const range = windowSelection.getRangeAt(0)
+        const span = document.createElement('span')
+        span.className = styles.tempHighlight
+        span.dataset.tempHighlight = 'true'
+
+        try {
+          // Оборачиваем выделение во временный span для визуального выделения
+          const clone = range.cloneRange()
+          clone.surroundContents(span)
+          windowSelection.removeAllRanges()
+          windowSelection.addRange(clone)
+        } catch (e) {
+          console.warn('Не удалось визуально выделить текст', e)
+        }
+      }
+
       setInsertPosition(calculateInsertPosition())
-      showInsert({ type: 'video', text: getSelectionText() })
+      // Не передаем выделенный текст в форму
+      showInsert({ type: 'video', text: '' })
       return
     }
     if (action === 'link') {
+      // Сохраняем выделение перед открытием формы
+      saveSelection()
+
+      // Добавляем класс выделения к редактору для визуальной индикации
+      const windowSelection = window.getSelection()
+      if (windowSelection && windowSelection.rangeCount > 0) {
+        // Вместо удаления выделения, добавляем временную CSS-подсветку
+        const range = windowSelection.getRangeAt(0)
+        const span = document.createElement('span')
+        span.className = styles.tempHighlight
+        span.dataset.tempHighlight = 'true'
+
+        try {
+          // Оборачиваем выделение во временный span для визуального выделения
+          const clone = range.cloneRange()
+          clone.surroundContents(span)
+          windowSelection.removeAllRanges()
+          windowSelection.addRange(clone)
+        } catch (e) {
+          console.warn('Не удалось визуально выделить текст', e)
+        }
+      }
+
       setInsertPosition(calculateInsertPosition())
-      showInsert({ type: 'link', text: getSelectionText() })
+      // Не передаем выделенный текст в форму
+      showInsert({ type: 'link', text: '' })
       return
     }
     if (action === 'footnote') {
+      // Сохраняем выделение перед открытием формы
+      saveSelection()
       setShowFootnoteEditor(true)
       return
     }
@@ -711,39 +900,54 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     const hasActiveFormat = hasFormatting(action, windowSelection)
     console.log('Format state:', { action, hasActiveFormat, isCollapsed })
 
-    if (hasActiveFormat) {
-      console.log('Removing formatting:', action)
-      // Если нет выделения - удаляем форматирование только под курсором
-      if (isCollapsed) {
-        // Расширяем выделение на текущее форматирование
-        const node = range.startContainer
-        const parentElement =
-          node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement) : node.parentElement
+    // Очищаем выделение перед применением операции, чтобы избежать побочных эффектов
+    const originalContent = editorRef()?.innerHTML || ''
 
-        if (parentElement) {
-          const config = FORMAT_CONFIG[action]
-          const formattedElement = parentElement.closest(config.tag)
-
-          if (formattedElement) {
-            // Расширяем выделение на весь форматированный элемент
-            range.selectNodeContents(formattedElement)
-            windowSelection.removeAllRanges()
-            windowSelection.addRange(range)
-          }
-        }
+    try {
+      if (hasActiveFormat) {
+        console.log('Removing formatting:', action)
+        removeFormatting(action, {
+          range,
+          text: selectedText,
+          isEmpty: isCollapsed,
+          position: { top: windowSelection.anchorOffset, left: windowSelection.anchorOffset }
+        })
+      } else {
+        console.log('Applying formatting:', action)
+        applyFormatting(action, {
+          range,
+          text: selectedText,
+          isEmpty: isCollapsed,
+          position: { top: windowSelection.anchorOffset, left: windowSelection.anchorOffset }
+        })
       }
 
-      removeFormatting(action, {
-        range,
-        text: selectedText,
-        isEmpty: isCollapsed,
-        position: { top: windowSelection.anchorOffset, left: windowSelection.anchorOffset }
+      // Verify content wasn't lost or corrupted
+      const newContent = editorRef()!.innerHTML
+      console.log('Content after formatting:', newContent)
+
+      // Проверяем на наличие пустых или некорректных тегов
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = newContent
+
+      // Ищем пустые теги форматирования и удаляем их
+      const emptyTags = tempDiv.querySelectorAll(`${FORMAT_CONFIG[action].tag}:empty`)
+      emptyTags.forEach((tag) => {
+        if (!tag.textContent || tag.textContent === '\u200B') {
+          tag.remove()
+        }
       })
+
+      // Проверяем, были ли удалены пустые теги
+      if (emptyTags.length > 0) {
+        console.log(`Removed ${emptyTags.length} empty ${FORMAT_CONFIG[action].tag} tags`)
+        editorRef()!.innerHTML = tempDiv.innerHTML
+      }
 
       // После удаления форматирования обновляем активные форматы
       updateActiveFormats()
 
-      // Восстанавливаем выделение если оно было
+      // Восстанавливаем выделение если возможно
       if (!isCollapsed) {
         windowSelection.removeAllRanges()
         windowSelection.addRange(range)
@@ -760,48 +964,16 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       } else if (!isCollapsed) {
         setToolbar(props.toolbar || 'float')
       }
-    } else {
-      console.log('Applying formatting:', action)
-      applyFormatting(action, {
-        range,
-        text: selectedText,
-        isEmpty: isCollapsed,
-        position: { top: windowSelection.anchorOffset, left: windowSelection.anchorOffset }
-      })
-
-      // Восстанавливаем выделение если оно было
-      if (!isCollapsed) {
-        windowSelection.removeAllRanges()
-        windowSelection.addRange(range)
-        // Показываем тулбар при активном выделении
-        setToolbar(props.toolbar || 'float')
+    } catch (error) {
+      console.error('Error applying/removing formatting:', error)
+      // В случае ошибки восстанавливаем исходное содержимое
+      if (editorRef()) {
+        editorRef()!.innerHTML = originalContent
       }
     }
 
-    // Verify content wasn't lost
-    const newContent = editorRef()!.innerHTML
-    console.log('Content after formatting:', newContent)
-
-    // Only update if content wasn't lost
-    if (newContent.trim()) {
-      setContent(newContent)
-      props.onChange({
-        content: newContent,
-        plainText: newContent,
-        length: newContent.length,
-        isEmpty: newContent.trim().length === 0,
-        selection: { text: newContent, isEmpty: newContent.trim().length === 0 }
-      })
-    } else {
-      console.error('Content was lost during formatting, restoring...')
-      // Restore the original content if it was lost
-      const textNode = document.createTextNode(selectedText)
-      range.insertNode(textNode)
-      range.selectNode(textNode)
-    }
-
-    // Keep focus in editor
-    editorRef()?.focus()
+    // Trigger change event
+    handleChange()
   }
 
   /**
@@ -811,10 +983,34 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
    */
   const replaceSelection = (html: string): boolean => {
     if (isServer) return false
-    if (!restoreSelection()) return false
 
+    // Получаем текущее выделение в любом случае
     const windowSelection = window.getSelection()
-    if (!windowSelection || !windowSelection.rangeCount) return false
+    if (!windowSelection) return false
+
+    // Если нет выделения или не удалось восстановить, создаем новое в конце редактора
+    if (!windowSelection.rangeCount && editorRef()) {
+      console.log('Создаем новое выделение в конце редактора')
+      const range = document.createRange()
+
+      // Если есть текст в редакторе, ставим курсор в конец
+      if (editorRef()!.lastChild) {
+        range.selectNodeContents(editorRef()!)
+        range.collapse(false)
+      } else {
+        // Иначе выбираем весь редактор
+        range.selectNodeContents(editorRef()!)
+      }
+
+      windowSelection.removeAllRanges()
+      windowSelection.addRange(range)
+    }
+
+    // Теперь должно быть доступно выделение
+    if (!windowSelection.rangeCount) {
+      console.error('Не удалось создать выделение в редакторе')
+      return false
+    }
 
     const range = windowSelection.getRangeAt(0)
 
@@ -840,6 +1036,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
     // Обновляем состояние редактора
     handleChange()
+
+    // Обновляем состояние активных форматов
+    updateActiveFormats()
 
     return true
   }
@@ -945,6 +1144,70 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     hideModal()
   }
 
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // Если нажат Shift+Enter, позволяем стандартное поведение
+    if (e.shiftKey && e.key === 'Enter') {
+      return
+    }
+
+    // Если нажат просто Enter
+    if (e.key === 'Enter') {
+      e.preventDefault()
+
+      const selection = window.getSelection()
+      if (!selection) return
+
+      const range = selection.getRangeAt(0)
+      const container = range.startContainer
+      const blockElement =
+        container.nodeType === Node.TEXT_NODE
+          ? container.parentElement?.closest('blockquote, h1, h2, h3, div[data-type]')
+          : (container as Element).closest('blockquote, h1, h2, h3, div[data-type]')
+
+      if (blockElement) {
+        // Если курсор в конце блока
+        if (
+          range.startOffset ===
+          (container.nodeType === Node.TEXT_NODE
+            ? container.textContent?.length
+            : container.childNodes.length)
+        ) {
+          // Создаем новый параграф после блока
+          const p = document.createElement('p')
+          p.innerHTML = '<br>'
+          blockElement.parentNode?.insertBefore(p, blockElement.nextSibling)
+
+          // Перемещаем курсор в новый параграф
+          range.selectNodeContents(p)
+          range.collapse(true)
+          selection.removeAllRanges()
+          selection.addRange(range)
+        } else {
+          // Разделяем блок в точке курсора
+          const newRange = range.cloneRange()
+          newRange.setEndAfter(blockElement)
+          const extractedContent = newRange.extractContents()
+
+          // Создаем новый параграф с оставшимся содержимым
+          const p = document.createElement('p')
+          p.appendChild(extractedContent)
+          blockElement.parentNode?.insertBefore(p, blockElement.nextSibling)
+
+          // Перемещаем курсор в начало нового параграфа
+          range.selectNodeContents(p)
+          range.collapse(true)
+          selection.removeAllRanges()
+          selection.addRange(range)
+        }
+      } else {
+        // Стандартное поведение - вставка <br>
+        document.execCommand('insertLineBreak')
+      }
+
+      handleChange()
+    }
+  }
+
   return (
     <div class={styles.editorWrapper}>
       {/* Редактируемая область только для контента */}
@@ -963,6 +1226,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           onSelect={handleChange}
           onPaste={handlePaste}
           onDrop={handleDropFiles}
+          onKeyDown={handleKeyDown}
           data-placeholder={props.placeholder}
         />
       </div>
@@ -1000,10 +1264,73 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
               showInput={true}
               validate={validateUrl}
               onSubmit={(url) => {
-                const linkText = getSelectionText() || url
-                replaceSelection(
-                  `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`
-                )
+                // Сохраняем текст выделения до восстановления
+                // Находим временно выделенный элемент
+                const highlightElement = editorRef()?.querySelector('[data-temp-highlight="true"]')
+                const originalSelectionText = highlightElement?.textContent || ''
+                let _useFallbackText = false
+
+                // Удаляем временное выделение
+                const parentBeforeRestore = highlightElement?.parentNode
+
+                // Если не удалось восстановить выделение, пробуем создать новое
+                if (!restoreSelection()) {
+                  console.log('Не удалось восстановить выделение, создаем новое')
+                  _useFallbackText = true
+
+                  // Если есть элемент с временным выделением, используем его
+                  if (highlightElement) {
+                    const range = document.createRange()
+                    range.selectNodeContents(highlightElement)
+                    const selection = window.getSelection()
+                    if (selection) {
+                      selection.removeAllRanges()
+                      selection.addRange(range)
+                    }
+                  } else {
+                    // Фокусируемся на редакторе
+                    editorRef()?.focus()
+
+                    // Создаем новое выделение в конце текста
+                    const selection = window.getSelection()
+                    if (selection && editorRef()) {
+                      const range = document.createRange()
+                      if (editorRef()!.lastChild) {
+                        range.selectNodeContents(editorRef()!)
+                        range.collapse(false) // Коллапсируем в конец
+                      } else {
+                        // Если редактор пустой, просто выбираем его
+                        range.selectNodeContents(editorRef()!)
+                      }
+                      selection.removeAllRanges()
+                      selection.addRange(range)
+                    }
+                  }
+                }
+
+                // Определяем текст для ссылки - всегда используем текст, который был выделен
+                const linkText = originalSelectionText || url
+
+                // Если есть временное выделение, заменяем его ссылкой напрямую
+                if (highlightElement && parentBeforeRestore) {
+                  const link = document.createElement('a')
+                  link.href = url
+                  link.target = '_blank'
+                  link.rel = 'noopener noreferrer'
+                  link.textContent = originalSelectionText
+
+                  // Заменяем выделение ссылкой
+                  parentBeforeRestore.replaceChild(link, highlightElement)
+
+                  // Обновляем состояние редактора
+                  handleChange()
+                } else {
+                  // Стандартный случай - используем replaceSelection
+                  replaceSelection(
+                    `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`
+                  )
+                }
+
                 showInsert(undefined)
                 editorRef()?.focus()
               }}
@@ -1026,7 +1353,92 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
               showInput={true}
               validate={validateVideoUrl}
               onSubmit={(url) => {
-                replaceSelection(createVideoEmbed(url, detectVideoPlatform(url)))
+                // Сохраняем текст выделения до восстановления
+                // Находим временно выделенный элемент
+                const highlightElement = editorRef()?.querySelector('[data-temp-highlight="true"]')
+                const originalSelectionText = highlightElement?.textContent || ''
+                let _useFallbackText = false
+
+                // Удаляем временное выделение
+                const parentBeforeRestore = highlightElement?.parentNode
+
+                // Если не удалось восстановить выделение, пробуем создать новое
+                if (!restoreSelection()) {
+                  console.log('Не удалось восстановить выделение, создаем новое')
+                  _useFallbackText = true
+
+                  // Если есть элемент с временным выделением, используем его
+                  if (highlightElement) {
+                    const range = document.createRange()
+                    range.selectNodeContents(highlightElement)
+                    const selection = window.getSelection()
+                    if (selection) {
+                      selection.removeAllRanges()
+                      selection.addRange(range)
+                    }
+                  } else {
+                    // Фокусируемся на редакторе
+                    editorRef()?.focus()
+
+                    // Создаем новое выделение в конце текста
+                    const selection = window.getSelection()
+                    if (selection && editorRef()) {
+                      const range = document.createRange()
+                      if (editorRef()!.lastChild) {
+                        range.selectNodeContents(editorRef()!)
+                        range.collapse(false) // Коллапсируем в конец
+                      } else {
+                        // Если редактор пустой, просто выбираем его
+                        range.selectNodeContents(editorRef()!)
+                      }
+                      selection.removeAllRanges()
+                      selection.addRange(range)
+                    }
+                  }
+                }
+
+                // Используем выделенный текст для описания видео, если он есть
+                const videoTitle = originalSelectionText || url
+                console.log(`Вставка видео: ${videoTitle}`)
+
+                // Получаем платформу и ID видео
+                const platform = detectVideoPlatform(url)
+
+                // Извлекаем ID видео из URL
+                let videoId = url
+                if (platform === 'youtube') {
+                  // Пытаемся извлечь ID из YouTube URL
+                  const match = url.match(YOUTUBE_URL_REGEX)
+                  if (match?.[1]) {
+                    videoId = match[1]
+                  }
+                } else if (platform === 'vimeo') {
+                  // Пытаемся извлечь ID из Vimeo URL
+                  const match = url.match(VIMEO_URL_REGEX)
+                  if (match?.[1]) {
+                    videoId = match[1]
+                  }
+                }
+
+                // Создаем видео-встройку
+                const videoEmbed = createVideoEmbed(videoId, platform)
+
+                // Если есть временное выделение, заменяем его видео-встройкой напрямую
+                if (highlightElement && parentBeforeRestore) {
+                  // Создаем элемент для вставки видео
+                  const videoContainer = document.createElement('div')
+                  videoContainer.innerHTML = videoEmbed
+
+                  // Заменяем выделение видео-встройкой
+                  parentBeforeRestore.replaceChild(videoContainer.firstChild!, highlightElement)
+
+                  // Обновляем состояние редактора
+                  handleChange()
+                } else {
+                  // Стандартный случай - используем replaceSelection
+                  replaceSelection(videoEmbed)
+                }
+
                 showInsert(undefined)
                 editorRef()?.focus()
               }}

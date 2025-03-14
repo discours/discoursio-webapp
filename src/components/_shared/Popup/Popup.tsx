@@ -17,11 +17,13 @@ export type PopupProps = {
   variant?: 'tiny'
   closePopup?: boolean
   keepOpen?: boolean
+  forceKeepOpen?: boolean
 }
 
 export const Popup = (props: PopupProps) => {
   const [isVisible, setIsVisible] = createSignal(false)
   let containerRef: HTMLElement | undefined
+  let popupRef: HTMLElement | undefined
   let closeTimeout: number | undefined
 
   const closePopup = () => {
@@ -29,9 +31,10 @@ export const Popup = (props: PopupProps) => {
       closeTimeout = window.setTimeout(() => {
         setIsVisible(false)
         props.onVisibilityChange?.(false)
-      }, 500)
+      }, 200)
       return
     }
+
     setIsVisible(false)
     props.onVisibilityChange?.(false)
   }
@@ -45,8 +48,12 @@ export const Popup = (props: PopupProps) => {
 
   useOutsideClickHandler({
     containerRef: containerRef,
-    predicate: () => isVisible() && !props.keepOpen,
-    handler: () => closePopup()
+    predicate: () => isVisible(),
+    handler: (e) => {
+      if (popupRef && !popupRef.contains(e.target as Node)) {
+        closePopup()
+      }
+    }
   })
 
   createEffect(() => {
@@ -55,7 +62,12 @@ export const Popup = (props: PopupProps) => {
     }
   })
 
-  const toggle = () => setIsVisible((oldVisible) => !oldVisible)
+  const toggle = (e: MouseEvent) => {
+    e.stopPropagation()
+    const newVisible = !isVisible()
+    setIsVisible(newVisible)
+    props.onVisibilityChange?.(newVisible)
+  }
 
   return (
     <span
@@ -69,11 +81,13 @@ export const Popup = (props: PopupProps) => {
       </span>
       <Show when={isVisible()}>
         <div
+          ref={(el) => (popupRef = el)}
           class={clsx(styles.popup, props.popupCssClass, {
             [styles.horizontalAnchorCenter]: props.horizontalAnchor === 'center',
             [styles.horizontalAnchorRight]: props.horizontalAnchor === 'right',
             [styles.tiny]: props.variant === 'tiny'
           })}
+          onClick={(e) => e.stopPropagation()}
         >
           {props.children}
         </div>

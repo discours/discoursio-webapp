@@ -1,17 +1,29 @@
-// Variables
-$comment-branch-color: gray;
-$comment-branch-width: 3px;
+/**
+ * Переменные для древовидной структуры комментариев
+ * Используют дизайн-систему для цветов и размеров
+ */
+$comment-branch-color: var(--color-gray-100);
+$comment-branch-width: 2px;
 $comment-branch-radius: 1.2rem;
 $comment-indent: 2.5rem;
-$comment-margin: 1.5rem;
+$comment-margin: 1rem;
+$editor-min-height: 80px;
+$transition-fast: 0.2s ease;
+$transition-normal: 0.3s ease;
 
-// Mixins
+/**
+ * Миксины для повторяющихся элементов
+ */
 @mixin comment-branch {
   content: '';
   position: absolute;
   background: $comment-branch-color;
 }
 
+/**
+ * Стандартная обертка для редактора
+ * Используется для новых комментариев и редактирования
+ */
 @mixin editor-wrapper {
   padding: 1rem;
   background: var(--color-bg-secondary);
@@ -20,86 +32,65 @@ $comment-margin: 1.5rem;
   box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
-@mixin prose-mirror-base {
-  padding: 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-primary);
-  font-size: 0.875rem;
-  line-height: 1.6;
-
-  &:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px var(--color-primary-light);
-  }
-}
-
+/**
+ * Основной контейнер для дерева комментариев
+ * Реализует вложенную структуру с визуальными соединениями
+ */
 .commentsList {
   list-style: none;
   padding: 0;
   margin: 0;
   position: relative;
 
-  // Стили для вложенных списков
+  // Вложенные списки с визуальными линиями соединения
   .commentsList {
-    margin-left: $comment-indent;
+    margin: 0;
+    padding-left: $comment-indent;
     position: relative;
     
-    // Вертикальная линия для ветки
-    &::before {
-      content: '';
-      position: absolute;
-      border-bottom: 2px solid #ccc;
-      border-left: 2px solid #ccc;
-      border-radius: 0 0 0 1.2rem;
-      top: -24px;
-      height: 50px;
-      width: 12px;
-    }
-
-    // Соединительная линия для каждого комментария
+    // Индивидуальные соединения для каждого комментария
     > li {
       position: relative;
+      margin: $comment-margin 0;
       
+      // Вертикальная линия слева от комментария
       &::before {
         content: '';
-        position: absolute;    
-        border-bottom: 2px solid #ccc;
-        border-left: 2px solid #ccc;
-        border-radius: 0 0 0 1.2rem;
-        top: -24px;
-        height: 50px;
-        width: 12px;
+        position: absolute;
+        left: -$comment-indent;
+        top: 0;
+        bottom: 0;
+        width: $comment-branch-width;
+        background: $comment-branch-color;
       }
 
-      // Последний элемент в ветке - закругленное завершение
-      &:last-child {
-        &::before {
-          border-radius: 0 0 0 4px;
-          border-left: 1px solid lightgray;
-          border-bottom: 1px solid lightgray;
-          background: none;
-          width: 1.25rem;
-          height: 1.25rem;
-          top: 1.75rem;
-        }
+      // Горизонтальная линия к комментарию
+      &::after {
+        content: '';
+        position: absolute;
+        left: -$comment-indent;
+        top: 1.5rem;
+        width: $comment-indent;
+        height: $comment-branch-width;
+        background: $comment-branch-color;
+      }
 
-        // Скрываем вертикальную линию после последнего комментария
-        &::after {
-          content: '';
-          position: absolute;    
-          border-bottom: 2px solid #ccc;
-          border-left: 2px solid #ccc;
-          border-radius: 0 0 0 1.2rem;
-          top: -24px;
-          height: 50px;
-          width: 12px;
-        }
+      // Последний комментарий в ветке
+      &:last-child::before {
+        height: 1.5rem;
+      }
+
+      // Первый комментарий в ветке
+      &:first-child::before {
+        top: -$comment-margin;
       }
     }
   }
 
+  /**
+   * Стили для редакторов внутри дерева комментариев
+   * Применяются как к форме ответа, так и к редактированию
+   */
   .replyEditor,
   .editingComment {
     margin-top: 1rem;
@@ -107,8 +98,9 @@ $comment-margin: 1.5rem;
     position: relative;
 
     :global {
+      // Основное поле ввода текста
       .editor-content {
-        min-height: 80px;
+        min-height: $editor-min-height;
         font-family: Muller, sans-serif;
         font-size: 14px;
         line-height: 1.286;
@@ -120,6 +112,7 @@ $comment-margin: 1.5rem;
         }
       }
 
+      // Панель инструментов редактора
       .editor-toolbar {
         opacity: 1;
         background: transparent;
@@ -136,6 +129,10 @@ $comment-margin: 1.5rem;
   }
 }
 
+/**
+ * Стили для состояний отсутствия комментариев
+ * и сообщения о необходимости авторизации
+ */
 .noComments,
 .signInMessage {
   padding: 1.5rem;
@@ -147,18 +144,20 @@ $comment-margin: 1.5rem;
   box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
-.signInMessage {
-  .link {
-    color: var(--color-primary);
-    text-decoration: none;
-    font-weight: 500;
+// Стили для ссылки в сообщении авторизации
+.signInMessage .link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
 
-    &:hover {
-      text-decoration: underline;
-    }
+  &:hover {
+    text-decoration: underline;
   }
 }
 
+/**
+ * Индикатор загрузки комментариев
+ */
 .loading {
   display: flex;
   flex-direction: column;
@@ -168,12 +167,19 @@ $comment-margin: 1.5rem;
   color: var(--color-text-secondary);
 }
 
+/**
+ * Контейнер для кнопки "Загрузить еще"
+ */
 .loadMoreContainer {
   display: flex;
   justify-content: center;
   margin: 2rem 0;
 }
 
+/**
+ * Общие стили для форм ответа и редактирования
+ * Включают визуальное соединение с родительским комментарием
+ */
 .replyEditor,
 .editingComment {
   position: relative;
@@ -190,25 +196,16 @@ $comment-margin: 1.5rem;
   }
 }
 
-.editorButtonsWrapper {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 0.5rem;
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out;
-  
-  &.active {
-    opacity: 1;
-  }
-}
-
-// Отдельные стили для кнопок в режиме редактирования
+/**
+ * Специальные стили для кнопок в режиме редактирования
+ * Отличаются от стандартных кнопок редактора
+ */
 .editingButtonsWrapper {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-top: -2.8em;
+  padding-right: .5em;
   opacity: 1;
   transition: opacity 0.4s ease-in-out;
 
@@ -217,156 +214,85 @@ $comment-margin: 1.5rem;
   }
   
   button {
+    z-index: 1000; // on top of the editor
     padding: 6px 12px;
     border-radius: 6px;
     font-size: 14px;
     font-weight: 500;
     transition: all 0.2s ease;
   }
-
 }
 
-// Анимация появления ветки
-@keyframes branchAppear {
-  from {
-    opacity: 0;
-    transform: scaleX(0);
+/**
+ * Анимации для различных состояний
+ */
+@keyframes contentDisappearAnim {
+  0% { 
+    opacity: 1; 
+    transform: translateY(0); 
   }
 
-  to {
-    opacity: 1;
-    transform: scaleX(1);
-  }
-}
-
-// Стили для редактора ответов с анимацией
-.replyEditor {
-  position: relative;
-  margin: 1rem 0 1rem var(--comment-indent);
-  
-  &::before {
-    content: '';
-    position: absolute;
-    left: -$comment-indent;
-    top: 1.75rem;
-    width: 1.25rem;
-    height: $comment-branch-width;
-    background: $comment-branch-color;
-    opacity: 0;
-    transform-origin: left;
-    animation: branchAppear 0.3s ease-out forwards;
+  100% { 
+    opacity: 0; 
+    transform: translateY(-5px); 
   }
 }
 
-// Анимация появления редактора
-@keyframes editorAppear {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
+@keyframes editorAppearAnim {
+  0% { 
+    opacity: 0; 
+    transform: translateY(-5px); 
   }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-// Анимация исчезновения комментария
-@keyframes commentDisappear {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  to {
-    opacity: 0;
-    transform: translateY(4px);
+  100% { 
+    opacity: 1; 
+    transform: translateY(0); 
   }
 }
 
-.editingComment {
-  position: relative;
-  margin: 1rem 0;
-  animation: editorAppear 0.2s ease-out forwards;
-  
-  :global {
-    .editor-content {
-      min-height: 80px;
-      font-family: Muller, sans-serif;
-      font-size: 14px;
-      line-height: 1.286;
-      letter-spacing: -1%;
-      padding: 8px;
-      background: var(--color-gray-50);
-      border-radius: 8px;
-      
-      &:focus-within {
-        background: var(--color-gray-50);
-      }
-    }
-
-    .editor-toolbar {
-      opacity: 1;
-      background: transparent;
-      box-shadow: none;
-      border: none;
-      margin-top: 8px;
-
-      button {
-        background: transparent;
-        box-shadow: none;
-        border: none;
-      }
-    }
-  }
-
-  .editorButtonsWrapper {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    margin-top: 8px;
-    opacity: 1 !important;
-
-    &.hidden {
-      opacity: 0 !important;
-    }
-    
-    button {
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      transition: all 0.2s ease;
-      
-      &:first-child {
-        background: var(--color-gray-100);
-        color: var(--color-gray-700);
-        
-        &:hover {
-          background: var(--color-gray-200);
-        }
-      }
-      
-      &:last-child {
-        background: var(--color-gray-800);
-        color: white;
-        
-        &:hover {
-          background: var(--color-gray-900);
-        }
-        
-        &:disabled {
-          opacity: 0.5;
-          background: var(--color-gray-400);
-        }
-      }
-    }
-  }
-}
-
-// Добавляем анимацию исчезновения для комментария при редактировании
+/**
+ * Состояния комментария при редактировании
+ */
 .comment {
   &.isEditing {
-    animation: commentDisappear 0.2s ease-out forwards;
+    // Скрываем только контент и кнопки, оставляя шапку
+    .commentContent,
+    .commentActions {
+      animation: contentDisappearAnim 0.3s ease forwards;
+    }
   }
+}
+
+/**
+ * Редактор появляется после скрытия контента
+ */
+.editingComment {
+  animation: editorAppearAnim 0.3s ease forwards;
+  animation-delay: 0.3s;
+}
+
+/**
+ * Адаптивные стили для мобильных устройств
+ * Уменьшают отступы и меняют расположение элементов
+ */
+@media (width <= 576px) {
+  .commentsList {
+    margin-left: 1.25rem; // половина от $comment-indent (2.5rem)
+  }
+  
+  .editorButtonsWrapper {
+    flex-direction: column;
+  }
+}
+
+/**
+ * Элемент комментария в списке
+ * Обеспечивает правильное отображение и предотвращает наложение
+ */
+.commentItem {
+  display: block;
+  position: relative;
+  clear: both;
+  width: 100%;
+  margin-bottom: 0.75em;
 }

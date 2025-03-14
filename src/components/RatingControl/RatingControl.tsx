@@ -243,7 +243,7 @@ export const RatingControl = (props: Props) => {
   }
 
   return (
-    <div class={clsx(styles.shoutRating, props.class)}>
+    <div class={clsx(styles.ratingControl, props.class)}>
       <button onClick={() => handleRatingChange(false)} disabled={reactionsLoading()}>
         <Show when={currentRate() === ReactionKind.Dislike} fallback={<Icon name="rating-control-less" />}>
           <Icon name="rating-control-checked" />

@@ -1,5 +1,5 @@
 import type { Accessor, JSX } from 'solid-js'
-import { createContext, createEffect, createSignal, onCleanup, useContext } from 'solid-js'
+import { createContext, createSignal, onCleanup, useContext } from 'solid-js'
 import { loadReactions } from '~/graphql/api/public'
 import createReactionMutation from '~/graphql/mutation/core/reaction-create'
 import destroyReactionMutation from '~/graphql/mutation/core/reaction-destroy'
@@ -29,18 +29,7 @@ type ReactionsContextType = {
 
 const ReactionsContext = createContext<ReactionsContextType>({} as ReactionsContextType)
 
-export const useReactions = () => {
-  const context = useContext(ReactionsContext)
-
-  createEffect(() => {
-    console.log('[ReactionsContext] State:', {
-      entitiesCount: Object.keys(context.reactionEntities).length,
-      entities: context.reactionEntities
-    })
-  })
-
-  return context
-}
+export const useReactions = () => useContext(ReactionsContext)
 
 export const ReactionsProvider = (props: { children: JSX.Element }) => {
   const [reactionsLoading, setReactionsLoading] = createSignal(false)
@@ -206,11 +195,15 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
       await showSnackbar({ type: 'error', body: t(error) })
       return { error }
     }
-    if (reaction) {
+    if (reaction?.id) {
       const newReactionEntities = { ...reactionEntities() }
       newReactionEntities[reaction.id] = reaction
 
       const newReactionsByShout = { ...reactionsByShout() }
+      if (!reaction.shout?.id) {
+        console.error('[ReactionsProvider] updateShoutReaction', reaction)
+        return { error: 'cannot update reaction' }
+      }
       const shoutIndex = newReactionsByShout[reaction.shout.id]?.findIndex((r) => r.id === reaction.id)
       if (shoutIndex !== undefined && shoutIndex !== -1) {
         newReactionsByShout[reaction.shout.id][shoutIndex] = reaction

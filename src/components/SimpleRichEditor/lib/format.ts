@@ -102,8 +102,15 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
   if (!state.range) return
 
   const range = state.range.cloneRange()
+  const config = FORMAT_CONFIG[command]
 
-  // Если нет выделения (курсор)
+  if (!config) {
+    console.log('No config found for command:', command)
+    return
+  }
+
+  // Проверяем, есть ли уже форматирование этого типа в выделении
+  // Обработка пустого выделения (курсор)
   if (state.isEmpty) {
     const container = range.startContainer
     const element =
@@ -111,52 +118,95 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
 
     if (!element) return
 
-    const config = FORMAT_CONFIG[command]
-    const formattedElement = element.closest(config.tag)
+    // Проверяем наличие форматирования у родителя
+    const formattedParent = element.closest(config.tag)
 
-    // Если курсор внутри форматированного элемента - разделяем
-    if (formattedElement) {
-      const splitPoint = range.startOffset
-      const textNode = range.startContainer
-
-      // Проверяем что это текстовый узел
-      if (textNode.nodeType === Node.TEXT_NODE) {
-        // Разделяем текстовый узел
-        const secondPart = (textNode as Text).splitText(splitPoint)
-
-        // Клонируем форматированный элемент
-        const secondElement = formattedElement.cloneNode(false) as HTMLElement
-
-        // Перемещаем вторую часть в новый элемент
-        formattedElement.parentNode?.insertBefore(secondElement, formattedElement.nextSibling)
-        secondElement.appendChild(secondPart)
-
-        // Устанавливаем курсор между элементами
-        range.setStartAfter(formattedElement)
-        range.setEndAfter(formattedElement)
-      }
-    } else {
-      // Создаем новый форматированный элемент
-      const wrapper = createElement(command)
-      wrapper.textContent = '\u200B' // Zero-width space
-
-      range.insertNode(wrapper)
-      range.selectNodeContents(wrapper)
+    // Если уже есть форматирование этого типа, предотвращаем создание вложенных тегов
+    if (formattedParent) {
+      console.log('Formatting already exists, preventing nested tags')
+      // Вместо создания нового тега просто позиционируем курсор
       range.collapse(true)
+      const selection = window.getSelection()
+      if (selection) {
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+      return
     }
+
+    // Создаем новый форматированный элемент
+    const wrapper = createElement(command)
+    wrapper.textContent = '\u200B' // Zero-width space для пустого тега
+
+    // Вставляем элемент и позиционируем курсор внутри него
+    range.insertNode(wrapper)
+    range.selectNodeContents(wrapper)
+    range.collapse(true)
 
     return
   }
 
-  // Стандартная логика для выделенного текста
+  // Обработка выделения текста
+  // Сначала клонируем выделение для анализа
+  const fragment = range.cloneContents()
+  const tempDiv = document.createElement('div')
+  tempDiv.appendChild(fragment)
+
+  // Проверяем, есть ли уже форматированные элементы этого типа в выделении
+  const existingFormatted = tempDiv.querySelectorAll(config.tag)
+
+  // Если все выделение уже отформатировано этим форматом, предотвращаем создание вложенных тегов
+  if (existingFormatted.length > 0) {
+    const formattedText = Array.from(existingFormatted).reduce(
+      (acc, el) => acc + (el.textContent || ''),
+      ''
+    )
+    if (formattedText.length === (tempDiv.textContent || '').length) {
+      console.log('Selection already completely formatted, preventing nested tags')
+      return
+    }
+  }
+
+  // Теперь извлекаем и форматируем контент
   const content = range.extractContents()
+
+  // Проверяем содержимое на уже отформатированные элементы
+  const contentDiv = document.createElement('div')
+  contentDiv.appendChild(content)
+
+  // Находим элементы, которые уже имеют такое форматирование
+  const alreadyFormatted = contentDiv.querySelectorAll(config.tag)
+
+  // Убираем форматирование с уже отформатированных элементов чтобы избежать вложенности
+  alreadyFormatted.forEach((el) => {
+    const innerContent = document.createDocumentFragment()
+    while (el.firstChild) {
+      innerContent.appendChild(el.firstChild)
+    }
+    el.parentNode?.replaceChild(innerContent, el)
+  })
+
+  // Создаем новый форматированный элемент
   const wrapper = createElement(command)
-  wrapper.appendChild(content)
+
+  // Добавляем очищенное содержимое в новый форматированный элемент
+  while (contentDiv.firstChild) {
+    wrapper.appendChild(contentDiv.firstChild)
+  }
+
+  // Вставляем форматированный элемент обратно в документ
   range.insertNode(wrapper)
 
-  // Keep original selection
+  // Позиционируем выделение вокруг всего нового элемента
   range.setStartBefore(wrapper)
   range.setEndAfter(wrapper)
+
+  // Обновляем выделение в документе
+  const selection = window.getSelection()
+  if (selection) {
+    selection.removeAllRanges()
+    selection.addRange(range)
+  }
 }
 
 /**
@@ -169,6 +219,11 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
   console.log('Initial text:', state.text)
 
   const range = state.range.cloneRange()
+  const config = FORMAT_CONFIG[command]
+  if (!config) {
+    console.log('No config found for command:', command)
+    return
+  }
 
   // Если выделение схлопнуто (курсор), ищем ближайший форматированный элемент
   if (state.isEmpty) {
@@ -177,69 +232,96 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
       container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
 
     if (element) {
-      const config = FORMAT_CONFIG[command]
       const formattedElement = element.closest(config.tag)
 
       if (formattedElement) {
         // Расширяем выделение на весь форматированный элемент
         range.selectNodeContents(formattedElement)
+      } else {
+        // Если нет форматированного элемента, то нечего удалять
+        console.log('No formatted element found for cursor position')
+        return
       }
     }
   }
 
-  const content = range.extractContents()
+  // Проверим, что выделение не пустое после расширения
+  if (range.collapsed) {
+    console.log('Range is still collapsed, nothing to extract')
+    return
+  }
 
-  // Create a temporary container
+  // Клонируем содержимое выделения
+  const fragment = range.cloneContents()
   const tempDiv = document.createElement('div')
-  tempDiv.appendChild(content.cloneNode(true))
-
+  tempDiv.appendChild(fragment)
   console.log('Content in temp div:', tempDiv.innerHTML)
 
-  // Find the formatting element
-  const config = FORMAT_CONFIG[command]
-  if (!config) {
-    console.log('No config found for command:', command)
-    range.insertNode(content)
-    return
-  }
+  // Сначала попытаемся найти корневые форматированные элементы
+  const formattedElements = tempDiv.querySelectorAll(config.tag)
 
-  // Try to find the formatted element
-  const formattedElement = tempDiv.querySelector(config.tag)
-  if (!formattedElement) {
-    console.log('No formatted element found, keeping original content')
-    range.insertNode(content)
-    return
-  }
+  if (formattedElements.length === 0) {
+    // Если форматированных элементов не найдено на верхнем уровне,
+    // возможно формат применен к родительскому элементу
+    const parentElement =
+      range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+        ? (range.commonAncestorContainer as HTMLElement)
+        : (range.commonAncestorContainer as Node).parentElement
 
-  // Create fragment for the unformatted content
-  const fragment = document.createDocumentFragment()
+    if (parentElement && parentElement.nodeName.toLowerCase() === config.tag.toLowerCase()) {
+      // Форматирование применено к родительскому элементу
+      // Создаем новый фрагмент только с контентом
+      const newFragment = document.createDocumentFragment()
+      while (parentElement.firstChild) {
+        newFragment.appendChild(parentElement.firstChild)
+      }
+      parentElement.parentNode?.replaceChild(newFragment, parentElement)
 
-  // If the formatted element contains the text directly
-  if (formattedElement.textContent === state.text) {
-    console.log('Direct text match found')
-    fragment.textContent = state.text
-  }
-  // If we need to preserve nested formatting
-  else {
-    console.log('Preserving nested formatting')
-    while (formattedElement.firstChild) {
-      fragment.appendChild(formattedElement.firstChild)
+      console.log('Removed formatting from parent element')
+      return
     }
+
+    // Если мы здесь, значит не нашли форматированных элементов
+    console.log('No formatted elements found in selection')
+    return
   }
 
-  console.log('Final fragment content:', fragment.textContent)
+  // Создаем новый фрагмент для удаления форматирования
+  // Используем эту переменную для фрагмента без форматирования
+  const resultFragment = document.createDocumentFragment()
 
-  // Insert the unformatted content
-  range.insertNode(fragment)
+  // Удаляем исходное содержимое
+  const extractedContent = range.extractContents()
+  tempDiv.innerHTML = ''
+  tempDiv.appendChild(extractedContent)
 
-  // Keep original selection instead of selecting inserted content
-  if (fragment.firstChild && fragment.lastChild) {
-    range.setStart(fragment.firstChild, 0)
-    range.setEnd(fragment.lastChild, fragment.lastChild.textContent?.length || 0)
+  // Обрабатываем все найденные форматированные элементы
+  const allFormatted = tempDiv.querySelectorAll(config.tag)
+
+  allFormatted.forEach((formatted) => {
+    // Создаем фрагмент для содержимого этого форматированного элемента
+    const elementContent = document.createDocumentFragment()
+
+    // Перемещаем все дочерние элементы в новый фрагмент
+    while (formatted.firstChild) {
+      elementContent.appendChild(formatted.firstChild)
+    }
+
+    // Заменяем форматированный элемент его содержимым
+    formatted.parentNode?.replaceChild(elementContent, formatted)
+  })
+
+  // Вставляем очищенный от форматирования контент
+  range.insertNode(tempDiv)
+
+  // Очищаем временный контейнер, оставив только его содержимое
+  // Используем ранее созданный resultFragment вместо создания нового фрагмента
+  while (tempDiv.firstChild) {
+    resultFragment.appendChild(tempDiv.firstChild)
   }
+  tempDiv.parentNode?.replaceChild(resultFragment, tempDiv)
 
-  // Log final state
-  console.log('Final range content:', range.toString())
+  console.log('Formatting successfully removed')
 }
 
 // Проверяем наличие форматирования в текущем диапазоне
@@ -271,21 +353,60 @@ export const hasFormatting = (format: CommandType, selection: Selection | null):
   const config = FORMAT_CONFIG[format]
   if (!config) return false
 
-  // Get the common ancestor
+  // Более детальная проверка для схлопнутого выделения (курсора)
+  if (selection.isCollapsed) {
+    // Получаем ближайший родительский элемент
+    const container = range.startContainer
+    const element =
+      container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
+
+    if (!element) return false
+
+    // Проверяем наличие форматирования на текущем или родительском элементе
+    const formattedElement = element.closest(config.tag)
+    return formattedElement !== null
+  }
+
+  // Для не схлопнутого выделения проверяем, находится ли все выделение внутри форматированного элемента
+  // Проверим родительский элемент выделения
   const container = range.commonAncestorContainer
   const element =
     container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
 
   if (!element) return false
 
-  // Проверяем только по HTML тегу
+  // Проверяем ближайший родительский элемент с нужным тегом
   const formattedElement = element.closest(config.tag)
 
-  // Check if the formatted element contains the selection
+  // Если такой элемент найден и он полностью содержит выделение, считаем форматирование активным
   if (formattedElement) {
     const formattedRange = document.createRange()
     formattedRange.selectNodeContents(formattedElement)
-    return formattedRange.commonAncestorContainer.contains(range.commonAncestorContainer)
+
+    // Проверяем, полностью ли выделение находится внутри форматированного элемента
+    return (
+      formattedRange.compareBoundaryPoints(Range.START_TO_START, range) <= 0 &&
+      formattedRange.compareBoundaryPoints(Range.END_TO_END, range) >= 0
+    )
+  }
+
+  // Проверяем также, является ли выделение форматированным элементом целиком
+  const fragment = range.cloneContents()
+  const temp = document.createElement('div')
+  temp.appendChild(fragment)
+
+  // Если все выделение состоит только из форматированных элементов, считаем форматирование активным
+  const formattedElements = temp.querySelectorAll(config.tag)
+
+  // Проверяем, что все содержимое выделения находится внутри форматированных элементов
+  if (formattedElements.length > 0) {
+    let totalFormattedLength = 0
+    formattedElements.forEach((el) => {
+      totalFormattedLength += el.textContent?.length || 0
+    })
+
+    // Если длина форматированного текста совпадает с длиной всего выделения (учитывая вложенность)
+    return totalFormattedLength === (temp.textContent?.length || 0)
   }
 
   return false

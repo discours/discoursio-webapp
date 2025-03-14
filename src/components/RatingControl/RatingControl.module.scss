@@ -1,10 +1,11 @@
-.shoutRating {
+.ratingControl {
     align-items: center;
     display: flex;
 
     .ratingValue {
-        font-weight: bold;
-        padding: 0 4px;
+        font-weight: 500;
+        font-size: .8em;
+        padding: 4px;
         cursor: pointer;
 
         &:hover {

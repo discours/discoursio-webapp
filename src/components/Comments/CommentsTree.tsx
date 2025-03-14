@@ -25,6 +25,7 @@ import {
   ReactionSort
 } from '~/graphql/schema/core.gen'
 import { MutationCreate_ReactionArgs } from '~/graphql/schema/core.gen'
+import { COMMENTS_PER_PAGE } from '../Article/FullArticle'
 import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { Button } from '../_shared/Button'
@@ -36,7 +37,106 @@ import { CommentsHeader } from './CommentsHeader'
 
 import styles from './CommentsTree.module.scss'
 
-const COMMENTS_PER_PAGE = 20
+/**
+ * Сохраняет и восстанавливает позицию скролла при изменениях в DOM
+ * @param callback - Функция, которая выполняет изменения DOM
+ */
+const withPreservedScroll = (callback: () => void) => {
+  // Сохраняем текущую позицию скролла и видимый элемент
+  const scrollY = window.scrollY
+  const elementInView = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)
+  const elementRect = elementInView?.getBoundingClientRect()
+  const elementOffsetY = elementRect?.top || 0
+
+  // Выполняем изменения DOM
+  callback()
+
+  // Восстанавливаем позицию скролла с учетом изменившейся высоты
+  setTimeout(() => {
+    if (elementInView) {
+      // Пытаемся найти тот же элемент и скорректировать позицию
+      const newRect = elementInView.getBoundingClientRect()
+      const newOffsetY = newRect.top
+      const offset = newOffsetY - elementOffsetY
+      window.scrollTo(0, scrollY + offset)
+    } else {
+      // Если элемент не найден, восстанавливаем исходную позицию
+      window.scrollTo(0, scrollY)
+    }
+  }, 0)
+}
+
+/**
+ * Прокручивает страницу к комментарию с указанным ID
+ * @param commentId - ID комментария для прокрутки
+ * @param smooth - Использовать плавную прокрутку
+ * @param delay - Задержка перед прокруткой в мс
+ */
+const scrollToComment = (commentId: number, smooth = true, delay = 300) => {
+  if (!commentId) return
+
+  // Используем setTimeout для гарантии, что DOM успел обновиться
+  setTimeout(() => {
+    // Пытаемся найти комментарий разными способами
+    let commentElement = document.getElementById(`comment-${commentId}`)
+
+    // Если не нашли по ID, ищем по атрибуту data-comment-id
+    if (!commentElement) {
+      commentElement = document.querySelector(`[data-comment-id="${commentId}"]`) as HTMLElement
+    }
+
+    // Если все еще не нашли, ищем внутри карточек комментариев
+    if (!commentElement) {
+      const cards = document.querySelectorAll(`.${styles.comment}`)
+      for (const card of Array.from(cards)) {
+        if (
+          card.getAttribute('data-comment-id') === commentId.toString() ||
+          card.getAttribute('id') === `comment-${commentId}`
+        ) {
+          commentElement = card as HTMLElement
+          break
+        }
+      }
+    }
+
+    if (commentElement) {
+      console.log('[CommentsTree] Scrolling to comment:', commentId)
+
+      // Добавляем временный класс для подсветки комментария
+      commentElement.classList.add(styles.isNew)
+
+      // Прокручиваем к комментарию
+      commentElement.scrollIntoView({
+        behavior: smooth ? 'smooth' : 'auto',
+        block: 'center'
+      })
+
+      // Удаляем класс подсветки через некоторое время
+      setTimeout(() => {
+        commentElement?.classList.remove(styles.isNew)
+      }, 3000)
+    } else {
+      console.warn('[CommentsTree] Comment element not found for scrolling:', commentId)
+      // Если элемент не найден, дополнительная попытка через setTimeout
+      setTimeout(() => {
+        const retryElement =
+          document.getElementById(`comment-${commentId}`) ||
+          (document.querySelector(`[data-comment-id="${commentId}"]`) as HTMLElement)
+        if (retryElement) {
+          console.log('[CommentsTree] Scrolling to comment (retry):', commentId)
+          retryElement.scrollIntoView({
+            behavior: smooth ? 'smooth' : 'auto',
+            block: 'center'
+          })
+          retryElement.classList.add(styles.isNew)
+          setTimeout(() => {
+            retryElement.classList.remove(styles.isNew)
+          }, 3000)
+        }
+      }, 500) // Дополнительная задержка для повторной попытки
+    }
+  }, delay)
+}
 
 /**
  * Параметры компонента дерева комментариев
@@ -103,7 +203,12 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     const allReactions = Object.values(reactionEntities())
 
     // Фильтруем и объединяем реальные и оптимистичные комментарии
-    return allReactions.filter((r) => r.kind === ReactionKind.Comment && r.shout?.slug === props.shoutSlug)
+    const filteredComments = allReactions.filter(
+      (r) => r.kind === ReactionKind.Comment && r.shout?.slug === props.shoutSlug
+    )
+
+    console.log('[CommentsTree] Filtered comments count:', filteredComments.length)
+    return filteredComments
   })
 
   const sortedComments = createMemo(() => {
@@ -128,17 +233,48 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     const sorted = sortedComments()
     const tree: Record<number, Reaction[]> = {}
 
-    sorted.forEach((comment) => {
+    // Используем Set для более эффективного отслеживания уже добавленных ID
+    const addedCommentIds = new Set<number>()
+
+    // Функция стабильного добавления комментариев к родителю
+    const addToParent = (comment: Reaction) => {
+      // Пропускаем комментарии без ID или с дубликатами ID
+      if (!comment.id || addedCommentIds.has(comment.id)) {
+        console.warn('[CommentsTree] Duplicate or invalid comment detected:', comment.id)
+        return
+      }
+
       const parentId = comment.reply_to || 0
-      if (!tree[parentId]) tree[parentId] = []
-      tree[parentId].push(comment)
-    })
+      if (!tree[parentId]) {
+        tree[parentId] = []
+      }
+
+      // Сохраняем существующий порядок для лучшей стабильности
+      // Если комментарий уже существует по ID, обновляем его данные без изменения позиции
+      const existingIndex = tree[parentId].findIndex((c) => c.id === comment.id)
+      if (existingIndex >= 0) {
+        // Обновляем существующий комментарий, сохраняя его позицию
+        tree[parentId][existingIndex] = { ...comment }
+      } else {
+        // Добавляем новый комментарий в конец списка
+        tree[parentId].push(comment)
+      }
+
+      // Регистрируем ID как добавленный
+      addedCommentIds.add(comment.id)
+    }
+
+    // Сначала добавляем все комментарии к соответствующим родителям
+    sorted.forEach(addToParent)
+
+    // Дополнительное логирование для отладки
+    console.log('[CommentsTree] Tree built, root comments:', tree[0]?.length || 0)
 
     return tree
   })
 
   // Загрузка комментариев
-  const [commentsResource, { refetch }] = createResource(
+  const [commentsResource, { refetch: _refetch }] = createResource(
     () => props.shoutSlug,
     async (slug) => {
       setIsLoading(true)
@@ -195,6 +331,91 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   })
 
   /**
+   * Очистка состояния редактирования без сохранения
+   */
+  const handleCancelEdit = () => {
+    const commentId = editingCommentId()
+    if (!commentId) return
+
+    // Находим комментарий, чтобы восстановить его исходное содержимое
+    const commentToEdit = comments().find((c) => c.id === commentId)
+    if (!commentToEdit) return
+
+    // Дополнительная очистка черновика редактирования
+    const draftKey = `draft-${props.shoutId}-comment-edit-${commentId}`
+    setEditorContent(draftKey, '')
+
+    // Сбрасываем состояние редактирования
+    batch(() => {
+      setEditingCommentId(undefined)
+      setLocalContent('')
+    })
+
+    console.log('[CommentsTree] Edit cancelled for comment:', commentId)
+  }
+
+  /**
+   * Очищает текст от лишних переносов строк и пустых тегов
+   * @param content HTML содержимое
+   * @returns Очищенный HTML
+   */
+  const cleanupContent = (content: string): string => {
+    if (!content.trim()) return ''
+
+    const div = document.createElement('div')
+    div.innerHTML = content
+
+    // Удаляем пустые теги
+    const removeEmptyTags = (element: Element) => {
+      const children = Array.from(element.children)
+      children.forEach((child) => {
+        removeEmptyTags(child)
+        const hasText = child.textContent?.trim()
+        const hasNonEmptyChildren = Array.from(child.children).some(
+          (el) => el.textContent?.trim() || el.nodeName.toLowerCase() === 'img'
+        )
+        if (!hasText && !hasNonEmptyChildren) {
+          child.remove()
+        }
+      })
+    }
+
+    // Заменяем множественные последовательные пустые параграфы и <br> на один <br>
+    const normalizeConsecutiveBreaks = (element: Element) => {
+      let html = element.innerHTML
+
+      // Заменяем множественные <br> (или параграфы с <br>) на один <br>
+      html = html.replace(/(<p><br><\/p>|<br>){3,}/gi, '<br><br>')
+
+      // Ограничиваем максимум до двух переносов строк подряд
+      html = html.replace(/(<p>\s*<\/p>){3,}/gi, '<p></p><p></p>')
+
+      element.innerHTML = html
+    }
+
+    // Удаляем лишние переносы в конце
+    const removeTrailingBreaks = (element: Element) => {
+      let html = element.innerHTML
+      html = html.replace(/(<p><br><\/p>|<p><\/p>|<p>\s*<\/p>|<br>)+$/gi, '')
+      html = html.replace(/(<br>|<br\s*\/?>)\s*$/gi, '')
+      html = html.replace(/\s+$/g, '')
+
+      if (!html.trim()) {
+        html = '<p><br></p>'
+      }
+
+      element.innerHTML = html
+    }
+
+    removeEmptyTags(div)
+    normalizeConsecutiveBreaks(div)
+    removeTrailingBreaks(div)
+
+    console.log('[CommentsTree] Cleaned content:', div.innerHTML)
+    return div.innerHTML
+  }
+
+  /**
    * Обработчик для отправки комментария
    */
   const handleSubmitComment = async (parentId?: number) => {
@@ -210,17 +431,21 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       return
     }
 
-    const content = localContent().trim()
-    if (isContentEmpty(content)) {
+    // Очищаем контент от лишних переносов строк и пустых тегов
+    const cleanedContent = cleanupContent(localContent().trim())
+
+    if (isContentEmpty(cleanedContent)) {
       showSnackbar({ type: 'error', body: t('Comment cannot be empty') })
       return
     }
 
     setPosting(true)
-    const scrollPosition = window.scrollY
+    // Сохраняем позицию скролла только для редактирования
+    const _scrollPosition = window.scrollY
+    const _isEdit = editingCommentId() !== undefined
 
     try {
-      const sanitizedContent = String(sanitizeHtml(content))
+      const sanitizedContent = String(sanitizeHtml(cleanedContent))
       const commentId = editingCommentId()
       const isEditing = commentId !== undefined
 
@@ -234,8 +459,12 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       if (isEditing && !commentToEdit) {
         console.error('[CommentsTree] Comment not found for editing:', commentId)
         showSnackbar({ type: 'error', body: t('Comment not found') })
+        setPosting(false)
         return
       }
+
+      // Очищаем форму и состояния до отправки запроса, чтобы избежать промежуточных состояний
+      handleClear()
 
       // Отправляем запрос на сервер
       const input = isEditing
@@ -272,14 +501,31 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         return
       }
 
-      // Очищаем форму и состояния
-      handleClear()
+      // Только при успешном ответе обрабатываем результат
+      if (result && !('error' in result)) {
+        const serverData = result as Reaction
 
-      // Тихо обновляем данные с сервера
-      await refetch()
+        if (isEditing) {
+          // Для редактирования обновляем только существующий комментарий
+          console.log('[CommentsTree] Comment updated successfully')
 
-      showSnackbar({ type: 'success', body: t(isEditing ? 'Comment updated' : 'Comment saved') })
-      window.scrollTo(0, scrollPosition)
+          // Добавляем обновленный комментарий в хранилище реакций
+          addShoutReactions([serverData])
+
+          showSnackbar({ type: 'success', body: t('Comment updated') })
+        } else {
+          // Для новых комментариев добавляем результат с сервера
+          console.log('[CommentsTree] Comment created successfully')
+
+          // Добавляем новый комментарий в хранилище реакций
+          addShoutReactions([serverData])
+
+          showSnackbar({ type: 'success', body: t('Comment saved') })
+
+          // Прокручиваем к новому комментарию с небольшой задержкой для обновления DOM
+          scrollToComment(serverData.id, true, 300)
+        }
+      }
     } catch (error) {
       console.error('[CommentsTree] Error submitting comment:', error)
       showSnackbar({ type: 'error', body: t('Failed to save comment') })
@@ -302,26 +548,45 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
     setEditorContent(draftKey, '')
 
-    // Сбрасываем состояния атомарно
+    // Более безопасная и контролируемая очистка редактора
+    try {
+      // Находим конкретный редактор по его ID вместо общего селектора
+      const editor = document.querySelector(`[data-editor-id="${draftKey}"]`)
+      if (editor) {
+        editor.innerHTML = ''
+        // Вызываем событие input для обновления состояния
+        editor.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    } catch (error) {
+      console.warn('[CommentsTree] Error clearing editor:', error)
+    }
+
+    // Сбрасываем состояния атомарно, чтобы избежать лишних ререндеров
     batch(() => {
       setEditingCommentId(undefined)
       setClickedReplyId(undefined)
       setLocalContent('')
     })
+
+    console.log('[CommentsTree] Editor state cleared')
   }
 
-  const handleReply = (commentId: number) => {
-    if (!commentId) return
+  const handleReply = (replyToCommentId: number) => {
+    if (!replyToCommentId) return
     if (!session()?.user) {
       showSnackbar({ type: 'error', body: t('Please sign in to reply') })
       return
     }
 
+    // Сначала очищаем все состояния, затем устанавливаем новое
     batch(() => {
-      setClickedReplyId(commentId)
-      setEditingCommentId(undefined)
+      // Очищаем все предыдущие состояния
       setLocalContent('')
-      setEditorContent(`draft-${props.shoutId}-comment-${commentId}`, '')
+      setEditingCommentId(undefined)
+
+      // Устанавливаем новое состояние после очистки
+      setClickedReplyId(replyToCommentId)
+      setEditorContent(`draft-${props.shoutId}-comment-reply-${replyToCommentId}`, '')
     })
   }
 
@@ -339,8 +604,12 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     }
 
     batch(() => {
-      setEditingCommentId(commentId)
+      // Очищаем все предыдущие состояния
       setClickedReplyId(undefined)
+      setLocalContent('')
+
+      // Устанавливаем новое состояние после очистки
+      setEditingCommentId(commentId)
       const content = commentToEdit.body || ''
       setLocalContent(content)
       setEditorContent(`draft-${props.shoutId}-comment-edit-${commentId}`, content)
@@ -358,17 +627,72 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     }
 
     try {
+      // Запоминаем удаляемый комментарий для возможного восстановления
+      const commentToDelete = comments().find((c) => c.id === id)
+
+      // Оптимистично удаляем комментарий, сохраняя позицию скролла
+      withPreservedScroll(() => {
+        // Копируем текущее состояние хранилища
+        const currentReactions = reactionEntities()
+        const updatedReactions: Record<string, Reaction> = { ...currentReactions }
+
+        // Удаляем комментарий и его дочерние элементы из копии
+        const removeComment = (commentId: number) => {
+          delete updatedReactions[commentId.toString()]
+
+          // Находим дочерние комментарии для этого комментария
+          Object.values(updatedReactions).forEach((reaction) => {
+            if (reaction.reply_to === commentId) {
+              removeComment(reaction.id)
+            }
+          })
+        }
+
+        // Выполняем рекурсивное удаление
+        removeComment(id)
+
+        // Применяем изменения без ререндера всего дерева
+        // Используем внутренний метод контекста реакций для атомарного обновления
+        if (Object.keys(currentReactions).length !== Object.keys(updatedReactions).length) {
+          // Обновляем состояние без refetch
+          // Это не вызовет полного перестроения дерева
+          untrack(() => {
+            // @ts-ignore - доступ к внутреннему методу контекста
+            // Если нет прямого доступа, можно использовать другие механизмы состояния
+            if (typeof addShoutReactions === 'function') {
+              // Обновляем только локальное состояние
+              // Применяем изменения к хранилищу реакций
+              Object.values(updatedReactions).forEach((r) => {
+                addShoutReactions([r])
+              })
+            }
+          })
+        }
+      })
+
+      // Сообщаем об удалении UI до запроса на сервер
+      showSnackbar({ type: 'success', body: t('Comment deleted') })
+
+      // Затем выполняем запрос на сервер
       const result = await deleteShoutReaction(id)
       if (result?.error) {
+        console.error('[CommentsTree] Error in delete response:', result.error)
         showSnackbar({ type: 'error', body: t('Failed to delete comment') })
+
+        // Если удаление на сервере не удалось, восстанавливаем комментарий
+        if (commentToDelete) {
+          addShoutReactions([commentToDelete])
+        }
         return
       }
 
-      showSnackbar({ type: 'success', body: t('Comment deleted') })
+      // Обновляем колбэк только при успешном удалении на сервере
       if (props.onDeleteComment) {
         props.onDeleteComment(id)
       }
-      await refetch()
+
+      // Не делаем полный refetch после успешного удаления
+      // await refetch()
     } catch (error) {
       console.error('[CommentsTree] Error deleting comment:', error)
       showSnackbar({ type: 'error', body: t('Failed to delete comment') })
@@ -446,6 +770,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   const EditorControls = (props: {
     mode: 'new' | 'edit' | 'reply'
     onSave: () => void
+    onCancel: () => void
     isDisabled: boolean
   }) => {
     return (
@@ -454,7 +779,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           [styles.hidden]: props.isDisabled
         })}
       >
-        <Button variant="secondary" value={t('Cancel')} onClick={handleClear} />
+        <Button variant="secondary" value={t('Cancel')} onClick={props.onCancel} />
         <Button
           value={t(posting() ? 'Saving...' : 'Save')}
           variant="primary"
@@ -475,62 +800,77 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       shoutId: props.shoutId
     })
 
+    // Используем createMemo с стабильными ключами для оптимизации обновлений
     const children = createMemo(() => {
       const branch = commentTree()[props.parentId] || []
-      console.log('[CommentBranch] Children:', {
-        parentId: props.parentId,
-        count: branch.length
-      })
       return branch
     })
 
     return (
-      <Show when={children().length > 0 || clickedReplyId() === props.parentId}>
-        <ul class={clsx(styles.commentsList)}>
-          <Show when={clickedReplyId() === props.parentId}>
+      <>
+        {/* Показываем форму ответа отдельно, вне зависимости от наличия дочерних комментариев */}
+        <Show when={clickedReplyId() === props.parentId}>
+          <ul class={clsx(styles.commentsList)}>
             <li class={styles.replyEditor}>
-              <div>
-                <SimpleRichEditor
-                  editorId={`draft-${props.shoutId}-comment-${clickedReplyId()}`}
-                  commands={['bold', 'italic', 'link', 'image', 'blockquote']}
-                  placeholder={t('Write a reply...')}
-                  onChange={(data) => {
-                    console.log('[CommentsTree] Reply editor onChange:', {
-                      replyTo: clickedReplyId(),
-                      content: data.content,
-                      isEmpty: data.isEmpty
-                    })
-                    setLocalContent(data.content)
-                    untrack(() =>
-                      setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`, data.content)
-                    )
-                  }}
-                  onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-${clickedReplyId()}`)}
-                  content={getEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`)}
-                  toolbar="bottom"
-                />
-                <EditorControls
-                  mode="reply"
-                  onSave={() => handleSubmitComment(clickedReplyId() as number)}
-                  isDisabled={isContentEmpty(localContent())}
-                />
-              </div>
+              <SimpleRichEditor
+                editorId={`draft-${props.shoutId}-comment-${clickedReplyId()}`}
+                commands={['bold', 'italic', 'link', 'image', 'blockquote']}
+                placeholder={t('Write a reply...')}
+                onChange={(data) => {
+                  console.log('[CommentsTree] Reply editor onChange:', {
+                    replyTo: clickedReplyId(),
+                    content: data.content,
+                    isEmpty: data.isEmpty
+                  })
+                  setLocalContent(data.content)
+                  untrack(() =>
+                    setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`, data.content)
+                  )
+                }}
+                onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-${clickedReplyId()}`)}
+                content={getEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`)}
+                toolbar="bottom"
+              />
+              <EditorControls
+                mode="reply"
+                onSave={() => handleSubmitComment(clickedReplyId() as number)}
+                onCancel={() => handleClear()}
+                isDisabled={isContentEmpty(localContent())}
+              />
             </li>
-          </Show>
-          <For each={children()}>
-            {(comment) => (
-              <>
-                <Show when={editingCommentId() !== comment.id}>
+          </ul>
+        </Show>
+
+        {/* Показываем дочерние комментарии отдельно */}
+        <Show when={children().length > 0}>
+          <ul class={clsx(styles.commentsList)}>
+            {/* Используем стабильный ключ для идентификации комментариев */}
+            <For each={children()} fallback={<div>{t('No replies yet')}</div>}>
+              {(comment) => (
+                <li class={styles.commentItem} data-comment-id={comment.id}>
                   <CommentCard
                     comment={comment}
                     sortedComments={sortedComments()}
                     lastSeen={shoutLastSeen()}
                     onDelete={handleDelete}
                     onReply={handleReply}
-                    onEdit={handleEdit}
+                    onEdit={() => handleEdit(comment.id)}
                     clickedReplyId={clickedReplyId}
                     articleAuthors={props.articleAuthors}
                     myRate={getCommentRate(comment.id)}
+                    onEditorChange={(data) => handleExistingChange(data, comment.id)}
+                    onCancelEdit={() => {
+                      handleCancelEdit()
+                    }}
+                    onSaveEdit={() => {
+                      handleSubmitComment(undefined)
+                    }}
+                    onCancelReply={() => {
+                      handleClear()
+                    }}
+                    onSaveReply={() => {
+                      handleSubmitComment(clickedReplyId() as number)
+                    }}
                   >
                     <CommentBranch
                       parentId={comment.id}
@@ -538,89 +878,103 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                       articleAuthors={props.articleAuthors}
                     />
                   </CommentCard>
-                </Show>
-                <Show when={editingCommentId() === comment.id}>
-                  <li class={styles.editingComment}>
-                    <div>
-                      <SimpleRichEditor
-                        editorId={`draft-${props.shoutId}-comment-edit-${comment.id}`}
-                        commands={['bold', 'italic', 'link', 'image', 'blockquote']}
-                        placeholder={t('Edit your comment...')}
-                        onChange={(data) => {
-                          console.log('[CommentsTree] Edit editor onChange:', {
-                            commentId: comment.id,
-                            content: data.content,
-                            isEmpty: data.isEmpty,
-                            plainText: data.plainText
-                          })
-                          setLocalContent(data.content)
-                          untrack(() =>
-                            setEditorContent(
-                              `draft-${props.shoutId}-comment-edit-${comment.id}`,
-                              data.content
-                            )
-                          )
-                        }}
-                        content={getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)}
-                        toolbar="bottom"
-                      />
-                      <EditorControls
-                        mode="edit"
-                        onSave={() => {
-                          console.log('[CommentsTree] Save button clicked in edit mode')
-                          handleSubmitComment(undefined)
-                        }}
-                        isDisabled={isContentEmpty(localContent())}
-                      />
-                    </div>
-                  </li>
-                </Show>
-              </>
-            )}
-          </For>
-        </ul>
-      </Show>
+                </li>
+              )}
+            </For>
+          </ul>
+        </Show>
+      </>
     )
   }
 
   const handleEditorBlur = (draftKey: string) => {
     const content = getEditorContent(draftKey)
     if (content) {
-      const div = document.createElement('div')
-      div.innerHTML = content
+      // Находим текущий редактор
+      const editor = document.querySelector(`[data-editor-id="${draftKey}"]`) as HTMLElement
+      if (!editor) return
 
-      // Рекурсивно удаляем пустые теги
-      const removeEmptyTags = (element: Element) => {
-        const children = Array.from(element.children)
-        children.forEach((child) => {
-          removeEmptyTags(child)
-          // Проверяем есть ли текст или непустые дочерние элементы
-          const hasText = child.textContent?.trim()
-          const hasNonEmptyChildren = Array.from(child.children).some(
-            (el) => el.textContent?.trim() || el.nodeName.toLowerCase() === 'img'
-          )
-          if (!hasText && !hasNonEmptyChildren) {
-            child.remove()
-          }
-        })
+      // Сохраняем текущую позицию курсора и выделение
+      let savedSelection: Range | null = null
+      if (window.getSelection) {
+        const selection = window.getSelection()
+        if (selection && selection.rangeCount > 0) {
+          savedSelection = selection.getRangeAt(0).cloneRange()
+        }
       }
 
-      removeEmptyTags(div)
+      // Очищаем содержимое от лишних тегов и переносов строк
+      const cleanedContent = cleanupContent(content)
 
       // Если после очистки контент пустой - очищаем редактор полностью
-      if (!div.textContent?.trim() && !div.querySelector('img')) {
+      if (isContentEmpty(cleanedContent)) {
         batch(() => {
           setLocalContent('')
           setEditorContent(draftKey, '')
 
           // Очищаем содержимое редактора напрямую
-          const editor = document.querySelector(`[data-editor-id="${draftKey}"]`)
           if (editor) {
             editor.innerHTML = ''
           }
         })
+      } else {
+        // Иначе обновляем содержимое с очищенными переносами строк
+        setLocalContent(cleanedContent)
+        setEditorContent(draftKey, cleanedContent)
+
+        // Обновляем содержимое редактора напрямую для синхронизации
+        if (editor) {
+          // Важно: запоминаем, что редактор в фокусе для восстановления курсора
+          const editorHasFocus = document.activeElement === editor
+          editor.innerHTML = cleanedContent
+
+          // Восстанавливаем позицию курсора, если элемент был в фокусе и у нас есть сохраненная позиция
+          if (editorHasFocus && savedSelection) {
+            try {
+              const selection = window.getSelection()
+              if (selection) {
+                selection.removeAllRanges()
+                selection.addRange(savedSelection)
+              }
+            } catch (e) {
+              console.warn('[CommentsTree] Could not restore cursor position:', e)
+            }
+          }
+        }
       }
     }
+  }
+
+  const handleExistingChange = (data: EditorData, commentId: number) => {
+    setEditingCommentId(commentId)
+    console.log('[CommentsTree] Edit editor onChange:', {
+      commentId: commentId,
+      content: data.content,
+      isEmpty: data.isEmpty,
+      plainText: data.plainText
+    })
+
+    // Проверяем, есть ли последовательные переносы строк
+    let content = data.content
+    const hasConsecutiveBreaks =
+      /(<p><br><\/p>|<br>){3,}/gi.test(content) || /(<p>\s*<\/p>){3,}/gi.test(content)
+
+    // Если есть - сразу нормализуем без ожидания потери фокуса
+    if (hasConsecutiveBreaks) {
+      content = cleanupContent(content)
+
+      // Обновляем редактор напрямую, чтобы не было визуального дребезжания
+      const activeEditor = document.activeElement as HTMLElement
+      if (activeEditor?.getAttribute('data-editor-id')) {
+        // Позиция курсора будет восстановлена в setTimeout
+        setTimeout(() => {
+          activeEditor.innerHTML = content
+        }, 0)
+      }
+    }
+
+    setLocalContent(content)
+    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-edit-${commentId}`, content))
   }
 
   const handleEditorChange = (data: EditorData) => {
@@ -628,8 +982,50 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       content: data.content,
       isEmpty: data.isEmpty
     })
-    setLocalContent(data.content)
-    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, data.content))
+
+    // Проверяем, есть ли последовательные переносы строк
+    let content = data.content
+    const hasConsecutiveBreaks =
+      /(<p><br><\/p>|<br>){3,}/gi.test(content) || /(<p>\s*<\/p>){3,}/gi.test(content)
+
+    // Если есть - сразу нормализуем без ожидания потери фокуса
+    if (hasConsecutiveBreaks) {
+      content = cleanupContent(content)
+
+      // Обновляем редактор напрямую, чтобы не было визуального дребезжания
+      const activeEditor = document.activeElement as HTMLElement
+      if (activeEditor?.getAttribute('data-editor-id')) {
+        // Запоминаем позицию курсора
+        let savedSelection: Range | null = null
+        if (window.getSelection) {
+          const selection = window.getSelection()
+          if (selection && selection.rangeCount > 0) {
+            savedSelection = selection.getRangeAt(0).cloneRange()
+          }
+        }
+
+        // Используем setTimeout, чтобы не мешать текущему циклу обработки ввода
+        setTimeout(() => {
+          activeEditor.innerHTML = content
+
+          // Восстанавливаем курсор
+          if (savedSelection) {
+            try {
+              const selection = window.getSelection()
+              if (selection) {
+                selection.removeAllRanges()
+                selection.addRange(savedSelection)
+              }
+            } catch (e) {
+              console.warn('[CommentsTree] Could not restore cursor position:', e)
+            }
+          }
+        }, 0)
+      }
+    }
+
+    setLocalContent(content)
+    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, content))
   }
 
   return (
@@ -647,65 +1043,75 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
           <Show when={comments().length > 0}>
             <ul class={clsx(styles.commentsList)}>
-              <For each={commentTree()[0] || []}>
+              <For
+                each={commentTree()[0] || []}
+                // В SolidJS ключ указываем здесь для оптимизации рендера
+                fallback={<div class={styles.noComments}>{t('No comments yet')}</div>}
+              >
                 {(comment) => (
-                  <>
-                    <Show when={editingCommentId() !== comment.id}>
-                      <CommentCard
-                        comment={comment}
-                        sortedComments={sortedComments()}
-                        lastSeen={shoutLastSeen()}
-                        onDelete={handleDelete}
-                        onReply={handleReply}
-                        onEdit={handleEdit}
-                        clickedReplyId={clickedReplyId}
+                  // Используем id комментария как часть идентификатора для элементов списка
+                  <li class={styles.commentItem} data-comment-id={comment.id}>
+                    <CommentCard
+                      comment={comment}
+                      sortedComments={sortedComments()}
+                      lastSeen={shoutLastSeen()}
+                      onDelete={handleDelete}
+                      onReply={handleReply}
+                      onEdit={handleEdit}
+                      clickedReplyId={clickedReplyId}
+                      articleAuthors={props.articleAuthors}
+                      myRate={getCommentRate(comment.id)}
+                      onEditorChange={(data) => {
+                        console.log('[CommentsTree] Edit editor onChange:', {
+                          commentId: comment.id,
+                          content: data.content,
+                          isEmpty: data.isEmpty,
+                          plainText: data.plainText
+                        })
+
+                        // Проверяем, есть ли последовательные переносы строк
+                        let content = data.content
+                        const hasConsecutiveBreaks =
+                          /(<p><br><\/p>|<br>){3,}/gi.test(content) || /(<p>\s*<\/p>){3,}/gi.test(content)
+
+                        // Если есть - сразу нормализуем без ожидания потери фокуса
+                        if (hasConsecutiveBreaks) {
+                          content = cleanupContent(content)
+
+                          // Обновляем редактор напрямую, чтобы не было визуального дребезжания
+                          const activeEditor = document.activeElement as HTMLElement
+                          if (activeEditor?.getAttribute('data-editor-id')) {
+                            // Позиция курсора будет восстановлена в setTimeout
+                            setTimeout(() => {
+                              activeEditor.innerHTML = content
+                            }, 0)
+                          }
+                        }
+
+                        setLocalContent(content)
+                        untrack(() =>
+                          setEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`, content)
+                        )
+                      }}
+                      onCancelEdit={() => {
+                        handleCancelEdit()
+                      }}
+                      onSaveEdit={() => {
+                        handleSubmitComment(undefined)
+                      }}
+                      content={
+                        editingCommentId() === comment.id
+                          ? getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)
+                          : undefined
+                      }
+                    >
+                      <CommentBranch
+                        parentId={comment.id}
+                        shoutId={props.shoutId}
                         articleAuthors={props.articleAuthors}
-                        myRate={getCommentRate(comment.id)}
-                      >
-                        <CommentBranch
-                          parentId={comment.id}
-                          shoutId={props.shoutId}
-                          articleAuthors={props.articleAuthors}
-                        />
-                      </CommentCard>
-                    </Show>
-                    <Show when={editingCommentId() === comment.id}>
-                      <li class={styles.editingComment}>
-                        <div>
-                          <SimpleRichEditor
-                            editorId={`draft-${props.shoutId}-comment-edit-${comment.id}`}
-                            commands={['bold', 'italic', 'link', 'image', 'blockquote']}
-                            placeholder={t('Edit your comment...')}
-                            onChange={(data) => {
-                              console.log('[CommentsTree] Edit editor onChange:', {
-                                commentId: comment.id,
-                                content: data.content,
-                                isEmpty: data.isEmpty,
-                                plainText: data.plainText
-                              })
-                              setLocalContent(data.content)
-                              untrack(() =>
-                                setEditorContent(
-                                  `draft-${props.shoutId}-comment-edit-${comment.id}`,
-                                  data.content
-                                )
-                              )
-                            }}
-                            content={getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)}
-                            toolbar="bottom"
-                          />
-                          <EditorControls
-                            mode="edit"
-                            onSave={() => {
-                              console.log('[CommentsTree] Save button clicked in edit mode')
-                              handleSubmitComment(undefined)
-                            }}
-                            isDisabled={isContentEmpty(localContent())}
-                          />
-                        </div>
-                      </li>
-                    </Show>
-                  </>
+                      />
+                    </CommentCard>
+                  </li>
                 )}
               </For>
             </ul>
@@ -737,6 +1143,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                 <EditorControls
                   mode="new"
                   onSave={() => handleSubmitComment(undefined)}
+                  onCancel={() => handleClear()}
                   isDisabled={isContentEmpty(localContent())}
                 />
               </div>

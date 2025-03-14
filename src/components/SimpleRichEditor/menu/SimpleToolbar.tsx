@@ -83,7 +83,6 @@ export const SimpleToolbar: Component<SimpleToolbarProps> = (props) => {
     e.preventDefault()
     e.stopPropagation() // Предотвращаем всплытие
     console.log('Toolbar action clicked:', action)
-    console.log('Current formats:', props.currentFormats)
     props.onAction(action)
   }
 

@@ -37,6 +37,37 @@ $comment-indent: 2.5rem;
   }
 }
 
+@mixin comment-control-style {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2.5px 0 1.5px;
+  border: none;
+  background: transparent;
+  color: var(--color-gray-700);
+  white-space: nowrap;
+  font-family: Muller, sans-serif;
+  font-weight: 500;
+  font-size: .7em;
+  line-height: 1.333;
+  letter-spacing: 0.3%;
+  
+  &:hover {
+    color: var(--color-gray-900);
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+  
+  &:hover .icon {
+    opacity: 1;
+  }
+}
+
 .comment {
   position: relative;
   margin-bottom: $spacing-xl;
@@ -46,6 +77,9 @@ $comment-indent: 2.5rem;
   max-height: 2000px;
   transform-origin: top;
   will-change: opacity, max-height, transform;
+  clear: both;
+  display: block;
+  width: 100%;
 
   .commentActions {
     opacity: 1;
@@ -55,6 +89,12 @@ $comment-indent: 2.5rem;
     margin-left: $comment-indent;
     padding: 5px 0 10px;
     position: relative;
+  }
+
+  &.isDeleting {
+    opacity: 0.5;
+    pointer-events: none;
+    animation: fadeOutAndCollapse 0.5s ease forwards;
   }
 }
 
@@ -138,34 +178,7 @@ $comment-indent: 2.5rem;
 }
 
 .commentControl {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2.5px 0 1.5px;
-  border: none;
-  background: transparent;
-  color: var(--color-gray-700);
-  white-space: nowrap;
-  font-family: Muller, sans-serif;
-  font-weight: 700;
-  font-size: 12px;
-  line-height: 1.333;
-  letter-spacing: 0.3%;
-  
-  &:hover {
-    color: var(--color-gray-900);
-  }
-
-  .icon {
-    width: 20px;
-    height: 20px;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
-  }
-  
-  &:hover .icon {
-    opacity: 1;
-  }
+  @include comment-control-style;
 }
 
 .replyEditor {
@@ -179,16 +192,21 @@ $comment-indent: 2.5rem;
 }
 
 .commentBody {
-  font-size: 0.95rem;
-  line-height: 1.6;
+  position: relative;
+  margin: $spacing-md 0;
   
-  div {
-    min-height: $spacing-xs;
-    padding: $spacing-md;
-    border: none;
-    border-radius: 0;
-    background: transparent;
+  &.isEditing {
+    .commentContent,
+    .commentActions {
+      opacity: 0;
+      pointer-events: none;
+    }
   }
+}
+
+.commentContent {
+  position: relative;
+  transition: opacity 0.3s ease;
 }
 
 .leftControls,
@@ -267,10 +285,11 @@ $comment-indent: 2.5rem;
   padding-top: 0;
   padding-bottom: 0;
   transform: scaleY(0.8);
+  pointer-events: none;
 }
 
 .isAppearing {
-  animation: appearIn 0.3s ease-out;
+  animation: appearIn 0.3s ease-out, appear 0.3s ease-out;
 }
 
 @keyframes appearIn {
@@ -299,7 +318,7 @@ $comment-indent: 2.5rem;
 
 .deleteConfirm {
   position: fixed;
-  z-index: 9999;
+  z-index: 9;
   background: white;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -446,31 +465,129 @@ $comment-indent: 2.5rem;
   }
 }
 
-.hiddenComment {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  color: var(--color-gray-500);
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: 8px;
-  background: var(--color-gray-50);
-  transition: all 0.2s ease-in-out;
+.moreMenuContainer {
+  position: relative;
+  z-index: 10;
+}
 
-  &:hover {
-    background: var(--color-gray-100);
-    color: var(--color-gray-700);
+.moreMenuPopup {
+  min-width: 160px;
+  padding: 0;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  z-index: 20;
+}
+
+.rootComment {
+  margin-top: $spacing-lg;
+}
+
+.isNew {
+  animation: highlight 2s ease-out;
+}
+
+.commentControlReply,
+.commentControlEdit,
+.commentControlShare {
+  @include comment-control-style;
+}
+
+.isReplying {
+  opacity: 1;
+  max-height: 500px;
+}
+
+@keyframes highlight {
+  0% { background-color: var(--color-primary-50); }
+  100% { background-color: transparent; }
+}
+
+@keyframes appear {
+  0% { 
+    opacity: 0;
+    transform: translateY(-10px);
   }
 
-  .icon {
-    width: 16px;
-    height: 16px;
-    opacity: 0.7;
-  }
-
-  &:hover .icon {
+  100% { 
     opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.editingContent {
+  // Анимация появления редактора
+  animation: editorAppear 0.3s ease forwards;
+}
+
+.childComments {
+  position: relative;
+  z-index: 1;
+  margin-top: $spacing-md;
+  width: 100%;
+  display: block;
+  clear: both;
+  overflow: visible;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    left: 1.25rem;
+    top: 0;
+    bottom: 0;
+    width: $comment-branch-width;
+    background: $comment-branch-color;
+    z-index: 0;
+  }
+  
+  .comment {
+    margin-bottom: $spacing-lg;
+    position: relative;
+    display: block;
+    clear: both;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+@keyframes editorAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Улучшаем стили для кнопок в режиме редактирования
+.editingButtonsWrapper {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: -2.8em;
+  padding-right: .5em;
+  opacity: 1;
+  transition: opacity 0.4s ease-in-out;
+  
+  button {
+    z-index: 1000; // on top of the editor
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  &.hidden {
+    opacity: 0;
   }
 }
 
@@ -481,10 +598,8 @@ $comment-indent: 2.5rem;
   border: 1px solid var(--color-gray-200);
   border-radius: 6px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
-  position: absolute;
-  z-index: 1000;
-  right: 0;
-  top: 100%;
+  position: relative;
+  z-index: 30;
   margin-top: 4px;
 
   &::before {
@@ -498,6 +613,7 @@ $comment-indent: 2.5rem;
     border-left: 1px solid var(--color-gray-200);
     border-top: 1px solid var(--color-gray-200);
     transform: rotate(45deg);
+    z-index: -1;
   }
 
   .menuItem {
@@ -548,11 +664,17 @@ $comment-indent: 2.5rem;
       }
     }
 
-    &[data-action="hide"] {
-      color: var(--color-gray-600);
-
+    &.menuItemConfirm {
+      color: var(--color-red-600);
+      font-weight: 500;
+      background: var(--color-red-50);
+      
       &:hover {
-        background: var(--color-gray-100);
+        background: var(--color-red-100);
+      }
+      
+      .menuItemIcon {
+        color: var(--color-red-600);
       }
     }
   }
@@ -599,11 +721,131 @@ $comment-indent: 2.5rem;
   }
 }
 
-.moreMenuPopup {
-  z-index: 1000;
-  position: absolute;
+// Стили для контейнера подтверждения удаления
+.confirmDeleteContainer {
+  padding: $spacing-xs;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  min-width: 180px;
+  position: relative;
+  z-index: 1020;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-left: 1px solid var(--color-gray-200);
+    border-top: 1px solid var(--color-gray-200);
+    transform: rotate(45deg);
+    z-index: 1019;
+  }
+  
+  .confirmDeleteTitle {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-gray-900);
+    margin-bottom: $spacing-sm;
+    padding: 0 .75em;
+    position: relative;
+    z-index: 1021;
+    
+    .titleWithIcon {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+  
+  .confirmDeleteButtons {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: $spacing-xs;
+    position: relative;
+    z-index: 1021;
+    
+    .menuItem {
+      justify-content: center;
+      animation: menuItemAppear 0.2s ease-out;
+      animation-fill-mode: both;
+      flex: 1;
+      position: relative;
+      z-index: 1022;
+      
+      &:nth-child(2) {
+        animation-delay: 0.05s;
+      }
+      
+      &[data-action="cancel"] {
+        color: var(--color-gray-700);
+        
+        &:hover {
+          background: var(--color-gray-100);
+        }
+      }
+      
+      &[data-action="delete"] {
+        color: var(--color-red-600);
+        font-weight: 500;
+        
+        &:hover {
+          background: var(--color-red-50);
+        }
+      }
+    }
+  }
 }
 
-.moreMenuOverlay {
-  z-index: 999;
+@keyframes menuItemAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Стили для контейнера всплывающего окна подтверждения удаления
+.deleteConfirmPopupContainer {
+  position: absolute;
+  z-index: 1020;
+  top: calc(100% + 5px);
+  right: 0;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.popup {
+  position: relative;
+  z-index: 50 !important; // Увеличиваем z-index для popup
+}
+
+// Анимация для плавного удаления комментария
+@keyframes fadeOutAndCollapse {
+  0% {
+    opacity: 0.5;
+    max-height: 1000px;
+    margin-bottom: 1rem;
+  }
+
+  50% {
+    opacity: 0;
+    max-height: 1000px;
+    margin-bottom: 1rem;
+  }
+
+  100% {
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding: 0;
+    border: none;
+  }
 }

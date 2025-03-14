@@ -266,4 +266,14 @@
   top: 0;
   left: 0;
   z-index: 100;
+  background: var(--bg-color);
+
+  .inlineForm {
+    background: var(--bg-color);
+  }
+}
+
+.tempHighlight {
+  background-color: var(--color-primary-50, rgb(0 120 255 / 10%));
+  border-radius: 2px;
 }

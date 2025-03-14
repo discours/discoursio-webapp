@@ -24,6 +24,7 @@ import { Row2 } from '../Feed/Row2'
 import { Row3 } from '../Feed/Row3'
 
 import styles from '~/styles/views/Author.module.scss'
+import { COMMENTS_PER_PAGE } from '../Article/FullArticle'
 
 type AuthorViewProps = {
   authorSlug: string
@@ -33,7 +34,6 @@ type AuthorViewProps = {
 }
 
 export const PRERENDERED_ARTICLES_COUNT = 12
-const COMMENTS_PER_PAGE = 12
 // const LOAD_MORE_PAGE_SIZE = 9
 
 // Добавим тип для статистики автора

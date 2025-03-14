@@ -19,7 +19,8 @@
   position: absolute;
   text-align: left;
   top: calc(100% + 11px);
-  z-index: 101;
+  z-index: 1000;
+  pointer-events: auto;
 
   ul {
     margin-bottom: 0;

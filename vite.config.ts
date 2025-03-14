@@ -62,7 +62,7 @@ export default defineConfig({
       }
     },
     rollupOptions: {
-      external: ["bufferutil", "utf-8-validate"],
+      external: ['bufferutil', 'utf-8-validate'],
       output: {
         sourcemapExcludeSources: true,
         manualChunks: (id) => {

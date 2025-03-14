@@ -2,6 +2,8 @@
 :root {
   --background-color-invert: #000;
   --background-color: #fff;
+  --bg-color: var(--background-color);
+  --bg-color-invert: var(--background-color-invert);
   --blue-link: #2638d9;
   --danger-color: #f00;
   --default-color-invert: #fff;
