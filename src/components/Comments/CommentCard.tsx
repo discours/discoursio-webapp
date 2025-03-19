@@ -11,13 +11,13 @@ import { useSession } from '~/context/session'
 import { useSnackbar, useUI } from '~/context/ui'
 import { Author, Reaction, ReactionKind } from '~/graphql/schema/core.gen'
 import { saveScrollPosition } from '~/utils/scroll'
+import { SharePopup } from '../Article/SharePopup'
 import { AuthorLink } from '../Author/AuthorLink'
 import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { CommentDate } from './CommentDate'
 
 import styles from './CommentCard.module.scss'
-
 /**
  * Свойства компонента CommentCard
  * @typedef {Object} CommentCardProps
@@ -132,6 +132,15 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
     return false
   })
 
+  /**
+   * Проверяет, является ли комментарий локальным (еще не сохраненным на сервере)
+   */
+  const isLocalComment = createMemo(() => {
+    const id = props.comment.id
+    // Временные комментарии могут иметь отрицательные или очень большие ID (больше 1000000000)
+    return id < 0 || id > 1000000000
+  })
+
   onMount(() => {
     // Проверяем, является ли комментарий новым
     if (props.isNew) {
@@ -231,45 +240,6 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
     } else {
       console.warn('[CommentCard] Edit handler not provided')
     }
-  }
-
-  /**
-   * Обработчик для шаринга комментария
-   */
-  const handleShare = () => {
-    console.log('[CommentCard] Opening share dialog for comment:', props.comment.id)
-    const commentUrl = `${window.location.href}#comment-${props.comment.id}`
-
-    if (navigator.share) {
-      navigator
-        .share({
-          title: t('Share comment'),
-          text: props.comment.body || '',
-          url: commentUrl
-        })
-        .catch((error) => {
-          console.error('[CommentCard] Share error:', error)
-          // Fallback to clipboard if share fails
-          handleClipboardCopy(commentUrl)
-        })
-    } else {
-      handleClipboardCopy(commentUrl)
-    }
-  }
-
-  /**
-   * Вспомогательная функция для копирования в буфер обмена
-   */
-  const handleClipboardCopy = (text: string) => {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        showSnackbar({ type: 'success', body: t('Link copied to clipboard') })
-      })
-      .catch((error) => {
-        console.error('[CommentCard] Copy error:', error)
-        showSnackbar({ type: 'error', body: t('Failed to copy link') })
-      })
   }
 
   const handleReport = () => {
@@ -387,12 +357,18 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
                       <Icon name="pencil-outline" class={styles.icon} />
                     </button>
                   </Show>
-                  <button
-                    class={clsx(styles.commentControl, styles.commentControlShare)}
-                    onClick={() => handleShare()}
-                  >
-                    <Icon name="share-outline" class={styles.icon} />
-                  </button>
+
+                  <SharePopup
+                    imageUrl={props.comment.created_by?.pic || ''}
+                    trigger={
+                      <button class={clsx(styles.commentControl, styles.commentControlShare)}>
+                        <Icon name="share-outline" class={styles.icon} />
+                      </button>
+                    }
+                    title={props.comment.body || ''}
+                    description={`${props.comment.created_by?.name} ${t('commented on')} ${props.comment.shout?.title}`}
+                    shareUrl={`${window.location.href}#comment-${props.comment.id}`}
+                  />
 
                   <Popup
                     trigger={

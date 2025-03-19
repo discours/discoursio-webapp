@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Solid Async Migration', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:3000', {
+    await page.goto('https://localhost:3000', {
       timeout: 10000,
       waitUntil: 'networkidle'
     })
@@ -14,7 +14,7 @@ test.describe('Solid Async Migration', () => {
   })
 
   test('should render topic page', async ({ page }) => {
-    await page.goto('http://localhost:3000/topics', { timeout: 10000 })
+    await page.goto('https://localhost:3000/topics', { timeout: 10000 })
     await page.waitForLoadState('networkidle')
 
     const topicsList = page.locator('.topics-list')
@@ -28,7 +28,7 @@ test.describe('Solid Async Migration', () => {
   })
 
   test('should render search results', async ({ page }) => {
-    await page.goto('http://localhost:3000/search', { timeout: 10000 })
+    await page.goto('https://localhost:3000/search', { timeout: 10000 })
     await page.waitForLoadState('networkidle')
 
     const searchInput = page.locator('input[type="search"]')

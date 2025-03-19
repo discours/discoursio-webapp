@@ -164,7 +164,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   }
 
   const deleteDraft = async (draftId: number) => {
-    const response = await client()?.mutation(deleteDraftMutation, { id: draftId })
+    const response = await client()?.mutation(deleteDraftMutation, { draft_id: draftId })
     if (response?.data?.delete_draft) {
       setDrafts(drafts().filter((d) => d.id !== draftId))
       return true

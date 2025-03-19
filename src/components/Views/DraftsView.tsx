@@ -13,8 +13,13 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
   const { publishDraft, deleteDraft, drafts, loadDrafts } = useDrafts()
 
   const handleDraftDelete = async (d: Draft) => {
-    await deleteDraft(d.id)
-    await loadDrafts() // Перезагружаем список после удаления
+    if (d?.id) {
+      console.log('[DraftsView] deleting draft:', d.id)
+      await deleteDraft(d.id)
+      await loadDrafts() // Перезагружаем список после удаления
+    } else {
+      console.error('[DraftsView] Draft has no id:', d)
+    }
   }
 
   // Отслеживаем состояние черновиков

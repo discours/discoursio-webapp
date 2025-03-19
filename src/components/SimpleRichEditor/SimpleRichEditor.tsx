@@ -1326,9 +1326,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
                   handleChange()
                 } else {
                   // Стандартный случай - используем replaceSelection
-                  replaceSelection(
-                    `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`
-                  )
+                  replaceSelection(`<a href="${url}">${linkText}</a>`)
                 }
 
                 showInsert(undefined)

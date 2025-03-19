@@ -1,4 +1,4 @@
-// Локальные переменные
+// Переменные и миксины
 $spacing-xs: 0.25rem;
 $spacing-sm: 0.5rem;
 $spacing-md: 0.75rem;
@@ -9,32 +9,11 @@ $comment-branch-color: var(--color-gray-200);
 $comment-branch-width: 1px;
 $comment-indent: 2.5rem;
 
-
-// Миксины для повторяющихся паттернов
-@mixin flex-center {
+// Базовые миксины
+@mixin flex($align: center, $gap: $spacing-md) {
   display: flex;
-  align-items: center;
-}
-
-@mixin flex-gap($gap: $spacing-md) {
-  @include flex-center;
-
+  align-items: $align;
   gap: $gap;
-}
-
-@mixin interactive-element {
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: rgb(243 244 246 / 60%);
-    color: #333;
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
 }
 
 @mixin comment-control-style {
@@ -68,6 +47,7 @@ $comment-indent: 2.5rem;
   }
 }
 
+// Основные стили компонента
 .comment {
   position: relative;
   margin-bottom: $spacing-xl;
@@ -81,20 +61,23 @@ $comment-indent: 2.5rem;
   display: block;
   width: 100%;
 
-  .commentActions {
-    opacity: 1;
-  }
-
   &.isReply {
     margin-left: $comment-indent;
     padding: 5px 0 10px;
-    position: relative;
   }
 
   &.isDeleting {
     opacity: 0.5;
     pointer-events: none;
     animation: fadeOutAndCollapse 0.5s ease forwards;
+  }
+  
+  &.isAppearing {
+    animation: appearIn 0.3s ease-out;
+  }
+  
+  &.isNew {
+    animation: highlight 2s ease-out;
   }
 }
 
@@ -107,26 +90,10 @@ $comment-indent: 2.5rem;
 }
 
 .authorInfo {
-  display: flex;
-  align-items: center;
+  @include flex;
+
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.avatarWrapper {
-  display: flex;
-  align-items: center;
-  margin-right: $spacing-md;
-  
-  :global(.Userpic) {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 2px solid rgb(255 255 255 / 80%);
-    box-shadow: 0 2px 4px rgb(0 0 0 / 3%);
-    transition: all 0.2s ease;
-  }
 }
 
 .authorBadge {
@@ -170,25 +137,30 @@ $comment-indent: 2.5rem;
 }
 
 .commentActions {
-  display: flex;
-  align-items: center;
-  gap: 20px;
+  @include flex;
+
+  justify-content: space-between;
   padding: 0 0 10px;
-  opacity: 1;
 }
 
-.commentControl {
+.commentControl,
+.commentControlReply,
+.commentControlEdit,
+.commentControlShare,
+.commentControlMore {
   @include comment-control-style;
 }
 
-.replyEditor {
-  margin-top: $spacing-lg;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
+.commentControlMore {
+  padding: 4px;
+  color: var(--color-gray-500);
   position: relative;
+  z-index: 2;
 
+  &:hover {
+    color: var(--color-gray-700);
+    background: var(--color-gray-100);
+  }
 }
 
 .commentBody {
@@ -211,18 +183,13 @@ $comment-indent: 2.5rem;
 
 .leftControls,
 .rightControls {
-  @include flex-gap;
+  @include flex;
 
   flex-wrap: nowrap;
   
   @media (width <= 576px) {
     flex: 0 0 auto;
   }
-}
-
-.rightControls {
-  position: relative;
-  z-index: 2;
 }
 
 .actionsSpacer {
@@ -233,30 +200,10 @@ $comment-indent: 2.5rem;
   }
 }
 
-.editButtons,
-.replyButtons {
-  transition: opacity 0.4s ease;
-  opacity: 1;
-
-  &.editButtonsHidden {
-    opacity: 0;
-  }
-
-  @include flex-gap;
-
-  margin-top: $spacing-md;
-  width: 100%;
-  justify-content: flex-end;
-  
-  button {
-    border-radius: 8px;
-    transition: all 0.15s ease;
-  }
-}
-
 .articleLink {
-  @include flex-gap;
+  @include flex;
 
+  gap: $spacing-md;
   margin-top: $spacing-md;
   color: #6b7280;
   font-size: 0.85rem;
@@ -277,249 +224,7 @@ $comment-indent: 2.5rem;
   }
 }
 
-.isDeleting {
-  opacity: 0;
-  max-height: 0;
-  margin-top: 0;
-  margin-bottom: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  transform: scaleY(0.8);
-  pointer-events: none;
-}
-
-.isAppearing {
-  animation: appearIn 0.3s ease-out, appear 0.3s ease-out;
-}
-
-@keyframes appearIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes branchAppear {
-  0% {
-    opacity: 0;
-    transform: scaleX(0);
-  }
-
-  100% {
-    opacity: 1;
-    transform: scaleX(1);
-  }
-}
-
-.deleteConfirm {
-  position: fixed;
-  z-index: 9;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 4px 8px;
-  box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.confirmDeleteLink,
-.cancelDeleteLink {
-  margin-left: 8px;
-  text-decoration: none;
-  
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
-.confirmDeleteLink {
-  color: red;
-  font-weight: 500;
-}
-
-.cancelDeleteLink {
-  color: #666;
-}
-
-.deleteAction {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-
-  .deleteButton {
-    color: var(--color-red-600);
-    background: none;
-    border: none;
-    padding: 4px 8px;
-    cursor: pointer;
-    font-size: 14px;
-    border-radius: 4px;
-    transition: all 0.2s ease-in-out;
-
-    &:hover {
-      background: var(--color-red-50);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  }
-
-  .deleteConfirm {
-    position: absolute;
-    top: 0;
-    right: calc(100% + 8px);
-    background: white;
-    border: 1px solid var(--color-red-200);
-    border-radius: 4px;
-    padding: 4px;
-    display: flex;
-    gap: 4px;
-    box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
-    white-space: nowrap;
-    animation: fadeIn 0.2s ease-out;
-    
-    &::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      right: -5px;
-      transform: translateY(-50%) rotate(45deg);
-      width: 8px;
-      height: 8px;
-      background: white;
-      border-top: 1px solid var(--color-red-200);
-      border-right: 1px solid var(--color-red-200);
-    }
-
-    .confirmButton {
-      color: white;
-      background: var(--color-red-600);
-      border: none;
-      padding: 2px 8px;
-      border-radius: 3px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s ease-in-out;
-
-      &:hover {
-        background: var(--color-red-700);
-      }
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-    }
-
-    .cancelButton {
-      color: var(--color-gray-600);
-      background: var(--color-gray-100);
-      border: none;
-      padding: 2px 8px;
-      border-radius: 3px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s ease-in-out;
-
-      &:hover {
-        background: var(--color-gray-200);
-      }
-    }
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.commentControlMore {
-  padding: 4px;
-  color: var(--color-gray-500);
-  position: relative;
-  z-index: 2;
-
-  &:hover {
-    color: var(--color-gray-700);
-    background: var(--color-gray-100);
-  }
-
-  .icon {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-.moreMenuContainer {
-  position: relative;
-  z-index: 10;
-}
-
-.moreMenuPopup {
-  min-width: 160px;
-  padding: 0;
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: white;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
-  z-index: 20;
-}
-
-.rootComment {
-  margin-top: $spacing-lg;
-}
-
-.isNew {
-  animation: highlight 2s ease-out;
-}
-
-.commentControlReply,
-.commentControlEdit,
-.commentControlShare {
-  @include comment-control-style;
-}
-
-.isReplying {
-  opacity: 1;
-  max-height: 500px;
-}
-
-@keyframes highlight {
-  0% { background-color: var(--color-primary-50); }
-  100% { background-color: transparent; }
-}
-
-@keyframes appear {
-  0% { 
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  100% { 
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .editingContent {
-  // Анимация появления редактора
   animation: editorAppear 0.3s ease forwards;
 }
 
@@ -555,19 +260,7 @@ $comment-indent: 2.5rem;
   }
 }
 
-@keyframes editorAppear {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-// Улучшаем стили для кнопок в режиме редактирования
+// Стили для редактирования
 .editingButtonsWrapper {
   display: flex;
   gap: 8px;
@@ -578,7 +271,7 @@ $comment-indent: 2.5rem;
   transition: opacity 0.4s ease-in-out;
   
   button {
-    z-index: 1000; // on top of the editor
+    z-index: 1000;
     padding: 6px 12px;
     border-radius: 6px;
     font-size: 14px;
@@ -589,6 +282,24 @@ $comment-indent: 2.5rem;
   &.hidden {
     opacity: 0;
   }
+}
+
+// Стили для меню
+.moreMenuContainer {
+  position: relative;
+  z-index: 10;
+}
+
+.moreMenuPopup {
+  min-width: 160px;
+  padding: 0;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  z-index: 20;
 }
 
 .moreMenu {
@@ -617,8 +328,8 @@ $comment-indent: 2.5rem;
   }
 
   .menuItem {
-    display: flex;
-    align-items: center;
+    @include flex;
+
     gap: 8px;
     width: 100%;
     padding: 8px;
@@ -678,156 +389,66 @@ $comment-indent: 2.5rem;
       }
     }
   }
-
-  .deleteConfirm {
-    margin-top: 4px;
-    padding-top: 4px;
-    border-top: 1px solid var(--color-gray-200);
-    display: flex;
-    gap: 4px;
-
-    button {
-      flex: 1;
-      padding: 6px;
-      border: none;
-      border-radius: 4px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s ease-in-out;
-
-      &.confirmButton {
-        background: var(--color-red-600);
-        color: white;
-
-        &:hover {
-          background: var(--color-red-700);
-        }
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      }
-
-      &.cancelButton {
-        background: var(--color-gray-100);
-        color: var(--color-gray-600);
-
-        &:hover {
-          background: var(--color-gray-200);
-        }
-      }
-    }
-  }
 }
 
-// Стили для контейнера подтверждения удаления
-.confirmDeleteContainer {
-  padding: $spacing-xs;
-  background: white;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
-  min-width: 180px;
-  position: relative;
-  z-index: 1020;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: -4px;
-    right: 10px;
-    width: 8px;
-    height: 8px;
-    background: white;
-    border-left: 1px solid var(--color-gray-200);
-    border-top: 1px solid var(--color-gray-200);
-    transform: rotate(45deg);
-    z-index: 1019;
-  }
-  
-  .confirmDeleteTitle {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-gray-900);
-    margin-bottom: $spacing-sm;
-    padding: 0 .75em;
-    position: relative;
-    z-index: 1021;
-    
-    .titleWithIcon {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-  }
-  
-  .confirmDeleteButtons {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: $spacing-xs;
-    position: relative;
-    z-index: 1021;
-    
-    .menuItem {
-      justify-content: center;
-      animation: menuItemAppear 0.2s ease-out;
-      animation-fill-mode: both;
-      flex: 1;
-      position: relative;
-      z-index: 1022;
-      
-      &:nth-child(2) {
-        animation-delay: 0.05s;
-      }
-      
-      &[data-action="cancel"] {
-        color: var(--color-gray-700);
-        
-        &:hover {
-          background: var(--color-gray-100);
-        }
-      }
-      
-      &[data-action="delete"] {
-        color: var(--color-red-600);
-        font-weight: 500;
-        
-        &:hover {
-          background: var(--color-red-50);
-        }
-      }
-    }
-  }
+.rootComment {
+  margin-top: $spacing-lg;
 }
 
-@keyframes menuItemAppear {
-  0% {
+// Анимации
+@keyframes appear {
+  0% { 
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(-10px);
   }
 
-  100% {
+  100% { 
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-// Стили для контейнера всплывающего окна подтверждения удаления
-.deleteConfirmPopupContainer {
-  position: absolute;
-  z-index: 1020;
-  top: calc(100% + 5px);
-  right: 0;
-  animation: fadeIn 0.2s ease-out;
+@keyframes appearIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.popup {
-  position: relative;
-  z-index: 50 !important; // Увеличиваем z-index для popup
+@keyframes editorAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-// Анимация для плавного удаления комментария
+@keyframes highlight {
+  0% { background-color: var(--color-primary-50); }
+  100% { background-color: transparent; }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes fadeOutAndCollapse {
   0% {
     opacity: 0.5;

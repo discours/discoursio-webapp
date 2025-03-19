@@ -27,7 +27,7 @@ import {
 import { MutationCreate_ReactionArgs } from '~/graphql/schema/core.gen'
 import { COMMENTS_PER_PAGE } from '../Article/FullArticle'
 import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
-import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
+import { cleanupContent, sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { Button } from '../_shared/Button'
 import { LoadMoreItems } from '../_shared/LoadMoreWrapper'
 import { Loading } from '../_shared/Loading'
@@ -355,67 +355,6 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   }
 
   /**
-   * Очищает текст от лишних переносов строк и пустых тегов
-   * @param content HTML содержимое
-   * @returns Очищенный HTML
-   */
-  const cleanupContent = (content: string): string => {
-    if (!content.trim()) return ''
-
-    const div = document.createElement('div')
-    div.innerHTML = content
-
-    // Удаляем пустые теги
-    const removeEmptyTags = (element: Element) => {
-      const children = Array.from(element.children)
-      children.forEach((child) => {
-        removeEmptyTags(child)
-        const hasText = child.textContent?.trim()
-        const hasNonEmptyChildren = Array.from(child.children).some(
-          (el) => el.textContent?.trim() || el.nodeName.toLowerCase() === 'img'
-        )
-        if (!hasText && !hasNonEmptyChildren) {
-          child.remove()
-        }
-      })
-    }
-
-    // Заменяем множественные последовательные пустые параграфы и <br> на один <br>
-    const normalizeConsecutiveBreaks = (element: Element) => {
-      let html = element.innerHTML
-
-      // Заменяем множественные <br> (или параграфы с <br>) на один <br>
-      html = html.replace(/(<p><br><\/p>|<br>){3,}/gi, '<br><br>')
-
-      // Ограничиваем максимум до двух переносов строк подряд
-      html = html.replace(/(<p>\s*<\/p>){3,}/gi, '<p></p><p></p>')
-
-      element.innerHTML = html
-    }
-
-    // Удаляем лишние переносы в конце
-    const removeTrailingBreaks = (element: Element) => {
-      let html = element.innerHTML
-      html = html.replace(/(<p><br><\/p>|<p><\/p>|<p>\s*<\/p>|<br>)+$/gi, '')
-      html = html.replace(/(<br>|<br\s*\/?>)\s*$/gi, '')
-      html = html.replace(/\s+$/g, '')
-
-      if (!html.trim()) {
-        html = '<p><br></p>'
-      }
-
-      element.innerHTML = html
-    }
-
-    removeEmptyTags(div)
-    normalizeConsecutiveBreaks(div)
-    removeTrailingBreaks(div)
-
-    console.log('[CommentsTree] Cleaned content:', div.innerHTML)
-    return div.innerHTML
-  }
-
-  /**
    * Обработчик для отправки комментария
    */
   const handleSubmitComment = async (parentId?: number) => {
@@ -431,7 +370,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       return
     }
 
-    // Очищаем контент от лишних переносов строк и пустых тегов
+    // Очищаем контент от лишних переносов строк и преобразуем пустые параграфы
     const cleanedContent = cleanupContent(localContent().trim())
 
     if (isContentEmpty(cleanedContent)) {
@@ -445,15 +384,38 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     const _isEdit = editingCommentId() !== undefined
 
     try {
-      const sanitizedContent = String(sanitizeHtml(cleanedContent))
+      // Финальная проверка и преобразование:
+      // 1. Заменяем все пустые параграфы на параграфы с переносами
+      // 2. Заменяем <br> на <p><br></p>
+      // 3. Ограничиваем число последовательных переносов до двух
+      const processedContent = cleanupContent(cleanedContent)
+
+      // Очищаем с помощью sanitizeHtml и добавляем дополнительные проверки
+      let sanitizedContent = String(sanitizeHtml(processedContent))
+
+      // Дополнительная проверка на нежелательные последовательности
+      sanitizedContent = sanitizedContent.replace(/(<p>\s*<\/p>){2,}/gi, '<p><br></p>')
+      sanitizedContent = sanitizedContent.replace(/(<p><br\s*\/?><\/p>){3,}/gi, '<p><br></p><p><br></p>')
+
+      // Проверяем, что в итоге содержимое не пустое
+      if (isContentEmpty(sanitizedContent)) {
+        showSnackbar({ type: 'error', body: t('Comment cannot be empty') })
+        setPosting(false)
+        return
+      }
+
+      console.log('[CommentsTree] Processed comment content:', {
+        original: localContent().length,
+        cleaned: cleanedContent.length,
+        processed: processedContent.length,
+        sanitized: sanitizedContent.length,
+        content: sanitizedContent // Добавляем вывод содержимого для отладки
+      })
+
       const commentId = editingCommentId()
       const isEditing = commentId !== undefined
 
-      console.log('[CommentsTree] Processing edit:', {
-        commentId,
-        isEditing,
-        sanitizedContent
-      })
+      console.log('[CommentsTree] Processing edit:', { commentId, isEditing })
 
       const commentToEdit = isEditing ? comments().find((c) => c.id === commentId) : undefined
       if (isEditing && !commentToEdit) {
@@ -463,7 +425,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         return
       }
 
-      // Очищаем форму и состояния до отправки запроса, чтобы избежать промежуточных состояний
+      // Очищаем форму и состояния до отправки запроса
       handleClear()
 
       // Отправляем запрос на сервер
@@ -487,18 +449,77 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           } as MutationCreate_ReactionArgs)
 
       console.log('[CommentsTree] Sending request:', {
-        input,
-        isEditing
+        operation: isEditing ? 'update' : 'create',
+        commentId: isEditing ? commentId : undefined,
+        replyTo: isEditing ? commentToEdit?.reply_to : parentId
       })
 
       const result = isEditing ? await updateShoutReaction(input) : await createShoutReaction(input)
 
       console.log('[CommentsTree] Got response:', result)
 
-      if (result && 'error' in result && result.error) {
+      // Если результат - объект но не содержит id, это может указывать на проблему
+      if (result && typeof result === 'object' && !('error' in result) && !('id' in result)) {
+        console.warn('[CommentsTree] Странный формат ответа от сервера:', result)
+      }
+
+      // Проверяем на ошибку cannot update reaction
+      if (result && 'error' in result) {
         console.error('[CommentsTree] Error in response:', result.error)
-        showSnackbar({ type: 'error', body: result.error })
-        return
+        
+        // Специфическая обработка ошибки "cannot update reaction"
+        if (result.error === 'cannot update reaction') {
+          console.log('[CommentsTree] Автоматическое создание нового комментария вместо обновления');
+          
+          try {
+            // Создаём новую реакцию вместо обновления без запроса подтверждения
+            const newInput = {
+              reaction: {
+                body: sanitizedContent,
+                kind: ReactionKind.Comment,
+                shout: props.shoutId,
+                reply_to: commentToEdit?.reply_to
+              }
+            } as MutationCreate_ReactionArgs;
+            
+            const newResult = await createShoutReaction(newInput);
+            
+            if (newResult && !('error' in newResult)) {
+              console.log('[CommentsTree] Комментарий успешно опубликован как новый');
+              showSnackbar({
+                type: 'success',
+                body: t('Could not update comment. Published as new instead')
+              });
+              
+              // Прокручиваем к новому комментарию
+              if ('id' in newResult) {
+                scrollToComment(newResult.id, true, 300);
+              }
+              
+              setPosting(false);
+              return;
+            } else {
+              // Если не удалось опубликовать как новый, показываем ошибку
+              console.error('[CommentsTree] Не удалось опубликовать как новый:', newResult);
+              showSnackbar({
+                type: 'error',
+                body: t('Could not update or publish comment')
+              });
+            }
+          } catch (error) {
+            console.error('[CommentsTree] Ошибка при публикации комментария:', error);
+            showSnackbar({
+              type: 'error',
+              body: t('Failed to publish comment')
+            });
+          }
+        } else {
+          // Обработка других ошибок
+          showSnackbar({ type: 'error', body: t('Failed to save comment') })
+        }
+        
+        setPosting(false);
+        return;
       }
 
       // Только при успешном ответе обрабатываем результат
@@ -629,8 +650,30 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     try {
       // Запоминаем удаляемый комментарий для возможного восстановления
       const commentToDelete = comments().find((c) => c.id === id)
+      if (!commentToDelete) {
+        console.error('[CommentsTree] Comment not found for deletion:', id)
+        return
+      }
 
-      // Оптимистично удаляем комментарий, сохраняя позицию скролла
+      // Проверяем, был ли комментарий сохранен на сервере
+      // Временные комментарии могут иметь отрицательные или очень большие ID (больше 1000000000)
+      const isLocalComment = id < 0 || id > 1000000000
+
+      if (isLocalComment) {
+        console.log('[CommentsTree] Canceling local comment deletion:', id)
+        // Это временный комментарий, который еще не добавлен на сервер
+        // Просто восстанавливаем его в локальном хранилище после анимации удаления
+        setTimeout(() => {
+          if (commentToDelete) {
+            console.log('[CommentsTree] Restoring local comment:', id)
+            addShoutReactions([commentToDelete])
+            showSnackbar({ type: 'success', body: t('Comment restored') })
+          }
+        }, 500) // Ждем завершения анимации удаления
+        return
+      }
+
+      // Оптимистично удаляем комментарий из UI, сохраняя позицию скролла
       withPreservedScroll(() => {
         // Копируем текущее состояние хранилища
         const currentReactions = reactionEntities()
@@ -652,16 +695,9 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         removeComment(id)
 
         // Применяем изменения без ререндера всего дерева
-        // Используем внутренний метод контекста реакций для атомарного обновления
         if (Object.keys(currentReactions).length !== Object.keys(updatedReactions).length) {
-          // Обновляем состояние без refetch
-          // Это не вызовет полного перестроения дерева
           untrack(() => {
-            // @ts-ignore - доступ к внутреннему методу контекста
-            // Если нет прямого доступа, можно использовать другие механизмы состояния
             if (typeof addShoutReactions === 'function') {
-              // Обновляем только локальное состояние
-              // Применяем изменения к хранилищу реакций
               Object.values(updatedReactions).forEach((r) => {
                 addShoutReactions([r])
               })
@@ -670,32 +706,41 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         }
       })
 
-      // Сообщаем об удалении UI до запроса на сервер
-      showSnackbar({ type: 'success', body: t('Comment deleted') })
-
-      // Затем выполняем запрос на сервер
+      // Отправляем запрос на сервер без отображения сообщения об успехе заранее
       const result = await deleteShoutReaction(id)
+
       if (result?.error) {
         console.error('[CommentsTree] Error in delete response:', result.error)
         showSnackbar({ type: 'error', body: t('Failed to delete comment') })
 
         // Если удаление на сервере не удалось, восстанавливаем комментарий
         if (commentToDelete) {
-          addShoutReactions([commentToDelete])
+          console.log('[CommentsTree] Restoring comment after failed deletion:', id)
+          setTimeout(() => {
+            addShoutReactions([commentToDelete])
+          }, 100)
         }
         return
       }
+
+      // Показываем сообщение об успехе ТОЛЬКО после подтверждения с сервера
+      showSnackbar({ type: 'success', body: t('Comment deleted') })
 
       // Обновляем колбэк только при успешном удалении на сервере
       if (props.onDeleteComment) {
         props.onDeleteComment(id)
       }
-
-      // Не делаем полный refetch после успешного удаления
-      // await refetch()
     } catch (error) {
       console.error('[CommentsTree] Error deleting comment:', error)
       showSnackbar({ type: 'error', body: t('Failed to delete comment') })
+
+      // Пытаемся восстановить комментарий при ошибке
+      const commentToRestore = comments().find((c) => c.id === id)
+      if (commentToRestore) {
+        setTimeout(() => {
+          addShoutReactions([commentToRestore])
+        }, 100)
+      }
     }
   }
 
@@ -791,6 +836,126 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   }
 
   /**
+   * Обработчик изменения содержимого редактора для существующего комментария
+   */
+  const handleExistingChange = (data: EditorData, commentId: number) => {
+    setEditingCommentId(commentId)
+    console.log('[CommentsTree] Edit editor onChange:', {
+      commentId: commentId,
+      content: data.content,
+      isEmpty: data.isEmpty,
+      plainText: data.plainText || data.content.replace(/<[^>]*>/g, '')
+    })
+
+    // Если контент пустой, очищаем его полностью
+    if (isContentEmpty(data.content)) {
+      setLocalContent('')
+      return
+    }
+
+    // Проверяем на пустые параграфы или избыточные переносы
+    const hasEmptyParagraphs = /<p>\s*<\/p>/gi.test(data.content)
+    const hasExcessiveBreaks = /(<p><br\s*\/?><\/p>){3,}/gi.test(data.content)
+
+    // Обрабатываем контент если нужно
+    if (hasEmptyParagraphs || hasExcessiveBreaks) {
+      // Применяем нормализацию
+      const cleanedContent = cleanupContent(data.content)
+
+      // Обновляем редактор напрямую только если у него есть фокус
+      const activeEditor = document.activeElement as HTMLElement
+      if (activeEditor?.getAttribute('data-editor-id')) {
+        // Сохраняем позицию курсора
+        let savedSelection: Range | null = null
+        try {
+          if (window.getSelection) {
+            const selection = window.getSelection()
+            if (selection && selection.rangeCount > 0) {
+              savedSelection = selection.getRangeAt(0).cloneRange()
+            }
+          }
+        } catch (e) {
+          console.warn('[CommentsTree] Could not save cursor position:', e)
+        }
+
+        // Используем setTimeout для обновления вне текущего цикла событий
+        setTimeout(() => {
+          try {
+            activeEditor.innerHTML = cleanedContent
+
+            // Восстанавливаем курсор
+            if (savedSelection) {
+              const selection = window.getSelection()
+              if (selection) {
+                selection.removeAllRanges()
+                selection.addRange(savedSelection)
+              }
+            }
+          } catch (err) {
+            console.warn('[CommentsTree] Could not update editor content:', err)
+          }
+        }, 0)
+      }
+
+      setLocalContent(cleanedContent)
+    } else {
+      // Сохраняем без изменений
+      setLocalContent(data.content)
+    }
+
+    // Сохраняем в черновик
+    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-edit-${commentId}`, localContent()))
+  }
+
+  /**
+   * Обработчик потери фокуса редактором
+   * Нормализует контент, заменяя пустые параграфы
+   */
+  const handleEditorBlur = (draftKey: string) => {
+    const content = getEditorContent(draftKey)
+    if (!content) return
+
+    // Находим текущий редактор
+    const editor = document.querySelector(`[data-editor-id="${draftKey}"]`) as HTMLElement
+    if (!editor) return
+
+    // Проверяем на полностью пустой контент
+    if (isContentEmpty(content)) {
+      batch(() => {
+        setLocalContent('')
+        setEditorContent(draftKey, '')
+        // Очищаем редактор напрямую
+        if (editor) {
+          editor.innerHTML = ''
+        }
+      })
+      return
+    }
+
+    // Проверяем на пустые параграфы или избыточные переносы
+    const hasEmptyParagraphs = /<p>\s*<\/p>/gi.test(content)
+    const hasExcessiveBreaks = /(<p><br\s*\/?><\/p>){3,}/gi.test(content)
+
+    // Обрабатываем контент если нужна нормализация
+    if (hasEmptyParagraphs || hasExcessiveBreaks) {
+      // Применяем стандартную очистку
+      const cleanedContent = cleanupContent(content)
+
+      // Сохраняем и применяем изменения
+      setLocalContent(cleanedContent)
+      setEditorContent(draftKey, cleanedContent)
+
+      // Синхронизируем с DOM
+      if (editor) {
+        editor.innerHTML = cleanedContent
+      }
+    } else {
+      // Просто сохраняем текущее содержимое
+      setLocalContent(content)
+    }
+  }
+
+  /**
    * Компонент ветки комментариев
    * Отображает дочерние комментарии и форму ответа
    */
@@ -799,6 +964,12 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       parentId: props.parentId,
       shoutId: props.shoutId
     })
+
+    const { t } = useLocalize()
+    const { getEditorContent, setEditorContent } = useDrafts()
+    const [clickedReplyId, setClickedReplyId] = createSignal<number>()
+    const [editingCommentId, setEditingCommentId] = createSignal<number>()
+    const [localContent, setLocalContent] = createSignal('')
 
     // Используем createMemo с стабильными ключами для оптимизации обновлений
     const children = createMemo(() => {
@@ -822,9 +993,29 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                     content: data.content,
                     isEmpty: data.isEmpty
                   })
-                  setLocalContent(data.content)
+
+                  // Если контент пустой, очищаем его полностью
+                  if (isContentEmpty(data.content)) {
+                    setLocalContent('')
+                    return
+                  }
+
+                  // Проверяем на пустые параграфы или избыточные переносы
+                  const hasEmptyParagraphs = /<p>\s*<\/p>/gi.test(data.content)
+                  const hasExcessiveBreaks = /(<p><br\s*\/?><\/p>){3,}/gi.test(data.content)
+
+                  // Если есть - сразу нормализуем
+                  if (hasEmptyParagraphs || hasExcessiveBreaks) {
+                    const cleanedContent = cleanupContent(data.content)
+                    setLocalContent(cleanedContent)
+                  } else {
+                    // Просто сохраняем контент
+                    setLocalContent(data.content)
+                  }
+
+                  // Сохраняем в черновик
                   untrack(() =>
-                    setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`, data.content)
+                    setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`, localContent())
                   )
                 }}
                 onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-${clickedReplyId()}`)}
@@ -854,23 +1045,20 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                     lastSeen={shoutLastSeen()}
                     onDelete={handleDelete}
                     onReply={handleReply}
-                    onEdit={() => handleEdit(comment.id)}
+                    onEdit={handleEdit}
                     clickedReplyId={clickedReplyId}
                     articleAuthors={props.articleAuthors}
                     myRate={getCommentRate(comment.id)}
                     onEditorChange={(data) => handleExistingChange(data, comment.id)}
-                    onCancelEdit={() => {
-                      handleCancelEdit()
-                    }}
-                    onSaveEdit={() => {
-                      handleSubmitComment(undefined)
-                    }}
-                    onCancelReply={() => {
-                      handleClear()
-                    }}
-                    onSaveReply={() => {
-                      handleSubmitComment(clickedReplyId() as number)
-                    }}
+                    onCancelEdit={handleCancelEdit}
+                    onSaveEdit={() => handleSubmitComment(undefined)}
+                    onCancelReply={handleClear}
+                    onSaveReply={() => handleSubmitComment(clickedReplyId() as number)}
+                    content={
+                      editingCommentId() === comment.id
+                        ? getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)
+                        : undefined
+                    }
                   >
                     <CommentBranch
                       parentId={comment.id}
@@ -887,145 +1075,35 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     )
   }
 
-  const handleEditorBlur = (draftKey: string) => {
-    const content = getEditorContent(draftKey)
-    if (content) {
-      // Находим текущий редактор
-      const editor = document.querySelector(`[data-editor-id="${draftKey}"]`) as HTMLElement
-      if (!editor) return
-
-      // Сохраняем текущую позицию курсора и выделение
-      let savedSelection: Range | null = null
-      if (window.getSelection) {
-        const selection = window.getSelection()
-        if (selection && selection.rangeCount > 0) {
-          savedSelection = selection.getRangeAt(0).cloneRange()
-        }
-      }
-
-      // Очищаем содержимое от лишних тегов и переносов строк
-      const cleanedContent = cleanupContent(content)
-
-      // Если после очистки контент пустой - очищаем редактор полностью
-      if (isContentEmpty(cleanedContent)) {
-        batch(() => {
-          setLocalContent('')
-          setEditorContent(draftKey, '')
-
-          // Очищаем содержимое редактора напрямую
-          if (editor) {
-            editor.innerHTML = ''
-          }
-        })
-      } else {
-        // Иначе обновляем содержимое с очищенными переносами строк
-        setLocalContent(cleanedContent)
-        setEditorContent(draftKey, cleanedContent)
-
-        // Обновляем содержимое редактора напрямую для синхронизации
-        if (editor) {
-          // Важно: запоминаем, что редактор в фокусе для восстановления курсора
-          const editorHasFocus = document.activeElement === editor
-          editor.innerHTML = cleanedContent
-
-          // Восстанавливаем позицию курсора, если элемент был в фокусе и у нас есть сохраненная позиция
-          if (editorHasFocus && savedSelection) {
-            try {
-              const selection = window.getSelection()
-              if (selection) {
-                selection.removeAllRanges()
-                selection.addRange(savedSelection)
-              }
-            } catch (e) {
-              console.warn('[CommentsTree] Could not restore cursor position:', e)
-            }
-          }
-        }
-      }
-    }
-  }
-
-  const handleExistingChange = (data: EditorData, commentId: number) => {
-    setEditingCommentId(commentId)
-    console.log('[CommentsTree] Edit editor onChange:', {
-      commentId: commentId,
+  const handleEditorChange = (data: EditorData) => {
+    console.log('[CommentsTree] Editor onChange:', {
       content: data.content,
       isEmpty: data.isEmpty,
-      plainText: data.plainText
+      plainText: data.plainText || data.content.replace(/<[^>]*>/g, '')
     })
 
-    // Проверяем, есть ли последовательные переносы строк
-    let content = data.content
-    const hasConsecutiveBreaks =
-      /(<p><br><\/p>|<br>){3,}/gi.test(content) || /(<p>\s*<\/p>){3,}/gi.test(content)
-
-    // Если есть - сразу нормализуем без ожидания потери фокуса
-    if (hasConsecutiveBreaks) {
-      content = cleanupContent(content)
-
-      // Обновляем редактор напрямую, чтобы не было визуального дребезжания
-      const activeEditor = document.activeElement as HTMLElement
-      if (activeEditor?.getAttribute('data-editor-id')) {
-        // Позиция курсора будет восстановлена в setTimeout
-        setTimeout(() => {
-          activeEditor.innerHTML = content
-        }, 0)
-      }
+    // Если контент пустой, очищаем его полностью
+    if (isContentEmpty(data.content)) {
+      setLocalContent('')
+      return
     }
 
-    setLocalContent(content)
-    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-edit-${commentId}`, content))
-  }
+    // Проверяем на пустые параграфы или избыточные переносы
+    const hasEmptyParagraphs = /<p>\s*<\/p>/gi.test(data.content)
+    const hasExcessiveBreaks = /(<p><br\s*\/?><\/p>){3,}/gi.test(data.content)
 
-  const handleEditorChange = (data: EditorData) => {
-    console.log('[CommentsTree] New comment editor onChange:', {
-      content: data.content,
-      isEmpty: data.isEmpty
-    })
-
-    // Проверяем, есть ли последовательные переносы строк
-    let content = data.content
-    const hasConsecutiveBreaks =
-      /(<p><br><\/p>|<br>){3,}/gi.test(content) || /(<p>\s*<\/p>){3,}/gi.test(content)
-
-    // Если есть - сразу нормализуем без ожидания потери фокуса
-    if (hasConsecutiveBreaks) {
-      content = cleanupContent(content)
-
-      // Обновляем редактор напрямую, чтобы не было визуального дребезжания
-      const activeEditor = document.activeElement as HTMLElement
-      if (activeEditor?.getAttribute('data-editor-id')) {
-        // Запоминаем позицию курсора
-        let savedSelection: Range | null = null
-        if (window.getSelection) {
-          const selection = window.getSelection()
-          if (selection && selection.rangeCount > 0) {
-            savedSelection = selection.getRangeAt(0).cloneRange()
-          }
-        }
-
-        // Используем setTimeout, чтобы не мешать текущему циклу обработки ввода
-        setTimeout(() => {
-          activeEditor.innerHTML = content
-
-          // Восстанавливаем курсор
-          if (savedSelection) {
-            try {
-              const selection = window.getSelection()
-              if (selection) {
-                selection.removeAllRanges()
-                selection.addRange(savedSelection)
-              }
-            } catch (e) {
-              console.warn('[CommentsTree] Could not restore cursor position:', e)
-            }
-          }
-        }, 0)
-      }
+    // Обрабатываем контент если есть пустые параграфы или избыточные переносы
+    if (hasEmptyParagraphs || hasExcessiveBreaks) {
+      // Применяем нормализацию
+      const cleanedContent = cleanupContent(data.content)
+      setLocalContent(cleanedContent)
+    } else {
+      // Иначе сохраняем без изменений
+      setLocalContent(data.content)
     }
 
-    setLocalContent(content)
-    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, content))
+    // Сохраняем в черновик
+    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, localContent()))
   }
 
   return (
@@ -1061,44 +1139,11 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                       clickedReplyId={clickedReplyId}
                       articleAuthors={props.articleAuthors}
                       myRate={getCommentRate(comment.id)}
-                      onEditorChange={(data) => {
-                        console.log('[CommentsTree] Edit editor onChange:', {
-                          commentId: comment.id,
-                          content: data.content,
-                          isEmpty: data.isEmpty,
-                          plainText: data.plainText
-                        })
-
-                        // Проверяем, есть ли последовательные переносы строк
-                        let content = data.content
-                        const hasConsecutiveBreaks =
-                          /(<p><br><\/p>|<br>){3,}/gi.test(content) || /(<p>\s*<\/p>){3,}/gi.test(content)
-
-                        // Если есть - сразу нормализуем без ожидания потери фокуса
-                        if (hasConsecutiveBreaks) {
-                          content = cleanupContent(content)
-
-                          // Обновляем редактор напрямую, чтобы не было визуального дребезжания
-                          const activeEditor = document.activeElement as HTMLElement
-                          if (activeEditor?.getAttribute('data-editor-id')) {
-                            // Позиция курсора будет восстановлена в setTimeout
-                            setTimeout(() => {
-                              activeEditor.innerHTML = content
-                            }, 0)
-                          }
-                        }
-
-                        setLocalContent(content)
-                        untrack(() =>
-                          setEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`, content)
-                        )
-                      }}
-                      onCancelEdit={() => {
-                        handleCancelEdit()
-                      }}
-                      onSaveEdit={() => {
-                        handleSubmitComment(undefined)
-                      }}
+                      onEditorChange={(data) => handleExistingChange(data, comment.id)}
+                      onCancelEdit={handleCancelEdit}
+                      onSaveEdit={() => handleSubmitComment(undefined)}
+                      onCancelReply={handleClear}
+                      onSaveReply={() => handleSubmitComment(clickedReplyId() as number)}
                       content={
                         editingCommentId() === comment.id
                           ? getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)
@@ -1136,7 +1181,36 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                   editorId={`draft-${props.shoutId}-comment-new`}
                   commands={['bold', 'italic', 'link', 'blockquote', 'image']}
                   placeholder={t('Write a comment...')}
-                  onChange={handleEditorChange}
+                  onChange={(data) => {
+                    console.log('[CommentsTree] Editor onChange:', {
+                      content: data.content,
+                      isEmpty: data.isEmpty,
+                      plainText: data.plainText || data.content.replace(/<[^>]*>/g, '')
+                    })
+
+                    // Если контент пустой, очищаем его полностью
+                    if (isContentEmpty(data.content)) {
+                      setLocalContent('')
+                      return
+                    }
+
+                    // Проверяем на пустые параграфы или избыточные переносы
+                    const hasEmptyParagraphs = /<p>\s*<\/p>/gi.test(data.content)
+                    const hasExcessiveBreaks = /(<p><br\s*\/?><\/p>){3,}/gi.test(data.content)
+
+                    // Обрабатываем контент если есть пустые параграфы или избыточные переносы
+                    if (hasEmptyParagraphs || hasExcessiveBreaks) {
+                      // Применяем нормализацию
+                      const cleanedContent = cleanupContent(data.content)
+                      setLocalContent(cleanedContent)
+                    } else {
+                      // Иначе сохраняем без изменений
+                      setLocalContent(data.content)
+                    }
+
+                    // Сохраняем в черновик
+                    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, localContent()))
+                  }}
                   onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-new`)}
                   content={getEditorContent(`draft-${props.shoutId}-comment-new`)}
                 />

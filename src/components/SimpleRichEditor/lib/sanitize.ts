@@ -116,3 +116,35 @@ export const sanitizeServerHtml = (html: string): string => {
 export const isSanitizationSupported = (): boolean => {
   return DOMPurify.isSupported
 }
+
+/**
+ * Очищает контент от лишних переносов строк и преобразует пустые параграфы
+ * Сохраняет до двух переносов подряд
+ * @param content Исходный HTML-контент
+ * @returns Очищенный HTML с нормализованными переносами строк
+ */
+export const cleanupContent = (content: string): string => {
+  if (!content) return '';
+
+  let result = content;
+  
+  // 1. Заменяем пустые параграфы на параграфы с переносами
+  result = result.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
+  
+  // 2. Заменяем одиночные <br> на параграфы с переносом для единообразия
+  result = result.replace(/<br\s*\/?>/gi, '<p><br></p>');
+  
+  // 3. Ограничиваем количество последовательных переносов до двух
+  result = result.replace(/(<p><br\s*\/?><\/p>){3,}/gi, '<p><br></p><p><br></p>');
+  
+  // 4. Удаляем пустые блочные элементы
+  result = result.replace(/<div>\s*<\/div>/gi, '');
+  
+  // 5. Оборачиваем текст без тегов в параграф
+  if (result && !/<\/?[a-z][\s\S]*>/i.test(result)) {
+    result = `<p>${result}</p>`;
+  }
+  
+  return result;
+}
+
