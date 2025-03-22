@@ -66,6 +66,8 @@ const BASE_CONFIG: Config = {
   RETURN_TRUSTED_TYPE: true // Включаем поддержку Trusted Types
 }
 
+const NOTAGS_REGEXP = /<\/?[a-z][\s\S]*>/i
+
 // Добавляем хук для обработки iframe
 DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
   if (node.tagName.toLowerCase() === 'iframe') {
@@ -124,27 +126,26 @@ export const isSanitizationSupported = (): boolean => {
  * @returns Очищенный HTML с нормализованными переносами строк
  */
 export const cleanupContent = (content: string): string => {
-  if (!content) return '';
+  if (!content) return ''
 
-  let result = content;
-  
+  let result = content
+
   // 1. Заменяем пустые параграфы на параграфы с переносами
-  result = result.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
-  
-  // 2. Заменяем одиночные <br> на параграфы с переносом для единообразия
-  result = result.replace(/<br\s*\/?>/gi, '<p><br></p>');
-  
-  // 3. Ограничиваем количество последовательных переносов до двух
-  result = result.replace(/(<p><br\s*\/?><\/p>){3,}/gi, '<p><br></p><p><br></p>');
-  
-  // 4. Удаляем пустые блочные элементы
-  result = result.replace(/<div>\s*<\/div>/gi, '');
-  
-  // 5. Оборачиваем текст без тегов в параграф
-  if (result && !/<\/?[a-z][\s\S]*>/i.test(result)) {
-    result = `<p>${result}</p>`;
-  }
-  
-  return result;
-}
+  result = result.replace(/<p>\s*<\/p>/gi, '<p><br></p>')
 
+  // 2. Заменяем одиночные <br> на параграфы с переносом для единообразия
+  result = result.replace(/<br\s*\/?>/gi, '<p><br></p>')
+
+  // 3. Ограничиваем количество последовательных переносов до двух
+  result = result.replace(/(<p><br\s*\/?><\/p>){3,}/gi, '<p><br></p><p><br></p>')
+
+  // 4. Удаляем пустые блочные элементы
+  result = result.replace(/<div>\s*<\/div>/gi, '')
+
+  // 5. Оборачиваем текст без тегов в параграф
+  if (result && !NOTAGS_REGEXP.test(result)) {
+    result = `<p>${result}</p>`
+  }
+
+  return result
+}

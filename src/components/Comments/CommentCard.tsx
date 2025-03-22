@@ -5,6 +5,7 @@ import { Accessor, JSX, Show, createMemo, createSignal, onMount } from 'solid-js
 import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
+import { Loading } from '~/components/_shared/Loading'
 import { Popup } from '~/components/_shared/Popup/Popup'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
@@ -130,6 +131,13 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
       return isAuthor(props.comment.created_by)
     }
     return false
+  })
+
+  /**
+   * Проверяет, удален ли комментарий
+   */
+  const isDeleted = createMemo(() => {
+    return Boolean(props.comment.deleted_at)
   })
 
   /**
@@ -265,6 +273,11 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
         props.class
       )}
     >
+      <Show when={isLocalComment()}>
+        <div class={styles.loadingIndicator}>
+          <Loading size="small" />
+        </div>
+      </Show>
       <Show when={isExpanded()} fallback={<hr onClick={() => setExpanded(true)} />}>
         {/* Шапка комментария всегда видима */}
         <div class={styles.commentHeader}>
@@ -332,23 +345,37 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
             }
           >
             <div class={styles.commentContent}>
-              <div class={styles.commentText} innerHTML={String(sanitizeHtml(props.comment.body || ''))} />
+              <Show
+                when={!isDeleted()}
+                fallback={
+                  <div class={styles.commentText}>
+                    <p class={styles.deletedMessage}>{t('This comment has been deleted')}</p>
+                  </div>
+                }
+              >
+                <div
+                  class={styles.commentText}
+                  innerHTML={String(sanitizeHtml(props.comment.body || ''))}
+                />
+              </Show>
 
               <div class={styles.commentActions}>
                 <div class={styles.leftControls}>
-                  <RatingControl comment={props.comment} myRate={props.myRate} />
-                  <button
-                    class={clsx(styles.commentControl, styles.commentControlReply)}
-                    onClick={handleReply}
-                  >
-                    {t('Reply')}
-                  </button>
+                  <Show when={!isDeleted()}>
+                    <RatingControl comment={props.comment} myRate={props.myRate} />
+                    <button
+                      class={clsx(styles.commentControl, styles.commentControlReply)}
+                      onClick={handleReply}
+                    >
+                      {t('Reply')}
+                    </button>
+                  </Show>
                 </div>
 
                 <div class={styles.actionsSpacer} />
 
                 <div class={styles.rightControls}>
-                  <Show when={canEdit()}>
+                  <Show when={canEdit() && !isDeleted()}>
                     <button
                       class={clsx(styles.commentControl, styles.commentControlEdit)}
                       onClick={(e) => handleEdit(e)}
@@ -370,92 +397,94 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
                     shareUrl={`${window.location.href}#comment-${props.comment.id}`}
                   />
 
-                  <Popup
-                    trigger={
-                      <button class={clsx(styles.commentControl, styles.commentControlMore)}>
-                        <Icon name="ellipsis" class={styles.icon} />
-                      </button>
-                    }
-                    variant="tiny"
-                    horizontalAnchor="right"
-                    containerCssClass={styles.moreMenuContainer}
-                    popupCssClass={styles.moreMenuPopup}
-                    keepOpen={showDeleteConfirm()}
-                    onVisibilityChange={(visible) => {
-                      setMenuOpen(visible)
-                      if (!visible) {
-                        // Сбрасываем подтверждение при закрытии меню
-                        setShowDeleteConfirm(false)
+                  <Show when={!isDeleted()}>
+                    <Popup
+                      trigger={
+                        <button class={clsx(styles.commentControl, styles.commentControlMore)}>
+                          <Icon name="ellipsis" class={styles.icon} />
+                        </button>
                       }
-                    }}
-                    closePopup={!menuOpen()}
-                  >
-                    <div
-                      class={styles.moreMenu}
-                      onClick={(e) => {
-                        // Предотвращаем закрытие меню при клике на его содержимое
-                        e.stopPropagation()
-                      }}
-                    >
-                      <Show
-                        when={!showDeleteConfirm()}
-                        fallback={
-                          <button
-                            class={clsx(styles.menuItem, styles.menuItemConfirm)}
-                            onClick={(e) => {
-                              e.stopPropagation() // Предотвращаем всплытие события
-                              handleConfirmDelete(e)
-                            }}
-                            disabled={isDeleting()}
-                            data-action="delete"
-                          >
-                            <Icon name="delete" class={styles.menuItemIcon} />
-                            {t('Confirm deletion')}
-                          </button>
+                      variant="tiny"
+                      horizontalAnchor="right"
+                      containerCssClass={styles.moreMenuContainer}
+                      popupCssClass={styles.moreMenuPopup}
+                      keepOpen={showDeleteConfirm()}
+                      onVisibilityChange={(visible) => {
+                        setMenuOpen(visible)
+                        if (!visible) {
+                          // Сбрасываем подтверждение при закрытии меню
+                          setShowDeleteConfirm(false)
                         }
+                      }}
+                      closePopup={!menuOpen()}
+                    >
+                      <div
+                        class={styles.moreMenu}
+                        onClick={(e) => {
+                          // Предотвращаем закрытие меню при клике на его содержимое
+                          e.stopPropagation()
+                        }}
                       >
-                        {/* Стандартные пункты меню */}
-
-                        {/* Кнопка удаления */}
-                        <Show when={canEdit()}>
-                          <button
-                            class={styles.menuItem}
-                            onClick={(e) => {
-                              e.stopPropagation() // Предотвращаем всплытие события
-                              handleDelete(e)
-                            }}
-                            disabled={isDeleting()}
-                            data-action="delete"
-                          >
-                            <Icon name="delete" class={styles.menuItemIcon} />
-                            {t('Delete')}
-                          </button>
-                        </Show>
-
-                        {/* Кнопка жалобы (только для чужих комментариев и не-редакторов) */}
                         <Show
-                          when={
-                            // Комментарий принадлежит не текущему пользователю
-                            session()?.user?.app_data?.profile?.slug !== props.comment.created_by?.slug &&
-                            // И текущий пользователь не редактор
-                            !session()?.user?.roles?.includes('editor')
+                          when={!showDeleteConfirm()}
+                          fallback={
+                            <button
+                              class={clsx(styles.menuItem, styles.menuItemConfirm)}
+                              onClick={(e) => {
+                                e.stopPropagation() // Предотвращаем всплытие события
+                                handleConfirmDelete(e)
+                              }}
+                              disabled={isDeleting()}
+                              data-action="delete"
+                            >
+                              <Icon name="delete" class={styles.menuItemIcon} />
+                              {t('Confirm deletion')}
+                            </button>
                           }
                         >
-                          <button
-                            class={styles.menuItem}
-                            onClick={(e) => {
-                              e.stopPropagation() // Предотвращаем всплытие события
-                              handleReport()
-                            }}
-                            data-action="report"
+                          {/* Стандартные пункты меню */}
+
+                          {/* Кнопка удаления */}
+                          <Show when={canEdit() && !isDeleted()}>
+                            <button
+                              class={styles.menuItem}
+                              onClick={(e) => {
+                                e.stopPropagation() // Предотвращаем всплытие события
+                                handleDelete(e)
+                              }}
+                              disabled={isDeleting()}
+                              data-action="delete"
+                            >
+                              <Icon name="delete" class={styles.menuItemIcon} />
+                              {t('Delete')}
+                            </button>
+                          </Show>
+
+                          {/* Кнопка жалобы (только для чужих комментариев и не-редакторов) */}
+                          <Show
+                            when={
+                              // Комментарий принадлежит не текущему пользователю
+                              session()?.user?.app_data?.profile?.slug !== props.comment.created_by?.slug &&
+                              // И текущий пользователь не редактор
+                              !session()?.user?.roles?.includes('editor')
+                            }
                           >
-                            <Icon name="red-megaphone" class={styles.menuItemIcon} />
-                            {t('Report')}
-                          </button>
+                            <button
+                              class={styles.menuItem}
+                              onClick={(e) => {
+                                e.stopPropagation() // Предотвращаем всплытие события
+                                handleReport()
+                              }}
+                              data-action="report"
+                            >
+                              <Icon name="red-megaphone" class={styles.menuItemIcon} />
+                              {t('Report')}
+                            </button>
+                          </Show>
                         </Show>
-                      </Show>
-                    </div>
-                  </Popup>
+                      </div>
+                    </Popup>
+                  </Show>
                 </div>
               </div>
 

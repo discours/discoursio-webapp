@@ -466,60 +466,27 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       // Проверяем на ошибку cannot update reaction
       if (result && 'error' in result) {
         console.error('[CommentsTree] Error in response:', result.error)
-        
+
         // Специфическая обработка ошибки "cannot update reaction"
         if (result.error === 'cannot update reaction') {
-          console.log('[CommentsTree] Автоматическое создание нового комментария вместо обновления');
-          
           try {
-            // Создаём новую реакцию вместо обновления без запроса подтверждения
-            const newInput = {
-              reaction: {
-                body: sanitizedContent,
-                kind: ReactionKind.Comment,
-                shout: props.shoutId,
-                reply_to: commentToEdit?.reply_to
-              }
-            } as MutationCreate_ReactionArgs;
-            
-            const newResult = await createShoutReaction(newInput);
-            
-            if (newResult && !('error' in newResult)) {
-              console.log('[CommentsTree] Комментарий успешно опубликован как новый');
-              showSnackbar({
-                type: 'success',
-                body: t('Could not update comment. Published as new instead')
-              });
-              
-              // Прокручиваем к новому комментарию
-              if ('id' in newResult) {
-                scrollToComment(newResult.id, true, 300);
-              }
-              
-              setPosting(false);
-              return;
-            } else {
-              // Если не удалось опубликовать как новый, показываем ошибку
-              console.error('[CommentsTree] Не удалось опубликовать как новый:', newResult);
-              showSnackbar({
-                type: 'error',
-                body: t('Could not update or publish comment')
-              });
-            }
+            showSnackbar({
+              type: 'error',
+              body: t('Could not update or publish comment')
+            })
           } catch (error) {
-            console.error('[CommentsTree] Ошибка при публикации комментария:', error);
+            console.error('[CommentsTree] Ошибка при публикации комментария:', error)
             showSnackbar({
               type: 'error',
               body: t('Failed to publish comment')
-            });
+            })
           }
-        } else {
-          // Обработка других ошибок
-          showSnackbar({ type: 'error', body: t('Failed to save comment') })
         }
-        
-        setPosting(false);
-        return;
+        // Обработка других ошибок
+        showSnackbar({ type: 'error', body: t('Failed to save comment') })
+
+        setPosting(false)
+        return
       }
 
       // Только при успешном ответе обрабатываем результат
@@ -966,10 +933,6 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     })
 
     const { t } = useLocalize()
-    const { getEditorContent, setEditorContent } = useDrafts()
-    const [clickedReplyId, setClickedReplyId] = createSignal<number>()
-    const [editingCommentId, setEditingCommentId] = createSignal<number>()
-    const [localContent, setLocalContent] = createSignal('')
 
     // Используем createMemo с стабильными ключами для оптимизации обновлений
     const children = createMemo(() => {
@@ -987,37 +950,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                 editorId={`draft-${props.shoutId}-comment-${clickedReplyId()}`}
                 commands={['bold', 'italic', 'link', 'image', 'blockquote']}
                 placeholder={t('Write a reply...')}
-                onChange={(data) => {
-                  console.log('[CommentsTree] Reply editor onChange:', {
-                    replyTo: clickedReplyId(),
-                    content: data.content,
-                    isEmpty: data.isEmpty
-                  })
-
-                  // Если контент пустой, очищаем его полностью
-                  if (isContentEmpty(data.content)) {
-                    setLocalContent('')
-                    return
-                  }
-
-                  // Проверяем на пустые параграфы или избыточные переносы
-                  const hasEmptyParagraphs = /<p>\s*<\/p>/gi.test(data.content)
-                  const hasExcessiveBreaks = /(<p><br\s*\/?><\/p>){3,}/gi.test(data.content)
-
-                  // Если есть - сразу нормализуем
-                  if (hasEmptyParagraphs || hasExcessiveBreaks) {
-                    const cleanedContent = cleanupContent(data.content)
-                    setLocalContent(cleanedContent)
-                  } else {
-                    // Просто сохраняем контент
-                    setLocalContent(data.content)
-                  }
-
-                  // Сохраняем в черновик
-                  untrack(() =>
-                    setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`, localContent())
-                  )
-                }}
+                onChange={handleReplyEditorChange}
                 onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-${clickedReplyId()}`)}
                 content={getEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`)}
                 toolbar="bottom"
@@ -1106,10 +1039,66 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, localContent()))
   }
 
+  /**
+   * Обработчик изменений в форме ответа на комментарий
+   */
+  const handleReplyEditorChange = (data: EditorData) => {
+    console.log('[CommentsTree] Reply editor onChange:', {
+      replyTo: clickedReplyId(),
+      content: data.content,
+      isEmpty: data.isEmpty
+    })
+
+    // Если контент пустой, очищаем его полностью
+    if (isContentEmpty(data.content)) {
+      setLocalContent('')
+      return
+    }
+
+    // Проверяем на пустые параграфы или избыточные переносы
+    const hasEmptyParagraphs = /<p>\s*<\/p>/gi.test(data.content)
+    const hasExcessiveBreaks = /(<p><br\s*\/?><\/p>){3,}/gi.test(data.content)
+
+    // Если есть - сразу нормализуем
+    if (hasEmptyParagraphs || hasExcessiveBreaks) {
+      const cleanedContent = cleanupContent(data.content)
+      setLocalContent(cleanedContent)
+    } else {
+      // Просто сохраняем контент
+      setLocalContent(data.content)
+    }
+
+    // Сохраняем в черновик
+    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`, localContent()))
+  }
+
   return (
     <ErrorBoundary fallback={(err) => <div>Error: {err.toString()}</div>}>
       <div>
         <Show when={!isLoading()} fallback={<Loading />}>
+          {/* Показываем основной редактор только если не редактируем комментарий и не отвечаем на комментарий */}
+          <Show when={!clickedReplyId() && !editingCommentId()}>
+            <ShowIfAuthenticated fallback={<FallbackMessage />}>
+              <div>
+                <SimpleRichEditor
+                  toolbar="bottom"
+                  editorId={`draft-${props.shoutId}-comment-new`}
+                  commands={['bold', 'italic', 'link', 'blockquote', 'image']}
+                  placeholder={t('Write a comment...')}
+                  onChange={handleEditorChange}
+                  onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-new`)}
+                  content={getEditorContent(`draft-${props.shoutId}-comment-new`)}
+                />
+                <EditorControls
+                  mode="new"
+                  onSave={() => handleSubmitComment(undefined)}
+                  onCancel={() => handleClear()}
+                  isDisabled={isContentEmpty(localContent())}
+                />
+              </div>
+            </ShowIfAuthenticated>
+          </Show>
+
           <CommentsHeader
             comments={comments()}
             newComments={newComments()}
@@ -1170,58 +1159,6 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                 value={t('Load more comments')}
               />
             </div>
-          </Show>
-
-          {/* Показываем основной редактор только если не редактируем комментарий и не отвечаем на комментарий */}
-          <Show when={!clickedReplyId() && !editingCommentId()}>
-            <ShowIfAuthenticated fallback={<FallbackMessage />}>
-              <div>
-                <SimpleRichEditor
-                  toolbar="bottom"
-                  editorId={`draft-${props.shoutId}-comment-new`}
-                  commands={['bold', 'italic', 'link', 'blockquote', 'image']}
-                  placeholder={t('Write a comment...')}
-                  onChange={(data) => {
-                    console.log('[CommentsTree] Editor onChange:', {
-                      content: data.content,
-                      isEmpty: data.isEmpty,
-                      plainText: data.plainText || data.content.replace(/<[^>]*>/g, '')
-                    })
-
-                    // Если контент пустой, очищаем его полностью
-                    if (isContentEmpty(data.content)) {
-                      setLocalContent('')
-                      return
-                    }
-
-                    // Проверяем на пустые параграфы или избыточные переносы
-                    const hasEmptyParagraphs = /<p>\s*<\/p>/gi.test(data.content)
-                    const hasExcessiveBreaks = /(<p><br\s*\/?><\/p>){3,}/gi.test(data.content)
-
-                    // Обрабатываем контент если есть пустые параграфы или избыточные переносы
-                    if (hasEmptyParagraphs || hasExcessiveBreaks) {
-                      // Применяем нормализацию
-                      const cleanedContent = cleanupContent(data.content)
-                      setLocalContent(cleanedContent)
-                    } else {
-                      // Иначе сохраняем без изменений
-                      setLocalContent(data.content)
-                    }
-
-                    // Сохраняем в черновик
-                    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, localContent()))
-                  }}
-                  onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-new`)}
-                  content={getEditorContent(`draft-${props.shoutId}-comment-new`)}
-                />
-                <EditorControls
-                  mode="new"
-                  onSave={() => handleSubmitComment(undefined)}
-                  onCancel={() => handleClear()}
-                  isDisabled={isContentEmpty(localContent())}
-                />
-              </div>
-            </ShowIfAuthenticated>
           </Show>
         </Show>
       </div>

@@ -83,10 +83,9 @@ $comment-indent: 2.5rem;
 
 .commentHeader {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 249px;
-  padding: 10px 0 5px;
+  margin-bottom: 8px;
 }
 
 .authorInfo {
@@ -116,6 +115,8 @@ $comment-indent: 2.5rem;
   color: #000;
   overflow-wrap: break-word;
   margin: 5px 0;
+  margin-bottom: 12px;
+  word-break: normal;
   
   p {
     margin-bottom: $spacing-md;
@@ -469,4 +470,24 @@ $comment-indent: 2.5rem;
     padding: 0;
     border: none;
   }
+}
+
+.loadingIndicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  transform: scale(0.7);
+}
+
+.deletedMessage {
+  font-style: italic;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  margin: 8px 0;
+  text-align: center;
+  padding: 10px;
+  border: 1px dashed var(--color-border);
+  border-radius: 4px;
+  background-color: var(--color-bg-alt);
 }
