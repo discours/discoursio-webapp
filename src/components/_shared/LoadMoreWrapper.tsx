@@ -17,6 +17,7 @@ type LoadMoreProps = {
   size?: 'S' | 'M' | 'L'
   loadMoreText?: string
   children: JSX.Element
+  useScrollTrigger?: boolean
 }
 
 export const LoadMoreWrapper = (props: LoadMoreProps) => {
@@ -25,6 +26,7 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
   const [offset, setOffset] = createSignal(0)
   const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(props.hidden)
   const [isLoading, setIsLoading] = createSignal(false)
+  const [scrollWrapper, setScrollWrapper] = createSignal<HTMLDivElement | null>(null)
 
   createEffect(
     on(items, (iii) => {
@@ -37,11 +39,16 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
   )
 
   const loadItems = async () => {
+    if (isLoading()) return // Предотвращаем множественные запросы
+
     // console.debug('LoadMoreWrapper.loadItems offset:', offset())
     setIsLoading(true)
     saveScrollPosition()
     const newItems = await props.loadFunction(offset())
-    if (!Array.isArray(newItems)) return
+    if (!Array.isArray(newItems)) {
+      setIsLoading(false)
+      return
+    }
     if (newItems.length === 0) setIsLoadMoreButtonVisible(false)
     else
       setItems(
@@ -55,13 +62,34 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
     // console.debug('LoadMoreWrapper.loadItems loaded:', newItems.length)
   }
 
-  onMount(loadItems)
+  // Настройка обнаружения скроллинга до конца списка
+  const setupIntersectionObserver = () => {
+    const wrapper = scrollWrapper()
+    if (!props.useScrollTrigger || !wrapper) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoading() && isLoadMoreButtonVisible()) {
+          loadItems()
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    )
+
+    observer.observe(wrapper)
+    return () => observer.unobserve(wrapper)
+  }
+  onMount(() => {
+    setScrollWrapper(props.useScrollTrigger ? document.createElement('div') : null)
+    loadItems()
+    setupIntersectionObserver()
+  })
 
   return (
     <>
       {props.children}
-      <div>
-        <Show when={isLoadMoreButtonVisible() && !props.hidden}>
+      <div ref={setScrollWrapper}>
+        <Show when={isLoadMoreButtonVisible() && !props.hidden && !props.useScrollTrigger}>
           <div class={styles.loadMoreWrapper}>
             <Button
               onClick={loadItems}
@@ -70,6 +98,11 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
               value={t(props.loadMoreText || 'Load more')}
               title={`${items().length} ${t('loaded')}`}
             />
+          </div>
+        </Show>
+        <Show when={isLoading() && props.useScrollTrigger}>
+          <div class={styles.loadMoreWrapper}>
+            <div class={styles.loadingIndicator}>{t('Loading more...')}</div>
           </div>
         </Show>
       </div>

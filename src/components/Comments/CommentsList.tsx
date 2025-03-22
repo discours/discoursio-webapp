@@ -68,6 +68,7 @@ export const CommentsList = (props: CommentsListProps) => {
           loadFunction={props.loadMoreComments!}
           pageSize={props.pageSize || 10}
           hidden={props.loadMoreHidden}
+          useScrollTrigger={true}
         >
           <ul class={stylesArticle.comments}>
             <For each={sortedComments()}>

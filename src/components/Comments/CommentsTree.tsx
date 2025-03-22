@@ -29,7 +29,7 @@ import { COMMENTS_PER_PAGE } from '../Article/FullArticle'
 import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { cleanupContent, sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { Button } from '../_shared/Button'
-import { LoadMoreItems } from '../_shared/LoadMoreWrapper'
+import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
 import { Loading } from '../_shared/Loading'
 import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { CommentCard } from './CommentCard'
@@ -1109,56 +1109,51 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           />
 
           <Show when={comments().length > 0}>
-            <ul class={clsx(styles.commentsList)}>
-              <For
-                each={commentTree()[0] || []}
-                // В SolidJS ключ указываем здесь для оптимизации рендера
-                fallback={<div class={styles.noComments}>{t('No comments yet')}</div>}
-              >
-                {(comment) => (
-                  // Используем id комментария как часть идентификатора для элементов списка
-                  <li class={styles.commentItem} data-comment-id={comment.id}>
-                    <CommentCard
-                      comment={comment}
-                      sortedComments={sortedComments()}
-                      lastSeen={shoutLastSeen()}
-                      onDelete={handleDelete}
-                      onReply={handleReply}
-                      onEdit={handleEdit}
-                      clickedReplyId={clickedReplyId}
-                      articleAuthors={props.articleAuthors}
-                      myRate={getCommentRate(comment.id)}
-                      onEditorChange={(data) => handleExistingChange(data, comment.id)}
-                      onCancelEdit={handleCancelEdit}
-                      onSaveEdit={() => handleSubmitComment(undefined)}
-                      onCancelReply={handleClear}
-                      onSaveReply={() => handleSubmitComment(clickedReplyId() as number)}
-                      content={
-                        editingCommentId() === comment.id
-                          ? getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)
-                          : undefined
-                      }
-                    >
-                      <CommentBranch
-                        parentId={comment.id}
-                        shoutId={props.shoutId}
+            <LoadMoreWrapper
+              loadFunction={loadMoreComments}
+              pageSize={COMMENTS_PER_PAGE}
+              hidden={loadMoreHidden()}
+              useScrollTrigger={true}
+            >
+              <ul class={clsx(styles.commentsList)}>
+                <For
+                  each={commentTree()[0] || []}
+                  fallback={<div class={styles.noComments}>{t('No comments yet')}</div>}
+                >
+                  {(comment) => (
+                    <li class={styles.commentItem} data-comment-id={comment.id}>
+                      <CommentCard
+                        comment={comment}
+                        sortedComments={sortedComments()}
+                        lastSeen={shoutLastSeen()}
+                        onDelete={handleDelete}
+                        onReply={handleReply}
+                        onEdit={handleEdit}
+                        clickedReplyId={clickedReplyId}
                         articleAuthors={props.articleAuthors}
-                      />
-                    </CommentCard>
-                  </li>
-                )}
-              </For>
-            </ul>
-          </Show>
-
-          <Show when={!loadMoreHidden() && comments().length >= COMMENTS_PER_PAGE}>
-            <div class={styles.loadMoreContainer}>
-              <Button
-                variant="secondary"
-                onClick={() => loadMoreComments(comments().length)}
-                value={t('Load more comments')}
-              />
-            </div>
+                        myRate={getCommentRate(comment.id)}
+                        onEditorChange={(data) => handleExistingChange(data, comment.id)}
+                        onCancelEdit={handleCancelEdit}
+                        onSaveEdit={() => handleSubmitComment(undefined)}
+                        onCancelReply={handleClear}
+                        onSaveReply={() => handleSubmitComment(clickedReplyId() as number)}
+                        content={
+                          editingCommentId() === comment.id
+                            ? getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)
+                            : undefined
+                        }
+                      >
+                        <CommentBranch
+                          parentId={comment.id}
+                          shoutId={props.shoutId}
+                          articleAuthors={props.articleAuthors}
+                        />
+                      </CommentCard>
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </LoadMoreWrapper>
           </Show>
         </Show>
       </div>
