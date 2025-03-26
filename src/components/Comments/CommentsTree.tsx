@@ -1294,7 +1294,8 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                     </span>
                   </Show>
                   <Show when={!isLoadingReplies()} fallback={<Loading />}>
-                    {t('Show more')} {t('replies', {
+                    {t('Show more')}{' '}
+                    {t('replies', {
                       count: untrack(() => remainingRepliesCount())
                     })}
                   </Show>

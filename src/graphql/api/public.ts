@@ -472,7 +472,7 @@ export const loadCommentsBranch = (opts: QueryLoad_Comments_BranchArgs) => {
   return async () => {
     try {
       const result = await defaultClient.query(loadCommentsBranchQuery, opts).toPromise()
-      
+
       if (result.error) {
         console.error('[API] loadCommentsBranch error:', result.error)
         return []

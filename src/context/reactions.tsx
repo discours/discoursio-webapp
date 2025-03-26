@@ -289,17 +289,19 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
           // Добавляем предзагруженные ответы, если они есть
           if (comment.first_replies && Array.isArray(comment.first_replies)) {
             const replies = comment.first_replies as Reaction[]
-            allComments.push(...replies.filter(reply => {
-              if (!reply || typeof reply !== 'object') {
-                console.warn('[ReactionsProvider] Invalid reply in first_replies:', reply)
-                return false
-              }
-              if (!reply.id || !reply.shout?.id) {
-                console.warn('[ReactionsProvider] Reply missing required fields:', reply)
-                return false
-              }
-              return true
-            }))
+            allComments.push(
+              ...replies.filter((reply) => {
+                if (!reply || typeof reply !== 'object') {
+                  console.warn('[ReactionsProvider] Invalid reply in first_replies:', reply)
+                  return false
+                }
+                if (!reply.id || !reply.shout?.id) {
+                  console.warn('[ReactionsProvider] Reply missing required fields:', reply)
+                  return false
+                }
+                return true
+              })
+            )
           }
         })
 
