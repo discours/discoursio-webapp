@@ -302,14 +302,14 @@ export const ArticleCard = (props: ArticleCardProps) => {
                     class={clsx(styles.icon, styles.iconHover, styles.feedControlIcon)}
                   />
                   <Show
-                    when={props.article.stat?.commented}
+                    when={props.article.stat?.comments_count}
                     fallback={
                       <span class={clsx(styles.shoutCardLinkContainer, styles.shoutCardDetailsItemLabel)}>
                         {t('Add comment')}
                       </span>
                     }
                   >
-                    {props.article.stat?.commented}
+                    {props.article.stat?.comments_count}
                   </Show>
                 </a>
               </div>

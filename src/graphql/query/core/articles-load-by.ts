@@ -26,7 +26,7 @@ export default gql`
         viewed
         last_commented_at
         rating
-        commented
+        comments_count
       }
     }
   }

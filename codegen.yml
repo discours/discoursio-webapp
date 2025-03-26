@@ -2,7 +2,7 @@ overwrite: true
 generates:
   # Generate types for chat
   src/graphql/schema/chat.gen.ts:
-    schema: 'https://chat.discours.io'
+    schema: 'https://chat.dscrs.site'
     documents: 
       - 'src/graphql/query/chat/**/*.ts'
       - 'src/graphql/mutation/chat/**/*.ts'

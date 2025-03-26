@@ -377,10 +377,10 @@ export const FullArticle = (props: Props) => {
             <Icon name="comment" class={styles.icon} />
             <Icon name="comment-hover" class={clsx(styles.icon, styles.iconHover)} />
             <Show
-              when={props.article.stat?.commented}
+              when={props.article.stat?.comments_count}
               fallback={<span class={styles.commentsTextLabel}>{t('Add comment')}</span>}
             >
-              {props.article.stat?.commented}
+              {props.article.stat?.comments_count}
             </Show>
           </div>
         )}
