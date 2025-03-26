@@ -33,13 +33,35 @@ export const UploadModalContent = (props: Props) => {
   const runUpload = async (file: UploadFile) => {
     try {
       setIsUploading(true)
+      console.log('[UploadModalContent] Starting file upload:', {
+        fileName: file.name,
+        fileType: file.file.type,
+        fileSize: file.size,
+        hasToken: !!session()?.access_token
+      })
       const result = await handleFileUpload(file, session()?.access_token || '', 'image')
+      console.log('[UploadModalContent] Upload successful:', result)
       props.onClose(result)
       setIsUploading(false)
     } catch (error) {
       setIsUploading(false)
-      setUploadError(t('Error'))
-      console.error('[runUpload]', error)
+      const errorMessage = error instanceof Error ? error.message : t('Error')
+
+      if (errorMessage.includes('environment variable not found')) {
+        setUploadError(t('Server configuration error. Please try again later.'))
+      } else if (errorMessage.includes('Failed to fetch')) {
+        setUploadError(t('Network error. Please check your connection.'))
+      } else if (errorMessage.includes('Upload failed with status: 500')) {
+        setUploadError(t('Server error. Please try again later.'))
+      } else if (errorMessage.includes('Upload failed with status: 413')) {
+        setUploadError(t('File is too large. Please reduce its size.'))
+      } else if (errorMessage.includes('Invalid image type')) {
+        setUploadError(t('File format not supported.'))
+      } else {
+        setUploadError(errorMessage)
+      }
+
+      console.error('[UploadModalContent] Upload error:', error)
     }
   }
 

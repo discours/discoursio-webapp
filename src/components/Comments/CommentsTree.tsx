@@ -8,6 +8,7 @@ import {
   createMemo,
   createResource,
   createSignal,
+  onMount,
   untrack
 } from 'solid-js'
 import { useDrafts } from '~/context/drafts'
@@ -144,12 +145,14 @@ const scrollToComment = (commentId: number, smooth = true, delay = 300) => {
  * @property {Author[]} articleAuthors - Авторы статьи для определения специальных меток
  * @property {string} shoutSlug - Уникальный идентификатор статьи
  * @property {number} shoutId - ID статьи
+ * @property {number} totalComments - Общее количество комментариев в статье
  * @property {function} [onDeleteComment] - Callback при удалении комментария
  */
 interface CommentsTreeProps {
   articleAuthors: Author[]
   shoutSlug: string
   shoutId: number
+  totalComments: number
   onDeleteComment?: (id: number) => void
 }
 
@@ -172,23 +175,23 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   const { t } = useLocalize()
   const { getEditorContent, setEditorContent } = useDrafts()
   const [onlyNew, setOnlyNew] = createSignal(false)
-  const [clickedReplyId, setClickedReplyId] = createSignal<number>()
+  const [clickedReplyId, setClickedReplyId] = createSignal<number | undefined>()
   const {
     reactionEntities,
     createShoutReaction,
     updateShoutReaction,
-    loadReactionsBy,
     addShoutReactions,
-    deleteShoutReaction
+    deleteShoutReaction,
+    loadCommentsBranch
   } = useReactions()
   const { showSnackbar } = useSnackbar()
   const [newComments, setNewComments] = createSignal<Reaction[]>([])
-  const [commentsOrder, setCommentsOrder] = createSignal<ReactionSort>(ReactionSort.Newest)
+  const [commentsOrder, setCommentsOrder] = createSignal<'newest' | 'oldest' | 'popular'>('newest')
   const [isLoading, setIsLoading] = createSignal(true)
 
   // Состояния редактора
-  const [editingCommentId, setEditingCommentId] = createSignal<number>()
-  const [localContent, setLocalContent] = createSignal('')
+  const [editingCommentId, setEditingCommentId] = createSignal<number | undefined>()
+  const [localContent, setLocalContent] = createSignal<string>('')
   const [posting, setPosting] = createSignal(false)
 
   // Функция для проверки пустоты контента
@@ -211,22 +214,41 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     return filteredComments
   })
 
+  // Мемо для сортировки комментариев по выбранному порядку
   const sortedComments = createMemo(() => {
-    const currentComments = comments()
-    if (!currentComments.length) return []
+    const sortOrder = commentsOrder()
+    const allComments = comments()
 
-    if (onlyNew()) {
-      return newComments().sort(
+    // Фильтрация "только новые" если активирован этот режим
+    let filteredComments = allComments
+    if (onlyNew() && newComments().length > 0) {
+      filteredComments = newComments()
+      console.log('[CommentsTree] Только новые комментарии:', filteredComments.length)
+    }
+
+    console.log('[CommentsTree] Sorting comments:', filteredComments.length, 'order:', sortOrder)
+
+    if (sortOrder === 'newest') {
+      return [...filteredComments].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+    }
+
+    if (sortOrder === 'oldest') {
+      return [...filteredComments].sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       )
     }
 
-    return [...currentComments].sort((a, b) => {
-      if (commentsOrder() === ReactionSort.Like) {
-        return (b.stat?.rating || 0) - (a.stat?.rating || 0)
-      }
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    })
+    if (sortOrder === 'popular') {
+      return [...filteredComments].sort((a, b) => {
+        const aRate = a.stat?.rating ?? 0
+        const bRate = b.stat?.rating ?? 0
+        return bRate - aRate || new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
+    }
+
+    return filteredComments
   })
 
   const commentTree = createMemo(() => {
@@ -238,13 +260,26 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
     // Функция стабильного добавления комментариев к родителю
     const addToParent = (comment: Reaction) => {
-      // Пропускаем комментарии без ID или с дубликатами ID
-      if (!comment.id || addedCommentIds.has(comment.id)) {
-        console.warn('[CommentsTree] Duplicate or invalid comment detected:', comment.id)
+      if (!comment) {
+        console.warn('[CommentsTree] Attempted to add undefined comment to tree')
+        return
+      }
+
+      // Проверяем валидность комментария и его ID
+      if (!comment.id) {
+        console.warn('[CommentsTree] Comment without ID detected:', comment)
+        return
+      }
+
+      if (addedCommentIds.has(comment.id)) {
+        // Такой комментарий уже добавлен в дерево
+        console.debug('[CommentsTree] Duplicate comment detected:', comment.id)
         return
       }
 
       const parentId = comment.reply_to || 0
+
+      // Инициализируем массив для родителя, если его еще нет
       if (!tree[parentId]) {
         tree[parentId] = []
       }
@@ -264,32 +299,91 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       addedCommentIds.add(comment.id)
     }
 
-    // Сначала добавляем все комментарии к соответствующим родителям
-    sorted.forEach(addToParent)
+    // Добавляем сначала все комментарии первого уровня (корневые)
+    sorted.filter((c) => !c.reply_to).forEach(addToParent)
 
-    // Дополнительное логирование для отладки
-    console.log('[CommentsTree] Tree built, root comments:', tree[0]?.length || 0)
+    // Затем добавляем все вложенные комментарии
+    sorted.filter((c) => c.reply_to).forEach(addToParent)
+
+    // Подробное логирование для отладки
+    const rootCommentIds = (tree[0] || []).map((c) => c.id).join(', ')
+    const totalInTree = Object.values(tree).reduce((sum, arr) => sum + arr.length, 0)
+
+    console.log(
+      `[CommentsTree] Tree built: total ${totalInTree} comments, ${tree[0]?.length || 0} root comments`
+    )
+    console.log(`[CommentsTree] Root comment IDs: ${rootCommentIds}`)
 
     return tree
   })
 
-  // Загрузка комментариев
+  // Загрузка комментариев при инициализации
   const [commentsResource, { refetch: _refetch }] = createResource(
-    () => props.shoutSlug,
-    async (slug) => {
+    () => props.shoutId,
+    async (shout) => {
       setIsLoading(true)
       try {
-        const response = await loadReactionsBy({
-          by: { shout: slug, kinds: [ReactionKind.Comment] },
+        // Вычисляем адаптивный лимит загрузки дочерних комментариев
+        const childrenLimit = props.totalComments < 30 ? null : 3
+
+        console.log(
+          `[CommentsTree] Loading initial comments for shout ${shout} with children_limit:`,
+          childrenLimit
+        )
+
+        // Вместо старого метода используем новый API для загрузки с ветками
+        const response = await loadCommentsBranch({
+          shout,
+          parent_id: null, // Загружаем корневые комментарии
           limit: COMMENTS_PER_PAGE,
-          offset: 0
+          offset: 0,
+          sort:
+            commentsOrder() === 'newest'
+              ? ReactionSort.Newest
+              : commentsOrder() === 'oldest'
+                ? ReactionSort.Oldest
+                : ReactionSort.Like,
+          children_limit: childrenLimit // Адаптивный лимит ответов
         })
 
         if (response?.length) {
+          console.log(
+            `[CommentsTree] Initial load: ${response.length} root comments, total expected: ${props.totalComments}`
+          )
+
           untrack(() => {
+            // Перед добавлением новых комментариев, проверяем текущее состояние
+            const beforeCount = Object.keys(reactionEntities()).length
+
+            // Явно добавляем все полученные комментарии в хранилище
             addShoutReactions(response)
-            setLoadMoreHidden(response.length < COMMENTS_PER_PAGE)
+
+            // Проверяем, сколько комментариев добавилось
+            const afterCount = Object.keys(reactionEntities()).length
+            const addedCount = afterCount - beforeCount
+
+            console.log(
+              `[CommentsTree] Added ${addedCount} comments to store (${beforeCount} -> ${afterCount})`
+            )
+
+            // Проверяем полноту загрузки
+            const totalLoaded = response.length
+            const shouldHideLoadMore = totalLoaded >= props.totalComments || totalLoaded < COMMENTS_PER_PAGE
+
+            console.log(
+              `[CommentsTree] Should hide "Load More"? ${shouldHideLoadMore} (loaded: ${totalLoaded}, total: ${props.totalComments})`
+            )
+            setLoadMoreHidden(shouldHideLoadMore)
+
+            // Принудительно форсируем пересчет дерева комментариев
+            setTimeout(() => {
+              const rootCommentsCount = commentTree()[0]?.length || 0
+              console.log(`[CommentsTree] After initial load: ${rootCommentsCount} root comments in tree`)
+            }, 0)
           })
+        } else {
+          console.log('[CommentsTree] No comments loaded on initial request')
+          untrack(() => setLoadMoreHidden(true))
         }
 
         return response || []
@@ -425,9 +519,6 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         return
       }
 
-      // Очищаем форму и состояния до отправки запроса
-      handleClear()
-
       // Отправляем запрос на сервер
       const input = isEditing
         ? ({
@@ -454,6 +545,11 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         replyTo: isEditing ? commentToEdit?.reply_to : parentId
       })
 
+      // Очищаем форму и состояния до отправки запроса только для режима редактирования
+      if (isEditing) {
+        handleClear()
+      }
+
       const result = isEditing ? await updateShoutReaction(input) : await createShoutReaction(input)
 
       console.log('[CommentsTree] Got response:', result)
@@ -461,32 +557,6 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       // Если результат - объект но не содержит id, это может указывать на проблему
       if (result && typeof result === 'object' && !('error' in result) && !('id' in result)) {
         console.warn('[CommentsTree] Странный формат ответа от сервера:', result)
-      }
-
-      // Проверяем на ошибку cannot update reaction
-      if (result && 'error' in result) {
-        console.error('[CommentsTree] Error in response:', result.error)
-
-        // Специфическая обработка ошибки "cannot update reaction"
-        if (result.error === 'cannot update reaction') {
-          try {
-            showSnackbar({
-              type: 'error',
-              body: t('Could not update or publish comment')
-            })
-          } catch (error) {
-            console.error('[CommentsTree] Ошибка при публикации комментария:', error)
-            showSnackbar({
-              type: 'error',
-              body: t('Failed to publish comment')
-            })
-          }
-        }
-        // Обработка других ошибок
-        showSnackbar({ type: 'error', body: t('Failed to save comment') })
-
-        setPosting(false)
-        return
       }
 
       // Только при успешном ответе обрабатываем результат
@@ -507,6 +577,9 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
           // Добавляем новый комментарий в хранилище реакций
           addShoutReactions([serverData])
+
+          // Очищаем редактор после успешного создания нового комментария
+          handleClear()
 
           showSnackbar({ type: 'success', body: t('Comment saved') })
 
@@ -711,29 +784,27 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     }
   }
 
-  const loadMoreComments = async (offset: number): Promise<LoadMoreItems | undefined> => {
-    try {
-      const response = await loadReactionsBy({
-        by: { shout: props.shoutSlug, kinds: [ReactionKind.Comment] },
-        limit: COMMENTS_PER_PAGE,
-        offset
-      })
+  const toggleNewOnly = () => {
+    const newValue = !onlyNew()
 
-      if (response?.length) {
-        untrack(() => {
-          addShoutReactions(response)
-          setLoadMoreHidden(response.length < COMMENTS_PER_PAGE)
-        })
-        return response as LoadMoreItems
+    batch(() => {
+      setOnlyNew(newValue)
+
+      // При включении режима "только новые" обновляем отображаемые комментарии
+      if (newValue && newComments().length > 0) {
+        // При включении режима "только новые" снимаем выбранность со всех типов сортировки
+        console.log(
+          '[CommentsTree] Режим "только новые" включен, показываем',
+          newComments().length,
+          'комментариев'
+        )
+      } else {
+        console.log('[CommentsTree] Режим "только новые" выключен, показываем все комментарии')
+        // Восстанавливаем обычное отображение видимых комментариев
+        updateCommentsCount()
       }
-    } catch (error) {
-      console.error('[CommentsTree] Error loading more comments:', error)
-      showSnackbar({ type: 'error', body: t('Failed to load more comments') })
-    }
-    return undefined
+    })
   }
-
-  const toggleNewOnly = () => setOnlyNew(!onlyNew())
 
   const { seen } = useFeed()
   const shoutLastSeen = createMemo(() => seen()[props.shoutSlug] ?? 0)
@@ -748,12 +819,12 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           localStorage?.setItem(`${props.shoutSlug}`, `${currentDate}`)
         } else if (currentDate.getTime() > shoutLastSeen()) {
           const newComments = comments().filter((c) => {
-            if (
-              (session()?.user?.app_data?.profile?.id && c.reply_to) ||
-              c.created_by.id === session()?.user?.app_data?.profile?.id
-            ) {
-              return
+            // Исключаем собственные комментарии из списка новых
+            if (session()?.user?.app_data?.profile?.id === c.created_by?.id) {
+              return false
             }
+
+            // Комментарий считается новым, если он создан или обновлен после последнего просмотра
             return (c.updated_at || c.created_at) > shoutLastSeen()
           })
           setNewComments(newComments)
@@ -923,26 +994,235 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   }
 
   /**
-   * Компонент ветки комментариев
-   * Отображает дочерние комментарии и форму ответа
+   * Компонент ветки комментариев с поддержкой пагинации
    */
-  const CommentBranch = (props: { parentId: number; shoutId: number; articleAuthors?: Author[] }) => {
-    console.log('[CommentBranch] Rendering branch:', {
-      parentId: props.parentId,
-      shoutId: props.shoutId
+  const CommentBranch = (props: {
+    parentId: number
+    shoutId: number
+    articleAuthors?: Author[]
+    totalComments?: number
+  }) => {
+    const { t } = useLocalize()
+    const [repliesOffset, setRepliesOffset] = createSignal(0)
+    const [isLoadingReplies, setIsLoadingReplies] = createSignal(false)
+    const [hasMoreReplies, setHasMoreReplies] = createSignal(false)
+    const [remainingRepliesCount, setRemainingRepliesCount] = createSignal(0)
+
+    // Получаем общее количество комментариев из родительского компонента или свойств
+    const totalCommentsCount = () =>
+      props.totalComments !== undefined ? props.totalComments : props.totalComments === 0 ? 0 : 30
+
+    // Индикатор, показывающий, были ли когда-либо загружены ответы
+    const [hasLoadedReplies, setHasLoadedReplies] = createSignal(false)
+
+    // Получаем родительский комментарий
+    const parentComment = createMemo(() => {
+      const comment = comments().find((c) => c.id === props.parentId)
+      if (!comment) {
+        console.warn(`[CommentBranch] Parent comment #${props.parentId} not found in comments list`)
+      }
+      return comment
     })
 
-    const { t } = useLocalize()
+    // Получаем загруженные ответы
+    const loadedReplies = createMemo(() => {
+      // Использовать дерево комментариев для получения ответов
+      const replies = commentTree()[props.parentId] || []
 
-    // Используем createMemo с стабильными ключами для оптимизации обновлений
-    const children = createMemo(() => {
-      const branch = commentTree()[props.parentId] || []
-      return branch
+      // Если у нас есть first_replies и дерево ещё не сформировано или пусто, используем их
+      const parent = parentComment()
+      if (
+        replies.length === 0 &&
+        parent &&
+        parent.first_replies &&
+        parent.first_replies.length > 0 &&
+        !hasLoadedReplies()
+      ) {
+        console.log(
+          `[CommentBranch] Using first_replies for comment #${props.parentId}: ${parent.first_replies.length} replies`
+        )
+        return parent.first_replies as Reaction[]
+      }
+
+      if (replies.length > 0) {
+        console.log(
+          `[CommentBranch] Using tree replies for comment #${props.parentId}: ${replies.length} replies`
+        )
+      } else {
+        console.log(`[CommentBranch] No replies found for comment #${props.parentId}`)
+      }
+
+      return replies
+    })
+
+    // Определяем, есть ли еще ответы для загрузки
+    createEffect(() => {
+      const parent = parentComment()
+      const replies = loadedReplies()
+
+      if (parent && 'stat' in parent && parent.stat && typeof parent.stat.comments_count === 'number') {
+        // Общее количество ответов из API
+        const totalReplies = parent.stat.comments_count || 0
+
+        // Количество уже загруженных ответов
+        const loadedCount = replies.length
+
+        // Есть еще ответы для загрузки, если загружено меньше, чем общее количество
+        untrack(() => {
+          console.log(
+            `[CommentBranch] Комментарий #${props.parentId}: всего ответов ${totalReplies}, загружено ${loadedCount}`
+          )
+
+          const moreReplies = loadedCount < totalReplies
+          setHasMoreReplies(moreReplies)
+          setRemainingRepliesCount(Math.max(0, totalReplies - loadedCount))
+
+          // Проверяем, нужно ли загружать ответы сразу если их всего мало
+          const shouldAutoLoad =
+            !hasLoadedReplies() &&
+            totalCommentsCount() < 30 &&
+            totalReplies > 0 &&
+            totalReplies <= 5 &&
+            loadedCount < totalReplies
+
+          if (shouldAutoLoad) {
+            console.log(
+              `[CommentBranch] Auto-loading ${totalReplies} replies for comment #${props.parentId}`
+            )
+            // Автоматически загружаем небольшое количество ответов на маленьких страницах
+            setTimeout(() => loadMoreReplies(), 100)
+          }
+
+          if (loadedCount > 0) {
+            setHasLoadedReplies(true)
+          }
+
+          setRepliesOffset(loadedCount)
+        })
+      } else if (parent) {
+        console.log(`[CommentBranch] Comment #${props.parentId} has no stat.comments_count property`)
+        untrack(() => {
+          setHasMoreReplies(false)
+          setRemainingRepliesCount(0)
+        })
+      } else {
+        console.warn(`[CommentBranch] No parent comment found for #${props.parentId}`)
+      }
+    })
+
+    /**
+     * Загружает дополнительные ответы для текущей ветки
+     */
+    const loadMoreReplies = async (e?: Event) => {
+      if (e) e.preventDefault()
+      if (isLoadingReplies()) return
+
+      setIsLoadingReplies(true)
+      try {
+        console.log(
+          `[CommentBranch] Loading more replies for comment #${props.parentId}, offset: ${repliesOffset()}`
+        )
+
+        // Определяем адаптивный лимит загрузки
+        // Используем Math.floor для обеспечения целочисленного значения
+        const repliesLimit = totalCommentsCount() < 30 ? null : Math.floor(COMMENTS_PER_PAGE / 2)
+        console.log(`[CommentBranch] Using replies limit: ${repliesLimit || 'unlimited'}`)
+
+        // Используем существующую функцию loadCommentReplies
+        const replies = await loadCommentsBranch({
+          shout: props.shoutId,
+          parent_id: props.parentId,
+          limit: repliesLimit,
+          offset: repliesOffset(),
+          sort:
+            commentsOrder() === 'newest'
+              ? ReactionSort.Newest
+              : commentsOrder() === 'oldest'
+                ? ReactionSort.Oldest
+                : ReactionSort.Like
+        })
+
+        if (!replies || replies.length === 0) {
+          console.log(`[CommentBranch] No more replies loaded for comment #${props.parentId}`)
+          setHasMoreReplies(false)
+          setRemainingRepliesCount(0)
+          return
+        }
+
+        console.log(`[CommentBranch] Loaded ${replies.length} replies for comment #${props.parentId}`)
+
+        // Добавляем загруженные ответы в хранилище
+        untrack(() => {
+          const beforeCount = Object.keys(reactionEntities()).length
+          addShoutReactions(replies)
+          const afterCount = Object.keys(reactionEntities()).length
+
+          console.log(`[CommentBranch] Added ${afterCount - beforeCount} replies to store`)
+          setHasLoadedReplies(true)
+        })
+
+        // Проверяем наличие дополнительных ответов после загрузки
+        const parent = parentComment()
+        if (parent?.stat && typeof parent.stat.comments_count === 'number') {
+          const totalReplies = parent.stat.comments_count
+          const newOffset = repliesOffset() + replies.length
+
+          // Обновляем смещение для следующей загрузки
+          setRepliesOffset(newOffset)
+
+          // Обновляем оставшееся количество ответов
+          const remaining = Math.max(0, totalReplies - newOffset)
+          setRemainingRepliesCount(remaining)
+
+          // Определяем, есть ли еще ответы для загрузки
+          const hasMore = newOffset < totalReplies
+          setHasMoreReplies(hasMore)
+
+          console.log(
+            `[CommentBranch] После загрузки #${props.parentId}: всего ${totalReplies}, загружено ${newOffset}, осталось ${remaining}`
+          )
+        } else {
+          // Если нет информации о количестве ответов, используем эвристику
+          setHasMoreReplies(replies.length === COMMENTS_PER_PAGE / 2)
+          setRemainingRepliesCount(replies.length === COMMENTS_PER_PAGE / 2 ? COMMENTS_PER_PAGE / 2 : 0)
+        }
+      } catch (error) {
+        console.error('[CommentBranch] Error loading replies:', error)
+        showSnackbar({ type: 'error', body: t('Failed to load replies') })
+      } finally {
+        setIsLoadingReplies(false)
+      }
+    }
+
+    // Форсируем пересчет дерева при монтировании
+    onMount(() => {
+      const parent = parentComment()
+      if (parent) {
+        const totalReplies = parent.stat?.comments_count || 0
+        const firstRepliesCount = parent.first_replies?.length || 0
+        const treeRepliesCount = commentTree()[props.parentId]?.length || 0
+
+        console.log(`[CommentBranch] Mounted for comment #${props.parentId}:`, {
+          totalReplies,
+          firstRepliesCount,
+          treeRepliesCount
+        })
+
+        // Добавляем first_replies в хранилище, если они есть и еще не в дереве
+        if (firstRepliesCount > 0 && treeRepliesCount === 0 && parent.first_replies) {
+          console.log(
+            `[CommentBranch] Adding ${firstRepliesCount} first_replies to store for comment #${props.parentId}`
+          )
+          untrack(() => {
+            addShoutReactions(parent.first_replies as Reaction[])
+          })
+        }
+      }
     })
 
     return (
       <>
-        {/* Показываем форму ответа отдельно, вне зависимости от наличия дочерних комментариев */}
+        {/* Форма ответа */}
         <Show when={clickedReplyId() === props.parentId}>
           <ul class={clsx(styles.commentsList)}>
             <li class={styles.replyEditor}>
@@ -965,13 +1245,12 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           </ul>
         </Show>
 
-        {/* Показываем дочерние комментарии отдельно */}
-        <Show when={children().length > 0}>
+        {/* Дочерние комментарии */}
+        <Show when={loadedReplies().length > 0 || untrack(() => hasMoreReplies())}>
           <ul class={clsx(styles.commentsList)}>
-            {/* Используем стабильный ключ для идентификации комментариев */}
-            <For each={children()} fallback={<div>{t('No replies yet')}</div>}>
+            <For each={loadedReplies()} fallback={null}>
               {(comment) => (
-                <li class={styles.commentItem} data-comment-id={comment.id}>
+                <li class={styles.commentItem} data-comment-id={comment.id} id={`comment-${comment.id}`}>
                   <CommentCard
                     comment={comment}
                     sortedComments={sortedComments()}
@@ -987,6 +1266,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                     onSaveEdit={() => handleSubmitComment(undefined)}
                     onCancelReply={handleClear}
                     onSaveReply={() => handleSubmitComment(clickedReplyId() as number)}
+                    onLoadReplies={loadCommentReplies}
                     content={
                       editingCommentId() === comment.id
                         ? getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)
@@ -997,11 +1277,30 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                       parentId={comment.id}
                       shoutId={props.shoutId}
                       articleAuthors={props.articleAuthors}
+                      totalComments={props.totalComments}
                     />
                   </CommentCard>
                 </li>
               )}
             </For>
+
+            {/* Ненавязчивая серая ссылка для загрузки дополнительных ответов */}
+            <Show when={untrack(() => hasMoreReplies()) && untrack(() => remainingRepliesCount() > 0)}>
+              <li>
+                <a href="#" class={styles.loadMoreRepliesLink} onClick={loadMoreReplies}>
+                  <Show when={isLoadingReplies()} fallback={<span class={styles.icon}>↳</span>}>
+                    <span class={styles.loadingIndicator}>
+                      <Loading />
+                    </span>
+                  </Show>
+                  <Show when={!isLoadingReplies()} fallback={<Loading />}>
+                    {t('Show more')} {t('replies', {
+                      count: untrack(() => remainingRepliesCount())
+                    })}
+                  </Show>
+                </a>
+              </li>
+            </Show>
           </ul>
         </Show>
       </>
@@ -1072,6 +1371,265 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     untrack(() => setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`, localContent()))
   }
 
+  // Обновленная функция для загрузки комментариев с использованием API веток
+  const loadRootCommentsWithReplies = async (offset: number): Promise<LoadMoreItems | undefined> => {
+    // Уникальный ключ для этой загрузки
+    const loadKey = `comments_${props.shoutId}_${offset}`
+
+    // Проверяем, была ли уже выполнена эта загрузка
+    const isAlreadyLoaded = () => {
+      try {
+        return sessionStorage.getItem(loadKey) === 'loaded'
+      } catch {
+        return false
+      }
+    }
+
+    // Отмечаем загрузку как выполненную
+    const markAsLoaded = () => {
+      try {
+        sessionStorage.setItem(loadKey, 'loaded')
+      } catch {
+        // Игнорируем ошибки sessionStorage
+      }
+    }
+
+    console.log('[CommentsTree] Loading root comments from offset:', offset)
+
+    // Проверяем, не была ли эта конкретная страница уже загружена ранее
+    if (isAlreadyLoaded()) {
+      console.log('[CommentsTree] Comments at offset', offset, 'already loaded, skipping')
+      return []
+    }
+
+    // Проверка на уже выполняющуюся загрузку
+    if (untrack(() => isLoading())) {
+      console.log('[CommentsTree] Already loading comments, skipping request')
+      return undefined
+    }
+
+    try {
+      // Устанавливаем флаг загрузки вне отслеживания реактивности
+      untrack(() => setIsLoading(true))
+
+      // Определяем лимит загрузки дочерних комментариев:
+      // - без лимита (null), если всего комментариев < 30
+      // - 3 комментария, если комментариев >= 30
+      const childrenLimit = props.totalComments < 30 ? null : 3
+      console.log(
+        `[CommentsTree] Loading more comments with offset ${offset}, children_limit: ${childrenLimit}`
+      )
+
+      // Получаем текущий список корневых комментариев для отладки
+      const currentRootComments = commentTree()[0]?.length || 0
+      console.log(`[CommentsTree] Before loading more: ${currentRootComments} root comments in tree`)
+
+      // Используем API для загрузки комментариев с предзагрузкой ответов
+      const response = await loadCommentsBranch({
+        shout: props.shoutId,
+        parent_id: null, // Загружаем корневые комментарии
+        limit: COMMENTS_PER_PAGE,
+        offset,
+        sort:
+          commentsOrder() === 'newest'
+            ? ReactionSort.Newest
+            : commentsOrder() === 'oldest'
+              ? ReactionSort.Oldest
+              : ReactionSort.Like,
+        children_limit: childrenLimit // Загружаем все ответы или только 3 в зависимости от общего количества
+      })
+
+      // Отмечаем, что загрузка для этого offset выполнена
+      markAsLoaded()
+
+      if (!response || response.length === 0) {
+        console.log('[CommentsTree] No more root comments to load')
+        untrack(() => setLoadMoreHidden(true))
+        return []
+      }
+
+      console.log(`[CommentsTree] Loaded ${response.length} more root comments`)
+
+      // Обработка полученных данных - добавляем в хранилище как корневые комментарии,
+      // так и их предзагруженные ответы
+      untrack(() => {
+        // Проверяем текущее состояние хранилища
+        const beforeCount = Object.keys(reactionEntities()).length
+
+        const allComments: Reaction[] = []
+        let firstRepliesCount = 0
+
+        // Собираем все комментарии и их предзагруженные ответы
+        response.forEach((comment: Reaction) => {
+          if (!comment) {
+            console.warn('[CommentsTree] Received undefined comment in response')
+            return
+          }
+
+          // Проверяем корректность ID
+          if (!comment.id) {
+            console.warn('[CommentsTree] Comment without ID detected in response')
+            return
+          }
+
+          allComments.push(comment)
+
+          // Добавляем first_replies, если они есть
+          if (comment.first_replies && comment.first_replies.length > 0) {
+            const replies = (comment.first_replies || []) as Reaction[]
+
+            // Логируем информацию о предзагруженных ответах
+            console.log(
+              `[CommentsTree] Комментарий #${comment.id} содержит ${replies.length} предзагруженных ответов`
+            )
+
+            // Проверяем, что это массив перед добавлением
+            if (Array.isArray(replies)) {
+              // Проверяем каждый ответ на валидность
+              for (const reply of replies) {
+                if (reply?.id) {
+                  allComments.push(reply)
+                  firstRepliesCount++
+                } else {
+                  console.warn('[CommentsTree] Invalid reply in first_replies:', reply)
+                }
+              }
+            }
+          }
+        })
+
+        // Явно добавляем все собранные комментарии и ответы в хранилище
+        if (allComments.length > 0) {
+          addShoutReactions(allComments)
+
+          // Проверяем, сколько комментариев было добавлено
+          const afterCount = Object.keys(reactionEntities()).length
+          const addedCount = afterCount - beforeCount
+
+          console.log(
+            `[CommentsTree] Всего добавлено ${addedCount} комментариев (${beforeCount} -> ${afterCount}): ${response.length} корневых и ${firstRepliesCount} ответов`
+          )
+        } else {
+          console.warn('[CommentsTree] No comments to add from response')
+        }
+
+        // Проверяем, есть ли еще комментарии для загрузки
+        const shouldHideLoadMore = response.length < COMMENTS_PER_PAGE
+        console.log(
+          `[CommentsTree] Should hide "Load More"? ${shouldHideLoadMore} (loaded: ${response.length}, pageSize: ${COMMENTS_PER_PAGE})`
+        )
+        setLoadMoreHidden(shouldHideLoadMore)
+
+        // Принудительно проверяем дерево комментариев
+        setTimeout(() => {
+          const newRootComments = commentTree()[0]?.length || 0
+          console.log(
+            `[CommentsTree] After loading more: ${newRootComments} root comments in tree (was: ${currentRootComments})`
+          )
+        }, 0)
+      })
+
+      // Обновляем рейтинги для новых комментариев вне отслеживания реактивности
+      untrack(() => refetchRates())
+
+      return response as LoadMoreItems
+    } catch (error) {
+      console.error('[CommentsTree] Error loading comments:', error)
+      untrack(() => showSnackbar({ type: 'error', body: t('Failed to load comments') }))
+      return undefined
+    } finally {
+      // Сбрасываем флаг загрузки вне отслеживания реактивности
+      untrack(() => setIsLoading(false))
+    }
+  }
+
+  // Обновленная функция для загрузки ответов на комментарий
+  const loadCommentReplies = async (commentId: number, offset = 0): Promise<Reaction[]> => {
+    console.log('[CommentsTree] Loading replies for comment:', commentId, 'offset:', offset)
+
+    try {
+      // Определяем лимит загрузки:
+      // - null (все комментарии), если общее количество < 30
+      // - Целое число (COMMENTS_PER_PAGE / 2), если общее количество >= 30
+      const repliesLimit = props.totalComments < 30 ? null : Math.floor(COMMENTS_PER_PAGE / 2)
+
+      // Используем API веток для загрузки ответов
+      const response = await loadCommentsBranch({
+        shout: props.shoutId,
+        parent_id: commentId,
+        limit: repliesLimit, // Динамический лимит в зависимости от общего количества комментариев
+        offset,
+        sort:
+          commentsOrder() === 'newest'
+            ? ReactionSort.Newest
+            : commentsOrder() === 'oldest'
+              ? ReactionSort.Oldest
+              : ReactionSort.Like
+      })
+
+      if (response && response.length > 0) {
+        console.log('[CommentsTree] Loaded replies:', response.length)
+
+        // Добавляем ответы в хранилище вне отслеживания реактивности
+        untrack(() => addShoutReactions(response))
+      }
+
+      return response || []
+    } catch (error) {
+      console.error('[CommentsTree] Error loading replies:', error)
+      untrack(() => showSnackbar({ type: 'error', body: t('Failed to load replies') }))
+      return []
+    }
+  }
+
+  /**
+   * Обновляет данные о количестве комментариев
+   */
+  const updateCommentsCount = () => {
+    // Получаем все комментарии для текущего shout
+    const allComments = comments().filter((c) => c.shout && Number(c.shout) === props.shoutId)
+
+    // Количество корневых комментариев (без родителя)
+    const rootComments = allComments.filter((c) => !c.reply_to).length
+
+    // Используем пропс totalComments как основу для отображения общего количества
+    const totalCount = props.totalComments || allComments.length
+
+    console.log(
+      `[CommentsTree] Статистика комментариев: всего ${totalCount}, загружено ${allComments.length}, корневых ${rootComments}`
+    )
+  }
+
+  // Обновляем счетчики при изменении комментариев
+  createEffect(() => {
+    // Отслеживаем изменения в коллекции комментариев
+    const _ = comments()
+    updateCommentsCount()
+  })
+
+  // Обеспечиваем правильное отображение загруженных комментариев
+  createEffect(() => {
+    if (!isLoading() && comments().length > 0) {
+      // Добавляем проверку, видимы ли комментарии в дереве
+      const rootComments = commentTree()[0]?.length || 0
+      const totalUniqueComments = new Set(comments().map((c) => c.id)).size
+
+      console.log(
+        `[CommentsTree] Visibility check: displaying ${rootComments} root comments out of ${totalUniqueComments} unique loaded comments (total expected: ${props.totalComments})`
+      )
+
+      // Если есть несоответствие между загруженными и отображаемыми комментариями, обновляем дерево
+      if (rootComments === 0 && totalUniqueComments > 0) {
+        console.log('[CommentsTree] Detected visibility issue, forcing comment tree refresh')
+        // Принудительно пересортируем комментарии, чтобы обновить дерево
+        setCommentsOrder((prev) => {
+          setTimeout(() => setCommentsOrder(prev), 0)
+          return prev
+        })
+      }
+    }
+  })
+
   return (
     <ErrorBoundary fallback={(err) => <div>Error: {err.toString()}</div>}>
       <div>
@@ -1100,60 +1658,104 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           </Show>
 
           <CommentsHeader
-            comments={comments()}
-            newComments={newComments()}
-            order={commentsOrder()}
+            comments={props.totalComments || comments().length}
+            newComments={newComments().length}
             setOrder={setCommentsOrder}
+            order={commentsOrder() as ReactionSort}
             onlyNew={onlyNew()}
             toggleNewOnly={toggleNewOnly}
           />
 
           <Show when={comments().length > 0}>
-            <LoadMoreWrapper
-              loadFunction={loadMoreComments}
-              pageSize={COMMENTS_PER_PAGE}
-              hidden={loadMoreHidden()}
-              useScrollTrigger={true}
-            >
-              <ul class={clsx(styles.commentsList)}>
-                <For
-                  each={commentTree()[0] || []}
-                  fallback={<div class={styles.noComments}>{t('No comments yet')}</div>}
-                >
-                  {(comment) => (
-                    <li class={styles.commentItem} data-comment-id={comment.id}>
-                      <CommentCard
-                        comment={comment}
-                        sortedComments={sortedComments()}
-                        lastSeen={shoutLastSeen()}
-                        onDelete={handleDelete}
-                        onReply={handleReply}
-                        onEdit={handleEdit}
-                        clickedReplyId={clickedReplyId}
-                        articleAuthors={props.articleAuthors}
-                        myRate={getCommentRate(comment.id)}
-                        onEditorChange={(data) => handleExistingChange(data, comment.id)}
-                        onCancelEdit={handleCancelEdit}
-                        onSaveEdit={() => handleSubmitComment(undefined)}
-                        onCancelReply={handleClear}
-                        onSaveReply={() => handleSubmitComment(clickedReplyId() as number)}
-                        content={
-                          editingCommentId() === comment.id
-                            ? getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)
-                            : undefined
+            <div class={clsx(styles.commentsListContainer)}>
+              <LoadMoreWrapper
+                loadFunction={loadRootCommentsWithReplies}
+                pageSize={COMMENTS_PER_PAGE}
+                hidden={loadMoreHidden()}
+                useScrollTrigger={true}
+                loadMoreText={t('Loading more comments...')}
+              >
+                <ul class={clsx(styles.commentsList)}>
+                  <For
+                    each={(() => {
+                      // Получаем корневые комментарии из дерева или напрямую, если дерево пусто
+                      let rootComments = onlyNew()
+                        ? commentTree()[0]?.filter((c) => newComments().some((nc) => nc.id === c.id))
+                        : commentTree()[0]
+
+                      // Если дерево пустое, но комментарии загружены, используем их напрямую
+                      if (!rootComments?.length && comments().length > 0 && !onlyNew()) {
+                        console.log(
+                          '[CommentsTree] Tree is empty but comments exist, showing them directly'
+                        )
+                        rootComments = comments().filter((c) => !c.reply_to)
+
+                        // Сортируем комментарии согласно выбранному порядку
+                        if (commentsOrder() === 'newest') {
+                          rootComments.sort(
+                            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                          )
+                        } else if (commentsOrder() === 'oldest') {
+                          rootComments.sort(
+                            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                          )
+                        } else if (commentsOrder() === 'popular') {
+                          rootComments.sort((a, b) => {
+                            const aRate = a.stat?.rating ?? 0
+                            const bRate = b.stat?.rating ?? 0
+                            return (
+                              bRate - aRate ||
+                              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                            )
+                          })
                         }
+                      }
+
+                      return rootComments || []
+                    })()}
+                    fallback={<div class={styles.noComments}>{t('No comments yet')}</div>}
+                  >
+                    {(comment) => (
+                      <li
+                        class={styles.commentItem}
+                        data-comment-id={comment.id}
+                        id={`comment-${comment.id}`}
                       >
-                        <CommentBranch
-                          parentId={comment.id}
-                          shoutId={props.shoutId}
+                        <CommentCard
+                          comment={comment}
+                          sortedComments={sortedComments()}
+                          lastSeen={shoutLastSeen()}
+                          onDelete={handleDelete}
+                          onReply={handleReply}
+                          onEdit={handleEdit}
+                          clickedReplyId={clickedReplyId}
                           articleAuthors={props.articleAuthors}
-                        />
-                      </CommentCard>
-                    </li>
-                  )}
-                </For>
-              </ul>
-            </LoadMoreWrapper>
+                          myRate={getCommentRate(comment.id)}
+                          onEditorChange={(data) => handleExistingChange(data, comment.id)}
+                          onCancelEdit={handleCancelEdit}
+                          onSaveEdit={() => handleSubmitComment(undefined)}
+                          onCancelReply={handleClear}
+                          onSaveReply={() => handleSubmitComment(clickedReplyId() as number)}
+                          onLoadReplies={loadCommentReplies}
+                          content={
+                            editingCommentId() === comment.id
+                              ? getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)
+                              : undefined
+                          }
+                        >
+                          <CommentBranch
+                            parentId={comment.id}
+                            shoutId={props.shoutId}
+                            articleAuthors={props.articleAuthors}
+                            totalComments={props.totalComments}
+                          />
+                        </CommentCard>
+                      </li>
+                    )}
+                  </For>
+                </ul>
+              </LoadMoreWrapper>
+            </div>
           </Show>
         </Show>
       </div>

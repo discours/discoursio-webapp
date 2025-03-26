@@ -28,6 +28,7 @@
   background: none;
   cursor: pointer;
   transition: var(--editor-transition);
+  user-select: none;
 }
 
 .editorWrapper {
@@ -62,6 +63,7 @@
         display: flex;
         gap: 8px;
         align-items: center;
+        user-select: none;
 
         button {
           width: 24px;
@@ -70,11 +72,13 @@
           border: none;
           cursor: pointer;
           transition: all 0.2s ease-in-out;
+          user-select: none;
 
           svg {
             width: 16px;
             height: 16px;
             color: var(--color-gray-700);
+            user-select: none;
           }
         }
       }
@@ -230,6 +234,7 @@
   z-index: 2;
   transition: all 0.2s ease-in-out;
   opacity: 0;
+  user-select: none;
   
   &.toolbarTop {
     order: -1;

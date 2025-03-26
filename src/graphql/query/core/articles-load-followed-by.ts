@@ -21,7 +21,7 @@ export default gql`
       stat {
         viewed
         last_commented_at
-        commented
+        comments_count
         rating
       }
     }

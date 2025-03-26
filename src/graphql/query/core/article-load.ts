@@ -47,7 +47,7 @@ export default gql`
       stat {
         viewed
         rating
-        commented
+        comments_count
       }
     }
   }

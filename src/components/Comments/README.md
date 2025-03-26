@@ -174,7 +174,6 @@ const isArticleAuthor = createMemo(() => /* проверка авторства 
 ### CommentsTree
 - `handleSubmitComment` - создание/обновление комментария
 - `handleClear` - очистка форм и черновиков
-- `loadMoreComments` - подгрузка следующей страницы
 - `handleReply` - обработка начала ответа
 - `handleEdit` - обработка начала редактирования
 - `handleDelete` - обработка удаления

@@ -37,6 +37,7 @@ import styles from './CommentCard.module.scss'
  * @property {Author[]} [articleAuthors] - Авторы статьи
  * @property {boolean} [isNew] - Флаг нового комментария для анимации
  * @property {string} [content] - Содержимое редактора при редактировании комментария
+ * @property {Function} [onLoadReplies] - Обработчик загрузки ответов
  */
 export type CommentCardProps = {
   comment: Reaction
@@ -55,6 +56,7 @@ export type CommentCardProps = {
   onSaveEdit?: () => void
   onCancelReply?: () => void
   onSaveReply?: () => void
+  onLoadReplies?: (id: number) => void
   children?: JSX.Element
   articleAuthors?: { slug: string }[]
   isNew?: boolean
@@ -279,11 +281,10 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
         </div>
       </Show>
       <Show when={isExpanded()} fallback={<hr onClick={() => setExpanded(true)} />}>
-        {/* Шапка комментария всегда видима */}
         <div class={styles.commentHeader}>
           <div class={styles.authorInfo}>
             <div>
-              <Show when={props.comment.created_by}>
+              <Show when={props.comment.created_by && !isDeleted()}>
                 <AuthorLink author={props.comment.created_by} />
                 <Show when={isArticleAuthor()}>
                   <span class={styles.authorBadge}>{t('Author')}</span>
@@ -291,7 +292,9 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
               </Show>
             </div>
           </div>
-          <CommentDate comment={props.comment} isShort={true} />
+          <Show when={!isDeleted()}>
+            <CommentDate comment={props.comment} isShort={true} />
+          </Show>
         </div>
 
         {/* Тело комментария с возможностью редактирования */}
@@ -347,11 +350,7 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
             <div class={styles.commentContent}>
               <Show
                 when={!isDeleted()}
-                fallback={
-                  <div class={styles.commentText}>
-                    <p class={styles.deletedMessage}>{t('This comment has been deleted')}</p>
-                  </div>
-                }
+                fallback={<p class={styles.deletedMessage}>{t('This comment has been deleted')}</p>}
               >
                 <div
                   class={styles.commentText}
@@ -369,6 +368,20 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
                     >
                       {t('Reply')}
                     </button>
+                    <Show
+                      when={
+                        props.comment.stat?.comments_count &&
+                        props.comment.stat.comments_count > 0 &&
+                        !props.children
+                      }
+                    >
+                      <button
+                        class={clsx(styles.commentControl, styles.commentControlLoadReplies)}
+                        onClick={() => props.onLoadReplies?.(props.comment.id)}
+                      >
+                        {t('Load replies')} ({props.comment.stat?.comments_count || 0})
+                      </button>
+                    </Show>
                   </Show>
                 </div>
 
@@ -385,19 +398,18 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
                     </button>
                   </Show>
 
-                  <SharePopup
-                    imageUrl={props.comment.created_by?.pic || ''}
-                    trigger={
-                      <button class={clsx(styles.commentControl, styles.commentControlShare)}>
-                        <Icon name="share-outline" class={styles.icon} />
-                      </button>
-                    }
-                    title={props.comment.body || ''}
-                    description={`${props.comment.created_by?.name} ${t('commented on')} ${props.comment.shout?.title}`}
-                    shareUrl={`${window.location.href}#comment-${props.comment.id}`}
-                  />
-
                   <Show when={!isDeleted()}>
+                    <SharePopup
+                      imageUrl={props.comment.created_by?.pic || ''}
+                      trigger={
+                        <button class={clsx(styles.commentControl, styles.commentControlShare)}>
+                          <Icon name="share-outline" class={styles.icon} />
+                        </button>
+                      }
+                      title={props.comment.body || ''}
+                      description={`${props.comment.created_by?.name} ${t('commented on')} ${props.comment.shout?.title}`}
+                      shareUrl={`${window.location.href}#comment-${props.comment.id}`}
+                    />
                     <Popup
                       trigger={
                         <button class={clsx(styles.commentControl, styles.commentControlMore)}>
@@ -493,6 +505,14 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
                   <Icon name="article" class={styles.articleLinkIcon} />
                   {props.comment.shout?.title}
                 </A>
+              </Show>
+
+              {/* Отображаем количество ответов из stat.comments_count */}
+              <Show when={props.comment?.stat?.comments_count && props.comment.stat.comments_count > 0}>
+                <div class={styles.repliesCount}>
+                  <Icon name="comments" />
+                  <span>{props.comment.stat?.comments_count}</span>
+                </div>
               </Show>
             </div>
           </Show>

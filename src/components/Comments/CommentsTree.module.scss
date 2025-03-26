@@ -127,6 +127,11 @@ $transition-normal: 0.3s ease;
       }
     }
   }
+
+  // анимация для новых комментариев
+  .isNew {
+    animation: highlightNew 3s ease-out;
+  }
 }
 
 /**
@@ -208,6 +213,7 @@ $transition-normal: 0.3s ease;
   padding-right: .5em;
   opacity: 1;
   transition: opacity 0.4s ease-in-out;
+  user-select: none;
 
   &.hidden {
     opacity: 0;
@@ -220,6 +226,7 @@ $transition-normal: 0.3s ease;
     font-size: 14px;
     font-weight: 500;
     transition: all 0.2s ease;
+    user-select: none;
   }
 }
 
@@ -295,4 +302,58 @@ $transition-normal: 0.3s ease;
   clear: both;
   width: 100%;
   margin-bottom: 0.75em;
+}
+
+// Добавляем стили для кнопки "Загрузить еще ответы"
+.loadMoreReplies {
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  list-style: none;
+  
+  button {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    
+    &:hover {
+      color: var(--color-primary);
+    }
+  }
+}
+
+@keyframes highlightNew {
+  0% { background-color: var(--color-highlight-light); }
+  100% { background-color: transparent; }
+}
+
+// Стиль для ссылки "загрузить еще ответы"
+.loadMoreRepliesLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  margin-bottom: 6px;
+  margin-left: 24px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  user-select: none;
+  
+  &:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+  
+  .icon {
+    font-size: 12px;
+    opacity: 0.7;
+    user-select: none;
+  }
+  
+  .loadingIndicator {
+    display: inline-block;
+    margin-right: 4px;
+  }
 }

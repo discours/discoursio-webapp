@@ -8,6 +8,7 @@ import loadShoutsUnratedQuery from '~/graphql/query/core/articles-load-unrated'
 import getAuthorQuery from '~/graphql/query/core/author-by'
 import loadAuthorsAllQuery from '~/graphql/query/core/authors-all'
 import loadAuthorsByQuery from '~/graphql/query/core/authors-load-by'
+import loadCommentsBranchQuery from '~/graphql/query/core/comments-load-branch'
 import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
 import getAuthorsByTopicQuery from '~/graphql/query/core/topic-authors'
 import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
@@ -23,7 +24,7 @@ import { QueryGet_ShoutArgs } from '~/graphql/schema/core.gen'
 import { LoadShoutsOptions, QueryLoad_Shouts_SearchArgs } from '~/graphql/schema/core.gen'
 import { QueryLoad_Shouts_UnratedArgs } from '~/graphql/schema/core.gen'
 import { QueryGet_AuthorArgs } from '~/graphql/schema/core.gen'
-
+import { QueryLoad_Comments_BranchArgs } from '~/graphql/schema/core.gen'
 // Topics API
 /**
  * Прямой метод без кеширования
@@ -461,5 +462,27 @@ export const loadShoutsSearch = (text: string, options: LoadShoutsOptions) => {
       .query(loadShoutsSearchQuery, { text, options } as QueryLoad_Shouts_SearchArgs)
       .toPromise()
     return resp?.data?.load_shouts_search as Shout[]
+  }
+}
+
+/**
+ * Загружает комментарии с учетом их иерархической структуры
+ */
+export const loadCommentsBranch = (opts: QueryLoad_Comments_BranchArgs) => {
+  return async () => {
+    try {
+      const result = await defaultClient.query(loadCommentsBranchQuery, opts).toPromise()
+      
+      if (result.error) {
+        console.error('[API] loadCommentsBranch error:', result.error)
+        return []
+      }
+
+      // Просто возвращаем данные с проверкой на null
+      return result.data?.load_comments_branch || []
+    } catch (error) {
+      console.error('[API] loadCommentsBranch error:', error)
+      return []
+    }
   }
 }

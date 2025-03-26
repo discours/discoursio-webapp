@@ -1,8 +1,8 @@
 import { gql } from 'graphql-tag'
 
 export default gql`
-  query TopicsByCommunityQuery($slug: String, $community_id: Int) {
-    get_topics_by_community(slug: $slug, community_id: $community_id) {
+  query TopicsByCommunityQuery($community_id: Int!, $limit: Int, $offset: Int) {
+    get_topics_by_community(community_id: $community_id, limit: $limit, offset: $offset) {
       title
       body
       slug

@@ -1,12 +1,13 @@
 import type { Accessor, JSX } from 'solid-js'
 import { createContext, createSignal, onCleanup, useContext } from 'solid-js'
-import { loadReactions } from '~/graphql/api/public'
+import { loadCommentsBranch as loadCommentsBranchApi, loadReactions } from '~/graphql/api/public'
 import createReactionMutation from '~/graphql/mutation/core/reaction-create'
 import destroyReactionMutation from '~/graphql/mutation/core/reaction-destroy'
 import updateReactionMutation from '~/graphql/mutation/core/reaction-update'
 import {
   MutationCreate_ReactionArgs,
   MutationUpdate_ReactionArgs,
+  QueryLoad_Comments_BranchArgs,
   QueryLoad_Reactions_ByArgs,
   Reaction
 } from '~/graphql/schema/core.gen'
@@ -25,6 +26,7 @@ type ReactionsContextType = {
   deleteShoutReaction: (id: number) => Promise<{ error: string } | null>
   addShoutReactions: (rrr: Reaction[]) => void
   reactionsLoading: Accessor<boolean>
+  loadCommentsBranch: (params: QueryLoad_Comments_BranchArgs) => Promise<Reaction[]>
 }
 
 const ReactionsContext = createContext<ReactionsContextType>({} as ReactionsContextType)
@@ -242,6 +244,80 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
     setReactionsByShout(newReactionsByShout)
   }
 
+  /**
+   * Загружает комментарии с учетом их иерархической структуры
+   *
+   * @param params Параметры запроса для загрузки ветки комментариев
+   * @returns Promise с массивом комментариев, включая предзагруженные ответы
+   */
+  const loadCommentsBranch = async (params: QueryLoad_Comments_BranchArgs): Promise<Reaction[]> => {
+    setReactionsLoading(true)
+
+    try {
+      if (!params.shout) {
+        throw new Error('reactions provider: missing required shout ID')
+      }
+
+      // Выполняем запрос к API
+      const apiLoader = loadCommentsBranchApi(params)
+      const result = await apiLoader()
+
+      // Проверяем, что результат существует и является массивом
+      if (!result || !Array.isArray(result)) {
+        console.warn('[ReactionsProvider] Invalid result format from loadCommentsBranch:', result)
+        return []
+      }
+
+      if (result.length > 0) {
+        // Собираем все комментарии и их первые ответы
+        const allComments: Reaction[] = []
+
+        result.forEach((comment: Reaction) => {
+          if (!comment || typeof comment !== 'object') {
+            console.warn('[ReactionsProvider] Invalid comment in result:', comment)
+            return
+          }
+
+          // Проверяем наличие обязательных полей
+          if (!comment.id || !comment.shout?.id) {
+            console.warn('[ReactionsProvider] Comment missing required fields:', comment)
+            return
+          }
+
+          allComments.push(comment)
+
+          // Добавляем предзагруженные ответы, если они есть
+          if (comment.first_replies && Array.isArray(comment.first_replies)) {
+            const replies = comment.first_replies as Reaction[]
+            allComments.push(...replies.filter(reply => {
+              if (!reply || typeof reply !== 'object') {
+                console.warn('[ReactionsProvider] Invalid reply in first_replies:', reply)
+                return false
+              }
+              if (!reply.id || !reply.shout?.id) {
+                console.warn('[ReactionsProvider] Reply missing required fields:', reply)
+                return false
+              }
+              return true
+            }))
+          }
+        })
+
+        // Добавляем все комментарии в хранилище
+        if (allComments.length > 0) {
+          addShoutReactions(allComments)
+        }
+      }
+
+      return result
+    } catch (error) {
+      console.error('[ReactionsProvider] LoadCommentsBranch error:', error)
+      return []
+    } finally {
+      setReactionsLoading(false)
+    }
+  }
+
   onCleanup(() => {
     setReactionEntities({})
     setReactionsByShout({})
@@ -258,7 +334,8 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
     updateShoutReaction,
     deleteShoutReaction,
     addShoutReactions,
-    reactionsLoading
+    reactionsLoading,
+    loadCommentsBranch
   }
 
   return <ReactionsContext.Provider value={value}>{props.children}</ReactionsContext.Provider>
