@@ -3,8 +3,11 @@
   z-index: 50;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
-  margin-left: -24px;
+  transition: opacity 0.3s ease;
+  width: calc(100% - 50px);
+  display: flex;
+  align-items: center;
+  transform: translateY(-50%);
   
   &.visible {
     opacity: 1;
@@ -12,9 +15,28 @@
   }
 }
 
+.placeholder {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  user-select: none;
+  opacity: 0.6;
+  padding: 8px 16px;
+  width: 100%;
+  background: var(--color-background-secondary);
+  border-radius: 4px;
+  cursor: text;
+  transition: opacity 0.2s ease;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
 .plusButton {
-  width: 24px;
-  height: 24px;
+  position: absolute;
+  width: 32px;
+  height: 32px;
   border: none;
   background: transparent;
   color: var(--color-text-secondary);
@@ -22,32 +44,45 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  margin-top: -12px;
+  transition: all 0.3s ease;
   border-radius: 4px;
+  margin: 0;
+  padding: 0;
+  left: -44px;
 
   &:hover {
     background: var(--color-background-hover);
   }
 
   &.active {
-    color: var(--color-primary);
     background: var(--color-background-hover);
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
   }
 }
 
 .menuItems {
   position: absolute;
-  left: 32px;
-  top: -6px;
+  left: -48px;
+  top: 20px;
   display: flex;
   gap: 8px;
-  padding: 4px;
+  padding: 8px;
   background: var(--color-background);
   border: 1px solid var(--color-border);
   border-radius: 4px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
   z-index: 51;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.plusButton.active + .menuItems,
+.menuItems.visible {
+  opacity: 1;
 }
 
 .menuItem {
@@ -57,7 +92,7 @@
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--color-text-secondary) !important;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -65,12 +100,15 @@
   transition: all 0.2s ease;
 
   &:hover {
-    color: var(--color-primary);
     background: var(--color-background-hover);
   }
 
   &.active {
-    color: var(--color-primary);
     background: var(--color-background-hover);
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
   }
 } 

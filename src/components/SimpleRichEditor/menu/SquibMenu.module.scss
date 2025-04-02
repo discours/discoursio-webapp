@@ -9,6 +9,9 @@
   border-radius: 4px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
   z-index: 100;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .group {

@@ -36,12 +36,21 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
   const BG_COMMANDS = ['bg-gray', 'bg-white', 'bg-black', 'bg-yellow', 'bg-red', 'bg-green'] as const
   const [menuRef, setMenuRef] = createSignal<HTMLDivElement>()
 
-  // Позиционируем по центру поля ввода
+  // Обработчик клика вне меню для закрытия
+  const handleClickOutside = (e: MouseEvent) => {
+    const menu = menuRef()
+    if (menu && !menu.contains(e.target as Node)) {
+      props.onClose()
+    }
+  }
+
+  // Устанавливаем слушатель кликов при монтировании
   onMount(() => {
-    const editor = menuRef()?.closest('.editor')
-    if (editor) {
-      const rect = editor.getBoundingClientRect()
-      menuRef()?.style.setProperty('left', `${rect.width / 2}px`)
+    document.addEventListener('click', handleClickOutside)
+
+    // Очистка при размонтировании
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
     }
   })
 

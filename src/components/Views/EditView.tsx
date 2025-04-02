@@ -4,8 +4,10 @@ import { DropArea } from '~/components/_shared/DropArea'
 import { Icon } from '~/components/_shared/Icon'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
+import { Modal } from '~/components/_shared/Modal'
 import { Popover } from '~/components/_shared/Popover'
 import { EditorSwiper } from '~/components/_shared/SolidSwiper'
+import { TableOfContents } from '~/components/_shared/TableOfContents'
 import { useLocalize } from '~/context/localize'
 import type { Draft, MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
@@ -18,9 +20,10 @@ import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEdit
 import { AudioUploader } from '../Upload/AudioUploader'
 import { VideoUploader } from '../Upload/VideoUploader'
 import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'
-import { Modal } from '../_shared/Modal'
-import { TableOfContents } from '../_shared/TableOfContents'
 
+import { AutoSaveNotice } from '~/components/AutoSave/AutoSaveNotice'
+import sidebarStyles from '~/components/Sidebar/Sidebar.module.scss'
+import { Button } from '~/components/_shared/Button'
 import { DraftInput, useDrafts } from '~/context/drafts'
 import styles from '~/styles/views/EditView.module.scss'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
@@ -44,16 +47,27 @@ const handleScrollTopButtonClick = (ev: MouseEvent | TouchEvent) => {
  *
  * @returns EditView component
  */
-export const EditView = (props: { draft: Draft }) => {
+export const EditView = (props: { draft?: Draft }) => {
   const { t } = useLocalize()
-  const { updateDraft, getEditorContent, setEditorContent } = useDrafts()
+  const { updateDraft, getEditorContent, setEditorContent, publishDraft } = useDrafts()
   const [inputDataErrors, setFormErrors] = createSignal({} as Record<keyof DraftInput, string>)
   const [subtitleInput, setSubtitleInput] = createSignal<HTMLTextAreaElement | undefined>()
-  const [currentDraft, setCurrentDraft] = createSignal<Draft>(props.draft)
+  const [currentDraft, setCurrentDraft] = createSignal<Draft | undefined>(props.draft)
   // Handling when draft data is changed
   const [isSubtitleVisible, setIsSubtitleVisible] = createSignal(false)
   const [isLeadVisible, setIsLeadVisible] = createSignal(false)
   const [mediaItems, setMediaItems] = createSignal<MediaItem[]>([])
+
+  // Сигнал для управления отображением индикатора автосохранения
+  const [saving, setSaving] = createSignal(false)
+
+  // Эффект для инициализации состояния, если props.draft существует
+  createEffect(() => {
+    if (props.draft) {
+      setCurrentDraft(props.draft)
+    }
+  })
+
   createEffect(
     on(currentDraft, (d?: Draft) => {
       if (!d) return
@@ -66,13 +80,32 @@ export const EditView = (props: { draft: Draft }) => {
   // Handle scroll
   const [isScrolled, setIsScrolled] = createSignal(false)
   const handleScroll = () => setIsScrolled(window.scrollY > 0)
-  onMount(() => window.addEventListener('scroll', handleScroll, { passive: true }))
-  onCleanup(() => window.removeEventListener('scroll', handleScroll))
+
+  // Добавляем обработчик клавиш для быстрого сохранения
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // Ctrl+S или Cmd+S для быстрого сохранения
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault() // Предотвращаем стандартное поведение браузера
+      handleSaveClick()
+      handleDraftChange() // Показываем уведомление
+    }
+  }
+
+  onMount(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('keydown', handleKeyDown)
+  })
+
+  onCleanup(() => {
+    window.removeEventListener('scroll', handleScroll)
+    window.removeEventListener('keydown', handleKeyDown)
+  })
 
   const handleTitleInputChange = (value: string) => {
     handleInputChange('title', value)
     handleInputChange('slug', slugify(value))
     value && setFormErrors((prev) => ({ ...prev, title: '' }))
+    handleDraftChange()
   }
 
   const handleAddMedia = (data: MediaItem[]) => {
@@ -139,6 +172,10 @@ export const EditView = (props: { draft: Draft }) => {
       const updated = { ...draft, [key]: value } as Draft
       setCurrentDraft(updated)
       updateDraft({ ...updated } as DraftInput)
+
+      if (key !== 'slug') {
+        handleDraftChange()
+      }
     }
   }
 
@@ -149,10 +186,59 @@ export const EditView = (props: { draft: Draft }) => {
 
   const showLeadInput = () => {
     setIsLeadVisible(true)
+    setTimeout(() => {
+      const leadEditor = document.querySelector(
+        `[data-editor-id="draft-${currentDraft()?.id}-lead"]`
+      ) as HTMLElement
+      if (leadEditor) {
+        leadEditor.focus()
+      }
+    }, 100)
   }
 
   const hideLeadInput = () => {
     setIsLeadVisible(false)
+  }
+
+  const saveLead = () => {
+    const leadContent = getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''
+    handleInputChange('lead', leadContent)
+    hideLeadInput()
+  }
+
+  const cancelLead = () => {
+    setEditorContent(`draft-${currentDraft()?.id}-lead`, '')
+    hideLeadInput()
+  }
+
+  // Обработчики для кнопок в нижней панели
+  const handleSaveClick = () => {
+    const draft = currentDraft()
+    if (!draft) return
+
+    updateDraft(draft as DraftInput)
+  }
+
+  const handlePublishClick = () => {
+    const draft = currentDraft()
+    if (!draft || !draft.id) return
+
+    publishDraft(draft.id)
+  }
+
+  // Имитация процесса сохранения при изменениях в черновике
+  const handleDraftChange = () => {
+    // Показываем индикатор сохранения
+    setSaving(true)
+
+    // Скрываем через 2 секунды
+    setTimeout(() => setSaving(false), 2000)
+
+    // Реальное обновление черновика...
+    const draft = currentDraft()
+    if (draft) {
+      updateDraft(draft as DraftInput)
+    }
   }
 
   const HeadingActions = () => {
@@ -234,12 +320,20 @@ export const EditView = (props: { draft: Draft }) => {
                   <Show when={isLeadVisible()}>
                     <SimpleRichEditor
                       editorId={`draft-${currentDraft()?.id}-lead`}
+                      fieldType="lead"
                       commands={['bold', 'italic', 'link']}
                       placeholder={t('A short introduction to keep the reader interested')}
                       content={getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''}
-                      onBlur={() => hideLeadInput()}
                       onChange={(data: EditorData) => handleInputChange('lead', data.content)}
+                      showButtons={true}
+                      onSave={saveLead}
+                      onCancel={cancelLead}
                     />
+                  </Show>
+                  <Show when={!isLeadVisible() && currentDraft()?.lead}>
+                    <div class={styles.leadContentDisplay} onClick={showLeadInput}>
+                      <div innerHTML={currentDraft()?.lead || ''} />
+                    </div>
                   </Show>
                 </Show>
               </div>
@@ -353,8 +447,11 @@ export const EditView = (props: { draft: Draft }) => {
                 commands={['bold', 'italic', 'link', 'blockquote', 'image']}
                 plus={true}
                 editorId={`draft-${currentDraft()?.id}-body`}
+                fieldType="body"
                 content={getEditorContent(`draft-${currentDraft()?.id}-body`) || ''}
-                onChange={(data: EditorData) => handleInputChange('body', data.content)}
+                onChange={(data: EditorData) => {
+                  handleInputChange('body', data.content)
+                }}
               />
               <Show when={currentDraft()?.id}>
                 <Panel shoutId={currentDraft()?.id} />
@@ -364,9 +461,36 @@ export const EditView = (props: { draft: Draft }) => {
         </form>
       </div>
 
+      {/* Фиксированная панель с кнопками сохранения и публикации */}
+      <div class={sidebarStyles.FixedBottomPanel}>
+        <div class="wide-container">
+          <div class="row">
+            <div class="col-md-19 col-lg-18 col-xl-16 offset-md-5">
+              <div class={sidebarStyles.content}>
+                <Button
+                  variant="secondary"
+                  class={sidebarStyles.saveButton}
+                  value={t('Save draft')}
+                  onClick={handleSaveClick}
+                />
+                <Button
+                  variant="primary"
+                  class={sidebarStyles.publishButton}
+                  value={t('Publish')}
+                  onClick={handlePublishClick}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <Modal variant="medium" name="inviteCoauthors">
         <InviteMembers variant={'coauthors'} title={t('Invite experts')} />
       </Modal>
+
+      {/* Индикатор автосохранения */}
+      <AutoSaveNotice active={saving()} />
     </>
   )
 }

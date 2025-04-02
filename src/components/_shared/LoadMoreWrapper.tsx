@@ -106,11 +106,11 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
   const loadItems = async () => {
     // Проверяем состояние загрузки, используя untrack для предотвращения циклических зависимостей
     if (untrack(() => isLoading())) {
-      console.log('[LoadMoreWrapper] Already loading, skipping request')
+      //console.log('[LoadMoreWrapper] Already loading, skipping request')
       return
     }
 
-    console.log('[LoadMoreWrapper] Loading items from offset:', offset(), 'componentId:', componentId())
+    // console.log('[LoadMoreWrapper] Loading items from offset:', offset(), 'componentId:', componentId())
     // Устанавливаем флаг загрузки вне отслеживания реактивности
     untrack(() => setIsLoading(true))
     saveScrollPosition()
@@ -194,11 +194,11 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
   onMount(() => {
     // Проверяем локальное состояние и sessionStorage
     if (untrack(() => initialLoadDone()) || checkInitialLoadDone()) {
-      console.log('[LoadMoreWrapper] Initial load already done, skipping for', componentId())
+      //console.log('[LoadMoreWrapper] Initial load already done, skipping for', componentId())
       return
     }
 
-    console.log('[LoadMoreWrapper] Mounted, initial load for', componentId())
+    //console.log('[LoadMoreWrapper] Mounted, initial load for', componentId())
     loadItems()
 
     if (props.useScrollTrigger) {

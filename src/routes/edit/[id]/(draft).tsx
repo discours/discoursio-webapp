@@ -15,12 +15,6 @@ export default (props: RouteSectionProps) => {
 
   /**
    * Эффект для загрузки черновика и его содержимого в редактор
-   *
-   * @example
-   * ```
-   * // Триггерится при изменении параметра id в URL
-   * // Устанавливает текущий черновик и его содержимое
-   * ```
    */
   createEffect(
     on(
@@ -32,54 +26,50 @@ export default (props: RouteSectionProps) => {
         }
 
         const parsedId = Number.parseInt(draftId)
-        const requestedDraft = drafts()?.find((draft: Draft) => draft.id === parsedId)
+        const draftsArray = drafts()
+
+        if (!draftsArray || !Array.isArray(draftsArray)) return
+
+        const requestedDraft = draftsArray.find((draft: Draft) => draft.id === parsedId)
+
         if (requestedDraft) {
-          console.log(
-            '[edit/[id]] Found draft:',
-            requestedDraft.id,
-            requestedDraft.title,
-            'Body length:',
-            requestedDraft.body?.length || 0
-          )
+          console.log(`[EditDraft] Setting current draft: ${requestedDraft.id}`)
           setCurrentDraft(requestedDraft)
 
-          // Всегда устанавливаем содержимое черновика в редактор независимо от того,
-          // есть ли уже содержимое в редакторе
-          if (requestedDraft.body) {
-            const bodyEditorId = `draft-${requestedDraft.id}-body`
-            console.log('[edit/[id]] Setting editor content for body, length:', requestedDraft.body.length)
-            setEditorContent(bodyEditorId, requestedDraft.body)
-            console.log('[edit/[id]] After setting content:', getEditorContent(bodyEditorId)?.length || 0)
-          } else {
-            console.log('[edit/[id]] Draft has no body content')
+          const editorId = `draft-${requestedDraft.id}-body`
+          const currentContent = getEditorContent(editorId)
+
+          if (!currentContent && requestedDraft.body) {
+            console.log(`[EditDraft] Setting editor content for ${editorId}`)
+            setEditorContent(editorId, requestedDraft.body)
           }
 
-          // Загружаем лид в редактор
-          if (requestedDraft.lead) {
-            const leadEditorId = `draft-${requestedDraft.id}-lead`
-            console.log('[edit/[id]] Setting editor content for lead, length:', requestedDraft.lead.length)
+          const leadEditorId = `draft-${requestedDraft.id}-lead`
+          const currentLeadContent = getEditorContent(leadEditorId)
+
+          if (!currentLeadContent && requestedDraft.lead) {
+            console.log(`[EditDraft] Setting editor content for ${leadEditorId}`)
             setEditorContent(leadEditorId, requestedDraft.lead)
-            console.log(
-              '[edit/[id]] After setting lead content:',
-              getEditorContent(leadEditorId)?.length || 0
-            )
-          } else {
-            console.log('[edit/[id]] Draft has no lead content')
           }
-
-          return
+        } else {
+          console.warn(`Draft with id=${parsedId} not found`)
+          // redirect('/edit')
         }
-
-        redirect('/edit/new')
-        return
       }
     )
   )
 
   const title = createMemo(() => {
-    const currentDraft = drafts()?.find((draft: Draft) => draft.id === Number.parseInt(props.params.id))
+    const currentDraftId = props.params.id ? Number.parseInt(props.params.id) : 0
+    const draftsArray = drafts()
+    const currentDraft = Array.isArray(draftsArray)
+      ? draftsArray.find((draft: Draft) => draft.id === currentDraftId)
+      : undefined
+
     const layout = (currentDraft?.layout as LayoutType) || 'article'
+
     if (!currentDraft) return 'Create post'
+
     return (
       {
         article: 'Write an article',
@@ -91,12 +81,20 @@ export default (props: RouteSectionProps) => {
     )
   })
 
+  // Получение текущего черновика для передачи в EditView
+  const currentDraftForEdit = () => {
+    const currentDraftId = props.params.id ? Number.parseInt(props.params.id) : 0
+    const draftsArray = drafts()
+
+    if (!Array.isArray(draftsArray)) return undefined
+
+    return draftsArray.find((draft: Draft) => draft.id === currentDraftId)
+  }
+
   return (
-    <PageLayout title={`${t('Discours')} :: ${t(title())}`}>
+    <PageLayout title={`${t('Discours')} :: ${t(title())}`} hideFooter={true}>
       <AuthGuard>
-        <EditView
-          draft={drafts()?.find((draft: Draft) => draft.id === Number.parseInt(props.params.id)) as Draft}
-        />
+        <EditView draft={currentDraftForEdit()} />
       </AuthGuard>
     </PageLayout>
   )

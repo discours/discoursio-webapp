@@ -33,19 +33,91 @@
 
 .editorWrapper {
   position: relative;
-  width: 100%;
-  margin: 1rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--editor-border-radius, 6px);
+  background: var(--editor-bg, #fff);
+  transition: border-color 0.2s ease;
   
+  &:hover {
+    border-color: var(--color-border-hover);
+  }
+
+  // Специальные стили для редактора вступления
+  &[data-field-type="lead"] {
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    background: transparent;
+    
+    &:hover {
+      border-color: transparent;
+    }
+    
+    .editor {
+      border: none;
+      box-shadow: none;
+      
+      &:focus-within {
+        background-color: var(--color-gray-50, #f9fafb);
+        border-color: transparent;
+        box-shadow: none;
+      }
+      
+      .content {
+        min-height: 108px;
+        padding: 8px 12px;
+        
+        // Центрируем плейсхолдер по вертикали
+        &[data-placeholder]:empty::before {
+          top: 50%;
+          transform: translateY(-50%);
+          left: 12px;
+        }
+      }
+    }
+    
+    // Кнопки внутри редактора
+    .editorButtonsWrapper {
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      margin: 0;
+      padding: 0;
+      z-index: 5;
+      background: transparent;
+    }
+  }
+
   .editor {
     position: relative;
     width: 100%;
     border-radius: var(--editor-border-radius);
     transition: var(--editor-transition);
-    background: rgb(0 0 0 / 6%);
+    background: var(--color-bg-light, #fff);
     box-shadow: none;
     
     &:focus-within {
       border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 56 103 214 / 15%));
+    }
+
+    &.empty {
+      .content {
+        // Улучшенный плейсхолдер для пустого контента
+        &[data-placeholder]::before {
+          content: attr(data-placeholder);
+          color: var(--color-text-secondary, #9ca3af);
+          position: absolute;
+          pointer-events: none;
+          font-style: italic;
+          opacity: 0.8;
+          top: var(--editor-padding);
+          left: var(--editor-padding);
+
+          // Только если контент пустой или содержит только BR
+          display: block;
+        }
+      }
     }
 
     &.withBottomToolbar {
@@ -84,6 +156,10 @@
       }
     }
 
+    &.focused {
+      border-color: var(--color-primary);
+    }
+
     .content {
       position: relative;
       min-height: 120px;
@@ -94,13 +170,47 @@
       line-height: 1.5;
       color: #111827;
 
-      // Плейсхолдер
+      // Улучшенный плейсхолдер для всех типов полей
       &[data-placeholder]:empty::before {
         content: attr(data-placeholder);
-        color: #9ca3af;
+        color: var(--color-text-secondary, #9ca3af);
         position: absolute;
         pointer-events: none;
         font-style: italic;
+        opacity: 0.8;
+        top: var(--editor-padding);
+        left: var(--editor-padding);
+      }
+
+      // Показывать плейсхолдер также когда есть только br
+      &[data-placeholder]:not(:empty)::before {
+        content: attr(data-placeholder);
+        color: var(--color-text-secondary, #9ca3af);
+        position: absolute;
+        pointer-events: none;
+        font-style: italic;
+        opacity: 0.8;
+        top: var(--editor-padding);
+        left: var(--editor-padding);
+        display: none;
+      }
+
+      // Для полей вступления (lead) и основного тела (body)
+      &[data-editor-id*="-lead"]:not(:focus, :empty)::before,
+      &[data-editor-id*="-body"]:not(:focus, :empty)::before {
+        display: block;
+      }
+
+      // Убираем индикатор фокуса (синюю точку) для всех редакторов
+      &:focus::after {
+        display: none;
+      }
+
+      // Заголовок в начальном состоянии
+      &:empty::first-line {
+        font-size: 24px;
+        font-weight: 500;
+        color: var(--color-text-primary, #6b7280);
       }
 
       // Базовые стили форматирования
@@ -175,6 +285,7 @@
 [data-bg="gray"] { background: #f3f4f6; }
 [data-bg="white"] { background: #fff; }
 
+// Улучшенные стили для всех контентных полей
 .content {
   min-height: 100px;
   padding: 16px;
@@ -182,9 +293,21 @@
   
   &[data-placeholder]:empty::before {
     content: attr(data-placeholder);
-    color: #9ca3af;
+    color: var(--color-text-secondary, #9ca3af);
     font-style: italic;
+    opacity: 0.7;
   }
+  
+  // Визуальное выделение при переходе между полями
+  &[data-editor-id]:focus {
+    animation: pulse-highlight 0.5s ease-out;
+  }
+}
+
+// Анимация при переходе между полями
+@keyframes pulse-highlight {
+  0% { background-color: rgba(var(--color-primary-rgb, 56 103 214 / 5%)); }
+  100% { background-color: transparent; }
 }
 
 .preview {
@@ -281,4 +404,129 @@
 .tempHighlight {
   background-color: var(--color-primary-50, rgb(0 120 255 / 10%));
   border-radius: 2px;
+}
+
+// Стили для врезок
+.squib {
+  padding: 15px;
+  margin: 15px 0;
+  background-color: var(--color-gray-100, #f5f5f5);
+  border-radius: 8px;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--color-primary, #3867d6);
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+  }
+  
+  &[data-align="center"] {
+    text-align: center;
+  }
+  
+  &[data-align="right"] {
+    text-align: right;
+  }
+  
+  // Фоны для врезок
+  &[data-bg="bg-white"] {
+    background-color: white;
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+  }
+  
+  &[data-bg="bg-black"] {
+    background-color: var(--color-gray-900, #111827);
+    color: white;
+  }
+  
+  &[data-bg="bg-yellow"] {
+    background-color: var(--color-yellow-100, #fef9c3);
+
+    &::before {
+      background-color: var(--color-yellow-500, #eab308);
+    }
+  }
+  
+  &[data-bg="bg-red"] {
+    background-color: var(--color-red-100, #fee2e2);
+
+    &::before {
+      background-color: var(--color-red-500, #ef4444);
+    }
+  }
+  
+  &[data-bg="bg-green"] {
+    background-color: var(--color-green-100, #dcfce7);
+
+    &::before {
+      background-color: var(--color-green-500, #22c55e);
+    }
+  }
+}
+
+.localVersionLink {
+  margin: 5px 0;
+  padding: 3px 8px;
+  background: rgb(255 243 205 / 30%);
+  border-radius: 4px;
+  font-size: 12px;
+  
+  a {
+    color: #856404;
+    text-decoration: none;
+    display: block;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+// Кнопки для редактора вступления
+.editorButtonsWrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 0;
+  
+  &.hidden {
+    display: none;
+  }
+  
+  @media (width <= 576px) {
+    flex-direction: column;
+  }
+}
+
+// Стили для видимого вступления
+.leadContentDisplay {
+  margin: 12px 0;
+  padding: 12px 16px;
+  background-color: var(--color-bg-light, #f9fafb);
+  border-radius: 8px;
+  border-left: 3px solid var(--color-primary, #3867d6);
+  font-style: italic;
+  color: var(--color-gray-700);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background-color: var(--color-gray-100, #f3f4f6);
+  }
+  
+  p {
+    margin-bottom: 0.5em;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
 }

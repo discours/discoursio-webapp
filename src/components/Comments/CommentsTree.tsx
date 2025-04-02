@@ -27,7 +27,7 @@ import {
 } from '~/graphql/schema/core.gen'
 import { MutationCreate_ReactionArgs } from '~/graphql/schema/core.gen'
 import { COMMENTS_PER_PAGE } from '../Article/FullArticle'
-import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { EditorData, SimpleRichEditor, removeLocalVersion } from '../SimpleRichEditor/SimpleRichEditor'
 import { cleanupContent, sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { Button } from '../_shared/Button'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
@@ -193,6 +193,10 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   const [editingCommentId, setEditingCommentId] = createSignal<number | undefined>()
   const [localContent, setLocalContent] = createSignal<string>('')
   const [posting, setPosting] = createSignal(false)
+
+  // Состояния для сохранения контента между переключениями режимов
+  const [mainEditorContent, setMainEditorContent] = createSignal<string>('')
+  const [replyEditorContents, setReplyEditorContents] = createSignal<Record<string, string>>({})
 
   // Функция для проверки пустоты контента
   const isContentEmpty = (content: string) => {
@@ -437,6 +441,9 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
     // Дополнительная очистка черновика редактирования
     const draftKey = `draft-${props.shoutId}-comment-edit-${commentId}`
+
+    // Удаляем локальную версию и черновик
+    removeLocalVersion(draftKey)
     setEditorContent(draftKey, '')
 
     // Сбрасываем состояние редактирования
@@ -475,7 +482,8 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     setPosting(true)
     // Сохраняем позицию скролла только для редактирования
     const _scrollPosition = window.scrollY
-    const _isEdit = editingCommentId() !== undefined
+    const isEdit = editingCommentId() !== undefined
+    const isReply = clickedReplyId() !== undefined
 
     try {
       // Финальная проверка и преобразование:
@@ -507,12 +515,11 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       })
 
       const commentId = editingCommentId()
-      const isEditing = commentId !== undefined
 
-      console.log('[CommentsTree] Processing edit:', { commentId, isEditing })
+      console.log('[CommentsTree] Processing edit:', { commentId, isEdit })
 
-      const commentToEdit = isEditing ? comments().find((c) => c.id === commentId) : undefined
-      if (isEditing && !commentToEdit) {
+      const commentToEdit = isEdit ? comments().find((c) => c.id === commentId) : undefined
+      if (isEdit && !commentToEdit) {
         console.error('[CommentsTree] Comment not found for editing:', commentId)
         showSnackbar({ type: 'error', body: t('Comment not found') })
         setPosting(false)
@@ -520,7 +527,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       }
 
       // Отправляем запрос на сервер
-      const input = isEditing
+      const input = isEdit
         ? ({
             reaction: {
               id: commentId,
@@ -540,17 +547,27 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           } as MutationCreate_ReactionArgs)
 
       console.log('[CommentsTree] Sending request:', {
-        operation: isEditing ? 'update' : 'create',
-        commentId: isEditing ? commentId : undefined,
-        replyTo: isEditing ? commentToEdit?.reply_to : parentId
+        operation: isEdit ? 'update' : 'create',
+        commentId: isEdit ? commentId : undefined,
+        replyTo: isEdit ? commentToEdit?.reply_to : parentId
       })
 
-      // Очищаем форму и состояния до отправки запроса только для режима редактирования
-      if (isEditing) {
+      // Очищаем форму и состояния до отправки запроса для режима редактирования
+      if (isEdit) {
+        // Удаляем локальную версию при сохранении
+        const draftKey = `draft-${props.shoutId}-comment-edit-${commentId}`
+        removeLocalVersion(draftKey)
         handleClear()
+      } else if (isReply) {
+        // Удаляем локальную версию при отправке ответа
+        const draftKey = `draft-${props.shoutId}-comment-${clickedReplyId()}`
+        removeLocalVersion(draftKey)
+      } else {
+        // Удаляем локальную версию при отправке нового комментария
+        removeLocalVersion(`draft-${props.shoutId}-comment-new`)
       }
 
-      const result = isEditing ? await updateShoutReaction(input) : await createShoutReaction(input)
+      const result = isEdit ? await updateShoutReaction(input) : await createShoutReaction(input)
 
       console.log('[CommentsTree] Got response:', result)
 
@@ -563,12 +580,15 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       if (result && !('error' in result)) {
         const serverData = result as Reaction
 
-        if (isEditing) {
+        if (isEdit) {
           // Для редактирования обновляем только существующий комментарий
           console.log('[CommentsTree] Comment updated successfully')
 
           // Добавляем обновленный комментарий в хранилище реакций
           addShoutReactions([serverData])
+
+          // Очищаем состояние после успешного редактирования
+          handleSubmitSuccess()
 
           showSnackbar({ type: 'success', body: t('Comment updated') })
         } else {
@@ -578,8 +598,8 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           // Добавляем новый комментарий в хранилище реакций
           addShoutReactions([serverData])
 
-          // Очищаем редактор после успешного создания нового комментария
-          handleClear()
+          // Очищаем состояние после успешного создания
+          handleSubmitSuccess()
 
           showSnackbar({ type: 'success', body: t('Comment saved') })
 
@@ -599,7 +619,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     const commentId = editingCommentId()
     const replyId = clickedReplyId()
 
-    // Очищаем черновик
+    // Определяем ключ черновика
     const draftKey =
       commentId !== undefined
         ? `draft-${props.shoutId}-comment-edit-${commentId}`
@@ -607,29 +627,58 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           ? `draft-${props.shoutId}-comment-${replyId}`
           : `draft-${props.shoutId}-comment-new`
 
-    setEditorContent(draftKey, '')
-
-    // Более безопасная и контролируемая очистка редактора
-    try {
-      // Находим конкретный редактор по его ID вместо общего селектора
-      const editor = document.querySelector(`[data-editor-id="${draftKey}"]`)
-      if (editor) {
-        editor.innerHTML = ''
-        // Вызываем событие input для обновления состояния
-        editor.dispatchEvent(new Event('input', { bubbles: true }))
-      }
-    } catch (error) {
-      console.warn('[CommentsTree] Error clearing editor:', error)
-    }
-
     // Сбрасываем состояния атомарно, чтобы избежать лишних ререндеров
     batch(() => {
       setEditingCommentId(undefined)
       setClickedReplyId(undefined)
-      setLocalContent('')
+
+      // Если мы отменяем ответ или редактирование, восстанавливаем основной редактор
+      if (commentId !== undefined || replyId !== undefined) {
+        // Восстанавливаем состояние основного редактора
+        const savedMainContent = mainEditorContent()
+        setLocalContent(savedMainContent)
+
+        // Удаляем временные данные редактирования
+        if (commentId !== undefined) {
+          // Если была отмена редактирования, удаляем локальную версию
+          removeLocalVersion(draftKey)
+          setEditorContent(draftKey, '')
+        }
+      } else {
+        // Очищаем основной редактор при отмене нового комментария
+        setLocalContent('')
+        setMainEditorContent('')
+        removeLocalVersion(draftKey)
+        setEditorContent(draftKey, '')
+      }
     })
 
-    console.log('[CommentsTree] Editor state cleared')
+    // Очищаем фактическое содержимое редактора
+    try {
+      // Находим конкретный редактор по его ID вместо общего селектора
+      const editor = document.querySelector(`[data-editor-id="${draftKey}"]`)
+      if (editor) {
+        if (commentId !== undefined || replyId !== undefined) {
+          // Если это редактирование или ответ, очищаем редактор
+          editor.innerHTML = ''
+        } else {
+          // Если это основной редактор, то восстанавливаем сохраненное содержимое
+          const savedContent = mainEditorContent()
+          if (savedContent) {
+            editor.innerHTML = savedContent
+          } else {
+            editor.innerHTML = ''
+          }
+        }
+
+        // Вызываем событие input для обновления состояния
+        editor.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    } catch (error) {
+      console.warn('[CommentsTree] Error handling editor content:', error)
+    }
+
+    console.log('[CommentsTree] Editor state updated')
   }
 
   const handleReply = (replyToCommentId: number) => {
@@ -639,16 +688,50 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       return
     }
 
-    // Сначала очищаем все состояния, затем устанавливаем новое
+    // Сохраняем текущее содержимое редактора, если мы в режиме ввода нового комментария
+    if (!clickedReplyId() && !editingCommentId()) {
+      const currentContent = localContent()
+      if (currentContent && !isContentEmpty(currentContent)) {
+        console.log('[CommentsTree] Saving main editor content before switching to reply mode')
+        setMainEditorContent(currentContent)
+
+        // Сохраняем в локальное хранилище
+        setEditorContent(`draft-${props.shoutId}-comment-new`, currentContent)
+      }
+    }
+
+    // Если мы уже отвечаем на другой комментарий, сохраняем его содержимое
+    const currentReplyId = clickedReplyId()
+    if (currentReplyId && currentReplyId !== replyToCommentId) {
+      const currentContent = localContent()
+      if (currentContent && !isContentEmpty(currentContent)) {
+        console.log(`[CommentsTree] Saving reply content for comment #${currentReplyId}`)
+        setReplyEditorContents((prev) => ({ ...prev, [`${currentReplyId}`]: currentContent }))
+
+        // Сохраняем в локальное хранилище
+        setEditorContent(`draft-${props.shoutId}-comment-${currentReplyId}`, currentContent)
+      }
+    }
+
+    // Обновляем состояние без очистки сохраненного контента
     batch(() => {
-      // Очищаем все предыдущие состояния
-      setLocalContent('')
+      // Сбрасываем активное состояние редактирования
       setEditingCommentId(undefined)
 
-      // Устанавливаем новое состояние после очистки
+      // Устанавливаем новый режим ответа
       setClickedReplyId(replyToCommentId)
-      setEditorContent(`draft-${props.shoutId}-comment-reply-${replyToCommentId}`, '')
+
+      // Загружаем существующий контент для данного ответа, если он есть
+      const savedReplyContent =
+        replyEditorContents()[`${replyToCommentId}`] ||
+        getEditorContent(`draft-${props.shoutId}-comment-${replyToCommentId}`) ||
+        ''
+
+      // Устанавливаем контент в локальное состояние
+      setLocalContent(savedReplyContent)
     })
+
+    console.log(`[CommentsTree] Switched to reply mode for comment #${replyToCommentId}`)
   }
 
   const handleEdit = (commentId: number) => {
@@ -664,16 +747,45 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       return
     }
 
-    batch(() => {
-      // Очищаем все предыдущие состояния
-      setClickedReplyId(undefined)
-      setLocalContent('')
+    // Сохраняем текущее содержимое основного редактора, если мы в режиме ввода нового комментария
+    if (!clickedReplyId() && !editingCommentId()) {
+      const currentContent = localContent()
+      if (currentContent && !isContentEmpty(currentContent)) {
+        console.log('[CommentsTree] Saving main editor content before switching to edit mode')
+        setMainEditorContent(currentContent)
 
-      // Устанавливаем новое состояние после очистки
+        // Сохраняем в локальное хранилище
+        setEditorContent(`draft-${props.shoutId}-comment-new`, currentContent)
+      }
+    }
+
+    // Если мы отвечаем на комментарий, сохраняем его содержимое
+    const currentReplyId = clickedReplyId()
+    if (currentReplyId) {
+      const currentContent = localContent()
+      if (currentContent && !isContentEmpty(currentContent)) {
+        console.log(`[CommentsTree] Saving reply content for comment #${currentReplyId}`)
+        setReplyEditorContents((prev) => ({ ...prev, [`${currentReplyId}`]: currentContent }))
+
+        // Сохраняем в локальное хранилище
+        setEditorContent(`draft-${props.shoutId}-comment-${currentReplyId}`, currentContent)
+      }
+    }
+
+    batch(() => {
+      // Сбрасываем режим ответа
+      setClickedReplyId(undefined)
+
+      // Устанавливаем режим редактирования
       setEditingCommentId(commentId)
-      const content = commentToEdit.body || ''
-      setLocalContent(content)
-      setEditorContent(`draft-${props.shoutId}-comment-edit-${commentId}`, content)
+
+      // Получаем содержимое комментария для редактирования
+      const editContent =
+        getEditorContent(`draft-${props.shoutId}-comment-edit-${commentId}`) || commentToEdit.body || ''
+
+      // Устанавливаем контент для редактирования
+      setLocalContent(editContent)
+      setEditorContent(`draft-${props.shoutId}-comment-edit-${commentId}`, editContent)
     })
   }
 
@@ -1060,9 +1172,11 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       const parent = parentComment()
       const replies = loadedReplies()
 
-      if (parent && 'stat' in parent && parent.stat && typeof parent.stat.comments_count === 'number') {
-        // Общее количество ответов из API
-        const totalReplies = parent.stat.comments_count || 0
+      if (parent && 'stat' in parent && parent.stat) {
+        // Общее количество ответов из API (если есть)
+        // Используем comments_count, если он доступен, иначе 0
+        const totalReplies: number =
+          parent.stat.comments_count !== undefined ? (parent.stat.comments_count as number) : 0
 
         // Количество уже загруженных ответов
         const loadedCount = replies.length
@@ -1100,6 +1214,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           setRepliesOffset(loadedCount)
         })
       } else if (parent) {
+        // Тихо логируем и предполагаем, что ответов нет
         console.log(`[CommentBranch] Comment #${props.parentId} has no stat.comments_count property`)
         untrack(() => {
           setHasMoreReplies(false)
@@ -1163,8 +1278,8 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
         // Проверяем наличие дополнительных ответов после загрузки
         const parent = parentComment()
-        if (parent?.stat && typeof parent.stat.comments_count === 'number') {
-          const totalReplies = parent.stat.comments_count
+        if (parent?.stat && parent.stat.comments_count !== undefined) {
+          const totalReplies: number = parent.stat.comments_count as number
           const newOffset = repliesOffset() + replies.length
 
           // Обновляем смещение для следующей загрузки
@@ -1198,7 +1313,8 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     onMount(() => {
       const parent = parentComment()
       if (parent) {
-        const totalReplies = parent.stat?.comments_count || 0
+        // Безопасно получаем количество ответов, используя значение по умолчанию 0
+        const totalReplies = parent.stat?.comments_count !== undefined ? parent.stat.comments_count : 0
         const firstRepliesCount = parent.first_replies?.length || 0
         const treeRepliesCount = commentTree()[props.parentId]?.length || 0
 
@@ -1335,7 +1451,11 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       setLocalContent(data.content)
     }
 
-    // Сохраняем в черновик
+    // Сохраняем в черновик и в локальное состояние для основного редактора
+    if (!clickedReplyId() && !editingCommentId()) {
+      setMainEditorContent(data.content)
+    }
+
     untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, localContent()))
   }
 
@@ -1343,8 +1463,20 @@ export const CommentsTree = (props: CommentsTreeProps) => {
    * Обработчик изменений в форме ответа на комментарий
    */
   const handleReplyEditorChange = (data: EditorData) => {
+    // Обязательно получаем replyId с проверкой типа
+    const maybeReplyId = clickedReplyId()
+
+    // Если replyId не существует, ничего не делаем
+    if (maybeReplyId === undefined) {
+      console.warn('[CommentsTree] Reply ID is undefined')
+      return
+    }
+
+    // Теперь у нас точно есть ID
+    const replyId = maybeReplyId
+
     console.log('[CommentsTree] Reply editor onChange:', {
-      replyTo: clickedReplyId(),
+      replyTo: replyId,
       content: data.content,
       isEmpty: data.isEmpty
     })
@@ -1360,16 +1492,22 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     const hasExcessiveBreaks = /(<p><br\s*\/?><\/p>){3,}/gi.test(data.content)
 
     // Если есть - сразу нормализуем
-    if (hasEmptyParagraphs || hasExcessiveBreaks) {
-      const cleanedContent = cleanupContent(data.content)
-      setLocalContent(cleanedContent)
-    } else {
-      // Просто сохраняем контент
-      setLocalContent(data.content)
-    }
+    const finalContent =
+      hasEmptyParagraphs || hasExcessiveBreaks ? cleanupContent(data.content) : data.content
+
+    // Устанавливаем очищенный контент
+    setLocalContent(finalContent)
+
+    // Сохраняем в локальное состояние для ответа
+    setReplyEditorContents((prev) => {
+      const newState = { ...prev }
+      newState[`${replyId}`] = finalContent // Преобразуем ID в строку для использования как ключа
+      return newState
+    })
 
     // Сохраняем в черновик
-    untrack(() => setEditorContent(`draft-${props.shoutId}-comment-${clickedReplyId()}`, localContent()))
+    const draftKey = `draft-${props.shoutId}-comment-${replyId}`
+    untrack(() => setEditorContent(draftKey, finalContent))
   }
 
   // Обновленная функция для загрузки комментариев с использованием API веток
@@ -1631,12 +1769,49 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     }
   })
 
+  // После успешной отправки комментария обновляем состояние
+  const handleSubmitSuccess = () => {
+    // Если это был основной редактор, очищаем его сохраненное состояние
+    if (!clickedReplyId() && !editingCommentId()) {
+      setMainEditorContent('')
+    }
+
+    // Если это был ответ, очищаем его сохраненное состояние
+    if (clickedReplyId()) {
+      const replyId = clickedReplyId()
+      if (replyId !== undefined) {
+        setReplyEditorContents((prev) => {
+          const updated = { ...prev }
+          delete updated[`${replyId}`] // Используем строковый ключ
+          return updated
+        })
+      }
+    }
+
+    // Сбрасываем состояния редактирования
+    batch(() => {
+      setEditingCommentId(undefined)
+      setClickedReplyId(undefined)
+      setLocalContent('')
+    })
+  }
+
+  // Показываем основной редактор только если не редактируем комментарий и не отвечаем на комментарий
+  const showMainEditor = () => {
+    return !clickedReplyId() && !editingCommentId()
+  }
+
+  // Проверяем, должна ли кнопка "Сохранить" быть активной для основного редактора
+  const shouldEnableMainSaveButton = () => {
+    return !isContentEmpty(localContent())
+  }
+
   return (
     <ErrorBoundary fallback={(err) => <div>Error: {err.toString()}</div>}>
       <div>
         <Show when={!isLoading()} fallback={<Loading />}>
           {/* Показываем основной редактор только если не редактируем комментарий и не отвечаем на комментарий */}
-          <Show when={!clickedReplyId() && !editingCommentId()}>
+          <Show when={showMainEditor()}>
             <ShowIfAuthenticated fallback={<FallbackMessage />}>
               <div>
                 <SimpleRichEditor
@@ -1646,13 +1821,13 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                   placeholder={t('Write a comment...')}
                   onChange={handleEditorChange}
                   onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-new`)}
-                  content={getEditorContent(`draft-${props.shoutId}-comment-new`)}
+                  content={getEditorContent(`draft-${props.shoutId}-comment-new`) || mainEditorContent()}
                 />
                 <EditorControls
                   mode="new"
                   onSave={() => handleSubmitComment(undefined)}
                   onCancel={() => handleClear()}
-                  isDisabled={isContentEmpty(localContent())}
+                  isDisabled={!shouldEnableMainSaveButton()}
                 />
               </div>
             </ShowIfAuthenticated>

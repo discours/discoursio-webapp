@@ -100,7 +100,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           requestPolicy: 'network-only'
         }
       )
-      console.log('[drafts] full response:', JSON.stringify(response, null, 2))
 
       // Проверяем наличие данных в ответе
       if (!response?.data) {

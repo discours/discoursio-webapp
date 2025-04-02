@@ -2,7 +2,7 @@ import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show, createEffect, createSignal, lazy, onMount } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
+import { EditorData, SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { UploadModalContent } from '~/components/Upload/UploadModalContent/UploadModalContent'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
@@ -205,7 +205,7 @@ export const PublishSettings = () => {
                 placeholder={t('Come up with a title for your story')}
                 initialValue={settingsForm.title}
                 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-                value={(value: any) => setSettingsForm('title', value)}
+                onChange={(value: any) => setSettingsForm('title', value)}
                 allowEnterKey={false}
                 maxLength={100}
               />
@@ -216,16 +216,15 @@ export const PublishSettings = () => {
                 placeholder={t('Come up with a subtitle for your story')}
                 initialValue={settingsForm.subtitle || ''}
                 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-                value={(value: any) => setSettingsForm('subtitle', value)}
+                onChange={(value: any) => setSettingsForm('subtitle', value)}
                 allowEnterKey={false}
                 maxLength={100}
               />
               <SimpleRichEditor
-                bubble={true}
                 commands={['bold', 'italic']}
                 placeholder={t('Write a short introduction')}
                 content={composeDescription() || ''}
-                onChange={(value?: string) => value && setSettingsForm('description', value)}
+                onChange={(data?: EditorData) => setSettingsForm('description', data?.content || '')}
               />
             </div>
 

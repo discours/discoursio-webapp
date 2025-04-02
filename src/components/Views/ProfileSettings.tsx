@@ -347,6 +347,8 @@ export const ProfileSettings = () => {
                         updateFormField('about', String(sanitizeHtml(data.content)))
                       }
                       placeholder={t('About')}
+                      editorId={`profile-about-${session()?.user?.id || ''}`}
+                      fieldType="about"
                     />
                     <div class={clsx(styles.multipleControls, 'pretty-form__item')}>
                       <div class={styles.multipleControlsHeader}>

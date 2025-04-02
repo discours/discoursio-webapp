@@ -235,3 +235,17 @@
   width: 240px;
   padding-top: 100px;
 }
+
+// Добавляем стили для информационного сообщения автосохранения
+.autoSaveInfo {
+  margin-top: 2rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.autoSaveMessage {
+  font-size: 1.4rem;
+  color: var(--secondary-text-color);
+  font-style: italic;
+  opacity: 0.8;
+}

@@ -1,10 +1,9 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createEffect, createMemo, createSignal, onCleanup } from 'solid-js'
+import { Show, createMemo } from 'solid-js'
 
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
-import { useNotifications } from '~/context/notifications'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import type { Author } from '~/graphql/schema/core.gen'
@@ -14,6 +13,7 @@ import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 import { Popover } from '../_shared/Popover'
 import { Popup } from '../_shared/Popup'
+import NotificationsBell from './NotificationsBell'
 
 import styles from './Header.module.scss'
 
@@ -22,55 +22,10 @@ type Props = {
   showInboxButton?: boolean
 }
 
-type IconedButtonProps = {
-  value: string
-  icon: string
-  action: () => void
-}
-
-const MD_WIDTH_BREAKPOINT = 992
-
 // Компонент для режима редактирования
 const EditingHeader = (props: Props) => {
   const { t } = useLocalize()
-  const { publishDraft, currentDraft, toggleEditorPanel } = useDrafts()
-  const [width, setWidth] = createSignal(0)
-  const [editorMode, setEditorMode] = createSignal(t('Editing'))
-
-  createEffect(() => {
-    const handleResize = () => setWidth(window.innerWidth)
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    onCleanup(() => window.removeEventListener('resize', handleResize))
-  })
-
-  const IconedButton = (props: IconedButtonProps) => {
-    return (
-      <Show
-        when={width() < MD_WIDTH_BREAKPOINT}
-        fallback={
-          <Button
-            value={<span class={styles.textLabel}>{props.value}</span>}
-            variant={'light'}
-            onClick={props.action}
-            class={styles.editorControl}
-          />
-        }
-      >
-        <Popover content={props.value}>
-          {(ref) => (
-            <Button
-              ref={ref}
-              variant={'light'}
-              onClick={props.action}
-              value={<Icon name={props.icon} class={styles.icon} />}
-              class={styles.editorControl}
-            />
-          )}
-        </Popover>
-      </Show>
-    )
-  }
+  const { toggleEditorPanel } = useDrafts()
   const { session } = useSession()
   const loc = useLocation()
   const author = createMemo(() => session()?.user?.app_data?.profile as Author)
@@ -78,15 +33,28 @@ const EditingHeader = (props: Props) => {
 
   return (
     <>
-      <EditingSelector mode={editorMode()} setMode={setEditorMode} />
+      <ProfilePopup
+        onVisibilityChange={props.setIsProfilePopupVisible}
+        containerCssClass={styles.control}
+        trigger={
+          <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
+            <button class={styles.button}>
+              <div classList={{ entered: Boolean(matchProfile()) }}>
+                <Userpic
+                  size={'L'}
+                  name={author()?.name || ''}
+                  userpic={author()?.pic || ''}
+                  class={styles.userpic}
+                />
+              </div>
+            </button>
+          </div>
+        }
+      />
 
-      <div class={clsx(styles.userControlItem, styles.userControlItemVerbose)}>
-        <IconedButton
-          value={t('Publish')}
-          icon="publish"
-          action={() => publishDraft(currentDraft()?.id || 0)}
-        />
-      </div>
+      <EditingSelector mode={t('Editing')} setMode={toggleEditorPanel} />
+
+      <NotificationsBell />
 
       <div
         class={clsx(styles.userControlItem, styles.settingsControlContainer, styles.userControlItemVerbose)}
@@ -102,25 +70,6 @@ const EditingHeader = (props: Props) => {
             />
           )}
         </Popover>
-
-        <ProfilePopup
-          onVisibilityChange={props.setIsProfilePopupVisible}
-          containerCssClass={styles.control}
-          trigger={
-            <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
-              <button class={styles.button}>
-                <div classList={{ entered: Boolean(matchProfile()) }}>
-                  <Userpic
-                    size={'L'}
-                    name={author()?.name || ''}
-                    userpic={author()?.pic || ''}
-                    class={styles.userpic}
-                  />
-                </div>
-              </button>
-            </div>
-          }
-        />
       </div>
     </>
   )
@@ -130,17 +79,11 @@ const EditingHeader = (props: Props) => {
 const AuthorizedHeader = (props: Props) => {
   const { t } = useLocalize()
   const { session } = useSession()
-  const { unreadNotificationsCount, showNotificationsPanel } = useNotifications()
   const navigate = useNavigate()
   const loc = useLocation()
   const author = createMemo(() => session()?.user?.app_data?.profile as Author)
   const matchProfile = createMemo(() => loc.pathname.endsWith(author()?.slug))
   const matchInbox = createMemo(() => loc.pathname.endsWith('inbox'))
-
-  const handleBellIconClick = (event: Event) => {
-    event.preventDefault()
-    showNotificationsPanel()
-  }
 
   const handleCreatePostClick = (event: Event) => {
     event.preventDefault()
@@ -149,16 +92,7 @@ const AuthorizedHeader = (props: Props) => {
 
   return (
     <>
-      <div class={styles.userControlItem} onClick={handleBellIconClick}>
-        <div class={styles.button}>
-          <Icon name="bell-white" counter={unreadNotificationsCount?.() || 0} class={styles.icon} />
-          <Icon
-            name="bell-white-hover"
-            counter={unreadNotificationsCount?.() || 0}
-            class={clsx(styles.icon, styles.iconHover)}
-          />
-        </div>
-      </div>
+      <NotificationsBell />
 
       <div
         class={clsx(styles.userControlItem, styles.userControlItemVerbose, styles.userControlItemCreate)}
@@ -170,7 +104,7 @@ const AuthorizedHeader = (props: Props) => {
         </button>
       </div>
 
-      {props.showInboxButton && (
+      <Show when={props.showInboxButton}>
         <div class={clsx(styles.userControlItem, styles.userControlItemInbox)}>
           <A href={'/inbox'}>
             <div classList={{ entered: Boolean(matchInbox()) }}>
@@ -179,7 +113,7 @@ const AuthorizedHeader = (props: Props) => {
             </div>
           </A>
         </div>
-      )}
+      </Show>
 
       <ProfilePopup
         onVisibilityChange={props.setIsProfilePopupVisible}
