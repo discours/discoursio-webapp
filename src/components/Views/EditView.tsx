@@ -26,6 +26,7 @@ import sidebarStyles from '~/components/Sidebar/Sidebar.module.scss'
 import { Button } from '~/components/_shared/Button'
 import { DraftInput, useDrafts } from '~/context/drafts'
 import styles from '~/styles/views/EditView.module.scss'
+import { isEmptyContent } from '../SimpleRichEditor/lib/empty'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 
 export const MAX_HEADER_LIMIT = 100
@@ -200,15 +201,56 @@ export const EditView = (props: { draft?: Draft }) => {
     setIsLeadVisible(false)
   }
 
+  // Восстанавливаем функцию saveLead
   const saveLead = () => {
+    // Получаем содержимое из хранилища черновиков
     const leadContent = getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''
+
+    // Если содержимое пустое, отменяем редактирование и скрываем редактор
+    if (isEmptyContent(leadContent)) {
+      cancelLead()
+      return
+    }
+
+    // Сохраняем в черновик
     handleInputChange('lead', leadContent)
+
+    // Скрываем редактор
     hideLeadInput()
   }
 
+  // Обновляем функцию отмены редактирования
   const cancelLead = () => {
+    // Очищаем содержимое редактора в хранилище без сохранения в черновик
     setEditorContent(`draft-${currentDraft()?.id}-lead`, '')
+
+    // Скрываем редактор
     hideLeadInput()
+  }
+
+  // Функция, которая определяет, видны ли кнопки для редактора введения
+  const shouldShowLeadButtons = () => {
+    const leadContent = getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''
+    return !isEmptyContent(leadContent)
+  }
+
+  // Используем сигнал для отслеживания видимости кнопок
+  const [showLeadButtons, setShowLeadButtons] = createSignal(false)
+
+  // Эффект для обновления видимости кнопок при изменении содержимого
+  createEffect(() => {
+    if (isLeadVisible()) {
+      setShowLeadButtons(shouldShowLeadButtons())
+    }
+  })
+
+  // Обновляем обработчик изменений редактора введения
+  const handleLeadEditorChange = (data: EditorData) => {
+    // Обновляем видимость кнопок в зависимости от содержимого
+    setShowLeadButtons(!data.isEmpty)
+
+    // Передаем данные в родительский обработчик
+    handleInputChange('lead', data.content)
   }
 
   // Обработчики для кнопок в нижней панели
@@ -318,17 +360,23 @@ export const EditView = (props: { draft?: Draft }) => {
                     />
                   </Show>
                   <Show when={isLeadVisible()}>
-                    <SimpleRichEditor
-                      editorId={`draft-${currentDraft()?.id}-lead`}
-                      fieldType="lead"
-                      commands={['bold', 'italic', 'link']}
-                      placeholder={t('A short introduction to keep the reader interested')}
-                      content={getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''}
-                      onChange={(data: EditorData) => handleInputChange('lead', data.content)}
-                      showButtons={true}
-                      onSave={saveLead}
-                      onCancel={cancelLead}
-                    />
+                    <div class={styles.leadEditorWrapper}>
+                      <SimpleRichEditor
+                        editorId={`draft-${currentDraft()?.id}-lead`}
+                        fieldType="lead"
+                        commands={['bold', 'italic', 'link']}
+                        placeholder={t('A short introduction to keep the reader interested')}
+                        content={getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''}
+                        onChange={handleLeadEditorChange}
+                      />
+
+                      <Show when={showLeadButtons()}>
+                        <div class={styles.leadEditorButtons}>
+                          <Button variant="secondary" value={t('Cancel')} onClick={cancelLead} />
+                          <Button variant="primary" value={t('Save')} onClick={saveLead} />
+                        </div>
+                      </Show>
+                    </div>
                   </Show>
                   <Show when={!isLeadVisible() && currentDraft()?.lead}>
                     <div class={styles.leadContentDisplay} onClick={showLeadInput}>
@@ -462,7 +510,7 @@ export const EditView = (props: { draft?: Draft }) => {
       </div>
 
       {/* Фиксированная панель с кнопками сохранения и публикации */}
-      <div class={sidebarStyles.FixedBottomPanel}>
+      <div class={styles.fixedBottomPanel}>
         <div class="wide-container">
           <div class="row">
             <div class="col-md-19 col-lg-18 col-xl-16 offset-md-5">

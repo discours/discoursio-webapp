@@ -52,9 +52,13 @@ const EditingHeader = (props: Props) => {
         }
       />
 
-      <EditingSelector mode={t('Editing')} setMode={toggleEditorPanel} />
+      <span class={styles.notificationsBellContainer}>
+        <NotificationsBell />
+      </span>
 
-      <NotificationsBell />
+      <span class={styles.editorModePopupOpener}>
+        <EditingSelector mode={t('Editing')} setMode={toggleEditorPanel} />
+      </span>
 
       <div
         class={clsx(styles.userControlItem, styles.settingsControlContainer, styles.userControlItemVerbose)}
@@ -177,10 +181,10 @@ const EditingSelector = (props: { mode: string; setMode: (mode: string) => void 
   return (
     <Popup
       trigger={
-        <span class={styles.editorModePopupOpener}>
+        <div class={styles.editorModePopupOpener}>
           <Icon name="swiper-r-arr" class={styles.editorModePopupOpenerIcon} />
           {props.mode}
-        </span>
+        </div>
       }
       popupCssClass={styles.editorPopup}
     >
