@@ -42,54 +42,45 @@ const prepareSearchResults = (list: Shout[], searchValue: string) =>
 export const SearchModal = () => {
   const { t } = useLocalize()
   const { loadFeedSearch, searchFeed } = useFeed()
+  const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(false)
   const [inputValue, setInputValue] = createSignal('')
   const [isLoading, setIsLoading] = createSignal(false)
-  const [searchQuery, setSearchQuery] = createSignal<string | null>(null)
-  const [allResults, setAllResults] = createSignal<Shout[]>([])
-  const [displayedResults, setDisplayedResults] = createSignal<Shout[]>([])
-  const [displayedCount, setDisplayedCount] = createSignal(0)
-  const [hasMoreToDisplay, setHasMoreToDisplay] = createSignal(false)
+  const [offset, setOffset] = createSignal<number>(0)
+
+  const fetchSearchResults = async () => {
+    if (inputValue().trim().length < 3) {
+      return []
+    }
+    
+    console.debug('[SearchModal] Searching for:', inputValue())
+    setIsLoading(true)
+    saveScrollPosition()
+    
+    await loadFeedSearch(inputValue().trim(), {
+      offset: offset(),
+      limit: FEED_PAGE_SIZE
+    })
+    
+    const { hasMore, shouts: newShouts } = searchFeed()
+    console.debug('[SearchModal] Search API returned:', { 
+      totalResults: newShouts?.length || 0, 
+      hasMore 
+    })
+    
+    // Only increment offset if we got new results
+    if (newShouts && newShouts.length > 0) {
+      setOffset((current) => current + newShouts.length)
+    }
+    setIsLoadMoreButtonVisible(hasMore)
+    setIsLoading(false)
+    restoreScrollPosition()
+    
+    return newShouts || []
+  }
   
-  // Create a resource that depends on the searchQuery - this will only execute
-  // when searchQuery changes and is not null
-  const [_, { refetch }] = createResource(
-    searchQuery, 
-    async (query: string) => {
-      if (!query || query.length < 3) {
-        return null
-      }
-      
-      console.debug('[SearchModal] Searching for:', query)
-      setIsLoading(true)
-      saveScrollPosition()
-      
-      // Request a larger batch size (100 items) to reduce API calls
-      await loadFeedSearch(query, {
-        offset: 0,
-        limit: 100 // Request more items at once
-      })
-      
-      const { hasMore, shouts } = searchFeed()
-      console.debug('[SearchModal] Search API returned:', { 
-        totalResults: shouts?.length || 0, 
-        hasMore 
-      })
-      
-      // Store all results to allow pagination without additional API calls
-      setAllResults(shouts || [])
-      
-      // Only display the first page initially
-      const initialItems = (shouts || []).slice(0, FEED_PAGE_SIZE)
-      setDisplayedResults(initialItems)
-      setDisplayedCount(initialItems.length)
-      setHasMoreToDisplay((shouts?.length || 0) > FEED_PAGE_SIZE)
-      
-      setIsLoading(false)
-      restoreScrollPosition()
-      return query;
-    },
-    { ssrLoadFrom: 'initial', initialValue: null }
-  )
+  const [searchResultsList, { refetch: loadSearchResults, mutate: setSearchResultsList }] = createResource<
+    Shout[]
+  >(fetchSearchResults, { ssrLoadFrom: 'initial', initialValue: [] })
 
   const [searchEl, setSearchEl] = createSignal<HTMLInputElement | undefined>()
   
@@ -98,15 +89,12 @@ export const SearchModal = () => {
     const query = inputValue().trim()
     if (query.length >= 3) {
       console.debug('[SearchModal] debouncedSearch triggering search for:', query)
-      // Reset pagination state
-      setDisplayedCount(0)
-      setSearchQuery(query)
+      setOffset(0)
+      loadSearchResults()
     } else {
       console.debug('[SearchModal] Query too short, clearing results:', query)
-      setAllResults([])
-      setDisplayedResults([])
-      setDisplayedCount(0)
-      setHasMoreToDisplay(false)
+      setSearchResultsList([])
+      setIsLoadMoreButtonVisible(false)
     }
   })
 
@@ -120,10 +108,8 @@ export const SearchModal = () => {
       debouncedSearch()
     } else {
       // Clear results immediately if query is empty
-      setAllResults([])
-      setDisplayedResults([])
-      setDisplayedCount(0)
-      setHasMoreToDisplay(false)
+      setSearchResultsList([])
+      setIsLoadMoreButtonVisible(false)
     }
   }
 
@@ -137,15 +123,12 @@ export const SearchModal = () => {
       const query = inputValue().trim()
       if (query.length >= 3) {
         console.debug('[SearchModal] Enter key pressed, triggering immediate search')
-        // Reset pagination state
-        setDisplayedCount(0)
-        setSearchQuery(query)
+        setOffset(0)
+        loadSearchResults()
       } else {
         console.warn('[SearchModal] Query too short for search:', query)
-        setAllResults([])
-        setDisplayedResults([])
-        setDisplayedCount(0)
-        setHasMoreToDisplay(false)
+        setSearchResultsList([])
+        setIsLoadMoreButtonVisible(false)
       }
     }
   }
@@ -156,30 +139,23 @@ export const SearchModal = () => {
     console.debug('[SearchModal] cleanup debouncing search')
   })
 
-  // Load more function that just shows more of the already loaded results
   const loadMoreResults = async () => {
-    console.debug('[SearchModal] Loading more results from cached results')
-    const current = displayedCount()
-    const nextBatch = allResults().slice(current, current + FEED_PAGE_SIZE)
+    console.debug('[SearchModal] Loading more results')
     
-    if (nextBatch.length === 0) {
-      setHasMoreToDisplay(false)
-      return [] as LoadMoreItems
+    // If we're already at the end or loading, don't try to load more
+    if (!isLoadMoreButtonVisible() || isLoading()) {
+      return []
     }
     
-    setDisplayedCount(current + nextBatch.length)
-    setHasMoreToDisplay(current + nextBatch.length < allResults().length)
-    setDisplayedResults([...displayedResults(), ...nextBatch])
+    const result = await fetchSearchResults()
     
-    return nextBatch as LoadMoreItems
+    // If we got no results, ensure we don't keep trying
+    if (!result || result.length === 0) {
+      setIsLoadMoreButtonVisible(false)
+    }
+    
+    return result as LoadMoreItems
   }
-
-  const formattedResults = () => {
-    return prepareSearchResults(displayedResults(), inputValue());
-  }
-  
-  const hasResults = () => displayedResults().length > 0;
-  const searchState = () => (inputValue().trim().length >= 3 ? 'valid' : 'invalid');
 
   return (
     <div class={styles.searchContainer}>
@@ -198,9 +174,8 @@ export const SearchModal = () => {
           const query = inputValue().trim();
           if (query.length >= 3) {
             debouncedSearch.cancel(); // Cancel any pending debounced search
-            // Reset pagination state
-            setDisplayedCount(0)
-            setSearchQuery(query);
+            setOffset(0)
+            loadSearchResults();
           }
         }}
         value={isLoading() ? <div class={styles.searchLoader} /> : <Icon name="search" />}
@@ -214,17 +189,13 @@ export const SearchModal = () => {
       />
 
       <Show when={!isLoading()}>
-        <Show when={hasResults()}>
-          <div class={styles.resultsCount}>
-            {t('Found')}: {allResults().length} {t('results')}
-          </div>
-          
+        <Show when={searchResultsList()?.length > 0}>
           <LoadMoreWrapper
             loadFunction={loadMoreResults}
             pageSize={FEED_PAGE_SIZE}
-            hidden={!hasMoreToDisplay()}
+            hidden={!isLoadMoreButtonVisible()}
           >
-            <For each={formattedResults()}>
+            <For each={prepareSearchResults(searchResultsList(), inputValue())}>
               {(article: Shout) => (
                 <div>
                   <SearchResultItem
@@ -241,7 +212,7 @@ export const SearchModal = () => {
           </LoadMoreWrapper>
         </Show>
 
-        <Show when={searchState() === 'valid' && !hasResults() && !isLoading()}>
+        <Show when={inputValue().trim().length >= 3 && searchResultsList()?.length === 0}>
           <p class={styles.searchDescription} innerHTML={t("We couldn't find anything for your request")} />
         </Show>
       </Show>
