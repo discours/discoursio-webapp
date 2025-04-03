@@ -34,3 +34,7 @@ edge.*
 storybook-static
 app.config.*.js
 *.log
+
+#Stepan
+# Debug log ignoring
+DEBUG.log
