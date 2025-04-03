@@ -458,15 +458,20 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     loadPersonalFeed('coauthored', setCoauthoredFeed, client() as GraphQLClient, options(), opts)
 
   const loadFeedSearch = async (text: string, options: LoadShoutsOptions) => {
+    console.debug('[FeedProvider] loadFeedSearch called with:', { text, options })
     setSearchFeed((prev) => ({ ...prev, isLoading: true }))
     try {
+      console.debug('[FeedProvider] Calling loadShoutsSearch API...')
       const result = await loadShoutsSearch(text, options)()
+      console.debug('[FeedProvider] Search API returned:', { resultLength: result?.length, hasMore: (result || []).length >= (options.limit || FEED_PAGE_SIZE) })
+      
       setSearchFeed((prev) => ({
         shouts: options.offset ? [...prev.shouts, ...(result || [])] : result || [],
         isLoading: false,
         hasMore: (result || []).length >= (options.limit || FEED_PAGE_SIZE)
       }))
     } catch (error) {
+      console.error('[FeedProvider] Search API error:', error)
       setSearchFeed((prev) => ({ ...prev, isLoading: false, error: error as Error }))
     }
   }
