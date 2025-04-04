@@ -52,7 +52,7 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
       )
     setIsLoading(false)
     restoreScrollPosition()
-    // console.debug('LoadMoreWrapper.loadItems loaded:', newItems.length)
+    console.debug('LoadMoreWrapper.loadItems loaded:', newItems.length)
   }
 
   onMount(loadItems)
