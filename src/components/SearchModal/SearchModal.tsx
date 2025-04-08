@@ -40,113 +40,112 @@ const prepareSearchResults = (list: Shout[], searchValue: string) =>
   }))
 
 export const SearchModal = () => {
-  const { t } = useLocalize();
-  const { loadFeedSearch, searchFeed } = useFeed();
-  const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(false);
-  const [inputValue, setInputValue] = createSignal('');
-  const [isLoading, setIsLoading] = createSignal(false);
+  const { t } = useLocalize()
+  const { loadFeedSearch, searchFeed } = useFeed()
+  const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(false)
+  const [inputValue, setInputValue] = createSignal('')
+  const [isLoading, setIsLoading] = createSignal(false)
   const [offset, setOffset] = createSignal<number>(0)
 
   const fetchSearchResults = async () => {
     if (inputValue().trim().length < 3) {
-      return [];
+      return []
     }
-  
-    console.debug('[SearchModal] Searching for:', inputValue());
+
+    console.debug('[SearchModal] Searching for:', inputValue())
     setIsLoading(true)
     saveScrollPosition()
-  
 
-      await loadFeedSearch(inputValue().trim(), {
-        offset: offset(),
-        limit: FEED_PAGE_SIZE,
-      })
-  
-      const { hasMore, shouts: newShouts } = searchFeed()
-      setIsLoading(false)
-      setOffset(newShouts.length)
-      setIsLoadMoreButtonVisible(hasMore)
+    await loadFeedSearch(inputValue().trim(), {
+      offset: offset(),
+      limit: FEED_PAGE_SIZE
+    })
 
-      console.debug('[SearchModal] Initial search API returned:', {
-        totalResults: newShouts?.length || 0,
-        hasMore,
-      })
+    const { hasMore, shouts: newShouts } = searchFeed()
+    setIsLoading(false)
+    setOffset(newShouts.length)
+    setIsLoadMoreButtonVisible(hasMore)
 
-      return newShouts
+    console.debug('[SearchModal] Initial search API returned:', {
+      totalResults: newShouts?.length || 0,
+      hasMore
+    })
+
+    return newShouts
   }
 
   const [searchResultsList, { refetch: loadSearchResults, mutate: setSearchResultsList }] = createResource<
     Shout[]
-  >(fetchSearchResults, { ssrLoadFrom: 'initial', initialValue: [] });
+  >(fetchSearchResults, { ssrLoadFrom: 'initial', initialValue: [] })
 
-  const [searchEl, setSearchEl] = createSignal<HTMLInputElement | undefined>();
+  const [searchEl, setSearchEl] = createSignal<HTMLInputElement | undefined>()
 
   const debouncedSearch = debounce(500, () => {
-    const query = inputValue().trim();
+    const query = inputValue().trim()
     if (query.length >= 3) {
-      console.debug('[SearchModal] debouncedSearch triggering search for:', query);
-      loadSearchResults();
+      console.debug('[SearchModal] debouncedSearch triggering search for:', query)
+      loadSearchResults()
     } else {
-      console.debug('[SearchModal] Query too short, clearing results:', query);
-      setSearchResultsList([]);
-      setIsLoadMoreButtonVisible(false);
+      console.debug('[SearchModal] Query too short, clearing results:', query)
+      setSearchResultsList([])
+      setIsLoadMoreButtonVisible(false)
     }
-  });
+  })
 
-  const handleQueryInput = async() => {
-    const newValue = searchEl()?.value ?? '';
-    console.debug('[SearchModal] handdleQueryInput called with value:', newValue);
-    setInputValue(newValue);
+  const handleQueryInput = async () => {
+    const newValue = searchEl()?.value ?? ''
+    console.debug('[SearchModal] handdleQueryInput called with value:', newValue)
+    setInputValue(newValue)
 
     // Only debounce search if query is not empty
     if (newValue.trim()) {
-      debouncedSearch();
+      await debouncedSearch()
     } else {
       // Clear results immediately if query is empty
-      setSearchResultsList([]);
-      setIsLoadMoreButtonVisible(false);
+      setSearchResultsList([])
+      setIsLoadMoreButtonVisible(false)
     }
-  };
+  }
 
-  const enterQuery = async(ev: KeyboardEvent) => {
-    console.debug('[SearchMAodal] enterQuery called with key:', ev.key);
+  const enterQuery = async (ev: KeyboardEvent) => {
+    console.debug('[SearchMAodal] enterQuery called with key:', ev.key)
     setIsLoading(true)
 
     if (ev.key === 'Enter') {
       // Cancel any pending debounced search
-      debouncedSearch.cancel();
+      debouncedSearch.cancel()
 
-      const query = inputValue().trim();
+      const query = inputValue().trim()
       if (query.length >= 3) {
-        console.debug('[SearchModal] Enter key pressed, triggering immediate search');
-        loadSearchResults();
+        console.debug('[SearchModal] Enter key pressed, triggering immediate search')
+        await loadSearchResults()
       } else {
-        console.warn('[SearchModal] Query too short for search:', query);
-        setSearchResultsList([]);
-        setIsLoadMoreButtonVisible(false);
+        console.warn('[SearchModal] Query too short for search:', query)
+        setSearchResultsList([])
+        setIsLoadMoreButtonVisible(false)
       }
     }
 
     // Reset the scroll position
-    restoreScrollPosition();
+    await restoreScrollPosition()
     setIsLoading(false)
-    console.debug('[SearchModal] enterQuery finished, restoring scroll position');
+    console.debug('[SearchModal] enterQuery finished, restoring scroll position')
   }
 
   // Cleanup the debounce timer when the component unmounts
   onCleanup(() => {
-    debouncedSearch.cancel();
-    console.debug('[SearchModal] cleanup debouncing search');
-  });
+    debouncedSearch.cancel()
+    console.debug('[SearchModal] cleanup debouncing search')
+  })
 
-const loadMoreResults = async () => {
-  // Only fetch if there are more items to load
-  if (!isLoadMoreButtonVisible()) {
-    return [] as LoadMoreItems;
+  const loadMoreResults = async () => {
+    // Only fetch if there are more items to load
+    if (!isLoadMoreButtonVisible()) {
+      return [] as LoadMoreItems
+    }
+    const result = await fetchSearchResults()
+    return result as LoadMoreItems
   }
-  const result = await fetchSearchResults();
-  return result as LoadMoreItems;
-};
 
   return (
     <div class={styles.searchContainer}>
@@ -162,10 +161,10 @@ const loadMoreResults = async () => {
       <Button
         class={styles.searchButton}
         onClick={() => {
-          const query = inputValue().trim();
+          const query = inputValue().trim()
           if (query.length >= 3) {
-            debouncedSearch.cancel(); // Cancel any pending debounced search
-            loadSearchResults();
+            debouncedSearch.cancel() // Cancel any pending debounced search
+            loadSearchResults()
           }
         }}
         value={isLoading() ? <div class={styles.searchLoader} /> : <Icon name="search" />}
@@ -193,7 +192,7 @@ const loadMoreResults = async () => {
                     settings={{
                       isFloorImportant: true,
                       isSingle: true,
-                      nodate: true,
+                      nodate: true
                     }}
                   />
                 </div>
@@ -207,5 +206,5 @@ const loadMoreResults = async () => {
         </Show>
       </Show>
     </div>
-  );
-};
+  )
+}

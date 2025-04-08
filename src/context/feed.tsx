@@ -459,19 +459,19 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
   const loadFeedSearch = async (text: string, options: LoadShoutsOptions) => {
     console.debug('[FeedProvider] loadFeedSearch called with:', { text, options })
-    
+
     // Set loading state
     setSearchFeed((prev) => ({ ...prev, isLoading: true }))
-    
+
     try {
       console.debug('[FeedProvider] Calling loadShoutsSearch API...')
       const result = await loadShoutsSearch(text, options)()
-      console.debug('[FeedProvider] Search API returned:', { 
-        resultLength: result?.length, 
+      console.debug('[FeedProvider] Search API returned:', {
+        resultLength: result?.length,
         hasMore: (result || []).length >= (options.limit || FEED_PAGE_SIZE),
         offset: options.offset
       })
-      
+
       // If this is a new search (offset is 0), replace the entire list
       // Otherwise, append the new results to the existing list
       setSearchFeed((prev) => ({
@@ -482,9 +482,9 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
       }))
     } catch (error) {
       console.error('[FeedProvider] Search API error:', error)
-      setSearchFeed((prev) => ({ 
-        ...prev, 
-        isLoading: false, 
+      setSearchFeed((prev) => ({
+        ...prev,
+        isLoading: false,
         error: error as Error,
         // Only set isEmpty if this was an initial search
         isEmpty: options.offset === 0 ? true : prev.isEmpty
