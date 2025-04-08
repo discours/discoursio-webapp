@@ -1,8 +1,8 @@
-import { For, Show, createResource, createSignal, onCleanup } from 'solid-js'
+import { For, Show, createEffect, createResource, createSignal, onCleanup, onMount } from 'solid-js'
 import { debounce } from 'throttle-debounce'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
-import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import modalStyles from '~/components/_shared/Modal/Modal.module.scss'
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import type { Shout } from '~/graphql/schema/core.gen'
@@ -22,9 +22,8 @@ const getSearchCoincidences = ({ str, intersection }: { str: string; intersectio
   )}</span>`
 
 const prepareSearchResults = (list: Shout[], searchValue: string) =>
-  list.sort(byScore as (a: Shout, b: Shout) => number).map((article, index) => ({
+  list.sort(byScore as (a: Shout, b: Shout) => number).map((article) => ({
     ...article,
-    id: index,
     title: article.title
       ? getSearchCoincidences({
           str: article.title,
@@ -42,110 +41,140 @@ const prepareSearchResults = (list: Shout[], searchValue: string) =>
 export const SearchModal = () => {
   const { t } = useLocalize()
   const { loadFeedSearch, searchFeed } = useFeed()
-  const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(false)
+  const sentinelStyle = { height: '1px', padding: '0', margin: '0', opacity: '0' }
   const [inputValue, setInputValue] = createSignal('')
   const [isLoading, setIsLoading] = createSignal(false)
   const [offset, setOffset] = createSignal<number>(0)
+  const [hasMore, setHasMore] = createSignal(false)
+  const [sentinelEl, setSentinelEl] = createSignal<HTMLDivElement>()
 
-  const fetchSearchResults = async () => {
+  const fetchSearchResults = async (resetResults = false) => {
     if (inputValue().trim().length < 3) {
       return []
     }
 
-    console.debug('[SearchModal] Searching for:', inputValue())
+    const currentOffset = resetResults ? 0 : offset()
+
     setIsLoading(true)
     saveScrollPosition()
 
+    if (resetResults) {
+      setOffset(0)
+      setSearchResultsList([])
+    }
+
     await loadFeedSearch(inputValue().trim(), {
-      offset: offset(),
+      offset: currentOffset,
       limit: FEED_PAGE_SIZE
     })
 
-    const { hasMore, shouts: newShouts } = searchFeed()
+    const { hasMore: more, shouts: newShouts } = searchFeed()
+
     setIsLoading(false)
-    setOffset(newShouts.length)
-    setIsLoadMoreButtonVisible(hasMore)
+    setOffset(currentOffset + (newShouts?.length || 0))
+    setHasMore(more)
 
-    console.debug('[SearchModal] Initial search API returned:', {
-      totalResults: newShouts?.length || 0,
-      hasMore
-    })
+    if (newShouts?.length) {
+      setSearchResultsList(newShouts)
+    }
 
-    return newShouts
+    restoreScrollPosition()
+    return resetResults ? newShouts || [] : []
   }
 
-  const [searchResultsList, { refetch: loadSearchResults, mutate: setSearchResultsList }] = createResource<
-    Shout[]
-  >(fetchSearchResults, { ssrLoadFrom: 'initial', initialValue: [] })
+  const [searchResultsList, { mutate: setSearchResultsList }] = createResource<Shout[]>(
+    fetchSearchResults,
+    { ssrLoadFrom: 'initial', initialValue: [] }
+  )
 
   const [searchEl, setSearchEl] = createSignal<HTMLInputElement | undefined>()
 
   const debouncedSearch = debounce(500, () => {
     const query = inputValue().trim()
     if (query.length >= 3) {
-      console.debug('[SearchModal] debouncedSearch triggering search for:', query)
-      loadSearchResults()
+      fetchSearchResults(true)
     } else {
-      console.debug('[SearchModal] Query too short, clearing results:', query)
       setSearchResultsList([])
-      setIsLoadMoreButtonVisible(false)
+      setHasMore(false)
+      setOffset(0)
     }
   })
 
   const handleQueryInput = async () => {
     const newValue = searchEl()?.value ?? ''
-    console.debug('[SearchModal] handdleQueryInput called with value:', newValue)
     setInputValue(newValue)
 
-    // Only debounce search if query is not empty
     if (newValue.trim()) {
       await debouncedSearch()
     } else {
-      // Clear results immediately if query is empty
       setSearchResultsList([])
-      setIsLoadMoreButtonVisible(false)
+      setHasMore(false)
+      setOffset(0)
     }
   }
 
   const enterQuery = async (ev: KeyboardEvent) => {
-    console.debug('[SearchMAodal] enterQuery called with key:', ev.key)
+    if (ev.key !== 'Enter') return
+
     setIsLoading(true)
+    debouncedSearch.cancel() // Cancel any pending debounced search
 
-    if (ev.key === 'Enter') {
-      // Cancel any pending debounced search
-      debouncedSearch.cancel()
-
-      const query = inputValue().trim()
-      if (query.length >= 3) {
-        console.debug('[SearchModal] Enter key pressed, triggering immediate search')
-        await loadSearchResults()
-      } else {
-        console.warn('[SearchModal] Query too short for search:', query)
-        setSearchResultsList([])
-        setIsLoadMoreButtonVisible(false)
-      }
+    const query = inputValue().trim()
+    if (query.length >= 3) {
+      await fetchSearchResults(true)
+    } else {
+      setSearchResultsList([])
+      setHasMore(false)
+      setOffset(0)
     }
 
-    // Reset the scroll position
     await restoreScrollPosition()
     setIsLoading(false)
-    console.debug('[SearchModal] enterQuery finished, restoring scroll position')
   }
 
-  // Cleanup the debounce timer when the component unmounts
-  onCleanup(() => {
-    debouncedSearch.cancel()
-    console.debug('[SearchModal] cleanup debouncing search')
+  // Setup intersection observer for infinite scroll
+  let observer: IntersectionObserver | undefined
+
+  const setupObserver = () => {
+    if (observer) observer.disconnect()
+
+    const modalInnerElement = document.querySelector(`.${modalStyles.modalInner}`) as Element
+    if (!modalInnerElement) return
+
+    observer = new IntersectionObserver(
+      async (entries) => {
+        if (entries[0].isIntersecting && hasMore() && !isLoading()) {
+          await fetchSearchResults(false)
+        }
+      },
+      {
+        root: modalInnerElement,
+        rootMargin: '100px',
+        threshold: 0.1
+      }
+    )
+
+    const element = sentinelEl()
+    if (element) {
+      observer.observe(element)
+    }
+  }
+
+  // Observer setup effect
+  createEffect(() => {
+    if (sentinelEl()) {
+      // Use a small delay to ensure the modal is fully rendered
+      setTimeout(setupObserver, 100)
+    }
   })
 
-  const loadMoreResults = async () => {
-    // Only fetch if there are more items to load
-    if (!isLoadMoreButtonVisible()) {
-      return [] as LoadMoreItems
-    }
-    const result = await fetchSearchResults()
-    return result as LoadMoreItems
-  }
+  // Lifecycle hooks
+  onMount(setupObserver)
+
+  onCleanup(() => {
+    debouncedSearch.cancel()
+    if (observer) observer.disconnect()
+  })
 
   return (
     <div class={styles.searchContainer}>
@@ -164,7 +193,7 @@ export const SearchModal = () => {
           const query = inputValue().trim()
           if (query.length >= 3) {
             debouncedSearch.cancel() // Cancel any pending debounced search
-            loadSearchResults()
+            fetchSearchResults(true)
           }
         }}
         value={isLoading() ? <div class={styles.searchLoader} /> : <Icon name="search" />}
@@ -177,13 +206,9 @@ export const SearchModal = () => {
         )}
       />
 
-      <Show when={!isLoading()}>
-        <Show when={searchResultsList()?.length > 0}>
-          <LoadMoreWrapper
-            loadFunction={loadMoreResults}
-            pageSize={FEED_PAGE_SIZE}
-            hidden={!isLoadMoreButtonVisible()}
-          >
+      <Show when={!isLoading() || searchResultsList().length > 0}>
+        <Show when={searchResultsList().length > 0}>
+          <div class={styles.searchResults}>
             <For each={prepareSearchResults(searchResultsList(), inputValue())}>
               {(article: Shout) => (
                 <div>
@@ -198,12 +223,31 @@ export const SearchModal = () => {
                 </div>
               )}
             </For>
-          </LoadMoreWrapper>
+
+            {/* Sentinel element for infinite scroll */}
+            <div ref={setSentinelEl} data-testid="search-sentinel" style={sentinelStyle}>
+              <Show when={isLoading() && hasMore()}>
+                <div class={styles.searchLoader} />
+              </Show>
+            </div>
+
+            {/* Loading indicator at the bottom when loading more */}
+            <Show when={isLoading() && searchResultsList().length > 0}>
+              <div class={styles.searchLoader} />
+            </Show>
+          </div>
         </Show>
 
-        <Show when={inputValue().trim().length >= 3 && searchResultsList()?.length === 0}>
+        <Show when={inputValue().trim().length >= 3 && searchResultsList().length === 0 && !isLoading()}>
           <p class={styles.searchDescription} innerHTML={t("We couldn't find anything for your request")} />
         </Show>
+      </Show>
+
+      {/* Show initial loading state when there are no results yet */}
+      <Show when={isLoading() && searchResultsList().length === 0}>
+        <div class={styles.loadingContainer}>
+          <div class={styles.searchLoader} />
+        </div>
       </Show>
     </div>
   )

@@ -114,6 +114,19 @@
   animation: rotation 1s linear infinite;
 }
 
+.searchResults {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
 @keyframes rotation {
   0% {
     transform: rotate(0deg);
