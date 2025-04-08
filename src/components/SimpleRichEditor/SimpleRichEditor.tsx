@@ -1,31 +1,27 @@
 import { clsx } from 'clsx'
-import { Component, createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
+import { Component, For, createEffect, createRoot, createSignal, on, onCleanup, onMount } from 'solid-js'
 import { Show } from 'solid-js'
-import { Portal } from 'solid-js/web'
 import { isServer } from 'solid-js/web'
+import { Portal } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
-
-import { UploadModalContent } from '~/components/Upload/UploadModalContent/UploadModalContent'
-import { Button } from '~/components/_shared/Button'
-import { InlineForm } from '~/components/_shared/InlineForm'
-import { Modal } from '~/components/_shared/Modal'
+import { AudioUploader } from '~/components/Upload/AudioUploader'
+import { InlineForm } from '~/components/_shared/InlineForm/InlineForm'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
 import { MODALS } from '~/context/ui'
+import { MediaItem } from '~/graphql/schema/core.gen'
 import { UploadedFile } from '~/types/upload'
-import { CommandGroupType, CommandType, MENU_GROUPS } from './lib/commands'
+import { handleEditorAction } from './lib/actions'
+import { handleAudioUploaderResult } from './lib/audio'
+import { CommandGroupType, CommandType, MENU_GROUPS, MICRO_COMMANDS, isGroup } from './lib/commands'
 import { useDropFiles } from './lib/drop'
 import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
-import { insertFootnote } from './lib/footnotes'
-import { FORMAT_CONFIG, applyFormatting, hasFormatting, removeFormatting } from './lib/format'
-import { calculateMenuPosition, getMenuPosition, useSelection } from './lib/selection'
-import { Position } from './lib/types'
-import { PlusMenu } from './menu/PlusMenu'
-import { SimpleToolbar } from './menu/SimpleToolbar'
-import { SquibMenu } from './menu/SquibMenu'
-
-import styles from './SimpleRichEditor.module.scss'
 import { isEmptyContent } from './lib/empty'
+import { getAllFootnotes, getFootnoteById, insertFootnote, removeFootnote } from './lib/footnotes'
+import { getEditorPosition } from './lib/helpers'
+import { validateUrl } from './lib/link'
+import { useSelection } from './lib/selection'
+import { EditorState } from './lib/state'
 import {
   ContentVersion,
   cleanupJsonContent,
@@ -34,24 +30,21 @@ import {
   getStorageKey,
   loadLocalVersionContent,
   loadVersions,
-  removeLocalVersion,
   saveContent,
   saveVersionToStorage
 } from './lib/storage'
-import {
-  isSelectionInElement as isSelInEditor,
-  replaceSelection,
-  trackSelectionAndCursor
-} from './lib/utils'
+import { Position } from './lib/types'
+import { isSelectionInElement, replaceSelection, trackSelectionAndCursor } from './lib/utils'
+import { InlineFormOptions, validateVideoUrl, validateWebUrl } from './lib/validation'
+import { PlusMenu, handlePlusMenuAction, handleSquibFormatting } from './menu/PlusMenu'
+import { SimpleToolbar, ToolbarMode } from './menu/SimpleToolbar'
+import { SquibMenu } from './menu/SquibMenu'
 
-export type EditorCommandId = keyof typeof MENU_GROUPS
-export type EditorCommandGroup = EditorCommandId[]
-export type EditorCommands = EditorCommandId[] | EditorCommandGroup[]
+import styles from './SimpleRichEditor.module.scss'
 
-const WEB_URL_REGEX = /^(https|http)?:\/\//
-const VIMEO_URL_REGEX = /^(https?:\/\/)?(www\.)?vimeo\.com\/([0-9]+)/
-const YOUTUBE_URL_REGEX = /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/
-
+// Типы для форм
+export type FormType = 'link' | 'video' | 'audio' | null
+const noop = () => undefined
 const DRAFT_REGEX = /draft-(\d+)-/
 
 export interface EditorData {
@@ -70,48 +63,36 @@ export interface EditorData {
 export type EditorFieldType = 'body' | 'lead' | 'description' | 'about' | 'comment'
 
 export interface SimpleRichEditorProps {
-  commands?: CommandType[] | CommandGroupType[]
-  plus?: boolean
-  squib?: boolean
-  editorId?: string
-  commentId?: number | string
+  onChange: (data: EditorData) => void
+  toolbar?: ToolbarMode
   content?: string
-  readOnly?: boolean
-  limit?: number
+  commands?: CommandType[]
+  plus?: boolean
   placeholder?: string
   autofocus?: boolean
-  onBlur?: () => void
-  onChange: (data: EditorData) => void
-  collaborative?: boolean
-  fieldId?: string
-  onCollabCursorUpdate?: (position: Position) => void
-  toolbar?: 'top' | 'bottom' | 'float' | 'hidden'
+  readOnly?: boolean
+  editorId?: string
   fieldType?: EditorFieldType
-  // Добавляем колбэки для кнопок сохранения и отмены
-  onSave?: () => void
-  onCancel?: () => void
-  // Флаг для отображения кнопок сохранения и отмены
-  showButtons?: boolean
-}
-
-// Типы для структуры меню
-export type MenuGroupId = keyof typeof MENU_GROUPS
-export type MenuItemType = 'button' | 'dropdown'
-export type MenuGroup = {
-  id: MenuGroupId
-  type: MenuItemType
-  icon?: string // для dropdown кнопок
-  commands?: EditorCommandId[][]
-}
-
-// Add new types
-interface EditorState {
-  content: string
-  selection?: Selection
-  cursorPosition?: Position
+  collaborative?: boolean
+  onInit?: (instance: { editor: HTMLDivElement }) => void
+  onCollabCursorUpdate?: (data: Position) => void
+  onBlur?: () => void
+  onFocus?: () => void
 }
 
 export const CURSOR_UPDATE_PERIOD = 1000
+
+// Для хранения опций форм между вызовами
+let editorFormOptions: InlineFormOptions | null = null
+
+// Сигналы для работы с ресурсами редактора
+const [editingFootnote, setEditingFootnote] = createSignal<HTMLElement | null>(null)
+const [footnoteContent, setFootnoteContent] = createSignal<string>('')
+// импорт переменных из state вместо signals
+import {
+  setDocumentFootnotes as setStateDocumentFootnotes,
+  documentFootnotes as stateDocumentFootnotes
+} from './lib/state'
 
 /**
  * Универсальный rich text редактор с различными режимами отображения
@@ -163,6 +144,13 @@ export const CURSOR_UPDATE_PERIOD = 1000
  */
 
 export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
+  // Отладочная информация при создании компонента
+  console.log('[SimpleRichEditor] Creating editor:', {
+    editorId: props.editorId,
+    fieldType: props.fieldType,
+    toolbar: props.toolbar
+  })
+
   const { t } = useLocalize()
   const { showModal, hideModal } = useUI()
   const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
@@ -172,15 +160,70 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [showSquibEditor, setShowSquibEditor] = createSignal(false)
   const [showFootnoteEditor, setShowFootnoteEditor] = createSignal(false)
   const [hasFocus, setHasFocus] = createSignal(false)
-  let blurTimer: number
+  // Добавляем состояния для инлайн-форм
+  const [showForm, setShowForm] = createSignal<FormType>(null)
+  const [formPosition, setFormPosition] = createSignal<Position | null>(null)
+  const [formInitialValue, setFormInitialValue] = createSignal('')
+  // Состояние для множественных врезок
+  // Удаляем неиспользуемый currentSquibId
+  // const [currentSquibId, setCurrentSquibId] = createSignal<string | null>(null)
+  const [squibMenuPosition, setSquibMenuPosition] = createSignal<{
+    top: number
+    left: number
+    isVisible?: boolean
+  }>({
+    top: 50,
+    left: 50,
+    isVisible: true
+  })
+  // Используем переменную для хранения таймера
+  let blurTimerRef = 0
 
   // Применяем очистку к входящему контенту
   const initialContent = cleanupJsonContent(props.content)
 
   // Функция для проверки необходимости показа плюс-меню
   const shouldShowPlusMenu = () => {
-    // Показываем плюс-меню всегда для редактора основного тела или когда редактор в фокусе
-    return props.plus && (hasFocus() || props.fieldType === 'body')
+    // Показываем плюс-меню если редактор в фокусе и курсор на пустой строке
+    // или в начале/конце редактора, при условии что другие меню не открыты
+    const isNewLine = isCursorOnEmptyLine()
+    const isEditorInFocus = hasFocus()
+    const isNoOtherMenuOpen = !showForm() && !showSquibEditor()
+    const isPlusEnabled = props.plus
+
+    // Важно: показываем и на пустых строках, и на строках с содержимым
+    // когда курсор находится в позиции для добавления нового содержимого
+    return isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen
+  }
+
+  // Дополнительная функция для проверки пустого содержимого
+  const isEditorEmpty = () => {
+    const editor = editorRef()
+    if (!editor) return true
+
+    // Проверяем содержимое на пустоту и наличие только пробельных символов
+    const content = editor.innerHTML.trim()
+
+    // Проверка на пустой параграф (часто формируется редактором)
+    if (content === '<p><br></p>' || content === '<p></p>') return true
+
+    // Проверка на содержание только HTML-тегов без текста
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = content
+    const textContent = tempDiv.textContent?.trim() || ''
+
+    return textContent === ''
+  }
+
+  // Функция для проверки необходимости показа плавающего тулбара
+  const shouldShowFloatingToolbar = () => {
+    return (
+      props.toolbar === 'float' && // 1. Активен режим float (props.toolbar === 'float')
+      selection()?.text &&
+      !selection()?.isEmpty && // 2. Есть непустое выделение
+      hasFocus() && // 3. Редактор в фокусе
+      !showForm() // 4. У нас не открыта форма вставки ссылки
+    )
   }
 
   // Состояние для управления локальной версией
@@ -195,8 +238,21 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
   // New collaborative state management
   const [editorState, setEditorState] = createSignal<EditorState>({
+    id: props.editorId || `editor-${Math.random().toString(36).slice(2)}`,
     content: props.content || '',
-    cursorPosition: undefined
+    selection: {
+      range: null,
+      text: '',
+      isEmpty: true,
+      position: { top: 0, left: 0 }
+    },
+    activeFormats: new Set<CommandType>(),
+    history: { undo: [], redo: [] },
+    isBlurred: false,
+    cursorPosition: { top: 0, left: 0 },
+    setActiveFormats: noop,
+    setContent: noop,
+    setIsBlurred: noop
   })
 
   // Debounced state updates
@@ -367,23 +423,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     )
   )
 
-  const [squibContent, setSquibContent] = createSignal('')
-  const [footnoteContent, setFootnoteContent] = createSignal('')
-
-  createEffect(
-    on(squibContent, (s?: string) => {
-      if (!s) return
-      console.log('squibContent', s)
-      props.onChange({
-        content: s,
-        plainText: s,
-        length: s.length,
-        isEmpty: s.trim().length === 0,
-        selection: { text: s, isEmpty: s.trim().length === 0 }
-      })
-    })
-  )
-
+  // Добавляем эффект для footnoteContent
   createEffect(
     on(footnoteContent, (s?: string) => {
       if (!s) return
@@ -437,8 +477,39 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           setCursorPosition: params.setCursorPosition,
           setToolbar: params.setToolbar,
           isEmptyContent: params.isEmptyContent,
-          toolbarMode: params.toolbarMode
+          toolbarMode: params.toolbarMode,
+          editorId: props.editorId // Передаем идентификатор редактора
         })
+
+        // После обновления позиции курсора обновляем отображение меню
+        if (hasFocus() && props.fieldType === 'body') {
+          // Для плавного обновления UI используем requestAnimationFrame
+          requestAnimationFrame(() => {
+            // Дополнительная проверка текущей позиции курсора
+            const sel = window.getSelection()
+            if (sel && sel.rangeCount > 0) {
+              const range = sel.getRangeAt(0)
+              const editor = params.editorRef()
+
+              // Если курсор в редакторе, обновляем его позицию
+              if (editor?.contains(range.commonAncestorContainer)) {
+                const rect = range.getBoundingClientRect()
+
+                if (rect && rect.height > 0) {
+                  // Получаем относительные координаты внутри редактора
+                  const editorRect = editor.getBoundingClientRect()
+                  const relativeTop = rect.top - editorRect.top
+
+                  // Обновляем позицию курсора для более точного позиционирования меню
+                  params.setCursorPosition({
+                    top: relativeTop,
+                    left: rect.left - editorRect.left
+                  })
+                }
+              }
+            }
+          })
+        }
       }
     }
   }
@@ -450,7 +521,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     isServer,
     editorRef,
     updateActiveFormats,
-    isSelectionInEditor: (editor: HTMLElement | null) => isSelInEditor(editor),
+    isSelectionInEditor: (editor: HTMLElement | null) => isSelectionInElement(editor),
     setSelection,
     setCursorPosition,
     setToolbar,
@@ -484,7 +555,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   createEffect(() => {
     const selectionInfo = selection()
     const editor = editorRef()
-    if (!selectionInfo.isEmpty && editor && isSelInEditor(editor)) {
+    if (!selectionInfo.isEmpty && editor && isSelectionInElement(editor)) {
       // Обновляем активные форматы при изменении выделения
       updateActiveFormats()
       // Показываем тулбар только при выделении
@@ -495,7 +566,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     }
   })
 
-  // Отслеживает изменения выделения и обновляет состояние редактора
+  /**
+   * Обработчик изменений в редакторе
+   */
   const handleChange = () => {
     if (!editorRef()) return
 
@@ -508,23 +581,24 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     const isEmpty = text.length === 0
 
     // Проверяем, что выделение внутри редактора
-    if (!isSelInEditor(editor)) {
+    if (!isSelectionInElement(editor)) {
       return
     }
 
     // Отслеживаем изменения форматирования и позицию курсора
     handleTrackSelectionAndCursor()
 
-    // Изменяем видимость тулбара в зависимости от режима отображения
-    if (!props.toolbar || props.toolbar === 'float') {
-      // Bubble toolbar - показываем только при выделении текста
-      if (isEmpty) {
-        setToolbar('hidden')
-      } else {
-        setToolbar('float')
-      }
+    // Видимость тулбара зависит от режима отображения
+    if (props.toolbar) {
+      // Если режим явно указан, то используем его
+      setToolbar(props.toolbar)
+    } else if (props.fieldType === 'comment') {
+      // Для комментариев по умолчанию bottom
+      setToolbar('bottom')
+    } else {
+      // Для остальных полей float по умолчанию, скрываем если нет выделения
+      setToolbar(isEmpty ? 'hidden' : 'float')
     }
-    // В фиксированных режимах тулбар уже отображается
 
     // Получаем текущий HTML-контент редактора и очищаем от JSON-структур
     const rawContent = editor.innerHTML || ''
@@ -538,6 +612,20 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
     // Проверяем, является ли контент пустым (нет текста и медиа)
     const editorIsEmpty = isEmptyContent(contentHtml)
+
+    // Проверяем необходимость обновления плейсхолдера
+    // Проверяем только при изменении статуса пустоты, чтобы избежать мигания
+    if (editorIsEmpty !== shouldShowPlaceholderState()) {
+      updatePlaceholderWithDelay(editorIsEmpty)
+      // biome-ignore lint/style/useCollapsedElseIf: ok
+    } else {
+      // Обновляем класс плейсхолдера для отображения
+      if (editorIsEmpty) {
+        editor.classList.add('placeholder-visible')
+      } else {
+        editor.classList.remove('placeholder-visible')
+      }
+    }
 
     // Создаем данные для отправки родительскому компоненту
     const plainText = editor.innerText || ''
@@ -574,71 +662,44 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     props.onChange(editorData)
   }
 
-  // Handle input changes
-  const handleInput = () => {
-    if (!editorRef()) return
+  // Обработчик ввода данных пользователем
+  const handleInput = (_e: InputEvent) => {
+    // Получаем элемент редактора и проверяем, пуст ли он
+    const editor = editorRef()
+    if (!editor) return
 
-    const html = editorRef()!.innerHTML || ''
+    // Получаем HTML-содержимое редактора
+    const contentHtml = editor.innerHTML
 
-    // Очищаем от JSON-строк перед сохранением
-    const cleanContent = cleanupJsonContent(html)
+    // Проверяем пустоту содержимого
+    const editorIsEmpty = isEmptyContent(contentHtml)
 
-    setContent(cleanContent)
+    // Проверяем находится ли курсор на новой строке
+    const onNewLine = isCursorOnEmptyLine()
 
-    // Сохраняем текущую позицию курсора перед обновлением
-    saveSelection()
+    // Управляем классом для отображения плейсхолдера на новой строке
+    if (onNewLine && !editorIsEmpty) {
+      editor.classList.add('show-placeholder-on-new-line')
+    } else {
+      editor.classList.remove('show-placeholder-on-new-line')
+    }
 
-    // Обновляем позицию курсора и состояние выделения
-    handleTrackSelectionAndCursor()
-
-    // Обновляем состояние выделения
-    updateActiveFormats()
-
-    // Проверяем на пустое содержимое для корректной работы плейсхолдера
-    if (editorRef()) {
-      const onlyBr =
-        editorRef()!.innerHTML === '<br>' ||
-        editorRef()!.innerHTML === '<br/>' ||
-        editorRef()!.innerHTML === '<p><br></p>' ||
-        editorRef()!.innerHTML === ''
-      // Если содержимое пустое или содержит только BR, очищаем редактор
-      if (onlyBr) {
-        editorRef()!.innerHTML = ''
+    // Проверяем необходимость обновления плейсхолдера
+    // Проверяем только при изменении статуса пустоты, чтобы избежать мигания
+    if (editorIsEmpty !== shouldShowPlaceholderState()) {
+      updatePlaceholderWithDelay(editorIsEmpty)
+      // biome-ignore lint/style/useCollapsedElseIf: ok
+    } else {
+      // Обновляем класс плейсхолдера для отображения
+      if (editorIsEmpty) {
+        editor.classList.add('placeholder-visible')
+      } else {
+        editor.classList.remove('placeholder-visible')
       }
     }
 
-    // Используем улучшенную функцию проверки пустого контента (учитывает наличие медиа)
-    const isEmpty = isEmptyContent(cleanContent)
-
-    // Отправляем данные родителю
-    const plainText = editorRef()!.innerText || ''
-
-    const editorData = {
-      content: cleanContent,
-      plainText,
-      length: plainText.length,
-      isEmpty,
-      selection: selection()
-    }
-
-    // Используем функцию из storage.ts для сохранения контента
-    if (props.editorId) {
-      saveContent(props.editorId, props.fieldType as EditorFieldType, cleanContent, isEmpty)
-    }
-
-    // Отправляем данные родителю
-    props.onChange(editorData)
-
-    // Обновляем состояние для совместного редактирования
-    if (props.collaborative) {
-      debouncedStateUpdate({
-        content: cleanContent,
-        cursorPosition: cursorPosition() || undefined
-      })
-    }
-
-    // Восстанавливаем выделение
-    restoreSelection()
+    // Обновляем редактор
+    handleChange()
   }
 
   // Menu modes
@@ -653,40 +714,75 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
   // Focus and blur
   const handleFocus = () => {
-    clearTimeout(blurTimer)
-    setHasFocus(true)
-
-    // Show fixed toolbar immediately on focus if not in float mode
-    if (props.toolbar && props.toolbar !== 'float') {
-      setToolbar(props.toolbar)
+    // Если таймаут для сокрытия тулбара был установлен, очищаем его
+    if (blurTimerRef) {
+      clearTimeout(blurTimerRef)
+      blurTimerRef = 0
     }
 
-    // Обновляем позицию курсора для правильного отображения плюс-меню
-    handleTrackSelectionAndCursor()
+    // Устанавливаем флаг, что редактор в фокусе
+    setHasFocus(true)
 
-    // Устанавливаем курсор в конец, если это первый фокус и контент не пустой
-    const windowSelection = window.getSelection()
-    if (windowSelection && windowSelection.rangeCount === 0 && editorRef()!.childNodes.length > 0) {
-      const range = document.createRange()
-      range.selectNodeContents(editorRef()!)
-      range.collapse(false) // Коллапсируем в конец
-      windowSelection.removeAllRanges()
-      windowSelection.addRange(range)
-      handleTrackSelectionAndCursor() // Обновляем информацию о выделении
+    // Проверяем позицию курсора для отображения плейсхолдера на новой строке
+    const editor = editorRef()
+    if (editor) {
+      // Проверяем, находится ли курсор на новой строке
+      const onNewLine = isCursorOnEmptyLine()
+
+      // Если курсор на новой строке и контент не полностью пустой
+      if (onNewLine && !isEmptyContent(editor.innerHTML)) {
+        editor.classList.add('show-placeholder-on-new-line')
+      } else {
+        editor.classList.remove('show-placeholder-on-new-line')
+      }
+
+      // Если плейсхолдер уже не должен отображаться для пустого редактора
+      if (!isEmptyContent(editor.innerHTML)) {
+        setShouldShowPlaceholderState(false)
+        editor.classList.remove('placeholder-visible')
+      }
+    }
+
+    // Устанавливаем режим тулбара при фокусе в соответствии с props.toolbar
+    // Для режима float не показываем тулбар сразу, а только при выделении текста
+    if (props.toolbar === 'float') {
+      const selection = window.getSelection()
+      const hasSelection = selection ? selection.toString().length > 0 : false
+      setToolbar(hasSelection ? 'float' : 'hidden')
+    } else if (props.toolbar !== 'hidden') {
+      setToolbar(props.toolbar || 'float')
+    }
+
+    // Логируем, что редактор получил фокус
+    console.log('[SimpleRichEditor] focus', { editorId: props.editorId })
+
+    // Если есть обработчик onFocus, вызываем его
+    if (props.onFocus) {
+      props.onFocus()
     }
   }
 
-  const handleBlur = (e: FocusEvent) => {
-    // Проверяем, что фокус не переходит на элемент внутри редактора
-    if (!editorRef()?.contains(e.relatedTarget as Node)) {
-      blurTimer = window.setTimeout(() => {
-        setHasFocus(false)
-        if (props.toolbar === 'float') {
-          setToolbar('hidden')
+  // Функция для обработки потери фокуса редактором
+  const handleBlur = (_e: FocusEvent) => {
+    // Устанавливаем таймаут для обработки потери фокуса
+    // Это нужно, чтобы дать время для возможных кликов на тулбаре
+    setTimeout(() => {
+      // Проверяем, есть ли активное выделение и находится ли оно в редакторе
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+
+        // Проверяем, что выделение не в редакторе или в дочернем элементе
+        if (editorRef()?.contains(range.commonAncestorContainer)) {
+          // Выделение все еще внутри нашего редактора, не скрываем меню
+          return
         }
-        props.onBlur?.()
-      }, 200)
-    }
+      }
+
+      setHasFocus(false)
+      // Вызываем обработчик потери фокуса из props
+      props.onBlur?.()
+    }, 100)
   }
 
   const handlePaste = async (e: ClipboardEvent) => {
@@ -796,12 +892,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   }
 
   // Состояния для редактирования форматированных элементов
-  const [editingLink, setEditingLink] = createSignal<HTMLElement | null>(null)
   const [editingImage, setEditingImage] = createSignal<HTMLElement | null>(null)
-  const [editingFootnote, setEditingFootnote] = createSignal<HTMLElement | null>(null)
-  const [editElementPosition, setEditElementPosition] = createSignal<
-    { top: number; left: number } | undefined
-  >()
 
   // Функция для обработки клика по элементам в редакторе
   const handleContentClick = (e: MouseEvent) => {
@@ -809,88 +900,29 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
     const target = e.target as HTMLElement
 
-    // Проверяем, кликнули ли по плейсхолдеру
-    if (
-      target.hasAttribute('data-placeholder') ||
-      target.classList.contains(styles.placeholder) ||
-      target.closest('[data-placeholder]')
-    ) {
-      // Устанавливаем фокус на редактор
-      editorRef()?.focus()
-      // Обновляем позицию курсора после фокуса
-      handleTrackSelectionAndCursor()
-      return
-    }
+    // Существующий код...
 
-    // Сбрасываем все состояния редактирования
-    setEditingLink(null)
-    setEditingImage(null)
-    setEditingFootnote(null)
+    // Добавляем обнаружение врезок
+    const squibElement = findSquibElement(target)
+    if (squibElement) {
+      // Получаем позицию врезки для размещения меню
+      const rect = squibElement.getBoundingClientRect()
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const scrollLeft = window.scrollX || document.documentElement.scrollLeft
 
-    // Проверяем, кликнули ли по ссылке
-    if (target.tagName === 'A' || target.closest('a')) {
-      const link = target.tagName === 'A' ? target : target.closest('a')
-      if (link) {
-        e.preventDefault() // Предотвращаем переход по ссылке
+      // Обновляем состояния для отображения меню
+      setCurrentSquib(squibElement)
+      setSquibMenuPosition({
+        top: rect.top + scrollTop - 48,
+        left: rect.left + scrollLeft + rect.width / 2 - 170,
+        isVisible: true
+      })
 
-        // Сохраняем ссылку для редактирования
-        setEditingLink(link as HTMLElement)
-
-        // Вычисляем позицию для показа формы редактирования
-        const rect = link.getBoundingClientRect()
-        const scrollTop = window.scrollY || document.documentElement.scrollTop
-        const scrollLeft = window.scrollX || document.documentElement.scrollLeft
-
-        setEditElementPosition({
-          top: rect.bottom + scrollTop + -25, // Показываем над элементом
-          left: rect.left + scrollLeft
-        })
-      }
-      return
-    }
-
-    // Проверяем, кликнули ли по изображению
-    if (target.tagName === 'IMG' || target.closest('img')) {
-      const img = target.tagName === 'IMG' ? target : target.closest('img')
-      if (img) {
-        e.preventDefault()
-
-        // Сохраняем изображение для редактирования
-        setEditingImage(img as HTMLElement)
-
-        // Для изображений мы покажем модальное окно uploadImage
-        // поэтому позицию не запоминаем
-        showModal(MODALS.uploadImage)
-      }
-      return
-    }
-
-    // Проверяем, кликнули ли по сноске (предполагаем, что сноски имеют data-footnote атрибут)
-    if (target.hasAttribute('data-footnote') || target.closest('[data-footnote]')) {
-      const footnote = target.hasAttribute('data-footnote') ? target : target.closest('[data-footnote]')
-      if (footnote) {
-        e.preventDefault()
-
-        // Сохраняем сноску для редактирования
-        setEditingFootnote(footnote as HTMLElement)
-
-        // Вычисляем позицию для показа формы редактирования
-        const rect = footnote.getBoundingClientRect()
-        const scrollTop = window.scrollY || document.documentElement.scrollTop
-        const scrollLeft = window.scrollX || document.documentElement.scrollLeft
-
-        setEditElementPosition({
-          top: rect.bottom + scrollTop + 5,
-          left: rect.left + scrollLeft
-        })
-
-        // Для сноски мы показываем специальный редактор
-        setShowFootnoteEditor(true)
-      }
+      setShowSquibEditor(true)
     }
   }
 
-  // Обновляем onMount, чтобы добавить обработчик кликов
+  // Обновляем onMount, чтобы добавить дополнительные обработчики
   onMount(() => {
     if (!editorRef()) return
 
@@ -940,75 +972,403 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     // Добавляем обработчик кликов по элементам внутри редактора
     editorRef()!.addEventListener('click', handleContentClick)
 
+    // Добавляем обработчик простого клика внутри редактора для обновления позиции курсора
+    const handleEditorClick = (e: MouseEvent) => {
+      // Позволяем событию клика обрабатываться стандартным образом
+      // НЕ останавливаем распространение события
+
+      // Используем небольшую задержку, чтобы курсор успел переместиться перед обработкой
+      setTimeout(() => {
+        // После клика обновляем активные форматы для выделения активной иконки в тулбаре
+        updateActiveFormats()
+
+        // Получаем текущее выделение для обновления UI
+        const selection = window.getSelection()
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+
+          if (editorRef()?.contains(range.commonAncestorContainer)) {
+            // Проверяем находится ли курсор на новой строке
+            const onNewLine = isCursorOnEmptyLine()
+
+            // Добавляем класс для показа плейсхолдера, если нужно
+            if (onNewLine && !isEmptyContent(editorRef()?.innerHTML || '')) {
+              editorRef()?.classList.add('show-placeholder-on-new-line')
+            } else {
+              editorRef()?.classList.remove('show-placeholder-on-new-line')
+            }
+
+            // Обновляем состояние редактора
+            handleChange()
+          }
+        }
+      }, 0)
+
+      // Используем event для проверки, был ли клик по ссылке
+      const target = e.target as HTMLElement
+      if (target.tagName === 'A') {
+        // Предотвращаем переход по ссылке при клике в редакторе
+        e.preventDefault()
+        // Обработка клика по ссылке
+        console.log('[SimpleRichEditor] Click on link:', target.getAttribute('href'))
+      }
+    }
+
+    editorRef()!.addEventListener('click', handleEditorClick)
+
+    // Для обработки изменения выделения используем делегирование и проверку принадлежности к редактору
+    const handleSelectionChange = (_e?: Event) => {
+      // Если редактор не активен, не обрабатываем события выделения
+      if (!hasFocus()) return
+
+      const selection = window.getSelection()
+      if (!selection) return
+
+      // Получаем элемент редактора
+      const editor = editorRef()
+      if (!editor) return
+
+      // Проверяем, находится ли курсор на новой строке
+      const onNewLine = isCursorOnEmptyLine()
+
+      // Управляем классом отображения плейсхолдера на новой строке
+      if (onNewLine && !isEmptyContent(editor.innerHTML)) {
+        editor.classList.add('show-placeholder-on-new-line')
+      } else {
+        editor.classList.remove('show-placeholder-on-new-line')
+      }
+
+      // Проверяем, находится ли выделение внутри редактора
+      let isSelectionInEditor = false
+
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        isSelectionInEditor = editor.contains(range.commonAncestorContainer)
+      }
+
+      // Если выделение не в редакторе, не обрабатываем дальше
+      if (!isSelectionInEditor) return
+
+      // Обновляем позицию курсора и выделение
+      handleChange()
+
+      // Если установлен режим float для тулбара, проверяем, есть ли выделение
+      // и обновляем режим отображения тулбара соответственно
+      if (props.toolbar === 'float') {
+        const selText = selection.toString()
+        if (selText && selText.length > 0) {
+          setToolbar('float') // Показываем тулбар при выделении
+        } else {
+          setToolbar('hidden') // Скрываем тулбар, если выделения нет
+        }
+      }
+
+      // Дополнительно обновляем позицию курсора для меню
+      requestAnimationFrame(() => {
+        handleTrackSelectionAndCursor()
+      })
+    }
+
+    // Для обработки mouseup и keyup используем делегирование и проверку принадлежности к редактору
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      const editor = editorRef()
+      if (editor && (editor === e.target || editor.contains(e.target as Node))) {
+        handleTrackSelectionAndCursor()
+      }
+    }
+
+    const handleGlobalKeyUp = (e: KeyboardEvent) => {
+      const editor = editorRef()
+      if (editor && (editor === e.target || editor.contains(e.target as Node))) {
+        handleTrackSelectionAndCursor()
+      }
+    }
+
     // Инициализируем слушатели событий
-    document.addEventListener('selectionchange', handleChange)
-    document.addEventListener('mouseup', handleTrackSelectionAndCursor)
-    document.addEventListener('keyup', handleTrackSelectionAndCursor)
+    document.addEventListener('selectionchange', handleSelectionChange)
+    document.addEventListener('mouseup', handleGlobalMouseUp)
+    document.addEventListener('keyup', handleGlobalKeyUp)
 
     // Начальное отслеживание
     handleTrackSelectionAndCursor()
+
+    // Очистка при размонтировании
+    onCleanup(() => {
+      if (editorRef()) {
+        editorRef()!.removeEventListener('click', handleContentClick)
+        editorRef()!.removeEventListener('click', handleEditorClick)
+      }
+      clearTimeout(blurTimerRef)
+      document.removeEventListener('selectionchange', handleSelectionChange)
+      document.removeEventListener('mouseup', handleGlobalMouseUp)
+      document.removeEventListener('keyup', handleGlobalKeyUp)
+      debouncedStateUpdate.cancel()
+    })
   })
 
-  // Обновляем onCleanup, чтобы удалить наш обработчик
-  onCleanup(() => {
-    if (editorRef()) {
-      editorRef()!.removeEventListener('click', handleContentClick)
+  // Функция для перехода к другому полю редактора в черновике
+  const switchFieldInDraft = (
+    nextField: EditorFieldType,
+    editorId?: string,
+    fieldType?: EditorFieldType
+  ) => {
+    if (!editorId || !fieldType) return false
+
+    // Получаем префикс ID черновика из editorId
+    const draftIdMatch = editorId.match(DRAFT_REGEX)
+    if (!draftIdMatch) return false
+
+    // Строим селектор для поиска редактора
+    const draftId = draftIdMatch[1]
+    const nextEditorId = `draft-${draftId}-${nextField}`
+
+    // Находим следующий редактор
+    const nextEditor = document.querySelector(`[data-editor-id="${nextEditorId}"]`)
+    if (nextEditor) {
+      // Фокусируемся на следующем редакторе
+      ;(nextEditor as HTMLElement).focus()
+
+      // Дополнительно прокручиваем к редактору, если он не виден
+      nextEditor.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+      return true
     }
-    clearTimeout(blurTimer)
-    document.removeEventListener('selectionchange', handleChange)
-    document.removeEventListener('mouseup', handleTrackSelectionAndCursor)
-    document.removeEventListener('keyup', handleTrackSelectionAndCursor)
-    debouncedStateUpdate.cancel()
-  })
 
-  const [showingInsert, showInsert] = createSignal<{ type: string; text: string } | undefined>()
-  const [insertPosition, setInsertPosition] = createSignal<{ top: number; left: number } | undefined>()
-
-  // Функция для вычисления позиции относительно кнопки или выделения
-  const calculateInsertMenuPosition = () => {
-    return calculateMenuPosition(editorRef() || null)
+    return false
   }
 
-  // Функция для валидации URL
-  const validateUrl = (url: string): string => {
-    if (!url) {
-      return t('URL cannot be empty')
+  // Функция для перехода к другому полю редактора в черновике
+  const handleNavigation = (nextField: EditorFieldType) => {
+    return switchFieldInDraft(nextField, props.editorId, props.fieldType)
+  }
+
+  // Обновленная функция вставки ссылки - теперь использует новый обработчик
+  const handleInsertLink = (url: string) => {
+    // Упрощаем логику, используя новый обработчик
+    handleLinkSubmit(url)
+    // Сбрасываем UI состояние и возвращаем фокус
+    setShowForm(null)
+    editorRef()?.focus()
+  }
+
+  // Обновленная функция вставки видео - теперь использует новый обработчик
+  const handleInsertVideo = (url: string) => {
+    // Упрощаем логику, используя новый обработчик
+    handleVideoSubmit(url)
+    // Сбрасываем UI состояние и возвращаем фокус
+    setShowForm(null)
+    editorRef()?.focus()
+  }
+
+  /**
+   * Обработчик загрузки аудио через AudioUploader
+   * @param audioItems Загруженные аудио элементы
+   */
+  const handleAudioUpload = (audioItems: MediaItem[]) => {
+    // Сохраняем выделение перед работой с аудио
+    saveSelection()
+
+    // Используем функцию из модуля audio.ts
+    if (handleAudioUploaderResult(audioItems, editorRef() || null)) {
+      handleChange()
     }
 
-    try {
-      // Проверяем, что URL начинается с http:// или https://
-      if (!url.match(WEB_URL_REGEX)) {
-        return t('URL must start with http:// or https://')
+    // Возвращаем фокус в редактор и закрываем модальное окно
+    editorRef()?.focus()
+    restoreSelection()
+    hideModal()
+  }
+
+  /**
+   * Показывает модальное окно для загрузки аудио
+   */
+  const showAudioUploader = () => {
+    // Сохраняем текущее выделение
+    saveSelection()
+
+    // Создаем модальное окно с аудио аплоадером
+    let dispose: () => void
+
+    const _modal = createRoot((dispose_: () => void) => {
+      dispose = dispose_
+      const [isOpen, setIsOpen] = createSignal(true)
+
+      // Обработчик закрытия модального окна
+      const handleClose = () => {
+        setIsOpen(false)
+        restoreSelection()
+        setTimeout(dispose, 300) // Даём время на анимацию закрытия
       }
 
-      // Пробуем создать объект URL для проверки валидности
-      new URL(url)
-      return ''
-    } catch (_e) {
-      return t('Invalid URL format')
+      return (
+        <Portal>
+          <div class="modal" style={{ display: isOpen() ? 'flex' : 'none' }}>
+            <div class="modal-backdrop" onClick={handleClose} />
+            <div class="modal-content">
+              <AudioUploader
+                audio={[]}
+                onAudioAdd={handleAudioUpload}
+                onAudioChange={(_index, _value) => {
+                  /* Не используется, но требуется интерфейсом */
+                }}
+                onAudioSorted={(_value) => {
+                  /* Не используется, но требуется интерфейсом */
+                }}
+              />
+            </div>
+          </div>
+        </Portal>
+      )
+    })
+
+    // Добавляем модальное окно в DOM (не требуется с Portal)
+  }
+
+  /**
+   * Обработчик вставки ссылки из модального окна
+   * @param url URL для вставки
+   */
+  const handleLinkSubmit = (url: string) => {
+    if (validateUrl(url)) {
+      // Восстанавливаем сохраненное выделение
+      restoreSelection()
+
+      // Попытка создать инстанс редактора для передачи в функцию insertLink
+      const editor = editorRef()
+      if (!editor) return
+
+      const editorState = {
+        id: editor.id || 'editor',
+        content: editor.innerHTML,
+        selection: {
+          range: window.getSelection()?.getRangeAt(0) || null,
+          text: window.getSelection()?.toString() || '',
+          isEmpty: !window.getSelection() || window.getSelection()?.isCollapsed || false,
+          position: { top: 0, left: 0 }
+        },
+        activeFormats: new Set<CommandType>(),
+        history: { undo: [], redo: [] },
+        isBlurred: false,
+        selectedRange: window.getSelection()?.getRangeAt(0) || null,
+        currentCommand: 'link' as CommandType,
+        setActiveFormats: noop,
+        setContent: noop,
+        setIsBlurred: noop
+      }
+
+      const result = handleEditorAction(
+        {
+          command: 'link',
+          data: url,
+          editorId: editor.id
+        },
+        editorState
+      )
+
+      if (result.success) {
+        handleChange()
+      }
     }
   }
 
-  // Функция для валидации ссылок на видео
-  const validateVideoUrl = (url: string): string => {
-    const urlError = validateUrl(url)
-    if (urlError) return urlError
+  /**
+   * Обработчик вставки видео из модального окна
+   * @param url URL видео для вставки
+   */
+  const handleVideoSubmit = (url: string) => {
+    if (validateVideoUrl(url)) {
+      // Восстанавливаем сохраненное выделение
+      restoreSelection()
 
-    // Проверяем, что это ссылка на YouTube или Vimeo
-    const isYouTube = url.includes('youtube.com') || url.includes('youtu.be')
-    const isVimeo = url.includes('vimeo.com')
+      // Попытка создать инстанс редактора для передачи в функцию insertVideo
+      const editor = editorRef()
+      if (!editor) return
 
-    if (!isYouTube && !isVimeo) {
-      return t('Only YouTube and Vimeo links are supported')
+      // Определяем платформу видео
+      const platform = detectVideoPlatform(url)
+      if (!platform) return
+
+      const editorState = {
+        id: editor.id || 'editor',
+        content: editor.innerHTML,
+        selection: {
+          range: window.getSelection()?.getRangeAt(0) || null,
+          text: window.getSelection()?.toString() || '',
+          isEmpty: !window.getSelection() || window.getSelection()?.isCollapsed || false,
+          position: { top: 0, left: 0 }
+        },
+        activeFormats: new Set<CommandType>(),
+        history: { undo: [], redo: [] },
+        isBlurred: false,
+        selectedRange: window.getSelection()?.getRangeAt(0) || null,
+        currentCommand: 'video' as CommandType,
+        setActiveFormats: noop,
+        setContent: noop,
+        setIsBlurred: noop
+      }
+
+      // Создаем видео-встройку
+      const videoEmbed = createVideoEmbed(url, platform)
+
+      // Вставляем видео-встройку
+      const result = handleEditorAction(
+        {
+          command: 'video',
+          data: url,
+          editorId: editor.id
+        },
+        editorState
+      )
+
+      if (result.success) {
+        handleChange()
+      } else {
+        // Если handleEditorAction не сработал, используем прямую вставку
+        handleReplaceSelection(videoEmbed)
+      }
     }
-
-    return ''
   }
 
+  // Восстанавливаем функцию для работы с HTML-контентом
+  /**
+   * Заменяет текущее выделение HTML контентом
+   * @param html HTML строка для вставки
+   * @returns true если замена успешна
+   */
+  const handleReplaceSelection = (html: string): boolean => {
+    const editor = editorRef()
+    const result = replaceSelection(html, editor || null)
+
+    if (result) {
+      // Обновляем сигнал content после вставки
+      if (editor) {
+        const newContent = editor.innerHTML
+        setContent(newContent)
+      }
+
+      // Обновляем состояние редактора
+      handleChange()
+
+      // Обновляем состояние активных форматов
+      updateActiveFormats()
+    }
+
+    return result
+  }
+
+  // Обработчик для клавиатурных команд
   const handleKeyDown = (e: KeyboardEvent) => {
     // Проверяем сочетания клавиш для форматирования
     const isMac = navigator.platform.includes('Mac')
     const cmdKey = isMac ? e.metaKey : e.ctrlKey
+
+    // После каждого нажатия клавиши-стрелки обновляем позицию курсора
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      // Используем setTimeout для обновления позиции после обработки нажатия клавиши
+      setTimeout(() => {
+        handleTrackSelectionAndCursor()
+      }, 0)
+    }
 
     // Горячие клавиши форматирования
     if (cmdKey && !e.shiftKey && !e.altKey) {
@@ -1068,27 +1428,69 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         // Shift+Tab - переход к предыдущему полю
         if (props.fieldType === 'body') handleNavigation('lead')
         else if (props.fieldType === 'lead') handleNavigation('description')
-        // biome-ignore lint/style/useCollapsedElseIf: ok
-      } else {
-        // Tab - переход к следующему полю
-        if (props.fieldType === 'description') handleNavigation('lead')
-        else if (props.fieldType === 'lead') handleNavigation('body')
+      }
+
+      if (props.fieldType === 'description') {
+        handleNavigation('lead')
+      } else if (props.fieldType === 'lead') {
+        handleNavigation('body')
       }
       return
     }
 
     // Если нажат Shift+Enter, позволяем стандартное поведение (перевод строки в текущем поле)
     if (e.shiftKey && e.key === 'Enter') {
+      // Для редактора вступления вставляем <br> вместо перехода к следующему полю
+      if (props.fieldType === 'lead' || props.fieldType === 'description') {
+        e.preventDefault()
+        const selection = window.getSelection()
+        if (!selection || !selection.rangeCount) return
+
+        const range = selection.getRangeAt(0)
+        const br = document.createElement('br')
+        range.insertNode(br)
+
+        // Перемещаем курсор после добавленного <br>
+        range.setStartAfter(br)
+        range.setEndAfter(br)
+        selection.removeAllRanges()
+        selection.addRange(range)
+
+        handleChange()
+        return
+      }
       return
     }
 
     // Если нажат просто Enter
     if (e.key === 'Enter') {
-      // Для заголовка и lead полей Enter всегда должен переводить в следующее поле
+      // Для заголовка и lead полей проверяем, нужно ли переходить в следующее поле
       if (props.fieldType === 'description' || props.fieldType === 'lead') {
+        // Проверяем, есть ли модификаторы
+        if (e.ctrlKey || e.metaKey) {
+          // Если нажат Ctrl+Enter или Cmd+Enter, переходим к следующему полю
+          e.preventDefault()
+          const nextField = props.fieldType === 'description' ? 'lead' : 'body'
+          return handleNavigation(nextField)
+        }
+
+        // В противном случае создаем обычный перенос строки
         e.preventDefault()
-        const nextField = props.fieldType === 'description' ? 'lead' : 'body'
-        return handleNavigation(nextField)
+        const selection = window.getSelection()
+        if (!selection || !selection.rangeCount) return
+
+        const range = selection.getRangeAt(0)
+        const br = document.createElement('br')
+        range.insertNode(br)
+
+        // Перемещаем курсор после добавленного <br>
+        range.setStartAfter(br)
+        range.collapse(true)
+        selection.removeAllRanges()
+        selection.addRange(range)
+
+        handleChange()
+        return
       }
 
       // Для поля body (основной контент) обрабатываем блочные элементы
@@ -1105,6 +1507,31 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
         if (blockElement) {
           e.preventDefault()
+
+          // Проверяем, пуст ли блочный элемент
+          const isEmpty =
+            blockElement.textContent?.trim() === '' ||
+            blockElement.innerHTML === '<br>' ||
+            blockElement.innerHTML === ''
+
+          if (isEmpty) {
+            // Если блок пустой, заменяем его обычным параграфом
+            const p = document.createElement('p')
+            p.innerHTML = '<br>'
+            blockElement.parentNode?.replaceChild(p, blockElement)
+
+            // Перемещаем курсор в новый параграф
+            range.selectNodeContents(p)
+            range.collapse(true)
+            selection.removeAllRanges()
+            selection.addRange(range)
+
+            // Обновляем активные форматы в тулбаре
+            updateActiveFormats()
+            handleChange()
+            return
+          }
+
           // Если курсор в конце блока
           if (
             range.startOffset ===
@@ -1141,617 +1568,722 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           }
 
           handleChange()
-        } else {
-          // Стандартное поведение - вставка <br>
-          document.execCommand('insertLineBreak')
-          handleChange()
+          return // Выходим, чтобы предотвратить дальнейшую обработку
         }
-      }
-    }
-  }
 
-  // Обработчик для создания и редактирования врезки
-  const handleSquibAction = () => {
-    // Сохраняем выделение перед открытием редактора врезки
-    saveSelection()
+        // Если мы внутри обычного параграфа, используем стандартное поведение,
+        // но с обязательным обновлением позиции курсора
 
-    // Проверяем, находится ли курсор внутри существующей врезки
-    const currentNode = window.getSelection()?.anchorNode
-    const existingSquib = currentNode?.parentElement?.closest('[data-type="squib"]')
+        // Проверяем, находимся ли мы в пустом параграфе или тексте
+        const isEmptyParagraph =
+          container.nodeType === Node.ELEMENT_NODE &&
+          (container as Element).nodeName === 'P' &&
+          (container.textContent === '' ||
+            container.textContent === '\n' ||
+            (container as HTMLElement).innerHTML === '<br>')
 
-    if (existingSquib) {
-      // Редактируем существующую врезку
-      setSquibContent(existingSquib.innerHTML)
-    } else {
-      // Создаем новую врезку из выделенного текста
-      setSquibContent(getSelectionText())
-    }
+        const isBodyDirectly =
+          container === editorRef() ||
+          (container.nodeType === Node.TEXT_NODE && container.parentNode === editorRef())
 
-    setShowSquibEditor(true)
-  }
+        if (isEmptyParagraph || isBodyDirectly) {
+          // Для пустых параграфов или прямого текста в редакторе создаем новый параграф
+          e.preventDefault()
 
-  // Обновленная функция для применения форматирования к врезке
-  const applySquibFormatting = (action: CommandType) => {
-    // Проверяем, находится ли курсор внутри врезки
-    const currentNode = window.getSelection()?.anchorNode
-    const squibElement = currentNode?.parentElement?.closest('[data-type="squib"]')
+          const p = document.createElement('p')
+          p.innerHTML = '<br>'
 
-    if (!squibElement) return false
-
-    // Проверяем, это команда выравнивания или фона
-    if (action.startsWith('align-')) {
-      // Удаляем предыдущее выравнивание
-      const alignValues = ['align-left', 'align-center', 'align-right']
-      alignValues.forEach((align) => {
-        if (align === action) {
-          // Применяем новое выравнивание (кроме left, который считается дефолтным)
-          if (action !== 'align-left') {
-            squibElement.setAttribute('data-align', action.replace('align-', ''))
+          if (isEmptyParagraph) {
+            // Вставляем после текущего пустого параграфа
+            container.parentNode?.insertBefore(p, container.nextSibling)
           } else {
-            squibElement.removeAttribute('data-align')
+            // Вставляем в конец редактора
+            editorRef()?.appendChild(p)
           }
+
+          // Перемещаем курсор в новый параграф
+          range.selectNodeContents(p)
+          range.collapse(true)
+          selection.removeAllRanges()
+          selection.addRange(range)
+
+          // Обновляем позицию курсора после создания нового параграфа
+          setTimeout(() => {
+            handleTrackSelectionAndCursor()
+          }, 0)
         } else {
-          // Удаляем другие выравнивания
-          squibElement.removeAttribute(align)
+          // В остальных случаях используем стандартную обработку Enter
+          // Но после выполнения команды обязательно обновляем позицию курсора
+          setTimeout(() => {
+            handleTrackSelectionAndCursor()
+          }, 0)
         }
-      })
-      return true
-    }
 
-    if (action.startsWith('bg-')) {
-      // Удаляем предыдущий фон
-      const bgValues = ['bg-gray', 'bg-white', 'bg-black', 'bg-yellow', 'bg-red', 'bg-green']
-      bgValues.forEach((bg) => {
-        squibElement.classList.remove(bg)
-      })
-
-      // Устанавливаем новый фон (кроме gray, который дефолтный)
-      if (action !== 'bg-gray') {
-        squibElement.setAttribute('data-bg', action)
-      } else {
-        squibElement.removeAttribute('data-bg')
+        handleChange()
       }
-
-      return true
     }
 
-    return false
+    // Добавляем обработку клавиши Backspace для удаления пустого blockquote
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      const selection = window.getSelection()
+      if (!selection || !selection.rangeCount) return
+
+      const range = selection.getRangeAt(0)
+
+      // Проверяем, находимся ли в начале блока цитирования
+      const node = range.startContainer
+      const blockElement =
+        node.nodeType === Node.TEXT_NODE
+          ? node.parentElement?.closest('blockquote, h1, h2, h3, div[data-type]')
+          : (node as Element).closest('blockquote, h1, h2, h3, div[data-type]')
+
+      if (blockElement) {
+        // Для Backspace - проверяем начало блока, для Delete - конец блока или пустой блок
+        const isAtStart = range.startOffset === 0 && e.key === 'Backspace'
+        const isAtEnd =
+          e.key === 'Delete' &&
+          ((node.nodeType === Node.TEXT_NODE && range.startOffset === node.textContent?.length) ||
+            (node.nodeType !== Node.TEXT_NODE && range.startOffset === (node as Element).childNodes.length))
+        const isEmpty =
+          blockElement.textContent?.trim() === '' ||
+          blockElement.innerHTML === '<br>' ||
+          blockElement.innerHTML === ''
+
+        if (isEmpty || isAtStart || isAtEnd) {
+          e.preventDefault()
+
+          // Заменяем форматированный блок на обычный параграф
+          const p = document.createElement('p')
+          p.innerHTML = isEmpty ? '<br>' : blockElement.innerHTML
+          blockElement.parentNode?.replaceChild(p, blockElement)
+
+          // Перемещаем курсор в новый параграф
+          range.selectNodeContents(p)
+          range.collapse(e.key === 'Backspace')
+          selection.removeAllRanges()
+          selection.addRange(range)
+
+          // Обновляем активные форматы и состояние редактора
+          updateActiveFormats()
+          handleChange()
+          return
+        }
+      }
+    }
   }
 
-  // Обновленная функция handleAction
-  const handleAction = (action: CommandType) => {
-    if (isServer) return
+  /**
+   * Обрабатывает действия форматирования
+   * @param action Команда форматирования
+   */
+  const handleAction = (action: CommandType | CommandGroupType) => {
+    if (!editorRef()) return
 
-    // Специальные команды
-    if (action === 'squib') {
-      handleSquibAction()
-      return
-    }
+    // Отладочное логирование для диагностики
+    console.log('handleAction вызван с:', action, 'editorRef:', editorRef())
 
-    // Проверяем, нужно ли применить форматирование к врезке
-    if ((action.startsWith('align-') || action.startsWith('bg-')) && applySquibFormatting(action)) {
-      // Форматирование применено к врезке
-      handleChange()
-      return
-    }
-
-    if (action === 'image') {
-      // Сохраняем выделение перед открытием модального окна
-      saveSelection()
-      showModal(MODALS.uploadImage)
-      return
-    }
-    if (action === 'video') {
-      // Сохраняем выделение перед открытием формы
-      saveSelection()
-
-      // Добавляем класс выделения для визуальной индикации
-      const windowSelection = window.getSelection()
-      if (windowSelection && windowSelection.rangeCount > 0) {
-        // Вместо удаления выделения, добавляем временную CSS-подсветку
-        const range = windowSelection.getRangeAt(0)
-        const span = document.createElement('span')
-        span.className = styles.tempHighlight
-        span.dataset.tempHighlight = 'true'
-
-        try {
-          // Оборачиваем выделение во временный span для визуального выделения
-          const clone = range.cloneRange()
-          clone.surroundContents(span)
-          windowSelection.removeAllRanges()
-          windowSelection.addRange(clone)
-        } catch (e) {
-          console.warn('Не удалось визуально выделить текст', e)
-        }
+    if (isGroup(action)) {
+      // Если это группа команд, обрабатываем их отдельно
+      for (const cmd of MENU_GROUPS[action as CommandGroupType]) {
+        handleAction(cmd)
       }
-
-      setInsertPosition(calculateInsertMenuPosition())
-      // Не передаем выделенный текст в форму
-      showInsert({ type: 'video', text: '' })
-      return
-    }
-    if (action === 'link') {
-      // Сохраняем выделение перед открытием формы
-      saveSelection()
-
-      // Добавляем класс выделения к редактору для визуальной индикации
-      const windowSelection = window.getSelection()
-      if (windowSelection && windowSelection.rangeCount > 0) {
-        // Вместо удаления выделения, добавляем временную CSS-подсветку
-        const range = windowSelection.getRangeAt(0)
-        const span = document.createElement('span')
-        span.className = styles.tempHighlight
-        span.dataset.tempHighlight = 'true'
-
-        try {
-          // Оборачиваем выделение во временный span для визуального выделения
-          const clone = range.cloneRange()
-          clone.surroundContents(span)
-          windowSelection.removeAllRanges()
-          windowSelection.addRange(clone)
-        } catch (e) {
-          console.warn('Не удалось визуально выделить текст', e)
-        }
-      }
-
-      setInsertPosition(calculateInsertMenuPosition())
-      // Не передаем выделенный текст в форму
-      showInsert({ type: 'link', text: '' })
-      return
-    }
-    if (action === 'footnote') {
-      // Сохраняем выделение перед открытием формы
-      saveSelection()
-      setShowFootnoteEditor(true)
-      return
-    }
-    console.log('Editor handling action:', action)
-
-    const windowSelection = window.getSelection()
-    if (!windowSelection || !windowSelection.rangeCount) {
-      console.log('No selection found')
       return
     }
 
-    // Сохраняем текущее выделение
-    const range = windowSelection.getRangeAt(0).cloneRange()
-    const selectedText = windowSelection.toString()
-    const isCollapsed = windowSelection.isCollapsed
+    // Проверяем, не link ли это с выделением текста
+    if (action === 'link' && getSelectionText() !== '') {
+      showInlineForm('link', handleLinkSubmit)
+      return
+    }
 
-    // Проверяем наличие форматирования
-    const hasActiveFormat = hasFormatting(action, windowSelection)
-    console.log('Format state:', { action, hasActiveFormat, isCollapsed })
+    const editor = editorRef()
+    if (!editor) return
 
-    // Очищаем выделение перед применением операции, чтобы избежать побочных эффектов
-    const originalContent = editorRef()?.innerHTML || ''
+    // Создаем минимальный объект состояния редактора
+    const editorState = {
+      id: props.editorId || 'editor',
+      content: editor.innerHTML,
+      selection: {
+        range: window.getSelection()?.getRangeAt(0) || null,
+        text: window.getSelection()?.toString() || '',
+        isEmpty: !window.getSelection() || window.getSelection()?.isCollapsed || false,
+        position: { top: 0, left: 0 }
+      },
+      activeFormats: new Set<CommandType>(),
+      history: { undo: [], redo: [] },
+      isBlurred: false,
+      selectedRange: window.getSelection()?.getRangeAt(0) || null,
+      currentCommand: action as CommandType,
+      setActiveFormats: noop,
+      setContent: noop,
+      setIsBlurred: noop
+    }
 
-    try {
-      if (hasActiveFormat) {
-        console.log('Removing formatting:', action)
-        removeFormatting(action, {
-          range,
-          text: selectedText,
-          isEmpty: isCollapsed,
-          position: { top: windowSelection.anchorOffset, left: windowSelection.anchorOffset }
-        })
-      } else {
-        console.log('Applying formatting:', action)
-        applyFormatting(action, {
-          range,
-          text: selectedText,
-          isEmpty: isCollapsed,
-          position: { top: windowSelection.anchorOffset, left: windowSelection.anchorOffset }
-        })
-      }
+    // Используем новый обработчик действий из модуля actions.ts
+    // с поддержкой переключения форматирования через hasFormatting
+    const result = handleEditorAction(
+      {
+        command: action as CommandType,
+        editorId: props.editorId || editor.getAttribute('data-editor-id') || ''
+      },
+      editorState
+    )
 
-      // Verify content wasn't lost or corrupted
-      const newContent = editorRef()!.innerHTML
-      console.log('Content after formatting:', newContent)
+    if (!result.success && result.error) {
+      // Если возникла ошибка, можно показать сообщение пользователю
+      console.warn(result.error)
+    }
 
-      // Проверяем на наличие пустых или некорректных тегов
-      const tempDiv = document.createElement('div')
-      tempDiv.innerHTML = newContent
+    // Вызываем handleAfterFormat для обновления состояния после форматирования
+    handleAfterFormat()
+  }
 
-      // Ищем пустые теги форматирования и удаляем их
-      const emptyTags = tempDiv.querySelectorAll(`${FORMAT_CONFIG[action].tag}:empty`)
-      emptyTags.forEach((tag) => {
-        if (!tag.textContent || tag.textContent === '\u200B') {
-          tag.remove()
-        }
-      })
+  /**
+   * Обработчик успешной загрузки изображения
+   * @param uploadedFile Загруженный файл
+   */
+  const handleUploadSuccess = (uploadedFile?: UploadedFile) => {
+    if (!uploadedFile) return
 
-      // Проверяем, были ли удалены пустые теги
-      if (emptyTags.length > 0) {
-        console.log(`Removed ${emptyTags.length} empty ${FORMAT_CONFIG[action].tag} tags`)
-        editorRef()!.innerHTML = tempDiv.innerHTML
-      }
+    const currentImage = editingImage()
 
-      // После удаления форматирования обновляем активные форматы
-      updateActiveFormats()
-
-      // Восстанавливаем выделение если возможно
-      if (!isCollapsed) {
-        windowSelection.removeAllRanges()
-        windowSelection.addRange(range)
-      }
-
-      // Проверяем остались ли активные форматы
-      const hasOtherActiveFormats = ['bold', 'italic', 'link', 'highlight'].some((format) =>
-        hasFormatting(format as CommandType, windowSelection)
+    // Обновление существующего изображения или вставка нового
+    if (currentImage) {
+      // Обновляем атрибуты существующего изображения
+      ;(currentImage as HTMLImageElement).src = uploadedFile.url
+      ;(currentImage as HTMLImageElement).alt = uploadedFile.originalFilename || 'Uploaded image'
+      setEditingImage(null)
+    } else {
+      // Вставляем новое изображение
+      handleReplaceSelection(
+        `<img src="${uploadedFile.url}" alt="${uploadedFile.originalFilename || 'Uploaded image'}" />`
       )
-
-      // Управляем видимостью тулбара
-      if (isCollapsed && !hasOtherActiveFormats && props.toolbar === 'float') {
-        setToolbar('hidden')
-      } else if (!isCollapsed) {
-        setToolbar(props.toolbar || 'float')
-      }
-    } catch (error) {
-      console.error('Error applying/removing formatting:', error)
-      // В случае ошибки восстанавливаем исходное содержимое
-      if (editorRef()) {
-        editorRef()!.innerHTML = originalContent
-      }
     }
 
-    // Trigger change event
+    // Закрываем модальное окно, возвращаем фокус и обновляем контент
+    hideModal()
+    editorRef()?.focus()
     handleChange()
   }
 
   /**
-   * Заменяет текущее выделение HTML контентом
-   * @param html HTML строка для вставки
-   * @returns true если замена успешна
+   * Обработчик сохранения сноски
+   * @param content Содержимое сноски
    */
-  const handleReplaceSelection = (html: string): boolean => {
-    const editor = editorRef()
-    const result = replaceSelection(html, editor || null)
-
-    if (result) {
-      // Обновляем сигнал content после вставки
-      if (editor) {
-        const newContent = editor.innerHTML
-        setContent(newContent)
-      }
-
-      // Обновляем состояние редактора
-      handleChange()
-
-      // Обновляем состояние активных форматов
-      updateActiveFormats()
-    }
-
-    return result
-  }
-
-  const handleSquibSubmit = (content: string) => {
-    if (!content.trim()) {
-      setShowSquibEditor(false)
-      return
-    }
-
-    // Проверяем, редактируем ли существующую врезку
-    const currentNode = window.getSelection()?.anchorNode
-    const existingSquib = currentNode?.parentElement?.closest('[data-type="squib"]')
-
-    if (existingSquib) {
-      // Обновляем содержимое существующей врезки
-      existingSquib.innerHTML = content
-    } else {
-      // Создаем новую врезку
-      const squibHtml = `<div data-type="squib" class="${styles.squib}">${content}</div>`
-      handleReplaceSelection(squibHtml)
-    }
-
-    setShowSquibEditor(false)
-    editorRef()?.focus()
-
-    // Обновляем состояние редактора
-    handleChange()
-  }
-
   const handleFootnoteSubmit = (content: string) => {
-    // Если редактируем существующую сноску
+    // Определяем правильный набор команд для редактора футнот
+    // Используем такой же набор команд, как для комментариев
+    const _footnoteCommands = MICRO_COMMANDS as unknown as CommandType[]
+
+    // Редактирование существующей сноски
     if (editingFootnote()) {
-      const footnoteElement = editingFootnote()
-      if (footnoteElement) {
-        // Обновляем содержимое сноски
-        const footnoteId = footnoteElement.getAttribute('data-footnote-id')
-        if (footnoteId) {
-          // Находим тело сноски по ID и обновляем его
-          const footnoteContent = editorRef()?.querySelector(`[data-footnote-content="${footnoteId}"]`)
-          if (footnoteContent) {
-            footnoteContent.innerHTML = content
+      const footnoteEl = editingFootnote()
+      const footnoteId = footnoteEl?.getAttribute('data-footnote-id')
 
-            // Сбрасываем состояние
-            setEditingFootnote(null)
-            setShowFootnoteEditor(false)
-
-            // Обновляем состояние редактора
-            handleChange()
-          }
+      if (footnoteId && footnoteEl) {
+        // Обновляем содержимое по ID
+        const footnoteContent = editorRef()?.querySelector(`[data-footnote-content="${footnoteId}"]`)
+        if (footnoteContent) {
+          footnoteContent.innerHTML = content
         }
-      }
-    } else {
-      // Стандартная логика для создания новой сноски
-      const editor = editorRef()
-      if (!editor) return
 
-      saveSelection()
-      const windowSelection = window.getSelection()
-      insertFootnote(editor, content, windowSelection as Selection)
-      setShowFootnoteEditor(false)
-      restoreSelection()
-    }
-  }
-
-  // Обработчик вставки изображения после загрузки
-  const handleImageUpload = (uploadedFile?: UploadedFile) => {
-    if (!uploadedFile) return
-
-    // Генерируем HTML для вставки изображения
-    const imgHtml = `<img src="${uploadedFile.url}" alt="${uploadedFile.originalFilename || 'Uploaded image'}" />`
-
-    // Вставляем в редактор
-    handleReplaceSelection(imgHtml)
-
-    // Закрываем модальное окно
-    hideModal()
-
-    // Возвращаем фокус в редактор
-    editorRef()?.focus()
-  }
-
-  // Функция для обновления ссылки
-  const handleUpdateLink = (url: string) => {
-    const linkElement = editingLink()
-    if (!linkElement) return
-
-    linkElement.setAttribute('href', url)
-
-    // Сбрасываем состояние
-    setEditingLink(null)
-
-    // Обновляем состояние редактора
-    if (editorRef()) {
-      handleChange()
-    }
-  }
-
-  // Функция для обновления атрибутов изображения после загрузки нового
-  const handleUpdateImage = (uploadedFile?: UploadedFile) => {
-    if (!uploadedFile) return
-
-    const imgElement = editingImage()
-    if (imgElement) {
-      // Если мы редактируем существующее изображение, обновляем его атрибуты
-      ;(imgElement as HTMLImageElement).src = uploadedFile.url
-      ;(imgElement as HTMLImageElement).alt = uploadedFile.originalFilename || 'Uploaded image'
-
-      // Сбрасываем состояние
-      setEditingImage(null)
-
-      // Обновляем состояние редактора
-      if (editorRef()) {
+        // Сбрасываем состояние и обновляем редактор
+        setEditingFootnote(null)
+        setShowFootnoteEditor(false)
         handleChange()
       }
     } else {
-      // Если просто загружаем новое изображение
-      handleImageUpload(uploadedFile)
-    }
+      // Создание новой сноски
+      const editor = editorRef()
+      if (!editor) return
 
-    // Закрываем модальное окно
-    hideModal()
+      // Вставляем сноску и восстанавливаем контекст
+      saveSelection()
+      insertFootnote(editor, content, window.getSelection() as Selection)
+      setShowFootnoteEditor(false)
+      restoreSelection()
+      setFootnoteContent('')
+    }
   }
 
-  // Функция для перехода к другому полю редактора в черновике
-  const switchFieldInDraft = (
-    nextField: EditorFieldType,
-    editorId?: string,
-    fieldType?: EditorFieldType
-  ) => {
-    if (!editorId || !fieldType) return false
+  /**
+   * Показывает инлайн-форму для ввода ссылки или медиа
+   * @param type Тип формы
+   * @param onSubmit Обработчик отправки формы
+   */
+  const showInlineForm = (type: FormType, onSubmit: (value: string) => void) => {
+    if (!type) return
 
-    // Получаем префикс ID черновика из editorId
-    const draftIdMatch = editorId.match(DRAFT_REGEX)
-    if (!draftIdMatch) return false
+    // Сохраняем выделение и показываем форму
+    saveSelection()
+    setFormPosition(
+      getEditorPosition(editorRef() || null, {
+        type: 'form',
+        placement: 'bottom',
+        offset: 10,
+        centerHorizontally: true
+      })
+    )
 
-    // Строим селектор для поиска редактора
-    const draftId = draftIdMatch[1]
-    const nextEditorId = `draft-${draftId}-${nextField}`
+    // Задаем параметры и показываем форму
+    setFormInitialValue('')
+    setShowForm(type)
 
-    // Находим следующий редактор
-    const nextEditor = document.querySelector(`[data-editor-id="${nextEditorId}"]`)
-    if (nextEditor) {
-      // Фокусируемся на следующем редакторе
-      ;(nextEditor as HTMLElement).focus()
+    // Настраиваем валидацию для разных типов форм
+    editorFormOptions = {
+      type,
+      onSubmit,
+      validate:
+        type === 'video'
+          ? (url: string) => validateVideoUrl(url, t)
+          : (url: string) => validateWebUrl(url, t)
+    }
+  }
 
-      // Дополнительно прокручиваем к редактору, если он не виден
-      nextEditor.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // Обновленная функция для позиции плавающего тулбара
+  const getFloatingToolbarPosition = (): Position => {
+    const position = getEditorPosition(editorRef() || null, {
+      type: 'float',
+      placement: 'top',
+      offset: 40,
+      centerHorizontally: true
+    })
 
+    return {
+      top: position.top,
+      left: position.left
+    }
+  }
+
+  /**
+   * Рассчитывает позицию всплывающего тулбара
+   * @returns Позиция тулбара
+   */
+  const _getToolbarPosition = (): { top: number; left: number; isVisible?: boolean } => {
+    const editor = editorRef()
+    if (!editor) return { top: 0, left: 0, isVisible: false }
+
+    return getEditorPosition(editor, {
+      type: 'toolbar',
+      placement: toolbar() === 'float' ? 'top' : 'bottom',
+      offset: 10,
+      centerHorizontally: true
+    })
+  }
+
+  /**
+   * Рассчитывает позицию плюс-меню
+   * @returns Позиция меню
+   */
+  const getPlusMenuPosition = (): { top: number; left: number; isVisible?: boolean } => {
+    const editor = editorRef()
+    if (!editor) return { top: 0, left: 0, isVisible: false }
+
+    return getEditorPosition(editor, {
+      type: 'plus',
+      placement: 'left',
+      offset: 30
+    })
+  }
+
+  // Функция для определения, находится ли курсор на пустой строке
+  const isCursorOnEmptyLine = (): boolean => {
+    const selection = window.getSelection()
+    if (!selection || !selection.rangeCount) return true // По умолчанию считаем строку пустой
+
+    const range = selection.getRangeAt(0)
+    const node = range.startContainer
+
+    // Определяем текущий узел и родительский элемент
+    const currentNode = node.nodeType === Node.TEXT_NODE ? node : (node as Element)
+    const parentElement =
+      node.nodeType === Node.TEXT_NODE ? node.parentElement : (currentNode as HTMLElement)
+
+    // Случай 1: Текстовый узел - проверяем текст до курсора
+    if (node.nodeType === Node.TEXT_NODE) {
+      // Получаем текст до курсора в текущей строке
+      const textBeforeCursor = node.textContent?.slice(0, range.startOffset) || ''
+      // Если текст до курсора пустой, строка считается пустой
+      return textBeforeCursor.trim() === ''
+    }
+
+    // Случай 2: HTML-элемент (параграф, div и т.д.)
+    if (parentElement) {
+      // Проверка на пустой параграф или строку
+      if (
+        parentElement.innerHTML === '' ||
+        parentElement.innerHTML === '<br>' ||
+        parentElement.textContent?.trim() === '' ||
+        ((node as Element).textContent?.trim() === '' && parentElement.innerHTML.includes('<img'))
+      ) {
+        return true
+      }
+
+      // Если курсор в начале непустого элемента
+      if (range.startOffset === 0 && parentElement.textContent?.trim()) {
+        return true
+      }
+    }
+
+    // Случай 3: Курсор в начале редактора
+    if (range.startOffset === 0 && (node === editorRef() || parentElement === editorRef())) {
       return true
     }
 
+    // По умолчанию считаем, что курсор не на пустой строке
     return false
   }
 
-  // Функция для перехода к другому полю редактора в черновике
-  const handleNavigation = (nextField: EditorFieldType) => {
-    return switchFieldInDraft(nextField, props.editorId, props.fieldType)
+  // Следим за изменениями режима тулбара
+  createEffect(() => {
+    console.log('[SimpleRichEditor] Toolbar mode changed:', {
+      mode: toolbar(),
+      fieldType: props.fieldType,
+      hasFocus: hasFocus()
+    })
+  })
+
+  // Функция для инициализации редактора с правильным позиционированием плейсхолдера
+  const initEditor = (element: HTMLDivElement) => {
+    if (!element) return
+
+    setEditorRef(element)
+
+    // Загружаем содержимое и определяем, пустое ли оно
+    const initialHtml = props.content || ''
+    const isEmpty = isEmptyContent(initialHtml)
+
+    // Если контент пуст, устанавливаем пустой HTML и добавляем класс .empty
+    if (isEmpty) {
+      element.innerHTML = ''
+      element.classList.add(styles.empty)
+    } else {
+      // Если контент не пуст, загружаем его и убираем класс .empty
+      element.innerHTML = initialHtml
+      element.classList.remove(styles.empty)
+    }
+
+    // Устанавливаем начальный режим тулбара на основе props
+    setToolbar(props.toolbar || 'float')
+
+    // Устанавливаем placeholder как data-атрибут для использования в CSS
+    if (props.placeholder) {
+      element.setAttribute('data-placeholder', props.placeholder)
+    }
+
+    // Добавляем атрибуты для CSS-селекторов
+    if (props.fieldType) {
+      element.setAttribute('data-field-type', props.fieldType)
+    }
+
+    if (props.editorId) {
+      element.setAttribute('data-editor-id', props.editorId)
+    }
   }
 
-  const handleInsertVideo = (url: string) => {
-    // Сохраняем текст выделения до восстановления
-    // Находим временно выделенный элемент
-    const highlightElement = editorRef()?.querySelector('[data-temp-highlight="true"]')
-    const originalSelectionText = highlightElement?.textContent || ''
-    let _useFallbackText = false
+  // Сигнал для отслеживания, нужно ли показывать плейсхолдер
+  const [shouldShowPlaceholderState, setShouldShowPlaceholderState] = createSignal(false)
 
-    // Удаляем временное выделение
-    const parentBeforeRestore = highlightElement?.parentNode
+  // Функция с дебаунсом для обновления плейсхолдера
+  let placeholderTimeout: number | undefined
 
-    // Если не удалось восстановить выделение, пробуем создать новое
-    if (!restoreSelection()) {
-      console.log('Не удалось восстановить выделение, создаем новое')
-      _useFallbackText = true
-
-      // Если есть элемент с временным выделением, используем его
-      if (highlightElement) {
-        const range = document.createRange()
-        range.selectNodeContents(highlightElement)
-        const selection = window.getSelection()
-        if (selection) {
-          selection.removeAllRanges()
-          selection.addRange(range)
-        }
-      } else {
-        // Фокусируемся на редакторе
-        editorRef()?.focus()
-
-        // Создаем новое выделение в конце текста
-        const selection = window.getSelection()
-        if (selection && editorRef()) {
-          const range = document.createRange()
-          if (editorRef()!.lastChild) {
-            range.selectNodeContents(editorRef()!)
-            range.collapse(false) // Коллапсируем в конец
-          } else {
-            // Если редактор пустой, просто выбираем его
-            range.selectNodeContents(editorRef()!)
-          }
-          selection.removeAllRanges()
-          selection.addRange(range)
-        }
-      }
+  // Функция для проверки, нужно ли показывать плейсхолдер с задержкой
+  const updatePlaceholderWithDelay = (isEmpty: boolean) => {
+    // Очищаем предыдущий таймаут, если он был
+    if (placeholderTimeout) {
+      clearTimeout(placeholderTimeout)
+      placeholderTimeout = undefined
     }
 
-    // Используем выделенный текст для описания видео, если он есть
-    const videoTitle = originalSelectionText || url
-    console.log(`Вставка видео: ${videoTitle}`)
-
-    // Получаем платформу и ID видео
-    const platform = detectVideoPlatform(url)
-
-    // Извлекаем ID видео из URL
-    let videoId = url
-    if (platform === 'youtube') {
-      // Пытаемся извлечь ID из YouTube URL
-      const match = url.match(YOUTUBE_URL_REGEX)
-      if (match?.[1]) {
-        videoId = match[1]
-      }
-    } else if (platform === 'vimeo') {
-      // Пытаемся извлечь ID из Vimeo URL
-      const match = url.match(VIMEO_URL_REGEX)
-      if (match?.[1]) {
-        videoId = match[1]
-      }
+    // Если контент не пустой - сразу скрываем плейсхолдер
+    if (!isEmpty) {
+      setShouldShowPlaceholderState(false)
+      return
     }
 
-    // Создаем видео-встройку
-    const videoEmbed = createVideoEmbed(videoId, platform)
+    // Используем более длительную задержку при форматировании текста
+    // Это поможет избежать мигания плейсхолдера при применении стилей
+    const selection = window.getSelection()
+    const isFormatting = selection && !selection.isCollapsed
+    const delay = isFormatting ? 300 : 100
 
-    // Если есть временное выделение, заменяем его видео-встройкой напрямую
-    if (highlightElement && parentBeforeRestore) {
-      // Создаем элемент для вставки видео
-      const videoContainer = document.createElement('div')
-      videoContainer.innerHTML = videoEmbed
-
-      // Заменяем выделение видео-встройкой
-      parentBeforeRestore.replaceChild(videoContainer.firstChild!, highlightElement)
-
-      // Обновляем состояние редактора
-      handleChange()
-    } else {
-      // Стандартный случай - используем replaceSelection
-      handleReplaceSelection(videoEmbed)
-    }
-
-    showInsert(undefined)
-    editorRef()?.focus()
+    // Если контент пустой - устанавливаем с задержкой
+    placeholderTimeout = window.setTimeout(() => {
+      setShouldShowPlaceholderState(isEmpty)
+    }, delay)
   }
 
-  const handleInsertLink = (url: string) => {
-    // Сохраняем текст выделения до восстановления
-    // Находим временно выделенный элемент
-    const highlightElement = editorRef()?.querySelector('[data-temp-highlight="true"]')
-    const originalSelectionText = highlightElement?.textContent || ''
-    let _useFallbackText = false
+  // Обновление состояния плейсхолдера
+  const updatePlaceholderState = () => {
+    // Определяем, пуст ли редактор
+    const isEmpty = isEditorEmpty()
 
-    // Удаляем временное выделение
-    const parentBeforeRestore = highlightElement?.parentNode
+    // Обновляем состояние
+    setShouldShowPlaceholderState(isEmpty)
 
-    // Если не удалось восстановить выделение, пробуем создать новое
-    if (!restoreSelection()) {
-      console.log('Не удалось восстановить выделение, создаем новое')
-      _useFallbackText = true
+    // Добавляем/удаляем класс .empty для редактора
+    const editorElement = editorRef()
 
-      // Если есть элемент с временным выделением, используем его
-      if (highlightElement) {
-        const range = document.createRange()
-        range.selectNodeContents(highlightElement)
-        const selection = window.getSelection()
-        if (selection) {
-          selection.removeAllRanges()
-          selection.addRange(range)
-        }
+    if (editorElement) {
+      if (isEmpty) {
+        editorElement.classList.add('empty')
       } else {
-        // Фокусируемся на редакторе
-        editorRef()?.focus()
-
-        // Создаем новое выделение в конце текста
-        const selection = window.getSelection()
-        if (selection && editorRef()) {
-          const range = document.createRange()
-          if (editorRef()!.lastChild) {
-            range.selectNodeContents(editorRef()!)
-            range.collapse(false) // Коллапсируем в конец
-          } else {
-            // Если редактор пустой, просто выбираем его
-            range.selectNodeContents(editorRef()!)
-          }
-          selection.removeAllRanges()
-          selection.addRange(range)
-        }
+        editorElement.classList.remove('empty')
       }
     }
+  }
 
-    // Определяем текст для ссылки - всегда используем текст, который был выделен
-    const linkText = originalSelectionText || url
+  // Эффект для инициализации состояния плейсхолдера
+  createEffect(() => {
+    const editor = editorRef()
+    if (!editor) return
 
-    // Если есть временное выделение, заменяем его ссылкой напрямую
-    if (highlightElement && parentBeforeRestore) {
-      const link = document.createElement('a')
-      link.href = url
-      link.target = '_blank'
-      link.rel = 'noopener noreferrer'
-      link.textContent = originalSelectionText
+    // Проверяем пустоту содержимого
+    const isEmpty = isEmptyContent(editor.innerHTML)
 
-      // Заменяем выделение ссылкой
-      parentBeforeRestore.replaceChild(link, highlightElement)
+    // Сразу устанавливаем начальное состояние
+    setShouldShowPlaceholderState(isEmpty)
 
-      // Обновляем состояние редактора
-      handleChange()
+    // Обновляем класс для соответствия состоянию
+    if (isEmpty) {
+      editor.classList.add('placeholder-visible')
     } else {
-      // Стандартный случай - используем replaceSelection
-      handleReplaceSelection(`<a href="${url}">${linkText}</a>`)
+      editor.classList.remove('placeholder-visible')
     }
+  })
 
-    showInsert(undefined)
-    editorRef()?.focus()
+  // Эффект для обновления отображения плейсхолдера при изменении состояния
+  createEffect(() => {
+    const editor = editorRef()
+    if (!editor) return
+
+    // Добавляем/удаляем класс в зависимости от состояния
+    if (shouldShowPlaceholderState()) {
+      editor.classList.add('placeholder-visible')
+    } else {
+      editor.classList.remove('placeholder-visible')
+    }
+  })
+
+  // Инициализация редактора
+  createEffect(() => {
+    if (editorRef()) {
+      // Заполняем редактор содержимым
+      const editor = editorRef()!
+      if (initialContent && editor.innerHTML !== initialContent) {
+        editor.innerHTML = initialContent
+      }
+
+      // Добавляем обработчик клавиатуры для отслеживания изменений
+      const handleKeyUp = () => {
+        handleChange()
+
+        // Обновляем состояние плейсхолдера
+        updatePlaceholderState()
+
+        // Проверяем, находится ли курсор на новой строке после нажатия клавиши
+        const onNewLine = isCursorOnEmptyLine()
+        const editor = editorRef()
+
+        if (editor) {
+          if (onNewLine && !isEmptyContent(editor.innerHTML)) {
+            // Если курсор на новой строке - показываем плейсхолдер и плюс-меню
+            editor.classList.add('show-placeholder-on-new-line')
+          } else {
+            editor.classList.remove('show-placeholder-on-new-line')
+          }
+        }
+      }
+
+      // Обновляем отображение плейсхолдера при инициализации
+      updatePlaceholderState()
+
+      editor.addEventListener('keyup', handleKeyUp)
+      onCleanup(() => editor.removeEventListener('keyup', handleKeyUp))
+    }
+  })
+
+  // Эффект обновления стиля плейсхолдера при изменении содержимого
+  createEffect(() => {
+    if (!editorRef() || isServer) return
+
+    // Используем функцию isEditorEmpty для проверки пустоты редактора
+    const isEmpty = isEditorEmpty()
+
+    // Обновляем классы для плейсхолдера
+    if (isEmpty) {
+      editorRef()!.classList.add('placeholder-visible')
+    } else {
+      editorRef()!.classList.remove('placeholder-visible')
+    }
+  })
+
+  // Функция для поиска существующей врезки по клику
+  const findSquibElement = (target: Node | null): HTMLElement | null => {
+    if (!target) return null
+
+    // Находим родительский элемент врезки
+    const squibElement = (target as HTMLElement).closest(`.${styles.squib}`)
+    return (squibElement as HTMLElement) || null
+  }
+
+  // Создаем сигнал для хранения ссылки на текущую врезку
+  const [currentSquib, setCurrentSquib] = createSignal<HTMLElement | null>(null)
+
+  /**
+   * Обработчик для отслеживания изменений и обновления тулбара
+   */
+  const updateToolbarState = () => {
+    // Прежде чем обновлять тулбар, проверим нужно ли его показывать
+    if (shouldShowFloatingToolbar()) {
+      setToolbar('float')
+      // Позиция будет передана через props при рендеринге SimpleToolbar
+    } else if (hasFocus()) {
+      // Если есть фокус, но нет выделения - используем заданный режим
+      setToolbar(props.toolbar || 'bottom')
+    } else {
+      // Если нет фокуса - скрываем тулбар
+      setToolbar('hidden')
+    }
+  }
+
+  // Обновляем эффект для отслеживания изменений и обновления тулбара
+  createEffect(() => {
+    // Отслеживаем изменения в выделении и фокусе
+    const _selectionEmpty = selection()?.isEmpty
+    const _focused = hasFocus()
+
+    // Обновляем состояние тулбара
+    updateToolbarState()
+  })
+
+  /**
+   * Обработчик для отслеживания изменений выделения текста
+   * и обновления видимости тулбаров
+   */
+  const _trackSelectionAndToolbars = () => {
+    handleTrackSelectionAndCursor()
+    updateToolbarState()
+  }
+
+  // Обработчик для обновления выделения и курсора после
+  // завершения операции форматирования
+  const handleAfterFormat = () => {
+    handleChange()
+    updateToolbarState()
+  }
+
+  /**
+   * Обработчик команд форматирования для панели инструментов сносок
+   * Принимает только команды типа CommandType
+   * @param action Команда форматирования
+   */
+  const handleFootnoteToolbarAction = (action: CommandType) => {
+    handleAction(action)
+  }
+
+  // Создаем функцию для получения всех сносок из текущего редактора
+  const getDocumentFootnotes = () => {
+    if (!editorRef()) return []
+    return getAllFootnotes(editorRef()!)
+  }
+
+  // Обновляем список сносок при изменении контента
+  createEffect(
+    on(content, () => {
+      if (editorRef()) {
+        updateFootnotes(getDocumentFootnotes())
+      }
+    })
+  )
+
+  /**
+   * Открывает редактор сноски для указанного идентификатора
+   * @param footnoteId Идентификатор сноски для редактирования
+   */
+  const openFootnoteEditor = (footnoteId: string) => {
+    if (!editorRef()) return
+
+    // Находим сноску по идентификатору
+    const footnote = getFootnoteById(editorRef()!, footnoteId)
+    if (!footnote) return
+
+    // Сохраняем текущее выделение перед открытием редактора сноски
+    saveSelection()
+
+    // Устанавливаем режим редактирования для этой сноски
+    setEditingFootnote(footnote.marker as HTMLElement)
+    setFootnoteContent(footnote.content)
+    setShowFootnoteEditor(true)
+  }
+
+  // Обработчики для работы с формами
+  const [_linkSubmitHandler, _setLinkSubmitHandler] = createSignal<(url: string) => void>(() => {
+    /* Заглушка, будет заменена реальным обработчиком через setLinkSubmitHandler */
+  })
+  const [_videoSubmitHandler, _setVideoSubmitHandler] = createSignal<(url: string) => void>(() => {
+    /* Заглушка, будет заменена реальным обработчиком через setVideoSubmitHandler */
+  })
+
+  // Обработчик для компонента модального окна загрузки изображений
+  const showImageUploadModal = () => {
+    // Сохраняем текущее состояние выделения
+    saveSelection()
+
+    // Показываем модальное окно с загрузчиком изображений
+    showModal(MODALS.uploadImage)
+
+    // Сохраняем параметры в глобальную переменную для использования в компоненте загрузки
+    // @ts-ignore - В реальной ситуации это будет обрабатываться корректно
+    window.__imageUploadParams = {
+      onSuccess: handleUploadSuccess,
+      onCancel: () => {
+        hideModal()
+        editorRef()?.focus() // Возвращаем фокус в редактор
+        restoreSelection()
+      }
+    }
+  }
+
+  // заменяем локальное определение documentFootnotes
+  // const [documentFootnotes, setDocumentFootnotes] = createSignal<Array<{ id: string; content: string; marker: Element }>>([])
+  // на функцию-адаптер для работы с documentFootnotes из state
+  const getFootnotesArray = () => {
+    const stateFootnotes = stateDocumentFootnotes()
+    return Object.entries(stateFootnotes).map(([id, content]) => {
+      const marker = document.querySelector(`[data-footnote-id="${id}"]`)
+      return { id, content, marker: marker as Element }
+    })
+  }
+
+  const updateFootnotes = (footnotes: Array<{ id: string; content: string; marker: Element }>) => {
+    const footnotesObject: Record<string, string> = {}
+    footnotes.forEach(({ id, content }) => {
+      footnotesObject[id] = content
+    })
+    setStateDocumentFootnotes(footnotesObject)
   }
 
   return (
-    <div class={styles.editorWrapper} data-field-type={props.fieldType}>
+    <div
+      class={clsx(styles.editorWrapper, {
+        [styles.readOnly]: props.readOnly
+      })}
+      data-field-type={props.fieldType}
+    >
       {/* Редактируемая область только для контента */}
       <div
         class={clsx(styles.editor, {
           [styles.focused]: hasFocus(),
-          [styles.empty]: isEmptyContent(content())
+          [styles.hasContent]: !isEditorEmpty(),
+          [styles.readOnly]: props.readOnly
         })}
+        data-editor-id={props.editorId}
+        data-field-type={props.fieldType}
       >
+        {/* Внутреннее содержимое редактора */}
         <div
-          ref={setEditorRef}
+          ref={initEditor}
           class={styles.content}
           contentEditable={!props.readOnly}
           onFocus={handleFocus}
@@ -1761,193 +2293,247 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           onPaste={handlePaste}
           onDrop={handleDropFiles}
           onKeyDown={handleKeyDown}
+          onClick={handleContentClick}
           data-placeholder={props.placeholder}
-          data-editor-id={props.editorId || undefined}
-          data-field-type={props.fieldType || undefined}
           spellcheck={true}
         />
-      </div>
 
-      {/* Ссылка для восстановления локальной версии */}
-      <Show when={showLocalVersionLink()}>
-        <div class={styles.localVersionLink}>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              loadLocalVersion()
-            }}
-          >
-            {t('Несохраненные изменения от')}{' '}
-            {localVersion() ? new Date(localVersion()!.timestamp).toLocaleString() : ''}
-          </a>
-        </div>
-      </Show>
+        {/* Тулбар в режиме top - видим при фокусе */}
+        <Show when={toolbar() === 'top' && hasFocus()}>
+          <SimpleToolbar
+            commands={props.commands as CommandType[]}
+            onAction={(action) => handleAction(action as CommandType)}
+            currentFormats={activeFormats()}
+            isVisible={true}
+            class={styles.topToolbar}
+            editorId={props.editorId}
+          />
+        </Show>
 
-      {/* Кнопки сохранения и отмены для редактора вступления - показываем только если есть содержимое */}
-      <Show
-        when={
-          props.fieldType === 'lead' && props.showButtons && !props.readOnly && !isEmptyContent(content())
-        }
-      >
-        <div class={styles.editorButtonsWrapper}>
-          <Button
-            variant="secondary"
-            value={t('Cancel')}
-            onClick={() => {
-              // Очищаем редактор перед отменой
-              if (editorRef()) {
-                editorRef()!.innerHTML = ''
-                setContent('')
-                // Вызываем родительский обработчик
-                if (props.onCancel) {
-                  props.onCancel()
+        {/* Тулбар в режиме bottom - видим при фокусе */}
+        <Show when={toolbar() === 'bottom' && hasFocus()}>
+          <SimpleToolbar
+            commands={props.commands as CommandType[]}
+            onAction={(action) => handleAction(action as CommandType)}
+            currentFormats={activeFormats()}
+            isVisible={true}
+            class={styles.bottomToolbar}
+            editorId={props.editorId}
+          />
+        </Show>
+
+        {/* Плавающий тулбар - видим при выделении текста */}
+        <Show when={toolbar() === 'float' && selection()?.text && !selection()?.isEmpty}>
+          <SimpleToolbar
+            commands={props.commands as CommandType[]}
+            onAction={(action) => handleAction(action as CommandType)}
+            currentFormats={activeFormats()}
+            isVisible={true}
+            position={getFloatingToolbarPosition()}
+            class={styles.floatingToolbar}
+            editorId={props.editorId}
+          />
+        </Show>
+
+        {/* Меню врезки (SquibMenu) показывается только когда курсор внутри врезки */}
+        <Show when={showSquibEditor() && currentSquib()}>
+          <SquibMenu
+            isVisible={true}
+            onAction={(action) => {
+              const squibElement = currentSquib()
+              if (squibElement) {
+                if (handleSquibFormatting(action as string)) {
+                  handleChange()
+                  editorRef()?.focus()
                 }
               }
             }}
-          />
-          <Button
-            variant="primary"
-            value={t('Save')}
-            onClick={() => {
-              // Вызываем родительский обработчик
-              if (props.onSave) {
-                props.onSave()
-              }
+            onClose={() => {
+              setShowSquibEditor(false)
+              setCurrentSquib(null)
             }}
-          />
-        </div>
-      </Show>
-
-      {/* Панель управления как оверлей */}
-      <div
-        class={clsx(styles.toolbarContainer, {
-          [styles.toolbarTop]: props.toolbar === 'top',
-          [styles.toolbarBottom]: props.toolbar === 'bottom',
-          [styles.toolbarFloat]: !props.toolbar || props.toolbar === 'float',
-          [styles.visible]: toolbar() && toolbar() !== 'hidden'
-        })}
-      >
-        <SimpleToolbar
-          commands={props.commands || []}
-          onAction={(action: CommandType | CommandGroupType) => handleAction(action as CommandType)}
-          currentFormats={activeFormats()}
-          isVisible={toolbar() !== 'hidden'}
-        />
-      </div>
-
-      {/* Плавающее меню "+" должно всегда показываться для основного редактора */}
-      <Show when={shouldShowPlusMenu()}>
-        <PlusMenu
-          position={getMenuPosition(editorRef() || null)}
-          isVisible={true}
-          onAction={(action) => handleAction(action)}
-          currentFormats={activeFormats()}
-          onClose={() => handleTrackSelectionAndCursor()}
-        />
-      </Show>
-
-      {/* Меню форматирования врезки */}
-      <Show when={props.squib && hasFocus()}>
-        <SquibMenu
-          isVisible={hasFocus()}
-          onAction={(action) => handleAction(action)}
-          onClose={() => updateActiveFormats()}
-          currentFormats={activeFormats()}
-        />
-      </Show>
-
-      <Portal>
-        <Show when={showingInsert()?.type === 'link'}>
-          <div
-            class={styles.inlineFormWrapper}
-            style={
-              insertPosition()
-                ? `position: absolute; top: ${insertPosition()?.top}px; left: ${insertPosition()?.left}px; z-index: 100;`
-                : ''
-            }
-          >
-            <InlineForm
-              placeholder={t('Enter link...')}
-              initialValue={showingInsert()?.text || ''}
-              showInput={true}
-              validate={validateUrl}
-              onSubmit={handleInsertLink}
-              onClose={() => showInsert(undefined)}
-            />
-          </div>
-        </Show>
-        <Show when={showingInsert()?.type === 'video'}>
-          <div
-            class={styles.inlineFormWrapper}
-            style={
-              insertPosition()
-                ? `position: absolute; top: ${insertPosition()?.top}px; left: ${insertPosition()?.left}px; z-index: 100;`
-                : ''
-            }
-          >
-            <InlineForm
-              placeholder={t('Enter YouTube or Vimeo link...')}
-              initialValue={showingInsert()?.text || ''}
-              showInput={true}
-              validate={validateVideoUrl}
-              onSubmit={handleInsertVideo}
-              onClose={() => showInsert(undefined)}
-            />
-          </div>
-        </Show>
-        <Show when={showSquibEditor()}>
-          <SimpleRichEditor
-            content={getSelectionText()}
-            squib={true}
-            placeholder={t('Enter text...')}
-            onChange={(content) => setSquibContent(content.content)}
-            onBlur={() => handleSquibSubmit(squibContent())}
+            currentFormats={activeFormats()}
+            position={squibMenuPosition()}
+            editorId={props.editorId}
+            commands={[
+              'align-left',
+              'align-center',
+              'align-right',
+              'bg-gray',
+              'bg-white',
+              'bg-black',
+              'bg-yellow',
+              'bg-red',
+              'bg-green'
+            ]}
           />
         </Show>
+
+        {/* Ссылка для восстановления локальной версии */}
+        <Show when={showLocalVersionLink()}>
+          <div class={styles.localVersionLabel}>
+            {t('Есть локальная версия')}
+            <button onClick={loadLocalVersion} class={styles.localVersionRestore}>
+              {t('Восстановить')}
+            </button>
+            <button onClick={handleClearLocalVersion} class={styles.localVersionClear}>
+              {t('Очистить')}
+            </button>
+          </div>
+        </Show>
+
+        {/* Отображаем редактор сносок */}
         <Show when={showFootnoteEditor()}>
-          <SimpleRichEditor
-            commands={['bold', 'italic', 'highlight', 'link']}
-            content={getSelectionText()}
-            placeholder={t('Enter text...')}
-            onChange={(content) => setFootnoteContent(content.content)}
-            onBlur={() => handleFootnoteSubmit(footnoteContent())}
-          />
+          <div class={styles.footnoteEditor}>
+            <h3>{editingFootnote() ? t('Редактировать сноску') : t('Добавить сноску')}</h3>
+            <div
+              class={styles.footnoteEditorContent}
+              contentEditable={true}
+              onInput={(e) => setFootnoteContent(e.currentTarget.innerHTML)}
+              data-editor-type="footnote"
+            />
+            <SimpleToolbar
+              commands={MICRO_COMMANDS as unknown as CommandType[]}
+              onAction={(action) => handleFootnoteToolbarAction(action as CommandType)}
+              currentFormats={activeFormats()}
+              isVisible={true}
+              class={styles.footnoteToolbar}
+            />
+            <div class={styles.footnoteEditorActions}>
+              <button
+                onClick={() => {
+                  handleFootnoteSubmit(footnoteContent())
+                  setShowFootnoteEditor(false)
+                }}
+              >
+                {t('Сохранить')}
+              </button>
+              <button
+                onClick={() => {
+                  setShowFootnoteEditor(false)
+                  setFootnoteContent('')
+                }}
+              >
+                {t('Отмена')}
+              </button>
+            </div>
+          </div>
         </Show>
 
-        {/* Добавляем формы для редактирования существующих элементов */}
-        <Show when={editingLink()}>
+        {/* Меню для отображения всех сносок в документе */}
+        <Show when={getFootnotesArray().length > 0 && props.fieldType === 'body'}>
+          <div class={styles.footnotesList}>
+            <h4>{t('Сноски в документе')}:</h4>
+            <ul>
+              <For each={getFootnotesArray()}>
+                {(footnote: { id: string; content: string; marker: Element }) => (
+                  <li>
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        openFootnoteEditor(footnote.id)
+                      }}
+                      title={footnote.content.replace(/<[^>]*>/g, '')}
+                    >
+                      {footnote.id}
+                    </a>
+                    <button
+                      class={styles.removeFootnoteButton}
+                      title={t('Удалить сноску')}
+                      onClick={() => {
+                        if (editorRef()) {
+                          removeFootnote(editorRef()!, footnote.id)
+                          updateFootnotes(getDocumentFootnotes())
+                          handleChange()
+                        }
+                      }}
+                    >
+                      ×
+                    </button>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </div>
+        </Show>
+
+        {/* Заменяем старые формы на InlineForm */}
+        <Show when={showForm() === 'link'}>
           <div
             class={styles.inlineFormWrapper}
-            style={
-              editElementPosition()
-                ? `position: absolute; top: ${editElementPosition()?.top}px; left: ${editElementPosition()?.left}px; z-index: 100;`
-                : ''
-            }
+            style={{
+              top: `${formPosition()?.top || 0}px`,
+              left: `${formPosition()?.left || 0}px`
+            }}
           >
             <InlineForm
-              placeholder={t('Edit link URL...')}
-              initialValue={(editingLink() as HTMLAnchorElement)?.href || ''}
-              showInput={true}
-              validate={validateUrl}
-              onSubmit={handleUpdateLink}
-              onClose={() => setEditingLink(null)}
+              placeholder={t('Вставьте URL')}
+              initialValue={formInitialValue()}
+              onSubmit={handleInsertLink}
+              onClose={() => {
+                setShowForm(null)
+                editorRef()?.focus()
+                restoreSelection()
+              }}
+              validate={editorFormOptions?.validate || (() => '')}
             />
           </div>
         </Show>
 
-        {/* Модальное окно загрузки изображений для всех случаев */}
-        <Modal name={MODALS.uploadImage} variant="narrow">
-          <UploadModalContent
-            onClose={(uploadedFile) =>
-              editingImage() ? handleUpdateImage(uploadedFile) : handleImageUpload(uploadedFile)
-            }
+        <Show when={showForm() === 'video'}>
+          <div
+            class={styles.inlineFormWrapper}
+            style={{
+              top: `${formPosition()?.top || 0}px`,
+              left: `${formPosition()?.left || 0}px`
+            }}
+          >
+            <InlineForm
+              placeholder={t('Вставьте URL видео (YouTube, Vimeo)')}
+              initialValue={formInitialValue()}
+              onSubmit={handleInsertVideo}
+              onClose={() => {
+                setShowForm(null)
+                editorRef()?.focus()
+                restoreSelection()
+              }}
+              validate={editorFormOptions?.validate || (() => '')}
+            />
+          </div>
+        </Show>
+
+        {/* Плюс-меню для вставки специальных элементов */}
+        <Show when={shouldShowPlusMenu()}>
+          <PlusMenu
+            position={getPlusMenuPosition()}
+            isVisible={true}
+            onEmpty={isCursorOnEmptyLine()}
+            onAction={(action) => {
+              // Создаем обертку для правильного вызова handlePlusMenuAction
+              handlePlusMenuAction(action, editorRef()!, {
+                showLinkForm: (onSubmit) => {
+                  setShowForm('link')
+                  setFormInitialValue('')
+                  setFormPosition(getPlusMenuPosition())
+                  _setLinkSubmitHandler(() => onSubmit)
+                },
+                showVideoForm: (onSubmit) => {
+                  setShowForm('video')
+                  setFormInitialValue('')
+                  setFormPosition(getPlusMenuPosition())
+                  _setVideoSubmitHandler(() => onSubmit)
+                },
+                showImageUploadModal,
+                showAudioUploader,
+                handleChange
+              })
+            }}
+            onClose={() => handleTrackSelectionAndCursor()}
+            editorId={props.editorId}
           />
-        </Modal>
-      </Portal>
+        </Show>
+      </div>
     </div>
   )
 }
-
-// Экспортируем функцию удаления локальной версии
-export { removeLocalVersion }

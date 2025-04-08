@@ -2,24 +2,78 @@ import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show, createMemo } from 'solid-js'
 
+import { useConnect } from '~/context/connect'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import type { Author } from '~/graphql/schema/core.gen'
 import { Userpic } from '../Author/Userpic'
+import { PublishButton } from '../Draft/PublishButton'
 import { ProfilePopup } from '../ProfileNav/ProfilePopup'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 import { Popover } from '../_shared/Popover'
 import { Popup } from '../_shared/Popup'
-import NotificationsBell from './NotificationsBell'
-
 import styles from './Header.module.scss'
+import NotificationsBell from './NotificationsBell'
 
 type Props = {
   setIsProfilePopupVisible: (value: boolean) => void
   showInboxButton?: boolean
+}
+
+// Компонент индикатора подключения
+const ConnectionIndicator = () => {
+  const { connected, reconnect } = useConnect()
+  const { t } = useLocalize()
+
+  const handleClick = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!connected) {
+      console.log('[ConnectionIndicator] Triggering reconnect')
+      reconnect()
+    }
+  }
+
+  // Подготовка контента для Popover
+  const popoverContent = () => {
+    if (connected) {
+      return (
+        <div>
+          <div>{t('Connected to server')}</div>
+          <div class={styles.popoverSubtext}>{t('Collaborative editing enabled')}</div>
+        </div>
+      )
+    } else {
+      return (
+        <div>
+          <div>{t('Disconnected from server')}</div>
+          <div class={styles.popoverSubtext}>{t('Click to reconnect')}</div>
+          <div class={styles.popoverSubtext}>{t('Changes saved locally')}</div>
+        </div>
+      )
+    }
+  }
+
+  return (
+    <Popover content={popoverContent()}>
+      {(ref) => (
+        <div
+          ref={ref}
+          class={clsx(styles.connectionIndicator, {
+            [styles.connected]: connected,
+            [styles.disconnected]: !connected
+          })}
+          onClick={handleClick}
+        >
+          <div class={styles.indicatorDot} />
+        </div>
+      )}
+    </Popover>
+  )
 }
 
 // Компонент для режима редактирования
@@ -33,6 +87,15 @@ const EditingHeader = (props: Props) => {
 
   return (
     <>
+      <Show when={!(loc.pathname.startsWith('/edit/') && loc.pathname.endsWith('/settings'))}>
+        <div class={styles.editorControls}>
+          <ConnectionIndicator />
+          <span class={styles.editorModePopupOpener}>
+            <EditingSelector mode={t('Editing')} setMode={toggleEditorPanel} />
+          </span>
+        </div>
+      </Show>
+
       <ProfilePopup
         onVisibilityChange={props.setIsProfilePopupVisible}
         containerCssClass={styles.control}
@@ -52,13 +115,14 @@ const EditingHeader = (props: Props) => {
         }
       />
 
-      <span class={styles.notificationsBellContainer}>
-        <NotificationsBell />
-      </span>
-
-      <span class={styles.editorModePopupOpener}>
-        <EditingSelector mode={t('Editing')} setMode={toggleEditorPanel} />
-      </span>
+      <Show when={!(loc.pathname.startsWith('/edit/') && loc.pathname.endsWith('/settings'))}>
+        <div class={styles.editorControls}>
+          <span class={styles.notificationsBellContainer}>
+            <NotificationsBell />
+          </span>
+          <PublishButton />
+        </div>
+      </Show>
 
       <div
         class={clsx(styles.userControlItem, styles.settingsControlContainer, styles.userControlItemVerbose)}

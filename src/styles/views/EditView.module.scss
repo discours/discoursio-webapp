@@ -14,24 +14,32 @@
     margin-bottom: 0.5rem;
     display: flex;
     flex-direction: row;
-    gap: 1rem;
-    color: var(--blue-link);
+    gap: 1.5rem !important;
+    color: var(--blue-link, #3a80e9) !important;
 
     .action {
       cursor: pointer;
+      font-weight: 500;
+      pointer-events: all;
+      transition: color 0.2s ease;
+      
+      &:hover {
+        text-decoration: underline;
+        color: var(--blue-link-hover, #2065d1);
+      }
     }
   }
 
   .titleInput,
   .subtitleInput,
   .leadInput {
-    font-size: 36px;
     line-height: 1.1;
-    margin-bottom: 1.2rem;
+    opacity: 1;
+    font-weight: 200 !important;
+    margin-bottom: 30px !important;
 
     &::placeholder {
-      opacity: 0.3;
-      color: #000;
+      opacity: 0.8;
     }
   }
 
@@ -183,11 +191,30 @@
   flex: 1;
   display: flex;
   flex-flow: column;
+  gap: 25px;
+  z-index: 1;
 
   .validationError {
     font-size: small;
     margin-top: -1rem;
     color: var(--danger-color);
+  }
+  
+  & > .titleInput {
+    margin-bottom: 20px !important;
+  }
+  
+  & > .subtitleInput {
+    margin-bottom: 20px !important;
+  }
+  
+  & > .leadInput {
+    margin-bottom: 20px !important;
+  }
+  
+  & > * {
+    position: relative;
+    width: 100%;
   }
 }
 
@@ -236,44 +263,135 @@
   padding-top: 100px;
 }
 
-// Добавляем стили для информационного сообщения автосохранения
-.autoSaveInfo {
-  margin-top: 2rem;
-  padding: 1rem;
-  text-align: center;
-}
-
-.autoSaveMessage {
-  font-size: 1.4rem;
-  color: var(--secondary-text-color);
-  font-style: italic;
-  opacity: 0.8;
-}
-
 // Добавляем стили для обертки редактора введения и его кнопок
-
 .leadEditorWrapper {
   position: relative;
-  margin-bottom: 1.5rem;
+  margin: 0;
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  background-color: var(--color-bg-light, #fff);
+  transform: scaleZ(1.05);
+  z-index: 3;
+  padding-bottom: 50px;
   
-  // Контейнер для кнопок
-  .leadEditorButtons {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    margin-top: 0.5rem;
-    opacity: 1;
-    transition: opacity 0.4s ease-in-out;
-    user-select: none;
-    
-    button {
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      transition: all 0.2s ease;
-      user-select: none;
+  :global {
+    .ProseMirror, [data-editor-id*="-lead"], p {
+      font-size: 17px;
+      line-height: 1.5;
     }
+  }
+}
+
+// Стили для отображения добавленного вступления
+.leadContentDisplay {
+  margin: 0;
+  padding: 12px 16px;
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  position: relative;
+  z-index: 3;
+  
+  &:hover {
+    background-color: var(--color-gray-50);
+  }
+  
+  p {
+    margin: 0;
+    font-size: 17px;
+    line-height: 1.5;
+  }
+  
+  &::after {
+    content: '✎';
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    opacity: 0;
+    font-size: 16px;
+    color: var(--color-text-secondary);
+    transition: opacity 0.2s ease;
+  }
+  
+  &:hover::after {
+    opacity: 0.7;
+  }
+}
+
+.leadContentText {
+  color: var(--color-text-primary, #000);
+  
+  p, span, div {
+    color: var(--color-text-primary, #000);
+  }
+}
+
+// Стиль для ссылки "Добавить вступление" внутри формы
+.addIntroLink {
+  display: inline-block;
+  color: var(--blue-link, #3a80e9);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 10px 0;
+  margin-bottom: 15px;
+  position: relative;
+  
+  &::before {
+    content: '+';
+    margin-right: 5px;
+    font-weight: bold;
+  }
+  
+  &:hover {
+    text-decoration: underline;
+    color: var(--blue-link-hover, #2065d1);
+  }
+}
+
+// Стили для кнопок сохранения/отмены - унифицированные с редактором комментариев
+.editingButtonsWrapper {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: -2.8em;
+  padding-right: .5em;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease;
+  user-select: none;
+  transform: translateY(5px);
+  
+  &:not(.hidden) {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  &.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  button {
+    z-index: 1000;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+}
+
+// Стили для основного редактора
+.mainEditorWrapper {
+  margin-bottom: 120px;
+  position: relative;
+  z-index: 2;
+  
+  @include media-breakpoint-down(md) {
+    margin-bottom: 160px;
   }
 }
 
@@ -284,4 +402,150 @@
   padding: 1rem;
   right: 0;
   z-index: 1000;
+}
+
+// Обновляем стили для основного редактора
+.mainEditorContainer {
+  position: relative;
+  margin-top: 20px;
+  
+  // Стили для плавающего тулбара в режиме float
+  .toolbarWrapper {
+    position: absolute;
+    z-index: 200;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+    
+    &:hover {
+      opacity: 1 !important;
+    }
+  }
+  
+  .editorContent {
+    min-height: 300px;
+    
+    // Основной плейсхолдер для пустого редактора
+    &[data-placeholder]::before {
+      content: attr(data-placeholder);
+      color: var(--color-text-secondary, #d0d0d0) !important;
+      font-style: italic;
+      font-size: 17px;
+      position: absolute;
+      pointer-events: none;
+      opacity: 0.8;
+    }
+    
+    // Отображение плейсхолдера только когда редактор пуст
+    &:empty[data-placeholder]::before,
+    &.placeholder-visible[data-placeholder]::before {
+      display: block;
+    }
+    
+    // Плейсхолдер для курсора на новой строке
+    &.show-placeholder-on-new-line[data-placeholder]::before {
+      display: block;
+      position: absolute;
+      left: 16px; // Отступ слева
+      color: var(--color-text-secondary, #d0d0d0) !important;
+      font-style: italic;
+      opacity: 0.6;
+      cursor: text;
+      pointer-events: auto; // Разрешаем взаимодействие с плейсхолдером
+    }
+  }
+  
+  // Стили для плюс-меню
+  .plusMenuWrapper {
+    position: absolute;
+    z-index: 100;
+    left: -45px; // Отступ для иконки
+    transform: translateX(0) !important;
+    
+    .button {
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      background-color: rgb(220 220 220 / 80%);
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      &:hover {
+        background-color: rgb(200 200 200 / 90%);
+      }
+    }
+    
+    &:hover {
+      .button {
+        opacity: 1;
+      }
+    }
+  }
+  
+  // Показываем иконку плюса при наведении на плейсхолдер
+  .editorContent.show-placeholder-on-new-line:hover ~ .plusMenuWrapper {
+    .button {
+      opacity: 1;
+    }
+  }
+}
+
+// Добавляем стиль для редактора с плейсхолдером
+.editor {
+  background-color: #fff;
+  position: relative;
+  
+  &.isScrolled {
+    box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
+  }
+}
+
+// Обновляем стили для заголовка
+.titleInput {
+  font-size: 56px !important;
+  line-height: 1.1;
+  font-weight: 200 !important;
+  color: var(--color-text-primary, #000) !important;
+  margin-bottom: 20px !important;
+  margin-top: 0 !important;
+  font-family: var(--font-primary);
+  padding: 0;
+  border: none;
+  width: 100%;
+  background: transparent;
+  outline: none;
+
+  &::placeholder {
+    opacity: 1 !important;
+    color: var(--color-text-secondary, #d0d0d0) !important;
+    font-weight: 200 !important;
+  }
+}
+
+.subtitleInput,
+.leadInput {
+  font-size: 32px !important;
+  line-height: 1.2;
+  font-weight: 300 !important;
+  color: var(--color-text-primary, #000) !important;
+  margin-bottom: 20px !important;
+  margin-top: 0 !important;
+  font-family: var(--font-primary);
+  padding: 0;
+  border: none;
+  width: 100%;
+  background: transparent;
+  outline: none;
+
+  &::placeholder {
+    opacity: 1 !important;
+    color: var(--color-text-secondary, #d0d0d0) !important;
+    font-weight: 300 !important;
+  }
 }

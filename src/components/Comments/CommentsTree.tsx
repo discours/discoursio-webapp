@@ -27,7 +27,7 @@ import {
 } from '~/graphql/schema/core.gen'
 import { MutationCreate_ReactionArgs } from '~/graphql/schema/core.gen'
 import { COMMENTS_PER_PAGE } from '../Article/FullArticle'
-import { EditorData, SimpleRichEditor, removeLocalVersion } from '../SimpleRichEditor/SimpleRichEditor'
+import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { cleanupContent, sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { Button } from '../_shared/Button'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
@@ -36,6 +36,7 @@ import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { CommentCard } from './CommentCard'
 import { CommentsHeader } from './CommentsHeader'
 
+import { removeLocalVersion } from '../SimpleRichEditor/lib/storage'
 import styles from './CommentsTree.module.scss'
 
 /**
@@ -1771,6 +1772,20 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
   // После успешной отправки комментария обновляем состояние
   const handleSubmitSuccess = () => {
+    console.log('[CommentsTree] Comment submitted successfully, clearing state')
+
+    // Очищаем редактор
+    const draftKey =
+      editingCommentId() !== undefined
+        ? `draft-${props.shoutId}-comment-edit-${editingCommentId()}`
+        : clickedReplyId() !== undefined
+          ? `draft-${props.shoutId}-comment-${clickedReplyId()}`
+          : `draft-${props.shoutId}-comment-new`
+
+    // Удаляем локальные версии
+    removeLocalVersion(draftKey)
+    setEditorContent(draftKey, '')
+
     // Если это был основной редактор, очищаем его сохраненное состояние
     if (!clickedReplyId() && !editingCommentId()) {
       setMainEditorContent('')
@@ -1794,6 +1809,18 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       setClickedReplyId(undefined)
       setLocalContent('')
     })
+
+    // Находим и очищаем DOM элемент редактора
+    try {
+      const editor = document.querySelector(`[data-editor-id="${draftKey}"]`)
+      if (editor) {
+        editor.innerHTML = ''
+        // Вызываем событие input для обновления состояния
+        editor.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    } catch (error) {
+      console.warn('[CommentsTree] Error clearing editor content:', error)
+    }
   }
 
   // Показываем основной редактор только если не редактируем комментарий и не отвечаем на комментарий

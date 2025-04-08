@@ -7,7 +7,6 @@ import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import type { Topic } from '~/graphql/schema/core.gen'
 import { isDesktop } from '~/lib/mediaQuery'
-import { AutoSave } from '../AutoSave'
 import { PublishSettings } from '../Draft/PublishSettings'
 import { Modal } from '../_shared/Modal'
 import { TableOfContents } from '../_shared/TableOfContents'
@@ -33,7 +32,6 @@ export const EditSettingsView = () => {
 
   return (
     <Show when={currentDraft()?.id}>
-      <AutoSave cacheId={() => `draft:${currentDraft()?.id}`} data={() => JSON.stringify(currentDraft())} />
       <div class={styles.container}>
         <form>
           <div class="wide-container">

@@ -8,6 +8,7 @@ import {
   removeFormatting as removeFormat,
   resetFormat
 } from './format'
+import { Position } from './types'
 
 /**
  * @module state
@@ -19,6 +20,7 @@ import {
  * - Автосохранение в localStorage
  * - Отслеживание выделения
  * - Подсчет символов
+ * - Управление UI-компонентами (формы, модальные окна)
  *
  * @example
  * ```tsx
@@ -66,6 +68,8 @@ export interface EditorState {
     redo: string[]
   }
   isBlurred: boolean
+  cursorPosition?: Position
+  currentCommand?: CommandType
   setActiveFormats: (formats: Set<CommandType>) => void
   setContent: (content: string) => void
   setIsBlurred: (isBlurred: boolean) => void
@@ -86,6 +90,28 @@ export interface EditorProps {
 }
 
 const MAX_HISTORY_LENGTH = 100
+
+/**
+ * Сигналы для управления состоянием UI компонентов редактора
+ */
+
+// Сигнал для отображения формы вставки ссылки
+export const [showLinkForm, setShowLinkForm] = createSignal<boolean>(false)
+
+// Сигнал для отображения формы вставки видео
+export const [showVideoForm, setShowVideoForm] = createSignal<boolean>(false)
+
+// Сигнал для отображения формы вставки аудио
+export const [showAudioForm, setShowAudioForm] = createSignal<boolean>(false)
+
+// Сигнал для отображения модального окна загрузки файлов
+export const [showUploadModal, setShowUploadModal] = createSignal<boolean>(false)
+
+// Текущий редактируемый сквиб (блок)
+export const [editingSquibId, setEditingSquibId] = createSignal<string | null>(null)
+
+// Текущие сноски в документе
+export const [documentFootnotes, setDocumentFootnotes] = createSignal<Record<string, string>>({})
 
 /**
  * Хук управления состоянием редактора
@@ -112,6 +138,7 @@ export const useEditor = (props: EditorProps) => {
       redo: []
     },
     isBlurred: false,
+    currentCommand: undefined,
     setActiveFormats: (formats) => setState('activeFormats', formats),
     setContent: (content) => setState('content', content),
     setIsBlurred: (isBlurred) => setState('isBlurred', isBlurred)

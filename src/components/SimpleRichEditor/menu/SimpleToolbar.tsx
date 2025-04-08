@@ -6,9 +6,21 @@ import { Popover } from '~/components/_shared/Popover'
 import { useLocalize } from '~/context/localize'
 import { capitalize } from '~/utils/capitalize'
 import { CommandGroupType, CommandType, MENU_GROUPS, isGroup } from '../lib/commands'
-
 import { Position } from '../lib/types'
 import styles from './SimpleToolbar.module.scss'
+
+export type EditorCommandId = keyof typeof MENU_GROUPS
+export type EditorCommandGroup = EditorCommandId[]
+export type EditorCommands = EditorCommandId[] | EditorCommandGroup[]
+export type ToolbarMode = 'top' | 'bottom' | 'float' | 'hidden'
+export type MenuGroupId = keyof typeof MENU_GROUPS
+export type MenuItemType = 'button' | 'dropdown'
+export type MenuGroup = {
+  id: MenuGroupId
+  type: MenuItemType
+  icon?: string // для dropdown кнопок
+  commands?: EditorCommandId[][]
+}
 
 export const ToolbarControl: Component<{
   action: CommandType | CommandGroupType
@@ -30,6 +42,7 @@ export const ToolbarControl: Component<{
             class={clsx(styles.button, props.class, {
               [styles.active]: props.currentFormats.has(props.action as CommandType)
             })}
+            data-active={props.currentFormats.has(props.action as CommandType) ? 'true' : undefined}
           >
             <Icon name={`editor-${props.action}`} />
           </button>
@@ -76,6 +89,7 @@ export interface SimpleToolbarProps {
   currentFormats: Set<CommandType>
   isVisible?: boolean
   onClose?: () => void
+  editorId?: string
 }
 
 export const SimpleToolbar: Component<SimpleToolbarProps> = (props) => {
@@ -93,6 +107,7 @@ export const SimpleToolbar: Component<SimpleToolbarProps> = (props) => {
       })}
       style={props.position ? `top: ${props.position.top}px; left: ${props.position.left}px` : undefined}
       onClick={(e) => e.stopPropagation()} // Предотвращаем закрытие при клике на тулбар
+      data-editor-id={props.editorId}
     >
       <For each={props.commands}>
         {(command) => (
@@ -106,6 +121,9 @@ export const SimpleToolbar: Component<SimpleToolbarProps> = (props) => {
                       class={clsx(styles.button, {
                         [styles.active]: props.currentFormats.has(groupCommand as CommandType)
                       })}
+                      data-active={
+                        props.currentFormats.has(groupCommand as CommandType) ? 'true' : undefined
+                      }
                       onClick={(e) => handleAction(groupCommand, e)}
                       type="button"
                     >
@@ -120,6 +138,7 @@ export const SimpleToolbar: Component<SimpleToolbarProps> = (props) => {
               class={clsx(styles.button, {
                 [styles.active]: props.currentFormats.has(command as CommandType)
               })}
+              data-active={props.currentFormats.has(command as CommandType) ? 'true' : undefined}
               onClick={(e) => handleAction(command, e)}
               type="button"
             >

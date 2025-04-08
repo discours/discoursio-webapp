@@ -349,6 +349,7 @@ export const ProfileSettings = () => {
                       placeholder={t('About')}
                       editorId={`profile-about-${session()?.user?.id || ''}`}
                       fieldType="about"
+                      toolbar="top"
                     />
                     <div class={clsx(styles.multipleControls, 'pretty-form__item')}>
                       <div class={styles.multipleControlsHeader}>

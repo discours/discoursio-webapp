@@ -55,18 +55,52 @@ export const PublishSettings = () => {
   const [settingsForm, setSettingsForm] = createStore<DraftInput>(emptyConfig)
   const [formErrors, setFormErrors] = createStore({} as Record<keyof DraftInput, string>)
   const { currentDraft } = useDrafts()
+
+  // При монтировании и при изменении текущего черновика обновляем форму настроек
   onMount(() => setSettingsForm(currentDraft() as DraftInput))
 
-  const composeDescription = () => {
-    if (!currentDraft()?.description) {
-      const cleanFootnotes = currentDraft()?.body?.replaceAll(
-        /<footnote data-value=".*?">(.*?)<\/footnote>/g,
-        ''
-      )
-      const leadText = cleanFootnotes?.replaceAll(/<\/?[^>]+(>|$)/gi, ' ') || ''
-      return shorten(leadText, DESCRIPTION_MAX_LENGTH).trim()
+  // Добавляем эффект для обновления формы при изменении черновика
+  createEffect(() => {
+    const draft = currentDraft()
+    if (draft) {
+      console.log('[PublishSettings] Updating settings form with current draft:', draft)
+      // Безопасное обновление формы с учетом типов данных
+      setSettingsForm({
+        id: draft.id,
+        layout: draft.layout || 'article',
+        title: draft.title || '',
+        subtitle: draft.subtitle || '',
+        lead: draft.lead || '',
+        description: draft.description || '',
+        slug: draft.slug || '',
+        body: draft.body || '',
+        cover: draft.cover || '',
+        cover_caption: draft.cover_caption || '',
+        topics: draft.topics ? draft.topics.filter((topic): topic is Topic => Boolean(topic)) : [],
+        mainTopic: draft.topics?.[0] || EMPTY_TOPIC
+      })
     }
-    return currentDraft()?.description
+  })
+
+  const composeDescription = () => {
+    // Приоритетно используем описание, если оно уже задано
+    if (currentDraft()?.description) {
+      return currentDraft()?.description
+    }
+
+    // Затем проверяем наличие вступления (lead) и используем его
+    if (currentDraft()?.lead) {
+      const cleanLeadText = currentDraft()?.lead?.replaceAll(/<\/?[^>]+(>|$)/gi, ' ') || ''
+      return shorten(cleanLeadText, DESCRIPTION_MAX_LENGTH).trim()
+    }
+
+    // Если нет ни описания, ни вступления, используем начало основного текста
+    const cleanBodyText =
+      currentDraft()
+        ?.body?.replaceAll(/<footnote data-value=".*?">(.*?)<\/footnote>/g, '')
+        ?.replaceAll(/<\/?[^>]+(>|$)/gi, ' ') || ''
+
+    return shorten(cleanBodyText, DESCRIPTION_MAX_LENGTH).trim()
   }
 
   createEffect(() => setTopics(sortedTopics()))

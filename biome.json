@@ -70,6 +70,7 @@
       "style": {
         "noNonNullAssertion": "off",
         "noNamespaceImport": "warn",
+        "noUselessElse": "off",
         "useBlockStatements": "off",
         "noImplicitBoolean": "off",
         "useNamingConvention": "off",

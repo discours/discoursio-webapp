@@ -58,19 +58,9 @@ export const isSelectionInElement = (element: HTMLElement | null): boolean => {
 }
 
 /**
- * Отслеживает изменения выделения и обновляет информацию о выделении,
- * активных форматах и положении курсора
+ * Отслеживает выделение и позицию курсора
  *
- * @param params Объект с необходимыми функциями и ссылками
- * @param params.isServer Флаг, указывающий, выполняется ли код на сервере
- * @param params.editorRef Функция, возвращающая ссылку на редактор
- * @param params.updateActiveFormats Функция для обновления активных форматов
- * @param params.isSelectionInEditor Функция для проверки, находится ли выделение внутри редактора
- * @param params.setSelection Функция для установки информации о выделении
- * @param params.setCursorPosition Функция для установки позиции курсора
- * @param params.setToolbar Функция для управления видимостью тулбара
- * @param params.isEmptyContent Функция для проверки пустого содержимого
- * @param params.toolbarMode Режим отображения тулбара
+ * @param params Параметры для отслеживания
  */
 export const trackSelectionAndCursor = ({
   isServer,
@@ -81,7 +71,8 @@ export const trackSelectionAndCursor = ({
   setCursorPosition,
   setToolbar,
   isEmptyContent,
-  toolbarMode
+  toolbarMode,
+  editorId // Опциональный идентификатор редактора
 }: {
   isServer: boolean
   editorRef: () => HTMLElement | undefined
@@ -92,11 +83,24 @@ export const trackSelectionAndCursor = ({
   setToolbar: (mode: string) => void
   isEmptyContent: (content: string) => boolean
   toolbarMode: string
+  editorId?: string
 }): void => {
   if (isServer) return
 
   const selection = window.getSelection()
-  if (!selection || !editorRef()) return
+  if (!selection) return
+
+  // Проверяем, что выделение действительно в этом редакторе
+  const currentEditor = editorRef()
+  if (!currentEditor) return
+
+  // Проверяем, что выделение или курсор находится именно в этом редакторе
+  const isInCurrentEditor = isSelectionInEditor()
+
+  // Если выделение не в текущем редакторе, возвращаемся
+  if (!isInCurrentEditor) {
+    return
+  }
 
   // Обновляем состояние активных форматов при изменении выделения
   updateActiveFormats()
@@ -116,11 +120,37 @@ export const trackSelectionAndCursor = ({
     const rect = range.getClientRects()[0] || range.getBoundingClientRect()
 
     if (rect) {
-      const position = {
-        top: rect.top,
-        left: rect.left + rect.width / 2
+      // Получаем координаты редактора
+      const editor = editorRef()
+      if (editor) {
+        const editorRect = editor.getBoundingClientRect()
+        // Вычисляем относительные координаты внутри редактора
+        const position = {
+          top: rect.top - editorRect.top,
+          left: rect.left + rect.width / 2 - editorRect.left
+        }
+        setCursorPosition(position)
+
+        // Сохраняем последнюю позицию курсора в localStorage для восстановления, если есть ID редактора
+        if (editorId) {
+          try {
+            const editorState = {
+              cursorPosition: position,
+              timestamp: Date.now()
+            }
+            localStorage.setItem(`editor-cursor-${editorId}`, JSON.stringify(editorState))
+          } catch (e) {
+            console.warn('[trackSelectionAndCursor] Error saving cursor position:', e)
+          }
+        }
+      } else {
+        // Если не можем получить редактор, используем абсолютные координаты
+        const position = {
+          top: rect.top,
+          left: rect.left + rect.width / 2
+        }
+        setCursorPosition(position)
       }
-      setCursorPosition(position)
     }
 
     // Управляем видимостью тулбара в режиме float
@@ -131,13 +161,28 @@ export const trackSelectionAndCursor = ({
         setToolbar('float')
       }
     }
-  } else if (editorRef() && isEmptyContent(editorRef()!.innerHTML)) {
+  } else if (currentEditor && isEmptyContent(currentEditor.innerHTML)) {
     // Если редактор пустой, устанавливаем позицию курсора в середину редактора
-    const editorRect = editorRef()!.getBoundingClientRect()
-    setCursorPosition({
+    const editorRect = currentEditor.getBoundingClientRect()
+    const position = {
       top: editorRect.height / 2,
       left: 10 // Небольшой отступ от левого края
-    })
+    }
+    setCursorPosition(position)
+
+    // Сохраняем позицию даже когда редактор пустой, если есть ID
+    if (editorId) {
+      try {
+        const editorState = {
+          cursorPosition: position,
+          timestamp: Date.now(),
+          isEmpty: true
+        }
+        localStorage.setItem(`editor-cursor-${editorId}`, JSON.stringify(editorState))
+      } catch (e) {
+        console.warn('[trackSelectionAndCursor] Error saving empty cursor position:', e)
+      }
+    }
   }
 }
 
@@ -224,4 +269,43 @@ export const moveCursorToEnd = (editor: HTMLElement | null): void => {
 
   selection.removeAllRanges()
   selection.addRange(range)
+}
+
+export const createEditorConfig = ({
+  isServer,
+  isEmptyContent,
+  toolbarMode,
+  editorId // Опциональный идентификатор редактора
+}: {
+  isServer: boolean
+  isEmptyContent: (content: string) => boolean
+  toolbarMode?: 'fixed' | 'floating' | 'bottom' | 'none'
+  editorId?: string
+}) => {
+  // Получаем сохраненные настройки для этого редактора, если они есть
+  let savedConfig = {}
+  if (!isServer && editorId) {
+    try {
+      const savedConfigStr = localStorage.getItem(`editor-config-${editorId}`)
+      if (savedConfigStr) {
+        savedConfig = JSON.parse(savedConfigStr)
+        console.log(`[EditorConfig] Loaded config for editor ${editorId}`, savedConfig)
+      }
+    } catch (e) {
+      console.warn('[EditorConfig] Error loading saved config:', e)
+    }
+  }
+
+  // Объединяем со стандартными настройками
+  return {
+    // Базовые настройки
+    toolbarMode: toolbarMode || 'fixed',
+    placeholder: '',
+
+    // Вспомогательные функции
+    isEmptyContentFn: isEmptyContent,
+
+    // Сохраненные пользовательские настройки
+    ...savedConfig
+  }
 }

@@ -937,3 +937,42 @@
     }
   }
 }
+
+// Стили для контейнера элементов управления редактором
+.editorControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+// Стили для индикатора подключения
+.connectionIndicator {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0;
+  cursor: pointer;
+
+  .indicatorDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+  }
+  
+  &.connected .indicatorDot {
+    background-color: #44b700;
+    box-shadow: 0 0 0 2px rgb(68 183 0 / 20%);
+  }
+  
+  &.disconnected .indicatorDot {
+    background-color: #ff3d00;
+    box-shadow: 0 0 0 2px rgb(255 61 0 / 20%);
+  }
+}
+
+// Стили для текста во всплывающей подсказке
+.popoverSubtext {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  margin-top: 2px;
+}

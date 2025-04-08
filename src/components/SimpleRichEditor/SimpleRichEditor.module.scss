@@ -36,7 +36,10 @@
   border: 1px solid var(--color-border);
   border-radius: var(--editor-border-radius, 6px);
   background: var(--editor-bg, #fff);
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
+  width: 100%;
+  max-width: 800px; /* Ограничиваем максимальную ширину редактора для всех типов */
+  margin: 0 auto; /* Центрируем по горизонтали */
   
   &:hover {
     border-color: var(--color-border-hover);
@@ -48,6 +51,7 @@
     border-radius: 0;
     margin: 0;
     background: transparent;
+    z-index: 3; // Добавляем z-index для правильного расположения
     
     &:hover {
       border-color: transparent;
@@ -67,11 +71,37 @@
         min-height: 108px;
         padding: 8px 12px;
         
-        // Центрируем плейсхолдер по вертикали
-        &[data-placeholder]:empty::before {
-          top: 50%;
-          transform: translateY(-50%);
-          left: 12px;
+        // Принудительно удаляем внутренние отступы у p внутри контента
+        p {
+          margin: 0;
+          min-height: 1.5em;
+        }
+        
+        // Жестко фиксируем плейсхолдер относительно контейнера
+        &[data-placeholder]::before {
+          content: attr(data-placeholder);
+          position: absolute;
+          color: var(--color-text-secondary, #d0d0d0) !important;
+          pointer-events: none;
+          opacity: 1;
+        }
+        
+        // Показываем плейсхолдер только когда контент пустой
+        &:empty[data-placeholder]::before,
+        &.placeholder-visible[data-placeholder]::before {
+          display: block;
+        }
+      }
+      
+      // Обновленные стили для toolbar в режиме bottom для редактора lead
+      &.withBottomToolbar {
+        .toolbar {
+          z-index: 10;
+        }
+        
+        // В режиме lead с bottom toolbar делаем меньший отступ
+        .content {
+          padding-bottom: calc(var(--editor-padding) + 8px);
         }
       }
     }
@@ -86,6 +116,26 @@
       z-index: 5;
       background: transparent;
     }
+
+    // Более точные настройки плейсхолдера для lead
+    .content[data-placeholder]:empty::before {
+      position: absolute;
+      top: var(--editor-padding);
+      transform: none;
+      transition: none;
+
+      // Применяем 100% прозрачности при загрузке, затем плавно показываем
+      animation: fadeInPlaceholder 0.3s ease forwards;
+    }
+  }
+
+  // Специальные стили для основного редактора (body)
+  &[data-field-type="body"] {
+    width: 100%;
+    max-width: 800px; /* Такая же ширина как у lead редактора */
+    margin: 0 auto;
+    z-index: 2; // Слой ниже, чем у lead
+    position: relative; // Убедимся, что position задан для работы z-index
   }
 
   .editor {
@@ -97,13 +147,21 @@
     box-shadow: none;
     
     &:focus-within {
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 56 103 214 / 15%));
+      background-color: var(--color-gray-50, #f9fafb);
+      border-color: transparent;
+      box-shadow: none;
+
+      // Убираем стили, которые могут вызывать перекрытие элементов при фокусе
+      position: relative;
+      top: auto;
+      left: auto;
+      z-index: auto;
     }
 
     &.empty {
       .content {
         // Улучшенный плейсхолдер для пустого контента
+        // Гарантируем, что плейсхолдер всегда виден в пустом редакторе, даже при фокусе
         &[data-placeholder]::before {
           content: attr(data-placeholder);
           color: var(--color-text-secondary, #9ca3af);
@@ -113,77 +171,139 @@
           opacity: 0.8;
           top: var(--editor-padding);
           left: var(--editor-padding);
-
-          // Только если контент пустой или содержит только BR
-          display: block;
+          display: block !important; // Принудительно показываем всегда
         }
       }
     }
 
     &.withBottomToolbar {
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
-      border-bottom: none;
-
       .toolbar {
-        position: relative;
+        position: absolute;
         bottom: 0;
         left: 0;
         right: 0;
-        border: none;
         padding: 8px 12px;
         display: flex;
         gap: 8px;
         align-items: center;
         user-select: none;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.2s ease-in-out;
+        
+        &:focus-within, &:hover {
+          opacity: 1;
+        }
+      }
+      
+      // Используем стандартный верхний отступ и увеличенный нижний отступ для режима bottom
+      .content {
+        padding-top: var(--editor-padding);
+        padding-bottom: calc(var(--editor-padding) + 20px);
+      }
+      
+      // Показываем тулбар при фокусе на редакторе
+      &:focus-within {
+        .toolbar {
+          opacity: 1;
+        }
+      }
+    }
 
-        button {
-          width: 24px;
-          height: 24px;
-          padding: 4px;
-          border: none;
-          cursor: pointer;
-          transition: all 0.2s ease-in-out;
-          user-select: none;
-
-          svg {
-            width: 16px;
-            height: 16px;
-            color: var(--color-gray-700);
-            user-select: none;
-          }
+    &.withTopToolbar {
+      .toolbar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        border-bottom: 1px solid var(--color-border-light, #e5e7eb);
+        background-color: rgb(255 255 255 / 95%);
+        padding: 8px 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        user-select: none;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.2s ease-in-out;
+        
+        &:focus-within, &:hover {
+          opacity: 1;
+        }
+      }
+      
+      // Используем увеличенный верхний отступ только для режима top
+      .content {
+        padding-top: calc(var(--editor-padding) + 20px);
+      }
+      
+      // Показываем тулбар при фокусе на редакторе
+      &:focus-within {
+        .toolbar {
+          opacity: 1;
         }
       }
     }
 
     &.focused {
-      border-color: var(--color-primary);
+      background-color: var(--color-gray-50, #f9fafb);
+      border-color: transparent;
     }
 
     .content {
       position: relative;
       min-height: 120px;
       padding: var(--editor-padding);
-      padding-bottom: calc(var(--editor-padding) + var(--toolbar-height));
       outline: none;
       font-size: 15px;
       line-height: 1.5;
       color: #111827;
 
-      // Улучшенный плейсхолдер для всех типов полей
-      &[data-placeholder]:empty::before {
+      // Убираем старое правило для не пустого контента
+      &[data-placeholder] {
+        &:not(:empty)::before {
+          display: none !important; // Принудительно скрываем, если контент не пустой
+        }
+
+        // Улучшенный плейсхолдер для всех типов полей
+        &:empty::before {
+          content: attr(data-placeholder);
+          color: var(--color-text-secondary, #9ca3af);
+          position: absolute;
+          pointer-events: none;
+          font-style: italic;
+          opacity: 0.8;
+          top: var(--editor-padding);
+          left: var(--editor-padding);
+          display: block; // Показываем плейсхолдер в пустом редакторе
+          height: auto;
+          line-height: inherit;
+          margin-top: 0;
+          margin-bottom: 0;
+          transform: none;
+        }
+
+      }
+
+      // Показываем плейсхолдер только когда курсор на новой строке
+      &.show-placeholder-on-new-line[data-placeholder]::before {
         content: attr(data-placeholder);
         color: var(--color-text-secondary, #9ca3af);
         position: absolute;
         pointer-events: none;
         font-style: italic;
         opacity: 0.8;
-        top: var(--editor-padding);
+        display: block;
         left: var(--editor-padding);
+
+        // Плейсхолдер появляется на позиции курсора
+        top: auto;
+        bottom: auto;
+        transform: none;
       }
 
       // Показывать плейсхолдер также когда есть только br
-      &[data-placeholder]:not(:empty)::before {
+      &[data-placeholder]:not(:empty, :focus)::before {
         content: attr(data-placeholder);
         color: var(--color-text-secondary, #9ca3af);
         position: absolute;
@@ -193,12 +313,6 @@
         top: var(--editor-padding);
         left: var(--editor-padding);
         display: none;
-      }
-
-      // Для полей вступления (lead) и основного тела (body)
-      &[data-editor-id*="-lead"]:not(:focus, :empty)::before,
-      &[data-editor-id*="-body"]:not(:focus, :empty)::before {
-        display: block;
       }
 
       // Убираем индикатор фокуса (синюю точку) для всех редакторов
@@ -260,6 +374,54 @@
         cursor: pointer;
 
         @include interactive-element;
+      }
+
+      // При фокусе всегда принудительно показываем плейсхолдер если контент пустой
+      &:focus-within {
+        .content:empty[data-placeholder]::before {
+          display: block !important;
+          opacity: 0.8 !important;
+        }
+      }
+    }
+
+    // Добавляем стили для встроенного тулбара комментариев
+    .inlineToolbar {
+      display: flex;
+      padding: 8px 0;
+      position: relative;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin-top: 10px;
+      border-top: 1px solid var(--color-border-light);
+      z-index: 10;
+      
+      .commentToolbar {
+        opacity: 1;
+        visibility: visible;
+        display: flex;
+        position: relative;
+        top: 0;
+        left: 0;
+        transform: none;
+        box-shadow: none;
+        background: transparent;
+        border: none;
+        padding: 0;
+        width: 100%;
+        
+        // Уменьшаем размер кнопок
+        button {
+          padding: 4px;
+          font-size: 14px;
+          min-width: auto;
+          
+          svg {
+            width: 16px;
+            height: 16px;
+          }
+        }
       }
     }
   }
@@ -386,6 +548,7 @@
   
   &.visible {
     opacity: 1 !important;
+    visibility: visible !important;
   }
 }
 
@@ -408,65 +571,62 @@
 
 // Стили для врезок
 .squib {
+  margin: 10px 0;
   padding: 15px;
-  margin: 15px 0;
-  background-color: var(--color-gray-100, #f5f5f5);
-  border-radius: 8px;
-  position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background-color: var(--color-primary, #3867d6);
-    border-top-left-radius: 8px;
-    border-bottom-left-radius: 8px;
-  }
-  
-  &[data-align="center"] {
+  background-color: #f8f8f8;
+  border-radius: 4px;
+
+  // Базовые стили для всех врезок
+  &[data-align='center'] {
     text-align: center;
   }
-  
-  &[data-align="right"] {
+
+  &[data-align='right'] {
     text-align: right;
   }
-  
-  // Фоны для врезок
-  &[data-bg="bg-white"] {
-    background-color: white;
-    border: 1px solid var(--color-gray-200, #e5e7eb);
+
+  // Цветовые темы для врезок
+  &[data-bg='yellow'] {
+    background-color: #fff9e6;
   }
-  
-  &[data-bg="bg-black"] {
-    background-color: var(--color-gray-900, #111827);
+
+  &[data-bg='red'] {
+    background-color: #ffefef;
+  }
+
+  &[data-bg='green'] {
+    background-color: #f0fff0;
+  }
+
+  &[data-bg='black'] {
+    background-color: #333;
+    color: #fff;
+  }
+
+  &[data-bg='white'] {
+    background-color: #fff;
+    border: 1px solid #eee;
+  }
+}
+
+// Стиль для активной (выбранной) врезки
+.activeSquib {
+  border: 2px solid #4285f4 !important; // Синий бордер для активной врезки
+  box-shadow: 0 0 5px rgb(66 133 244 / 30%);
+  position: relative;
+
+  // Добавляем псевдоэлемент для обозначения режима редактирования
+  &::before {
+    content: 'Режим редактирования';
+    position: absolute;
+    top: -22px;
+    left: 0;
+    background: #4285f4;
     color: white;
-  }
-  
-  &[data-bg="bg-yellow"] {
-    background-color: var(--color-yellow-100, #fef9c3);
-
-    &::before {
-      background-color: var(--color-yellow-500, #eab308);
-    }
-  }
-  
-  &[data-bg="bg-red"] {
-    background-color: var(--color-red-100, #fee2e2);
-
-    &::before {
-      background-color: var(--color-red-500, #ef4444);
-    }
-  }
-  
-  &[data-bg="bg-green"] {
-    background-color: var(--color-green-100, #dcfce7);
-
-    &::before {
-      background-color: var(--color-green-500, #22c55e);
-    }
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 2px 2px 0 0;
+    opacity: 0.8;
   }
 }
 
@@ -528,5 +688,33 @@
     &:last-child {
       margin-bottom: 0;
     }
+  }
+}
+
+// Анимация для плавного появления плейсхолдера
+@keyframes fadeInPlaceholder {
+  from { opacity: 0; }
+  to { opacity: 0.8; }
+}
+
+.editor[contenteditable="true"] {
+  outline: none;
+  min-height: 120px;
+  padding: 16px;
+  width: 100%;
+  
+  // Стили для плейсхолдера
+  &[data-placeholder]::before {
+    content: attr(data-placeholder);
+    position: absolute;
+    color: var(--color-text-secondary, #d0d0d0) !important;
+    pointer-events: none;
+    opacity: 1;
+  }
+  
+  // Внешний вид плейсхолдера
+  &:empty[data-placeholder]::before,
+  &.placeholder-visible[data-placeholder]::before {
+    display: block;
   }
 }

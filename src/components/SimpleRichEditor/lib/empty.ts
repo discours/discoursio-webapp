@@ -6,6 +6,9 @@
 export const isEmptyContent = (content: string | null | undefined | Record<string, unknown>): boolean => {
   if (content === null || content === undefined) return true
 
+  // Проверка на пустые кавычки
+  if (content === '' || content === '""' || content === "''") return true
+
   // Если контент не строка, пробуем преобразовать
   if (typeof content !== 'string') {
     // Если это объект с полем content, проверяем его содержимое
@@ -29,8 +32,15 @@ export const isEmptyContent = (content: string | null | undefined | Record<strin
   // Простая проверка на пустую строку
   if (contentStr.trim() === '') return true
 
+  // Проверка на строку только с кавычками или только с пробелами и кавычками
+  const trimmedStr = contentStr.trim()
+  if (trimmedStr === '""' || trimmedStr === "''") return true
+
   // Проверка на содержимое только BR
   if (contentStr === '<br>' || contentStr === '<br/>' || contentStr === '<p><br></p>') return true
+
+  // Проверка на HTML с пустым содержимым (&nbsp; или пробелы)
+  if (contentStr === '<p>&nbsp;</p>' || contentStr === '<p> </p>') return true
 
   // Создаем временный DIV для анализа контента
   const div = document.createElement('div')
@@ -48,7 +58,10 @@ export const isEmptyContent = (content: string | null | undefined | Record<strin
   // Очищаем текст от пробелов и проверяем его длину
   const cleanText = textContent.trim()
 
-  // Если текстовое содержимое пустое или содержит только пробелы
+  // Проверка на текст, содержащий только кавычки
+  if (cleanText === '""' || cleanText === "''") return true
+
+  // Если текстовое содержимое пустое или содержит только пробелы/кавычки
   return cleanText.length === 0
 }
 

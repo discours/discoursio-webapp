@@ -1,16 +1,4 @@
 /**
- * @module commands
- * @description Модуль конфигурации команд редактора
- *
- * Определяет:
- * - Типы команд
- * - Группы команд
- * - Предустановленные наборы команд
- * - Горячие клавиши
- * - Маппинг команд в HTML теги
- */
-
-/**
  * Типы групп команд редактора
  */
 export type CommandGroupType =
@@ -152,11 +140,76 @@ export const getTagForCommand = (cmd: CommandType): string => {
   }
 }
 
-export const isActive = (cmd: CommandType, editor: HTMLDivElement) => {
+/**
+ * Проверяет, активно ли указанное форматирование
+ * @param format Формат для проверки
+ * @param editor Ссылка на редактор
+ * @returns true, если формат активен
+ */
+export const isActive = (format: string, editor: HTMLElement | null = null): boolean => {
+  if (typeof document === 'undefined') return false
+
+  // Получаем выделение
   const selection = window.getSelection()
-  const range = selection?.getRangeAt(0)
-  const node = editor?.querySelector(getTagForCommand(cmd)) || null
-  return node && range?.intersectsNode(node as Node)
+  if (!selection || !selection.rangeCount) return false
+
+  // Проверяем, находится ли выделение в указанном редакторе
+  if (editor) {
+    const range = selection.getRangeAt(0)
+    const isInEditor = editor.contains(range.commonAncestorContainer)
+    if (!isInEditor) return false
+  }
+
+  // Проверяем наличие указанного формата используя современное Selection и Range API
+  try {
+    const range = selection.getRangeAt(0)
+    const parentElement =
+      range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+        ? range.commonAncestorContainer.parentElement
+        : (range.commonAncestorContainer as HTMLElement)
+
+    if (!parentElement) return false
+
+    // Проверяем формат в зависимости от типа
+    switch (format) {
+      case 'bold':
+        return !!parentElement.closest('strong, b')
+      case 'italic':
+        return !!parentElement.closest('em, i')
+      case 'underline':
+        return !!parentElement.closest('u')
+      case 'strikethrough':
+        return !!parentElement.closest('strike, s')
+      case 'link':
+        return !!parentElement.closest('a')
+      case 'blockquote':
+        return !!parentElement.closest('blockquote')
+      case 'h1':
+        return !!parentElement.closest('h1')
+      case 'h2':
+        return !!parentElement.closest('h2')
+      case 'h3':
+        return !!parentElement.closest('h3')
+      case 'bulletList':
+        return !!parentElement.closest('ul')
+      case 'orderedList':
+        return !!parentElement.closest('ol')
+      case 'highlight':
+        return !!parentElement.closest('mark')
+      default: {
+        // Вместо устаревшего document.queryCommandState используем проверку через DOM
+        const tagName = getTagForCommand(format as CommandType)
+        if (tagName) {
+          return !!parentElement.closest(tagName)
+        }
+        console.warn(`[isActive] Unsupported format ${format}`)
+        return false
+      }
+    }
+  } catch (e) {
+    console.error(`[Commands] Error checking format ${format}:`, e)
+    return false
+  }
 }
 
 export const isGroup = (action: CommandType | CommandGroupType) => Object.keys(MENU_GROUPS).includes(action)

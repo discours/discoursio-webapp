@@ -1,20 +1,34 @@
-import { Component, For, Show, createSignal, onMount } from 'solid-js'
-import { useLocalize } from '~/context/localize'
-import { capitalize } from '~/utils/capitalize'
-import { Icon } from '../../_shared/Icon'
-import { CommandType } from '../lib/commands'
+import { clsx } from 'clsx'
+import { Component, Show, createSignal } from 'solid-js'
+import { CommandGroupType, CommandType } from '../lib/commands'
+import { SimpleToolbar } from './SimpleToolbar'
 
 import styles from './SquibMenu.module.scss'
+
+/**
+ * Тип позиции меню
+ */
+export interface MenuPosition {
+  top: number
+  left: number
+  isVisible?: boolean
+}
 
 interface SquibMenuProps {
   /** Видимость меню */
   isVisible: boolean
   /** Обработчик команд форматирования */
-  onAction: (action: CommandType) => void
+  onAction: (action: CommandType | CommandGroupType) => void
   /** Обработчик закрытия меню */
   onClose: () => void
   /** Текущие форматы */
   currentFormats: Set<CommandType>
+  /** Позиция меню */
+  position: { top: number; left: number; isVisible?: boolean }
+  /** Идентификатор редактора */
+  editorId?: string
+  /** Набор команд для меню форматирования врезки */
+  commands: (CommandType | CommandGroupType)[]
 }
 
 /**
@@ -27,66 +41,73 @@ interface SquibMenuProps {
  *   onAction={handleFormat}
  *   onClose={() => setShowMenu(false)}
  *   currentFormats={activeFormats()}
+ *   position={{ top: 100, left: 200 }}
+ *   editorId="main-editor"
  * />
  * ```
  */
 export const SquibMenu: Component<SquibMenuProps> = (props) => {
-  const { t } = useLocalize()
-  const ALIGN_COMMANDS = ['align-left', 'align-center', 'align-right'] as const
-  const BG_COMMANDS = ['bg-gray', 'bg-white', 'bg-black', 'bg-yellow', 'bg-red', 'bg-green'] as const
-  const [menuRef, setMenuRef] = createSignal<HTMLDivElement>()
+  // Сигнал для состояния формы
+  const [formTab, setFormTab] = createSignal<'content' | 'style'>('style')
 
-  // Обработчик клика вне меню для закрытия
-  const handleClickOutside = (e: MouseEvent) => {
-    const menu = menuRef()
-    if (menu && !menu.contains(e.target as Node)) {
-      props.onClose()
-    }
+  // Обработчик кнопки закрытия
+  const handleClose = () => {
+    if (props.onClose) props.onClose()
   }
 
-  // Устанавливаем слушатель кликов при монтировании
-  onMount(() => {
-    document.addEventListener('click', handleClickOutside)
+  // Стиль позиционирования меню над врезкой
+  const menuStyle = {
+    top: `${props.position.top}px`,
+    left: `${props.position.left}px`
+  }
 
-    // Очистка при размонтировании
-    return () => {
-      document.removeEventListener('click', handleClickOutside)
-    }
-  })
-
+  // Устанавливаем вкладку "Стиль" по умолчанию
   return (
-    <Show when={props.isVisible}>
-      <div ref={setMenuRef} class={styles.squibMenu}>
-        <div class={styles.group}>
-          <For each={ALIGN_COMMANDS}>
-            {(action) => (
-              <button
-                class={styles.button}
-                classList={{ [styles.active]: props.currentFormats.has(action as CommandType) }}
-                onClick={() => props.onAction(action)}
-                title={t(capitalize(action))}
-              >
-                <Icon name={`editor-${action}`} />
-              </button>
-            )}
-          </For>
-        </div>
-
-        <div class={styles.group}>
-          <For each={BG_COMMANDS}>
-            {(color) => (
-              <button
-                class={styles.colorButton}
-                classList={{ [styles.active]: props.currentFormats.has(color as CommandType) }}
-                onClick={() => props.onAction(color)}
-                title={t(capitalize(color))}
-              >
-                <span class={styles.colorSwatch} data-color={color} />
-              </button>
-            )}
-          </For>
-        </div>
+    <div
+      class={clsx(styles.squibMenu, {
+        [styles.visible]: props.isVisible && props.position.isVisible !== false
+      })}
+      style={menuStyle}
+      data-editor-id={props.editorId}
+    >
+      <div class={styles.squibMenuHeader}>
+        <button
+          onClick={() => setFormTab('content')}
+          class={clsx(styles.tabButton, {
+            [styles.active]: formTab() === 'content'
+          })}
+        >
+          Текст
+        </button>
+        <button
+          onClick={() => setFormTab('style')}
+          class={clsx(styles.tabButton, {
+            [styles.active]: formTab() === 'style'
+          })}
+        >
+          Стиль
+        </button>
+        <button onClick={handleClose} class={styles.closeButton}>
+          ×
+        </button>
       </div>
-    </Show>
+
+      <Show when={formTab() === 'style'}>
+        <div class={styles.squibMenuStyle}>
+          <SimpleToolbar
+            commands={props.commands}
+            onAction={props.onAction}
+            currentFormats={props.currentFormats}
+            isVisible={props.isVisible}
+          />
+        </div>
+      </Show>
+
+      <Show when={formTab() === 'content'}>
+        <div class={styles.squibMenuContent}>
+          <p>Редактирование врезки по двойному клику на тексте</p>
+        </div>
+      </Show>
+    </div>
   )
 }

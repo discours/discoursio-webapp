@@ -96,36 +96,6 @@ $transition-normal: 0.3s ease;
     margin-top: 1rem;
     margin-bottom: 1rem;
     position: relative;
-
-    :global {
-      // Основное поле ввода текста
-      .editor-content {
-        min-height: $editor-min-height;
-        font-family: Muller, sans-serif;
-        font-size: 14px;
-        line-height: 1.286;
-        letter-spacing: -1%;
-        
-        &:focus-within {
-          background: var(--color-gray-50);
-          border-radius: 8px;
-        }
-      }
-
-      // Панель инструментов редактора
-      .editor-toolbar {
-        opacity: 1;
-        background: transparent;
-        box-shadow: none;
-        border: none;
-
-        button {
-          background: transparent;
-          box-shadow: none;
-          border: none;
-        }
-      }
-    }
   }
 
   // анимация для новых комментариев
@@ -212,7 +182,7 @@ $transition-normal: 0.3s ease;
   margin-top: -2.8em;
   padding-right: .5em;
   opacity: 1;
-  transition: opacity 0.4s ease-in-out;
+  transition: opacity 0.3s ease-in-out;
   user-select: none;
 
   &.hidden {

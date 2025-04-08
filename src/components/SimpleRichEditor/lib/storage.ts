@@ -1,3 +1,4 @@
+import type { Draft, DraftInput } from '~/graphql/schema/core.gen'
 import { EditorFieldType } from '../SimpleRichEditor'
 
 /**
@@ -8,6 +9,22 @@ export interface ContentVersion {
   timestamp: number
   source: 'server' | 'local'
 }
+
+/**
+ * Интерфейс для сохраняемой версии полей черновика
+ */
+export interface DraftFieldsVersion {
+  fields: Record<string, string>
+  timestamp: number
+  source: 'server' | 'local'
+  lastSync?: number
+}
+
+/**
+ * Префиксы для хранения данных
+ */
+const DRAFT_PREFIX = 'draft-fields-'
+const NETWORK_STATUS_KEY = 'network-status'
 
 /**
  * Очищает строку от JSON-обертки и извлекает чистый контент
@@ -352,4 +369,338 @@ export const loadLocalVersionContent = (localVersion: ContentVersion | null): st
 
   // Очищаем контент от JSON-строк перед использованием
   return cleanupJsonContent(localVersion.content)
+}
+
+/**
+ * РАСШИРЕНИЕ ДЛЯ РАБОТЫ СО ВСЕМИ ПОЛЯМИ ЧЕРНОВИКА
+ */
+
+/**
+ * Формирует ключ хранилища для полей черновика
+ * @param draftId Идентификатор черновика
+ * @returns Ключ для хранилища полей черновика
+ */
+export const getDraftFieldsKey = (draftId: string | number): string => {
+  return `${DRAFT_PREFIX}${draftId}`
+}
+
+/**
+ * Сохраняет поле черновика в localStorage
+ * @param draftId Идентификатор черновика
+ * @param fieldName Имя поля
+ * @param fieldValue Значение поля
+ */
+export const saveDraftField = (
+  draftId: string | number,
+  fieldName: string,
+  fieldValue: string | null | undefined
+): void => {
+  if (!draftId || !fieldName) return
+
+  // Если значение пустое, не сохраняем
+  if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+    return
+  }
+
+  try {
+    // Формируем ключ хранилища
+    const storageKey = getDraftFieldsKey(draftId)
+
+    // Получаем текущую версию полей черновика
+    const currentVersion = getDraftFieldsVersion(draftId)
+
+    // Обновляем поле в версии
+    const updatedFields = {
+      ...(currentVersion?.fields || {}),
+      [fieldName]: fieldValue
+    }
+
+    // Создаем новую версию
+    const newVersion: DraftFieldsVersion = {
+      fields: updatedFields,
+      timestamp: Date.now(),
+      source: 'local',
+      lastSync: currentVersion?.lastSync || undefined
+    }
+
+    // Сохраняем в localStorage
+    localStorage.setItem(storageKey, JSON.stringify(newVersion))
+
+    // Если поле - это содержимое редактора (body или lead),
+    // также сохраняем в соответствующий ключ для SimpleRichEditor
+    if (fieldName === 'body' || fieldName === 'lead') {
+      const editorKey = `draft-${draftId}-${fieldName}`
+      saveContent(editorKey, undefined, fieldValue)
+    }
+
+    console.log(`[OfflineStorage] Saved field "${fieldName}" for draft ${draftId}`)
+  } catch (error) {
+    console.error('[OfflineStorage] Error saving draft field:', error)
+  }
+}
+
+/**
+ * Получает версию полей черновика из localStorage
+ * @param draftId Идентификатор черновика
+ * @returns Объект версии полей черновика или null
+ */
+export const getDraftFieldsVersion = (draftId: string | number): DraftFieldsVersion | null => {
+  if (!draftId) return null
+
+  try {
+    // Формируем ключ хранилища
+    const storageKey = getDraftFieldsKey(draftId)
+
+    // Получаем данные из localStorage
+    const storedData = localStorage.getItem(storageKey)
+    if (!storedData) return null
+
+    // Парсим JSON
+    return JSON.parse(storedData) as DraftFieldsVersion
+  } catch (error) {
+    console.error('[OfflineStorage] Error getting draft fields version:', error)
+    return null
+  }
+}
+
+/**
+ * Получает значение поля черновика из localStorage
+ * @param draftId Идентификатор черновика
+ * @param fieldName Имя поля
+ * @returns Значение поля или null
+ */
+export const getDraftField = (draftId: string | number, fieldName: string): string | null => {
+  if (!draftId || !fieldName) return null
+
+  try {
+    // Получаем версию полей черновика
+    const version = getDraftFieldsVersion(draftId)
+    if (!version || !version.fields) return null
+
+    // Возвращаем значение поля
+    return version.fields[fieldName] || null
+  } catch (error) {
+    console.error('[OfflineStorage] Error getting draft field:', error)
+    return null
+  }
+}
+
+/**
+ * Получает все поля черновика из localStorage
+ * @param draftId Идентификатор черновика
+ * @returns Объект с полями черновика или null
+ */
+export const getAllDraftFields = (draftId: string | number): Record<string, string> | null => {
+  if (!draftId) return null
+
+  try {
+    // Получаем версию полей черновика
+    const version = getDraftFieldsVersion(draftId)
+    if (!version || !version.fields) return null
+
+    return { ...version.fields }
+  } catch (error) {
+    console.error('[OfflineStorage] Error getting all draft fields:', error)
+    return null
+  }
+}
+
+/**
+ * Обновляет время последней синхронизации черновика с сервером
+ * @param draftId Идентификатор черновика
+ */
+export const updateLastSync = (draftId: string | number): void => {
+  if (!draftId) return
+
+  try {
+    // Получаем версию полей черновика
+    const version = getDraftFieldsVersion(draftId)
+    if (!version) return
+
+    // Обновляем время синхронизации
+    version.lastSync = Date.now()
+
+    // Сохраняем обновленную версию
+    const storageKey = getDraftFieldsKey(draftId)
+    localStorage.setItem(storageKey, JSON.stringify(version))
+
+    console.log(`[OfflineStorage] Updated last sync for draft ${draftId}`)
+  } catch (error) {
+    console.error('[OfflineStorage] Error updating last sync:', error)
+  }
+}
+
+/**
+ * Проверяет, есть ли несинхронизированные изменения в черновике
+ * @param draftId Идентификатор черновика
+ * @returns true, если есть несинхронизированные изменения
+ */
+export const hasUnsyncedChanges = (draftId: string | number): boolean => {
+  if (!draftId) return false
+
+  try {
+    // Получаем версию полей черновика
+    const version = getDraftFieldsVersion(draftId)
+    if (!version || !version.fields) return false
+
+    // Если нет метки времени последней синхронизации, считаем, что есть изменения
+    if (!version.lastSync) return true
+
+    // Если версия создана после последней синхронизации, считаем, что есть изменения
+    return version.timestamp > version.lastSync
+  } catch (error) {
+    console.error('[OfflineStorage] Error checking unsynced changes:', error)
+    return false
+  }
+}
+
+/**
+ * Применяет локальные изменения из localStorage к объекту черновика
+ * @param draftId Идентификатор черновика
+ * @param originalDraft Оригинальный объект черновика
+ * @returns Обновленный объект черновика с примененными изменениями
+ */
+export const applyOfflineChanges = <T extends Record<string, unknown>>(
+  draftId: string | number,
+  originalDraft: T
+): T => {
+  try {
+    // Получаем локальные изменения для этого черновика
+    const fields = getAllDraftFields(draftId)
+    if (!fields || Object.keys(fields).length === 0) {
+      return originalDraft
+    }
+
+    // Создаем копию оригинального черновика
+    const updatedDraft = { ...originalDraft } as T
+
+    // Применяем локальные изменения
+    Object.entries(fields).forEach(([fieldName, fieldValue]) => {
+      // Получаем тип поля из исходного объекта
+      const fieldType = typeof originalDraft[fieldName]
+
+      // Применяем только если поле строкового типа или null/undefined
+      if (fieldType === 'string' || fieldType === 'undefined' || originalDraft[fieldName] === null) {
+        ;(updatedDraft as Record<string, unknown>)[fieldName] = fieldValue
+      }
+    })
+
+    return updatedDraft
+  } catch (error) {
+    console.error('[OfflineStorage] Error applying offline changes:', error)
+    return originalDraft
+  }
+}
+
+/**
+ * Создает объект DraftInput из Draft с применением локальных изменений
+ * @param draftId Идентификатор черновика
+ * @param originalDraft Исходный объект черновика
+ * @returns Объект DraftInput для отправки на сервер
+ */
+export const getDraftInputWithOfflineChanges = (
+  draftId: string | number,
+  originalDraft: Draft
+): DraftInput => {
+  // Применяем локальные изменения
+  const updatedDraft = applyOfflineChanges(draftId, originalDraft)
+
+  // Преобразуем в DraftInput
+  const draftInput: DraftInput = {
+    id: updatedDraft.id,
+    title: updatedDraft.title || '',
+    subtitle: updatedDraft.subtitle || '',
+    slug: updatedDraft.slug || '',
+    body: updatedDraft.body || '',
+    lead: updatedDraft.lead || '',
+    description: updatedDraft.description || '',
+    cover: updatedDraft.cover || '',
+    cover_caption: updatedDraft.cover_caption || ''
+    // Преобразуем другие поля по необходимости
+  }
+
+  return draftInput
+}
+
+/**
+ * Сохраняет состояние сети в localStorage
+ * @param isOnline Флаг онлайн-состояния
+ */
+export const saveNetworkStatus = (isOnline: boolean): void => {
+  try {
+    localStorage.setItem(NETWORK_STATUS_KEY, isOnline ? 'online' : 'offline')
+  } catch (error) {
+    console.error('[OfflineStorage] Error saving network status:', error)
+  }
+}
+
+/**
+ * Получает сохраненное состояние сети из localStorage
+ * @returns true, если последнее сохраненное состояние - онлайн
+ */
+export const getNetworkStatus = (): boolean => {
+  try {
+    const status = localStorage.getItem(NETWORK_STATUS_KEY)
+    return status === 'online'
+  } catch (error) {
+    console.error('[OfflineStorage] Error getting network status:', error)
+    return navigator.onLine // Возвращаем текущее состояние сети
+  }
+}
+
+/**
+ * Устанавливает обработчики событий изменения состояния сети
+ * @param onOnline Функция, вызываемая при переходе в онлайн
+ * @param onOffline Функция, вызываемая при переходе в оффлайн
+ * @returns Функция для удаления обработчиков
+ */
+export const setupNetworkListeners = (onOnline: () => void, onOffline?: () => void): (() => void) => {
+  // Функции-обработчики событий
+  const handleOnline = () => {
+    console.log('[OfflineStorage] Network is online')
+    saveNetworkStatus(true)
+    onOnline()
+  }
+
+  const handleOffline = () => {
+    console.log('[OfflineStorage] Network is offline')
+    saveNetworkStatus(false)
+    onOffline?.()
+  }
+
+  // Сохраняем текущее состояние сети
+  saveNetworkStatus(navigator.onLine)
+
+  // Устанавливаем обработчики
+  window.addEventListener('online', handleOnline)
+  window.addEventListener('offline', handleOffline)
+
+  // Возвращаем функцию для удаления обработчиков
+  return () => {
+    window.removeEventListener('online', handleOnline)
+    window.removeEventListener('offline', handleOffline)
+  }
+}
+
+/**
+ * Сохраняет весь черновик в localStorage
+ * @param draft Объект черновика
+ */
+export const saveEntireDraft = (draft: Draft): void => {
+  if (!draft || !draft.id) return
+
+  try {
+    const draftId = draft.id
+
+    // Сохраняем все строковые поля
+    Object.entries(draft).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        saveDraftField(draftId, key, value)
+      }
+    })
+
+    console.log(`[OfflineStorage] Saved entire draft ${draftId}`)
+  } catch (error) {
+    console.error('[OfflineStorage] Error saving entire draft:', error)
+  }
 }

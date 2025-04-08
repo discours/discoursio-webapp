@@ -43,7 +43,8 @@
       overflow: hidden;
 
       &::placeholder {
-        color: #858585;
+        color: var(--color-text-secondary, #d0d0d0);
+        opacity: 1;
       }
 
       &:focus,

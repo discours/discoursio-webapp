@@ -10,11 +10,9 @@ import { Position } from './types'
  * Функционал:
  * - Сохранение/восстановление выделения
  * - Получение информации о выделении
- * - Позиционирование меню относительно выделения
  * - Обработка изменений выделения
  * - Проверка нахождения выделения внутри элемента
  * - Получение координат курсора
- * - Расчет позиции для всплывающих меню
  *
  * @example
  * ```ts
@@ -27,9 +25,6 @@ import { Position } from './types'
  * if (isSelectionInElement(editor)) {
  *   // Выделение внутри редактора
  * }
- *
- * // Получение позиции для меню
- * const position = getMenuPosition(editor, isEmptyContent)
  * ```
  */
 
@@ -133,97 +128,6 @@ export const getCursorPosition = (editor: HTMLElement | null): Position | null =
 }
 
 /**
- * Получает позицию для отображения всплывающего меню
- * @param editor Редактор
- * @param isEmptyContent Функция для проверки пустого содержимого
- * @returns Объект с позицией и флагом видимости
- */
-export const getMenuPosition = (
-  editor: HTMLElement | null
-): { top: number; left: number; isVisible: boolean } => {
-  if (!editor) {
-    return { top: 0, left: 0, isVisible: false }
-  }
-
-  // Получаем размеры и положение редактора
-  const editorRect = editor.getBoundingClientRect()
-  const scrollTop = window.scrollY || document.documentElement.scrollTop
-
-  // Определяем текущую позицию курсора
-  const selection = window.getSelection()
-  if (selection && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0)
-    const rect = range.getBoundingClientRect()
-
-    // Проверяем, что курсор находится внутри редактора
-    if (editor.contains(range.commonAncestorContainer as Node)) {
-      // Возвращаем точную позицию курсора
-      return {
-        top: rect.top + scrollTop, // Учитываем скролл
-        left: rect.left, // Точное положение курсора по горизонтали
-        isVisible: true // Показываем меню когда есть редактор и курсор
-      }
-    }
-  }
-
-  // Если позиции курсора нет, позиционируем по центру высоты редактора
-  return {
-    top: editorRect.top + scrollTop + editorRect.height / 2, // Середина редактора
-    left: editorRect.left + 10, // Небольшой отступ от левого края
-    isVisible: true // В пустом редакторе всегда показываем меню
-  }
-}
-
-/**
- * Рассчитывает позицию для отображения всплывающего меню относительно выделения
- * @param editor Редактор или активная кнопка
- * @returns Позиция меню или undefined
- */
-export const calculateMenuPosition = (
-  editorRef: HTMLElement | null
-): { top: number; left: number } | undefined => {
-  if (!editorRef) return undefined
-
-  // Пытаемся найти активный элемент в тулбаре (кнопку, которая была нажата)
-  const activeButton = document.querySelector('.SimpleRichEditor_active__control')
-  if (activeButton) {
-    const rect = activeButton.getBoundingClientRect()
-    const scrollTop = window.scrollY || document.documentElement.scrollTop
-    const scrollLeft = window.scrollX || document.documentElement.scrollLeft
-    return {
-      top: rect.top + scrollTop,
-      left: rect.left + scrollLeft
-    }
-  }
-
-  // Если кнопка не найдена, используем позицию курсора
-  const windowSelection = window.getSelection()
-  if (windowSelection?.rangeCount) {
-    const range = windowSelection.getRangeAt(0)
-    const rect = range.getBoundingClientRect()
-    const scrollTop = window.scrollY || document.documentElement.scrollTop
-    const scrollLeft = window.scrollX || document.documentElement.scrollLeft
-    return {
-      top: rect.bottom + scrollTop + 5, // Немного ниже курсора
-      left: rect.left + scrollLeft
-    }
-  }
-
-  // Если ничего не найдено, позиционируем по центру редактора
-  if (editorRef) {
-    const rect = editorRef.getBoundingClientRect()
-    const scrollTop = window.scrollY || document.documentElement.scrollTop
-    const scrollLeft = window.scrollX || document.documentElement.scrollLeft
-    return {
-      top: rect.top + scrollTop + 50,
-      left: rect.left + scrollLeft + rect.width / 2 - 140 // приблизительно половина ширины формы
-    }
-  }
-
-  return undefined
-}
-
-/**
  * Хук для работы с выделением текста
  *
  * @param editorRef Реф на редактор
@@ -232,9 +136,6 @@ export const calculateMenuPosition = (
 export const useSelection = (editorRef: Accessor<HTMLDivElement | undefined>) => {
   const [savedRange, setSavedRange] = createSignal<Range | null>(null)
   const [activeFormats, setActiveFormats] = createSignal<Set<CommandType>>(new Set())
-
-  // Add position tracking for menu
-  const [menuPosition, setMenuPosition] = createSignal<Position>({ top: 0, left: 0 })
 
   const isSelectionInEditor = () => {
     const selection = window.getSelection()
@@ -290,20 +191,21 @@ export const useSelection = (editorRef: Accessor<HTMLDivElement | undefined>) =>
     const selection = window.getSelection()
     if (!selection || !editorRef()) return
 
-    // Update menu position when selection changes
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
-      setMenuPosition({
-        top: rect.top - 10,
-        left: rect.left + rect.width / 2
-      })
-    }
-
+    const rect = selection.getRangeAt(0).getBoundingClientRect()
     const formats = new Set<CommandType>()
     Object.entries(MENU_GROUPS).forEach(([_group, commands]) => {
       commands.forEach((cmd) => {
-        if (hasFormatting(cmd as CommandType, selection)) {
+        if (
+          hasFormatting(cmd as CommandType, {
+            range: selection.getRangeAt(0),
+            text: selection.toString(),
+            isEmpty: selection.toString().length === 0,
+            position: {
+              top: rect.top,
+              left: rect.left + rect.width / 2
+            }
+          })
+        ) {
           formats.add(cmd as CommandType)
         }
       })
@@ -346,7 +248,6 @@ export const useSelection = (editorRef: Accessor<HTMLDivElement | undefined>) =>
     restoreSelection,
     updateActiveFormats,
     activeFormats,
-    menuPosition,
     isSelectionInEditor,
     getSelectionInfo
   }

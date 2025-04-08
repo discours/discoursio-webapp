@@ -61,20 +61,22 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   const [editorsContent, setEditorsContent] = createSignal<Record<string, string>>({})
 
   const getEditorContent = (editorId: string) => {
-    const cachedContent = localStorage.getItem(editorId)
-    if (cachedContent) {
-      return cachedContent
+    // Проверка наличия контента в хранилище
+    if (!(editorId in editorsContent())) {
+      return ''
     }
-    return editorId in editorsContent() ? editorsContent()[editorId] : ''
+
+    // Возвращаем содержимое как есть, без излишней фильтрации
+    return editorsContent()[editorId]
   }
 
   const setEditorContent = (editorId: string, content: string) => {
-    setEditorsContent({ ...editorsContent(), [editorId]: content })
-    if (content) {
-      localStorage.setItem(editorId, content)
-    } else {
-      localStorage.removeItem(editorId)
-    }
+    // Сохраняем контент как есть, без дополнительной обработки
+    // Если content не строка, преобразуем ее в строку для безопасности
+    const safeContent = content != null ? String(content) : ''
+
+    // Обновляем состояние
+    setEditorsContent({ ...editorsContent(), [editorId]: safeContent })
   }
 
   const loadDrafts = async () => {

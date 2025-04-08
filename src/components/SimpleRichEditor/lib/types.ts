@@ -2,6 +2,26 @@ import { EditorState } from './state'
 
 export type EditorCommand = 'bold' | 'italic' | 'link' | 'blockquote' | 'image' | 'h1' | 'h2' | 'h3'
 
+/**
+ * Тип команды для меню, включает все возможные типы команд
+ */
+export type CommandType =
+  | 'bold'
+  | 'italic'
+  | 'link'
+  | 'blockquote'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'hr'
+  | 'h1'
+  | 'h2'
+  | 'h3'
+  | 'align-left'
+  | 'align-center'
+  | 'align-right'
+  | 'bg-color'
+
 export interface CommandConfig {
   icon: string
   title: string
