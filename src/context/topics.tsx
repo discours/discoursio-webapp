@@ -164,6 +164,48 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     }
   )
 
+  // Добавляем функцию для принудительного обновления тем
+  const forceRefreshTopics = async (): Promise<Topic[]> => {
+    console.log('[Topics] Force refreshing topics from server')
+    try {
+      const topicsLoader = loadTopics()
+      const newData = await topicsLoader()
+      if (newData?.length) {
+        await saveToCache(newData)
+        updateLastUpdateTime()
+
+        // Обновляем состояние
+        setState((prev) => {
+          // Создаем новый объект entities
+          const newEntities = {} as Record<string, Topic>
+
+          // Заполняем его
+          newData.forEach((t) => {
+            if (t?.slug) newEntities[t.slug] = t
+          })
+
+          // Сортируем
+          const sorted = [...newData].sort(byTopicStatDesc(prev.sortBy))
+
+          return {
+            ...prev,
+            entities: newEntities,
+            sorted,
+            random: sorted[0] || prev.random,
+            loading: false
+          }
+        })
+
+        return newData
+      }
+    } catch (error) {
+      console.error('[Topics] Error during force refresh:', error)
+    }
+
+    // В случае ошибки возвращаем текущий список
+    return state.sorted
+  }
+
   createEffect(() => {
     const newTopics = topics()
     if (!newTopics?.length) return
@@ -200,28 +242,32 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
       setState('sortBy', sortBy as TopicSort)
       refetch()
     },
-    addTopics: (newTopics) =>
+    addTopics: (newTopics) => {
       setState((prev) => {
-        // Создаем новый объект entities один раз
         const newEntities = { ...prev.entities }
-
-        // Заполняем его без spread
         newTopics.forEach((t) => {
           if (t?.slug) newEntities[t.slug] = t
         })
-
         return {
           ...prev,
-          entities: newEntities
+          entities: newEntities,
+          sorted: Object.values(newEntities).sort(byTopicStatDesc(prev.sortBy))
         }
-      }),
+      })
+    },
     loadTopics: async () => {
-      // Принудительное обновление только если прошло достаточно времени
-      if (await shouldUpdateTopics()) {
-        const result = await refetch()
-        return result || []
+      try {
+        // Проверяем, загружены ли уже темы
+        if (state.sorted.length > 0) {
+          return state.sorted
+        }
+
+        // Если тем нет или нужно обновление, запускаем принудительное обновление
+        return await forceRefreshTopics()
+      } catch (error) {
+        console.error('Error loading topics:', error)
+        return state.sorted
       }
-      return topics() || []
     }
   }
 

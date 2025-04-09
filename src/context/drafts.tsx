@@ -1,5 +1,14 @@
-import { Accessor, JSX, createContext, createSignal, useContext } from 'solid-js'
+import { Accessor, JSX, createContext, createSignal, onCleanup, useContext } from 'solid-js'
+import { debounce } from 'throttle-debounce'
 
+import {
+  getAllDraftFields,
+  getDraftField,
+  getDraftFieldsVersion,
+  saveContent,
+  updateLastSync
+} from '~/components/SimpleRichEditor/lib/storage'
+import { EditorFieldType } from '~/components/SimpleRichEditor/lib/types'
 import publishShoutMutation from '~/graphql/mutation/core/article-publish'
 import unpublishShoutMutation from '~/graphql/mutation/core/article-unpublish'
 import createDraftMutation from '~/graphql/mutation/core/draft-create'
@@ -11,7 +20,7 @@ import loadDraftsQuery from '~/graphql/query/core/drafts-load'
 import type { CommonResult, Draft, MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { useSession } from './session'
 
-export const AUTO_SAVE_DELAY = 3000
+export const AUTO_SAVE_DELAY = 1000
 
 export type DraftInput = {
   id?: number
@@ -47,10 +56,11 @@ type DraftsContextType = {
   isEditorPanelVisible: Accessor<boolean>
   toggleEditorPanel: () => void
   setIsEditorPanelVisible: (visible: boolean) => void
+  syncDraft: (draftId: number) => Promise<Draft | undefined>
 }
 
 export const DraftsContext = createContext<DraftsContextType>({} as DraftsContextType)
-
+const DRAFT_EDITOR_ID_REGEX = /draft-(\d+)-([a-z]+)/
 export const DraftsProvider = (props: { children: JSX.Element }) => {
   const { client, session } = useSession()
   // все доступные для редактирования черновики
@@ -59,6 +69,119 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   const [currentDraft, setCurrentDraft] = createSignal<Draft>()
   // содержимое всех редакторов
   const [editorsContent, setEditorsContent] = createSignal<Record<string, string>>({})
+  // видимость панели редактора
+  const [isEditorPanelVisible, setIsEditorPanelVisible] = createSignal(true)
+
+  // Создаем дебаунсированную функцию сохранения контента редактора
+  const debouncedSaveContent = debounce(AUTO_SAVE_DELAY, (editorId: string, content: string) => {
+    const match = editorId.match(DRAFT_EDITOR_ID_REGEX)
+    if (match) {
+      const draftId = match[1]
+      const fieldType = match[2]
+      saveContent(editorId, fieldType as EditorFieldType, content, false)
+      console.log(
+        `[DraftsProvider] Debounced save for editor ${editorId} with draftId ${draftId} and fieldType ${fieldType}`
+      )
+    }
+  })
+
+  // Очистка ресурсов при размонтировании
+  onCleanup(() => {
+    // Отменяем отложенные сохранения
+    debouncedSaveContent.cancel()
+  })
+
+  // Функция для синхронизации черновика между компонентами
+  const syncDraft = async (draftId: number): Promise<Draft | undefined> => {
+    if (!draftId) return undefined
+
+    try {
+      console.log(`[DraftsProvider] Syncing draft ${draftId}`)
+
+      // Получаем текущий черновик из состояния
+      const currentDraftObj = drafts().find((d) => d.id === draftId)
+      if (!currentDraftObj) {
+        console.warn(`[DraftsProvider] Draft ${draftId} not found in state`)
+        return undefined
+      }
+
+      // Получаем локальные изменения
+      const localFieldsVersion = getDraftFieldsVersion(draftId)
+      const localFields = getAllDraftFields(draftId)
+
+      console.log(`[DraftsProvider] Local fields for draft ${draftId}:`, localFields)
+
+      // Если локальных изменений нет, просто возвращаем текущий черновик
+      if (!localFields) {
+        return currentDraftObj
+      }
+
+      // Создаем новый объект с применением локальных изменений
+      const updatedDraft = { ...currentDraftObj }
+
+      // Применяем локальные изменения
+      Object.entries(localFields).forEach(([key, value]) => {
+        // Проверяем, что ключ существует в типе Draft
+        if (key in updatedDraft) {
+          // Безопасно обновляем, учитывая возможные типы
+          const draftKey = key as keyof Draft
+          if (typeof updatedDraft[draftKey] === 'string') {
+            ;(updatedDraft[draftKey] as unknown as string) = value
+          }
+        }
+      })
+
+      // Особенно проверяем поля body и lead
+      const bodyContent = getDraftField(draftId, 'body')
+      if (bodyContent) {
+        updatedDraft.body = bodyContent
+      }
+
+      const leadContent = getDraftField(draftId, 'lead')
+      if (leadContent) {
+        updatedDraft.lead = leadContent
+      }
+
+      // Обновляем currentDraft
+      setCurrentDraft(updatedDraft)
+
+      // Если время последней синхронизации устарело, синхронизируем с сервером
+      if (
+        localFieldsVersion &&
+        (!localFieldsVersion.lastSync || localFieldsVersion.timestamp > localFieldsVersion.lastSync)
+      ) {
+        console.log(`[DraftsProvider] Syncing draft ${draftId} with server`)
+
+        // Подготавливаем объект для отправки
+        const draftInput: DraftInput = {
+          id: updatedDraft.id,
+          layout: updatedDraft.layout || 'article',
+          title: updatedDraft.title || '',
+          subtitle: updatedDraft.subtitle || '',
+          lead: updatedDraft.lead || '',
+          description: updatedDraft.description || '',
+          slug: updatedDraft.slug || '',
+          body: updatedDraft.body || '',
+          cover: updatedDraft.cover || '',
+          cover_caption: updatedDraft.cover_caption || '',
+          topics: updatedDraft.topics
+            ? updatedDraft.topics.filter((topic): topic is Topic => Boolean(topic))
+            : []
+        }
+
+        // Отправляем на сервер
+        await updateDraft(draftInput)
+
+        // Обновляем время последней синхронизации
+        updateLastSync(draftId)
+      }
+
+      return updatedDraft
+    } catch (error) {
+      console.error(`[DraftsProvider] Error syncing draft ${draftId}:`, error)
+      return undefined
+    }
+  }
 
   const getEditorContent = (editorId: string) => {
     // Проверка наличия контента в хранилище
@@ -77,6 +200,11 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
     // Обновляем состояние
     setEditorsContent({ ...editorsContent(), [editorId]: safeContent })
+
+    // Запускаем дебаунсированное сохранение
+    if (editorId && safeContent) {
+      debouncedSaveContent(editorId, safeContent)
+    }
   }
 
   const loadDrafts = async () => {
@@ -205,12 +333,13 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       setDrafts(drafts().map((d) => (d.id === shoutId ? response.data.unpublish_shout : d)))
     }
   }
-  const [isEditorPanelVisible, setIsEditorPanelVisible] = createSignal(false)
   const toggleEditorPanel = () => setIsEditorPanelVisible(!isEditorPanelVisible())
   const value = {
     drafts,
     currentDraft,
     setCurrentDraft,
+    getEditorContent,
+    setEditorContent,
     loadDrafts,
     createDraft,
     updateDraft,
@@ -219,11 +348,10 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     unpublishDraft,
     publishShout,
     unpublishShout,
-    getEditorContent,
-    setEditorContent,
     isEditorPanelVisible,
+    toggleEditorPanel,
     setIsEditorPanelVisible,
-    toggleEditorPanel
+    syncDraft
   }
 
   return <DraftsContext.Provider value={value}>{props.children}</DraftsContext.Provider>

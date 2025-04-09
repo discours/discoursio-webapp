@@ -24,7 +24,6 @@ import {
   getAllDraftFields,
   getDraftInputWithOfflineChanges,
   hasUnsyncedChanges,
-  saveDraftField,
   saveEntireDraft,
   setupNetworkListeners,
   updateLastSync
@@ -169,6 +168,7 @@ export const EditView = (props: { draft?: Draft }) => {
     let value = String(sanitizeHtml(val))
     if (key === 'body' || key === 'lead') {
       value = sanitizeHtml(val)
+      // Используем функцию setEditorContent из контекста drafts, которая уже имеет дебаунсированное сохранение
       setEditorContent(`draft-${currentDraft()?.id}-${key}`, value)
     }
 
@@ -181,9 +181,6 @@ export const EditView = (props: { draft?: Draft }) => {
       // Обновляем локальное состояние UI
       const updated = { ...draft, [key]: value } as Draft
       setCurrentDraft(updated)
-
-      // Сохраняем изменение в localStorage для offline-first редактирования
-      saveDraftField(draft.id, key, value)
 
       // Получаем провайдер awareness для синхронизации в реальном времени
       const awarenessProvider = getProvider()

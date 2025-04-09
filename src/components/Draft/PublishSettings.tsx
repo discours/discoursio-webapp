@@ -1,19 +1,25 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, lazy, onMount } from 'solid-js'
+import { Show, createSignal, lazy, onMount } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { EditorData, SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
+import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
+import {
+  applyOfflineChanges,
+  getAllDraftFields,
+  getDraftField
+} from '~/components/SimpleRichEditor/lib/storage'
 import { UploadModalContent } from '~/components/Upload/UploadModalContent/UploadModalContent'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import { Image } from '~/components/_shared/Image'
-import { DraftInput, useDrafts } from '~/context/drafts'
+import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useTopics } from '~/context/topics'
 import { useSnackbar, useUI } from '~/context/ui'
-import { Topic } from '~/graphql/schema/core.gen'
+import { Maybe, Topic } from '~/graphql/schema/core.gen'
 import { UploadedFile } from '~/types/upload'
+import { EditorData } from '../SimpleRichEditor/lib/types'
 import { Modal } from '../_shared/Modal'
 import { TopicSelect } from '../_shared/TopicSelect'
 
@@ -31,86 +37,240 @@ const shorten = (str: string, maxLen: number) => {
   return `${result}...`
 }
 
-const emptyConfig: DraftInput = {
-  cover: '',
-  mainTopic: EMPTY_TOPIC,
-  slug: '',
-  title: '',
-  subtitle: '',
-  description: '',
-  topics: [],
-  body: '',
-  layout: 'article',
-  id: -1
+// Тип для объекта черновика при работе с localStorage
+interface DraftDataObject {
+  id: number
+  layout?: string | null
+  title?: string | null
+  subtitle?: string | null
+  lead?: string | null
+  description?: string | null
+  slug?: string | null
+  body?: string | null
+  cover?: string | null
+  cover_caption?: string | null
+  topics?: Maybe<Maybe<Topic>[]>
+  [key: string]: unknown
+}
+
+// Тип формы для setter
+type FormType = {
+  id: number
+  layout: 'article' | 'preface'
+  title: string
+  subtitle: string
+  lead: string
+  description: string
+  slug: string
+  body: string
+  cover: string
+  cover_caption: string
+  topics: Topic[]
+  mainTopic: Topic
+}
+
+// Преобразование draft в формат DraftDataObject
+const draftToDraftDataObject = (draft: unknown): DraftDataObject => {
+  if (!draft || typeof draft !== 'object') return { id: 0 }
+  const draftObj = draft as Record<string, unknown>
+  if (!draftObj.id) return { id: 0 }
+  return draft as DraftDataObject
+}
+
+// Функция для загрузки данных черновика с учетом локального хранилища и базы данных
+const loadDraftWithOfflineChanges = (_draftId: number, draft: DraftDataObject) => {
+  if (!draft || !draft.id) return null
+
+  try {
+    // Получаем оффлайн-изменения
+    const offlineFields = getAllDraftFields(draft.id)
+    console.log('[PublishSettings] Checking offline fields:', offlineFields)
+
+    // Получаем актуальное содержимое из localStorage
+    const bodyContent = getDraftField(draft.id, 'body') || draft.body || ''
+    const leadContent = getDraftField(draft.id, 'lead') || draft.lead || ''
+    const titleContent = getDraftField(draft.id, 'title') || draft.title || ''
+    const subtitleContent = getDraftField(draft.id, 'subtitle') || draft.subtitle || ''
+    const descriptionContent = getDraftField(draft.id, 'description') || draft.description || ''
+    const slugContent = getDraftField(draft.id, 'slug') || draft.slug || ''
+
+    // Применяем оффлайн-изменения к черновику
+    const updatedDraft = applyOfflineChanges(draft.id, draft)
+
+    // Создаем объект для обновления формы с приоритетом на локальные изменения
+    const formData = {
+      id: draft.id,
+      layout: updatedDraft.layout || 'article',
+      title: titleContent || updatedDraft.title || '',
+      subtitle: subtitleContent || updatedDraft.subtitle || '',
+      lead: leadContent || updatedDraft.lead || '',
+      description: descriptionContent || updatedDraft.description || '',
+      slug: slugContent || updatedDraft.slug || '',
+      body: bodyContent || updatedDraft.body || '',
+      cover: updatedDraft.cover || '',
+      cover_caption: updatedDraft.cover_caption || '',
+      topics: updatedDraft.topics
+        ? updatedDraft.topics.filter((topic): topic is Topic => !!topic && !!topic.id)
+        : [],
+      mainTopic: updatedDraft.topics?.[0] || EMPTY_TOPIC
+    }
+
+    console.log('[PublishSettings] Loading draft with offline changes:', formData)
+    return formData
+  } catch (error) {
+    console.error('[PublishSettings] Error loading draft with offline changes:', error)
+    return null
+  }
 }
 
 export const PublishSettings = () => {
   const { t } = useLocalize()
-  const { showModal, hideModal } = useUI()
-  const navigate = useNavigate()
-  const { session } = useSession()
-  const { sortedTopics } = useTopics()
+  const { drafts, currentDraft, setCurrentDraft, publishDraft, syncDraft } = useDrafts()
   const { showSnackbar } = useSnackbar()
-  const [topics, setTopics] = createSignal<Topic[]>(sortedTopics())
-  const [settingsForm, setSettingsForm] = createStore<DraftInput>(emptyConfig)
-  const [formErrors, setFormErrors] = createStore({} as Record<keyof DraftInput, string>)
-  const { currentDraft } = useDrafts()
+  const { showModal } = useUI()
+  const [_isPublishing, _setIsPublishing] = createSignal(false)
+  const [_selectedTopicId, _setSelectedTopicId] = createSignal<number | null>(null)
+  const { loadTopics, sortedTopics } = useTopics()
+  const { session } = useSession()
+  const navigate = useNavigate()
+  const [_coverImage, _setCoverImage] = createSignal<UploadedFile | null>(null)
+  const [form, setForm] = createStore({
+    id: 0,
+    layout: 'article' as 'article' | 'preface',
+    title: '',
+    subtitle: '',
+    lead: '',
+    description: '',
+    slug: '',
+    body: '',
+    cover: '',
+    cover_caption: '',
+    topics: [] as Topic[],
+    mainTopic: EMPTY_TOPIC
+  })
 
-  // При монтировании и при изменении текущего черновика обновляем форму настроек
-  onMount(() => setSettingsForm(currentDraft() as DraftInput))
-
-  // Добавляем эффект для обновления формы при изменении черновика
-  createEffect(() => {
+  // Функция для принудительной синхронизации и загрузки последних данных черновика
+  const loadLatestDraftData = async () => {
     const draft = currentDraft()
-    if (draft) {
-      console.log('[PublishSettings] Updating settings form with current draft:', draft)
-      // Безопасное обновление формы с учетом типов данных
-      setSettingsForm({
-        id: draft.id,
-        layout: draft.layout || 'article',
-        title: draft.title || '',
-        subtitle: draft.subtitle || '',
-        lead: draft.lead || '',
-        description: draft.description || '',
-        slug: draft.slug || '',
-        body: draft.body || '',
-        cover: draft.cover || '',
-        cover_caption: draft.cover_caption || '',
-        topics: draft.topics ? draft.topics.filter((topic): topic is Topic => Boolean(topic)) : [],
-        mainTopic: draft.topics?.[0] || EMPTY_TOPIC
-      })
+    if (!draft || !draft.id) return
+
+    try {
+      console.log('[PublishSettings] Syncing draft data for ID:', draft.id)
+
+      // Синхронизируем черновик с сервером и localStorage
+      const syncedDraft = await syncDraft(draft.id)
+      console.log('[PublishSettings] Synced draft data:', syncedDraft)
+
+      // Проверяем, успешно ли прошла синхронизация
+      if (!syncedDraft) {
+        console.warn('[PublishSettings] Failed to sync draft, using current draft data')
+
+        // Проверяем, что draft имеет все необходимые поля
+        if (draft?.id) {
+          // Если синхронизация не удалась, используем loadDraftWithOfflineChanges как резервный вариант
+          const draftData = loadDraftWithOfflineChanges(draft.id, draftToDraftDataObject(draft))
+          if (draftData) {
+            setForm(draftData as FormType)
+          } else {
+            // Крайний случай: используем данные как есть
+            console.warn('[PublishSettings] Using fallback draft data without sync')
+            setForm({
+              id: draft.id,
+              layout: (draft.layout || 'article') as 'article' | 'preface',
+              title: draft.title || '',
+              subtitle: draft.subtitle || '',
+              lead: draft.lead || '',
+              description: draft.description || '',
+              slug: draft.slug || '',
+              body: draft.body || '',
+              cover: draft.cover || '',
+              cover_caption: draft.cover_caption || '',
+              topics: draft.topics
+                ? draft.topics.filter((topic): topic is Topic => !!topic && !!topic.id)
+                : [],
+              mainTopic: draft.topics?.[0] || EMPTY_TOPIC
+            })
+          }
+        }
+        return
+      }
+
+      // Проверяем, что syncedDraft имеет все необходимые поля
+      if (syncedDraft?.id) {
+        // Применяем все локальные изменения поверх синхронизированного черновика
+        const draftData = loadDraftWithOfflineChanges(draft.id, draftToDraftDataObject(syncedDraft))
+        if (draftData) {
+          setForm(draftData as FormType)
+          console.log('[PublishSettings] Form updated with synced and local data:', draftData)
+        } else {
+          // Используем только синхронизированный черновик
+          setForm({
+            id: syncedDraft.id,
+            layout: (syncedDraft.layout || 'article') as 'article' | 'preface',
+            title: syncedDraft.title || '',
+            subtitle: syncedDraft.subtitle || '',
+            lead: syncedDraft.lead || '',
+            description: syncedDraft.description || '',
+            slug: syncedDraft.slug || '',
+            body: syncedDraft.body || '',
+            cover: syncedDraft.cover || '',
+            cover_caption: syncedDraft.cover_caption || '',
+            topics: syncedDraft.topics
+              ? syncedDraft.topics.filter((topic): topic is Topic => !!topic && !!topic.id)
+              : [],
+            mainTopic: syncedDraft.topics?.[0] || EMPTY_TOPIC
+          })
+        }
+      }
+    } catch (error) {
+      console.error('[PublishSettings] Error loading latest draft data:', error)
+
+      // Проверяем, что draft имеет все необходимые поля
+      if (draft?.id) {
+        // В случае ошибки используем резервный вариант
+        const draftData = loadDraftWithOfflineChanges(draft.id, draftToDraftDataObject(draft))
+        if (draftData) {
+          setForm(draftData as FormType)
+        }
+      }
     }
+  }
+
+  onMount(async () => {
+    // При монтировании компонента, загружаем последние данные
+    await loadLatestDraftData()
+
+    // Загружаем темы для селектора
+    await loadTopics()
   })
 
   const composeDescription = () => {
     // Приоритетно используем описание, если оно уже задано
-    if (currentDraft()?.description) {
-      return currentDraft()?.description
+    if (form.description) {
+      return form.description
     }
 
     // Затем проверяем наличие вступления (lead) и используем его
-    if (currentDraft()?.lead) {
-      const cleanLeadText = currentDraft()?.lead?.replaceAll(/<\/?[^>]+(>|$)/gi, ' ') || ''
+    if (form.lead) {
+      const cleanLeadText = form.lead?.replaceAll(/<\/?[^>]+(>|$)/gi, ' ') || ''
       return shorten(cleanLeadText, DESCRIPTION_MAX_LENGTH).trim()
     }
 
     // Если нет ни описания, ни вступления, используем начало основного текста
     const cleanBodyText =
-      currentDraft()
-        ?.body?.replaceAll(/<footnote data-value=".*?">(.*?)<\/footnote>/g, '')
+      form.body
+        ?.replaceAll(/<footnote data-value=".*?">(.*?)<\/footnote>/g, '')
         ?.replaceAll(/<\/?[^>]+(>|$)/gi, ' ') || ''
 
     return shorten(cleanBodyText, DESCRIPTION_MAX_LENGTH).trim()
   }
 
-  createEffect(() => setTopics(sortedTopics()))
-
   const handleUploadModalContentCloseSetCover = (image: UploadedFile | undefined) => {
-    hideModal()
-    setSettingsForm('cover', image?.url)
+    showModal('uploadCoverImage')
+    setForm('cover', image?.url || '')
   }
   const handleDeleteCoverImage = () => {
-    setSettingsForm('cover', '')
+    setForm('cover', '')
   }
 
   const handleTopicSelectChange = (newSelectedTopics: Topic[]) => {
@@ -118,7 +278,7 @@ export const PublishSettings = () => {
       currentDraft()?.topics?.length === 0 ||
       newSelectedTopics.every((topic: Topic) => topic.id !== currentDraft()?.topics?.[0]?.id)
     ) {
-      setSettingsForm((prev) => {
+      setForm((prev) => {
         return {
           ...prev,
           mainTopic: newSelectedTopics[0]
@@ -127,43 +287,97 @@ export const PublishSettings = () => {
     }
 
     if (newSelectedTopics.length > 0) {
-      setFormErrors('topics', '')
+      setForm('topics', newSelectedTopics)
     }
-    setSettingsForm('topics', newSelectedTopics)
   }
 
   const handleBackClick = () => {
     navigate(`/edit/${currentDraft()?.id}`)
   }
   const handleCancelClick = () => {
-    setSettingsForm(currentDraft() as DraftInput)
+    const currentDraftData = currentDraft() as unknown as DraftDataObject
+    setForm({
+      id: currentDraftData.id || 0,
+      layout: (currentDraftData.layout || 'article') as 'article' | 'preface',
+      title: currentDraftData.title || '',
+      subtitle: currentDraftData.subtitle || '',
+      lead: currentDraftData.lead || '',
+      description: currentDraftData.description || '',
+      slug: currentDraftData.slug || '',
+      body: currentDraftData.body || '',
+      cover: currentDraftData.cover || '',
+      cover_caption: currentDraftData.cover_caption || '',
+      topics: currentDraftData.topics
+        ? currentDraftData.topics.filter((topic): topic is Topic => !!topic && !!topic.id)
+        : [],
+      mainTopic: currentDraftData.topics?.[0] || EMPTY_TOPIC
+    })
     handleBackClick()
   }
-
-  const { drafts, updateDraft, publishDraft } = useDrafts()
 
   const handlePublishSubmit = () => {
     const draft = drafts().find((d) => d.id === currentDraft()?.id)
     console.group('[handlePublishSubmit]')
-    const updatedDraft = { ...currentDraft(), ...settingsForm, ...draft }
+
+    // Получаем самые свежие данные из localStorage и редакторов
+    const formData = loadDraftWithOfflineChanges(currentDraft()?.id || 0, currentDraft() as DraftDataObject)
+
+    // Объединяем все данные из разных источников с приоритетом на локальные изменения
+    const updatedDraft = {
+      ...currentDraft(),
+      ...(formData || {}), // Если formData есть, используем его
+      ...form, // Потом применяем изменения из формы настроек
+      ...(draft || {}) // В конце добавляем данные из глобального состояния
+    }
 
     console.log('updating draft: ', updatedDraft)
-    updateDraft(updatedDraft as DraftInput)
 
-    console.log('Publishing data:', updatedDraft)
+    // Гарантируем, что все поля из формы будут сохранены даже если не все поля
+    // были в formData или в существующих записях черновика
+    const draftToUpdate = {
+      id: updatedDraft.id,
+      layout: updatedDraft.layout || 'article',
+      title: form.title || updatedDraft.title || '',
+      subtitle: form.subtitle || updatedDraft.subtitle || '',
+      lead: form.lead || updatedDraft.lead || '',
+      description: form.description || updatedDraft.description || '',
+      slug: form.slug || updatedDraft.slug || '',
+      body: updatedDraft.body || '',
+      cover: form.cover || updatedDraft.cover || '',
+      cover_caption: form.cover_caption || updatedDraft.cover_caption || '',
+      topics: form.topics || updatedDraft.topics || [],
+      mainTopic: form.mainTopic || updatedDraft.mainTopic
+    }
+
+    // Отправляем на сервер с гарантированно заполненными полями
+    const currentDraftObj = currentDraft()
+    if (currentDraftObj?.created_by) {
+      const draftWithRequiredFields = {
+        ...draftToUpdate,
+        created_at: currentDraftObj.created_at || Math.floor(Date.now() / 1000),
+        created_by: currentDraftObj.created_by
+      }
+      setCurrentDraft(draftWithRequiredFields)
+    } else {
+      console.error('[handlePublishSubmit] Missing created_by field in draft')
+    }
+
+    console.log('Publishing data:', draftToUpdate)
 
     // Проверяем наличие выбранных топиков
-    const hasValidTopics = (updatedDraft.topics || []).length > 0 || updatedDraft.mainTopic?.id
+    const hasValidTopics =
+      (draftToUpdate.topics || []).length > 0 ||
+      (draftToUpdate.mainTopic?.id && draftToUpdate.mainTopic.id > 0)
 
     console.log('Topics validation:', {
-      selectedTopics: updatedDraft.topics,
-      mainTopic: updatedDraft.mainTopic,
+      selectedTopics: draftToUpdate.topics,
+      mainTopic: draftToUpdate.mainTopic,
       hasValidTopics
     })
 
     if (hasValidTopics) {
       console.log('Topics validation passed, proceeding with publication')
-      publishDraft(currentDraft()?.id || -1)
+      publishDraft(draftToUpdate.id || -1)
     } else {
       console.warn('Publication rejected: no valid topics')
       showSnackbar({ body: t('Please, select at least one topic') })
@@ -171,7 +385,38 @@ export const PublishSettings = () => {
     console.groupEnd()
   }
 
-  const handleSaveDraft = () => updateDraft(drafts().find((d) => d.id === currentDraft()?.id) as DraftInput)
+  const handleSaveDraft = () => {
+    // Аналогично handlePublishSubmit, но без публикации
+    const draft = drafts().find((d) => d.id === currentDraft()?.id)
+
+    // Получаем свежие данные из localStorage
+    const formData = loadDraftWithOfflineChanges(currentDraft()?.id || 0, currentDraft() as DraftDataObject)
+
+    // Объединяем данные с приоритетом на форму настроек
+    const draftToUpdate = {
+      ...(draft || {}),
+      ...(formData || {}),
+      ...form
+    }
+
+    // Убеждаемся что у нас есть все необходимые поля
+    console.log('[handleSaveDraft] Saving draft with data:', draftToUpdate)
+
+    const currentDraftObj = currentDraft()
+    if (currentDraftObj?.created_by) {
+      const draftWithRequiredFields = {
+        ...draftToUpdate,
+        created_at: currentDraftObj.created_at || Math.floor(Date.now() / 1000),
+        created_by: currentDraftObj.created_by
+      }
+      setCurrentDraft(draftWithRequiredFields)
+    } else {
+      console.error('[handleSaveDraft] Missing created_by field in draft')
+    }
+
+    // Показываем уведомление об успешном сохранении
+    showSnackbar({ body: t('Draft saved successfully') })
+  }
 
   const removeSpecial = (ev: InputEvent) => {
     const input = ev.target as HTMLInputElement
@@ -197,28 +442,28 @@ export const PublishSettings = () => {
                 <Button
                   variant="primary"
                   onClick={() => showModal('uploadCoverImage')}
-                  value={settingsForm.cover ? t('Add another image') : t('Add image')}
+                  value={form.cover ? t('Add another image') : t('Add image')}
                 />
-                <Show when={settingsForm.cover}>
+                <Show when={form.cover}>
                   <Button variant="secondary" onClick={handleDeleteCoverImage} value={t('Delete cover')} />
                 </Show>
               </div>
               <div
                 class={clsx(styles.shoutCardCoverContainer, {
-                  [styles.hasImage]: settingsForm.cover
+                  [styles.hasImage]: form.cover
                 })}
               >
-                <Show when={settingsForm.cover}>
+                <Show when={form.cover}>
                   <div class={styles.shoutCardCover}>
-                    <Image src={settingsForm.cover} alt={settingsForm.title || ''} width={800} />
+                    <Image src={form.cover} alt={form.title || ''} width={800} />
                   </div>
                 </Show>
                 <div class={styles.text}>
-                  <Show when={settingsForm.mainTopic}>
-                    <div class={styles.mainTopic}>{settingsForm.mainTopic?.title || ''}</div>
+                  <Show when={form.mainTopic}>
+                    <div class={styles.mainTopic}>{form.mainTopic?.title || ''}</div>
                   </Show>
-                  <div class={styles.shoutCardTitle}>{settingsForm.title}</div>
-                  <div class={styles.shoutCardSubtitle}>{settingsForm.subtitle || ''}</div>
+                  <div class={styles.shoutCardTitle}>{form.title}</div>
+                  <div class={styles.shoutCardSubtitle}>{form.subtitle || ''}</div>
                   <div class={styles.shoutAuthor}>
                     {session()?.user?.app_data?.profile?.name || t('Anonymous')}
                   </div>
@@ -237,9 +482,9 @@ export const PublishSettings = () => {
                 variant="bordered"
                 fieldName={t('Header')}
                 placeholder={t('Come up with a title for your story')}
-                initialValue={settingsForm.title}
+                initialValue={form.title}
                 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-                onChange={(value: any) => setSettingsForm('title', value)}
+                onChange={(value: any) => setForm('title', value)}
                 allowEnterKey={false}
                 maxLength={100}
               />
@@ -248,9 +493,9 @@ export const PublishSettings = () => {
                 variant="bordered"
                 fieldName={t('Subheader')}
                 placeholder={t('Come up with a subtitle for your story')}
-                initialValue={settingsForm.subtitle || ''}
+                initialValue={form.subtitle || ''}
                 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-                onChange={(value: any) => setSettingsForm('subtitle', value)}
+                onChange={(value: any) => setForm('subtitle', value)}
                 allowEnterKey={false}
                 maxLength={100}
               />
@@ -258,20 +503,14 @@ export const PublishSettings = () => {
                 commands={['bold', 'italic']}
                 placeholder={t('Write a short introduction')}
                 content={composeDescription() || ''}
-                onChange={(data?: EditorData) => setSettingsForm('description', data?.content || '')}
+                onChange={(data?: EditorData) => setForm('description', data?.content || '')}
               />
             </div>
 
             <h4>{t('Slug')}</h4>
             <div class="pretty-form__item">
               <label for="slug">
-                <input
-                  type="text"
-                  name="slug"
-                  id="slug"
-                  value={settingsForm.slug}
-                  onInput={removeSpecial}
-                />
+                <input type="text" name="slug" id="slug" value={form.slug} onInput={removeSpecial} />
                 {t('Slug')}
               </label>
             </div>
@@ -284,19 +523,16 @@ export const PublishSettings = () => {
             </p>
             <div class={styles.inputContainer}>
               <div class={clsx('pretty-form__item', styles.topicSelectContainer)}>
-                <Show when={topics().length > 0}>
+                <Show when={sortedTopics().length > 0}>
                   <TopicSelect
-                    topics={topics()}
+                    topics={sortedTopics()}
                     onChange={handleTopicSelectChange}
-                    selectedTopics={settingsForm.topics || []}
-                    onMainTopicChange={(mainTopic) => setSettingsForm('mainTopic', mainTopic)}
-                    mainTopic={settingsForm.mainTopic}
+                    selectedTopics={form.topics || []}
+                    onMainTopicChange={(mainTopic) => setForm('mainTopic', mainTopic)}
+                    mainTopic={form.mainTopic}
                   />
                 </Show>
               </div>
-              <Show when={formErrors.topics}>
-                <div class={styles.validationError}>{formErrors.topics}</div>
-              </Show>
             </div>
             <h4>{t('Collaborators')}</h4>
             <Button

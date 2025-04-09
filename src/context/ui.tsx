@@ -99,7 +99,7 @@ export type ModalType =
   | 'share'
   | 'cropImage'
   | 'insertVideo'
-  | 'insertAudio'
+  | 'uploadAudio'
   | 'insertLink'
   | ''
 
@@ -121,7 +121,7 @@ export const MODALS: Record<ModalType, ModalType> = {
   share: 'share',
   cropImage: 'cropImage',
   insertVideo: 'insertVideo',
-  insertAudio: 'insertAudio',
+  uploadAudio: 'uploadAudio',
   insertLink: 'insertLink',
   '': ''
 }
