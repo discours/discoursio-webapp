@@ -12,6 +12,7 @@ export default gql`
         shouts
         authors
         followers
+        comments
       }
     }
   }

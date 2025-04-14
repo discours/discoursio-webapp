@@ -5,7 +5,7 @@ export default gql`
     load_shouts_discussed(options: $options) {
       id
       title
-      description
+      lead
       subtitle
       slug
       layout

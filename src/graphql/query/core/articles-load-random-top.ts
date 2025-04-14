@@ -5,7 +5,7 @@ export default gql`
     load_shouts_random_top(options: $options) {
       id
       title
-      description
+      lead
       subtitle
       slug
       layout

@@ -6,10 +6,7 @@ export default gql`
       error
       draft {
         id
-        slug
-        title
-        subtitle
-        body
+        layout
       }
     }
   }
