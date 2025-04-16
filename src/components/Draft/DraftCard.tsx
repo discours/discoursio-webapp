@@ -33,12 +33,7 @@ export const DraftCard = (props: Props) => {
   const navigate = useNavigate()
   const handlePublishLinkClick = (e: MouseEvent) => {
     e.preventDefault()
-    if (props.draft.topics?.[0]?.slug) {
-      props.onPublish()
-    } else {
-      showSnackbar({ body: t('Please, set the main topic first') })
-      navigate(`/edit/${props.draft.id}/settings`)
-    }
+    navigate(`/edit/${props.draft.id}/settings`)
   }
 
   const handleDeleteLinkClick = async (e: MouseEvent) => {

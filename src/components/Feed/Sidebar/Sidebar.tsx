@@ -9,7 +9,7 @@ import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useTopics } from '~/context/topics'
 import { Author, Topic } from '~/graphql/schema/core.gen'
-import { MyFeedKind } from '~/types/filters'
+import { MyFeedKind } from '~/types/nav'
 import { Userpic } from '../../Author/Userpic'
 import styles from './Sidebar.module.scss'
 

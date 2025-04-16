@@ -3,7 +3,7 @@ import { clsx } from 'clsx'
 import { For, Show, createMemo } from 'solid-js'
 import { orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
-import { FeedMode } from '~/types/filters'
+import { FeedMode } from '~/types/nav'
 import { capitalize } from '~/utils/capitalize'
 import styles from './FeedSwitcher.module.scss'
 
