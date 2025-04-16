@@ -10,7 +10,7 @@ import { useSession } from '~/context/session'
 import getRandomTopShoutsQuery from '~/graphql/query/core/articles-load-random-top'
 import { LoadShoutsOptions, Shout } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/lib/fromPeriod'
-import { ExpoLayoutType } from '~/types/common'
+import { ExpoLayoutType } from '~/types/nav'
 import { ArticleCard } from '../Feed/ArticleCard'
 
 import styles from '~/styles/views/Expo.module.scss'

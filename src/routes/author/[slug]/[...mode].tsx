@@ -72,7 +72,7 @@ import {
 } from '~/graphql/schema/core.gen'
 import { PeriodType, getTimestampFromPeriod } from '~/lib/fromPeriod'
 import { getFileUrl } from '~/lib/getThumbUrl'
-import { FeedMode } from '~/types/filters'
+import { FeedMode } from '~/types/nav'
 
 const fetchAuthorShouts = async (slug: string, offset?: number) => {
   const options: LoadShoutsOptions = { filters: { author: slug }, limit: FEED_PAGE_SIZE, offset }

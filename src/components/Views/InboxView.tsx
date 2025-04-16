@@ -66,7 +66,7 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
     } finally {
       messagesContainerRef?.scroll({
         top: messagesContainerRef?.scrollHeight,
-        behavior: 'instant'
+        behavior: 'smooth'
       })
     }
   }

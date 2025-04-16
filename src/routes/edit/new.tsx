@@ -10,6 +10,7 @@ export default () => {
     <PageLayout
       title={`${t('Discours')} :: ${t('Choose a post type')}`}
       key="home"
+      hideFooter={true}
       desc={t('Participate in the Discours: share information, join the editorial team')}
     >
       <AuthGuard>

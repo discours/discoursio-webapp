@@ -9,6 +9,27 @@ import { Icon } from '../Icon'
 
 import styles from './TableOfContents.module.scss'
 
+// Полифилл для findLastIndex
+declare global {
+  interface Array<T> {
+    findLastIndex(predicate: (value: T, index: number, obj: T[]) => unknown): number
+  }
+}
+
+// Реализация полифилла если его нет
+if (!Array.prototype.findLastIndex) {
+  Array.prototype.findLastIndex = function <T>(
+    predicate: (value: T, index: number, obj: T[]) => unknown
+  ): number {
+    for (let i = this.length - 1; i >= 0; i--) {
+      if (predicate(this[i] as T, i, this as T[])) {
+        return i
+      }
+    }
+    return -1
+  }
+}
+
 interface Props {
   variant: 'article' | 'editor'
   parentSelector: string

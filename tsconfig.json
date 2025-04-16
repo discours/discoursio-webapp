@@ -17,7 +17,8 @@
     "lib": ["DOM", "ESNext"],
     "paths": {
       "~/*": ["./src/*"],
-      "@/*": ["./public/*"]
+      "@/*": ["./public/*"],
+      "i18next": ["./src/types/i18next.d.ts"]
     }
   },
   "exclude": ["./src/pages"]

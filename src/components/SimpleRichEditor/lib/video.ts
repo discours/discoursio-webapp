@@ -9,7 +9,6 @@
 export const VIMEO_URL_REGEX = /^(https?:\/\/)?(www\.|player\.)?vimeo\.com\/(?:video\/)?(\d+)$/
 export const YOUTUBE_URL_REGEX =
   /^(https?:\/\/)?(www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})$/
-
 /**
  * Типы поддерживаемых видеоплатформ
  */

@@ -5,7 +5,7 @@ import { PageLayout } from '~/components/_shared/PageLayout'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { Draft } from '~/graphql/schema/core.gen'
-import { LayoutType } from '~/types/common'
+import { LayoutType } from '~/types/nav'
 
 const EditView = lazy(() => import('~/components/Views/EditView'))
 

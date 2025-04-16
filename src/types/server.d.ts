@@ -3,7 +3,7 @@
 import type { Chat } from '~/graphql/schema/chat.gen';
 // Типы из '~/graphql/schema/core.gen'
 import type { Author, SearchResult, Shout, Topic } from '~/graphql/schema/core.gen';
-import { LayoutType } from './common';
+import { LayoutType } from './nav';
 
 // Все возможные свойства, которые могут быть переданы с сервера
 export type PageProps = {

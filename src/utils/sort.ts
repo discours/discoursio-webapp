@@ -1,4 +1,5 @@
 import { Maybe } from 'graphql/jsutils/Maybe'
+import { FilterFunction } from '~/types/nav'
 
 type WithNameOrTitle = { name?: string } | { title?: string }
 type WithCreatedAt = { created_at?: number }
@@ -54,4 +55,18 @@ export const byScore = <T extends WithScore>(a: T, b: T) => {
   if (x > y) return -1
   if (x < y) return 1
   return 0
+}
+
+/**
+ * Фильтрует список элементов с помощью функции фильтрации
+ * @template T - Тип элемента списка
+ * @param {T[]} list - Список элементов для фильтрации
+ * @param {FilterFunction<T>} [filteringHandler] - Функция для фильтрации
+ * @returns {T[]} - Отфильтрованный список
+ */
+export function getFilteredItems<T>(list: T[], filteringHandler?: FilterFunction<T>): T[] {
+  if (filteringHandler) {
+    return list.filter((item) => filteringHandler(item))
+  }
+  return list
 }

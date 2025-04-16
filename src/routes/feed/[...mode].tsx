@@ -11,7 +11,7 @@ import { ReactionsProvider } from '~/context/reactions'
 import { loadReactions, loadShouts, loadUnratedShouts } from '~/graphql/api/public'
 import { LoadShoutsFilters, Reaction, ReactionKind, ReactionSort, Shout } from '~/graphql/schema/core.gen'
 import { PeriodType, getTimestampFromPeriod } from '~/lib/fromPeriod'
-import { FeedMode } from '~/types/filters'
+import { FeedMode } from '~/types/nav'
 
 export interface RouteData {
   shouts: Shout[]

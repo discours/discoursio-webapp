@@ -2,9 +2,9 @@ import { JSX, Show, createEffect, createSignal, on, onCleanup, onMount, untrack 
 import { Button } from '~/components/_shared/Button'
 import { useLocalize } from '~/context/localize'
 import { Author, Reaction, Shout } from '~/graphql/schema/core.gen'
-import { SortFunction } from '~/types/common'
+import { SortFunction } from '~/types/nav'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { byCreated } from '~/utils/sort'
+import { byCreated, getFilteredItems } from '~/utils/sort'
 
 import styles from './LoadMoreWrapper.module.scss'
 
@@ -29,6 +29,7 @@ type LoadMoreProps = {
   loadMoreText?: string
   children: JSX.Element
   useScrollTrigger?: boolean
+  filter?: (item: { id: number | string }) => boolean
 }
 
 /**
@@ -134,8 +135,11 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
       untrack(() => {
         setItems((prev) => {
           // Создаем Set для быстрой проверки наличия элементов и избежания дубликатов
-          const existingIds = new Set(prev.map((item) => item.id))
-          const uniqueNewItems = newItems.filter((item) => !existingIds.has(item.id))
+          const existingIds = new Set(prev.map((item) => String(item.id)))
+          const uniqueNewItems = getFilteredItems<{ id: number | string }>(
+            newItems,
+            (item) => !existingIds.has(String(item.id))
+          )
 
           console.log('[LoadMoreWrapper] Unique new items:', uniqueNewItems.length)
 

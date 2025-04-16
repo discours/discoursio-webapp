@@ -9,7 +9,7 @@ import { EXPO_LAYOUTS, EXPO_TITLES, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { loadShouts } from '~/graphql/api/public'
 import { Shout } from '~/graphql/schema/core.gen'
-import { ExpoLayoutType } from '~/types/common'
+import { ExpoLayoutType } from '~/types/nav'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 
 const SHOUTS_PER_PAGE = 24

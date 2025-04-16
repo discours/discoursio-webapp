@@ -88,7 +88,9 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
   const value: LocalizeContextType = {
     t: ((...args) => {
       try {
-        return i18next.t(...args)
+        const key = args[0] as string | readonly string[];
+        const options = args.length > 1 ? args[1] : undefined;
+        return i18next.t(key, options)
       } catch (_) {
         return args?.length > 0 ? processPrepositions(args[0] as string) : ''
       }

@@ -2,10 +2,9 @@ import { Show, createEffect, createMemo, createSignal, on, onMount } from 'solid
 
 import { cdnUrl } from '~/config'
 import { MediaItem } from '~/graphql/schema/core.gen'
+import { AudioTimeLine } from './AudioTimeLine'
 import { PlayerHeader } from './PlayerHeader'
 import { PlayerPlaylist } from './PlayerPlaylist'
-
-import styles from './AudioPlayer.module.scss'
 
 type Props = {
   media: MediaItem[]
@@ -20,14 +19,10 @@ type Props = {
   onChangeMediaIndex?: (direction: 'up' | 'down', index: number) => void
 }
 
-const getFormattedTime = (point: number) => new Date(point * 1000).toISOString().slice(14, -5)
-
 export const AudioPlayer = (props: Props) => {
   let audioRef: HTMLAudioElement | undefined
   let gainNodeRef: GainNode | undefined
-  let progressRef: HTMLDivElement | undefined
   let audioContextRef: AudioContext | undefined
-  let mouseDownRef: boolean | undefined
 
   const [currentTrackDuration, setCurrentTrackDuration] = createSignal(0)
   const [currentTime, setCurrentTime] = createSignal(0)
@@ -106,9 +101,16 @@ export const AudioPlayer = (props: Props) => {
     props.onMediaItemFieldChange?.(index, field, value)
   }
 
+  /**
+   * Обрабатывает перемотку аудио при взаимодействии с прогресс-баром
+   * @param event Событие мыши
+   */
   const scrub = (event: MouseEvent | undefined) => {
-    if (progressRef && audioRef) {
-      audioRef.currentTime = (event?.offsetX || 0 / progressRef.offsetWidth) * currentTrackDuration()
+    if (event && audioRef) {
+      const progressElement = event.currentTarget as HTMLDivElement
+      const offsetX = event.offsetX
+      const width = progressElement.offsetWidth
+      audioRef.currentTime = (offsetX / width) * currentTrackDuration()
     }
   }
 
@@ -123,43 +125,25 @@ export const AudioPlayer = (props: Props) => {
           isPlaying={isPlaying()}
           currentTrack={currentTack()}
         />
-        <div class={styles.timeline}>
-          <div
-            class={styles.progress}
-            ref={(el) => (progressRef = el)}
-            onClick={scrub}
-            onMouseMove={(e) => mouseDownRef && scrub(e)}
-            onMouseDown={() => (mouseDownRef = true)}
-            onMouseUp={() => (mouseDownRef = false)}
-          >
-            <div
-              class={styles.progressFilled}
-              style={{
-                width: `${(currentTime() / currentTrackDuration()) * 100 || 0}%`
-              }}
-            />
-          </div>
-          <div class={styles.progressTiming}>
-            <span>{getFormattedTime(currentTime())}</span>
-            <Show when={currentTrackDuration() > 0}>
-              <span>{getFormattedTime(currentTrackDuration())}</span>
-            </Show>
-          </div>
-          <audio
-            ref={(el) => (audioRef = el)}
-            onTimeUpdate={handleAudioTimeUpdate}
-            src={currentTack()?.url?.replace('images.discours.io', cdnUrl) || ''}
-            onCanPlay={() => {
-              // start to play the next track on src change
-              if (isPlaying() && audioRef) {
-                audioRef.play()
-              }
-            }}
-            onLoadedMetadata={({ currentTarget }) => setCurrentTrackDuration(currentTarget.duration)}
-            onEnded={handleAudioEnd}
-            crossorigin="anonymous"
-          />
-        </div>
+        <AudioTimeLine
+          currentTime={currentTime()}
+          currentTrackDuration={currentTrackDuration()}
+          onScrub={scrub}
+        />
+        <audio
+          ref={(el) => (audioRef = el)}
+          onTimeUpdate={handleAudioTimeUpdate}
+          src={currentTack()?.url?.replace('images.discours.io', cdnUrl) || ''}
+          onCanPlay={() => {
+            // start to play the next track on src change
+            if (isPlaying() && audioRef) {
+              audioRef.play()
+            }
+          }}
+          onLoadedMetadata={({ currentTarget }) => setCurrentTrackDuration(currentTarget.duration)}
+          onEnded={handleAudioEnd}
+          crossorigin="anonymous"
+        />
         <PlayerPlaylist
           editorMode={props.editorMode}
           onPlayMedia={handlePlayMedia}
