@@ -22,7 +22,7 @@ import {
   ShoutsOrderBy,
   Topic
 } from '~/graphql/schema/core.gen'
-import { FeedFilters, FeedMode, FilterState, MyFeedKind } from '~/types/filters'
+import { FeedFilters, FeedMode, FilterState, MyFeedKind } from '~/types/nav'
 import { useSession } from './session'
 
 export const FEED_PAGE_SIZE = 20

@@ -3,6 +3,8 @@
  * @description Вспомогательные функции для работы с медиа-контентом в редакторе
  */
 
+import { Position } from './types'
+
 // Уникальный идентификатор редактора врезки
 export const squibId = 'squib-editor'
 
@@ -95,174 +97,54 @@ export interface PositionOptions {
 }
 
 /**
- * Универсальная функция для позиционирования различных меню редактора
- *
- * @param reference Элемент или выделение для позиционирования
+ * Добавить или обновить функцию для определения типа устройства
+ */
+export const isTouchDevice = (): boolean => {
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0
+}
+
+/**
+ * Обновляем функцию получения позиции для тулбара - используем фиксированную позицию
+ * @param editor Элемент редактора
  * @param options Параметры позиционирования
- * @returns Позиция с координатами и флагом видимости
- *
- * @example
- * ```ts
- * // Позиционирование тулбара над выделением
- * const position = getEditorPosition(editorRef(), {
- *   type: 'toolbar',
- *   placement: 'top',
- *   offset: 10
- * });
- *
- * // Позиционирование плюс-меню слева от курсора
- * const position = getEditorPosition(editorRef(), {
- *   type: 'plus',
- *   placement: 'left',
- *   offset: 50
- * });
- * ```
+ * @returns Позиция тулбара
  */
 export const getEditorPosition = (
-  reference: HTMLElement | null,
-  options: PositionOptions
-): { top: number; left: number; isVisible: boolean } => {
-  // Значения по умолчанию
-  const { type = 'toolbar', placement = 'bottom', offset = 5, centerHorizontally = false } = options
-
-  // Если нет элемента, возвращаем нулевую позицию и флаг невидимости
-  if (!reference) {
-    return { top: 0, left: 0, isVisible: false }
+  editor: HTMLElement | null,
+  options: {
+    type: 'float' | 'plus'
+    placement?: 'top' | 'bottom' | 'left' | 'right'
+    offset?: number
+    centerHorizontally?: boolean
   }
+): Position => {
+  if (!editor) return { top: 0, left: 0 }
 
-  // Получаем размеры и позицию элемента
-  const rect = reference.getBoundingClientRect()
-  const scrollTop = window.scrollY || document.documentElement.scrollTop
-  const scrollLeft = window.scrollX || document.documentElement.scrollLeft
-
-  // Проверяем наличие выделения для более точного позиционирования
+  const { type, offset = 0 } = options
   const selection = window.getSelection()
-  let selectionRect: DOMRect | null = null
 
-  if (selection && selection.rangeCount > 0) {
+  // Для плавающего тулбара при выделении текста
+  if (type === 'float' && selection && selection.rangeCount > 0) {
     const range = selection.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
 
-    // Проверяем, что выделение внутри элемента
-    if (reference.contains(range.commonAncestorContainer)) {
-      selectionRect = range.getBoundingClientRect()
+    // Базовое позиционирование для всех устройств - над серединой выделения
+    return {
+      top: Math.max(10, rect.top - 40), // Минимум 10px от верха
+      left: rect.left + rect.width / 2 // Центрируем над выделением
     }
   }
 
-  // Базовые координаты, которые будут скорректированы
-  let top = rect.top + scrollTop
-  let left = rect.left + scrollLeft
-
-  // Корректируем положение в зависимости от типа меню
-  switch (type) {
-    case 'float': {
-      // Для плавающего меню используем позицию выделения, если оно есть
-      if (selectionRect) {
-        // Позиционируем выше или ниже выделения в зависимости от placement
-        if (placement === 'top') {
-          top = selectionRect.top + scrollTop - offset
-        } else {
-          top = selectionRect.bottom + scrollTop + offset
-        }
-
-        // Центрируем по горизонтали относительно выделения
-        left = selectionRect.left + scrollLeft + selectionRect.width / 2
-
-        // Если нужно центрировать горизонтально и известна ширина меню
-        if (centerHorizontally) {
-          const MENU_WIDTH = 280 // Примерная ширина меню в пикселях
-          left -= MENU_WIDTH / 2
-        }
-      }
-      break
-    }
-    case 'plus': {
-      // Для плюс-меню позиционируем слева от курсора или элемента
-      if (selectionRect) {
-        // Берем верхнюю координату выделения для вертикального выравнивания
-        top = selectionRect.top + scrollTop
-        // Смещаем меню влево от курсора/выделения
-        left = selectionRect.left + scrollLeft - offset
-
-        // Если высота selectionRect равна 0 (курсор на пустой строке),
-        // пробуем получить родительский блок (строку или параграф)
-        if (selectionRect.height === 0) {
-          const selection = window.getSelection()
-          if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0)
-            const container = range.startContainer
-
-            // Находим родительский блочный элемент
-            let parentBlock = container
-            while (parentBlock && parentBlock.nodeType === Node.TEXT_NODE) {
-              parentBlock = parentBlock.parentNode as Node
-            }
-
-            // Если нашли блочный элемент, используем его координаты
-            if (parentBlock && reference.contains(parentBlock)) {
-              const blockRect = (parentBlock as Element).getBoundingClientRect()
-              // Устанавливаем вертикальную позицию по центру блока
-              top = blockRect.top + scrollTop + blockRect.height / 2 - 10
-            }
-          }
-        }
-      } else {
-        // Если нет выделения, позиционируем слева от элемента
-        top = rect.top + scrollTop + 30 // Отступ сверху
-        left = rect.left + scrollLeft - offset
-      }
-      break
-    }
-    case 'form': {
-      // Для формы центрируем по элементу
-      top = rect.top + scrollTop + rect.height / 2
-      left = rect.left + scrollLeft + rect.width / 2
-
-      // Если нужно центрировать горизонтально и известна ширина формы
-      if (centerHorizontally) {
-        const FORM_WIDTH = 300 // Примерная ширина формы в пикселях
-        left -= FORM_WIDTH / 2
-      }
-      break
-    }
-    default: {
-      // toolbar
-      // Для обычного тулбара позиционируем в зависимости от placement
-      switch (placement) {
-        case 'top': {
-          top = rect.top + scrollTop - offset
-          break
-        }
-
-        case 'left': {
-          left = rect.left + scrollLeft - offset
-          top = rect.top + scrollTop + rect.height / 2
-          break
-        }
-
-        case 'right': {
-          left = rect.right + scrollLeft + offset
-          top = rect.top + scrollTop + rect.height / 2
-          break
-        }
-
-        case 'center': {
-          top = rect.top + scrollTop + rect.height / 2
-          left = rect.left + scrollLeft + rect.width / 2
-          break
-        }
-
-        default: {
-          // bottom
-          top = rect.bottom + scrollTop + offset
-          break
-        }
-      }
+  // Для plus menu или запасной вариант
+  if (editor) {
+    const rect = editor.getBoundingClientRect()
+    return {
+      top: rect.top + offset,
+      left: rect.left + (options.centerHorizontally ? rect.width / 2 : 20)
     }
   }
 
-  // Проверка на выход за границы окна будет добавлена в будущем
-
-  return { top, left, isVisible: true }
+  return { top: 0, left: 0 }
 }
 
 /**

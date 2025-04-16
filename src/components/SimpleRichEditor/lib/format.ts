@@ -22,7 +22,7 @@
  * ```
  */
 
-import { CommandType } from './commands'
+import { CommandType } from './types'
 
 // Common types
 export type SelectionState = {
@@ -81,7 +81,8 @@ export const FORMAT_CONFIG: Record<CommandType, { tag: string; attributes?: Reco
   'bg-black': { tag: 'div', attributes: { 'data-bg': 'black' } },
   'bg-yellow': { tag: 'div', attributes: { 'data-bg': 'yellow' } },
   'bg-red': { tag: 'div', attributes: { 'data-bg': 'red' } },
-  'bg-green': { tag: 'div', attributes: { 'data-bg': 'green' } }
+  'bg-green': { tag: 'div', attributes: { 'data-bg': 'green' } },
+  'bg-color': { tag: 'div', attributes: { 'data-bg': '' } }
 } as const
 
 /**

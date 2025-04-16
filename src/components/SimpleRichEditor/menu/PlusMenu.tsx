@@ -1,8 +1,8 @@
 import { clsx } from 'clsx'
 import { Component, For, Show, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
-import { CommandType } from '../lib/commands'
 import { replaceSelection } from '../lib/empty'
+import { CommandType } from '../lib/types'
 import { ToolbarControl } from './SimpleToolbar'
 
 import styles from './PlusMenu.module.scss'

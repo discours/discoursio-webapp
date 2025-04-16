@@ -3,10 +3,10 @@
  * @description Модуль для централизованного управления действиями редактора
  */
 
-import { CommandType } from './commands'
 import { applyFormatting, hasFormatting, removeFormatting } from './format'
 import { createSelectionState } from './format'
 import { EditorState } from './state'
+import { CommandType } from './types'
 
 /**
  * Типы действий редактора

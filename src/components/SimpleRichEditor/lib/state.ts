@@ -1,14 +1,14 @@
 import { Accessor, createMemo, createSignal } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { debounce } from 'throttle-debounce'
-import { CommandType, getCommandType } from './commands'
+import { getCommandType } from './commands'
 import {
   applyFormatting as applyFormat,
   getActiveFormats,
   removeFormatting as removeFormat,
   resetFormat
 } from './format'
-import { Position } from './types'
+import { CommandType, HistoryJournal, Position } from './types'
 
 /**
  * @module state
@@ -123,6 +123,7 @@ export const useEditor = (props: EditorProps) => {
   const storageKey = createMemo(() => (props.id ? `editor-${props.id}` : ''))
 
   // Начальное состояние
+  // @ts-ignore
   const [state, setState] = createStore<EditorState>({
     id: props.id || `editor-${Math.random().toString(36).slice(2)}`,
     content: props.content || '',
@@ -139,9 +140,9 @@ export const useEditor = (props: EditorProps) => {
     },
     isBlurred: false,
     currentCommand: undefined,
-    setActiveFormats: (formats) => setState('activeFormats', formats),
-    setContent: (content) => setState('content', content),
-    setIsBlurred: (isBlurred) => setState('isBlurred', isBlurred)
+    setActiveFormats: (formats: Set<CommandType>) => setState('activeFormats', formats),
+    setContent: (content: string) => setState('content', content),
+    setIsBlurred: (isBlurred: boolean) => setState('isBlurred', isBlurred)
   })
 
   // Дебаунсированное сохранение
@@ -211,14 +212,14 @@ export const useEditor = (props: EditorProps) => {
     const isActive = state.activeFormats.has(cmd)
     if (isActive) {
       removeFormat(cmd, state.selection)
-      setState('activeFormats', (formats) => {
+      setState('activeFormats', (formats: Set<CommandType>) => {
         const newFormats = new Set(formats)
         newFormats.delete(cmd)
         return newFormats
       })
     } else {
       applyFormat(cmd, state.selection)
-      setState('activeFormats', (formats) => {
+      setState('activeFormats', (formats: Set<CommandType>) => {
         const newFormats = new Set(formats)
         newFormats.add(cmd)
         return newFormats
@@ -238,7 +239,7 @@ export const useEditor = (props: EditorProps) => {
     const currentContent = editor.innerHTML
     const previousContent = state.history.undo[state.history.undo.length - 1]
 
-    setState('history', (history) => ({
+    setState('history', (history: HistoryJournal) => ({
       undo: history.undo.slice(0, -1),
       redo: [...history.redo, currentContent].slice(-MAX_HISTORY_LENGTH)
     }))
@@ -254,7 +255,7 @@ export const useEditor = (props: EditorProps) => {
     const currentContent = editor.innerHTML
     const nextContent = state.history.redo[state.history.redo.length - 1]
 
-    setState('history', (history) => ({
+    setState('history', (history: HistoryJournal) => ({
       undo: [...history.undo, currentContent].slice(-MAX_HISTORY_LENGTH),
       redo: history.redo.slice(0, -1)
     }))
@@ -267,7 +268,7 @@ export const useEditor = (props: EditorProps) => {
     const editor = props.editorRef()
     if (!editor) return
 
-    setState('history', (history) => ({
+    setState('history', (history: HistoryJournal) => ({
       undo: [...history.undo, editor.innerHTML].slice(-MAX_HISTORY_LENGTH),
       redo: []
     }))

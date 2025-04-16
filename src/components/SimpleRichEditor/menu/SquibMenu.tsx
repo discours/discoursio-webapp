@@ -1,18 +1,9 @@
 import { clsx } from 'clsx'
 import { Component, Show, createSignal } from 'solid-js'
-import { CommandGroupType, CommandType } from '../lib/commands'
+import { CommandGroupType, CommandType, Position } from '../lib/types'
 import { SimpleToolbar } from './SimpleToolbar'
 
 import styles from './SquibMenu.module.scss'
-
-/**
- * Тип позиции меню
- */
-export interface MenuPosition {
-  top: number
-  left: number
-  isVisible?: boolean
-}
 
 interface SquibMenuProps {
   /** Видимость меню */
@@ -24,7 +15,7 @@ interface SquibMenuProps {
   /** Текущие форматы */
   currentFormats: Set<CommandType>
   /** Позиция меню */
-  position: { top: number; left: number; isVisible?: boolean }
+  position: Position
   /** Идентификатор редактора */
   editorId?: string
   /** Набор команд для меню форматирования врезки */
@@ -65,7 +56,7 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
   return (
     <div
       class={clsx(styles.squibMenu, {
-        [styles.visible]: props.isVisible && props.position.isVisible !== false
+        [styles.visible]: props.isVisible
       })}
       style={menuStyle}
       data-editor-id={props.editorId}
@@ -98,7 +89,6 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
             commands={props.commands}
             onAction={props.onAction}
             currentFormats={props.currentFormats}
-            isVisible={props.isVisible}
           />
         </div>
       </Show>

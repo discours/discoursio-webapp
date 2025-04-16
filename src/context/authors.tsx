@@ -17,7 +17,7 @@ import {
   Shout,
   Topic
 } from '~/graphql/schema/core.gen'
-import { FilterFunction, SortFunction } from '~/types/common'
+import { FilterFunction, SortFunction } from '~/types/nav'
 import { byStat } from '~/utils/sort'
 import { useFeed } from './feed'
 

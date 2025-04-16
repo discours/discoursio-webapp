@@ -86,10 +86,10 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
   const formatTimeAgo = (date: Date) => timeAgo().format(date)
 
   const value: LocalizeContextType = {
-    t: ((...args) => {
+    t: ((...args: unknown[]) => {
       try {
-        const key = args[0] as string | readonly string[];
-        const options = args.length > 1 ? args[1] : undefined;
+        const key = args[0] as string | readonly string[]
+        const options = args.length > 1 ? args[1] : undefined
         return i18next.t(key, options)
       } catch (_) {
         return args?.length > 0 ? processPrepositions(args[0] as string) : ''

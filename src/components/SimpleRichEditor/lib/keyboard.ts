@@ -1,5 +1,5 @@
-import { CommandGroupType, CommandType } from './commands'
 import { EditorState } from './state'
+import { CommandGroupType, CommandType } from './types'
 
 export const useKeyboardHandlers = (
   state: EditorState,

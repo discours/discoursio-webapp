@@ -2,9 +2,9 @@ import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For } from 'solid-js'
 
-import { DraftInput, useDrafts } from '~/context/drafts'
+import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
-import { LayoutType } from '~/types/common'
+import { LayoutType } from '~/types/nav'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 
@@ -18,10 +18,10 @@ export const LayoutSelector = () => {
   const handleCreate = async (layout: LayoutType) => {
     try {
       console.debug('[routes : edit/new] handling create click...')
-      const result = await createDraft({ layout } as DraftInput)
+      const result = await createDraft({ layout })
       console.log('[routes : edit/new] result', result)
 
-      if (result?.draft) {
+      if (result?.data?.create_draft?.draft) {
         // Даем время серверу на сохранение черновика
         console.log('[routes : edit/new] waiting before loading drafts...')
         await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -30,7 +30,7 @@ export const LayoutSelector = () => {
         await loadDrafts()
 
         console.log('[routes : edit/new] navigating to /edit...')
-        await navigate(`/edit/${result.draft.id}`, { replace: true })
+        await navigate(`/edit/${result.data.create_draft.draft.id}`, { replace: true })
       } else {
         console.warn('[routes : edit/new] failed to create draft:', result)
       }

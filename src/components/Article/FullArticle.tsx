@@ -42,7 +42,7 @@ import { ImageSwiper } from '../_shared/SolidSwiper'
 import { TableOfContents } from '../_shared/TableOfContents'
 import { VideoPlayer } from '../_shared/VideoPlayer'
 import { AudioHeader } from './AudioHeader'
-import { AudioPlayer } from './AudioPlayer'
+import { AudioPlayer } from './AudioPlayer/AudioPlayer'
 import { SharePopup, getShareUrl } from './SharePopup'
 
 import stylesHeader from '../HeaderNav/Header.module.scss'
@@ -418,7 +418,7 @@ export const FullArticle = (props: Props) => {
           <div class={styles.shoutStatsItem} ref={triggerRef}>
             <SharePopup
               title={props.article.title}
-              description={props.article.description || body() || media()[0]?.body || ''}
+              description={props.article.seo || ''}
               imageUrl={props.article.cover || ''}
               shareUrl={shareUrl()}
               containerCssClass={stylesHeader.control}
@@ -634,7 +634,7 @@ export const FullArticle = (props: Props) => {
 
       <ShareModal
         title={props.article.title}
-        description={props.article.description || body() || media()[0]?.body || ''}
+        description={props.article.seo || ''}
         imageUrl={props.article.cover || ''}
         shareUrl={shareUrl()}
       />
