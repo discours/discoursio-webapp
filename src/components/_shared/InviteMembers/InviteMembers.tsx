@@ -1,6 +1,6 @@
 import { createInfiniteScroll } from '@solid-primitives/pagination'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createSignal, on } from 'solid-js'
+import { For, Show, createSignal, onMount } from 'solid-js'
 
 import { useAuthors } from '~/context/authors'
 import { useInbox } from '~/context/inbox'
@@ -21,10 +21,38 @@ type Props = {
   variant?: 'coauthors' | 'recipients'
 }
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 10
 export const InviteMembers = (props: Props) => {
   const { t } = useLocalize()
   const { hideModal } = useUI()
+  const { loadAllAuthors } = useAuthors()
+  const { loadChats, createChat } = useInbox()
+
+  const [isLoading, setIsLoading] = createSignal(true)
+  const [_authors, setAuthors] = createSignal<Author[]>([])
+  const [authorsToInvite, setAuthorsToInvite] = createSignal<InviteAuthor[]>([])
+  const [searchResultAuthors, setSearchResultAuthors] = createSignal<Author[]>()
+  const [collectionToInvite, setCollectionToInvite] = createSignal<number[]>([])
+
+  // Загружаем авторов при монтировании компонента
+  onMount(async () => {
+    try {
+      setIsLoading(true)
+      // Явно вызываем API для загрузки всех авторов
+      const allAuthors = await loadAllAuthors()
+
+      // Сохраняем полученных авторов
+      setAuthors(allAuthors || [])
+
+      // Подготавливаем авторов для приглашения
+      setAuthorsToInvite((allAuthors || []).map((author) => ({ ...author, selected: false })))
+    } catch (error) {
+      console.error('[InviteMembers] Error loading authors:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  })
+
   const roles = [
     {
       title: t('Editor'),
@@ -40,40 +68,16 @@ export const InviteMembers = (props: Props) => {
     }
   ]
 
-  const { authorsSorted } = useAuthors()
-  const { loadChats, createChat } = useInbox()
-  const [authorsToInvite, setAuthorsToInvite] = createSignal<InviteAuthor[]>()
-  const [searchResultAuthors, setSearchResultAuthors] = createSignal<Author[]>()
-  const [collectionToInvite, setCollectionToInvite] = createSignal<number[]>([])
+  // Функция получения страницы авторов для бесконечной прокрутки
+  // biome-ignore lint/suspicious/useAwait: createInfiniteScroll ожидает Promise, хотя await не требуется
   const fetcher = async (page: number) => {
-    await new Promise((resolve, reject) => {
-      const checkDataLoaded = () => {
-        if ((authorsSorted?.().length || 0) > 0) {
-          resolve(true)
-        } else {
-          setTimeout(checkDataLoaded, 100)
-        }
-      }
-      setTimeout(() => reject(new Error('Timeout waiting for sortedAuthors')), 10000)
-      checkDataLoaded()
-    })
     const start = page * PAGE_SIZE
     const end = start + PAGE_SIZE
-    const authors = authorsToInvite()?.map((author) => ({ ...author, selected: false }))
-    return authors?.slice(start, end) || []
+    const authorsPage = authorsToInvite()?.slice(start, end) || []
+    return authorsPage
   }
 
   const [pages, setEl, { end }] = createInfiniteScroll(fetcher)
-
-  createEffect(
-    on(
-      authorsSorted,
-      (currentAuthors) => {
-        setAuthorsToInvite(currentAuthors.map((author) => ({ ...author, selected: false })))
-      },
-      { defer: true }
-    )
-  )
 
   const handleInputChange = async (value: string) => {
     if (value.length > 1) {
@@ -146,21 +150,33 @@ export const InviteMembers = (props: Props) => {
         </Show>
         <Show when={props.variant === 'recipients'}>
           <div class={styles.authors}>
-            <For each={searchResultAuthors() ?? pages()}>
-              {(author) => (
-                <div class={styles.author}>
-                  <AuthorBadge
-                    author={author}
-                    nameOnly={true}
-                    inviteView={true}
-                    onInvite={(id) => handleInvite(id)}
-                  />
-                </div>
-              )}
-            </For>
-            <Show when={!end()}>
-              <div ref={setEl}>
+            <Show
+              when={isLoading()}
+              fallback={
+                <>
+                  <For each={searchResultAuthors() ?? pages()}>
+                    {(author: Author | InviteAuthor) => (
+                      <div class={styles.author}>
+                        <AuthorBadge
+                          author={author}
+                          nameOnly={true}
+                          inviteView={true}
+                          onInvite={(id) => handleInvite(id)}
+                        />
+                      </div>
+                    )}
+                  </For>
+                  <Show when={!end()}>
+                    <div ref={setEl}>
+                      <InlineLoader />
+                    </div>
+                  </Show>
+                </>
+              }
+            >
+              <div class={styles.loadingContainer}>
                 <InlineLoader />
+                <div>{t('Loading authors...')}</div>
               </div>
             </Show>
           </div>

@@ -4,19 +4,25 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 4px;
+    padding: 6px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+    z-index: 100;
+    transform: translateY(0);
     
+    /* Общий класс для видимых тулбаров */
     &.visible {
         opacity: 1;
         visibility: visible;
-        transform: translateY(0);
     }
+    
 }
 
 .button {
     @include editor.toolbar-button;
 
-    opacity: 0.7;
+    opacity: 0.8;
     
     svg {
         width: 16px;
@@ -35,6 +41,7 @@
     }
     
     &.active {
+        background: rgb(0 0 0 / 5%);
         border: 1px solid darkgray;
     }
 }
@@ -73,31 +80,6 @@
     border-radius: var(--editor-border-radius);
     box-shadow: var(--editor-shadow);
     border: 1px solid rgb(0 0 0 / 10%);
-    
-    :global {
-        .DropDown_group__title {
-            padding: 8px 12px;
-            font-size: 12px;
-            color: #666;
-            background: #f5f5f5;
-        }
-        
-        .DropDown_option {
-            padding: 8px 12px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: var(--editor-transition);
-            
-            &:hover {
-                background: rgb(0 0 0 / 5%);
-            }
-            
-            &[data-selected="true"] {
-                background: var(--color-primary, #36f);
-                color: white;
-            }
-        }
-    }
 }
 
 // Bubble menu

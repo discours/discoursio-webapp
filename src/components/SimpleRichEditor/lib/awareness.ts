@@ -264,14 +264,35 @@ export class AwarenessProvider {
     const currentState = this.awareness.getLocalState() as EditorState | undefined
     if (!currentState) return
 
-    this.awareness.setLocalState({
+    // Создаем объект нового состояния
+    const newState = {
       ...currentState,
       cursor: {
         anchor,
         head
       },
       timestamp: Date.now()
-    } as EditorState)
+    } as EditorState
+
+    // Всегда обновляем локальное состояние awareness
+    this.awareness.setLocalState(newState)
+
+    // В дополнение, сохраняем также в offline хранилище
+    try {
+      if (typeof window !== 'undefined' && currentState.editorId) {
+        const storageKey = `yjs-cursor-${currentState.editorId}`
+        const cursorData = {
+          anchor,
+          head,
+          timestamp: Date.now(),
+          userId: currentState.user?.id,
+          editorId: currentState.editorId
+        }
+        localStorage.setItem(storageKey, JSON.stringify(cursorData))
+      }
+    } catch (e) {
+      console.warn('[AwarenessProvider] Failed to save cursor position to localStorage:', e)
+    }
   }
 
   // Обновление поля черновика через awareness
@@ -288,6 +309,9 @@ export class AwarenessProvider {
 
     // Обновляем кэш
     this.draftFieldCache.set(cacheKey, content)
+
+    // Всегда сохраняем в offline хранилище (localStorage)
+    this.saveToLocalStorage(draftId, fieldName, content, isEmpty ?? false)
 
     const currentState = this.awareness.getLocalState() as EditorState | undefined
     const newState: EditorState = {
@@ -313,12 +337,42 @@ export class AwarenessProvider {
     }
 
     // Если соединение отсутствует, только обновляем локальное хранилище,
-    // но не пытаемся отправить на сервер
-    if (this.connectionState !== 'connected') {
-      console.info(`[Awareness] Not connected, updating only local state for ${fieldName}`)
+    // но все равно обновляем локальное состояние awareness (для последующей синхронизации)
+    this.awareness.setLocalState(newState)
 
-      // Обработка данных для локального хранения
-      // Типизируем window с расширением OfflineStorage
+    // Если соединение активно, дебаунсим отправку изменений
+    if (this.connectionState === 'connected') {
+      // Дебаунсинг отправки обновлений на сервер
+      this.debouncedAwarenessUpdate(newState)
+    } else {
+      console.info(`[Awareness] Not connected, stored content for ${fieldName} in localStorage`)
+    }
+  }
+
+  // Сохранение данных в localStorage для offline режима
+  private saveToLocalStorage(
+    draftId: string | number,
+    fieldName: string,
+    content: string,
+    isEmpty: boolean
+  ) {
+    if (typeof window === 'undefined') return
+
+    try {
+      // Сохраняем в собственном формате для YJS
+      const storageKey = `yjs-content-${draftId}-${fieldName}`
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          content,
+          isEmpty,
+          lastUpdate: Date.now(),
+          draftId,
+          fieldName
+        })
+      )
+
+      // Также используем существующий механизм OfflineStorage, если доступен
       interface OfflineStorageInterface {
         addToLocalStorage?: (draftId: string, fieldName: string, content: string, isEmpty: boolean) => void
       }
@@ -330,15 +384,95 @@ export class AwarenessProvider {
       const { addToLocalStorage } = (window as WindowWithOfflineStorage).OfflineStorage || {}
       if (typeof addToLocalStorage === 'function') {
         // Конвертируем draftId в строку, так как это может быть число
-        // Используем false как значение по умолчанию для isEmpty, если оно undefined
-        addToLocalStorage(String(draftId), fieldName, content, isEmpty ?? false)
+        addToLocalStorage(String(draftId), fieldName, content, isEmpty)
+      }
+    } catch (e) {
+      console.warn('[AwarenessProvider] Failed to save content to localStorage:', e)
+    }
+  }
+
+  // Восстановление контента из localStorage при отсутствии сетевого соединения
+  syncFromLocalStorage(editorId: string, draftId?: string | number) {
+    if (typeof window === 'undefined' || !draftId) return
+
+    try {
+      // Находим все сохраненные поля для этого черновика
+      const prefix = `yjs-content-${draftId}-`
+      const keys = Object.keys(localStorage).filter((key) => key.startsWith(prefix))
+
+      if (keys.length === 0) {
+        console.info(`[Awareness] No local content found for draft ${draftId}`)
+        return
       }
 
-      return
-    }
+      // Обновляем состояние из localStorage
+      const fieldsData: Record<string, DraftField> = {}
 
-    // Дебаунсинг отправки обновлений
-    this.debouncedAwarenessUpdate(newState)
+      keys.forEach((key) => {
+        try {
+          const savedData = JSON.parse(localStorage.getItem(key) || '')
+          const fieldName = key.substring(prefix.length)
+
+          fieldsData[fieldName] = {
+            content: savedData.content,
+            isEmpty: savedData.isEmpty,
+            lastUpdate: savedData.lastUpdate
+          }
+        } catch (e) {
+          console.warn(`[Awareness] Error parsing localStorage data for key ${key}:`, e)
+        }
+      })
+
+      // Если нашли данные, обновляем состояние awareness
+      if (Object.keys(fieldsData).length > 0) {
+        const currentState = this.awareness.getLocalState() as EditorState | undefined
+
+        const newState: EditorState = {
+          timestamp: Date.now(),
+          editorId,
+          user: currentState?.user || {
+            id: '',
+            name: '',
+            color: '',
+            tabId: ''
+          },
+          cursor: currentState?.cursor,
+          draftContent: {
+            draftId,
+            fields: fieldsData
+          }
+        }
+
+        this.awareness.setLocalState(newState)
+        console.info(
+          `[Awareness] Restored ${Object.keys(fieldsData).length} fields from localStorage for draft ${draftId}`
+        )
+      }
+
+      // Восстанавливаем позицию курсора, если она была сохранена
+      this.restoreCursorPosition(editorId)
+    } catch (e) {
+      console.warn('[Awareness] Error syncing from localStorage:', e)
+    }
+  }
+
+  // Восстановление позиции курсора из localStorage
+  private restoreCursorPosition(editorId: string) {
+    if (typeof window === 'undefined') return
+
+    try {
+      const cursorKey = `yjs-cursor-${editorId}`
+      const cursorData = localStorage.getItem(cursorKey)
+
+      if (cursorData) {
+        const { anchor, head } = JSON.parse(cursorData)
+        // Используем полученные данные для установки курсора
+        this.setCursorPosition(anchor, head)
+        console.info(`[Awareness] Restored cursor position for editor ${editorId}`)
+      }
+    } catch (e) {
+      console.warn('[Awareness] Error restoring cursor position:', e)
+    }
   }
 
   // Метод для дебаунсированного обновления awareness
@@ -381,6 +515,13 @@ export class AwarenessProvider {
 
   // Получить актуальное содержимое полей черновика от всех пользователей
   getDraftContent(draftId: string | number) {
+    // Если нет соединения, возвращаем пустой объект, чтобы избежать
+    // попытки синхронизации с устаревшими данными
+    if (this.connectionState !== 'connected') {
+      console.info(`[AwarenessProvider] Not connected, skipping getDraftContent for ${draftId}`)
+      return {}
+    }
+    
     const states = this.awareness.getStates()
     const allFields: Record<string, DraftField> = {}
 
@@ -424,7 +565,7 @@ export class AwarenessProvider {
     }
   }
 
-  connect(editorId: string) {
+  connect(editorId: string, draftId?: string | number) {
     // Получаем обработчик сообщений из контекста, если свойство еще не установлено
     if (!this.addHandler) {
       try {
@@ -438,7 +579,23 @@ export class AwarenessProvider {
     const { session } = useSession()
     const origin = crypto.randomUUID()
 
+    // Восстанавливаем данные из localStorage до подключения
+    this.syncFromLocalStorage(editorId, draftId)
+
     this.setConnectionState('connecting')
+
+    // Проверяем, активно ли SSE-соединение
+    const isConnected = typeof window !== 'undefined' && 
+      window.navigator.onLine && 
+      !!this.addHandler;
+    
+    if (!isConnected) {
+      console.warn('[AwarenessProvider] No SSE connection available, working in offline mode');
+      this.setConnectionState('disconnected');
+      // Даже если нет соединения, все равно восстанавливаем из localStorage
+      this.syncFromLocalStorage(editorId, draftId);
+      return;
+    }
 
     // Отправка обновлений на сервер
     const sendToServer = async (message: AwarenessUpdate) => {
@@ -448,6 +605,13 @@ export class AwarenessProvider {
           // Не пытаемся отправить сообщение, если нет подключения
           console.info('[AwarenessProvider] Skipping update send - not connected')
           return
+        }
+
+        // Также проверяем онлайн-статус браузера
+        if (typeof window !== 'undefined' && !window.navigator.onLine) {
+          console.warn('[AwarenessProvider] Browser is offline, skipping update');
+          this.setConnectionState('disconnected');
+          return;
         }
 
         const response = await fetch(sseUrl, {
@@ -560,6 +724,33 @@ export class AwarenessProvider {
       data: uint8ArrayToBase64(initialUpdate)
     })
 
+    // Добавляем слушатель сетевого состояния
+    if (typeof window !== 'undefined') {
+      const handleOnline = () => {
+        console.log('[AwarenessProvider] Browser went online');
+        this.setConnectionState('connecting');
+        // Пытаемся переподключиться и отправить sync
+        sendToServer({
+          type: 'sync',
+          editorId,
+          data: uint8ArrayToBase64(initialUpdate)
+        });
+      };
+      
+      const handleOffline = () => {
+        console.log('[AwarenessProvider] Browser went offline');
+        this.setConnectionState('disconnected');
+      };
+      
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      
+      onCleanup(() => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      });
+    }
+
     onCleanup(() => {
       this.doc.off('update', sendUpdate)
       this.awareness.off('update', handleAwarenessUpdate)
@@ -644,3 +835,172 @@ export const destroyProvider = (_editorId: string) => {
  *    - Добавить проверку прав доступа перед применением изменений
  *    - Добавить систему логирования изменений для аудита
  */
+
+/**
+ * Хук для интеграции Awareness в редактор
+ *
+ * Предоставляет удобное API для работы с позициями курсоров и содержимым
+ * редактора через Y.js awareness
+ *
+ * @param editorId Уникальный идентификатор редактора
+ * @param draftId Идентификатор черновика (опционально)
+ * @param fieldType Тип поля (опционально)
+ */
+export const useEditorAwareness = (editorId: string, draftId?: number | string, fieldType?: string) => {
+  // Получаем существующий или создаем новый провайдер
+  const provider = getProvider()
+  const awareness = provider.getAwareness()
+
+  // Состояние подключения
+  const [connectionState, setConnectionState] = createSignal<ConnectionState>(provider.getConnectionState())
+
+  // Позиции курсоров всех пользователей
+  const [cursors, setCursors] = createSignal<
+    Map<
+      number,
+      {
+        anchor: number
+        head: number
+        user: EditorState['user']
+        timestamp: number
+      }
+    >
+  >(new Map())
+
+  // Обработчик обновления awareness
+  const handleAwarenessUpdate = () => {
+    // Обновляем курсоры
+    const cursorsMap = new Map()
+
+    awareness.getStates().forEach((state, clientId) => {
+      const editorState = state as EditorState
+
+      // Проверяем, что это состояние для нашего редактора
+      if (editorState.editorId === editorId && editorState.cursor) {
+        cursorsMap.set(clientId, {
+          anchor: editorState.cursor.anchor,
+          head: editorState.cursor.head,
+          user: editorState.user,
+          timestamp: editorState.timestamp
+        })
+      }
+    })
+
+    setCursors(cursorsMap)
+  }
+
+  // Подключаемся к Awareness при монтировании
+  onMount(() => {
+    // Подключаемся к редактору
+    provider.connect(editorId, draftId)
+
+    // Устанавливаем пользовательские данные
+    try {
+      const { session } = useSession()
+      const userData = session()
+
+      if (userData?.user) {
+        provider.setUserInfo(editorId, {
+          id: userData.user.id || 0,
+          name: (userData.user as { name?: string })?.name || 'Anonymous',
+          color: getRandomColor(userData.user.id || 0),
+          tabId: crypto.randomUUID().slice(0, 8)
+        })
+      }
+    } catch (e) {
+      console.warn('[useEditorAwareness] Error setting user info:', e)
+    }
+
+    // Следим за обновлениями awareness
+    const cleanupAwareness = provider.onAwarenessChange(handleAwarenessUpdate)
+
+    // Следим за изменениями состояния подключения
+    provider.onConnectionStateChanged((state) => {
+      setConnectionState(state)
+    })
+
+    onCleanup(() => {
+      cleanupAwareness()
+    })
+  })
+
+  /**
+   * Обновляет позицию курсора в редакторе
+   */
+  const updateCursorPosition = (anchor: number, head: number) => {
+    provider.setCursorPosition(anchor, head)
+  }
+
+  /**
+   * Обновляет содержимое поля редактора
+   */
+  const updateEditorContent = (content: string, isEmpty?: boolean) => {
+    if (draftId) {
+      provider.updateDraftField(Number(draftId), fieldType || 'body', content, isEmpty)
+    }
+  }
+
+  /**
+   * Получает актуальное содержимое полей от всех пользователей
+   */
+  const getLatestContent = () => {
+    if (!draftId) return null
+
+    return provider.getDraftContent(draftId)
+  }
+
+  /**
+   * Получает список пользователей, работающих над редактором
+   */
+  const getActiveUsers = () => {
+    const { session: sessionData } = useSession()
+    const userData = sessionData()
+    const currentUserId = userData?.user?.id
+
+    return provider.getConnectedUsers().filter((user) => user.user.id !== currentUserId)
+  }
+
+  // Возвращаем API
+  return {
+    connectionState,
+    updateCursorPosition,
+    updateEditorContent,
+    getLatestContent,
+    getActiveUsers,
+    cursors,
+    provider
+  }
+}
+
+/**
+ * Генерирует случайный цвет на основе идентификатора пользователя
+ */
+const getRandomColor = (userId: string | number): string => {
+  // Предопределенные безопасные цвета
+  const safeColors = [
+    '#3498db', // Синий
+    '#2ecc71', // Зеленый
+    '#e74c3c', // Красный
+    '#f39c12', // Оранжевый
+    '#9b59b6', // Фиолетовый
+    '#1abc9c', // Бирюзовый
+    '#d35400', // Темно-оранжевый
+    '#c0392b', // Темно-красный
+    '#16a085', // Темно-бирюзовый
+    '#8e44ad', // Темно-фиолетовый
+    '#27ae60', // Темно-зеленый
+    '#2980b9', // Темно-синий
+    '#f1c40f' // Желтый
+  ]
+
+  // Хешируем ID пользователя для выбора цвета
+  const hash = String(userId)
+    .split('')
+    .reduce((a, b) => {
+      const aa = (a << 5) - a + b.charCodeAt(0)
+      return aa & aa
+    }, 0)
+
+  // Выбираем цвет из палитры
+  return safeColors[Math.abs(hash) % safeColors.length]
+}

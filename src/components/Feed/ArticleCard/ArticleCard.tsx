@@ -255,13 +255,9 @@ export const ArticleCard = (props: ArticleCardProps) => {
         </Show>
 
         {/* Description */}
-        <Show when={props.article.description}>
-          <section class={styles.shoutCardDescription} innerHTML={props.article.description || ''} />
-        </Show>
+        <section class={styles.shoutCardDescription}>{props.article.seo || ''}</section>
+
         <Show when={props.settings?.isFeedMode}>
-          <Show when={props.article.description}>
-            <section class={styles.shoutCardDescription} innerHTML={props.article.description || ''} />
-          </Show>
           <Show when={!props.settings?.noimage && props.article.cover}>
             <div class={styles.shoutCardCoverContainer}>
               <Show

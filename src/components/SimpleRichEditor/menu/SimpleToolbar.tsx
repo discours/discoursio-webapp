@@ -1,25 +1,73 @@
 import { clsx } from 'clsx'
-import { Component, For, Show } from 'solid-js'
+import { Component, For } from 'solid-js'
 import { DropDown, Option, OptionGroup } from '~/components/_shared/DropDown/DropDown'
 import { Icon } from '~/components/_shared/Icon'
 import { Popover } from '~/components/_shared/Popover'
 import { useLocalize } from '~/context/localize'
 import { capitalize } from '~/utils/capitalize'
-import { CommandGroupType, CommandType, MENU_GROUPS, isGroup } from '../lib/commands'
+import { MENU_GROUPS, isGroup } from '../lib/commands'
+import { CommandGroupType, CommandType } from '../lib/types'
 import { Position } from '../lib/types'
 import styles from './SimpleToolbar.module.scss'
 
 export type EditorCommandId = keyof typeof MENU_GROUPS
 export type EditorCommandGroup = EditorCommandId[]
 export type EditorCommands = EditorCommandId[] | EditorCommandGroup[]
-export type ToolbarMode = 'top' | 'bottom' | 'float' | 'hidden'
+export type ToolbarMode = 'top' | 'bottom' | 'float'
 export type MenuGroupId = keyof typeof MENU_GROUPS
 export type MenuItemType = 'button' | 'dropdown'
 export type MenuGroup = {
   id: MenuGroupId
   type: MenuItemType
   icon?: string // для dropdown кнопок
-  commands?: EditorCommandId[][]
+  commands?: readonly (CommandType | readonly CommandType[])[]
+}
+
+/**
+ * Определяет иконку для выпадающего меню на основе первой группы команд
+ *
+ * @param commands Массив команд в группе
+ * @returns Название иконки для отображения
+ */
+const getDropdownIconName = (commands: readonly CommandType[]): string => {
+  // Если команд нет, используем общую иконку
+  if (!commands.length) return 'editor-more'
+
+  // Проверяем первую команду/группу для определения типа меню
+  const firstCommand = commands[0]
+
+  // Если это массив с командами заголовков
+  if (
+    Array.isArray(firstCommand) &&
+    (firstCommand.includes('h1' as CommandType) ||
+      firstCommand.includes('h2' as CommandType) ||
+      firstCommand.includes('h3' as CommandType))
+  ) {
+    return 'editor-text-style' // Иконка для заголовков (TT)
+  }
+
+  // Если это массив с командами списков
+  if (
+    Array.isArray(firstCommand) &&
+    (firstCommand.includes('bulletList' as CommandType) ||
+      firstCommand.includes('orderedList' as CommandType))
+  ) {
+    return 'editor-list' // Иконка для списков
+  }
+
+  // Если это массив с командами врезок/выравниваний
+  if (
+    Array.isArray(firstCommand) &&
+    (firstCommand.includes('blockquote' as CommandType) ||
+      firstCommand.includes('align-left' as CommandType) ||
+      firstCommand.includes('align-center' as CommandType) ||
+      firstCommand.includes('align-right' as CommandType))
+  ) {
+    return 'editor-blockquote' // Иконка для врезок/выравниваний
+  }
+
+  // По умолчанию
+  return 'editor-more'
 }
 
 export const ToolbarControl: Component<{
@@ -51,35 +99,48 @@ export const ToolbarControl: Component<{
     )
   }
 
+  // Для группового действия (выпадающее меню)
+  const action = props.action as CommandGroupType
+
+  // Определяем иконку на основе первой группы команд в выпадающем меню
+  const iconName = getDropdownIconName(MENU_GROUPS[action])
+
   const options: OptionGroup[] = [
     {
-      title: t(capitalize(props.action)),
-      options: MENU_GROUPS[props.action as CommandGroupType].map((item) => ({
+      title: t(capitalize(String(action))),
+      options: MENU_GROUPS[action].map((item) => ({
         value: item,
         title: t(capitalize(item)),
         selected: props.currentFormats.has(item)
       })),
-      selected: MENU_GROUPS[props.action as CommandGroupType]
+      selected: MENU_GROUPS[action]
         .map((_, i) => i)
-        .filter((i) => props.currentFormats.has(MENU_GROUPS[props.action as CommandGroupType][i])),
+        .filter((i) => props.currentFormats.has(MENU_GROUPS[action][i] as CommandType)),
       onChange: (option: Option) => {
         props.onAction(option.value as CommandType)
       }
     }
   ]
 
-  return <DropDown options={options} triggerCssClass={styles.dropdownTrigger} class={styles.dropdown} />
+  return (
+    <DropDown
+      options={options}
+      triggerCssClass={styles.dropdownTrigger}
+      class={styles.dropdown}
+      triggerContent={
+        <div class={styles.dropdownTriggerContent}>
+          <Icon name={iconName} />
+          <Icon name="editor-chevron-down" class={styles.chevron} />
+        </div>
+      }
+    />
+  )
 }
 
 /**
  * Основная панель инструментов редактора
- *
- * Особенности:
- * - Группировка команд
- * - Поддержка всех типов вставки
- * - Интеграция с InlineForm формами
- * - Отображение активных форматов
- * - Позиционирование по умолчанию внизу слева
+ * Использует ToolbarControl для рендеринга кнопок и Dropdown для групп.
+ * Видимость управляется через CSS автоматически основанно на режиме
  */
 export interface SimpleToolbarProps {
   position?: Position
@@ -87,64 +148,29 @@ export interface SimpleToolbarProps {
   commands: (CommandType | CommandGroupType)[]
   onAction: (action: CommandType | CommandGroupType) => void
   currentFormats: Set<CommandType>
-  isVisible?: boolean
+  mode?: ToolbarMode
   onClose?: () => void
   editorId?: string
 }
 
 export const SimpleToolbar: Component<SimpleToolbarProps> = (props) => {
-  const handleAction = (action: CommandType | CommandGroupType, e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation() // Предотвращаем всплытие
-    console.log('Toolbar action clicked:', action)
-    props.onAction(action)
-  }
-
   return (
     <div
-      class={clsx(styles.toolbar, props.class, {
-        [styles.visible]: props.isVisible
-      })}
+      class={clsx(styles.toolbar, props.class)}
       style={props.position ? `top: ${props.position.top}px; left: ${props.position.left}px` : undefined}
       onClick={(e) => e.stopPropagation()} // Предотвращаем закрытие при клике на тулбар
       data-editor-id={props.editorId}
+      data-toolbar-mode={props.mode || 'float'}
+      // Добавляем mousedown для предотвращения потери фокуса редактором
+      onMouseDown={(e) => e.preventDefault()}
     >
       <For each={props.commands}>
         {(command) => (
-          <Show
-            when={!isGroup(command)}
-            fallback={
-              <div class={styles.group}>
-                <For each={MENU_GROUPS[command as CommandGroupType]}>
-                  {(groupCommand) => (
-                    <button
-                      class={clsx(styles.button, {
-                        [styles.active]: props.currentFormats.has(groupCommand as CommandType)
-                      })}
-                      data-active={
-                        props.currentFormats.has(groupCommand as CommandType) ? 'true' : undefined
-                      }
-                      onClick={(e) => handleAction(groupCommand, e)}
-                      type="button"
-                    >
-                      <Icon name={`editor-${groupCommand}`} />
-                    </button>
-                  )}
-                </For>
-              </div>
-            }
-          >
-            <button
-              class={clsx(styles.button, {
-                [styles.active]: props.currentFormats.has(command as CommandType)
-              })}
-              data-active={props.currentFormats.has(command as CommandType) ? 'true' : undefined}
-              onClick={(e) => handleAction(command, e)}
-              type="button"
-            >
-              <Icon name={`editor-${command === 'blockquote' ? 'quote' : command}`} />
-            </button>
-          </Show>
+          <ToolbarControl
+            action={command}
+            onAction={props.onAction}
+            currentFormats={props.currentFormats}
+          />
         )}
       </For>
     </div>

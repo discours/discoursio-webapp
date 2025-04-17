@@ -1,15 +1,14 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show, createEffect, createSignal, onCleanup } from 'solid-js'
-import { DraftInput, useDrafts } from '~/context/drafts'
+import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 import { Popover } from '../_shared/Popover'
 
-import { Topic } from '~/graphql/schema/core.gen'
+import { Author, DraftInput, Maybe, Topic } from '~/graphql/schema/core.gen'
 import styles from '../HeaderNav/Header.module.scss'
-import { EMPTY_TOPIC } from '../Views/EditView'
 
 type IconedButtonProps = {
   value: string
@@ -51,10 +50,9 @@ export const PublishButton = () => {
       slug: draft.slug || '',
       body: draft.body || '',
       cover: draft.cover || '',
-      // Преобразуем возможно null/undefined темы в безопасный массив тем
-      topics: draft.topics ? draft.topics.filter((topic): topic is Topic => Boolean(topic)) : [],
-      // Используем пустой mainTopic или первую тему, если доступна
-      mainTopic: draft.topics?.[0] || EMPTY_TOPIC
+      main_topic_id: draft.topics?.[0]?.id || 0,
+      author_ids: (draft.authors || []).map?.((author?: Maybe<Author>) => author?.id || 0) || [],
+      topic_ids: (draft.topics || []).map?.((topic?: Maybe<Topic>) => topic?.id || 0) || []
     }
 
     // Принудительно сохраняем черновик перед публикацией

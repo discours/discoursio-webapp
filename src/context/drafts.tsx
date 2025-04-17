@@ -1,14 +1,17 @@
+import { OperationResult } from '@urql/core'
 import { Accessor, JSX, createContext, createSignal, onCleanup, useContext } from 'solid-js'
 import { debounce } from 'throttle-debounce'
 
+import { sanitizeHtml } from '~/components/SimpleRichEditor/lib/sanitize'
 import {
   getAllDraftFields,
   getDraftField,
   getDraftFieldsVersion,
-  saveContent,
+  saveDraftField,
+  saveEditorContent,
   updateLastSync
 } from '~/components/SimpleRichEditor/lib/storage'
-import { EditorFieldType } from '~/components/SimpleRichEditor/lib/types'
+import { EditorData, EditorFieldType } from '~/components/SimpleRichEditor/lib/types'
 import publishShoutMutation from '~/graphql/mutation/core/article-publish'
 import unpublishShoutMutation from '~/graphql/mutation/core/article-unpublish'
 import createDraftMutation from '~/graphql/mutation/core/draft-create'
@@ -17,27 +20,21 @@ import publishDraftMutation from '~/graphql/mutation/core/draft-publish'
 import unpublishDraftMutation from '~/graphql/mutation/core/draft-unpublish'
 import updateDraftMutation from '~/graphql/mutation/core/draft-update'
 import loadDraftsQuery from '~/graphql/query/core/drafts-load'
-import type { CommonResult, Draft, MediaItem, Topic } from '~/graphql/schema/core.gen'
+import type {
+  CreateDraftMutationMutation,
+  DeleteDraftMutationMutation,
+  Draft,
+  DraftInput,
+  PublishDraftMutationMutation,
+  PublishShoutMutationMutation,
+  Topic,
+  UnpublishDraftMutationMutation,
+  UnpublishShoutMutationMutation,
+  UpdateDraftMutationMutation
+} from '~/graphql/schema/core.gen'
 import { useSession } from './session'
 
 export const AUTO_SAVE_DELAY = 1000
-
-export type DraftInput = {
-  id?: number
-  layout: string
-  shoutId?: number
-  slug?: string
-  title?: string
-  subtitle?: string
-  lead?: string
-  description?: string
-  topics?: Topic[]
-  mainTopic?: Topic
-  body?: string
-  cover?: string
-  cover_caption?: string
-  media?: MediaItem[]
-}
 
 type DraftsContextType = {
   drafts: Accessor<Draft[]>
@@ -46,17 +43,23 @@ type DraftsContextType = {
   getEditorContent: (editorId: string) => string
   setEditorContent: (editorId: string, content: string) => void
   loadDrafts: () => Promise<void>
-  createDraft: (draft: DraftInput) => Promise<CommonResult | null>
-  updateDraft: (draft: DraftInput) => Promise<void>
-  deleteDraft: (id: number) => Promise<boolean>
-  publishDraft: (draftId: number) => Promise<void>
-  unpublishDraft: (draftId: number) => Promise<void>
-  publishShout: (shoutId: number) => Promise<void>
-  unpublishShout: (shoutId: number) => Promise<void>
+  createDraft: (draft: DraftInput) => Promise<OperationResult<CreateDraftMutationMutation>>
+  updateDraft: (draft: DraftInput) => Promise<OperationResult<UpdateDraftMutationMutation>>
+  deleteDraft: (id: number) => Promise<OperationResult<DeleteDraftMutationMutation>>
+  publishDraft: (draftId: number) => Promise<OperationResult<PublishDraftMutationMutation>>
+  unpublishDraft: (draftId: number) => Promise<OperationResult<UnpublishDraftMutationMutation>>
+  publishShout: (shoutId: number) => Promise<OperationResult<PublishShoutMutationMutation>>
+  unpublishShout: (shoutId: number) => Promise<OperationResult<UnpublishShoutMutationMutation>>
   isEditorPanelVisible: Accessor<boolean>
   toggleEditorPanel: () => void
   setIsEditorPanelVisible: (visible: boolean) => void
   syncDraft: (draftId: number) => Promise<Draft | undefined>
+  updateDraftField: (
+    draftId: number,
+    fieldName: keyof DraftInput,
+    value: string | EditorData,
+    isEditorUpdate: boolean
+  ) => void
 }
 
 export const DraftsContext = createContext<DraftsContextType>({} as DraftsContextType)
@@ -78,7 +81,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     if (match) {
       const draftId = match[1]
       const fieldType = match[2]
-      saveContent(editorId, fieldType as EditorFieldType, content, false)
+      saveEditorContent(editorId, fieldType as EditorFieldType, content, content === '')
       console.log(
         `[DraftsProvider] Debounced save for editor ${editorId} with draftId ${draftId} and fieldType ${fieldType}`
       )
@@ -117,19 +120,10 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       }
 
       // Создаем новый объект с применением локальных изменений
-      const updatedDraft = { ...currentDraftObj }
-
-      // Применяем локальные изменения
-      Object.entries(localFields).forEach(([key, value]) => {
-        // Проверяем, что ключ существует в типе Draft
-        if (key in updatedDraft) {
-          // Безопасно обновляем, учитывая возможные типы
-          const draftKey = key as keyof Draft
-          if (typeof updatedDraft[draftKey] === 'string') {
-            ;(updatedDraft[draftKey] as unknown as string) = value
-          }
-        }
-      })
+      const updatedDraft = {
+        ...localFields,
+        ...currentDraftObj
+      }
 
       // Особенно проверяем поля body и lead
       const bodyContent = getDraftField(draftId, 'body')
@@ -159,13 +153,12 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           title: updatedDraft.title || '',
           subtitle: updatedDraft.subtitle || '',
           lead: updatedDraft.lead || '',
-          description: updatedDraft.description || '',
           slug: updatedDraft.slug || '',
           body: updatedDraft.body || '',
           cover: updatedDraft.cover || '',
           cover_caption: updatedDraft.cover_caption || '',
-          topics: updatedDraft.topics
-            ? updatedDraft.topics.filter((topic): topic is Topic => Boolean(topic))
+          topic_ids: updatedDraft.topics
+            ? updatedDraft.topics.filter((topic): topic is Topic => Boolean(topic)).map((topic) => topic.id)
             : []
         }
 
@@ -205,6 +198,88 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     if (editorId && safeContent) {
       debouncedSaveContent(editorId, safeContent)
     }
+  }
+
+  // Функция для обновления поля черновика с обработкой EditorData и сохранением
+  const updateDraftField = (
+    draftId: number,
+    fieldName: keyof DraftInput,
+    value: string | EditorData,
+    isEditorUpdate: boolean
+  ) => {
+    if (!draftId) return
+
+    let cleanValue: string
+
+    // 1. Обработка/санитизация значения
+    if (typeof value === 'object' && value !== null && 'content' in value) {
+      // Если это EditorData, используем поле content и санитизируем
+      cleanValue = String(sanitizeHtml(value.content))
+    } else if (typeof value === 'string') {
+      // Если это строка, санитизируем её
+      cleanValue = String(sanitizeHtml(value))
+    } else {
+      // Иначе используем пустую строку
+      cleanValue = ''
+    }
+
+    // 2. Сохраняем чистое значение в editorContentMap (если нужно)
+    if (isEditorUpdate && (fieldName === 'body' || fieldName === 'lead')) {
+      const editorId = `draft-${draftId}-${fieldName}`
+      setEditorContent(editorId, cleanValue) // Сохраняем чистый HTML
+      console.log(`[DraftsProvider] Updated editor content map for ${editorId}`)
+    }
+
+    // 3. Сохраняем значение в localStorage с JSON-оберткой для lead/body
+    if (fieldName === 'lead' || fieldName === 'body') {
+      const contentObject = {
+        content: cleanValue, // Чистый HTML внутри JSON
+        timestamp: Date.now(),
+        source: 'local'
+      }
+      saveDraftField(draftId, fieldName, JSON.stringify(contentObject))
+      console.log(`[DraftsProvider] Saved ${fieldName} as JSON object to localStorage for draft ${draftId}`)
+    } else if (
+      fieldName === 'title' ||
+      fieldName === 'subtitle' ||
+      fieldName === 'slug' ||
+      fieldName === 'cover' ||
+      fieldName === 'cover_caption' ||
+      fieldName === 'layout' ||
+      fieldName === 'topic_ids' ||
+      fieldName === 'main_topic_id' ||
+      fieldName === 'author_ids'
+    ) {
+      // Сохраняем строковые или числовые поля как есть (преобразуя в строку)
+      saveDraftField(draftId, fieldName, String(cleanValue))
+      console.log(`[DraftsProvider] Saved field ${fieldName} to localStorage for draft ${draftId}`)
+    }
+
+    // 4. Обновляем центральное состояние черновика (если необходимо)
+    // Этот шаг зависит от того, как управляется состояние drafts в провайдере.
+    // Если drafts() - это основной источник истины, нужно его обновить.
+    // Пример:
+    /*
+    setDrafts(prevDrafts => prevDrafts.map(draft => {
+      if (draft.id === draftId) {
+        return { ...draft, [fieldName]: cleanValue };
+      }
+      return draft;
+    }));
+    */
+
+    // 5. Отправляем обновления через awareness (если необходимо)
+    // const awarenessProvider = getProvider();
+    // awarenessProvider.updateDraftField(
+    //   draftId,
+    //   fieldName,
+    //   cleanValue,
+    //   fieldName === 'body' || fieldName === 'lead' ? isEmptyContent(cleanValue) : false
+    // );
+
+    // 6. (Опционально) Запускаем дебаунсированное сохранение на сервер,
+    // если это изменение не пришло из setEditorContent (которое уже дебаунсировано)
+    // if (!isEditorUpdate) { debouncedSaveToServer(draftId); }
   }
 
   const loadDrafts = async () => {
@@ -260,15 +335,113 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         return
       }
 
+      // Перед установкой черновиков, применяем локальные изменения из localStorage
+      const updatedDrafts = serverDrafts.map((draft) => {
+        if (!draft.id) return draft
+
+        // Получаем локальные изменения для этого черновика
+        const localFields = getAllDraftFields(draft.id) as DraftInput & { [key: string]: string }
+        if (!localFields) return draft
+
+        console.log(`[drafts] Found local changes for draft ${draft.id}:`, localFields)
+
+        // biome-ignore lint/suspicious/noExplicitAny: updating
+        const updatedDraft = { ...draft } as { [key: string]: any }
+
+        // Применяем локальные изменения
+        Object.entries(localFields).forEach(([key, value]) => {
+          // Для полей, которые могут быть в JSON-формате, пытаемся распарсить их
+          if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+            try {
+              const parsedValue = JSON.parse(value)
+              // Применяем присваивание через индексацию для любых ключей
+              updatedDraft[key] = parsedValue
+              console.log(`[drafts] Successfully parsed JSON for field ${key}`)
+            } catch (e) {
+              console.warn(`[drafts] Failed to parse JSON for field ${key}:`, e)
+              updatedDraft[key] = value
+            }
+          } else {
+            // Обновляем поля черновика как есть
+            updatedDraft[key] = value
+          }
+        })
+
+        // Специальная обработка для topics - если это строка, пытаемся парсить JSON
+        if (typeof localFields.topics === 'string') {
+          try {
+            if (localFields.topics.startsWith('[')) {
+              try {
+                updatedDraft.topics = JSON.parse(localFields.topics) as Topic[]
+                // Проверяем, что результат действительно массив
+                if (Array.isArray(updatedDraft.topics)) {
+                  console.log('[drafts] Successfully parsed topics as array:', updatedDraft.topics)
+                } else {
+                  console.warn('[drafts] topics parsed from JSON is not an array:', updatedDraft.topics)
+                  updatedDraft.topics = []
+                }
+              } catch (e) {
+                console.warn('[drafts] Failed to parse topics as JSON:', e)
+                updatedDraft.topics = []
+              }
+            } else {
+              console.warn('[drafts] topics field is not a valid JSON array:', localFields.topics)
+              updatedDraft.topics = []
+            }
+          } catch (e) {
+            console.warn('[drafts] Failed to process topics field:', e)
+            updatedDraft.topics = []
+          }
+        }
+
+        // Специальная обработка для mainTopic - если это строка, пытаемся парсить JSON
+        if (typeof localFields.mainTopic === 'string') {
+          try {
+            if (localFields.mainTopic.startsWith('{')) {
+              try {
+                updatedDraft.mainTopic = JSON.parse(localFields.mainTopic) as Topic
+                // Проверяем, что результат действительно объект с id
+                if (
+                  !updatedDraft.mainTopic ||
+                  typeof updatedDraft.mainTopic !== 'object' ||
+                  !updatedDraft.mainTopic.id
+                ) {
+                  console.warn('[drafts] mainTopic parsed from JSON is not valid:', updatedDraft.mainTopic)
+                  updatedDraft.mainTopic = undefined
+                } else {
+                  console.log('[drafts] Successfully parsed mainTopic:', updatedDraft.mainTopic)
+                }
+              } catch (e) {
+                console.warn('[drafts] Failed to parse mainTopic as JSON:', e)
+                updatedDraft.mainTopic = undefined
+              }
+            } else {
+              console.warn('[drafts] mainTopic field is not a valid JSON object:', localFields.mainTopic)
+              updatedDraft.mainTopic = undefined
+            }
+          } catch (e) {
+            console.warn('[drafts] Failed to process mainTopic field:', e)
+            updatedDraft.mainTopic = undefined
+          }
+        }
+
+        // Проверяем конкретно заголовок
+        if (localFields.title) {
+          updatedDraft.title = localFields.title
+        }
+
+        return updatedDraft as Draft
+      })
+
       // Обновляем список черновиков
-      console.log('[drafts] setting drafts:', serverDrafts)
-      setDrafts(serverDrafts)
+      console.log('[drafts] setting drafts with local changes applied:', updatedDrafts)
+      setDrafts(updatedDrafts)
     } catch (error) {
       console.error('[drafts] error loading drafts:', error)
     }
   }
 
-  const createDraft = async (draft: DraftInput) => {
+  const createDraft = async (draft: DraftInput): Promise<OperationResult<CreateDraftMutationMutation>> => {
     console.log('[drafts] creating draft', draft)
     const response = await client()?.mutation(createDraftMutation, { draft_input: draft })
     console.log('[drafts] create response:', JSON.stringify(response, null, 2))
@@ -276,29 +449,27 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       const newDraft = response.data.create_draft.draft
       console.log('[drafts] setting drafts with new draft:', newDraft)
       setDrafts([...drafts(), newDraft])
-      return response.data.create_draft
     }
-    console.error('[drafts] error creating draft:', response?.error)
-    return null
+    return response as OperationResult<CreateDraftMutationMutation>
   }
 
-  const updateDraft = async (draft: DraftInput) => {
+  const updateDraft = async (draft: DraftInput): Promise<OperationResult<UpdateDraftMutationMutation>> => {
     const response = await client()?.mutation(updateDraftMutation, {
       draft_id: draft.id,
       draft_input: draft
     })
-    if (response?.data?.update_draft) {
-      setDrafts(drafts().map((d) => (d.id === draft.id ? response.data.update_draft : d)))
+    if (response?.data?.update_draft?.draft) {
+      setDrafts(drafts().map((d) => (d.id === draft.id ? response.data.update_draft.draft : d)))
     }
+    return response as OperationResult<UpdateDraftMutationMutation>
   }
 
-  const deleteDraft = async (draftId: number) => {
+  const deleteDraft = async (draftId: number): Promise<OperationResult<DeleteDraftMutationMutation>> => {
     const response = await client()?.mutation(deleteDraftMutation, { draft_id: draftId })
     if (response?.data?.delete_draft) {
       setDrafts(drafts().filter((d) => d.id !== draftId))
-      return true
     }
-    return false
+    return response as OperationResult<DeleteDraftMutationMutation>
   }
 
   /* 
@@ -306,32 +477,40 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     
       - проверяем наличие mainTopic или selectedTopics
     */
-  const publishDraft = async (draftId: number) => {
+  const publishDraft = async (draftId: number): Promise<OperationResult<PublishDraftMutationMutation>> => {
     const response = await client()?.mutation(publishDraftMutation, { draft_id: draftId })
-    if (response?.data?.publish_draft) {
-      setDrafts(drafts().map((d) => (d.id === draftId ? response.data.publish_draft : d)))
+    if (response?.data?.publish_draft?.draft) {
+      setDrafts(drafts().map((d) => (d.id === draftId ? response.data.publish_draft.draft : d)))
     }
+    return response as OperationResult<PublishDraftMutationMutation>
   }
 
-  const unpublishDraft = async (draftId: number) => {
+  const unpublishDraft = async (
+    draftId: number
+  ): Promise<OperationResult<UnpublishDraftMutationMutation>> => {
     const response = await client()?.mutation(unpublishDraftMutation, { draft_id: draftId })
     if (response?.data?.unpublish_draft) {
       setDrafts(drafts().map((d) => (d.id === draftId ? response.data.unpublish_draft : d)))
     }
+    return response as OperationResult<UnpublishDraftMutationMutation>
   }
 
-  const publishShout = async (shoutId: number) => {
+  const publishShout = async (shoutId: number): Promise<OperationResult<PublishShoutMutationMutation>> => {
     const response = await client()?.mutation(publishShoutMutation, { shout_id: shoutId })
     if (response?.data?.publish_shout) {
       setDrafts(drafts().map((d) => (d.id === shoutId ? response.data.publish_shout : d)))
     }
+    return response as OperationResult<PublishShoutMutationMutation>
   }
 
-  const unpublishShout = async (shoutId: number) => {
+  const unpublishShout = async (
+    shoutId: number
+  ): Promise<OperationResult<UnpublishShoutMutationMutation>> => {
     const response = await client()?.mutation(unpublishShoutMutation, { shout_id: shoutId })
     if (response?.data?.unpublish_shout) {
       setDrafts(drafts().map((d) => (d.id === shoutId ? response.data.unpublish_shout : d)))
     }
+    return response as OperationResult<UnpublishShoutMutationMutation>
   }
   const toggleEditorPanel = () => setIsEditorPanelVisible(!isEditorPanelVisible())
   const value = {
@@ -351,7 +530,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     isEditorPanelVisible,
     toggleEditorPanel,
     setIsEditorPanelVisible,
-    syncDraft
+    syncDraft,
+    updateDraftField
   }
 
   return <DraftsContext.Provider value={value}>{props.children}</DraftsContext.Provider>
@@ -360,3 +540,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 export const useDrafts = () => {
   return useContext(DraftsContext)
 }
+
+// Экспортируем тип DraftInput для использования в других компонентах
+export type { DraftInput } from '~/graphql/schema/core.gen'

@@ -14,6 +14,7 @@ type TopicsContextType = {
   setTopicsSort: (sortBy: string) => void
   addTopics: (topics: Topic[]) => void
   loadTopics: () => Promise<Topic[] | undefined>
+  forceRefreshTopics: () => Promise<Topic[]>
 }
 
 const TopicsContext = createContext<TopicsContextType>({
@@ -23,7 +24,8 @@ const TopicsContext = createContext<TopicsContextType>({
   setTopicsSort: (_s: string) => undefined,
   addTopics: (_ttt: Topic[]) => undefined,
   loadTopics: async () => [] as Topic[],
-  randomTopic: () => undefined
+  randomTopic: () => undefined,
+  forceRefreshTopics: async () => [] as Topic[]
 } as TopicsContextType)
 
 export function useTopics() {
@@ -256,19 +258,13 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
       })
     },
     loadTopics: async () => {
-      try {
-        // Проверяем, загружены ли уже темы
-        if (state.sorted.length > 0) {
-          return state.sorted
-        }
-
-        // Если тем нет или нужно обновление, запускаем принудительное обновление
-        return await forceRefreshTopics()
-      } catch (error) {
-        console.error('Error loading topics:', error)
-        return state.sorted
+      if (state.loading && !topics.loading) {
+        refetch()
       }
-    }
+      await topics.loading
+      return state.sorted
+    },
+    forceRefreshTopics
   }
 
   return <TopicsContext.Provider value={value}>{props.children}</TopicsContext.Provider>

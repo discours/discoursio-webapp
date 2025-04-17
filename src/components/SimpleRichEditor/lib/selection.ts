@@ -1,7 +1,11 @@
-import { Accessor, createSignal } from 'solid-js'
-import { CommandType, MENU_GROUPS } from './commands'
+import { Accessor, createEffect, createSignal, onCleanup } from 'solid-js'
+import { isServer } from 'solid-js/web'
+import { debounce } from 'throttle-debounce'
+import { MENU_GROUPS } from './commands'
+import { isEmptyContent } from './empty'
 import { hasFormatting } from './format'
-import { Position } from './types'
+import { CommandGroupType, CommandType, Position, SelectionState } from './types'
+import { trackSelectionAndCursor } from './utils'
 
 /**
  * @module selection
@@ -30,16 +34,6 @@ import { Position } from './types'
 
 export const filterTextNodes = (nodes: Node[]): Text[] =>
   nodes.filter((node): node is Text => node.nodeType === Node.TEXT_NODE)
-
-export interface SelectionState {
-  range: Range | null
-  text: string
-  isEmpty: boolean
-  position: {
-    top: number
-    left: number
-  }
-}
 
 export interface EditorSelection {
   text: string
@@ -128,25 +122,34 @@ export const getCursorPosition = (editor: HTMLElement | null): Position | null =
 }
 
 /**
- * Хук для работы с выделением текста
+ * Расширенный хук для работы с выделением, курсором и состоянием тулбара.
  *
- * @param editorRef Реф на редактор
- * @returns Методы для работы с выделением
+ * @param editorRef Accessor для div элемента редактора.
+ * @param toolbarMode Accessor для текущего режима тулбара из props.
+ * @param editorId Accessor для ID редактора (опционально).
+ * @returns Объект с состоянием выделения, курсора, форматов, тулбара и функциями управления.
  */
-export const useSelection = (editorRef: Accessor<HTMLDivElement | undefined>) => {
+export const useSelection = (
+  editorRef: Accessor<HTMLDivElement | undefined>,
+  toolbarMode: Accessor<string>,
+  editorId?: Accessor<string | undefined>
+) => {
   const [savedRange, setSavedRange] = createSignal<Range | null>(null)
   const [activeFormats, setActiveFormats] = createSignal<Set<CommandType>>(new Set())
+
+  const [selectionInfo, setSelectionInfo] = createSignal<{ text: string; isEmpty: boolean }>({
+    text: '',
+    isEmpty: true
+  })
+  const [cursorPosition, setCursorPosition] = createSignal<Position | null>(null)
+  const [toolbarSignal, setToolbarSignal] = createSignal<string>('hidden')
 
   const isSelectionInEditor = () => {
     const selection = window.getSelection()
     if (!selection || !selection.rangeCount) return false
-
     const range = selection.getRangeAt(0)
     const editor = editorRef()
-    if (!editor) return false
-
-    // Проверяем, что выделение полностью внутри редактора
-    return editor.contains(range.commonAncestorContainer)
+    return editor ? editor.contains(range.commonAncestorContainer) : false
   }
 
   const saveSelection = () => {
@@ -155,93 +158,150 @@ export const useSelection = (editorRef: Accessor<HTMLDivElement | undefined>) =>
       setSavedRange(null)
       return false
     }
-
     const range = selection.getRangeAt(0)
     setSavedRange(range.cloneRange())
     return true
   }
 
-  /**
-   * Восстанавливает сохраненное выделение
-   * @returns true если выделение восстановлено
-   */
   const restoreSelection = () => {
     const range = savedRange()
-    if (!range || !isSelectionInEditor()) {
-      return false
-    }
-
+    if (!range || typeof window === 'undefined') return false
     try {
       const selection = window.getSelection()
       if (!selection) return false
-
       selection.removeAllRanges()
       selection.addRange(range.cloneRange())
-      return true
+      return isSelectionInEditor()
     } catch (error) {
       console.error('Error restoring selection:', error)
       return false
     }
   }
 
-  /**
-   * Обновляет состояние активных форматов
-   */
   const updateActiveFormats = () => {
-    const selection = window.getSelection()
-    if (!selection || !editorRef()) return
+    try {
+      const selection = window.getSelection()
+      const editor = editorRef()
+      if (!selection || !selection.rangeCount || !editor || !isSelectionInEditor()) {
+        setActiveFormats(new Set<CommandType>([]))
+        return activeFormats()
+      }
 
-    const rect = selection.getRangeAt(0).getBoundingClientRect()
-    const formats = new Set<CommandType>()
-    Object.entries(MENU_GROUPS).forEach(([_group, commands]) => {
-      commands.forEach((cmd) => {
-        if (
-          hasFormatting(cmd as CommandType, {
-            range: selection.getRangeAt(0),
-            text: selection.toString(),
-            isEmpty: selection.toString().length === 0,
-            position: {
-              top: rect.top,
-              left: rect.left + rect.width / 2
-            }
-          })
-        ) {
-          formats.add(cmd as CommandType)
+      const range = selection.getRangeAt(0)
+      if (!range) {
+        setActiveFormats(new Set<CommandType>([]))
+        return activeFormats()
+      }
+
+      const rect = range.getBoundingClientRect()
+      // Создаем пустой Set для форматов
+      const computedFormats = new Set<CommandType>()
+
+      // Проверяем, что MENU_GROUPS существует
+      if (!MENU_GROUPS) {
+        console.warn('[SimpleRichEditor] MENU_GROUPS is undefined')
+        return activeFormats()
+      }
+
+      // Итерируем по ключам MENU_GROUPS, приводя их к CommandGroupType
+      Object.keys(MENU_GROUPS).forEach((groupKey: string) => {
+        if (!MENU_GROUPS[groupKey as CommandGroupType]) return
+
+        const commandsInGroup: readonly CommandType[] = MENU_GROUPS[groupKey as CommandGroupType]
+        if (!Array.isArray(commandsInGroup)) return
+
+        commandsInGroup.forEach((cmd: CommandType) => {
+          if (!cmd) return
+
+          if (
+            hasFormatting(cmd, {
+              range: range,
+              text: selection.toString(),
+              isEmpty: selection.isCollapsed,
+              position: {
+                top: rect.top,
+                left: rect.left + rect.width / 2
+              }
+            })
+          ) {
+            computedFormats.add(cmd)
+          }
+        })
+      })
+
+      // Сравниваем рассчитанный Set с текущим значением сигнала
+      const currentFormatsValue = activeFormats()
+      if (
+        computedFormats.size !== currentFormatsValue.size ||
+        ![...computedFormats].every((format) => currentFormatsValue.has(format))
+      ) {
+        // Если есть разница, обновляем сигнал с помощью сеттера
+        setActiveFormats(computedFormats)
+      }
+
+      // Возвращаем аксессор сигнала, чтобы внешний код получил ожидаемый тип
+      return activeFormats()
+    } catch (error) {
+      console.error('[SimpleRichEditor] Error in updateActiveFormats:', error)
+      return activeFormats()
+    }
+  }
+
+  const getSelectionText = () => selectionInfo().text
+
+  const handleTrackSelectionAndCursor = () => {
+    try {
+      trackSelectionAndCursor({
+        isServer: isServer,
+        editorRef: editorRef,
+        updateActiveFormats: updateActiveFormats,
+        isSelectionInEditor: isSelectionInEditor,
+        setSelection: setSelectionInfo,
+        setCursorPosition: setCursorPosition,
+        setToolbar: setToolbarSignal,
+        isEmptyContent: isEmptyContent,
+        toolbarMode: toolbarMode(),
+        editorId: editorId ? editorId() : undefined
+      })
+    } catch (error) {
+      console.error('[SimpleRichEditor] Error in trackSelectionAndCursor:', error)
+      // Предотвращаем падение редактора из-за ошибок отслеживания выделения
+    }
+  }
+
+  createEffect(() => {
+    const editor = editorRef()
+    if (editor) {
+      const observer = new MutationObserver((_mutations) => {
+        try {
+          handleTrackSelectionAndCursor()
+        } catch (error) {
+          console.error('[SimpleRichEditor] Error handling mutation:', error)
         }
       })
-    })
-
-    setActiveFormats(formats)
-    return formats
-  }
-
-  /**
-   * Получает информацию о текущем выделении
-   * @returns Объект с информацией о выделении
-   */
-  const getSelectionInfo = (): EditorSelection => {
-    const selection = window.getSelection()
-    if (!selection) return { text: '', isEmpty: true }
-
-    const text = selection.toString()
-    const isEmpty = text.length === 0
-
-    if (selection.rangeCount > 0 && isSelectionInEditor()) {
-      const range = selection.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
-
-      return {
-        text,
-        isEmpty,
-        position: {
-          top: rect.top,
-          left: rect.left + rect.width / 2
-        }
-      }
+      observer.observe(editor, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: false
+      })
+      onCleanup(() => observer.disconnect())
     }
+  })
 
-    return { text, isEmpty }
-  }
+  createEffect(() => {
+    const currentToolbarMode = toolbarMode()
+    const info = selectionInfo()
+
+    if (currentToolbarMode === 'float') {
+      setToolbarSignal(info.text && !info.isEmpty ? 'float' : 'hidden')
+    } else {
+      // В других режимах (top/bottom/hidden) сигнал toolbarSignal не используется для управления видимостью,
+      // видимость определяется напрямую в JSX по toolbarMode()
+      // Можно сбросить его в 'hidden' для консистентности, если нужно.
+      // setToolbarSignal('hidden');
+    }
+  })
 
   return {
     saveSelection,
@@ -249,7 +309,11 @@ export const useSelection = (editorRef: Accessor<HTMLDivElement | undefined>) =>
     updateActiveFormats,
     activeFormats,
     isSelectionInEditor,
-    getSelectionInfo
+    selectionInfo,
+    getSelectionText,
+    cursorPosition,
+    toolbarSignal,
+    handleTrackSelectionAndCursor
   }
 }
 
@@ -265,4 +329,61 @@ export const isLinkActive = () => {
   return !!(commonAncestor.nodeType === Node.ELEMENT_NODE
     ? (commonAncestor as Element).closest('a')
     : commonAncestor.parentElement?.closest('a'))
+}
+
+/**
+ * Настраивает отслеживание выделения в редакторе
+ *
+ * @param editor DOM-элемент редактора
+ * @param onSelectionChange Колбэк, вызываемый при изменении выделения
+ * @returns Функции cleanup для отключения отслеживания
+ */
+export const setupSelectionTracking = (
+  editor: HTMLElement,
+  onSelectionChange: (state: SelectionState) => void
+) => {
+  // Обработчик изменения выделения с дебаунсом
+  const handleSelectionChange = debounce(150, () => {
+    if (!editor) return
+
+    const selection = window.getSelection()
+    if (!selection || !selection.rangeCount) return
+
+    const range = selection.getRangeAt(0)
+
+    // Проверяем, находится ли выделение в редакторе
+    if (!editor.contains(range.commonAncestorContainer)) return
+
+    // Рассчитываем позицию выделения
+    const rangeRect = range.getBoundingClientRect()
+    const editorRect = editor.getBoundingClientRect()
+
+    const position = {
+      top: rangeRect.top - editorRect.top + editor.scrollTop,
+      left: rangeRect.left - editorRect.left + editor.scrollLeft
+    }
+
+    const state: SelectionState = {
+      range,
+      text: selection.toString(),
+      isEmpty: selection.isCollapsed,
+      position
+    }
+
+    onSelectionChange(state)
+  })
+
+  // Устанавливаем обработчики событий
+  document.addEventListener('selectionchange', handleSelectionChange)
+  editor.addEventListener('click', handleSelectionChange)
+  editor.addEventListener('input', handleSelectionChange)
+
+  // Возвращаем функцию для отключения отслеживания
+  return () => {
+    document.removeEventListener('selectionchange', handleSelectionChange)
+    if (editor) {
+      editor.removeEventListener('click', handleSelectionChange)
+      editor.removeEventListener('input', handleSelectionChange)
+    }
+  }
 }

@@ -70,6 +70,8 @@
       .content {
         min-height: 108px;
         padding: 8px 12px;
+        font-size: 15px;
+        line-height: 1.5;
         
         // Принудительно удаляем внутренние отступы у p внутри контента
         p {
@@ -328,9 +330,10 @@
       }
 
       // Базовые стили форматирования
-      p { 
-        margin: 0 0 0.8em;
-        &:last-child { margin-bottom: 0; }
+      p {
+        margin: 0;
+        margin-bottom: 0.5em;
+        min-height: 1.5em;
       }
 
       blockquote {
@@ -424,6 +427,14 @@
         }
       }
     }
+
+    /* Отображение float-тулбара при выделении текста */
+    &:has(.content ::selection:not(:empty)) {
+      .floatingToolbar {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
   }
 }
 
@@ -510,45 +521,6 @@
     font-size: 0.875rem;
     margin: 0;
     line-height: 1.5;
-  }
-}
-
-// Позиционирование тулбара
-.toolbarContainer {
-  position: relative;
-  z-index: 2;
-  transition: all 0.2s ease-in-out;
-  opacity: 0;
-  user-select: none;
-  
-  &.toolbarTop {
-    order: -1;
-    position: sticky;
-    top: 0;
-    margin-bottom: -2em;
-    box-shadow: none;
-  }
-  
-  &.toolbarBottom {
-    order: 2;
-    position: sticky;
-    bottom: 0;
-    margin-top: -2em;
-    box-shadow: none;
-  }
-  
-  &.toolbarFloat {
-    position: absolute;
-    bottom: 0;
-    background: var(--bg-color);
-    border-radius: var(--editor-border-radius);
-    box-shadow: var(--editor-shadow);
-    padding: 4px;
-  }
-  
-  &.visible {
-    opacity: 1 !important;
-    visibility: visible !important;
   }
 }
 
@@ -677,18 +649,30 @@
   color: var(--color-gray-700);
   cursor: pointer;
   transition: background-color 0.2s ease;
+  min-height: 108px; // Такая же высота как у редактора
+  width: 100%; // Полная ширина
+  max-width: 800px; // Максимальная ширина как у редактора
+  box-sizing: border-box; // Учитываем padding в ширине
   
   &:hover {
     background-color: var(--color-gray-100, #f3f4f6);
   }
   
   p {
+    margin: 0;
     margin-bottom: 0.5em;
+    min-height: 1.5em;
 
     &:last-child {
       margin-bottom: 0;
     }
   }
+}
+
+.leadContentText {
+  width: 100%;
+  font-size: 15px; // Такой же размер шрифта как в редакторе
+  line-height: 1.5; // Такой же line-height как в редакторе
 }
 
 // Анимация для плавного появления плейсхолдера
@@ -717,4 +701,56 @@
   &.placeholder-visible[data-placeholder]::before {
     display: block;
   }
+}
+
+/* Добавляем CSS правила для автоматической видимости тулбаров */
+
+.editor {
+  position: relative;
+  
+  /* Float toolbar будет видим только когда есть выделение */
+  &.hasSelection .floatingToolbar {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+// Общие стили для тулбаров
+.floatingToolbar, .topToolbar, .bottomToolbar {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+  
+  &.visible {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+}
+
+.floatingToolbar {
+  position: fixed !important;
+  z-index: 9999;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 3px 10px rgb(0 0 0 / 20%);
+  padding: 6px;
+  transform: translateX(-50%); // Центрируем по горизонтали относительно точки
+  margin-top: -6px;
+  user-select: none;
+  pointer-events: auto;
+  min-width: 180px; // Минимальная ширина, чтобы кнопки не выглядели слишком сжатыми
+  display: flex;
+  justify-content: center; // Центрируем кнопки
+}
+
+.topToolbar {
+  position: sticky;
+  top: 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.bottomToolbar {
+  position: sticky;
+  bottom: 0;
+  border-top: 1px solid var(--color-border-light);
 }

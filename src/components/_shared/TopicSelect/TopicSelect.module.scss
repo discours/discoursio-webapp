@@ -35,18 +35,42 @@
 .selectedTopics {
   display: flex;
   flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 
 .selectedTopic {
   background-color: #f0f0f0;
   margin: 4px;
-  padding: 6px;
+  padding: 6px 10px 6px 8px;
   border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  user-select: none;
+  
+  &.mainTopic {
+    background-color: var(--color-primary, #06c);
+    color: white;
+  }
+  
+  .removeTopicBtn {
+    margin-left: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 0 4px;
+    border-radius: 50%;
+    
+    &:hover {
+      background-color: rgb(0 0 0 / 10%);
+    }
+  }
 }
 
 .selectWrapper {
   display: inline-block;
+  width: 100%;
   cursor: pointer;
+  position: relative;
 }
 
 .searchInput {
@@ -57,17 +81,44 @@
 }
 
 .options {
-  margin-top: 10px;
+  position: absolute;
+  width: 100%;
+  margin-top: 4px;
   background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   box-shadow: 0 4px 8px rgb(0 0 0 / 10%);
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 100;
 }
 
 .option {
   padding: 10px;
   cursor: pointer;
+  border-bottom: 1px solid #f5f5f5;
+  
+  &:hover {
+    background-color: #f8f8f8;
+  }
+  
+  &.selected {
+    background-color: #f0f0f0;
+    font-weight: 500;
+  }
+  
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .disabled {
   color: gray;
   pointer-events: none;
+}
+
+.emptyState {
+  padding: 15px;
+  text-align: center;
+  color: #888;
 }

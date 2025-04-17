@@ -8,26 +8,27 @@ import { Modal } from '~/components/_shared/Modal'
 import { Popover } from '~/components/_shared/Popover'
 import { EditorSwiper } from '~/components/_shared/SolidSwiper'
 import { useConnect } from '~/context/connect'
-import { DraftInput, useDrafts } from '~/context/drafts'
+import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import type { Draft, MediaItem, Topic } from '~/graphql/schema/core.gen'
+import type { Draft, DraftInput, MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
 import { getFileUrl } from '~/lib/getThumbUrl'
-import { LayoutType } from '~/types/common'
-import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { LayoutType } from '~/types/nav'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { getProvider } from '../SimpleRichEditor/lib/awareness'
 import { isEmptyContent } from '../SimpleRichEditor/lib/empty'
-import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import {
-  applyOfflineChanges,
   getAllDraftFields,
-  getDraftInputWithOfflineChanges,
+  getDraftField,
   hasUnsyncedChanges,
+  parseJsonContent,
+  saveDraftField,
   saveEntireDraft,
   setupNetworkListeners,
   updateLastSync
 } from '../SimpleRichEditor/lib/storage'
+import { CommandType, EditorData } from '../SimpleRichEditor/lib/types'
 import { AudioUploader } from '../Upload/AudioUploader'
 import { VideoUploader } from '../Upload/VideoUploader'
 import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'
@@ -40,6 +41,27 @@ export const EMPTY_TOPIC: Topic = {
   slug: ''
 }
 
+export const featuredEditorCommands = [
+  // Дропдаун "TT"
+  [
+    // Массив => Дропдаун
+    ['h1', 'h2', 'h3'], // Первая группа (Заголовки)
+    ['blockquote', 'align-left', 'align-center', 'align-right'] // Вторая группа (Выделение) - нужно будет придумать, как задать заголовок
+  ],
+  // Простые кнопки
+  'bold',
+  'italic',
+  'highlight', // или другая команда для желтого кружка?
+  'link',
+  'footnote', // иконка снежинки?
+  // Дропдаун "Списки"
+  [
+    // Массив => Дропдаун
+    ['bulletList', 'orderedList'] // Первая группа (Списки)
+  ],
+  'image' // Добавим, т.к. была в списке изначально
+]
+
 /**
  * EditView component
  *
@@ -47,7 +69,7 @@ export const EMPTY_TOPIC: Topic = {
  */
 export const EditView = (props: { draft?: Draft }) => {
   const { t } = useLocalize()
-  const { updateDraft, getEditorContent, setEditorContent } = useDrafts()
+  const { updateDraft, getEditorContent, setEditorContent, updateDraftField } = useDrafts()
   const [inputDataErrors, setFormErrors] = createSignal({} as Record<keyof DraftInput, string>)
   const [subtitleInput, setSubtitleInput] = createSignal<HTMLTextAreaElement | undefined>()
   const [currentDraft, setCurrentDraft] = createSignal<Draft | undefined>(props.draft)
@@ -63,13 +85,22 @@ export const EditView = (props: { draft?: Draft }) => {
   // Добавляем сигнал для хранения исходного содержимого вступления перед редактированием
   const [originalLeadContent, setOriginalLeadContent] = createSignal('')
 
+  // Ref для редактора вступления
+  const [leadEditorRef, setLeadEditorRef] = createSignal<HTMLDivElement>()
+
   // Эффект для инициализации состояния, если props.draft существует
+  const [isInitialized, setIsInitialized] = createSignal(false)
+
+  // Добавляем сигнал для хранения состояния сети
+  const [networkStatus, setNetworkStatus] = createSignal(true)
+
   createEffect(() => {
     if (props.draft) {
       setCurrentDraft(props.draft)
 
       // При инициализации сразу показываем вступление в режиме превью, если оно существует
-      if (props.draft.lead) {
+      // Применяем только при первой инициализации, а не при каждом обновлении черновика
+      if (props.draft.lead && !isInitialized()) {
         console.log('[EditView] Initializing draft with lead', {
           draftId: props.draft.id,
           leadContent: props.draft.lead,
@@ -77,6 +108,7 @@ export const EditView = (props: { draft?: Draft }) => {
           isLeadVisible: isLeadVisible()
         })
         setIsLeadVisible(false) // Чтобы отображалось превью, а не редактор
+        setIsInitialized(true) // Отмечаем, что инициализация произошла
       }
     }
   })
@@ -85,12 +117,6 @@ export const EditView = (props: { draft?: Draft }) => {
     on(currentDraft, (d?: Draft) => {
       if (!d) return
       setIsSubtitleVisible(Boolean(d?.subtitle))
-
-      // Для режима просмотра черновика, если редактор тела в фокусе, скрываем редактор вступления
-      // но не скрываем само вступление в режиме превью
-      if (isBodyEditorFocused()) {
-        setIsLeadVisible(false)
-      }
 
       setMediaItems((d?.media || []) as MediaItem[])
     })
@@ -110,6 +136,35 @@ export const EditView = (props: { draft?: Draft }) => {
     }
   })
 
+  // Эффект для фокусировки редактора вступления, когда он становится видимым
+  createEffect(() => {
+    if (isLeadVisible()) {
+      // Добавляем задержку больше, чем в обработчике клика,
+      // чтобы он выполнился после нашего ручного установления фокуса
+      setTimeout(() => {
+        // Проверяем, что редактор все еще видим, чтобы не перехватывать фокус у других элементов
+        if (!isLeadVisible()) return
+
+        const editorElement = leadEditorRef()
+        if (editorElement) {
+          // Проверяем, не установлен ли уже фокус на редакторе
+          if (document.activeElement !== editorElement) {
+            const leadContent = getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''
+            if (isEmptyContent(leadContent)) {
+              editorElement.classList.add('placeholder-visible')
+            } else {
+              editorElement.classList.remove('placeholder-visible')
+            }
+
+            // Фокусируем только если фокус еще не установлен на редакторе
+            editorElement.focus()
+            console.log('[EditView] Focused lead editor via effect (not already focused)')
+          }
+        }
+      }, 200) // Задержка больше, чем в обработчике клика
+    }
+  })
+
   // Handle scroll
   const [isScrolled, setIsScrolled] = createSignal(false)
   const handleScroll = () => setIsScrolled(window.scrollY > 0)
@@ -118,14 +173,44 @@ export const EditView = (props: { draft?: Draft }) => {
   const handleDocumentClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement
 
-    // Проверяем, не является ли клик внутри заголовка, подзаголовка или вступления
+    // Проверяем, не является ли клик внутри заголовка или текстового поля
     const isTitleClick = target.closest('.titleInput') || target.closest('input[type="text"]')
-    const isLeadClick = target.closest('[data-field-type="lead"]')
-    const isBodyClick = target.closest('[data-field-type="body"]')
 
-    // Если клик не в заголовке, не во вступлении и не в основном редакторе
-    if (!isTitleClick && !isLeadClick && !isBodyClick) {
-      // Получаем ссылку на основной редактор и устанавливаем фокус
+    // Проверка для редактора лида (когда он видим)
+    const isLeadEditorClick = target.closest('[data-field-type="lead"]')
+
+    // Улучшенная проверка для превью лида
+    const isLeadPreviewClick = Boolean(
+      target.closest(`.${styles.leadContentDisplay}`) ||
+        target.closest(`.${styles.leadContentText}`) ||
+        target.classList?.contains(styles.leadContentDisplay) ||
+        target.classList?.contains(styles.leadContentText)
+    )
+
+    // Проверка для основного редактора
+    const isBodyClick = Boolean(target.closest('[data-field-type="body"]'))
+
+    // Добавляем логирование для отладки, какой элемент обнаружен
+    if (isLeadPreviewClick) {
+      console.log('[EditView] Click detected on lead preview, skipping body focus')
+      return // Явно пропускаем обработку, если клик на превью
+    }
+
+    // Если клик в редакторе лида, тоже пропускаем (пусть обработчик редактора сам разбирается)
+    if (isLeadEditorClick) {
+      console.log('[EditView] Click detected in lead editor, skipping body focus')
+      return
+    }
+
+    // Если клик не в заголовке, не в редакторе/превью лида и не в основном редакторе,
+    // то устанавливаем фокус на основной редактор
+    if (!isTitleClick && !isLeadEditorClick && !isLeadPreviewClick && !isBodyClick) {
+      // Дополнительная защита - если редактор лида открыт, не перехватываем фокус
+      if (isLeadVisible()) {
+        console.log('[EditView] Lead editor is visible, skipping focus to body')
+        return
+      }
+
       const bodyEditor = bodyEditorRef()
       if (bodyEditor) {
         // Установка фокуса в конец документа
@@ -146,8 +231,10 @@ export const EditView = (props: { draft?: Draft }) => {
               range.selectNodeContents(lastChild)
               range.collapse(false) // collapse to end
             }
-            selection.removeAllRanges()
-            selection.addRange(range)
+            if (selection) {
+              selection.removeAllRanges()
+              selection.addRange(range)
+            }
           }
         }
       }
@@ -164,35 +251,44 @@ export const EditView = (props: { draft?: Draft }) => {
   }
 
   // Обработчик для изменений полей черновика
-  const handleInputChange = (key: keyof DraftInput, val: string) => {
-    let value = String(sanitizeHtml(val))
-    if (key === 'body' || key === 'lead') {
-      value = sanitizeHtml(val)
-      // Используем функцию setEditorContent из контекста drafts, которая уже имеет дебаунсированное сохранение
-      setEditorContent(`draft-${currentDraft()?.id}-${key}`, value)
-    }
-
-    if (key === 'title') {
-      handleInputChange('slug', slugify(value))
-    }
-
+  const handleInputChange = (key: keyof DraftInput, val: string | EditorData) => {
     const draft = currentDraft()
-    if (draft) {
-      // Обновляем локальное состояние UI
-      const updated = { ...draft, [key]: value } as Draft
-      setCurrentDraft(updated)
+    if (!draft || !draft.id) return
 
-      // Получаем провайдер awareness для синхронизации в реальном времени
-      const awarenessProvider = getProvider()
+    const isEditorUpdate = typeof val === 'object' && val !== null && 'content' in val
 
-      // Отправляем обновление через awareness для коллаборативного редактирования
-      awarenessProvider.updateDraftField(
-        draft.id,
-        key,
-        value,
-        key === 'body' || key === 'lead' ? isEmptyContent(value) : false
-      )
+    // Вызываем функцию из контекста для обновления поля
+    updateDraftField(draft.id, key, val, isEditorUpdate)
+
+    // Обновляем локальное состояние UI (опционально, если контекст не обновляет drafts())
+    let updateValue: string
+    if (isEditorUpdate) {
+      // Получаем НЕОЧИЩЕННЫЙ контент для локального UI,
+      // т.к. санитизация происходит в контексте перед сохранением
+      updateValue = (val as EditorData).content
+    } else {
+      updateValue = val as string
     }
+    setCurrentDraft((prev) => (prev ? { ...prev, [key]: updateValue } : undefined))
+
+    // Обновление слага при изменении заголовка (можно перенести в контекст)
+    if (key === 'title' && typeof val === 'string') {
+      const slugValue = slugify(val)
+      setCurrentDraft((prev) => (prev ? { ...prev, slug: slugValue } : undefined))
+      // Сохранение слага также лучше делать через updateDraftField, если нужно
+      // updateDraftField(draft.id, 'slug', slugValue, false)
+    }
+
+    // Получаем провайдер awareness для синхронизации в реальном времени
+    const awarenessProvider = getProvider()
+
+    // Отправляем обновление через awareness для коллаборативного редактирования
+    awarenessProvider.updateDraftField(
+      draft.id,
+      key,
+      updateValue, // Отправляем чистый HTML
+      key === 'body' || key === 'lead' ? isEmptyContent(updateValue) : false
+    )
   }
 
   // Добавляем функцию для получения обновлений от awareness
@@ -206,6 +302,11 @@ export const EditView = (props: { draft?: Draft }) => {
 
     // Получаем провайдер
     const awarenessProvider = getProvider()
+    
+    // Проверяем, подключен ли провайдер
+    if (awarenessProvider.getConnectionState() !== 'connected') {
+      return
+    }
 
     // Получаем актуальный контент для текущего черновика
     const draftFields = awarenessProvider.getDraftContent(draft.id)
@@ -224,7 +325,9 @@ export const EditView = (props: { draft?: Draft }) => {
 
           // Для редакторов обновляем контент в хранилище
           if (fieldName === 'body' || fieldName === 'lead') {
-            setEditorContent(`draft-${draft.id}-${fieldName}`, fieldData.content)
+            // Проверяем, не является ли контент JSON-строкой
+            const contentToSet = parseJsonContent(fieldData.content)
+            setEditorContent(`draft-${draft.id}-${fieldName}`, contentToSet)
           }
 
           // Обновляем объект черновика (безопасно для типизации)
@@ -239,7 +342,12 @@ export const EditView = (props: { draft?: Draft }) => {
             fieldName === 'slug' ||
             fieldName === 'description'
           ) {
-            draftToUpdate[fieldName] = fieldData.content
+            // Если это body или lead, проверяем не является ли контент JSON-строкой
+            if (fieldName === 'body' || fieldName === 'lead') {
+              draftToUpdate[fieldName] = parseJsonContent(fieldData.content)
+            } else {
+              draftToUpdate[fieldName] = fieldData.content
+            }
           }
         }
       })
@@ -251,44 +359,63 @@ export const EditView = (props: { draft?: Draft }) => {
     }
   }
 
-  const { addHandler } = useConnect()
-
-  // Функция проверки и восстановления локальных изменений черновика
-  const restoreOfflineChanges = (draft: Draft): void => {
+  // Функция для восстановления локальных изменений
+  const restoreOfflineChanges = (draft: Draft) => {
     if (!draft || !draft.id) return
 
     try {
-      // Проверяем, есть ли локальные изменения
-      const fields = getAllDraftFields(draft.id)
-      if (!fields) return
+      // Получаем все поля черновика из localStorage
+      const offlineFields = getAllDraftFields(draft.id)
+      console.log('[EditView] Checking offline fields:', offlineFields)
 
-      console.log(`[EditView] Found offline changes for draft ${draft.id}`)
+      // Если есть локальные изменения, восстанавливаем их
+      if (offlineFields && Object.keys(offlineFields).length > 0) {
+        // Получаем актуальное содержимое из localStorage
+        let bodyContent = draft.body || ''
+        let leadContent = draft.lead || ''
+        const titleContent = getDraftField(draft.id, 'title') || draft.title || ''
+        const subtitleContent = getDraftField(draft.id, 'subtitle') || draft.subtitle || ''
 
-      // Применяем локальные изменения к UI
-      const updatedDraft = applyOfflineChanges(draft.id, draft)
-
-      // Обновляем состояние черновика
-      setCurrentDraft(updatedDraft)
-
-      // Обновляем содержимое редакторов, если локальные изменения затронули поля body или lead
-      if (fields.body && updatedDraft.body !== draft.body) {
-        setEditorContent(`draft-${draft.id}-body`, fields.body)
-      }
-
-      if (fields.lead && updatedDraft.lead !== draft.lead) {
-        setEditorContent(`draft-${draft.id}-lead`, fields.lead)
-      }
-
-      console.log('[EditView] Restored offline changes')
-
-      // Регистрируем обработчик для изменений
-      addHandler(() => {
-        // Проверяем, онлайн ли пользователь перед синхронизацией
-        if (navigator.onLine) {
-          console.log('[EditView] Syncing changes after content update')
-          syncOfflineChanges(draft)
+        // Обрабатываем JSON для lead и body
+        const bodyFromStorage = getDraftField(draft.id, 'body')
+        if (bodyFromStorage) {
+          bodyContent = parseJsonContent(bodyFromStorage) || bodyContent
+          console.log(`[EditView] Parsed body content from storage for draft ${draft.id}`)
         }
-      })
+
+        const leadFromStorage = getDraftField(draft.id, 'lead')
+        if (leadFromStorage) {
+          leadContent = parseJsonContent(leadFromStorage) || leadContent
+          console.log(`[EditView] Parsed lead content from storage for draft ${draft.id}`)
+        }
+
+        // Обновляем локальное состояние, если есть изменения
+        const updatedDraft = { ...draft } as Record<string, unknown>
+
+        if (bodyContent && bodyContent !== draft.body) {
+          updatedDraft.body = bodyContent
+          setEditorContent(`draft-${draft.id}-body`, bodyContent)
+        }
+
+        if (leadContent && leadContent !== draft.lead) {
+          updatedDraft.lead = leadContent
+          setEditorContent(`draft-${draft.id}-lead`, leadContent)
+        }
+
+        if (titleContent && titleContent !== draft.title) {
+          updatedDraft.title = titleContent
+        }
+
+        if (subtitleContent && subtitleContent !== draft.subtitle) {
+          updatedDraft.subtitle = subtitleContent
+        }
+
+        // Обновляем состояние черновика, если были изменения
+        if (JSON.stringify(updatedDraft) !== JSON.stringify(draft)) {
+          setCurrentDraft(updatedDraft as Draft)
+          console.log('[EditView] Restored offline changes:', updatedDraft)
+        }
+      }
     } catch (error) {
       console.error('[EditView] Error restoring offline changes:', error)
     }
@@ -303,7 +430,13 @@ export const EditView = (props: { draft?: Draft }) => {
         console.log('[EditView] Syncing offline changes to server')
 
         // Готовим объект для отправки на сервер
-        const syncDraft = getDraftInputWithOfflineChanges(draft.id, draft)
+        const syncDraft = {
+          ...getAllDraftFields(draft.id),
+          ...draft,
+          topic_ids: draft.topics?.map((topic) => topic?.id) || [],
+          main_topic_id: draft.topics?.[0]?.id || 0,
+          layout: draft.layout || 'article'
+        }
 
         // Отправляем на сервер
         updateDraft(syncDraft as DraftInput)
@@ -320,11 +453,7 @@ export const EditView = (props: { draft?: Draft }) => {
   const handleSaveClick = () => {
     const draft = currentDraft()
     if (!draft) return
-
-    // При явном сохранении используем GraphQL mutation для обновления черновика на сервере
     console.log('[EditView] Explicitly saving draft to server via GraphQL', draft.id)
-
-    // Синхронизируем все локальные изменения
     syncOfflineChanges(draft)
   }
 
@@ -391,41 +520,60 @@ export const EditView = (props: { draft?: Draft }) => {
     // Убираем фокус с основного редактора, если он был
     setIsBodyEditorFocused(false)
 
+    // Получаем и обрабатываем содержимое вступления
+    const draft = currentDraft()
+    const draftId = draft?.id || 0
+
+    // Получаем актуальное содержимое из localStorage с приоритетом над значением из черновика
+    let currentLead = ''
+
+    if (draftId) {
+      // Пытаемся получить значение из localStorage
+      const storedLead = getDraftField(draftId, 'lead')
+
+      // Используем функцию parseJsonContent для корректного извлечения содержимого
+      currentLead = parseJsonContent(storedLead || '') || draft?.lead || ''
+
+      console.log('[EditView] showLeadInput extracting content:', {
+        draftId,
+        rawStoredLead: storedLead,
+        parsedLead: parseJsonContent(storedLead || ''),
+        draftLead: draft?.lead,
+        finalLead: currentLead
+      })
+    }
+
     // Сохраняем исходное содержимое для возможности отмены
-    const currentLead = currentDraft()?.lead || ''
     setOriginalLeadContent(currentLead)
 
     // Добавляем отладочную информацию
     console.log('[EditView] showLeadInput', {
-      draftId: currentDraft()?.id,
+      draftId,
       currentLead,
       isEmpty: isEmptyContent(currentLead)
     })
 
-    // Показываем редактор ПЕРЕД установкой контента
+    // Устанавливаем контент в состояние редактора перед показом
+    setEditorContent(`draft-${draftId}-lead`, currentLead)
+
+    // Показываем редактор лида
     setIsLeadVisible(true)
 
-    // Устанавливаем контент в редактор
-    setEditorContent(`draft-${currentDraft()?.id}-lead`, currentLead)
-
-    // Выставляем фокус на редактор с небольшой задержкой
+    // Используем одну задержку для фокусировки, чтобы гарантировать, что DOM обновился
     setTimeout(() => {
-      const leadEditor = document.querySelector(
-        `[data-editor-id="draft-${currentDraft()?.id}-lead"]`
-      ) as HTMLElement
-
-      if (leadEditor) {
-        // Если содержимое не пустое, убеждаемся что плейсхолдер скрыт
-        if (isEmptyContent(currentLead)) {
-          leadEditor.classList.add('placeholder-visible')
-        } else {
-          leadEditor.classList.remove('placeholder-visible')
-        }
-
+      const editorElement = leadEditorRef()
+      if (editorElement) {
         // Устанавливаем фокус
-        leadEditor.focus()
+        try {
+          editorElement.focus()
+          console.log('[EditView] Lead editor focused successfully')
+        } catch (e) {
+          console.error('[EditView] Error focusing lead editor:', e)
+        }
+      } else {
+        console.warn('[EditView] Could not focus lead editor - element not found')
       }
-    }, 100)
+    }, 100) // Достаточная задержка для обновления DOM
   }
 
   const hideLeadInput = () => {
@@ -434,70 +582,125 @@ export const EditView = (props: { draft?: Draft }) => {
 
   // Функция сохранения вступления
   const saveLead = () => {
-    // Получаем содержимое из редактора
-    const leadContent = getEditorContent(`draft-${currentDraft()?.id}-lead`)
+    const draftId = currentDraft()?.id
+    if (!draftId) return
 
-    // Если содержимое пустое, отменяем редактирование и скрываем редактор
+    const leadContent = getEditorContent(`draft-${draftId}-lead`) || ''
     if (isEmptyContent(leadContent)) {
-      cancelLead()
+      cancelLead() // Вызываем отмену, если пусто
       return
     }
 
-    // Сохраняем в черновик
-    handleInputChange('lead', leadContent)
+    console.log('[EditView] Saving lead content via context:', {
+      draftId,
+      contentLength: leadContent.length
+    })
 
-    // Скрываем редактор
+    // Проверяем, не является ли leadContent JSON-строкой
+    let contentToSave = leadContent
+    if (leadContent.trim().startsWith('{') && leadContent.includes('"content"')) {
+      try {
+        const parsed = JSON.parse(leadContent)
+        if (parsed && typeof parsed === 'object' && 'content' in parsed) {
+          contentToSave = parsed.content
+        }
+      } catch (_e) {
+        // Если ошибка парсинга, используем исходный контент
+        console.warn('[EditView] Failed to parse lead JSON, using raw content')
+      }
+    }
+
+    // Вызываем функцию контекста для обновления поля lead
+    updateDraftField(
+      draftId,
+      'lead',
+      {
+        content: contentToSave, // Используем очищенный контент
+        plainText: contentToSave.replace(/<[^>]+>/g, ''),
+        length: contentToSave.replace(/<[^>]+>/g, '').length,
+        isEmpty: false
+      },
+      true
+    )
+
     hideLeadInput()
   }
 
-  // Обновляем функцию отмены редактирования
+  // Функция отмены редактирования
   const cancelLead = () => {
-    // Возвращаем исходное содержимое без сохранения новых изменений
-    setEditorContent(`draft-${currentDraft()?.id}-lead`, originalLeadContent())
+    const draftId = currentDraft()?.id
+    if (!draftId) return
 
-    // Если исходное содержимое было пустым и мы отменяем редактирование,
-    // удаляем поле lead из черновика
-    if (isEmptyContent(originalLeadContent())) {
-      handleInputChange('lead', '')
-    }
+    const originalContent = originalLeadContent()
+    console.log('[EditView] Canceling lead edit, restoring original content via context:', {
+      draftId,
+      originalContent
+    })
 
-    // Скрываем редактор
+    // Восстанавливаем контент через контекст (сохраняем оригинальное значение)
+    // Если оригинал пустой, передаем пустую строку
+    updateDraftField(
+      draftId,
+      'lead',
+      isEmptyContent(originalContent)
+        ? ''
+        : {
+            content: originalContent,
+            plainText: originalContent.replace(/<[^>]+>/g, ''),
+            length: originalContent.replace(/<[^>]+>/g, '').length,
+            isEmpty: isEmptyContent(originalContent)
+          },
+      true
+    ) // true, т.к. это обновление редактора
+
     hideLeadInput()
   }
 
-  // Обновляем обработчик изменений редактора введения
+  // Обработчик изменений редактора вступления
   const handleLeadEditorChange = (data: EditorData) => {
-    // Обновляем сохраненное содержимое редактора
-    setEditorContent(`draft-${currentDraft()?.id}-lead`, data.content)
+    const draftId = currentDraft()?.id
+    if (!draftId) return
 
-    // Проверяем содержимое на пустоту с использованием isEmptyContent
-    if (isEmptyContent(data.content)) {
-      // Если содержимое пустое, удаляем поле lead из черновика
-      handleInputChange('lead', '')
-    } else {
-      // Если содержимое не пустое, обновляем черновик
-      handleInputChange('lead', data.content)
-    }
+    // Сохраняем только HTML-контент, а не весь объект
+    const contentToSave = data.content
+
+    // Напрямую сохраняем в localStorage чистое содержимое
+    saveDraftField(draftId, 'lead', contentToSave)
+
+    // Также обновляем состояние черновика
+    setCurrentDraft((prev) => {
+      if (!prev) return prev
+      return { ...prev, lead: contentToSave }
+    })
   }
 
   // Обработчик фокуса/блюра для основного редактора
   const handleBodyEditorFocus = (isFocused: boolean) => {
     setIsBodyEditorFocused(isFocused)
 
-    // Если фокус устанавливается на основной редактор и редактор вступления открыт,
-    // автоматически сохраняем и скрываем редактор вступления
+    // Если установлен фокус на основной редактор и редактор лида открыт,
+    // то нужно сохранить изменения и скрыть редактор лида
     if (isFocused && isLeadVisible()) {
-      const leadContent = getEditorContent(`draft-${currentDraft()?.id}-lead`)
+      console.log('[EditView] Body editor focused while lead editor is visible, saving lead')
 
-      // Используем isEmptyContent для корректной проверки на пустое содержимое
-      if (isEmptyContent(leadContent)) {
-        cancelLead()
-      } else {
-        saveLead()
-      }
+      // Добавим небольшую задержку, чтобы дать время другим обработчикам кликов
+      // закончить свою работу, если это клик был на превью
+      setTimeout(() => {
+        // Дополнительно проверяем, что лид все еще видим
+        if (!isLeadVisible()) return
 
-      // Гарантированно скрываем редактор вступления при фокусе на основном редакторе
-      setIsLeadVisible(false)
+        const leadContent = getEditorContent(`draft-${currentDraft()?.id}-lead`)
+
+        // Используем isEmptyContent для корректной проверки на пустое содержимое
+        if (isEmptyContent(leadContent)) {
+          cancelLead()
+        } else {
+          saveLead()
+        }
+
+        // Гарантированно скрываем редактор вступления при фокусе на основном редакторе
+        setIsLeadVisible(false)
+      }, 50)
     }
   }
 
@@ -582,14 +785,94 @@ export const EditView = (props: { draft?: Draft }) => {
                         commands={['bold', 'italic', 'link']}
                         placeholder={t('A short introduction to keep the reader interested')}
                         content={getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''}
-                        onChange={handleLeadEditorChange}
+                        onChange={(data) => handleLeadEditorChange(data)}
+                        onInit={(instance) => setLeadEditorRef(instance.editor)}
                         onBlur={saveLead} // Автоматически сохраняем при потере фокуса
                       />
                     </div>
                   </Show>
                   <Show when={!isLeadVisible() && currentDraft()?.lead}>
-                    <div class={styles.leadContentDisplay} onClick={showLeadInput}>
-                      <div innerHTML={currentDraft()?.lead || ''} class={styles.leadContentText} />
+                    <div
+                      class={styles.leadContentDisplay}
+                      onClick={(e) => {
+                        e.preventDefault() // Предотвращаем стандартное поведение
+                        e.stopPropagation() // Останавливаем всплытие события
+
+                        // Добавим явную проверку, чтобы не обрабатывать повторные клики
+                        if (isLeadVisible()) {
+                          console.log('[EditView] Lead editor already visible, skipping click')
+                          return
+                        }
+
+                        console.log('[EditView] Click on lead preview, showing lead editor')
+
+                        // Сначала вызываем showLeadInput, который установит правильное состояние
+                        showLeadInput()
+
+                        // Дополнительная гарантия, что редактор будет видимым после всех асинхронных операций
+                        setTimeout(() => {
+                          if (!isLeadVisible()) {
+                            console.log('[EditView] Ensuring lead editor is visible')
+                            setIsLeadVisible(true)
+                          }
+                        }, 100)
+                      }}
+                    >
+                      {(() => {
+                        const draftId = currentDraft()?.id || 0
+                        const storedLead = getDraftField(draftId, 'lead')
+
+                        // Проблема здесь - storedLead может быть JSON объектом как строка
+                        let finalLead = ''
+
+                        try {
+                          // Если storedLead начинается с {, это вероятно JSON
+                          if (storedLead?.trim().startsWith('{')) {
+                            const parsed = JSON.parse(storedLead)
+                            // Извлекаем контент из JSON объекта
+                            if (parsed && typeof parsed === 'object' && 'content' in parsed) {
+                              finalLead = parsed.content || ''
+                            }
+                          } else {
+                            // Иначе используем parseJsonContent
+                            finalLead = parseJsonContent(storedLead || '') || currentDraft()?.lead || ''
+                          }
+                        } catch (e) {
+                          console.error('[EditView] Error parsing lead content:', e)
+                          // Если ошибка парсинга, используем fallback
+                          finalLead = currentDraft()?.lead || ''
+                        }
+
+                        // Если finalLead всё еще JSON строка - пробуем извлечь контент последний раз
+                        if (finalLead.trim().startsWith('{') && finalLead.includes('"content"')) {
+                          try {
+                            const lastAttempt = JSON.parse(finalLead)
+                            if (
+                              lastAttempt &&
+                              typeof lastAttempt === 'object' &&
+                              'content' in lastAttempt
+                            ) {
+                              finalLead = lastAttempt.content
+                            }
+                          } catch (_e) {
+                            // Игнорируем ошибку, используем что есть
+                          }
+                        }
+
+                        if (isEmptyContent(finalLead)) {
+                          return null
+                        }
+
+                        console.log('[EditView] Lead preview content:', {
+                          finalContent: finalLead.substring(0, 50)
+                        })
+
+                        return (
+                          <>
+                            <div innerHTML={finalLead} class={styles.leadContentText} />
+                          </>
+                        )
+                      })()}
                     </div>
                   </Show>
                 </Show>
@@ -674,82 +957,112 @@ export const EditView = (props: { draft?: Draft }) => {
   onMount(() => {
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('keydown', handleKeyDown)
-    // Добавляем обработчик клика для всего документа
-    document.addEventListener('click', handleDocumentClick, { passive: true })
+    document.addEventListener('click', handleDocumentClick)
 
-    // Инициализируем соединение с сервером для синхронизации черновика
+    // Добавляем обработчики событий сети
+    window.addEventListener('online', handleNetworkStatusChange)
+    window.addEventListener('offline', handleNetworkStatusChange)
+
+    // Устанавливаем начальное состояние сети
+    setNetworkStatus(navigator.onLine)
+
     const draft = currentDraft()
-    if (draft?.id) {
-      try {
-        // Восстанавливаем локальные изменения, если есть
-        restoreOfflineChanges(draft)
+    if (draft && draft?.id > 0) {
+      // Проверяем, нужно ли восстановить локальные изменения
+      restoreOfflineChanges(draft)
 
-        // Настраиваем слушатели изменения сети
-        const removeNetworkListeners = setupNetworkListeners(
-          // Колбэк для перехода в онлайн
-          () => {
-            if (currentDraft()) {
-              syncOfflineChanges(currentDraft() as Draft)
-            }
-          },
-          // Колбэк для перехода в оффлайн
-          () => {
-            console.log('[EditView] Switching to offline mode')
-          }
-        )
+      // Если сеть доступна, подключаемся к awareness
+      if (navigator.onLine) {
+        initializeAwareness(draft)
+      } else {
+        console.log('[EditView] Network is offline, working in offline mode')
+      }
 
-        // Получаем провайдер awareness
-        const awarenessProvider = getProvider()
-
-        // Получаем функцию addHandler из контекста
-        const { addHandler } = useConnect()
-
-        // Устанавливаем информацию о пользователе
-        const { session } = useSession()
-        const s = session()
-        const tabId = crypto.randomUUID()
-
-        if (s) {
-          // Устанавливаем информацию о пользователе с безопасным получением данных
-          awarenessProvider.setUserInfo(`draft-${draft.id}`, {
-            id: s.user?.email || 'guest',
-            name: s.user?.email?.split('@')?.[0] || 'Пользователь',
-            color: `#${Math.floor(Math.random() * 16777215).toString(16)}`, // Случайный цвет
-            tabId
-          })
-        }
-
-        // Подключаемся к редактору с идентификатором черновика
-        const editorId = `draft-${draft.id}`
-        console.log('[EditView] Connecting to awareness for draft', draft.id)
-
-        // Устанавливаем функцию addHandler в провайдер, чтобы она была доступна внутри
-        awarenessProvider['addHandler'] = addHandler
-
-        // Вызываем стандартный метод connect в провайдере
-        awarenessProvider.connect(editorId)
-
-        // Подписываемся на обновления awareness
-        const unsubscribe = awarenessProvider.onAwarenessChange(handleAwarenessUpdates)
-
-        console.log('[EditView] Connected to awareness for draft', draft.id)
-
-        // Сохраняем весь черновик в localStorage при инициализации
-        saveEntireDraft(draft)
-
-        // Отписываемся при размонтировании
-        onCleanup(() => {
-          removeNetworkListeners()
-          unsubscribe()
-          window.removeEventListener('scroll', handleScroll)
-          window.removeEventListener('keydown', handleKeyDown)
-          document.removeEventListener('click', handleDocumentClick)
-        })
-      } catch (error) {
-        console.error('[EditView] Failed to connect to awareness:', error)
+      // Если есть несинхронизированные изменения и сеть доступна, синхронизируем их
+      if (navigator.onLine && hasUnsyncedChanges(draft.id)) {
+        syncOfflineChanges(draft)
       }
     }
   })
+
+  // Обработчик изменения статуса сети
+  const handleNetworkStatusChange = () => {
+    setNetworkStatus(navigator.onLine)
+    
+    // Если сеть появилась, синхронизируем изменения
+    const draft = currentDraft()
+    if (navigator.onLine && draft?.id) {
+      if (hasUnsyncedChanges(draft.id)) {
+        console.log('[EditView] Network is back online, syncing offline changes')
+        syncOfflineChanges(draft)
+      }
+      
+      // Инициализируем awareness если он еще не был инициализирован
+      if (getProvider().getConnectionState() !== 'connected') {
+        console.log('[EditView] Network is back online, connecting to awareness')
+        initializeAwareness(draft)
+      }
+    }
+  }
+
+  // Функция для инициализации awareness
+  const initializeAwareness = (draft: Draft) => {
+    try {
+      // Получаем провайдер awareness
+      const awarenessProvider = getProvider()
+
+      // Подключаемся к существующему SSE соединению
+      const { addHandler } = useConnect()
+
+      // Подключаемся к редактору с идентификатором черновика
+      const editorId = `draft-${draft.id}`
+      console.log('[EditView] Connecting to awareness for draft', draft.id)
+
+      // Устанавливаем функцию addHandler в провайдер, чтобы она была доступна внутри
+      awarenessProvider['addHandler'] = addHandler
+
+      // Вызываем стандартный метод connect в провайдере
+      awarenessProvider.connect(editorId)
+
+      // Подписываемся на обновления awareness
+      const unsubscribe = awarenessProvider.onAwarenessChange(handleAwarenessUpdates)
+
+      console.log('[EditView] Connected to awareness for draft', draft.id)
+
+      // Сохраняем весь черновик в localStorage при инициализации
+      saveEntireDraft(draft)
+
+      // Отписываемся при размонтировании
+      onCleanup(() => {
+        unsubscribe()
+        window.removeEventListener('scroll', handleScroll)
+        window.removeEventListener('keydown', handleKeyDown)
+        window.removeEventListener('click', handleDocumentClick)
+        window.removeEventListener('online', handleNetworkStatusChange)
+        window.removeEventListener('offline', handleNetworkStatusChange)
+      })
+    } catch (error) {
+      console.error('[EditView] Failed to connect to awareness:', error)
+    }
+  }
+
+  const getContent = () => {
+    // Получаем контент из локального хранилища или из draft
+    const storedContent = getDraftField(currentDraft()?.id || 0, 'body')
+    const draftContent = currentDraft()?.body || ''
+
+    // Парсим содержимое с улучшенной обработкой кавычек
+    const parsedContent = parseJsonContent(storedContent || '') || draftContent
+
+    // Логируем для отладки
+    console.log('[EditView] Body content initialization:', {
+      storedContent: String(storedContent || '').substring(0, 100),
+      draftContent: String(draftContent || '').substring(0, 100),
+      parsedContent: String(parsedContent || '').substring(0, 100)
+    })
+
+    return parsedContent
+  }
 
   return (
     <>
@@ -779,9 +1092,9 @@ export const EditView = (props: { draft?: Draft }) => {
                 editorId={`draft-${currentDraft()?.id}-body`}
                 fieldType="body"
                 toolbar="float"
-                commands={['bold', 'italic', 'link', 'blockquote', 'image']}
-                content={getEditorContent(`draft-${currentDraft()?.id}-body`) || ''}
-                onChange={(data: EditorData) => handleInputChange('body', data.content)}
+                commands={featuredEditorCommands as readonly (CommandType | readonly CommandType[])[]}
+                content={getContent()}
+                onChange={(data) => handleInputChange('body', data)}
                 onInit={(instance) => setBodyEditorRef(instance.editor)}
                 onFocus={() => handleBodyEditorFocus(true)}
                 onBlur={() => handleBodyEditorFocus(false)}

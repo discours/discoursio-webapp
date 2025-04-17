@@ -1,6 +1,11 @@
-import { CommandType } from './commands'
 import styles from './embed.module.scss'
+import { CommandType } from './types'
+import { replaceSelection } from './utils'
+import { VIMEO_URL_REGEX, YOUTUBE_URL_REGEX } from './video'
 
+export const IMAGE_URL_REGEX = /\.(jpe?g|png|gif|webp|avif)$/i
+export const AUDIO_URL_REGEX = /\.(mp3|wav|ogg|m4a)$/i
+export const LINK_URL_REGEX = /^(https?:\/\/)?(www\.)?[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/
 /**
  * @module embed
  * @description Модуль для встраивания внешнего контента
@@ -19,16 +24,6 @@ import styles from './embed.module.scss'
  * })
  * ```
  */
-
-// Регулярные выражения для определения типа контента по ссылке
-export const CONTENT_REGEX = {
-  IMAGE: /\.(jpe?g|png|gif|webp|avif)$/i,
-  VIMEO: /^(?:https?:\/\/)?(?:www\.|player\.)?vimeo\.com\/(?:video\/)?(\d+)$/,
-  YOUTUBE:
-    /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})$/,
-  URL: /^(https?:\/\/)?(www\.)?[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/,
-  AUDIO: /\.(mp3|wav|ogg|m4a)$/i
-} as const
 
 export type ContentType = 'link' | 'image' | 'video' | 'audio'
 
@@ -118,10 +113,10 @@ export const createAudioEmbed = (url: string): string => {
 }
 
 export const detectVideoPlatform = (url: string): 'youtube' | 'vimeo' => {
-  if (CONTENT_REGEX.VIMEO.test(url)) {
+  if (VIMEO_URL_REGEX.test(url)) {
     return 'vimeo'
   }
-  if (CONTENT_REGEX.YOUTUBE.test(url)) {
+  if (YOUTUBE_URL_REGEX.test(url)) {
     return 'youtube'
   }
   throw new Error('Unsupported video platform')
@@ -168,11 +163,11 @@ export const createLinkPreview = (content: EmbedContent): string => {
 export const recognizeCommand = (url: string): CommandType | undefined => {
   let action: CommandType | undefined
   for (const [type, regex] of [
-    ['video', CONTENT_REGEX.VIMEO],
-    ['video', CONTENT_REGEX.YOUTUBE],
-    ['image', CONTENT_REGEX.IMAGE],
-    // ['audio', CONTENT_REGEX.AUDIO],
-    ['link', CONTENT_REGEX.URL]
+    ['video', VIMEO_URL_REGEX],
+    ['video', YOUTUBE_URL_REGEX],
+    ['image', IMAGE_URL_REGEX],
+    ['audio', AUDIO_URL_REGEX],
+    ['link', LINK_URL_REGEX]
   ]) {
     const match = url.match(regex)
     if (match) {
@@ -185,6 +180,8 @@ export const recognizeCommand = (url: string): CommandType | undefined => {
 
 /**
  * Обрабатывает вставку контента с распознаванием URL
+ *
+ * @returns true если контент был обработан специальным образом
  */
 export const handleContentPaste = (
   text: string,
@@ -193,30 +190,119 @@ export const handleContentPaste = (
     insertText: (text: string) => void
     insertHtml: (html: string) => void
   }
-) => {
+): boolean => {
   const { showLoading, insertText, insertHtml } = options
 
   try {
     const action = recognizeCommand(text)
     if (!action) {
-      insertText(text)
-      return
+      return false // Не распознали специальный тип контента
     }
+
     let embedHtml = ''
     showLoading?.()
+
     if (action === 'video') {
-      if (CONTENT_REGEX.VIMEO.test(text)) {
-        embedHtml = createVideoEmbed(text, 'vimeo')
-      } else if (CONTENT_REGEX.YOUTUBE.test(text)) {
-        embedHtml = createVideoEmbed(text, 'youtube')
+      try {
+        const platform = detectVideoPlatform(text)
+        // Проверка на YouTube URL
+        if (platform === 'youtube') {
+          // Поддерживаемые форматы YouTube URL
+          const regex = YOUTUBE_URL_REGEX
+          const match = text.match(regex)
+
+          if (match?.[1]) {
+            const videoId = match[1]
+            embedHtml = createVideoEmbed(videoId, platform)
+            insertHtml(embedHtml)
+            return true
+          }
+        }
+
+        // Проверка на Vimeo URL
+        if (platform === 'vimeo') {
+          // Поддерживаемые форматы Vimeo URL
+          const regex = VIMEO_URL_REGEX
+          const match = text.match(regex)
+
+          if (match?.[1]) {
+            const videoId = match[1]
+            embedHtml = createVideoEmbed(videoId, platform)
+            insertHtml(embedHtml)
+            return true
+          }
+        }
+      } catch (e) {
+        console.error('Error embedding video:', e)
       }
     } else if (action === 'image') {
       embedHtml = createImageEmbed({ url: text, type: 'image' })
+      insertHtml(embedHtml)
+      return true
     } else if (action === 'link') {
-      embedHtml = createLinkPreview({ url: text, type: 'link' })
+      // Вставляем ссылку как текст или превью
+      insertText(text)
+      return true
     }
-    insertHtml(embedHtml)
-  } catch {
-    insertText(text)
+  } catch (error) {
+    console.error('Error handling paste:', error)
   }
+
+  // Если не обработали специальным образом, возвращаем false
+  return false
+}
+
+/**
+ * Обрабатывает событие вставки из буфера обмена в редактор
+ *
+ * @param event Событие ClipboardEvent
+ * @param editor DOM-элемент редактора
+ * @returns true если вставка была обработана специальным образом
+ */
+export const handleContentPasteEvent = (event: ClipboardEvent, editor: HTMLElement): boolean => {
+  // Получаем текст из буфера обмена
+  const text = event.clipboardData?.getData('text/plain') || ''
+
+  // Проверяем на медиаконтент в буфере обмена
+  if (event.clipboardData?.items) {
+    for (const item of Array.from(event.clipboardData.items)) {
+      if (item.type.indexOf('image') !== -1) {
+        const file = item.getAsFile()
+        if (file) {
+          // Здесь можно обработать вставку изображения напрямую
+          // Но для этого нужно вызывать API загрузки файлов
+          console.log('Image pasted from clipboard, handling not implemented:', file)
+          return true
+        }
+      }
+    }
+  }
+
+  // Если это текст и похож на URL или медиа-ссылку, обрабатываем его
+  if (text?.trim()) {
+    return handleContentPaste(text, {
+      insertText: (textContent) => {
+        if (editor) {
+          const sel = window.getSelection()
+          if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0)
+            range.deleteContents()
+            const textNode = document.createTextNode(textContent)
+            range.insertNode(textNode)
+            range.setStartAfter(textNode)
+            range.collapse(true)
+            sel.removeAllRanges()
+            sel.addRange(range)
+          }
+        }
+      },
+      insertHtml: (html) => {
+        if (editor) {
+          replaceSelection(html, editor)
+        }
+      }
+    })
+  }
+
+  return false
 }

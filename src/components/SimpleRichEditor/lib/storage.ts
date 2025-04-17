@@ -1,10 +1,12 @@
+import { isServer } from 'solid-js/web'
+import { debounce } from 'throttle-debounce'
 import type { Draft, DraftInput } from '~/graphql/schema/core.gen'
-import { EditorFieldType } from '../SimpleRichEditor'
+import { EditorFieldType } from './types'
 
 /**
- * Интерфейс для сохраняемой версии контента
+ * Интерфейс для данных, хранящихся в localStorage
  */
-export interface ContentVersion {
+export interface StorageData {
   content: string
   timestamp: number
   source: 'server' | 'local'
@@ -18,6 +20,26 @@ export interface DraftFieldsVersion {
   timestamp: number
   source: 'server' | 'local'
   lastSync?: number
+}
+
+/**
+ * Интерфейс для полного черновика в localStorage
+ */
+export interface DraftStorage {
+  id: string | number
+  fields: Record<string, string>
+  timestamp: number
+  lastSync?: number
+  source: 'server' | 'local'
+}
+
+/**
+ * Интерфейс для сохраняемой версии контента
+ */
+export interface ContentVersion {
+  content: string
+  timestamp: number
+  source: 'server' | 'local'
 }
 
 /**
@@ -103,72 +125,109 @@ export const cleanupJsonContent = (
 }
 
 /**
- * Получает объект версии из локального хранилища
+ * Получает данные из локального хранилища
  * @param key Ключ для хранилища
- * @returns Объект версии контента или null если не найден
+ * @returns Данные (контент с метаданными) или null если не найдено
  */
-export const getVersionFromStorage = (key: string): ContentVersion | null => {
+export const getStorageData = (key: string): StorageData | null => {
   if (!key) return null
 
-  const item = localStorage.getItem(key)
-  if (!item) return null
-
   try {
-    return JSON.parse(item) as ContentVersion
-  } catch (_e) {
-    // Для обратной совместимости: если в хранилище просто строка, конвертируем в формат версии
-    return {
-      content: item,
-      timestamp: Date.now() - 86400000, // Ставим вчерашнюю дату для старых записей
-      source: 'local'
+    const data = localStorage.getItem(key)
+    if (!data) return null
+
+    // Пробуем распарсить как JSON с метаданными
+    try {
+      return JSON.parse(data) as StorageData
+    } catch {
+      // Для обратной совместимости: если это не JSON, а просто строка контента
+      return {
+        content: data,
+        timestamp: Date.now(), // Примерная временная метка
+        source: 'local'
+      }
     }
+  } catch (e) {
+    console.error('[Storage] Error getting storage data:', e)
+    return null
   }
 }
 
 /**
- * Сохраняет версию контента в локальное хранилище
+ * Получает контент из хранилища
+ * @param key Ключ для хранилища
+ * @returns Объект с содержимым и метаданными или null если не найден
+ */
+export const getVersionFromStorage = (key: string): ContentVersion | null => {
+  const data = getStorageData(key)
+  if (!data) return null
+
+  const source = data.source || 'local'
+
+  return {
+    content: data.content,
+    timestamp: data.timestamp,
+    source
+  }
+}
+
+/**
+ * Получает временную метку из хранилища
+ * @param key Ключ для хранилища
+ * @returns Временная метка или null если не найдена
+ */
+export const getVersionTimestamp = (key: string): number | null => {
+  const data = getStorageData(key)
+  return data ? data.timestamp : null
+}
+
+/**
+ * Получает источник данных из хранилища
+ * @param key Ключ для хранилища
+ * @returns Источник данных ('server' | 'local') или 'local' по умолчанию
+ */
+export const getVersionSource = (key: string): 'server' | 'local' => {
+  const data = getStorageData(key)
+  return data ? data.source : 'local'
+}
+
+/**
+ * Сохраняет данные в локальное хранилище
  * @param key Ключ для хранилища
  * @param content Контент для сохранения
- * @param source Источник контента ('server' | 'local')
+ * @param source Источник данных (server или local)
  */
 export const saveVersionToStorage = (
   key: string,
-  content: string | Record<string, unknown> | null | undefined,
-  source: 'server' | 'local'
+  content: string,
+  source: 'server' | 'local' = 'local'
 ): void => {
-  if (!key) return
+  if (!key || !content) return
 
-  // Убедимся, что контент - строка
-  const contentStr = typeof content === 'string' ? content : String(content || '')
+  const existingData = getStorageData(key)
 
-  // Если контент пустой, удаляем из хранилища
-  if (!contentStr.trim()) {
-    localStorage.removeItem(key)
-    return
+  // Проверяем, изменился ли контент
+  if (existingData && existingData.content === content && existingData.source === source) {
+    return // Если данные не изменились, не сохраняем повторно
   }
 
-  const version: ContentVersion = {
-    content: contentStr,
+  // Сохраняем данные одной записью
+  const storageData: StorageData = {
+    content,
     timestamp: Date.now(),
     source
   }
 
-  localStorage.setItem(key, JSON.stringify(version))
+  localStorage.setItem(key, JSON.stringify(storageData))
 }
 
 /**
- * Удаляет локальную версию контента из хранилища
- * @param storagePrefix Префикс ключа хранилища (например, editorId или editorId:fieldType)
+ * Удаляет данные из локального хранилища
+ * @param key Ключ для хранилища
  */
-export const removeLocalVersion = (storagePrefix: string): void => {
-  if (!storagePrefix) return
-
-  // Удаляем локальную версию
-  localStorage.removeItem(storagePrefix)
-
-  // Удаляем сохраненные ключи для этого редактора
-  const localKey = `${storagePrefix}`
-  localStorage.removeItem(localKey)
+export const removeLocalVersion = (key: string): void => {
+  if (!key) return
+  localStorage.removeItem(key)
 }
 
 /**
@@ -196,13 +255,13 @@ export const getServerVersionKey = (storageKey: string): string => {
  * @param content Контент для сохранения
  * @param editorId ID редактора
  * @param fieldType Тип поля
- * @returns Объект версии контента
+ * @returns Объект с содержимым и метаданными
  */
 export const createServerVersion = (
   content: string,
   editorId?: string,
   fieldType?: EditorFieldType
-): ContentVersion | null => {
+): { content: string; timestamp: number; source: 'server' } | null => {
   if (!content) return null
 
   // Очищаем контент от возможных JSON-структур перед использованием
@@ -237,8 +296,8 @@ export const loadVersions = (
   incomingContent?: string
 ): {
   contentToUse: string
-  serverVersion: ContentVersion | null
-  localVersion: ContentVersion | null
+  serverVersion: { content: string; timestamp: number; source: 'server' } | null
+  localVersion: { content: string; timestamp: number; source: 'local' } | null
   showLocalVersionWarning: boolean
 } => {
   // Формируем ключи хранилища
@@ -246,8 +305,8 @@ export const loadVersions = (
   const baseKey = editorId || ''
 
   // Получаем версии контента
-  let serverVersion: ContentVersion | null = null
-  let localVersion: ContentVersion | null = null
+  let serverVersion: { content: string; timestamp: number; source: 'server' } | null = null
+  let localVersion: { content: string; timestamp: number; source: 'local' } | null = null
 
   // Серверная версия из входящего контента
   if (incomingContent !== undefined) {
@@ -256,16 +315,27 @@ export const loadVersions = (
 
   // Проверяем локальную версию с учетом типа поля
   if (editorId) {
-    localVersion = getVersionFromStorage(storageKey)
+    const localContent = getVersionFromStorage(storageKey)
+    const localTimestamp = getVersionTimestamp(storageKey)
 
-    // Если нет версии с типом поля, проверяем базовую версию
-    if (!localVersion) {
-      localVersion = getVersionFromStorage(baseKey)
-    }
+    if (localContent && localTimestamp) {
+      localVersion = {
+        content: cleanupJsonContent(localContent.content),
+        timestamp: localTimestamp,
+        source: 'local'
+      }
+    } else {
+      // Если нет версии с типом поля, проверяем базовую версию
+      const baseContent = getVersionFromStorage(baseKey)
+      const baseTimestamp = getVersionTimestamp(baseKey)
 
-    // Очищаем контент локальной версии от JSON-строк
-    if (localVersion) {
-      localVersion.content = cleanupJsonContent(localVersion.content)
+      if (baseContent && baseTimestamp) {
+        localVersion = {
+          content: cleanupJsonContent(baseContent.content),
+          timestamp: baseTimestamp,
+          source: 'local'
+        }
+      }
     }
   }
 
@@ -307,40 +377,32 @@ export const loadVersions = (
 }
 
 /**
- * Сохраняет контент в локальное хранилище
+ * Сохраняет контент редактора в локальное хранилище
  * @param editorId ID редактора
- * @param fieldType Тип поля
+ * @param fieldType Тип поля редактора
  * @param content Контент для сохранения
- * @param isEmpty Флаг пустого контента
+ * @param isEmpty Флаг, указывающий что контент пустой
+ * @returns Возвращает true, если операция выполнена успешно
  */
-export const saveContent = (
-  editorId?: string,
-  fieldType?: EditorFieldType,
-  content?: string,
-  isEmpty = false
-): void => {
-  if (!editorId || !content) return
+export const saveEditorContent = (
+  editorId: string,
+  fieldType: EditorFieldType,
+  content: string,
+  isEmpty: boolean
+): boolean => {
+  if (!editorId || !fieldType) return false
 
-  // Формируем ключи хранилища
-  const storageKey = getStorageKey(editorId, fieldType)
+  const key = `draft-${editorId}-${fieldType}`
 
+  // Если контент пустой, удаляем версию
   if (isEmpty) {
-    // Если содержимое пустое, удаляем из хранилища
-    removeLocalVersion(storageKey)
-
-    // Удаляем и из базового ключа, если используется fieldType
-    if (fieldType) {
-      removeLocalVersion(editorId)
-    }
-  } else {
-    // Сохраняем как локальную версию
-    saveVersionToStorage(storageKey, content, 'local')
-
-    // Также сохраняем в базовый ключ для совместимости, если используется fieldType
-    if (fieldType && storageKey !== editorId) {
-      saveVersionToStorage(editorId, content, 'local')
-    }
+    removeLocalVersion(key)
+    return true
   }
+
+  // Сохраняем версию
+  saveVersionToStorage(key, content, 'local')
+  return true
 }
 
 /**
@@ -364,7 +426,9 @@ export const clearLocalVersion = (editorId?: string, fieldType?: EditorFieldType
  * @param localVersion Локальная версия
  * @returns Очищенный контент
  */
-export const loadLocalVersionContent = (localVersion: ContentVersion | null): string => {
+export const loadLocalVersionContent = (
+  localVersion: { content: string; timestamp?: number; source?: string } | null
+): string => {
   if (!localVersion) return ''
 
   // Очищаем контент от JSON-строк перед использованием
@@ -376,250 +440,407 @@ export const loadLocalVersionContent = (localVersion: ContentVersion | null): st
  */
 
 /**
- * Формирует ключ хранилища для полей черновика
+ * Формирует ключ хранилища для черновика
  * @param draftId Идентификатор черновика
- * @returns Ключ для хранилища полей черновика
+ * @returns Ключ для хранилища черновика
  */
-export const getDraftFieldsKey = (draftId: string | number): string => {
+export const getDraftKey = (draftId: string | number): string => {
   return `${DRAFT_PREFIX}${draftId}`
 }
 
 /**
- * Сохраняет поле черновика в localStorage
+ * Получает полный черновик из хранилища
  * @param draftId Идентификатор черновика
- * @param fieldName Имя поля
- * @param fieldValue Значение поля
+ * @returns Объект черновика или null
  */
-export const saveDraftField = (
-  draftId: string | number,
-  fieldName: string,
-  fieldValue: string | null | undefined
-): void => {
-  if (!draftId || !fieldName) return
-
-  // Если значение пустое, не сохраняем
-  if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
-    return
-  }
-
-  try {
-    // Формируем ключ хранилища
-    const storageKey = getDraftFieldsKey(draftId)
-
-    // Получаем текущую версию полей черновика
-    const currentVersion = getDraftFieldsVersion(draftId)
-
-    // Обновляем поле в версии
-    const updatedFields = {
-      ...(currentVersion?.fields || {}),
-      [fieldName]: fieldValue
-    }
-
-    // Создаем новую версию
-    const newVersion: DraftFieldsVersion = {
-      fields: updatedFields,
-      timestamp: Date.now(),
-      source: 'local',
-      lastSync: currentVersion?.lastSync || undefined
-    }
-
-    // Сохраняем в localStorage
-    localStorage.setItem(storageKey, JSON.stringify(newVersion))
-
-    // Если поле - это содержимое редактора (body или lead),
-    // также сохраняем в соответствующий ключ для SimpleRichEditor
-    if (fieldName === 'body' || fieldName === 'lead') {
-      const editorKey = `draft-${draftId}-${fieldName}`
-      saveContent(editorKey, undefined, fieldValue)
-    }
-
-    console.log(`[OfflineStorage] Saved field "${fieldName}" for draft ${draftId}`)
-  } catch (error) {
-    console.error('[OfflineStorage] Error saving draft field:', error)
-  }
-}
-
-/**
- * Получает версию полей черновика из localStorage
- * @param draftId Идентификатор черновика
- * @returns Объект версии полей черновика или null
- */
-export const getDraftFieldsVersion = (draftId: string | number): DraftFieldsVersion | null => {
+export const getDraftFromStorage = (draftId: string | number): DraftStorage | null => {
   if (!draftId) return null
+  if (isServer) return null
 
   try {
-    // Формируем ключ хранилища
-    const storageKey = getDraftFieldsKey(draftId)
+    const key = getDraftKey(draftId)
+    const data = localStorage.getItem(key)
+    if (!data) return null
 
-    // Получаем данные из localStorage
-    const storedData = localStorage.getItem(storageKey)
-    if (!storedData) return null
-
-    // Парсим JSON
-    return JSON.parse(storedData) as DraftFieldsVersion
-  } catch (error) {
-    console.error('[OfflineStorage] Error getting draft fields version:', error)
+    return JSON.parse(data) as DraftStorage
+  } catch (e) {
+    console.error('[OfflineStorage] Error getting draft:', e)
     return null
   }
 }
 
 /**
- * Получает значение поля черновика из localStorage
+ * Сохраняет полный черновик в хранилище
+ * @param draft Объект черновика для сохранения
+ * @returns true в случае успеха
+ */
+export const saveDraftToStorage = (draft: DraftStorage): boolean => {
+  if (!draft?.id) return false
+
+  try {
+    const key = getDraftKey(draft.id)
+    localStorage.setItem(key, JSON.stringify(draft))
+    console.log(`[OfflineStorage] Saved entire draft ${draft.id}`)
+    return true
+  } catch (e) {
+    console.error('[OfflineStorage] Error saving draft:', e)
+    return false
+  }
+}
+
+/**
+ * Получает значение поля черновика из хранилища
  * @param draftId Идентификатор черновика
  * @param fieldName Имя поля
  * @returns Значение поля или null
  */
 export const getDraftField = (draftId: string | number, fieldName: string): string | null => {
   if (!draftId || !fieldName) return null
+  if (isServer) return null
 
   try {
-    // Получаем версию полей черновика
-    const version = getDraftFieldsVersion(draftId)
-    if (!version || !version.fields) return null
+    const draft = getDraftFromStorage(draftId)
+    if (!draft || !draft.fields) return null
 
-    // Возвращаем значение поля
-    return version.fields[fieldName] || null
-  } catch (error) {
-    console.error('[OfflineStorage] Error getting draft field:', error)
+    return draft.fields[fieldName] || null
+  } catch (e) {
+    console.error('[OfflineStorage] Error getting draft field:', e)
     return null
   }
 }
 
 /**
- * Получает все поля черновика из localStorage
+ * Сохраняет поле черновика в хранилище
  * @param draftId Идентификатор черновика
- * @returns Объект с полями черновика или null
+ * @param fieldName Имя поля
+ * @param fieldValue Значение поля
+ * @returns true в случае успеха
  */
-export const getAllDraftFields = (draftId: string | number): Record<string, string> | null => {
-  if (!draftId) return null
+export const saveDraftField = (
+  draftId: string | number,
+  fieldName: string,
+  fieldValue: string | null | undefined
+): boolean => {
+  if (!draftId || !fieldName) return false
 
-  try {
-    // Получаем версию полей черновика
-    const version = getDraftFieldsVersion(draftId)
-    if (!version || !version.fields) return null
-
-    return { ...version.fields }
-  } catch (error) {
-    console.error('[OfflineStorage] Error getting all draft fields:', error)
-    return null
+  // Если значение пустое, не сохраняем
+  if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+    return false
   }
-}
-
-/**
- * Обновляет время последней синхронизации черновика с сервером
- * @param draftId Идентификатор черновика
- */
-export const updateLastSync = (draftId: string | number): void => {
-  if (!draftId) return
 
   try {
-    // Получаем версию полей черновика
-    const version = getDraftFieldsVersion(draftId)
-    if (!version) return
+    // Получаем текущий черновик или создаем новый
+    const draft = getDraftFromStorage(draftId) || {
+      id: draftId,
+      fields: {},
+      timestamp: Date.now(),
+      source: 'local' as const
+    }
 
-    // Обновляем время синхронизации
-    version.lastSync = Date.now()
+    // Преобразуем значение в строку
+    const valueToStore = String(fieldValue)
 
-    // Сохраняем обновленную версию
-    const storageKey = getDraftFieldsKey(draftId)
-    localStorage.setItem(storageKey, JSON.stringify(version))
+    // Обновляем поле
+    draft.fields[fieldName] = valueToStore
+    draft.timestamp = Date.now()
 
-    console.log(`[OfflineStorage] Updated last sync for draft ${draftId}`)
-  } catch (error) {
-    console.error('[OfflineStorage] Error updating last sync:', error)
-  }
-}
+    // Сохраняем обновленный черновик
+    saveDraftToStorage(draft)
 
-/**
- * Проверяет, есть ли несинхронизированные изменения в черновике
- * @param draftId Идентификатор черновика
- * @returns true, если есть несинхронизированные изменения
- */
-export const hasUnsyncedChanges = (draftId: string | number): boolean => {
-  if (!draftId) return false
-
-  try {
-    // Получаем версию полей черновика
-    const version = getDraftFieldsVersion(draftId)
-    if (!version || !version.fields) return false
-
-    // Если нет метки времени последней синхронизации, считаем, что есть изменения
-    if (!version.lastSync) return true
-
-    // Если версия создана после последней синхронизации, считаем, что есть изменения
-    return version.timestamp > version.lastSync
-  } catch (error) {
-    console.error('[OfflineStorage] Error checking unsynced changes:', error)
+    console.log(`[OfflineStorage] Saved field "${fieldName}" for draft ${draftId}`)
+    return true
+  } catch (e) {
+    console.error('[OfflineStorage] Error saving draft field:', e)
     return false
   }
 }
 
 /**
- * Применяет локальные изменения из localStorage к объекту черновика
+ * Получает все поля черновика
  * @param draftId Идентификатор черновика
- * @param originalDraft Оригинальный объект черновика
- * @returns Обновленный объект черновика с примененными изменениями
+ * @returns Объект с полями или null
  */
-export const applyOfflineChanges = <T extends Record<string, unknown>>(
-  draftId: string | number,
-  originalDraft: T
-): T => {
+export const getAllDraftFields = (draftId: string | number): DraftInput | null => {
+  if (!draftId) return null
+  if (isServer) return null
+
   try {
-    // Получаем локальные изменения для этого черновика
-    const fields = getAllDraftFields(draftId)
-    if (!fields || Object.keys(fields).length === 0) {
-      return originalDraft
-    }
+    const draft = getDraftFromStorage(draftId)
+    if (!draft || !draft.fields) return null
 
-    // Создаем копию оригинального черновика
-    const updatedDraft = { ...originalDraft } as T
-
-    // Применяем локальные изменения
-    Object.entries(fields).forEach(([fieldName, fieldValue]) => {
-      // Получаем тип поля из исходного объекта
-      const fieldType = typeof originalDraft[fieldName]
-
-      // Применяем только если поле строкового типа или null/undefined
-      if (fieldType === 'string' || fieldType === 'undefined' || originalDraft[fieldName] === null) {
-        ;(updatedDraft as Record<string, unknown>)[fieldName] = fieldValue
-      }
-    })
-
-    return updatedDraft
-  } catch (error) {
-    console.error('[OfflineStorage] Error applying offline changes:', error)
-    return originalDraft
+    return { ...draft.fields }
+  } catch (e) {
+    console.error('[OfflineStorage] Error getting all draft fields:', e)
+    return null
   }
 }
 
 /**
- * Создает объект DraftInput из Draft с применением локальных изменений
+ * Обновляет время последней синхронизации черновика
  * @param draftId Идентификатор черновика
- * @param originalDraft Исходный объект черновика
- * @returns Объект DraftInput для отправки на сервер
+ * @returns true в случае успеха
  */
-export const getDraftInputWithOfflineChanges = (
-  draftId: string | number,
-  originalDraft: Draft
-): DraftInput => {
-  // Применяем локальные изменения
-  const updatedDraft = applyOfflineChanges(draftId, originalDraft)
+export const updateLastSync = (draftId: string | number): boolean => {
+  if (!draftId) return false
 
-  // Преобразуем в DraftInput
-  const draftInput: DraftInput = {
-    id: updatedDraft.id,
-    title: updatedDraft.title || '',
-    subtitle: updatedDraft.subtitle || '',
-    slug: updatedDraft.slug || '',
-    body: updatedDraft.body || '',
-    lead: updatedDraft.lead || '',
-    description: updatedDraft.description || '',
-    cover: updatedDraft.cover || '',
-    cover_caption: updatedDraft.cover_caption || ''
-    // Преобразуем другие поля по необходимости
+  try {
+    const draft = getDraftFromStorage(draftId)
+    if (!draft) return false
+
+    // Обновляем время синхронизации
+    draft.lastSync = Date.now()
+    saveDraftToStorage(draft)
+
+    console.log(`[OfflineStorage] Updated last sync for draft ${draftId}`)
+    return true
+  } catch (e) {
+    console.error('[OfflineStorage] Error updating last sync:', e)
+    return false
+  }
+}
+
+/**
+ * Проверяет наличие несинхронизированных изменений в черновике
+ * @param draftId Идентификатор черновика
+ * @returns true, если есть изменения
+ */
+export const hasUnsyncedChanges = (draftId: string | number): boolean => {
+  if (!draftId) return false
+
+  try {
+    const draft = getDraftFromStorage(draftId)
+    if (!draft || !draft.fields) return false
+
+    // Если нет метки синхронизации, считаем что есть изменения
+    if (!draft.lastSync) return true
+
+    // Если черновик изменился после синхронизации
+    return draft.timestamp > draft.lastSync
+  } catch (e) {
+    console.error('[OfflineStorage] Error checking unsynced changes:', e)
+    return false
+  }
+}
+
+/**
+ * Сохраняет весь черновик из объекта Draft
+ * @param draft Объект черновика из API
+ * @returns true в случае успеха
+ */
+export const saveEntireDraft = (draft: Draft): boolean => {
+  if (!draft || !draft.id) return false
+
+  try {
+    // Получаем текущий черновик из хранилища или создаем новый
+    const storedDraft = getDraftFromStorage(draft.id) || {
+      id: draft.id,
+      fields: {},
+      timestamp: Date.now(),
+      source: 'local' as const
+    }
+
+    // Сохраняем все строковые поля
+    Object.entries(draft).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        // Для body и lead очищаем от JSON обертки
+        if ((key === 'body' || key === 'lead') && value) {
+          storedDraft.fields[key] = parseJsonContent(value)
+        } else {
+          storedDraft.fields[key] = value
+        }
+      }
+    })
+
+    // Обновляем метку времени
+    storedDraft.timestamp = Date.now()
+
+    // Сохраняем в хранилище
+    saveDraftToStorage(storedDraft)
+
+    console.log(`[OfflineStorage] Saved entire draft ${draft.id}`)
+    return true
+  } catch (error) {
+    console.error('[OfflineStorage] Error saving entire draft:', error)
+    return false
+  }
+}
+
+/**
+ * Настраивает автоматическое сохранение контента редактора
+ *
+ * @param editorId ID редактора
+ * @param fieldType Тип поля
+ * @param onChange Функция, вызываемая при изменении для получения текущего контента
+ * @param debounceTime Время задержки для дебаунса (в миллисекундах)
+ * @returns Функция для отключения автосохранения
+ */
+export const setupAutoSave = (
+  editorId: string,
+  fieldType: EditorFieldType | undefined,
+  onChange: () => string,
+  debounceTime = 1000
+): (() => void) => {
+  if (!editorId) {
+    console.error('[SimpleRichEditor] Cannot setup autosave without editorId')
+    // biome-ignore lint/suspicious/noEmptyBlockStatements: ok
+    return () => {}
   }
 
-  return draftInput
+  // Создаем дебаунсированную функцию сохранения
+  const debouncedSave = debounce(debounceTime, () => {
+    const content = onChange()
+
+    // Получаем ключ для хранилища
+    const storageKey = getStorageKey(editorId, fieldType)
+
+    // Сохраняем в локальное хранилище только если контент не пустой
+    if (content?.trim()) {
+      saveVersionToStorage(storageKey, content, 'local')
+      console.log(`[AutoSave] Saved ${editorId}${fieldType ? `:${fieldType}` : ''} content`)
+    }
+  })
+
+  // Также слушаем события beforeunload для сохранения перед выходом
+  const handleBeforeUnload = () => {
+    // При выходе сразу сохраняем без дебаунса
+    const content = onChange()
+    if (content?.trim()) {
+      const storageKey = getStorageKey(editorId, fieldType)
+      saveVersionToStorage(storageKey, content, 'local')
+    }
+  }
+
+  window.addEventListener('beforeunload', handleBeforeUnload)
+
+  // Возвращаем функцию для отключения автосохранения
+  return () => {
+    window.removeEventListener('beforeunload', handleBeforeUnload)
+    debouncedSave.cancel() // Отменяем отложенное сохранение
+  }
+}
+
+// Функция для получения объекта из localStorage с парсингом JSON
+export const getDraftFieldAsObject = <T>(draftId: string | number, fieldName: string): T | null => {
+  if (isServer) return null
+  try {
+    const value = getDraftField(draftId, fieldName)
+    if (!value) return null
+
+    return JSON.parse(value) as T
+  } catch (e) {
+    console.error(`Error parsing JSON for draft field ${fieldName}:`, e)
+    return null
+  }
+}
+
+/**
+ * Корректно парсит JSON-строку содержимого или возвращает исходную строку
+ * Исправлена обработка кавычек в контенте
+ *
+ * @param content Строка содержимого, возможно в формате JSON
+ * @returns Распарсенное содержимое или исходная строка
+ */
+export const parseJsonContent = (content?: string): string => {
+  if (!content) return ''
+
+  // Если строка начинается с '{' - это вероятно JSON объект
+  if (content.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(content)
+
+      // Если это объект с полем content, возвращаем его контент
+      if (parsed && typeof parsed === 'object' && 'content' in parsed) {
+        return parsed.content || ''
+      }
+
+      // Если это просто строка в JSON, возвращаем её
+      if (typeof parsed === 'string') {
+        return parsed
+      }
+
+      // В других случаях возвращаем строковое представление
+      return JSON.stringify(parsed) === '{}' ? '' : String(parsed)
+    } catch (e) {
+      console.warn('[parseJsonContent] Failed to parse JSON, using raw content:', e)
+
+      // Если не удалось распарсить JSON, убираем экранированные кавычки
+      if (content.includes('\\"')) {
+        return content.replace(/\\"/g, '"')
+      }
+
+      return content
+    }
+  }
+
+  // Проверяем на экранированные кавычки в обычном тексте
+  if (content.includes('\\"')) {
+    return content.replace(/\\"/g, '"')
+  }
+
+  return content
+}
+
+/**
+ * Получает черновой контент из хранилища
+ * @param key Ключ для хранилища
+ * @param serverContent Контент с сервера для сравнения
+ * @param serverTimestamp Временная метка контента с сервера
+ * @returns Черновой контент из хранилища или null если не найден/устарел
+ */
+export const getDraftContent = (
+  key: string,
+  serverContent?: string,
+  serverTimestamp?: number
+): string | null => {
+  const localContent = getVersionFromStorage(key)
+  const localTimestamp = getVersionTimestamp(key)
+
+  // Если локальной версии нет, вернем null
+  if (!localContent || !localTimestamp) return null
+
+  // Если нет серверной версии или серверной временной метки, вернем локальный контент
+  if (!serverContent || !serverTimestamp) return localContent.content
+
+  // Если локальная версия новее серверной, вернем локальный контент
+  if (localTimestamp > serverTimestamp) return localContent.content
+
+  // Если контент идентичен или локальная версия устарела, вернем null
+  if (localContent.content === serverContent || localTimestamp <= serverTimestamp) {
+    return null
+  }
+
+  return localContent.content
+}
+
+/**
+ * Проверяет, есть ли сохраненный контент для данного ключа
+ * @param key Ключ для проверки
+ * @returns Булево значение наличия контента
+ */
+export const hasSavedContent = (key: string): boolean => {
+  if (!key) return false
+
+  const content = getVersionFromStorage(key)
+  const timestamp = getVersionTimestamp(key)
+
+  return !!content && !!timestamp
+}
+
+/**
+ * Загружает содержимое из локального хранилища
+ * @param key Ключ для хранилища
+ * @returns Содержимое или пустая строка, если не найдено
+ */
+export const loadContent = (key: string): string => {
+  if (!key) return ''
+
+  try {
+    const content = getVersionFromStorage(key)
+    return content ? content.content : ''
+  } catch (e) {
+    console.error('[OfflineStorage] Error loading content:', e)
+    return ''
+  }
 }
 
 /**
@@ -683,24 +904,26 @@ export const setupNetworkListeners = (onOnline: () => void, onOffline?: () => vo
 }
 
 /**
- * Сохраняет весь черновик в localStorage
- * @param draft Объект черновика
+ * Получает версию полей черновика (для совместимости с предыдущей версией API)
+ * @param draftId Идентификатор черновика
+ * @returns Объект версии полей черновика или null
  */
-export const saveEntireDraft = (draft: Draft): void => {
-  if (!draft || !draft.id) return
+export const getDraftFieldsVersion = (draftId: string | number): DraftFieldsVersion | null => {
+  if (!draftId) return null
 
   try {
-    const draftId = draft.id
+    const draft = getDraftFromStorage(draftId)
+    if (!draft) return null
 
-    // Сохраняем все строковые поля
-    Object.entries(draft).forEach(([key, value]) => {
-      if (typeof value === 'string') {
-        saveDraftField(draftId, key, value)
-      }
-    })
-
-    console.log(`[OfflineStorage] Saved entire draft ${draftId}`)
+    // Конвертируем в старый формат для совместимости
+    return {
+      fields: draft.fields,
+      timestamp: draft.timestamp,
+      source: draft.source,
+      lastSync: draft.lastSync
+    }
   } catch (error) {
-    console.error('[OfflineStorage] Error saving entire draft:', error)
+    console.error('[OfflineStorage] Error getting draft fields version:', error)
+    return null
   }
 }

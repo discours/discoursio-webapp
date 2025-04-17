@@ -133,7 +133,23 @@
   }
 
   .topicSelectContainer {
-    height: 64px;
+    margin: 0;
+    height: auto;
+    min-height: 64px;
+  }
+
+  .refreshTopics {
+    margin-top: 8px;
+    font-size: 14px;
+    
+    a {
+      color: var(--color-primary);
+      text-decoration: none;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 
   .formActions {
@@ -156,6 +172,50 @@
 
     .cancel {
       margin-right: auto;
+    }
+  }
+
+  // Стили для редактора lead
+  .editorWithPlaceholder {
+    width: 100%;
+    position: relative;
+    padding-top: 24px;
+
+    &.placeholder-visible::before {
+      content: attr(data-placeholder);
+      position: absolute;
+      color: var(--color-text-secondary, #9ca3af);
+      pointer-events: none;
+      font-style: italic;
+      opacity: 0.8;
+      padding: var(--editor-padding);
+      display: block !important;
+    }
+  }
+  
+  // Новые стили для редактора lead
+  .editorLabel {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    font-size: 1.6rem;
+  }
+  
+  .editorContainer {
+    position: relative;
+    margin-bottom: 16px;
+    
+    // Улучшенный стиль для SimpleRichEditor
+    :global(.editor) {
+      min-height: 120px;
+      border: 1px solid var(--form-control-border-color, #e2e8f0);
+      border-radius: 4px;
+      padding: 8px;
+      
+      &:focus-within {
+        border-color: var(--color-primary, #4f46e5);
+        box-shadow: 0 0 0 2px rgb(79 70 229 / 10%);
+      }
     }
   }
 }
