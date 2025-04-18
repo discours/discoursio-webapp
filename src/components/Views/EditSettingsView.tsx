@@ -70,7 +70,7 @@ export const EditSettingsView = (props: Props) => {
               shoutId: shout.id || 0,
               title: shout.title || '',
               lead: shout.lead || '',
-              description: shout.description || '',
+              seo: shout.seo || '',
               subtitle: shout.subtitle || '',
               selectedTopics: (shoutTopics() || []) as Topic[],
               mainTopic: shoutTopics()[0] || '',

@@ -10,7 +10,6 @@ export default gql`
         title
         subtitle
         lead
-        description
         body
         media { url pic source artist title body date genre lyrics }
         topics {

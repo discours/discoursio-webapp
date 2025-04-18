@@ -10,7 +10,7 @@
     "allowJs": true,
     "strict": true,
     "noEmit": true,
-    "types": ["vinxi/types/client"],
+    "types": [],
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "isolatedModules": true,
@@ -18,7 +18,8 @@
     "paths": {
       "~/*": ["./src/*"],
       "@/*": ["./public/*"]
-    }
+    },
+    "typeRoots": ["./node_modules/@types", "./i18next-shim.d.ts"]
   },
-  "exclude": ["./src/pages"]
+  "exclude": ["./src/pages", "node_modules/i18next/typescript"]
 }

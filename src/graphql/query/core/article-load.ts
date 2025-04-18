@@ -6,7 +6,6 @@ export default gql`
       id
       title
       lead
-      description
       subtitle
       slug
       layout

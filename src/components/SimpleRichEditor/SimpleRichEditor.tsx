@@ -27,6 +27,8 @@ interface SimpleEditorProps {
   shownAsLead?: boolean
 }
 
+let inputTimeout: number
+
 export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
   const { t } = useLocalize()
   const { showModal } = useUI()
@@ -209,12 +211,21 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
     const c = editorRef.textContent?.trim().length || 0
     setCounter(c)
 
+    // Получаем текущее содержимое редактора
     const content = editorRef.innerHTML
-    setState('content', content)
 
-    // Вызываем onChange только если контент изменился
-    if (props.onChange && content !== props.content) {
-      props.onChange(content)
+    // Сохраняем содержимое в состоянии только если оно изменилось
+    const currentContent = state.content
+    if (content !== currentContent) {
+      setState('content', content)
+
+      // Вызываем onChange только если контент изменился и отличается от props.content
+      if (props.onChange && content !== props.content) {
+        props.onChange(content)
+      }
+
+      // Сохраняем в localStorage
+      localStorage.setItem('editor-content', content)
     }
 
     const selection = window.getSelection()
@@ -231,20 +242,37 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
       blockquote: isInBlockquote,
       underline: document.queryCommandState('underline')
     })
-
-    // Сохраняем в localStorage
-    if (props.content !== content) {
-      localStorage.setItem('editor-content', content)
-    }
   }
 
   // Обработчики событий
   const handleFocus = () => {
     clearTimeout(blurTimer)
     setIsBlurred(false)
+
+    // Сохраняем текущее содержимое при получении фокуса
+    if (editorRef) {
+      setState('content', editorRef.innerHTML)
+    }
   }
 
   const handleBlur = () => {
+    // Если редактор не инициализирован, выходим
+    if (!editorRef) return
+
+    // Сохраняем текущее содержимое перед blur
+    const currentContent = editorRef.innerHTML
+    setState('content', currentContent)
+
+    // Проверяем, был ли контент изменен пользователем
+    const wasEditing = localStorage.getItem('editor-content-editing') === 'true'
+
+    // Вызываем onChange при потере фокуса, только если контент был изменен
+    if (props.onChange && (wasEditing || currentContent !== props.content)) {
+      props.onChange(currentContent)
+      // Сбрасываем флаг редактирования
+      localStorage.setItem('editor-content-editing', 'false')
+    }
+
     blurTimer = window.setTimeout(() => {
       setIsBlurred(true)
       updateState()
@@ -343,15 +371,25 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
   onMount(() => {
     if (!editorRef) return
 
-    // Пытаемся восстановить контент
+    // Определяем, какой контент использовать при инициализации
+    // Приоритет:
+    // 1. Содержимое из пропсов
+    // 2. Сохраненный контент из localStorage
+    // 3. Пустая строка
     const savedContent = localStorage.getItem('editor-content')
-    editorRef.innerHTML = props.content || savedContent || ''
+    const initialContent = props.content || savedContent || ''
+
+    // Устанавливаем HTML-содержимое редактора
+    editorRef.innerHTML = initialContent
+
+    // Обновляем состояние компонента
+    setState('content', initialContent)
 
     if (props.placeholder) {
       editorRef.setAttribute('data-placeholder', props.placeholder)
     }
 
-    editorRef.addEventListener('input', updateState)
+    // Используем наш обработчик handleKeyDown для клавиатурных команд
     editorRef.addEventListener('keydown', handleKeyDown)
 
     if (props.autoFocus) {
@@ -364,11 +402,8 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
 
   onCleanup(() => {
     clearTimeout(blurTimer)
-    editorRef?.removeEventListener('input', updateState)
+    clearTimeout(inputTimeout)
     editorRef?.removeEventListener('keydown', handleKeyDown)
-    if (editorRef) {
-      editorRef.removeEventListener('input', updateState)
-    }
   })
 
   // Обработка клика для выхода из blockquote
@@ -442,6 +477,35 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
     )
   }
 
+  // --- Event Handlers ---
+  const handleInput = (_e: InputEvent) => {
+    // Если редактор не инициализирован, выходим
+    if (!editorRef) return
+
+    // Сохраняем текущее содержимое редактора
+    const currentContent = editorRef.innerHTML
+
+    // Отмечаем, что контент находится в процессе редактирования
+    // Устанавливаем в localStorage метку, что содержимое было изменено пользователем
+    localStorage.setItem('editor-content-editing', 'true')
+
+    // Обновляем состояние
+    setState('content', currentContent)
+
+    // Дебаунсированный вызов onChange
+    if (props.onChange) {
+      window.clearTimeout(inputTimeout)
+      inputTimeout = window.setTimeout(() => {
+        props.onChange?.(currentContent)
+        // После отправки изменений родителю снимаем флаг редактирования
+        localStorage.setItem('editor-content-editing', 'false')
+      }, 100)
+    }
+
+    // Обновляем состояние форматирования
+    updateState()
+  }
+
   return (
     <div
       class={clsx(styles.editor, {
@@ -470,6 +534,7 @@ export const SimpleRichEditor: Component<SimpleEditorProps> = (props) => {
         onFocus={handleFocus}
         onBlur={handleBlur}
         onClick={handleEditorClick}
+        onInput={handleInput}
         data-placeholder={props.placeholder}
       />
 
