@@ -52,14 +52,7 @@ export const route = {
       options: { filters: { featured: true }, limit: FEED_PAGE_SIZE }
     })
     const featuredShouts = await featuredLoader()
-    console.log('Loaded featured shouts:', featuredShouts?.length)
-
     const topData = await fetchHomeTopData()
-    console.log('Loaded top data:', {
-      commented: topData.topCommentedShouts?.length,
-      month: topData.topMonthShouts?.length,
-      rated: topData.topRatedShouts?.length
-    })
 
     return {
       ...topData,

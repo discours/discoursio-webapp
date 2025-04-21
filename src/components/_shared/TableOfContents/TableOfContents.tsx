@@ -81,7 +81,7 @@ export const TableOfContents = (props: Props) => {
 
   const updateActiveHeader = throttle(50, () => {
     if (!isDocumentReady()) return
-    const newActiveIndex = headings().findLastIndex((heading) => isInViewport(heading))
+    const newActiveIndex = headings().findIndex((heading: HTMLElement) => isInViewport(heading))
     setActiveHeaderIndex(newActiveIndex)
   })
 

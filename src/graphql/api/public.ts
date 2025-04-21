@@ -13,6 +13,7 @@ import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
 import getAuthorsByTopicQuery from '~/graphql/query/core/topic-authors'
 import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
 import loadTopicsQuery from '~/graphql/query/core/topics-all'
+import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community'
 import { QueryLoad_Shouts_ByArgs, Shout, Topic } from '~/graphql/schema/core.gen'
 import {
   Author,
@@ -23,8 +24,12 @@ import {
 import { QueryGet_ShoutArgs } from '~/graphql/schema/core.gen'
 import { LoadShoutsOptions, QueryLoad_Shouts_SearchArgs } from '~/graphql/schema/core.gen'
 import { QueryLoad_Shouts_UnratedArgs } from '~/graphql/schema/core.gen'
-import { QueryGet_AuthorArgs } from '~/graphql/schema/core.gen'
-import { QueryLoad_Comments_BranchArgs } from '~/graphql/schema/core.gen'
+import {
+  QueryGet_AuthorArgs,
+  QueryGet_TopicArgs,
+  QueryGet_Topics_By_CommunityArgs
+} from '~/graphql/schema/core.gen'
+
 // Topics API
 /**
  * Прямой метод без кеширования
@@ -34,8 +39,15 @@ import { QueryLoad_Comments_BranchArgs } from '~/graphql/schema/core.gen'
  */
 export const loadTopics = () => {
   return async () => {
-    const resp = await defaultClient.query(loadTopicsQuery, {}).toPromise()
+    const resp = await defaultClient.query(loadTopicsQuery, {} as QueryGet_TopicArgs).toPromise()
     return resp?.data?.get_topics_all as Topic[]
+  }
+}
+
+export const loadTopicsByCommunity = (options: QueryGet_Topics_By_CommunityArgs) => {
+  return async () => {
+    const resp = await defaultClient.query(loadTopicsByCommunityQuery, options).toPromise()
+    return resp?.data?.get_topics_by_community as Topic[]
   }
 }
 
