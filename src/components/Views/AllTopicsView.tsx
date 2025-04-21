@@ -1,6 +1,6 @@
 import { A, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
+import { For, Show, createEffect, createMemo, createSignal, on, onCleanup, onMount } from 'solid-js'
 import { Loading } from '~/components/_shared/Loading'
 import { SearchField } from '~/components/_shared/SearchField'
 import { useLocalize } from '~/context/localize'
@@ -10,11 +10,10 @@ import { findFirstReadableCharIndex, notLatin, notRus } from '~/intl/chars'
 import { dummyFilter } from '~/intl/dummyFilter'
 import { capitalize } from '~/utils/capitalize'
 import { scrollHandler } from '~/utils/scroll'
-import { TopicBadge } from '../Topic/TopicBadge'
+import { TopicBadge } from '../Topic/TopicBadge/TopicBadge'
 
 import styles from '~/styles/views/AllTopics.module.scss'
 
-export const TOPICS_PER_PAGE = 50
 export const ABC = {
   ru: 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ#',
   en: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
@@ -23,28 +22,55 @@ export const ABC = {
 export const AllTopicsView = () => {
   const { t, lang } = useLocalize()
   const alphabet = createMemo(() => ABC[lang()])
-  const { setTopicsSort, sortedTopics } = useTopics()
+  const {
+    setTopicsSort,
+    topicsByAuthors,
+    topicsByShouts,
+    sortedTopics,
+    loadMoreTopics,
+    hasMore,
+    isLoading
+  } = useTopics()
   const [searchParams, changeSearchParams] = useSearchParams<{ by?: string }>()
   onMount(() => changeSearchParams({ by: 'shouts' }))
   createEffect(on(() => searchParams?.by || 'shouts', setTopicsSort, { defer: true }))
 
-  // sorted derivative
+  // Выбираем соответствующий список топиков в зависимости от режима сортировки
+  const currentTopicsList = createMemo<Topic[]>(() => {
+    const currentSortBy = searchParams?.by || 'shouts'
+
+    if (currentSortBy === 'authors') {
+      return topicsByAuthors()
+    }
+
+    if (currentSortBy === 'title') {
+      return sortedTopics()
+    }
+
+    return topicsByShouts()
+  })
+
+  // sorted derivative для алфавитного отображения
   const byLetter = createMemo<{ [letter: string]: Topic[] }>(() => {
-    return sortedTopics().reduce(
-      (acc, topic) => {
-        const firstCharIndex = findFirstReadableCharIndex(topic?.title || '')
-        let letter =
-          lang() === 'en'
-            ? topic.slug[0].toUpperCase()
-            : (topic?.title?.[firstCharIndex] || '').toUpperCase()
-        if (notRus.test(letter) && lang() === 'ru') letter = '#'
-        if (notLatin.test(letter) && lang() === 'en') letter = '#'
-        if (!acc[letter]) acc[letter] = []
-        acc[letter].push(topic)
-        return acc
-      },
-      {} as { [letter: string]: Topic[] }
-    )
+    // Используем только для сортировки по заголовку
+    if (searchParams?.by === 'title') {
+      return sortedTopics().reduce(
+        (acc, topic) => {
+          const firstCharIndex = findFirstReadableCharIndex(topic?.title || '')
+          let letter =
+            lang() === 'en'
+              ? topic.slug[0].toUpperCase()
+              : (topic?.title?.[firstCharIndex] || '').toUpperCase()
+          if (notRus.test(letter) && lang() === 'ru') letter = '#'
+          if (notLatin.test(letter) && lang() === 'en') letter = '#'
+          if (!acc[letter]) acc[letter] = []
+          acc[letter].push(topic)
+          return acc
+        },
+        {} as { [letter: string]: Topic[] }
+      )
+    }
+    return {}
   })
 
   // helper memo
@@ -62,8 +88,35 @@ export const AllTopicsView = () => {
   const [searchQuery, setSearchQuery] = createSignal('')
   const [filteredResults, setFilteredResults] = createSignal<Topic[]>([])
   createEffect(() =>
-    setFilteredResults((_prev: Topic[]) => dummyFilter(sortedTopics(), searchQuery(), lang()) as Topic[])
+    setFilteredResults(
+      (_prev: Topic[]) => dummyFilter(currentTopicsList(), searchQuery(), lang()) as Topic[]
+    )
   )
+
+  // Обработчик прокрутки для бесконечной загрузки
+  const handleScroll = () => {
+    if (isLoading()) return
+
+    // Проверяем, достигли ли мы конца страницы
+    const scrollPosition = window.scrollY + window.innerHeight
+    const documentHeight = document.documentElement.scrollHeight
+
+    // Загружаем больше данных, когда пользователь прокрутил почти до конца
+    if (scrollPosition >= documentHeight - 300 && hasMore()) {
+      loadMoreTopics()
+    }
+  }
+
+  // Добавляем обработчик прокрутки при монтировании
+  onMount(() => {
+    // Привязываем функцию handleScroll к объекту window
+    window.addEventListener('scroll', handleScroll)
+    // Удаляем обработчик прокрутки при размонтировании
+    onCleanup(() => {
+      // Используем ту же функцию handleScroll при удалении слушателя
+      window.removeEventListener('scroll', handleScroll)
+    })
+  })
 
   // subcomponent
   const AllTopicsHead = () => (
@@ -163,6 +216,14 @@ export const AllTopicsView = () => {
                   </div>
                 </div>
               </Show>
+            </Show>
+
+            <Show when={isLoading()}>
+              <div class="row py-4">
+                <div class="col-12 text-center">
+                  <Loading />
+                </div>
+              </div>
             </Show>
           </div>
         </div>
