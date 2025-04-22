@@ -80,6 +80,8 @@ export const EditView = (props: { draft?: Draft }) => {
   const [bodyEditorRef, setBodyEditorRef] = createSignal<HTMLDivElement>()
   // Сигнал для отслеживания фокуса на основном редакторе
   const [isBodyEditorFocused, setIsBodyEditorFocused] = createSignal(false)
+  // Добавляем сигнал для отслеживания клика на заголовок
+  const [isTitleClicked, setIsTitleClicked] = createSignal(false)
 
   // Добавляем сигнал для хранения исходного содержимого вступления перед редактированием
   const [originalLeadContent, setOriginalLeadContent] = createSignal('')
@@ -223,8 +225,16 @@ export const EditView = (props: { draft?: Draft }) => {
         target.classList?.contains(styles.leadContentText)
     )
 
+    // Проверка для ссылок действий над заголовком
+    const isHeadingActionsClick = Boolean(target.closest(`.${styles.headingActions}`))
+
     // Проверка для основного редактора
     const isBodyClick = Boolean(target.closest('[data-field-type="body"]'))
+
+    // Если клик не в заголовке и не в действиях над заголовком, сбрасываем состояние клика на заголовок
+    if (!isTitleClick && !isHeadingActionsClick) {
+      setIsTitleClicked(false)
+    }
 
     // Добавляем логирование для отладки, какой элемент обнаружен
     if (isLeadPreviewClick) {
@@ -238,9 +248,26 @@ export const EditView = (props: { draft?: Draft }) => {
       return
     }
 
+    // Если клик по заголовку, показываем действия и предотвращаем фокус на основном редакторе
+    if (isTitleClick) {
+      console.log('[EditView] Click detected on title, showing actions')
+      setIsTitleClicked(true)
+      // Предотвращаем всплытие события до document
+      e.stopPropagation()
+      e.preventDefault() 
+      return
+    }
+
+    // Если клик по действиям заголовка, предотвращаем фокус на основном редакторе
+    if (isHeadingActionsClick) {
+      console.log('[EditView] Click detected on heading actions, skipping body focus')
+      e.stopPropagation() 
+      return
+    }
+
     // Если клик не в заголовке, не в редакторе/превью лида и не в основном редакторе,
     // то устанавливаем фокус на основной редактор
-    if (!isTitleClick && !isLeadEditorClick && !isLeadPreviewClick && !isBodyClick) {
+    if (!isTitleClick && !isLeadEditorClick && !isLeadPreviewClick && !isBodyClick && !isHeadingActionsClick) {
       // Дополнительная защита - если редактор лида открыт, не перехватываем фокус
       if (isLeadVisible()) {
         console.log('[EditView] Lead editor is visible, skipping focus to body')
@@ -672,6 +699,12 @@ export const EditView = (props: { draft?: Draft }) => {
       true
     )
 
+    // Обновляем состояние черновика напрямую для мгновенного отображения
+    setCurrentDraft((prev) => {
+      if (!prev) return prev
+      return { ...prev, lead: contentToSave }
+    })
+
     hideLeadInput()
   }
 
@@ -759,12 +792,12 @@ export const EditView = (props: { draft?: Draft }) => {
         <Show when={currentDraft()}>
           <OfflineIndicator />
           <div class={styles.headingActions}>
-            <Show when={!isSubtitleVisible() && currentDraft()?.layout !== 'audio'}>
+            <Show when={isTitleClicked() && !isSubtitleVisible() && currentDraft()?.layout !== 'audio'}>
               <a class={styles.action} onClick={showSubtitleInput}>
                 {t('Add subtitle')}
               </a>
             </Show>
-            <Show when={!isLeadVisible() && !currentDraft()?.lead && currentDraft()?.layout !== 'audio'}>
+            <Show when={isTitleClicked() && !isLeadVisible() && !currentDraft()?.lead && currentDraft()?.layout !== 'audio'}>
               <a class={styles.action} onClick={showLeadInput}>
                 {t('Add intro')}
               </a>
@@ -780,6 +813,10 @@ export const EditView = (props: { draft?: Draft }) => {
                   placeholder={articleTitle()}
                   initialValue={currentDraft()?.title || ''}
                   maxLength={MAX_HEADER_LIMIT}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsTitleClicked(true)
+                  }}
                 />
 
                 <Show when={inputDataErrors().title}>
@@ -837,7 +874,10 @@ export const EditView = (props: { draft?: Draft }) => {
                         content={getEditorContent(`draft-${currentDraft()?.id}-lead`) || ''}
                         onChange={(data) => handleLeadEditorChange(data)}
                         onInit={(instance) => setLeadEditorRef(instance.editor)}
-                        onBlur={saveLead} // Автоматически сохраняем при потере фокуса
+                        onBlur={() => {
+                          console.log('[EditView] Lead editor blur detected, saving lead content')
+                          saveLead() // Гарантированно вызываем сохранение при потере фокуса
+                        }}
                       />
                     </div>
                   </Show>
@@ -1007,9 +1047,28 @@ export const EditView = (props: { draft?: Draft }) => {
   const [networkStatus, setNetworkStatus] = createSignal(navigator.onLine)
 
   onMount(() => {
+    // Порядок регистрации обработчиков имеет значение 
+    // Сначала регистрируем наш обработчик клика, затем onScroll и другие
+    
+    // Сначала добавляем локальные обработчики кликов, чтобы иметь возможность предотвратить всплытие
+    const titleInput = document.querySelector(`.${styles.titleInput}`)
+    if (titleInput) {
+      titleInput.addEventListener('click', (e) => {
+        console.log('[EditView] Direct title click handler')
+        e.stopPropagation()
+        setIsTitleClicked(true)
+        
+        // Явно предотвращаем действие по умолчанию
+        e.preventDefault()
+        return false
+      }, { capture: true })
+    }
+    
+    // Затем добавляем глобальный обработчик
+    document.addEventListener('click', handleDocumentClick)
+    
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('click', handleDocumentClick)
 
     // Добавляем обработчики событий сети
     window.addEventListener('online', handleNetworkStatusChange)
