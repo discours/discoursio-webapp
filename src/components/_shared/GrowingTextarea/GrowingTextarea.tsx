@@ -14,6 +14,7 @@ type Props = {
   variant?: 'bordered'
   fieldName?: string
   textAreaRef?: (el: HTMLTextAreaElement) => void
+  onClick?: (e: { currentTarget: HTMLTextAreaElement; target: Element; stopPropagation: () => void }) => void
 }
 
 export const GrowingTextarea = (props: Props) => {
@@ -70,6 +71,7 @@ export const GrowingTextarea = (props: Props) => {
             placeholder={props.placeholder}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
+            onClick={props.onClick}
           />
         </div>
         <Show when={(props.maxLength && value() && isFocused()) || props.variant === 'bordered'}>

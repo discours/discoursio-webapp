@@ -688,7 +688,7 @@ export class AwarenessProvider {
     const handleAwarenessUpdate = () => {
       // Проверяем состояние подключения
       if (this.connectionState !== 'connected') {
-        console.info('[AwarenessProvider] Skipping awareness update - not connected')
+        // console.info('[AwarenessProvider] Skipping awareness update - not connected')
         return
       }
 
