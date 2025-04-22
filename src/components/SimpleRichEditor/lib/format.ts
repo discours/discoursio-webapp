@@ -22,6 +22,8 @@
  * ```
  */
 
+import { ActiveFormatsType, getNodesInRange } from './helpers'
+import { findAncestor } from './helpers'
 import { CommandType } from './types'
 
 // Common types
@@ -288,56 +290,61 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
     return
   }
 
-  // Если есть выделение текста
+  // Упрощенный алгоритм для выделения текста
+  // 1. Извлекаем содержимое выделения
   const fragment = range.extractContents()
+
+  // 2. Создаем временный контейнер для работы с фрагментом
   const tempDiv = document.createElement('div')
   tempDiv.appendChild(fragment)
 
-  // Находим все элементы с нужным форматированием внутри выделения
+  // 3. Находим все элементы с заданным форматированием
   const formattedElements = tempDiv.querySelectorAll(config.tag)
 
-  // Удаляем форматирование, заменяя элементы на их содержимое
+  // 4. Заменяем форматированные элементы их содержимым (удаляем форматирование)
   formattedElements.forEach((el) => {
-    const content = document.createDocumentFragment()
-
-    // Копируем содержимое форматированного элемента
-    while (el.firstChild) {
-      content.appendChild(el.firstChild)
+    const parent = el.parentNode
+    if (parent) {
+      // Создаем фрагмент с содержимым элемента
+      const contentFragment = document.createDocumentFragment()
+      while (el.firstChild) {
+        contentFragment.appendChild(el.firstChild)
+      }
+      // Заменяем форматированный элемент его содержимым
+      parent.replaceChild(contentFragment, el)
     }
-
-    // Заменяем форматированный элемент его содержимым
-    el.parentNode?.replaceChild(content, el)
   })
 
-  // Вставляем обратно текст с удаленным форматированием
-  range.insertNode(tempDiv)
-
-  // Если вставили div-контейнер, извлекаем его содержимое
-  if (tempDiv.parentNode) {
-    const content = document.createDocumentFragment()
-    while (tempDiv.firstChild) {
-      content.appendChild(tempDiv.firstChild)
-    }
-    tempDiv.parentNode.replaceChild(content, tempDiv)
+  // 5. Если в выделении не было форматированных элементов, но выделен весь форматированный текст,
+  // извлекаем чистый текст для удаления форматирования
+  if (formattedElements.length === 0) {
+    const plainText = tempDiv.textContent || ''
+    tempDiv.innerHTML = ''
+    tempDiv.textContent = plainText
   }
 
-  // Обновляем выделение, чтобы оно охватывало только что вставленный текст
-  const selection = window.getSelection()
-  if (selection) {
-    selection.removeAllRanges()
+  // 6. Создаем новый фрагмент с обработанным содержимым
+  const newFragment = document.createDocumentFragment()
+  while (tempDiv.firstChild) {
+    newFragment.appendChild(tempDiv.firstChild)
+  }
 
-    try {
-      // Создаем новый диапазон, который охватывает всё содержимое
-      const newRange = document.createRange()
-      newRange.setStartBefore(range.startContainer)
-      newRange.setEndAfter(range.endContainer)
-      selection.addRange(newRange)
-    } catch (error) {
-      console.error('Error restoring selection after removing formatting:', error)
-      // Запасной вариант - просто устанавливаем курсор в начало
-      range.collapse(true)
+  // 7. Вставляем фрагмент обратно в документ
+  range.insertNode(newFragment)
+
+  // 8. Восстанавливаем выделение
+  try {
+    // Пытаемся выделить вставленное содержимое
+    range.setStartBefore(range.startContainer.firstChild || range.startContainer)
+    range.setEndAfter(range.endContainer.lastChild || range.endContainer)
+
+    const selection = window.getSelection()
+    if (selection) {
+      selection.removeAllRanges()
       selection.addRange(range)
     }
+  } catch (error) {
+    console.error('Error restoring selection after removing formatting:', error)
   }
 }
 
@@ -361,124 +368,386 @@ export const checkFormat = (tag: string, range: Range): boolean => {
 }
 
 /**
- * Проверяет, имеет ли текущее выделение указанный тип форматирования
- * @param command - Тип форматирования
+ * Проверяет применено ли форматирование к выделенному тексту
+ *
+ * @param format - Формат для проверки
  * @param state - Состояние выделения
- * @returns true, если текущее выделение имеет указанное форматирование
+ * @returns Булево значение, указывающее наличие форматирования
+ *
+ * @example
+ * const state = { range: range, text: "Выделенный текст", isEmpty: false }
+ * const isBold = hasFormatting('bold', state) // Проверка наличия жирного шрифта
  */
-export const hasFormatting = (command: CommandType, state: SelectionState): boolean => {
+export function hasFormatting(format: CommandType, state: SelectionState): boolean {
   if (!state.range) return false
 
-  const config = FORMAT_CONFIG[command]
-  if (!config) return false
-
-  // Если пустое выделение (курсор)
+  // Если нет выделения, проверяем текущую позицию курсора
   if (state.isEmpty) {
-    const container = state.range.startContainer
-    const element =
-      container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
+    const node = state.range.startContainer
+    if (node?.nodeType === Node.TEXT_NODE) {
+      // Для текстового узла проверяем родительский элемент
+      const parentNode = node.parentElement
+      if (!parentNode) return false
 
-    if (!element) return false
+      // Проверка inline форматирования
+      if (format === 'bold') return hasTagOrStyle(parentNode, 'B', 'STRONG', 'font-weight', 'bold', '700')
+      if (format === 'italic') return hasTagOrStyle(parentNode, 'I', 'EM', 'font-style', 'italic')
+      if (format === 'highlight') return hasTagOrStyle(parentNode, 'MARK', null, 'background-color')
+      if (format === 'link') return parentNode.tagName === 'A' || !!findAncestor(parentNode, 'A')
+      if (format === 'punchline') return hasTagOrStyle(parentNode, 'SPAN.punchline')
 
-    // Проверяем, находится ли курсор внутри элемента с указанным форматированием
-    return !!element.closest(config.tag)
+      // Проверка блочного форматирования
+      if (format === 'blockquote') return !!findAncestor(parentNode, 'BLOCKQUOTE')
+      if (format === 'h1') return !!findAncestor(parentNode, 'H1')
+      if (format === 'h2') return !!findAncestor(parentNode, 'H2')
+      if (format === 'h3') return !!findAncestor(parentNode, 'H3')
+      if (format === 'p') return !!findAncestor(parentNode, 'P')
+    }
+  } else {
+    // Для выделенного текста
+    const selectedNodes = getNodesInRange(state.range)
+    if (selectedNodes.length === 0) return false
+
+    // Для inline форматирования проверяем все узлы в выделении
+    if (
+      format === 'bold' ||
+      format === 'italic' ||
+      format === 'highlight' ||
+      format === 'link' ||
+      format === 'punchline'
+    ) {
+      // Форматирование активно, если все узлы имеют его
+      return selectedNodes.every((node: Node) => {
+        const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element)
+        if (!element) return false
+
+        if (format === 'bold') return hasTagOrStyle(element, 'B', 'STRONG', 'font-weight', 'bold', '700')
+        if (format === 'italic') return hasTagOrStyle(element, 'I', 'EM', 'font-style', 'italic')
+        if (format === 'highlight') return hasTagOrStyle(element, 'MARK', null, 'background-color')
+        if (format === 'link') return element.tagName === 'A' || !!findAncestor(element, 'A')
+        if (format === 'punchline') return hasTagOrStyle(element, 'SPAN.punchline')
+
+        return false
+      })
+    }
+
+    // Для блочного форматирования проверяем общий контейнер
+    if (
+      format === 'blockquote' ||
+      format === 'h1' ||
+      format === 'h2' ||
+      format === 'h3' ||
+      format === 'p'
+    ) {
+      const firstElement =
+        selectedNodes[0].nodeType === Node.TEXT_NODE
+          ? selectedNodes[0].parentElement
+          : (selectedNodes[0] as Element)
+
+      if (!firstElement) return false
+
+      // Используем первый элемент для определения блочного форматирования
+      if (format === 'blockquote') return !!findAncestor(firstElement, 'BLOCKQUOTE')
+      if (format === 'h1') return !!findAncestor(firstElement, 'H1')
+      if (format === 'h2') return !!findAncestor(firstElement, 'H2')
+      if (format === 'h3') return !!findAncestor(firstElement, 'H3')
+      if (format === 'p') return !!findAncestor(firstElement, 'P')
+    }
   }
 
-  // Если есть выделение текста
-  const range = state.range.cloneRange()
-  const fragment = range.cloneContents()
-  const tempDiv = document.createElement('div')
-  tempDiv.appendChild(fragment)
-
-  // Проверяем, есть ли элементы с нужным форматированием внутри выделения
-  const formattedElements = tempDiv.querySelectorAll(config.tag)
-  return formattedElements.length > 0
-}
-
-// Move this helper function to the top, before it's used
-const getSelectedElement = (selection: Selection): HTMLElement | null => {
-  const range = selection.getRangeAt(0)
-  const parentElement = range.commonAncestorContainer as HTMLElement
-  return parentElement.nodeType === Node.ELEMENT_NODE ? parentElement : parentElement.parentElement
+  return false
 }
 
 /**
- * Gets all active formatting states
- * @param selection Current selection object
- * @returns Object containing active format states
- * @example
- * const formats = getActiveFormats(window.getSelection())
- * if (formats.text.bold) {
- *   // Handle bold text
- * }
+ * Проверяет, имеет ли элемент определенный тег или стилевое свойство
+ *
+ * @param element - Элемент для проверки
+ * @param tag1 - Первый возможный тег (например, 'B')
+ * @param tag2 - Второй возможный тег (например, 'STRONG')
+ * @param style - CSS свойство для проверки
+ * @param value1 - Первое возможное значение CSS свойства
+ * @param value2 - Второе возможное значение CSS свойства
+ * @returns Булево значение, указывающее наличие тега или стиля
  */
-export const getActiveFormats = (selection: Selection | null) => {
-  const formats = {
-    block: {
-      blockquote: false,
-      punchline: false,
-      incut: false
-    },
-    text: {
-      bold: false,
-      italic: false,
-      link: false,
-      highlight: false
+function hasTagOrStyle(
+  element: Element,
+  tag1: string,
+  tag2: string | null = null,
+  style?: string,
+  value1?: string,
+  value2?: string
+): boolean {
+  // Проверка на селектор класса (например, 'SPAN.punchline')
+  if (tag1.includes('.')) {
+    const [tagName, className] = tag1.split('.')
+    if (element.tagName === tagName && element.classList.contains(className)) {
+      return true
     }
+    return !!findAncestor(element, (el) => el.tagName === tagName && el.classList.contains(className))
   }
 
-  if (!selection?.rangeCount) return formats
+  // Проверка на соответствие тегу
+  if (element.tagName === tag1 || (tag2 && element.tagName === tag2)) {
+    return true
+  }
 
-  const element = getSelectedElement(selection)
-  if (!element) return formats
+  // Проверка на наличие стилевого свойства
+  if (style) {
+    const computedStyle = window.getComputedStyle(element)
+    const styleValue = computedStyle.getPropertyValue(style)
 
-  formats.text.bold = hasFormatting('bold', {
-    range: selection.getRangeAt(0),
-    text: selection.toString(),
-    isEmpty: selection.isCollapsed,
-    position: {
-      top: selection.anchorOffset,
-      left: selection.anchorOffset
+    // Если значения не указаны, проверяем наличие любого значения
+    if (!value1 && !value2) {
+      return styleValue !== '' && styleValue !== 'none' && styleValue !== 'normal'
     }
-  })
-  formats.text.italic = hasFormatting('italic', {
-    range: selection.getRangeAt(0),
-    text: selection.toString(),
-    isEmpty: selection.isCollapsed,
-    position: {
-      top: selection.anchorOffset,
-      left: selection.anchorOffset
-    }
-  })
-  formats.text.link = hasFormatting('link', {
-    range: selection.getRangeAt(0),
-    text: selection.toString(),
-    isEmpty: selection.isCollapsed,
-    position: {
-      top: selection.anchorOffset,
-      left: selection.anchorOffset
-    }
-  })
-  formats.block.blockquote = hasFormatting('blockquote', {
-    range: selection.getRangeAt(0),
-    text: selection.toString(),
-    isEmpty: selection.isCollapsed,
-    position: {
-      top: selection.anchorOffset,
-      left: selection.anchorOffset
-    }
-  })
-  formats.block.punchline = hasFormatting('punchline', {
-    range: selection.getRangeAt(0),
-    text: selection.toString(),
-    isEmpty: selection.isCollapsed,
-    position: {
-      top: selection.anchorOffset,
-      left: selection.anchorOffset
-    }
-  })
+
+    // Проверка на соответствие одному из значений
+    return Boolean((value1 && styleValue.includes(value1)) || (value2 && styleValue.includes(value2)))
+  }
+
+  // Проверка на наличие родительского элемента с соответствующим тегом
+  const matchesTag = (el: Element) => Boolean(el.tagName === tag1 || (tag2 && el.tagName === tag2))
+  return !!findAncestor(element, matchesTag)
+}
+
+/**
+ * Получает активные форматы для текущей позиции курсора или выделения
+ * @param selection Текущее выделение
+ * @param editor Ссылка на DOM-элемент редактора
+ * @returns Объект с активными форматами
+ */
+export const getActiveFormats = (selection?: Selection, editor?: HTMLDivElement): ActiveFormatsType => {
+  // Базовое состояние: ничего не активно
+  const formats: ActiveFormatsType = {
+    bold: false,
+    italic: false,
+    // underline: false,
+    //strike: false,
+    link: false,
+    // superscript: false,
+    // subscript: false,
+    highlight: false,
+    blockquote: false,
+    bulletList: false,
+    orderedList: false,
+    // numberList: false,
+    punchline: false,
+    h1: false,
+    h2: false,
+    h3: false,
+    p: false
+    // left: false,
+    // center: false,
+    // right: false,
+    // justify: false,
+  }
+
+  if (!selection || !editor) return formats
+
+  // Если ничего не выделено, но есть курсор в редакторе
+  if (selection.isCollapsed) {
+    // Проверка форматирования в точке курсора
+    const ancestorNodes = getAncestorNodes(selection.anchorNode, editor)
+
+    // Проверяем inline форматирование
+    formats.bold = ancestorNodes.some((node) => node.nodeName === 'B' || node.nodeName === 'STRONG')
+    formats.italic = ancestorNodes.some((node) => node.nodeName === 'I' || node.nodeName === 'EM')
+    // formats.underline = ancestorNodes.some(node => node.nodeName === 'U')
+    // formats.strike = ancestorNodes.some(node => node.nodeName === 'STRIKE' || node.nodeName === 'S')
+    // formats.superscript = ancestorNodes.some(node => node.nodeName === 'SUP')
+    // formats.subscript = ancestorNodes.some(node => node.nodeName === 'SUB')
+    formats.highlight = ancestorNodes.some(
+      (node) =>
+        node.nodeName === 'MARK' ||
+        (node.nodeName === 'SPAN' && node.parentElement?.getAttribute('style')?.includes('background'))
+    )
+
+    // Проверка ссылки
+    formats.link = ancestorNodes.some((node: Node) => node.nodeName === 'A')
+
+    // Проверка блочного форматирования
+    formats.blockquote = ancestorNodes.some((node: Node) => node.nodeName === 'BLOCKQUOTE')
+    formats.bulletList = ancestorNodes.some(
+      (node: Node) =>
+        node.nodeName === 'UL' || (node.nodeName === 'LI' && ancestorNodes.some((n) => n.nodeName === 'UL'))
+    )
+    formats.orderedList = ancestorNodes.some(
+      (node: Node) =>
+        node.nodeName === 'OL' || (node.nodeName === 'LI' && ancestorNodes.some((n) => n.nodeName === 'OL'))
+    )
+
+    // Проверка специальных блоков
+    formats.punchline = ancestorNodes.some(
+      (node: Node) => node.nodeName === 'DIV' && node.parentElement?.classList.contains('punchline')
+    )
+    /*
+    formats.alignLeft = ancestorNodes.some((node: Node) => 
+      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-left')
+    )
+    formats.alignCenter = ancestorNodes.some((node: Node) => 
+      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-center')
+    )
+    formats.alignRight = ancestorNodes.some((node: Node) => 
+      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-right')
+    )
+    */
+
+    console.log('[getActiveFormats] Cursor formats:', formats)
+    return formats
+  }
+
+  // Если есть выделение
+  try {
+    // Получаем общие стили для всего выделения
+    const range = selection.getRangeAt(0)
+
+    // Проверка inline форматирования через document.queryCommandState
+    formats.bold = document.queryCommandState('bold')
+    formats.italic = document.queryCommandState('italic')
+    // formats.underline = document.queryCommandState('underline')
+    // formats.strike = document.queryCommandState('strikethrough')
+    // formats.superscript = document.queryCommandState('superscript')
+    // formats.subscript = document.queryCommandState('subscript')
+
+    // Для более сложных форматов проверяем общие элементы
+    const commonAncestors = getCommonFormatAncestors(range, editor)
+
+    // Проверяем наличие ссылки
+    formats.link = commonAncestors.some((node) => node.nodeName === 'A')
+
+    // Проверяем блочное форматирование
+    formats.blockquote = commonAncestors.some((node) => node.nodeName === 'BLOCKQUOTE')
+    formats.bulletList = document.queryCommandState('insertUnorderedList')
+    formats.orderedList = document.queryCommandState('insertOrderedList')
+
+    // Проверяем специальные классы
+    formats.punchline = commonAncestors.some(
+      (node) => node.nodeName === 'DIV' && node.parentElement?.classList.contains('punchline')
+    )
+    /*
+    formats.alignLeft = commonAncestors.some(node => 
+      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-left')
+    )
+    formats.alignCenter = commonAncestors.some(node => 
+      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-center')
+    )
+    formats.alignRight = commonAncestors.some(node => 
+      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-right')
+    )
+    formats.alignJustify = commonAncestors.some(node => 
+      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-justify')
+    )
+    */
+
+    // Добавление проверки highlight для выделения
+    formats.highlight = isHighlighted(range)
+
+    console.log('[getActiveFormats] Selection formats:', formats)
+  } catch (e) {
+    console.error('Error getting active formats:', e)
+  }
 
   return formats
+}
+
+/**
+ * Проверяет наличие класса выравнивания на узле
+ * @param node DOM-узел для проверки
+ * @param alignment Тип выравнивания ('left', 'center', 'right', 'justify')
+ * @returns true если узел имеет соответствующее выравнивание
+ */
+export const hasAlignClass = (node: Node, alignment: string): boolean => {
+  if (node instanceof HTMLElement) {
+    // Проверяем классы text-align-*
+    if (node.classList.contains(`text-align-${alignment}`)) return true
+
+    // Проверяем inline-стили
+    const style = node.getAttribute('style')
+    if (style?.includes(`text-align: ${alignment}`)) return true
+  }
+  return false
+}
+
+/**
+ * Проверяет наличие выделения текста
+ * @param range Диапазон выделения
+ * @returns true если текст выделен
+ */
+const isHighlighted = (range: Range): boolean => {
+  // Создаем временный элемент для проверки содержимого выделения
+  const tempElement = document.createElement('div')
+  tempElement.appendChild(range.cloneContents())
+
+  // Проверяем наличие тегов MARK или SPAN с background
+  return (
+    !!tempElement.querySelector('mark') ||
+    Array.from(tempElement.querySelectorAll('span')).some(
+      (span) => span.style.backgroundColor || span.getAttribute('style')?.includes('background')
+    )
+  )
+}
+
+/**
+ * Получает все узлы-предки от текущего узла до родительского редактора
+ * @param node Текущий узел
+ * @param editor Элемент редактора
+ * @returns Массив узлов-предков
+ */
+const getAncestorNodes = (node: Node | null, editor: HTMLElement): Node[] => {
+  const ancestors: Node[] = []
+  let current = node
+
+  while (current && current !== editor) {
+    ancestors.push(current)
+    current = current.parentNode
+  }
+
+  return ancestors
+}
+
+/**
+ * Получает общие предки для форматирования в выделенном диапазоне
+ * @param range Диапазон выделения
+ * @param editor Элемент редактора
+ * @returns Массив общих узлов-предков
+ */
+const getCommonFormatAncestors = (range: Range, editor: HTMLElement): Node[] => {
+  // Получаем общего предка выделения
+  const commonAncestor = range.commonAncestorContainer
+
+  // Если общий предок - текстовый узел, возвращаем его родителей
+  if (commonAncestor.nodeType === Node.TEXT_NODE) {
+    return getAncestorNodes(commonAncestor, editor)
+  }
+
+  // Иначе обходим все дочерние узлы и проверяем общие стили
+  const nodes: Node[] = []
+  const walker = document.createTreeWalker(commonAncestor, NodeFilter.SHOW_ELEMENT, {
+    acceptNode: (node) => {
+      // Проверяем, входит ли узел в выделение
+      const nodeRange = document.createRange()
+      nodeRange.selectNodeContents(node)
+
+      // Если узел полностью внутри выделения, добавляем его
+      if (
+        range.compareBoundaryPoints(Range.START_TO_START, nodeRange) <= 0 &&
+        range.compareBoundaryPoints(Range.END_TO_END, nodeRange) >= 0
+      ) {
+        return NodeFilter.FILTER_ACCEPT
+      }
+      return NodeFilter.FILTER_SKIP
+    }
+  })
+
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    nodes.push(node)
+  }
+
+  // Добавляем общего предка и его родителей
+  nodes.push(...getAncestorNodes(commonAncestor, editor))
+
+  return nodes
 }
 
 /**
@@ -572,4 +841,136 @@ export const getCurrentFormats = (selection: Selection | null): FormattingState 
   formats.block.punchline = hasFormatting('punchline', state)
 
   return formats
+}
+
+// --- Block Formatting ---
+
+// Helper to find the closest block ancestor within the editor
+const getClosestBlockElement = (node: Node | null, editorRoot: HTMLElement): HTMLElement | null => {
+  if (!node || !editorRoot) return null
+  let current: Node | null = node.nodeType === Node.TEXT_NODE ? node.parentElement : node
+
+  while (current && current !== editorRoot && editorRoot.contains(current)) {
+    if (current.nodeType === Node.ELEMENT_NODE) {
+      const element = current as HTMLElement
+      // Check common block tags (add more if needed based on editor structure)
+      if (
+        ['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'DIV', 'BLOCKQUOTE', 'LI', 'PRE'].includes(
+          element.tagName
+        )
+      ) {
+        return element
+      }
+      // If the element has display: block, consider it a block too
+      // Note: getComputedStyle can be slow if called repeatedly
+      // const display = window.getComputedStyle(element).display;
+      // if (display === 'block' || display === 'list-item') {
+      //   return element;
+      // }
+    }
+    current = current.parentElement
+  }
+  // If the direct parent is the editor root, and it's the only child, treat it as the block
+  if (node.parentElement === editorRoot && editorRoot.childNodes.length === 1) {
+    return editorRoot // Or maybe null? Needs testing.
+  }
+
+  return null // No suitable block parent found
+}
+
+/**
+ * Toggles block format (H1-H3, Blockquote) for the block containing the selection start.
+ * Reverts to paragraph (<p>) if the target format is already active.
+ */
+export const toggleBlockFormat = (
+  command: CommandType,
+  state: SelectionState,
+  editorRoot: HTMLElement | null
+) => {
+  if (!state.range || !editorRoot) {
+    console.warn('[toggleBlockFormat] Missing range or editorRoot')
+    return
+  }
+
+  const range = state.range
+  const config = FORMAT_CONFIG[command]
+  const defaultTag = 'p'
+
+  // Only handle specific block types suitable for simple tag switching
+  if (!config || !['h1', 'h2', 'h3', 'blockquote', 'p'].includes(config.tag)) {
+    console.warn(`[toggleBlockFormat] Command ${command} ('${config?.tag}') is not a supported block type.`)
+    // Fallback to applyFormatting for other potential block-like commands (divs with data-*)?
+    // applyFormatting(command, state);
+    return
+  }
+
+  const targetTag = config.tag.toLowerCase()
+
+  // Find the relevant block element
+  const blockElement = getClosestBlockElement(range.startContainer, editorRoot)
+
+  if (!blockElement) {
+    console.warn('[toggleBlockFormat] Could not find parent block element.')
+    // If no block is found, maybe wrap the current selection in the target block?
+    // This might be complex if selection spans lines.
+    // Let's try simple applyFormatting as a fallback for now.
+    applyFormatting(command, state)
+    return
+  }
+
+  const currentTag = blockElement.tagName.toLowerCase()
+  const newTag = currentTag === targetTag ? defaultTag : targetTag
+
+  // Avoid changing if already correct (e.g., applying P to a P block)
+  if (currentTag === newTag) return
+
+  console.log(`[toggleBlockFormat] Changing block from <${currentTag}> to <${newTag}>`)
+
+  const newBlock = document.createElement(newTag)
+
+  // Copy specific attributes if necessary (e.g., data-*) - Check config
+  const newConfig = Object.values(FORMAT_CONFIG).find((c) => c.tag === newTag)
+  if (newConfig?.attributes) {
+    Object.entries(newConfig.attributes).forEach(([key, value]) => {
+      // Only add attributes specified in config, avoid adding empty ones unless explicit
+      if (value || key.startsWith('data-')) {
+        newBlock.setAttribute(key, value)
+      }
+    })
+  }
+
+  // Move children from old block to new block
+  while (blockElement.firstChild) {
+    newBlock.appendChild(blockElement.firstChild)
+  }
+  // Ensure the block isn't completely empty to avoid display issues
+  if (!newBlock.hasChildNodes()) {
+    newBlock.appendChild(document.createElement('br'))
+  }
+
+  // Replace the old block with the new one
+  try {
+    blockElement.parentNode?.replaceChild(newBlock, blockElement)
+  } catch (e) {
+    console.error('[toggleBlockFormat] Error replacing node:', e)
+    return // Stop if replacement failed
+  }
+
+  // --- Restore Selection (Basic) ---
+  // This part is fragile. Selecting the whole node is simplest but disruptive.
+  // Collapsing to start/end is better but might not match user expectation.
+  try {
+    const selection = window.getSelection()
+    if (selection) {
+      const newRange = document.createRange()
+      // Place cursor at the beginning of the new block
+      newRange.setStart(newBlock, 0)
+      newRange.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(newRange)
+    }
+  } catch (e) {
+    console.error('[toggleBlockFormat] Error restoring selection:', e)
+    editorRoot.focus() // Fallback focus
+  }
 }

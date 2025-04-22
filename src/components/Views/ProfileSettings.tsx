@@ -34,8 +34,9 @@ import { Popover } from '../_shared/Popover'
 import { SocialNetworkInput } from '../_shared/SocialNetworkInput'
 
 import styles from '~/styles/views/ProfileSettings.module.scss'
-import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
+import { EditorData } from '../SimpleRichEditor/lib/types'
 
 const GrowingTextarea = lazy(() => import('~/components/_shared/GrowingTextarea/GrowingTextarea'))
 

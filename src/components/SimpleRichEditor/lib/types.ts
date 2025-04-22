@@ -9,7 +9,7 @@ export type ToolbarMode = 'top' | 'bottom' | 'float'
 /**
  * Типы полей редактора
  */
-export type EditorFieldType = 'body' | 'lead' | 'description' | 'about' | 'comment'
+export type EditorFieldType = 'body' | 'lead' | 'about' | 'comment' | 'title'
 
 /**
  * Типы форм для вставки контента
@@ -78,7 +78,7 @@ export interface SelectionState {
   range: Range
   text: string
   isEmpty: boolean
-  position?: Position
+  position: Position
 }
 
 /**
@@ -288,4 +288,15 @@ export interface EditorData {
 export interface HistoryJournal {
   undo: string[]
   redo: string[]
+}
+
+/**
+ * Обработчики действий для PlusMenu
+ */
+export interface PlusMenuActionHandlers {
+  showLinkForm?: (onSubmit: (url: string) => void) => void
+  showVideoForm?: (onSubmit: (url: string) => void) => void
+  showAudioUploader?: () => void
+  showImageUploadModal?: () => void
+  handleChange?: () => void
 }

@@ -14,7 +14,12 @@ import getAuthorsByTopicQuery from '~/graphql/query/core/topic-authors'
 import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
 import loadTopicsQuery from '~/graphql/query/core/topics-all'
 import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community'
-import { QueryLoad_Shouts_ByArgs, Shout, Topic } from '~/graphql/schema/core.gen'
+import {
+  QueryLoad_Comments_BranchArgs,
+  QueryLoad_Shouts_ByArgs,
+  Shout,
+  Topic
+} from '~/graphql/schema/core.gen'
 import {
   Author,
   QueryLoad_Authors_ByArgs,

@@ -27,7 +27,7 @@ import {
 } from '~/graphql/schema/core.gen'
 import { MutationCreate_ReactionArgs } from '~/graphql/schema/core.gen'
 import { COMMENTS_PER_PAGE } from '../Article/FullArticle'
-import { EditorData, SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { cleanupContent, sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { Button } from '../_shared/Button'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
@@ -37,6 +37,7 @@ import { CommentCard } from './CommentCard'
 import { CommentsHeader } from './CommentsHeader'
 
 import { removeLocalVersion } from '../SimpleRichEditor/lib/storage'
+import { EditorData } from '../SimpleRichEditor/lib/types'
 import styles from './CommentsTree.module.scss'
 
 /**
@@ -1861,8 +1862,8 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           </Show>
 
           <CommentsHeader
-            comments={props.totalComments || comments().length}
-            newComments={newComments().length}
+            comments={comments().length} // Передаем количество комментариев
+            newComments={newComments().length} // Передаем количество новых комментариев
             setOrder={setCommentsOrder}
             order={commentsOrder() as ReactionSort}
             onlyNew={onlyNew()}

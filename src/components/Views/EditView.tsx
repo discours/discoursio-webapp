@@ -8,9 +8,8 @@ import { Modal } from '~/components/_shared/Modal'
 import { Popover } from '~/components/_shared/Popover'
 import { EditorSwiper } from '~/components/_shared/SolidSwiper'
 import { useConnect } from '~/context/connect'
-import { useDrafts } from '~/context/drafts'
+import { DraftInput as ContextDraftInput, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
 import type { Draft, DraftInput, MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
 import { getFileUrl } from '~/lib/getThumbUrl'
@@ -25,15 +24,14 @@ import {
   parseJsonContent,
   saveDraftField,
   saveEntireDraft,
-  setupNetworkListeners,
   updateLastSync
 } from '../SimpleRichEditor/lib/storage'
-import { CommandType, EditorData } from '../SimpleRichEditor/lib/types'
 import { AudioUploader } from '../Upload/AudioUploader'
 import { VideoUploader } from '../Upload/VideoUploader'
 import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'
 
 import styles from '~/styles/views/EditView.module.scss'
+import { CommandType, EditorData } from '../SimpleRichEditor/lib/types'
 
 export const MAX_HEADER_LIMIT = 100
 export const EMPTY_TOPIC: Topic = {
@@ -44,22 +42,23 @@ export const EMPTY_TOPIC: Topic = {
 export const featuredEditorCommands = [
   // Дропдаун "TT"
   [
-    // Массив => Дропдаун
     ['h1', 'h2', 'h3'], // Первая группа (Заголовки)
-    ['blockquote', 'align-left', 'align-center', 'align-right'] // Вторая группа (Выделение) - нужно будет придумать, как задать заголовок
+    ['blockquote', 'punchline', 'squib'] // Вторая группа (Выделение)
   ],
+  '',
   // Простые кнопки
   'bold',
   'italic',
-  'highlight', // или другая команда для желтого кружка?
+  'highlight',
+  '',
   'link',
-  'footnote', // иконка снежинки?
+  'footnote', // иконка снежинки
+  '',
   // Дропдаун "Списки"
   [
     // Массив => Дропдаун
     ['bulletList', 'orderedList'] // Первая группа (Списки)
-  ],
-  'image' // Добавим, т.к. была в списке изначально
+  ]
 ]
 
 /**
@@ -69,7 +68,7 @@ export const featuredEditorCommands = [
  */
 export const EditView = (props: { draft?: Draft }) => {
   const { t } = useLocalize()
-  const { updateDraft, getEditorContent, setEditorContent, updateDraftField } = useDrafts()
+  const { updateDraft } = useDrafts()
   const [inputDataErrors, setFormErrors] = createSignal({} as Record<keyof DraftInput, string>)
   const [subtitleInput, setSubtitleInput] = createSignal<HTMLTextAreaElement | undefined>()
   const [currentDraft, setCurrentDraft] = createSignal<Draft | undefined>(props.draft)
@@ -91,8 +90,45 @@ export const EditView = (props: { draft?: Draft }) => {
   // Эффект для инициализации состояния, если props.draft существует
   const [isInitialized, setIsInitialized] = createSignal(false)
 
-  // Добавляем сигнал для хранения состояния сети
-  const [networkStatus, setNetworkStatus] = createSignal(true)
+  // Локальные реализации методов для работы с редактором
+  const [editorsContent, setEditorsContentState] = createSignal<Record<string, string>>({})
+
+  // Получение содержимого редактора
+  const getEditorContent = (editorId: string): string => {
+    return (
+      editorsContent()[editorId] || getDraftField(currentDraft()?.id || 0, editorId.split('-')[2]) || ''
+    )
+  }
+
+  // Установка содержимого редактора
+  const setEditorContent = (editorId: string, content: string): void => {
+    setEditorsContentState({ ...editorsContent(), [editorId]: content })
+  }
+
+  // Обновление поля черновика
+  const updateDraftField = (
+    draftId: number,
+    fieldName: keyof DraftInput,
+    value: string | EditorData,
+    isEditorUpdate: boolean
+  ): void => {
+    let cleanValue = ''
+
+    if (typeof value === 'object' && value !== null && 'content' in value) {
+      cleanValue = value.content
+    } else if (typeof value === 'string') {
+      cleanValue = value
+    }
+
+    // Сохраняем в localStorage
+    saveDraftField(draftId, fieldName, cleanValue)
+
+    // Обновляем локальное состояние
+    if (isEditorUpdate && (fieldName === 'body' || fieldName === 'lead')) {
+      const editorId = `draft-${draftId}-${fieldName}`
+      setEditorContent(editorId, cleanValue)
+    }
+  }
 
   createEffect(() => {
     if (props.draft) {
@@ -302,7 +338,7 @@ export const EditView = (props: { draft?: Draft }) => {
 
     // Получаем провайдер
     const awarenessProvider = getProvider()
-    
+
     // Проверяем, подключен ли провайдер
     if (awarenessProvider.getConnectionState() !== 'connected') {
       return
@@ -433,13 +469,14 @@ export const EditView = (props: { draft?: Draft }) => {
         const syncDraft = {
           ...getAllDraftFields(draft.id),
           ...draft,
+          id: draft.id, // Явно указываем id как число
           topic_ids: draft.topics?.map((topic) => topic?.id) || [],
           main_topic_id: draft.topics?.[0]?.id || 0,
           layout: draft.layout || 'article'
         }
 
         // Отправляем на сервер
-        updateDraft(syncDraft as DraftInput)
+        updateDraft(syncDraft as ContextDraftInput)
 
         // Обновляем время последней синхронизации
         updateLastSync(draft.id)
@@ -455,6 +492,18 @@ export const EditView = (props: { draft?: Draft }) => {
     if (!draft) return
     console.log('[EditView] Explicitly saving draft to server via GraphQL', draft.id)
     syncOfflineChanges(draft)
+  }
+
+  // Компонент индикатора офлайн-режима
+  const OfflineIndicator = () => {
+    return (
+      <Show when={!networkStatus()}>
+        <div class={styles.offlineIndicator}>
+          <Icon name="alert-triangle" />
+          <span>{t('Offline mode: Changes will be saved when connection is restored')}</span>
+        </div>
+      </Show>
+    )
   }
 
   const handleTitleInputChange = (value: string) => {
@@ -708,6 +757,7 @@ export const EditView = (props: { draft?: Draft }) => {
     return (
       <div class="col-md-19 col-lg-18 col-xl-16 offset-md-5">
         <Show when={currentDraft()}>
+          <OfflineIndicator />
           <div class={styles.headingActions}>
             <Show when={!isSubtitleVisible() && currentDraft()?.layout !== 'audio'}>
               <a class={styles.action} onClick={showSubtitleInput}>
@@ -954,6 +1004,8 @@ export const EditView = (props: { draft?: Draft }) => {
     )
   }
 
+  const [networkStatus, setNetworkStatus] = createSignal(navigator.onLine)
+
   onMount(() => {
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('keydown', handleKeyDown)
@@ -988,7 +1040,7 @@ export const EditView = (props: { draft?: Draft }) => {
   // Обработчик изменения статуса сети
   const handleNetworkStatusChange = () => {
     setNetworkStatus(navigator.onLine)
-    
+
     // Если сеть появилась, синхронизируем изменения
     const draft = currentDraft()
     if (navigator.onLine && draft?.id) {
@@ -996,7 +1048,7 @@ export const EditView = (props: { draft?: Draft }) => {
         console.log('[EditView] Network is back online, syncing offline changes')
         syncOfflineChanges(draft)
       }
-      
+
       // Инициализируем awareness если он еще не был инициализирован
       if (getProvider().getConnectionState() !== 'connected') {
         console.log('[EditView] Network is back online, connecting to awareness')

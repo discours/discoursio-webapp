@@ -2,7 +2,7 @@ import type { PopupProps } from '../Popup'
 
 import { clsx } from 'clsx'
 import { For, JSX, Show, createMemo, createSignal } from 'solid-js'
-
+import { Icon } from '~/components/_shared/Icon'
 import { Popup } from '../Popup'
 
 import popupStyles from '../Popup/Popup.module.scss'
@@ -12,17 +12,18 @@ export type Option = {
   value?: string | number
   title: string
   selected?: boolean
+  icon?: string
 }
 
 export type OptionGroup = {
   title?: string
   options: Option[]
-  selected: number[]
+  selected?: number[]
   onChange?: (option: Option) => void
   multiple?: boolean
 }
 
-type Props = {
+type DropDownProps = {
   class?: string
   popupProps?: Partial<PopupProps>
   options: OptionGroup[] | Option[]
@@ -80,9 +81,17 @@ const OptionItem = (props: {
         props.onClick(props.option)
       }}
     >
-      <span>{props.option.title}</span>
-      <Show when={props.isActive}>
-        <CheckMark />
+      <Show when={props.option.icon}>
+        <Icon
+          name={props.option.icon as string}
+          class={clsx(styles.optionIcon, props.isActive && styles.active)}
+        />
+      </Show>
+      <Show when={props.option.title}>
+        <span>{props.option.title}</span>
+        <Show when={props.isActive}>
+          <CheckMark />
+        </Show>
       </Show>
     </button>
   </li>
@@ -110,7 +119,7 @@ const GroupOptions = (props: {
       {(option, index) => (
         <OptionItem
           option={option}
-          isActive={props.group.selected.includes(index())}
+          isActive={props.group.selected?.includes(index()) || false}
           onClick={
             props.group.onChange ||
             (() => {
@@ -124,7 +133,7 @@ const GroupOptions = (props: {
   </div>
 )
 
-export const DropDown = (props: Props) => {
+export const DropDown = (props: DropDownProps) => {
   const [isPopupVisible, setIsPopupVisible] = createSignal(false)
 
   const isOptionGroup = createMemo(
@@ -140,7 +149,7 @@ export const DropDown = (props: Props) => {
         return ''
       }
 
-      if (firstGroup.multiple && firstGroup.selected.length > 0) {
+      if (firstGroup.multiple && firstGroup.selected && firstGroup.selected.length > 0) {
         return `${firstGroup.selected.length} выбрано`
       }
 

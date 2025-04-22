@@ -415,7 +415,38 @@ export const PublishSettings = () => {
     // Обрабатываем сохранение в localStorage
     const draft = currentDraft()
     if (draft?.id) {
-      saveDraftField(draft.id, key, value as string)
+      // Обрабатываем массив topics и объекты тем - должны быть преобразованы в JSON
+      if (key === 'topics') {
+        // Проверяем, является ли значение массивом Topic
+        if (Array.isArray(value)) {
+          // Создаем массив с минимально необходимыми данными для тем
+          const topicsToSave = value.map((topic: Topic) => ({
+            id: topic.id,
+            slug: topic.slug || '',
+            title: topic.title || ''
+          }))
+          saveDraftField(draft.id, key, JSON.stringify(topicsToSave))
+          console.log(
+            `[PublishSettings] Saved ${topicsToSave.length} topics to localStorage for draft ${draft.id}`
+          )
+        } else {
+          console.warn('[PublishSettings] topics is not an array, cannot save properly')
+        }
+      }
+      // Для mainTopic и других объектных типов также используем JSON.stringify
+      else if (key === 'mainTopic' && value && typeof value === 'object') {
+        const mainTopicToSave = {
+          id: (value as Topic).id,
+          slug: (value as Topic).slug || '',
+          title: (value as Topic).title || ''
+        }
+        saveDraftField(draft.id, key, JSON.stringify(mainTopicToSave))
+      }
+      // Для остальных типов полей используем обычное сохранение
+      else {
+        saveDraftField(draft.id, key, String(value))
+      }
+      console.log(`[PublishSettings] Saved field ${key} to localStorage for draft ${draft.id}`)
     }
 
     // Запускаем дебаунсированное сохранение на сервер

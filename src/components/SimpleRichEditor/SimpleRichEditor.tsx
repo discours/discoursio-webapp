@@ -26,7 +26,13 @@ import { isGroup } from './lib/commands'
 import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
 import { isEmptyContent } from './lib/empty'
 import { getAllFootnotes, getFootnoteById, insertFootnote, removeFootnote } from './lib/footnotes'
-import { applyFormatting, removeFormatting } from './lib/format'
+import {
+  type SelectionState,
+  applyFormatting,
+  hasFormatting,
+  removeFormatting,
+  toggleBlockFormat
+} from './lib/format'
 import { getEditorPosition, isTouchDevice } from './lib/helpers'
 import { validateUrl } from './lib/link'
 import { useSelection } from './lib/selection'
@@ -77,11 +83,6 @@ export const CURSOR_UPDATE_PERIOD = 1000
 
 // Для хранения опций форм между вызовами
 let editorFormOptions: InlineFormOptions | null = null
-
-// Сигналы для работы с ресурсами редактора (Keep footnote signals if footnote editor is used)
-const [editingFootnote, setEditingFootnote] = createSignal<HTMLElement | null>(null)
-const [footnoteContent, setFootnoteContent] = createSignal<string>('')
-const [localVersion, setLocalVersion] = createSignal()
 
 /**
  * Универсальный rich text редактор с различными режимами отображения
@@ -144,6 +145,11 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const { showModal, hideModal } = useUI()
   const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
 
+  // Сигналы для работы с ресурсами редактора (Keep footnote signals if footnote editor is used)
+  const [editingFootnote, setEditingFootnote] = createSignal<HTMLElement | null>(null)
+  const [footnoteContent, setFootnoteContent] = createSignal<string>('')
+  const [localVersion, setLocalVersion] = createSignal()
+
   // Instantiate useSelection hook early
   const {
     saveSelection,
@@ -169,6 +175,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [editingImage, setEditingImage] = createSignal<HTMLElement | null>(null)
   const [showLocalVersionLink, setShowLocalVersionLink] = createSignal(false)
   const [shouldShowPlaceholderState, setShouldShowPlaceholderState] = createSignal(false)
+  const [isInitialFocusDone, setIsInitialFocusDone] = createSignal(false)
 
   let blurTimerRef = 0
   const blurTimeout = 150
@@ -427,7 +434,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           // Если редактор в фокусе и получает новый контент от props,
           // мы не должны обновлять содержимое - это может прервать ввод пользователя
           console.log('[SimpleRichEditor] Editor has focus, ignoring content update from props')
-          
+
           // Вместо этого, если мы получаем серверное обновление, сохраним его для сравнения
           if (editorId) {
             const storageKey = getStorageKey(editorId, fieldType as EditorFieldType)
@@ -585,6 +592,12 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         editor.classList.remove('show-placeholder-on-new-line')
       }
     }
+
+    // 2. Set initial focus flag
+    if (!isInitialFocusDone()) {
+      setIsInitialFocusDone(true)
+    }
+
     if (props.onFocus) props.onFocus()
   }
 
@@ -800,10 +813,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       const currentField = props.fieldType
       let prevField: EditorFieldType | null = null
       let nextField: EditorFieldType | null = null
-      if (currentField === 'description') {
+      if (currentField === 'title') {
         nextField = 'lead'
       } else if (currentField === 'lead') {
-        prevField = 'description'
+        prevField = 'title'
         nextField = 'body'
       } else if (currentField === 'body') {
         prevField = 'lead'
@@ -815,7 +828,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
     // Shift+Enter for <br> in specific fields
     if (e.shiftKey && e.key === 'Enter') {
-      if (props.fieldType === 'lead' || props.fieldType === 'description') {
+      if (props.fieldType === 'lead') {
         e.preventDefault()
         if (restoreSelection()) {
           // Ensure selection is valid
@@ -1007,56 +1020,130 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   }
 
   const handleAction = (action: CommandType | CommandGroupType) => {
-    if (!editorRef()) return
-    console.log('handleAction called with:', action)
+    // Не обрабатываем группы команд напрямую
+    if (isGroup(action)) return
 
-    if (isGroup(action)) {
-      // Handle group actions if needed (e.g., apply multiple styles)
-      // This example assumes groups aren't directly used for formatting
-      console.warn('Group actions not implemented for direct formatting')
+    const command = action as CommandType
+    const editor = editorRef()
+
+    // Убедимся, что есть редактор
+    if (!editor) {
+      console.warn('[handleAction] No editor found')
       return
     }
 
-    const selection = window.getSelection()
+    // Определяем типы команд для разной логики
+    const inlineCommands: CommandType[] = ['bold', 'italic', 'highlight']
+    const blockToggleCommands: CommandType[] = ['h1', 'h2', 'h3', 'blockquote', 'p']
+    const listCommands: CommandType[] = ['bulletList', 'orderedList']
+    const specialCommands: CommandType[] = ['link', 'video', 'image', 'audio', 'footnote']
+    // Прочие команды (punchline, squib, align-*, bg-*) пока будут использовать applyFormatting
 
-    // Обработка специальных команд
-    switch (action) {
-      case 'link': {
-        if (selection && !selection.isCollapsed) {
-          saveSelection()
-          // Не передаем третий параметр, чтобы работала стандартная логика
-          showInlineForm('link', (url) => handleInsertLink(url))
-        }
-        break
-      }
-
-      default: {
-        // Проверяем, имеет ли текст уже нужное форматирование
-        const currentSelection = window.getSelection()
-        const currentRange = currentSelection?.rangeCount ? currentSelection.getRangeAt(0) : null
-        const selectionState = {
-          range: currentRange,
-          text: currentSelection?.toString() || '',
-          isEmpty: !currentSelection || currentSelection.isCollapsed,
-          position: { top: 0, left: 0 }
-        }
-
-        // Проверяем, есть ли у текста уже это форматирование
-        const isFormatActive = activeFormats().has(action as CommandType)
-
-        console.log(`Format ${action} active:`, isFormatActive)
-
-        // Для inline форматирования (bold, italic) применяем логику переключения
-        if (['bold', 'italic', 'underline'].includes(action) && isFormatActive) {
-          // Если форматирование уже применено, удаляем его
-          removeFormatting(action as CommandType, selectionState)
-        } else {
-          applyFormatting(action as CommandType, selectionState)
-        }
-
-        handleChange(props.fieldType ? String(props.fieldType) : 'content') // Update state after applying format
-      }
+    // Восстанавливаем выделение (если есть)
+    restoreSelection()
+    const activeSelection = window.getSelection()
+    if (!activeSelection || activeSelection.rangeCount === 0) {
+      console.warn('[handleAction] Selection could not be restored or is invalid')
+      // В некоторых случаях можно продолжить без выделения (например, применить блок к пустой строке)
+      // Но для безопасности пока выйдем
+      return
     }
+
+    const state: SelectionState = {
+      range: activeSelection.getRangeAt(0),
+      text: activeSelection.toString(),
+      isEmpty: activeSelection.isCollapsed,
+      position: cursorPosition() || { top: 0, left: 0 }
+    }
+
+    // Сохраняем выделение перед модификацией
+    saveSelection()
+
+    // --- Маршрутизация по типу команды ---
+
+    if (specialCommands.includes(command)) {
+      // --- Особая обработка для ссылок, медиа, сносок ---
+      if (command === 'link') {
+        const linkElement = findLinkAncestor(activeSelection.anchorNode)
+        const initialUrl = linkElement ? linkElement.getAttribute('href') || '' : ''
+        showInlineForm('link', handleInsertLink, initialUrl)
+        return
+      }
+      if (command === 'video') {
+        showInlineForm('video', handleInsertVideo, '')
+        return
+      }
+      if (command === 'image') {
+        showImageUploadModal()
+        return
+      }
+      if (command === 'audio') {
+        showAudioUploader()
+        return
+      }
+      if (command === 'footnote') {
+        const footnotesList = editor.querySelector('.footnotes ol')
+        const footnoteNumber = footnotesList ? footnotesList.children.length + 1 : 1
+        const footnoteId = footnoteNumber.toString()
+        const success = insertFootnote(editor, '', activeSelection)
+        if (success) {
+          openFootnoteEditor(footnoteId)
+        }
+        return
+      }
+    } else if (inlineCommands.includes(command)) {
+      // --- Переключение Inline Форматирования ---
+      console.log(
+        `[handleAction] Applying inline formatting: ${command}, current state:`,
+        hasFormatting(command, state)
+      )
+      if (hasFormatting(command, state)) {
+        removeFormatting(command, state)
+      } else {
+        applyFormatting(command, state)
+      }
+    } else if (blockToggleCommands.includes(command)) {
+      // --- Переключение Блочного Форматирования ---
+      console.log(`[handleAction] Applying block formatting: ${command}`)
+      toggleBlockFormat(command, state, editor) // Передаем editor
+    } else if (listCommands.includes(command)) {
+      // --- Переключение Списков через execCommand ---
+      const commandId = command === 'bulletList' ? 'insertUnorderedList' : 'insertOrderedList'
+      document.execCommand(commandId, false)
+      // execCommand может не вызвать 'input', поэтому обновляем состояние вручную
+      // С небольшой задержкой, чтобы браузер успел применить команду
+      setTimeout(() => {
+        handleChange(props.fieldType ? String(props.fieldType) : 'content')
+        trackSelectionAndCursor()
+      }, 100) // Задержку для списков оставляем 100 мс
+    } else {
+      // --- Обработка прочих команд (punchline, squib, align-*, bg-*) ---
+      // Пока просто применяем форматирование. Для переключения нужна своя логика.
+      console.log(`[handleAction] Applying default formatting for command: ${command}`)
+      applyFormatting(command, state)
+    }
+
+    // --- Финальное обновление состояния ---
+    // Реализуем трехэтапное обновление UI для большей надежности
+
+    // 1. Фокус обратно на редактор
+    editor.focus()
+
+    // 2. Обновление данных редактора
+    handleChange(props.fieldType ? String(props.fieldType) : 'content')
+
+    // 3. С задержкой отслеживаем активное форматирование, когда DOM обновился
+    setTimeout(() => {
+      // Проверяем, какое форматирование сейчас активно
+      console.log('[handleAction] Updating active formats after DOM update')
+      trackSelectionAndCursor()
+      const currentFormats = activeFormats()
+      console.log('[handleAction] Current formats after update:', currentFormats)
+
+      // Скрываем все активные меню/формы
+      setShowForm(null)
+      setShowSquibEditor(false)
+    }, 300) // Увеличиваем задержку до 300 мс для надежной синхронизации с DOM
   }
 
   // --- Form Handling ---
@@ -1268,7 +1355,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       if (footnoteId) {
         const footnoteContentElement = editorRef()?.querySelector(`[data-footnote-content="${footnoteId}"]`)
         if (footnoteContentElement) {
-          footnoteContentElement.innerHTML = submittedContent
+          footnoteContentElement.innerHTML = submittedContent // Update content in the list
+          // Also update the 'data-footnote-content' attribute on the marker if needed, though it seems redundant
+          // const marker = editorRef()?.querySelector(`[data-footnote-id="${footnoteId}"]`);
+          // marker?.setAttribute('data-footnote-content', encodeURIComponent(submittedContent));
         }
         setEditingFootnote(null)
         setShowFootnoteEditor(false)
@@ -1277,14 +1367,21 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     } else {
       // Creating new
       const editor = editorRef()
-      if (!editor) return
-      saveSelection()
-      // insertFootnote should ideally return the ID and modified content for handleAfterFormat
-      insertFootnote(editor, submittedContent, window.getSelection() as Selection)
-      restoreSelection()
-      setShowFootnoteEditor(false)
-      setFootnoteContent('')
-      handleChange(props.fieldType ? String(props.fieldType) : 'content') // Update main editor state
+      const selection = window.getSelection()
+      if (!editor || !selection) return
+
+      saveSelection() // Save before inserting
+      const success = insertFootnote(editor, submittedContent, selection)
+      restoreSelection() // Restore after inserting
+
+      if (success) {
+        setShowFootnoteEditor(false)
+        setFootnoteContent('')
+        handleChange(props.fieldType ? String(props.fieldType) : 'content') // Update main editor state
+      } else {
+        console.error('Failed to insert footnote')
+        // Handle error appropriately, maybe show a message
+      }
     }
   }
 
@@ -1428,6 +1525,21 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   })
 
   // --- Render ---
+  // 3. Create memo for displayed commands
+  const displayedCommands = createMemo(() => {
+    // Change field check to 'title'
+    const isTitleField = props.fieldType === 'title'
+    const isFirstFocus = !isInitialFocusDone()
+
+    if (isTitleField && isFirstFocus) {
+      // Commands shown only on the first focus of the title field
+      return ['link', 'h2', 'h3'] as (CommandType | CommandGroupType | '')[]
+    } else {
+      // Otherwise, show all commands passed in props
+      return props.commands as (CommandType | CommandGroupType | '')[]
+    }
+  })
+
   return (
     <div
       class={clsx(styles.editorWrapper, { [styles.readOnly]: props.readOnly })}
@@ -1436,7 +1548,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       {/* Toolbars */}
       <Show when={currentToolbarMode() === 'top'}>
         <SimpleToolbar
-          commands={props.commands as CommandType[]}
+          commands={displayedCommands()}
           onAction={handleAction}
           currentFormats={activeFormats()}
           class={styles.topToolbar}
@@ -1476,7 +1588,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       {/* Other UI Elements */}
       <Show when={currentToolbarMode() === 'bottom'}>
         <SimpleToolbar
-          commands={props.commands as CommandType[]}
+          commands={displayedCommands()}
           onAction={handleAction}
           currentFormats={activeFormats()}
           class={styles.bottomToolbar}
@@ -1486,7 +1598,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       </Show>
       <Show when={currentToolbarMode() === 'float'}>
         <SimpleToolbar
-          commands={props.commands as CommandType[]}
+          commands={displayedCommands()}
           onAction={handleAction}
           currentFormats={activeFormats()}
           class={clsx(styles.floatingToolbar)}
@@ -1497,18 +1609,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       </Show>
       <Show when={showSquibEditor() && currentSquib()}>
         <SquibMenu
+          commands={props.commands as CommandType[]}
           currentFormats={activeFormats()}
-          commands={[
-            'align-left',
-            'align-center',
-            'align-right',
-            'bg-gray',
-            'bg-white',
-            'bg-black',
-            'bg-yellow',
-            'bg-red',
-            'bg-green'
-          ]}
           isVisible={true}
           onAction={(action) => {
             const squibElement = currentSquib()
@@ -1522,7 +1624,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             setCurrentSquib(null)
           }}
           position={{ top: 50, left: 50 } as Position}
-          editorId={props.editorId}
         />
       </Show>
       <Show when={showLocalVersionLink()}>
@@ -1659,11 +1760,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         <PlusMenu
           position={getPlusMenuPosition()}
           isVisible={true}
-          onEmpty={isCursorOnEmptyLine()}
           onAction={(action) => {
             handlePlusMenuAction(action, editorRef()!, {
               showLinkForm: () => showInlineForm('link', handleInsertLink),
-              showVideoForm: () => showInlineForm('video', handleInsertVideo),
+              showVideoForm: () => showInlineForm('video', handleInsertVideo, ''), // Add empty string for initialValue
               showImageUploadModal,
               showAudioUploader,
               handleChange
@@ -1673,12 +1773,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             trackSelectionAndCursor()
             editorRef()?.focus()
           }}
-          editorId={props.editorId}
+          editorId={props.editorId} // Pass editorId if needed by PlusMenu
         />
       </Show>
     </div> // End editorWrapper
   )
 }
-
-// Реэкспорт типов для использования в других компонентах
-export type { EditorData, EditorFieldType, FormType, Position } from './lib/types'

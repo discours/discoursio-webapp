@@ -521,7 +521,7 @@ export class AwarenessProvider {
       console.info(`[AwarenessProvider] Not connected, skipping getDraftContent for ${draftId}`)
       return {}
     }
-    
+
     const states = this.awareness.getStates()
     const allFields: Record<string, DraftField> = {}
 
@@ -585,16 +585,14 @@ export class AwarenessProvider {
     this.setConnectionState('connecting')
 
     // Проверяем, активно ли SSE-соединение
-    const isConnected = typeof window !== 'undefined' && 
-      window.navigator.onLine && 
-      !!this.addHandler;
-    
+    const isConnected = typeof window !== 'undefined' && window.navigator.onLine && !!this.addHandler
+
     if (!isConnected) {
-      console.warn('[AwarenessProvider] No SSE connection available, working in offline mode');
-      this.setConnectionState('disconnected');
+      console.warn('[AwarenessProvider] No SSE connection available, working in offline mode')
+      this.setConnectionState('disconnected')
       // Даже если нет соединения, все равно восстанавливаем из localStorage
-      this.syncFromLocalStorage(editorId, draftId);
-      return;
+      this.syncFromLocalStorage(editorId, draftId)
+      return
     }
 
     // Отправка обновлений на сервер
@@ -609,9 +607,9 @@ export class AwarenessProvider {
 
         // Также проверяем онлайн-статус браузера
         if (typeof window !== 'undefined' && !window.navigator.onLine) {
-          console.warn('[AwarenessProvider] Browser is offline, skipping update');
-          this.setConnectionState('disconnected');
-          return;
+          console.warn('[AwarenessProvider] Browser is offline, skipping update')
+          this.setConnectionState('disconnected')
+          return
         }
 
         const response = await fetch(sseUrl, {
@@ -727,28 +725,28 @@ export class AwarenessProvider {
     // Добавляем слушатель сетевого состояния
     if (typeof window !== 'undefined') {
       const handleOnline = () => {
-        console.log('[AwarenessProvider] Browser went online');
-        this.setConnectionState('connecting');
+        console.log('[AwarenessProvider] Browser went online')
+        this.setConnectionState('connecting')
         // Пытаемся переподключиться и отправить sync
         sendToServer({
           type: 'sync',
           editorId,
           data: uint8ArrayToBase64(initialUpdate)
-        });
-      };
-      
+        })
+      }
+
       const handleOffline = () => {
-        console.log('[AwarenessProvider] Browser went offline');
-        this.setConnectionState('disconnected');
-      };
-      
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
-      
+        console.log('[AwarenessProvider] Browser went offline')
+        this.setConnectionState('disconnected')
+      }
+
+      window.addEventListener('online', handleOnline)
+      window.addEventListener('offline', handleOffline)
+
       onCleanup(() => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-      });
+        window.removeEventListener('online', handleOnline)
+        window.removeEventListener('offline', handleOffline)
+      })
     }
 
     onCleanup(() => {

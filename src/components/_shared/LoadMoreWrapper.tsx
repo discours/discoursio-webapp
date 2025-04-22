@@ -136,9 +136,9 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
         setItems((prev) => {
           // Создаем Set для быстрой проверки наличия элементов и избежания дубликатов
           const existingIds = new Set(prev.map((item) => String(item.id)))
-          const uniqueNewItems = getFilteredItems<{ id: number | string }>(
+          const uniqueNewItems = getFilteredItems<Author | Shout | Reaction>(
             newItems,
-            (item) => !existingIds.has(String(item.id))
+            (item: Author | Shout | Reaction) => !existingIds.has(String(item.id))
           )
 
           console.log('[LoadMoreWrapper] Unique new items:', uniqueNewItems.length)

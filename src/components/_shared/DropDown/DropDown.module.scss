@@ -18,3 +18,23 @@
   font-weight: 600;
   margin: 0.5rem 1rem !important;
 }
+
+/* Стили для иконки внутри пункта меню */
+.optionIcon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px; /* Отступ справа от иконки */
+  opacity: 0.6;
+  vertical-align: middle; /* Выравнивание по вертикали */
+  border: 1px solid transparent; /* Добавляем прозрачную рамку для выравнивания */
+  border-radius: 3px; /* Небольшое скругление */
+  padding: 1px; /* Небольшой отступ внутри рамки */
+
+  &.active {
+    opacity: 1;
+    border-color: darkgray; /* Рамка для активной иконки */
+    background: rgb(0 0 0 / 5%); /* Легкий фон для активной иконки */
+  }
+}
+
+/* Убираем стандартный фон у кнопки триггера */

@@ -167,9 +167,23 @@ export const useEditor = (props: EditorProps) => {
     const content = editor.innerHTML
     const hasValidRange = selection && selection.rangeCount > 0
 
+    // Получаем активные форматы и трансформируем их в нужную структуру
+    const activeFormats = getActiveFormats(selection || undefined, editor || undefined)
+
     setState({
       content,
-      format: getActiveFormats(selection),
+      format: {
+        text: {
+          bold: activeFormats.bold,
+          italic: activeFormats.italic,
+          link: activeFormats.link,
+          highlight: activeFormats.highlight
+        },
+        block: {
+          blockquote: activeFormats.blockquote,
+          punchline: activeFormats.punchline
+        }
+      },
       selection: {
         range: hasValidRange ? selection.getRangeAt(0) : null,
         text: selection?.toString() || '',

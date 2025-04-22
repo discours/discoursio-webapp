@@ -213,17 +213,19 @@ export const useSelection = (
         commandsInGroup.forEach((cmd: CommandType) => {
           if (!cmd) return
 
-          if (
-            hasFormatting(cmd, {
-              range: range,
-              text: selection.toString(),
-              isEmpty: selection.isCollapsed,
-              position: {
-                top: rect.top,
-                left: rect.left + rect.width / 2
-              }
-            })
-          ) {
+          // Construct the SelectionState object explicitly matching the type
+          const currentState: SelectionState = {
+            range: range, // Range object
+            text: selection.toString(), // Selected text
+            isEmpty: selection.isCollapsed, // Is the selection collapsed?
+            position: {
+              // Position object
+              top: rect.top,
+              left: rect.left + rect.width / 2
+            }
+          }
+
+          if (hasFormatting(cmd, currentState)) {
             computedFormats.add(cmd)
           }
         })

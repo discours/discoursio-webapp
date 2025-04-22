@@ -4,30 +4,37 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 6px;
+    padding: 6px 8px;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
     z-index: 100;
     transform: translateY(0);
+    background-color: white;
+    box-shadow: 0 2px 10px rgb(0 0 0 / 10%);
     
     /* Общий класс для видимых тулбаров */
     &.visible {
         opacity: 1;
         visibility: visible;
     }
-    
 }
 
 .button {
     @include editor.toolbar-button;
 
-    opacity: 0.8;
+    width: 34px;
+    height: 34px;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
     
     svg {
-        width: 16px;
-        height: 16px;
-        fill: currentcolor;
+        width: 20px;
+        height: 20px;
+        fill: #6b7280;
         transition: transform 0.2s ease;
     }
     
@@ -36,13 +43,14 @@
         background: rgb(0 0 0 / 5%);
         
         svg {
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
     }
     
     &.active {
-        background: rgb(0 0 0 / 5%);
-        border: 1px solid darkgray;
+        opacity: 0.9;
+        background: rgb(0 0 0 / 6%);
+        border: none;
     }
 }
 
@@ -57,29 +65,140 @@
     }
 }
 
+// Стили дропдауна тулбара
 .dropdownTrigger {
     @include editor.toolbar-button;
 
-    min-width: 80px;
-    padding: 0 8px;
-    justify-content: space-between;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 10px;
+    justify-content: center;
     font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
     
-    svg {
+    svg:not(.chevron) {
+        width: 22px;
+        height: 22px;
+        color: #4b5563;
+    }
+}
+
+.dropdownTriggerContent {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    
+    .chevron {
         width: 12px;
-        height: 12px;
-        margin-left: 4px;
+        height: 6px;
+        transition: transform 0.2s ease;
+        opacity: 0.7;
+        fill: #6b7280;
+        margin-left: 1px;
+        vertical-align: middle;
     }
 }
 
 .dropdown {
-    min-width: 160px;
-    max-height: 320px;
+    min-width: fit-content;
+    max-height: 350px;
     overflow-y: auto;
     background: white;
-    border-radius: var(--editor-border-radius);
-    box-shadow: var(--editor-shadow);
-    border: 1px solid rgb(0 0 0 / 10%);
+    box-shadow: 0 4px 15px rgb(0 0 0 / 12%);
+    border: 1px solid rgb(229 231 235 / 70%);
+    padding: 2px;
+    z-index: 1000;
+    margin-top: 6px;
+}
+
+.dropdownContent {
+    width: 100%;
+}
+
+.dropdownDivider {
+    height: 1px;
+    background-color: #e5e7eb;
+    margin: 6px 10px;
+    width: calc(100% - 20px);
+}
+
+.dropdownGroupTitle {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+    padding: 2px 6px;
+    margin-bottom: 4px;
+    letter-spacing: 0.01em;
+}
+
+.dropdownOptionsList {
+    list-style: none;
+    padding: 0 6px;
+    margin: 0;
+    display: flex;
+    gap: 4px;
+    
+    li {
+        padding: 0;
+        margin: 0;
+    }
+}
+
+.dropdownOptionButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 36px;
+    height: 36px;
+    padding: 6px;
+    border: none;
+    background: transparent;
+    text-align: center;
+    cursor: pointer;
+    color: #4b5563;
+    
+    &:hover {
+        background-color: #f3f4f6;
+    }
+    
+    &.active {
+        background-color: #e5e7eb;
+        box-shadow: none;
+    }
+
+    &.iconOnly {
+        .optionIcon {
+            margin-right: 0;
+        }
+    }
+    
+    &:not(.iconOnly) {
+        padding: 8px 10px;
+        min-width: 42px;
+    }
+
+    .optionIcon {
+        width: 18px;
+        height: 18px;
+        margin-right: 0;
+        opacity: 0.7;
+        color: #6b7280;
+        
+        &.active {
+            opacity: 1;
+            color: #4b5563;
+        }
+    }
+}
+
+// Класс для переопределения радиуса Popup
+.noBorderRadiusPopup {
+    border-radius: 0 !important; 
+    border: none !important;
 }
 
 // Bubble menu
@@ -89,7 +208,28 @@
     align-items: center;
     gap: 4px;
     padding: 4px;
-    border-radius: 6px;
     z-index: 100;
+}
+
+.separator {
+    width: 1px;
+    height: 20px;
+    background-color: rgb(0 0 0 / 15%);
+    margin: 0 6px;
+}
+
+/* Стили для иконки внутри пункта меню */
+.optionIcon {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    opacity: 0.7;
+    vertical-align: middle;
+    color: #6b7280;
+    
+    &.active {
+        opacity: 1;
+        color: #4b5563;
+    }
 }
   

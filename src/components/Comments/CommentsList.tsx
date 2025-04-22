@@ -10,7 +10,7 @@ import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
 import { CommentCard } from './CommentCard'
 
 import stylesArticle from '../Article/Article.module.scss'
-import { EditorData } from '../SimpleRichEditor/SimpleRichEditor'
+import { EditorData } from '../SimpleRichEditor/lib/types'
 import styles from './CommentsList.module.scss'
 
 export interface CommentsListProps {

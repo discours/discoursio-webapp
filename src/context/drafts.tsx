@@ -26,10 +26,8 @@ import type {
   Draft,
   DraftInput,
   PublishDraftMutationMutation,
-  PublishShoutMutationMutation,
   Topic,
   UnpublishDraftMutationMutation,
-  UnpublishShoutMutationMutation,
   UpdateDraftMutationMutation
 } from '~/graphql/schema/core.gen'
 import { useSession } from './session'
@@ -48,8 +46,8 @@ type DraftsContextType = {
   deleteDraft: (id: number) => Promise<OperationResult<DeleteDraftMutationMutation>>
   publishDraft: (draftId: number) => Promise<OperationResult<PublishDraftMutationMutation>>
   unpublishDraft: (draftId: number) => Promise<OperationResult<UnpublishDraftMutationMutation>>
-  publishShout: (shoutId: number) => Promise<OperationResult<PublishShoutMutationMutation>>
-  unpublishShout: (shoutId: number) => Promise<OperationResult<UnpublishShoutMutationMutation>>
+  publishShout: (shoutId: number) => Promise<OperationResult<PublishDraftMutationMutation>>
+  unpublishShout: (shoutId: number) => Promise<OperationResult<UnpublishDraftMutationMutation>>
   isEditorPanelVisible: Accessor<boolean>
   toggleEditorPanel: () => void
   setIsEditorPanelVisible: (visible: boolean) => void
@@ -495,22 +493,22 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     return response as OperationResult<UnpublishDraftMutationMutation>
   }
 
-  const publishShout = async (shoutId: number): Promise<OperationResult<PublishShoutMutationMutation>> => {
+  const publishShout = async (shoutId: number): Promise<OperationResult<PublishDraftMutationMutation>> => {
     const response = await client()?.mutation(publishShoutMutation, { shout_id: shoutId })
     if (response?.data?.publish_shout) {
       setDrafts(drafts().map((d) => (d.id === shoutId ? response.data.publish_shout : d)))
     }
-    return response as OperationResult<PublishShoutMutationMutation>
+    return response as OperationResult<PublishDraftMutationMutation>
   }
 
   const unpublishShout = async (
     shoutId: number
-  ): Promise<OperationResult<UnpublishShoutMutationMutation>> => {
+  ): Promise<OperationResult<UnpublishDraftMutationMutation>> => {
     const response = await client()?.mutation(unpublishShoutMutation, { shout_id: shoutId })
     if (response?.data?.unpublish_shout) {
       setDrafts(drafts().map((d) => (d.id === shoutId ? response.data.unpublish_shout : d)))
     }
-    return response as OperationResult<UnpublishShoutMutationMutation>
+    return response as OperationResult<UnpublishDraftMutationMutation>
   }
   const toggleEditorPanel = () => setIsEditorPanelVisible(!isEditorPanelVisible())
   const value = {

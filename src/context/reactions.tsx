@@ -14,6 +14,21 @@ import {
 import { useLocalize } from './localize'
 import { useSession } from './session'
 import { useSnackbar } from './ui'
+
+/**
+ * Определяет тип данных для контекста реакций.
+ * @interface ReactionsContextType
+ * @property {Accessor<Record<number, Reaction>>} reactionEntities - Объект с реакциями, где ключ - ID реакции.
+ * @property {Accessor<Record<number, Reaction[]>>} reactionsByShout - Объект с массивами реакций, сгруппированными по ID статьи.
+ * @property {Accessor<Record<number, Reaction[]>>} commentsByAuthor - Объект с массивами комментариев, сгруппированными по ID автора.
+ * @property {(args: QueryLoad_Reactions_ByArgs) => Promise<Reaction[]>} loadReactionsBy - Функция для загрузки реакций по заданным параметрам.
+ * @property {(reaction: MutationCreate_ReactionArgs) => Promise<Reaction | undefined>} createShoutReaction - Функция для создания новой реакции (комментария).
+ * @property {(reaction: MutationUpdate_ReactionArgs) => Promise<{ error?: string; reaction?: Reaction }>} updateShoutReaction - Функция для обновления существующей реакции.
+ * @property {(id: number) => Promise<{ error: string } | null>} deleteShoutReaction - Функция для удаления реакции по ID.
+ * @property {(rrr: Reaction[]) => void} addShoutReactions - Функция для добавления или обновления реакций в локальном хранилище.
+ * @property {Accessor<boolean>} reactionsLoading - Флаг, указывающий на процесс загрузки реакций.
+ * @property {(params: QueryLoad_Comments_BranchArgs) => Promise<Reaction[]>} loadCommentsBranch - Функция для загрузки ветки комментариев.
+ */
 type ReactionsContextType = {
   reactionEntities: Accessor<Record<number, Reaction>>
   reactionsByShout: Accessor<Record<number, Reaction[]>>

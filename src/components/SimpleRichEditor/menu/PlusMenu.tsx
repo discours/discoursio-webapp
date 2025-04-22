@@ -60,11 +60,13 @@ export const handlePlusMenuAction = (
         callbacks.showImageUploadModal()
       }
       break
-    case 'hr': {
-      replaceSelection('<hr />', editor)
-      if (callbacks.handleChange) callbacks.handleChange()
+    case 'hr':
+      if (editor) {
+        // Вставляем <hr> и новый параграф после него
+        replaceSelection('<hr><p><br></p>', editor)
+        if (callbacks.handleChange) callbacks.handleChange()
+      }
       break
-    }
     default:
       // Для прочих команд передаем обработку дальше
       break
@@ -120,16 +122,15 @@ export const handleSquibFormatting = (action: string): ((el: HTMLElement) => boo
 }
 
 /**
- * Плавающее меню вставки контента
+ * Плавающее меню вставки контента в стиле Telegraph
  *
  * Особенности:
- * - Кнопка "+" находится слева от редактора на уровне курсора
- * - Плейсхолдер показывается, когда курсор на пустой строке
- * - Подменю появляется рядом с кнопкой плюс
- * - Поддержка вставки ссылок/видео/изображений/аудио/горизонтальной линии
+ * - Кнопка "+" появляется слева от начала строки при вводе текста
+ * - Упрощенное подменю с основными опциями (ссылка, изображение, видео)
+ * - Минималистичный дизайн в стиле Telegraph
  * - Закрытие по клику вне
  * - Плавные анимации
- * - Оперативное обновление положения по вертикали в зависимости от положения курсора
+ * - Оперативное обновление положения при движении курсора
  */
 export const PlusMenu: Component<{
   position: { top: number; left: number; isVisible?: boolean }
@@ -202,21 +203,23 @@ export const PlusMenu: Component<{
 
           if (currentNode && currentNode instanceof Element) {
             const blockRect = currentNode.getBoundingClientRect()
+            const editorRect = editor.getBoundingClientRect()
 
-            // Устанавливаем позицию на уровне блока
+            // меню всегда должно быть слева от начала строки
             setCurrentPosition({
               top: blockRect.top + scrollTop + blockRect.height / 2 - 10,
-              left: blockRect.left + scrollLeft - 30,
+              left: editorRect.left + scrollLeft - 30, // Всегда располагаем слева от контента
               isVisible: true
             })
             return
           }
         }
 
-        // Стандартное позиционирование для обычного текста
+        // озиционируем меню всегда слева от редактора
+        const editorRect = editor.getBoundingClientRect()
         setCurrentPosition({
           top: rangeRect.top + scrollTop + rangeRect.height / 2 - 10,
-          left: rangeRect.left + scrollLeft - 30,
+          left: editorRect.left + scrollLeft - 30, // Всегда располагаем слева от контента
           isVisible: true
         })
       }
@@ -316,23 +319,24 @@ export const PlusMenu: Component<{
   // Показываем плейсхолдер только если меню видимо, не открыто подменю и курсор на пустой строке
   const shouldShowPlaceholder = () => isReallyVisible() && !isOpen() && props.onEmpty === true
 
-  // Дополняем логику меню - оно должно отображаться всегда, когда курсор на пустой строке
-  // или когда курсор на конце непустой строки (для вставки после текста)
+  // меню всегда фиксировано слева от контента
   const getMenuPosition = () => {
     return {
-      ...currentPosition(),
-      // Если курсор на пустой строке, показываем меню чуть выше для лучшей видимости
-      top: props.onEmpty ? currentPosition().top - 5 : currentPosition().top
+      top: currentPosition().top,
+      left: currentPosition().left
     }
   }
 
-  // Используем currentPosition для стиля меню и применяем необходимые трансформации
+  // позиционирование - слева от абзаца
   const menuStyle = {
     top: `${getMenuPosition().top}px`,
-    left: `${currentPosition().left}px`,
-    transform: 'translate(0, 0)', // Гарантируем, что transform не будет переопределен
-    position: 'fixed' as const // Явно указываем позицию fixed для предотвращения конфликтов
+    left: `${getMenuPosition().left}px`,
+    transform: 'translate(0, 0)',
+    position: 'fixed' as const
   }
+
+  // Telegraph использует ограниченный набор элементов меню
+  const telegraphMenuItems = ['link', 'image', 'video']
 
   return (
     <div
@@ -357,16 +361,16 @@ export const PlusMenu: Component<{
 
       <Show when={shouldShowPlaceholder()}>
         <div class={styles.placeholder} onClick={handlePlaceholderClick}>
-          Добавьте ссылку или нажмите плюс для вставки медиа
+          Напишите что-нибудь или нажмите +
         </div>
       </Show>
 
       <Show when={isOpen()}>
         <div class={clsx(styles.menuItems, 'visible')} onClick={(e) => e.stopPropagation()}>
-          <For each={['link', 'image', 'video', 'audio', 'horizontal-rule']}>
+          <For each={telegraphMenuItems}>
             {(action) => (
               <ToolbarControl
-                action={action === 'horizontal-rule' ? ('hr' as CommandType) : (action as CommandType)}
+                action={action as CommandType}
                 class={styles.menuItem}
                 onAction={() => handleMenuItemClick(action)}
                 currentFormats={new Set()}
