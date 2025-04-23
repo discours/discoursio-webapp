@@ -5,8 +5,10 @@ import { debounce } from 'throttle-debounce'
 import { sanitizeHtml } from '~/components/SimpleRichEditor/lib/sanitize'
 import {
   getAllDraftFields,
+  getAllDraftsFromStorage,
   getDraftField,
   getDraftFieldsVersion,
+  removeDraftFromStorage,
   saveDraftField,
   saveEditorContent,
   updateLastSync
@@ -34,10 +36,15 @@ import { useSession } from './session'
 
 export const AUTO_SAVE_DELAY = 1000
 
+// Интерфейс для расширенной информации о черновике
+export interface ExtendedDraft extends Draft {
+  isLocalOnly?: boolean
+}
+
 type DraftsContextType = {
-  drafts: Accessor<Draft[]>
-  currentDraft: Accessor<Draft | undefined>
-  setCurrentDraft: (draft: Draft | undefined) => void
+  drafts: Accessor<ExtendedDraft[]>
+  currentDraft: Accessor<ExtendedDraft | undefined>
+  setCurrentDraft: (draft: ExtendedDraft | undefined) => void
   getEditorContent: (editorId: string) => string
   setEditorContent: (editorId: string, content: string) => void
   loadDrafts: () => Promise<void>
@@ -51,13 +58,15 @@ type DraftsContextType = {
   isEditorPanelVisible: Accessor<boolean>
   toggleEditorPanel: () => void
   setIsEditorPanelVisible: (visible: boolean) => void
-  syncDraft: (draftId: number) => Promise<Draft | undefined>
+  syncDraft: (draftId: number) => Promise<ExtendedDraft | undefined>
   updateDraftField: (
     draftId: number,
     fieldName: keyof DraftInput,
     value: string | EditorData,
     isEditorUpdate: boolean
   ) => void
+  loadLocalDrafts: () => ExtendedDraft[]
+  removeLocalDraft: (draftId: number) => boolean
 }
 
 export const DraftsContext = createContext<DraftsContextType>({} as DraftsContextType)
@@ -65,9 +74,9 @@ const DRAFT_EDITOR_ID_REGEX = /draft-(\d+)-([a-z]+)/
 export const DraftsProvider = (props: { children: JSX.Element }) => {
   const { client, session } = useSession()
   // все доступные для редактирования черновики
-  const [drafts, setDrafts] = createSignal<Draft[]>([])
+  const [drafts, setDrafts] = createSignal<ExtendedDraft[]>([])
   // текущий редактируемый черновик
-  const [currentDraft, setCurrentDraft] = createSignal<Draft>()
+  const [currentDraft, setCurrentDraft] = createSignal<ExtendedDraft>()
   // содержимое всех редакторов
   const [editorsContent, setEditorsContent] = createSignal<Record<string, string>>({})
   // видимость панели редактора
@@ -93,7 +102,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   })
 
   // Функция для синхронизации черновика между компонентами
-  const syncDraft = async (draftId: number): Promise<Draft | undefined> => {
+  const syncDraft = async (draftId: number): Promise<ExtendedDraft | undefined> => {
     if (!draftId) return undefined
 
     try {
@@ -156,7 +165,9 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           cover: updatedDraft.cover || '',
           cover_caption: updatedDraft.cover_caption || '',
           topic_ids: updatedDraft.topics
-            ? updatedDraft.topics.filter((topic): topic is Topic => Boolean(topic)).map((topic) => topic.id)
+            ? updatedDraft.topics
+                .filter((topic): topic is Topic => Boolean(topic?.id))
+                .map((topic) => topic.id)
             : []
         }
 
@@ -278,6 +289,116 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     // 6. (Опционально) Запускаем дебаунсированное сохранение на сервер,
     // если это изменение не пришло из setEditorContent (которое уже дебаунсировано)
     // if (!isEditorUpdate) { debouncedSaveToServer(draftId); }
+  }
+
+  /**
+   * Загружает локальные черновики из localStorage
+   * @returns Массив локальных черновиков
+   */
+  const loadLocalDrafts = (): ExtendedDraft[] => {
+    try {
+      // Получаем все черновики из localStorage
+      const storedDrafts = getAllDraftsFromStorage()
+      if (!storedDrafts.length) return []
+
+      console.log(`[DraftsProvider] Найдено ${storedDrafts.length} локальных черновиков`)
+
+      // Преобразуем в формат ExtendedDraft
+      const localDrafts: ExtendedDraft[] = storedDrafts.map((storedDraft) => {
+        // Получаем все поля из localStorage
+        const fields = storedDraft.fields || {}
+
+        // Создаем идентификатор из строки (если это строка) или используем как есть (если число)
+        const draftId =
+          typeof storedDraft.id === 'string' ? Number.parseInt(storedDraft.id, 10) : storedDraft.id
+
+        // Создаем объект черновика
+        const localDraft: ExtendedDraft = {
+          id: draftId,
+          title: fields.title || 'Без названия',
+          subtitle: fields.subtitle || '',
+          lead: fields.lead || '',
+          body: fields.body || '',
+          slug: fields.slug || '',
+          cover: fields.cover || '',
+          cover_caption: fields.cover_caption || '',
+          layout: fields.layout || 'article',
+          topics: [],
+          isLocalOnly: true,
+          // Добавляем другие обязательные поля из Draft
+          created_at: Date.now(), // Используем числовой timestamp вместо строки
+          updated_at: Date.now(), // Используем числовой timestamp вместо строки
+          created_by: {
+            // Минимальные требования для поля created_by
+            id: 0,
+            slug: '',
+            user: ''
+          },
+          community: {
+            // Минимальные требования для поля community
+            id: 0,
+            slug: '',
+            name: '',
+            pic: '',
+            created_at: 0,
+            created_by: {
+              id: 0,
+              slug: '',
+              user: ''
+            }
+          }
+        }
+
+        // Проверяем, существует ли черновик на сервере
+        const serverDraft = drafts().find((d) => d.id === localDraft.id && !d.isLocalOnly)
+        if (serverDraft) {
+          // Если черновик существует на сервере, помечаем его как не только локальный
+          localDraft.isLocalOnly = false
+        }
+
+        return localDraft
+      })
+
+      // Фильтруем черновики, которые существуют только локально
+      const localOnlyDrafts = localDrafts.filter((d) => d.isLocalOnly)
+      console.log(
+        `[DraftsProvider] Найдено ${localOnlyDrafts.length} черновиков, доступных только локально`
+      )
+
+      return localOnlyDrafts
+    } catch (error) {
+      console.error('[DraftsProvider] Ошибка при загрузке локальных черновиков:', error)
+      return []
+    }
+  }
+
+  /**
+   * Удаляет локальный черновик
+   * @param draftId Идентификатор черновика
+   * @returns true в случае успеха
+   */
+  const removeLocalDraft = (draftId: number): boolean => {
+    try {
+      // Удаляем из localStorage
+      const result = removeDraftFromStorage(draftId)
+
+      if (result) {
+        // Удаляем из состояния drafts
+        setDrafts((prev) => prev.filter((d) => !(d.id === draftId && d.isLocalOnly)))
+
+        // Если это текущий черновик, сбрасываем его
+        if (currentDraft()?.id === draftId && currentDraft()?.isLocalOnly) {
+          setCurrentDraft(undefined)
+        }
+
+        console.log(`[DraftsProvider] Локальный черновик #${draftId} успешно удален`)
+      }
+
+      return result
+    } catch (error) {
+      console.error(`[DraftsProvider] Ошибка при удалении локального черновика #${draftId}:`, error)
+      return false
+    }
   }
 
   const loadDrafts = async () => {
@@ -428,14 +549,30 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           updatedDraft.title = localFields.title
         }
 
-        return updatedDraft as Draft
+        // Отмечаем, что этот черновик не является только локальным
+        updatedDraft.isLocalOnly = false
+
+        return updatedDraft as ExtendedDraft
       })
 
+      // Загружаем локальные черновики, которых нет на сервере
+      const localOnlyDrafts = loadLocalDrafts()
+
+      // Объединяем серверные черновики с локальными
+      const allDrafts = [...updatedDrafts, ...localOnlyDrafts]
+
       // Обновляем список черновиков
-      console.log('[drafts] setting drafts with local changes applied:', updatedDrafts)
-      setDrafts(updatedDrafts)
+      console.log('[drafts] setting drafts with local changes applied:', allDrafts)
+      setDrafts(allDrafts)
     } catch (error) {
       console.error('[drafts] error loading drafts:', error)
+
+      // В случае ошибки при загрузке с сервера, пробуем загрузить хотя бы локальные черновики
+      const localDrafts = loadLocalDrafts()
+      if (localDrafts.length) {
+        console.log('[drafts] loaded local drafts after server error:', localDrafts)
+        setDrafts(localDrafts)
+      }
     }
   }
 
@@ -476,11 +613,99 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       - проверяем наличие mainTopic или selectedTopics
     */
   const publishDraft = async (draftId: number): Promise<OperationResult<PublishDraftMutationMutation>> => {
-    const response = await client()?.mutation(publishDraftMutation, { draft_id: draftId })
-    if (response?.data?.publish_draft?.draft) {
-      setDrafts(drafts().map((d) => (d.id === draftId ? response.data.publish_draft.draft : d)))
+    console.log(`[DraftsProvider] Публикация черновика #${draftId}`)
+
+    try {
+      // Дополнительная проверка черновика перед публикацией
+      // Находим черновик в общем списке
+      const draftToPublish = drafts().find((d) => d.id === draftId)
+
+      if (!draftToPublish) {
+        console.error(`[DraftsProvider] Не удалось найти черновик #${draftId} перед публикацией`)
+        throw new Error(`Черновик #${draftId} не найден`)
+      }
+
+      // Проверяем наличие темы перед публикацией
+      // У Draft нет свойства topic_ids, нужно извлекать идентификаторы из массива topics
+      const topicIds = draftToPublish.topics
+        ? draftToPublish.topics
+            .filter((topic): topic is Topic => Boolean(topic?.id))
+            .map((topic) => topic.id)
+        : []
+
+      if (topicIds.length) {
+        console.log(
+          `[DraftsProvider] У черновика #${draftId} найдено ${topicIds.length} тем: ${topicIds.join(', ')}`
+        )
+      } else {
+        console.warn(
+          `[DraftsProvider] У черновика #${draftId} отсутствуют темы, пытаемся использовать резервные варианты`
+        )
+
+        // Пробуем сначала использовать темы из объекта Draft
+        if (draftToPublish.topics && draftToPublish.topics.length > 0) {
+          // Проверяем наличие тем в массиве topics
+          console.log(
+            `[DraftsProvider] У черновика #${draftId} найдены темы в массиве topics, используем их`
+          )
+
+          // Извлекаем идентификаторы тем с дополнительной проверкой
+          const extractedTopicIds = draftToPublish.topics
+            .filter((topic): topic is Topic => Boolean(topic?.id))
+            .map((topic) => topic.id)
+            .filter((id) => id > 0)
+
+          if (extractedTopicIds.length > 0) {
+            console.log(
+              `[DraftsProvider] Восстановлено ${extractedTopicIds.length} тем для черновика #${draftId}`
+            )
+
+            // Создаем обновленный объект черновика
+            const updatedDraft: DraftInput = {
+              id: draftId,
+              topic_ids: extractedTopicIds,
+              main_topic_id: extractedTopicIds[0]
+            }
+
+            // Обновляем черновик перед публикацией
+            console.log(`[DraftsProvider] Обновляем темы черновика #${draftId} перед публикацией`)
+            await updateDraft(updatedDraft)
+          } else {
+            console.warn(
+              `[DraftsProvider] Не удалось восстановить темы для черновика #${draftId}, публикация может завершиться с ошибкой`
+            )
+          }
+        } else {
+          console.warn(
+            `[DraftsProvider] У черновика #${draftId} отсутствуют темы, публикация может завершиться с ошибкой`
+          )
+        }
+      }
+
+      // Непосредственно публикуем черновик
+      const response = await client()?.mutation(publishDraftMutation, { draft_id: draftId })
+
+      console.log(`[DraftsProvider] Результат публикации черновика #${draftId}:`, {
+        success: !!response?.data?.publish_draft?.draft,
+        error: response?.data?.publish_draft?.error || null,
+        draftData: response?.data?.publish_draft?.draft ? 'получен' : 'отсутствует'
+      })
+
+      if (response?.data?.publish_draft?.draft) {
+        setDrafts(drafts().map((d) => (d.id === draftId ? response.data.publish_draft.draft : d)))
+        console.log(`[DraftsProvider] Обновлен список черновиков после публикации #${draftId}`)
+      } else if (response?.data?.publish_draft?.error) {
+        console.error(
+          `[DraftsProvider] Ошибка при публикации черновика #${draftId}:`,
+          response.data.publish_draft.error
+        )
+      }
+
+      return response as OperationResult<PublishDraftMutationMutation>
+    } catch (error) {
+      console.error(`[DraftsProvider] Критическая ошибка при публикации черновика #${draftId}:`, error)
+      throw error
     }
-    return response as OperationResult<PublishDraftMutationMutation>
   }
 
   const unpublishDraft = async (
@@ -529,7 +754,9 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     toggleEditorPanel,
     setIsEditorPanelVisible,
     syncDraft,
-    updateDraftField
+    updateDraftField,
+    loadLocalDrafts,
+    removeLocalDraft
   }
 
   return <DraftsContext.Provider value={value}>{props.children}</DraftsContext.Provider>

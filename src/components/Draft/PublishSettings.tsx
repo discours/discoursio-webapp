@@ -98,22 +98,82 @@ function loadDraftWithOfflineChanges(draftId: number, draft: ExtendedDraft): For
     const topicsFromStorage = getDraftField(draftId, 'topics')
     if (topicsFromStorage) {
       try {
-        const parsedTopics = JSON.parse(topicsFromStorage)
-        if (Array.isArray(parsedTopics)) {
-          topics = parsedTopics
-            .filter((topic) => !!topic && !!topic.id)
-            .map((topic) => ({
-              id: Number(topic.id),
-              title: topic.title || '',
-              slug: topic.slug || '',
-              body: topic.body || null,
-              pic: topic.pic || null,
-              stat: topic.stat || null
-            }))
-          console.log(`[PublishSettings] Parsed ${topics.length} topics from JSON for draft ${draftId}`)
+        console.log(
+          `[PublishSettings] Загружаем topics из localStorage для черновика ${draftId}. Сырые данные:`,
+          topicsFromStorage
+        )
+
+        // Проверяем формат данных перед JSON.parse
+        if (typeof topicsFromStorage !== 'string') {
+          console.warn(
+            `[PublishSettings] Неверный формат topics в localStorage для черновика ${draftId}: ожидалась строка, получен ${typeof topicsFromStorage}`
+          )
+          topics = draft.topics || []
+        } else if (topicsFromStorage.trim().startsWith('[')) {
+          try {
+            const parsedTopics = JSON.parse(topicsFromStorage)
+            console.log(
+              `[PublishSettings] Успешно распарсили JSON для topics черновика ${draftId}:`,
+              parsedTopics
+            )
+
+            if (Array.isArray(parsedTopics)) {
+              topics = parsedTopics
+                .filter((topic) => {
+                  if (!topic || typeof topic !== 'object' || !topic.id) {
+                    console.warn(
+                      `[PublishSettings] Обнаружен некорректный элемент в массиве topics: ${topic}`
+                    )
+                    return false
+                  }
+                  return true
+                })
+                .map((topic) => ({
+                  id: Number(topic.id),
+                  title: topic.title || '',
+                  slug: topic.slug || '',
+                  body: topic.body || null,
+                  pic: topic.pic || null,
+                  stat: topic.stat || null
+                }))
+              console.log(
+                `[PublishSettings] Преобразовано ${topics.length} тем из JSON для черновика ${draftId}`
+              )
+            } else {
+              console.warn(
+                `[PublishSettings] topics распарсились, но это не массив для черновика ${draftId}:`,
+                parsedTopics
+              )
+              topics = draft.topics || []
+            }
+          } catch (parseError) {
+            console.error(
+              `[PublishSettings] Критическая ошибка при парсинге topics из localStorage для черновика ${draftId}:`,
+              parseError
+            )
+            // Дополнительная диагностика
+            try {
+              // Пытаемся определить проблему в JSON строке
+              const problematicPart = topicsFromStorage.slice(0, 100) // Смотрим первые 100 символов
+              console.warn(`[PublishSettings] Проблемная часть JSON в topics: ${problematicPart}`)
+            } catch (e) {
+              console.warn(`[PublishSettings] Не удалось проанализировать проблемную часть topics: ${e}`)
+            }
+            topics = draft.topics || []
+          }
+        } else {
+          console.warn(
+            `[PublishSettings] topics в localStorage не является массивом JSON для черновика ${draftId}:`,
+            topicsFromStorage
+          )
+          topics = draft.topics || []
         }
       } catch (e) {
-        console.error(`[PublishSettings] Error parsing topics from localStorage for draft ${draftId}:`, e)
+        console.error(
+          `[PublishSettings] Общая ошибка обработки topics из localStorage для черновика ${draftId}:`,
+          e
+        )
+        topics = draft.topics || []
       }
     }
 
@@ -121,23 +181,79 @@ function loadDraftWithOfflineChanges(draftId: number, draft: ExtendedDraft): For
     const mainTopicFromStorage = getDraftField(draftId, 'mainTopic')
     if (mainTopicFromStorage) {
       try {
-        const parsedMainTopic = JSON.parse(mainTopicFromStorage)
-        if (parsedMainTopic && typeof parsedMainTopic === 'object' && parsedMainTopic.id) {
-          mainTopic = {
-            id: Number(parsedMainTopic.id),
-            title: parsedMainTopic.title || '',
-            slug: parsedMainTopic.slug || '',
-            body: parsedMainTopic.body || null,
-            pic: parsedMainTopic.pic || null,
-            stat: parsedMainTopic.stat || null
+        console.log(
+          `[PublishSettings] Загружаем mainTopic из localStorage для черновика ${draftId}. Сырые данные:`,
+          mainTopicFromStorage
+        )
+
+        // Проверяем формат данных перед JSON.parse
+        if (typeof mainTopicFromStorage !== 'string') {
+          console.warn(
+            `[PublishSettings] Неверный формат mainTopic в localStorage для черновика ${draftId}: ожидалась строка, получен ${typeof mainTopicFromStorage}`
+          )
+          mainTopic = extractTopicFromValue(draft.topics?.[0]) // Используем первую тему из черновика как mainTopic
+        } else if (!mainTopicFromStorage.trim().startsWith('{') && mainTopicFromStorage.trim() !== 'null') {
+          console.warn(
+            `[PublishSettings] mainTopic в localStorage не является объектом JSON для черновика ${draftId}:`,
+            mainTopicFromStorage
+          )
+          mainTopic = extractTopicFromValue(draft.topics?.[0]) // Используем первую тему из черновика как mainTopic
+        } else {
+          try {
+            const parsedMainTopic = JSON.parse(mainTopicFromStorage)
+            console.log(
+              `[PublishSettings] Успешно распарсили JSON для mainTopic черновика ${draftId}:`,
+              parsedMainTopic
+            )
+
+            if (parsedMainTopic === null) {
+              mainTopic = draft.topics?.[0] || EMPTY_TOPIC
+              console.log(`[PublishSettings] mainTopic установлен по первой теме для черновика ${draftId}`)
+            } else if (
+              typeof parsedMainTopic === 'object' &&
+              parsedMainTopic !== null &&
+              parsedMainTopic.id
+            ) {
+              mainTopic = {
+                id: Number(parsedMainTopic.id),
+                title: parsedMainTopic.title || '',
+                slug: parsedMainTopic.slug || '',
+                body: parsedMainTopic.body || null,
+                pic: parsedMainTopic.pic || null,
+                stat: parsedMainTopic.stat || null
+              }
+              console.log(
+                `[PublishSettings] mainTopic установлен как объект с id ${mainTopic.id} для черновика ${draftId}`
+              )
+            } else {
+              console.warn(
+                `[PublishSettings] mainTopic распарсился, но имеет неверную структуру для черновика ${draftId}:`,
+                parsedMainTopic
+              )
+              mainTopic = extractTopicFromValue(draft.topics?.[0]) // Используем первую тему из черновика как mainTopic
+            }
+          } catch (parseError) {
+            console.error(
+              `[PublishSettings] Критическая ошибка при парсинге mainTopic из localStorage для черновика ${draftId}:`,
+              parseError
+            )
+            // Дополнительная диагностика
+            try {
+              // Пытаемся определить проблему в JSON строке
+              const problematicPart = mainTopicFromStorage.slice(0, 100) // Смотрим первые 100 символов
+              console.warn(`[PublishSettings] Проблемная часть JSON в mainTopic: ${problematicPart}`)
+            } catch (e) {
+              console.warn(`[PublishSettings] Не удалось проанализировать проблемную часть mainTopic: ${e}`)
+            }
+            mainTopic = extractTopicFromValue(draft.topics?.[0]) // Используем первую тему из черновика как mainTopic
           }
-          console.log(`[PublishSettings] Parsed mainTopic from JSON for draft ${draftId}`)
         }
       } catch (e) {
         console.error(
-          `[PublishSettings] Error parsing mainTopic from localStorage for draft ${draftId}:`,
+          `[PublishSettings] Общая ошибка обработки mainTopic из localStorage для черновика ${draftId}:`,
           e
         )
+        mainTopic = extractTopicFromValue(draft.topics?.[0]) // Используем первую тему из черновика как mainTopic
       }
     }
 
@@ -344,6 +460,10 @@ export const PublishSettings = () => {
     mainTopic: EMPTY_TOPIC,
     seo: ''
   } as FormType)
+  const [isLoading, setIsLoading] = createSignal(false)
+  const [publishError, setPublishError] = createSignal<string | null>(null)
+  const [coverUploadLoading, setCoverUploadLoading] = createSignal(false)
+  const [savingDraft, setSavingDraft] = createSignal(false)
 
   const debouncedSaveToServer = debounce(2000, async () => {
     if (!isDirty()) return
@@ -615,10 +735,16 @@ export const PublishSettings = () => {
 
   const handleUploadModalContentCloseSetCover = (image: UploadedFile | undefined) => {
     showModal('uploadCoverImage')
-    // Обновляем сигнал coverImage
-    setCoverImage(image || null)
-    // Синхронизируем со значением в форме
-    handleFieldChange('cover', image?.url || '')
+    setCoverUploadLoading(true)
+
+    // Имитация задержки загрузки
+    setTimeout(() => {
+      // Обновляем сигнал coverImage
+      setCoverImage(image || null)
+      // Синхронизируем со значением в форме
+      handleFieldChange('cover', image?.url || '')
+      setCoverUploadLoading(false)
+    }, 300)
   }
 
   const handleDeleteCoverImage = () => {
@@ -706,62 +832,193 @@ export const PublishSettings = () => {
   }
 
   const handlePublishSubmit = async () => {
-    if (!form.topics.length) {
-      showSnackbar({ body: 'Выберите хотя бы одну тему', type: 'error' })
+    console.log('[PublishSettings] Начало процесса публикации для черновика:', form.id)
+
+    // Сбрасываем ошибку и устанавливаем статус загрузки
+    setPublishError(null)
+    setIsLoading(true)
+
+    // Проверка наличия черновика
+    if (!form) {
+      console.error('[PublishSettings] Не удалось опубликовать: черновик не найден')
+      setPublishError('Не удалось опубликовать: черновик не найден')
+      setIsLoading(false)
       return
     }
 
-    if (!form.title || !form.body) {
-      showSnackbar({ body: 'Заполните заголовок и текст публикации', type: 'error' })
+    // Обязательная проверка наличия тем
+    if (!form.topics || form.topics.length === 0) {
+      console.error('[PublishSettings] Не удалось опубликовать: отсутствуют темы')
+      setPublishError('Для публикации необходимо выбрать как минимум одну тему')
+      setIsLoading(false)
+      return
+    } else {
+      console.log(
+        '[PublishSettings] Темы для публикации:',
+        form.topics.map((topic) =>
+          topic ? { id: topic.id, title: topic.title, slug: topic.slug } : 'null'
+        )
+      )
+    }
+
+    // Проверка обязательных полей
+    if (!form.title || form.title.trim() === '') {
+      console.error('[PublishSettings] Отсутствует заголовок черновика')
+      setPublishError('Заголовок обязателен для публикации')
+      setIsLoading(false)
       return
     }
 
-    try {
-      // Сначала обновляем черновик с последними изменениями
-      const updateResult = await updateDraft({
-        id: form.id,
-        title: form.title,
-        body: form.body, // Используем чистое содержимое, без JSON обертки
-        topic_ids: form.topics.map((t) => t.id),
-        lead: form.lead // Используем форматированное описание из формы
-      })
+    if (!form.body || form.body.trim() === '') {
+      console.warn('[PublishSettings] Отсутствует текст черновика, но пытаемся опубликовать')
+    }
 
-      if (updateResult?.data?.update_draft?.error) {
-        throw new Error(updateResult.data.update_draft.error)
-      }
+    // Подробное логирование состояния черновика перед публикацией
+    console.log('[PublishSettings] Состояние черновика перед публикацией:', {
+      id: form.id,
+      title: form.title,
+      hasBody: !!form.body,
+      bodyLength: form.body?.length || 0,
+      hasLead: !!form.lead,
+      leadLength: form.lead?.length || 0,
+      topicsCount: form.topics.length,
+      mainTopicId: form.mainTopic?.id
+    })
 
-      // Затем публикуем черновик
-      const publishResult = await publishDraft(form.id)
+    // Создаем объект с данными для публикации
+    const updatedDraft: DraftInput = {
+      id: form.id,
+      layout: form.layout || 'article',
+      title: form.title || '',
+      subtitle: form.subtitle || '',
+      slug: form.slug || '',
+      lead: form.lead || '',
+      body: form.body || '',
+      cover: form.cover || currentDraft()?.cover || '',
+      main_topic_id: form.mainTopic?.id || form.topics[0]?.id || 0,
+      author_ids: (form.authors || []).map((author) => author?.id || 0).filter((id) => id > 0) || [],
+      topic_ids:
+        form.topics
+          .map((topic) => {
+            if (!topic || !topic.id) {
+              console.warn('[PublishSettings] Найдена некорректная тема:', topic)
+              return 0
+            }
+            return topic.id
+          })
+          .filter((id) => id > 0) || []
+    }
 
-      if (publishResult?.data?.publish_draft?.error) {
-        throw new Error(publishResult.data.publish_draft.error)
-      }
-      const d = publishResult?.data?.publish_draft?.draft
-      if (d) {
-        // Сохраняем опубликованную версию в localStorage
-        if (form.id) {
-          // Сохраняем в localStorage
-          saveDraftField(form.id, 'lead', form.lead)
-          saveDraftField(form.id, 'body', form.body)
+    console.log('[PublishSettings] Данные для обновления черновика перед публикацией:', {
+      id: updatedDraft.id,
+      title: updatedDraft.title,
+      topicIds: updatedDraft.topic_ids,
+      mainTopicId: updatedDraft.main_topic_id,
+      bodyLength: updatedDraft.body?.length || 0,
+      leadLength: updatedDraft.lead?.length || 0
+    })
+
+    // Обновляем черновик с актуальными данными перед публикацией
+    updateDraft(updatedDraft)
+      .then((updateResult) => {
+        if (updateResult?.data?.update_draft?.error) {
+          console.error(
+            '[PublishSettings] Ошибка обновления черновика перед публикацией:',
+            updateResult.data.update_draft.error
+          )
+          setPublishError(`Ошибка сохранения: ${updateResult.data.update_draft.error}`)
+          setIsLoading(false)
+          return
         }
 
-        showSnackbar({ body: 'Материал успешно опубликован', type: 'success' })
-        navigate(`/${d.slug}`)
-      }
-    } catch (error) {
-      console.error('Ошибка при публикации:', error)
-      showSnackbar({
-        body: error instanceof Error ? error.message : 'Произошла ошибка при публикации',
-        type: 'error'
+        console.log('[PublishSettings] Черновик успешно обновлен перед публикацией', {
+          draftId: updateResult?.data?.update_draft?.draft?.id
+        })
+
+        // После успешного обновления публикуем черновик
+        publishDraft(form.id)
+          .then((publishResult) => {
+            console.log('[PublishSettings] Получен ответ от API после публикации:', {
+              hasError: !!publishResult?.data?.publish_draft?.error,
+              errorMessage: publishResult?.data?.publish_draft?.error || 'нет',
+              hasDraft: !!publishResult?.data?.publish_draft?.draft,
+              draftId: publishResult?.data?.publish_draft?.draft?.id,
+              draftSlug: publishResult?.data?.publish_draft?.draft?.slug
+            })
+
+            if (publishResult?.data?.publish_draft?.error) {
+              console.error('[PublishSettings] Ошибка публикации:', publishResult.data.publish_draft.error)
+              setPublishError(`Ошибка публикации: ${publishResult.data.publish_draft.error}`)
+              setIsLoading(false)
+              return
+            }
+
+            const publishedDraft = publishResult?.data?.publish_draft?.draft
+            if (!publishedDraft) {
+              console.error(
+                '[PublishSettings] Ошибка публикации: не получены данные опубликованного черновика'
+              )
+              setPublishError('Ошибка публикации: не получены данные опубликованного черновика')
+              setIsLoading(false)
+              return
+            }
+
+            console.log('[PublishSettings] Черновик успешно опубликован!', {
+              id: publishedDraft.id,
+              slug: publishedDraft.slug,
+              title: publishedDraft.title
+            })
+
+            // Сохраняем данные об опубликованном материале в localStorage
+            try {
+              localStorage.setItem(
+                'last_published_material',
+                JSON.stringify({
+                  id: publishedDraft.id,
+                  slug: publishedDraft.slug,
+                  title: publishedDraft.title,
+                  date: new Date().toISOString()
+                })
+              )
+            } catch (e) {
+              console.warn(
+                '[PublishSettings] Не удалось сохранить данные о последнем опубликованном материале:',
+                e
+              )
+            }
+
+            // Перенаправляем на страницу опубликованного материала
+            const redirectPath = `/${publishedDraft.slug}`
+            console.log(
+              '[PublishSettings] Перенаправление на страницу опубликованного материала:',
+              redirectPath
+            )
+            navigate(redirectPath, { replace: true })
+            setIsLoading(false)
+          })
+          .catch((publishError: Error) => {
+            console.error('[PublishSettings] Ошибка при публикации черновика:', publishError)
+            setPublishError(`Ошибка публикации: ${publishError.message}`)
+            setIsLoading(false)
+          })
       })
-    }
+      .catch((updateError: Error) => {
+        console.error('[PublishSettings] Ошибка при обновлении черновика перед публикацией:', updateError)
+        setPublishError(`Ошибка сохранения: ${updateError.message}`)
+        setIsLoading(false)
+      })
   }
 
   const handleSaveDraft = () => {
+    setSavingDraft(true)
+
     // Получаем текущий черновик и его ID
     const draft = currentDraft()
     const draftId = draft?.id || 0
-    if (!draftId) return
+    if (!draftId) {
+      setSavingDraft(false)
+      return
+    }
 
     // Получаем свежие данные из localStorage
     const _fieldsFromStorage = getAllDraftFields(draftId)
@@ -805,9 +1062,16 @@ export const PublishSettings = () => {
 
     // Обновляем черновик на сервере
     updateDraft(draftToUpdate)
-
-    // Показываем уведомление об успешном сохранении
-    showSnackbar({ body: t('Draft saved successfully') })
+      .then(() => {
+        // Показываем уведомление об успешном сохранении
+        showSnackbar({ body: t('Draft saved successfully') })
+        setSavingDraft(false)
+      })
+      .catch((error) => {
+        console.error('[handleSaveDraft] Ошибка сохранения черновика:', error)
+        showSnackbar({ body: t('Error saving draft'), type: 'error' })
+        setSavingDraft(false)
+      })
   }
 
   const removeSpecial = (ev: InputEvent) => {
@@ -839,14 +1103,21 @@ export const PublishSettings = () => {
                   variant="primary"
                   onClick={() => showModal('uploadCoverImage')}
                   value={coverImage() ? t('Add another image') : t('Add image')}
+                  disabled={coverUploadLoading()}
                 />
                 <Show when={coverImage()}>
-                  <Button variant="secondary" onClick={handleDeleteCoverImage} value={t('Delete cover')} />
+                  <Button
+                    variant="secondary"
+                    onClick={handleDeleteCoverImage}
+                    value={t('Delete cover')}
+                    disabled={coverUploadLoading()}
+                  />
                 </Show>
               </div>
               <div
                 class={clsx(styles.shoutCardCoverContainer, {
-                  [styles.hasImage]: coverImage()
+                  [styles.hasImage]: coverImage(),
+                  [styles.loading]: coverUploadLoading()
                 })}
               >
                 <Show when={coverImage()}>
@@ -997,9 +1268,20 @@ export const PublishSettings = () => {
                   value={t('Cancel changes')}
                   class={styles.cancel}
                   onClick={handleCancelClick}
+                  disabled={isLoading() || savingDraft()}
                 />
-                <Button variant="secondary" onClick={handleSaveDraft} value={t('Save draft')} />
-                <Button onClick={handlePublishSubmit} variant="primary" value={t('Publish')} />
+                <Button
+                  variant="secondary"
+                  onClick={handleSaveDraft}
+                  value={savingDraft() ? t('Saving...') : t('Save draft')}
+                  disabled={isLoading() || savingDraft()}
+                />
+                <Button
+                  onClick={handlePublishSubmit}
+                  variant="primary"
+                  value={isLoading() ? t('Publishing...') : t('Publish')}
+                  disabled={isLoading() || savingDraft()}
+                />
               </div>
             </div>
           </div>
@@ -1015,6 +1297,11 @@ export const PublishSettings = () => {
       <Modal variant="medium" name="inviteMembers">
         <InviteMembers variant={'coauthors'} title={t('Invite collaborators')} />
       </Modal>
+
+      {/* Отображение ошибки публикации */}
+      <Show when={publishError()}>
+        <div class={styles.errorMessage}>{publishError()}</div>
+      </Show>
     </form>
   )
 }

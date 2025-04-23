@@ -927,3 +927,70 @@ export const getDraftFieldsVersion = (draftId: string | number): DraftFieldsVers
     return null
   }
 }
+
+/**
+ * Получает список всех черновиков из localStorage
+ * @returns Массив всех DraftStorage объектов
+ */
+export const getAllDraftsFromStorage = (): DraftStorage[] => {
+  if (isServer) return []
+
+  try {
+    const drafts: DraftStorage[] = []
+    const prefix = DRAFT_PREFIX
+
+    // Итерация по всем ключам в localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key || !key.startsWith(prefix)) continue
+
+      try {
+        const data = localStorage.getItem(key)
+        if (!data) continue
+
+        const draft = JSON.parse(data) as DraftStorage
+        drafts.push(draft)
+      } catch (parseError) {
+        console.error(`[OfflineStorage] Error parsing draft data for key ${key}:`, parseError)
+      }
+    }
+
+    return drafts
+  } catch (e) {
+    console.error('[OfflineStorage] Error getting all drafts from storage:', e)
+    return []
+  }
+}
+
+/**
+ * Удаляет черновик из localStorage
+ * @param draftId Идентификатор черновика
+ * @returns true в случае успеха
+ */
+export const removeDraftFromStorage = (draftId: string | number): boolean => {
+  if (!draftId) return false
+  if (isServer) return false
+
+  try {
+    const key = getDraftKey(draftId)
+    localStorage.removeItem(key)
+
+    // Также удаляем все связанные с этим черновиком ключи
+    // Удаление всех возможных полей редактора для этого черновика
+    for (let i = 0; i < localStorage.length; i++) {
+      const currentKey = localStorage.key(i)
+      if (
+        currentKey &&
+        (currentKey.includes(`draft-${draftId}-`) || currentKey.includes(`yjs-content-${draftId}-`))
+      ) {
+        localStorage.removeItem(currentKey)
+      }
+    }
+
+    console.log(`[OfflineStorage] Removed draft ${draftId} from storage`)
+    return true
+  } catch (e) {
+    console.error('[OfflineStorage] Error removing draft:', e)
+    return false
+  }
+}

@@ -254,20 +254,26 @@ export const EditView = (props: { draft?: Draft }) => {
       setIsTitleClicked(true)
       // Предотвращаем всплытие события до document
       e.stopPropagation()
-      e.preventDefault() 
+      e.preventDefault()
       return
     }
 
     // Если клик по действиям заголовка, предотвращаем фокус на основном редакторе
     if (isHeadingActionsClick) {
       console.log('[EditView] Click detected on heading actions, skipping body focus')
-      e.stopPropagation() 
+      e.stopPropagation()
       return
     }
 
     // Если клик не в заголовке, не в редакторе/превью лида и не в основном редакторе,
     // то устанавливаем фокус на основной редактор
-    if (!isTitleClick && !isLeadEditorClick && !isLeadPreviewClick && !isBodyClick && !isHeadingActionsClick) {
+    if (
+      !isTitleClick &&
+      !isLeadEditorClick &&
+      !isLeadPreviewClick &&
+      !isBodyClick &&
+      !isHeadingActionsClick
+    ) {
       // Дополнительная защита - если редактор лида открыт, не перехватываем фокус
       if (isLeadVisible()) {
         console.log('[EditView] Lead editor is visible, skipping focus to body')
@@ -797,7 +803,14 @@ export const EditView = (props: { draft?: Draft }) => {
                 {t('Add subtitle')}
               </a>
             </Show>
-            <Show when={isTitleClicked() && !isLeadVisible() && !currentDraft()?.lead && currentDraft()?.layout !== 'audio'}>
+            <Show
+              when={
+                isTitleClicked() &&
+                !isLeadVisible() &&
+                !currentDraft()?.lead &&
+                currentDraft()?.layout !== 'audio'
+              }
+            >
               <a class={styles.action} onClick={showLeadInput}>
                 {t('Add intro')}
               </a>
@@ -1047,26 +1060,30 @@ export const EditView = (props: { draft?: Draft }) => {
   const [networkStatus, setNetworkStatus] = createSignal(navigator.onLine)
 
   onMount(() => {
-    // Порядок регистрации обработчиков имеет значение 
+    // Порядок регистрации обработчиков имеет значение
     // Сначала регистрируем наш обработчик клика, затем onScroll и другие
-    
+
     // Сначала добавляем локальные обработчики кликов, чтобы иметь возможность предотвратить всплытие
     const titleInput = document.querySelector(`.${styles.titleInput}`)
     if (titleInput) {
-      titleInput.addEventListener('click', (e) => {
-        console.log('[EditView] Direct title click handler')
-        e.stopPropagation()
-        setIsTitleClicked(true)
-        
-        // Явно предотвращаем действие по умолчанию
-        e.preventDefault()
-        return false
-      }, { capture: true })
+      titleInput.addEventListener(
+        'click',
+        (e) => {
+          console.log('[EditView] Direct title click handler')
+          e.stopPropagation()
+          setIsTitleClicked(true)
+
+          // Явно предотвращаем действие по умолчанию
+          e.preventDefault()
+          return false
+        },
+        { capture: true }
+      )
     }
-    
+
     // Затем добавляем глобальный обработчик
     document.addEventListener('click', handleDocumentClick)
-    
+
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('keydown', handleKeyDown)
 

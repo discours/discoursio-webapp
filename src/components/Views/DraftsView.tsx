@@ -1,6 +1,6 @@
 import { For, Show, createEffect, on } from 'solid-js'
 import { DraftCard } from '~/components/Draft'
-import { useDrafts } from '~/context/drafts'
+import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { Draft } from '~/graphql/schema/core.gen'
@@ -10,12 +10,23 @@ import styles from '~/styles/views/DraftsView.module.scss'
 export const DraftsView = (_props: { drafts?: Draft[] }) => {
   const { requireAuthentication, session } = useSession()
   const { t } = useLocalize()
-  const { publishDraft, deleteDraft, drafts, loadDrafts } = useDrafts()
+  const { publishDraft, deleteDraft, drafts, loadDrafts, removeLocalDraft } = useDrafts()
 
-  const handleDraftDelete = async (d: Draft) => {
+  const handleDraftDelete = async (d: Draft | ExtendedDraft) => {
+    // Проверяем, является ли черновик только локальным
+    const isLocalOnly = 'isLocalOnly' in d && d.isLocalOnly === true
+
     if (d?.id) {
-      console.log('[DraftsView] deleting draft:', d.id)
-      await deleteDraft(d.id)
+      console.log('[DraftsView] deleting draft:', d.id, isLocalOnly ? '(local only)' : '')
+
+      if (isLocalOnly) {
+        // Удаляем локальный черновик
+        removeLocalDraft(d.id)
+      } else {
+        // Удаляем черновик на сервере
+        await deleteDraft(d.id)
+      }
+
       await loadDrafts() // Перезагружаем список после удаления
     } else {
       console.error('[DraftsView] Draft has no id:', d)
@@ -70,7 +81,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
             >
               <div class={styles.draftsList}>
                 <For each={drafts()}>
-                  {(draft: Draft) => (
+                  {(draft) => (
                     <DraftCard
                       draft={draft}
                       onDelete={() => handleDraftDelete(draft)}

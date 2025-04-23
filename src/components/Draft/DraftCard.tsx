@@ -1,16 +1,16 @@
 import { A, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
+import { Show } from 'solid-js'
+import type { ExtendedDraft } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSnackbar, useUI } from '~/context/ui'
-import type { Draft } from '~/graphql/schema/core.gen'
 import { Icon } from '../_shared/Icon'
-
 import styles from './DraftCard.module.scss'
 
 type Props = {
-  draft: Draft
-  onPublish: () => void
+  draft: ExtendedDraft
   onDelete: () => void
+  onPublish: () => void
 }
 
 /**
@@ -57,6 +57,12 @@ export const DraftCard = (props: Props) => {
       <div class={styles.created}>
         <Icon name="pencil-outline" class={styles.icon} />{' '}
         {formatDate(new Date(props.draft.created_at * 1000), { hour: '2-digit', minute: '2-digit' })}
+        <Show when={props.draft.isLocalOnly}>
+          <span class={styles.localBadge} title={t('This draft is saved only locally')}>
+            <Icon name="cloud-offline-outline" class={styles.localIcon} />
+            {t('Local')}
+          </span>
+        </Show>
       </div>
       <div class={styles.titleContainer}>
         <span class={styles.title}>{props.draft.title || t('Unnamed draft')}</span> {props.draft.subtitle}
