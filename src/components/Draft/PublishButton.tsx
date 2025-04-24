@@ -78,11 +78,8 @@ export const PublishButton = () => {
     // Проверка body и lead
     console.log('[PublishButton] Содержимое черновика:', {
       bodyLength: draft.body?.length || 0,
-      leadLength: draft.lead?.length || 0,
-      bodyPreview: draft.body ? `${(draft.body || '').substring(0, 100)}...` : 'отсутствует',
-      leadPreview: draft.lead ? `${(draft.lead || '').substring(0, 100)}...` : 'отсутствует'
+      leadLength: draft.lead?.length || 0
     })
-
     // Перед публикацией синхронизируем все локальные изменения
     // TODO: CALL syncOfflineChanges(draft) FROM AWARENESS
 

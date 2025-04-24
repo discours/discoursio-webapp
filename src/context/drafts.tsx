@@ -39,6 +39,7 @@ export const AUTO_SAVE_DELAY = 1000
 // Интерфейс для расширенной информации о черновике
 export interface ExtendedDraft extends Draft {
   isLocalOnly?: boolean
+  localId?: string
 }
 
 type DraftsContextType = {

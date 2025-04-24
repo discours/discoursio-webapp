@@ -33,7 +33,13 @@ export const DraftCard = (props: Props) => {
   const navigate = useNavigate()
   const handlePublishLinkClick = (e: MouseEvent) => {
     e.preventDefault()
-    navigate(`/edit/${props.draft.id}/settings`)
+    if (props.draft.id) {
+      navigate(`/edit/${props.draft.id}/settings`)
+    } else if (props.draft.localId) {
+      navigate(`/edit/local/${props.draft.localId}/settings`)
+    } else {
+      showSnackbar({ body: t('Cannot publish draft without ID') })
+    }
   }
 
   const handleDeleteLinkClick = async (e: MouseEvent) => {
@@ -54,29 +60,65 @@ export const DraftCard = (props: Props) => {
 
   return (
     <div class={styles.draft}>
-      <div class={styles.created}>
-        <Icon name="pencil-outline" class={styles.icon} />{' '}
-        {formatDate(new Date(props.draft.created_at * 1000), { hour: '2-digit', minute: '2-digit' })}
-        <Show when={props.draft.isLocalOnly}>
-          <span class={styles.localBadge} title={t('This draft is saved only locally')}>
-            <Icon name="cloud-offline-outline" class={styles.localIcon} />
-            {t('Local')}
-          </span>
+      <div class={styles.draftContent}>
+        <div class={styles.contentTop}>
+          <div class={styles.titleContainer}>
+            <span class={styles.title}>{props.draft.title || t('Unnamed draft')}</span> 
+            <span class={styles.subtitle}>{props.draft.subtitle}</span>
+          </div>
+          
+          <div class={styles.created}>
+            <Show when={props.draft.isLocalOnly}>
+              <span class={styles.localBadge} title={t('This draft is saved only locally')}>
+                <Icon name="file-storage" class={styles.localIcon} />
+              </span>
+            </Show>
+            {formatDate(new Date(props.draft.created_at * 1000), { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+        
+        <Show when={props.draft.cover}>
+          <div 
+            class={styles.coverOverlay} 
+            style={{ "background-image": `url(${props.draft.cover})` }}
+          ></div>
         </Show>
-      </div>
-      <div class={styles.titleContainer}>
-        <span class={styles.title}>{props.draft.title || t('Unnamed draft')}</span> {props.draft.subtitle}
-      </div>
-      <div class={styles.actions}>
-        <A class={styles.actionItem} href={`/edit/${props.draft?.id.toString()}`}>
-          {t('Edit')}
-        </A>
-        <span onClick={handlePublishLinkClick} class={clsx(styles.actionItem, styles.publish)}>
-          {t('Publish')}
-        </span>
-        <span onClick={handleDeleteLinkClick} class={clsx(styles.actionItem, styles.delete)}>
-          {t('Delete')}
-        </span>
+        
+        <div class={styles.actions}>
+          <A 
+            class={styles.actionItem} 
+            href={props.draft.id 
+              ? `/edit/${props.draft.id}` 
+              : props.draft.isLocalOnly 
+                ? `/edit/local/${props.draft.localId}` 
+                : '#'
+            }
+            title={t('Edit')}
+          >
+            <Icon name="edit" class={styles.actionIcon} />
+            <span class={styles.actionText}>{t('Edit')}</span>
+          </A>
+          <span 
+            onClick={handlePublishLinkClick} 
+            class={clsx(styles.actionItem, styles.publish)}
+            title={props.draft.isLocalOnly ? t('Save draft') : t('Publish')}
+          >
+            <Icon name={props.draft.isLocalOnly ? "save" : "upload"} class={styles.actionIcon} />
+            <span class={styles.actionText}>
+              <Show when={props.draft.isLocalOnly} fallback={t('Publish')}>
+                {t('Save draft')}
+              </Show>
+            </span>
+          </span>
+          <span 
+            onClick={handleDeleteLinkClick} 
+            class={clsx(styles.actionItem, styles.delete)}
+            title={t('Delete')}
+          >
+            <Icon name="trash" class={styles.actionIcon} />
+            <span class={styles.actionText}>{t('Delete')}</span>
+          </span>
+        </div>
       </div>
     </div>
   )
