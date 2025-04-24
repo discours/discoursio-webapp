@@ -6,7 +6,8 @@ import { capitalize } from '~/utils/capitalize'
 
 import styles from './ToolbarControl.module.scss'
 
-import { t } from 'i18next'
+import { useLocalize } from '~/context/localize'
+
 export interface ControlProps {
   editor: Editor | undefined
   caption?: string
@@ -17,6 +18,7 @@ export interface ControlProps {
 }
 
 export const ToolbarControl = (props: ControlProps): JSX.Element => {
+  const { t } = useLocalize()
   const handleClick = (ev?: MouseEvent) => {
     ev?.preventDefault()
     ev?.stopPropagation()

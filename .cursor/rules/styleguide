@@ -1,0 +1,4 @@
+tsr1: always add curve braces and default in switch-cases for typescript
+tsr2: never use any type or :global css selector
+tsr3: we use solidjs for components web, so dont fix it with react terms
+tsr4: all defined but not used vars and fns should be used in code, research and implement usages logics if possible

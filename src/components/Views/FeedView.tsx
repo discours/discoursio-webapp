@@ -303,7 +303,7 @@ export const FeedView = (props: FeedProps) => {
           <Show when={shareData()}>
             <ShareModal
               title={shareData()?.title || ''}
-              description={shareData()?.description || ''}
+              description={shareData()?.seo || ''}
               imageUrl={shareData()?.cover || ''}
               shareUrl={getShareUrl({ pathname: `/${shareData()?.slug || ''}` })}
             />

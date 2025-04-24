@@ -5,7 +5,6 @@ export default gql`
     load_shouts_bookmarked(options: $options) {
       id
       title
-      description
       subtitle
       slug
       layout
