@@ -38,3 +38,4 @@ app.config.*.js
 #Stepan
 # Debug log ignoring
 DEBUG.log
+.prettierrc

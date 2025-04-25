@@ -22,7 +22,7 @@ const getSearchCoincidences = ({ str, intersection }: { str: string; intersectio
   )}</span>`
 
 const prepareSearchResults = (list: Shout[], searchValue: string) =>
-  list.sort(byScore as (a: Shout, b: Shout) => number).map((article) => ({
+  list.map((article) => ({
     ...article,
     title: article.title
       ? getSearchCoincidences({
