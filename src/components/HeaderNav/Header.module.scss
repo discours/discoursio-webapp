@@ -8,6 +8,7 @@
   position: absolute;
   width: 100%;
   z-index: 10003;
+  user-select: none;
 
   .wide-container {
     @include media-breakpoint-down(lg) {
@@ -20,6 +21,7 @@
 
 .mainHeaderInner {
   position: relative;
+  user-select: none;
 }
 
 .headerFixed.headerScrolledBottom,
@@ -34,6 +36,7 @@
 }
 
 .headerFixed {
+  user-select: none;
   position: fixed;
   top: 0;
 
@@ -44,6 +47,7 @@
 }
 
 .headerInner {
+  user-select: none;
   align-items: center;
   background: var(--background-color);
   color: var(--default-color);
