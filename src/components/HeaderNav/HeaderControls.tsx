@@ -91,7 +91,7 @@ const EditingHeader = (props: Props) => {
         <div class={styles.editorControls}>
           <ConnectionIndicator />
           <span class={styles.editorModePopupOpener}>
-            <EditingSelector mode={t('Editing')} setMode={toggleEditorPanel} />
+            <EditingSelector />
           </span>
         </div>
       </Show>
@@ -239,23 +239,72 @@ const GuestHeader = () => {
 }
 
 // Компонент выбора режима редактора
-const EditingSelector = (props: { mode: string; setMode: (mode: string) => void }) => {
+const EditingSelector = () => {
   const { t } = useLocalize()
+  const navigate = useNavigate()
+  const loc = useLocation()
+
+  /**
+   * Извлекает базовый путь редактора (например, /edit/draft-id).
+   * @returns {string} Базовый путь.
+   */
+  const getBasePath = (): string => {
+    const parts = loc.pathname.split('/')
+    // Убедимся, что путь начинается с /edit/ и есть ID
+    if (parts.length >= 3 && parts[1] === 'edit' && parts[2]) {
+      // Возвращаем только /edit/[id], отбрасывая /preview, /suggest, /settings и т.д.
+      return `/edit/${parts[2]}`
+    }
+    // Резервный вариант или обработка ошибки
+    console.warn('[EditingSelector] Не удалось определить базовый путь из:', loc.pathname)
+    return ''
+  }
+
+  // Используем createMemo для кэширования путей
+  const basePath = createMemo(getBasePath)
+  const previewPath = createMemo(() => `${basePath()}/preview`)
+  const editingPath = createMemo(() => basePath()) // Базовый путь - это и есть путь редактирования
+  const suggestPath = createMemo(() => `${basePath()}/suggest`)
+
+  /**
+   * Определяет текущий режим редактирования на основе URL.
+   * @returns {string} Локализованная строка текущего режима.
+   */
+  const currentMode = createMemo((): string => {
+    const pathname = loc.pathname
+    if (pathname === previewPath()) return t('Preview')
+    if (pathname === suggestPath()) return t('Commenting') // Используем 'Commenting' из существующего UI
+    // Режим редактирования - это базовый путь или любой другой подпуть (например, /settings)
+    if (pathname.startsWith(basePath())) return t('Editing')
+
+    return t('Editing') // Резервный вариант по умолчанию
+  })
+
+  /**
+   * Выполняет навигацию по указанному пути.
+   * @param {string} path - Целевой путь.
+   */
+  const navigateTo = (path: string) => {
+    navigate(path)
+  }
 
   return (
     <Popup
       trigger={
         <div class={styles.editorModePopupOpener}>
           <Icon name="swiper-r-arr" class={styles.editorModePopupOpenerIcon} />
-          {props.mode}
+          {/* Отображаем текущий режим на основе маршрута */}
+          {currentMode()}
         </div>
       }
       popupCssClass={styles.editorPopup}
     >
       <ul class={clsx('nodash', styles.editorModesList)}>
+        {/* Режим просмотра */}
         <li
-          class={clsx({ [styles.editorModesSelected]: props.mode === t('Preview') })}
-          onClick={() => props.setMode(t('Preview'))}
+          // Выделяем, если текущий путь совпадает с путем просмотра
+          class={clsx({ [styles.editorModesSelected]: loc.pathname === previewPath() })}
+          onClick={() => navigateTo(previewPath())}
         >
           <Icon name="eye" class={styles.editorModeIcon} />
           <div class={styles.editorModeTitle}>{t('Preview')}</div>
@@ -263,19 +312,24 @@ const EditingSelector = (props: { mode: string; setMode: (mode: string) => void 
             {t('Look at how the material will look when published')}
           </div>
         </li>
+        {/* Режим редактирования */}
         <li
-          class={clsx({ [styles.editorModesSelected]: props.mode === t('Editing') })}
-          onClick={() => props.setMode(t('Editing'))}
+          // Выделяем, если текущий путь - это базовый путь редактирования
+          class={clsx({ [styles.editorModesSelected]: loc.pathname === editingPath() })}
+          onClick={() => navigateTo(editingPath())}
         >
           <Icon name="pencil-outline" class={styles.editorModeIcon} />
           <div class={styles.editorModeTitle}>{t('Editing')}</div>
           <div class={styles.editorModeDescription}>{t('Edit the text directly in the editor')}</div>
         </li>
+        {/* Режим комментирования/предложений */}
         <li
-          class={clsx({ [styles.editorModesSelected]: props.mode === t('Commenting') })}
-          onClick={() => props.setMode(t('Commenting'))}
+          // Выделяем, если текущий путь совпадает с путем комментирования
+          class={clsx({ [styles.editorModesSelected]: loc.pathname === suggestPath() })}
+          onClick={() => navigateTo(suggestPath())}
         >
           <Icon name="comment" class={styles.editorModeIcon} />
+          {/* Используем 'Commenting' на основе существующего UI */}
           <div class={styles.editorModeTitle}>{t('Commenting')}</div>
           <div class={styles.editorModeDescription}>
             {t('Suggest edits and comments to make the material better')}
