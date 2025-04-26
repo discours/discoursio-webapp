@@ -28,7 +28,7 @@ import type {
   DraftInput,
   PublishDraftMutationMutation,
   Topic,
-  UnpublishDraftMutationMutation,
+  UnpublishShoutMutationMutation,
   UpdateDraftMutationMutation
 } from '~/graphql/schema/core.gen'
 import { useSession } from './session'
@@ -53,7 +53,7 @@ type DraftsContextType = {
   updateDraft: (draft: DraftInput) => Promise<OperationResult<UpdateDraftMutationMutation>>
   deleteDraft: (id: number) => Promise<OperationResult<DeleteDraftMutationMutation>>
   publishDraft: (draftId: number) => Promise<OperationResult<PublishDraftMutationMutation>>
-  unpublishShout: (shoutId: number) => Promise<OperationResult<UnpublishDraftMutationMutation>>
+  unpublishShout: (shoutId: number) => Promise<OperationResult<UnpublishShoutMutationMutation>>
   isEditorPanelVisible: Accessor<boolean>
   toggleEditorPanel: () => void
   setIsEditorPanelVisible: (visible: boolean) => void
@@ -741,13 +741,14 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
   const unpublishShout = async (
     shoutId: number
-  ): Promise<OperationResult<UnpublishDraftMutationMutation>> => {
+  ): Promise<OperationResult<UnpublishShoutMutationMutation>> => {
     const response = await client()?.mutation(unpublishShoutMutation, { shout_id: shoutId })
     if (response?.data?.unpublish_shout) {
       setDrafts(drafts().map((d) => (d.id === shoutId ? response.data.unpublish_shout : d)))
     }
-    return response as OperationResult<UnpublishDraftMutationMutation>
+    return response as OperationResult<UnpublishShoutMutationMutation>
   }
+
   const toggleEditorPanel = () => setIsEditorPanelVisible(!isEditorPanelVisible())
   const value = {
     drafts,
