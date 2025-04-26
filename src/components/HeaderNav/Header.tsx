@@ -15,6 +15,7 @@ import { Icon } from '../_shared/Icon'
 import { Modal } from '../_shared/Modal'
 import { Newsletter } from '../_shared/Newsletter'
 import { HeaderControls } from './HeaderControls'
+import { ClientOnly } from '~/utils/clientonly'
 import { TopicsNav } from './TopicsNav'
 
 import stylesFeedSwitcher from '../Feed/FeedSwitcher/FeedSwitcher.module.scss'
@@ -425,7 +426,9 @@ export const Header = (props: Props) => {
           </div>
         </nav>
 
-        <Toaster />
+        <ClientOnly>
+          <Toaster />
+        </ClientOnly>
       </div>
     </header>
   )
