@@ -17,65 +17,6 @@
   }
 }
 
-.draftsControls {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.viewToggle {
-  display: flex;
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.viewBtn {
-  background: none;
-  border: none;
-  padding: 0.7rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-color, #444);
-  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-
-  &:hover {
-    background-color: var(--bg-hover, #f7f7f7);
-    color: var(--text-color, #444);
-  }
-
-  &.active {
-    background-color: var(--primary-color-light, #e6f0ff);
-    color: var(--primary-color, #0066dd);
-  }
-}
-
-.deleteSelected {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  background-color: var(--danger-color-light, #fff0f0);
-  color: var(--danger-color, #d00820);
-  border: none;
-  border-radius: 10px;
-  padding: 0.7rem 1.4rem;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 600;
-  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  box-shadow: 0 2px 8px rgba(208, 8, 32, 0.08);
-
-  &:hover {
-    background-color: var(--danger-color, #d00820);
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(208, 8, 32, 0.2);
-  }
-}
-
 .noDrafts {
   padding: 4rem 2rem;
   text-align: center;
@@ -83,291 +24,29 @@
   color: var(--text-color, #444);
   background-color: var(--bg-light, #f9f9f9);
   border-radius: 16px;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04), 0 4px 20px rgba(0, 0, 0, 0.03);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 4%), 0 4px 20px rgb(0 0 0 / 3%);
 }
 
-// Традиционный список карточек
+// Список черновиков
 .draftsList {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 1rem;
   max-width: 650px;
   margin: 0 auto;
 }
 
-// Новый табличный вид на основе сетки
-.draftsTable {
-  width: 100%;
-  margin-bottom: 3rem;
-}
-
-.draftsGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.draftRow {
-  display: flex;
-  border-radius: 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  background-color: white;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+.draftCardContainer {
   position: relative;
-  
-  &:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
-    border-color: rgba(0, 0, 0, 0.08);
-    
-    .rowActions {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-    }
-  }
-  
-  &.selectedRow {
-    box-shadow: 0 0 0 2px var(--primary-color, #0066dd), 0 8px 24px rgba(0, 102, 221, 0.1);
-    
-    .rowActions {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-    }
-  }
-  
-  &:nth-child(odd) {
-    background-color: var(--bg-light, #f9f9f9);
-  }
-}
-
-.rowCheck {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 16px;
-  min-width: 60px;
-  
-  input[type="checkbox"] {
-    width: 22px;
-    height: 22px;
-    cursor: pointer;
-    border-radius: 6px;
-    accent-color: var(--primary-color, #0066dd);
-  }
-}
-
-.rowContent {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 20px 24px;
-  position: relative;
-  background-size: cover;
-  background-position: center;
-  cursor: pointer;
-  text-decoration: none;
-  color: inherit;
-}
-
-.rowHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  position: relative;
-  z-index: 2;
-}
-
-.rowTitle {
-  flex: 1;
-}
-
-.rowDate {
-  font-size: 1.1rem;
-  color: var(--text-color, #444);
-  white-space: nowrap;
-  margin-left: 18px;
-  font-weight: 500;
-}
-
-.rowLead {
-  font-size: 1rem;
-  color: var(--text-color-muted, #666);
-  margin-bottom: 18px;
-  display: -webkit-box;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.5;
-}
-
-.rowActions {
-  display: flex;
-  gap: 12px;
-  margin-top: auto;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(8px);
-  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
-  position: absolute;
-  right: 24px;
-  bottom: 20px;
-}
-
-.draftTitle {
-  display: block;
-  font-size: 1.2em;
-  font-weight: 600;
-  color: var(--text-color, #222);
-  text-decoration: none;
-  margin-bottom: 6px;
-  letter-spacing: -0.01em;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    color: var(--primary-color, #0066dd);
-  }
-}
-
-.statusBadge {
-  display: inline-flex;
-  align-items: center;
-  background-color: rgba(255, 193, 7, 0.15);
-  color: #ff9800;
-  padding: 5px 10px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
-  margin-top: 5px;
-}
-
-.statusIcon {
-  margin-right: 8px;
-  font-size: 1.1rem;
-}
-
-.actionButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.04);
-  color: var(--text-color, #444);
-  text-decoration: none;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: var(--primary-color, #0066dd);
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 102, 221, 0.2);
-  }
-  
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 5px rgba(0, 102, 221, 0.15);
-  }
-}
-
-.actionButton.danger {
-  &:hover {
-    background: var(--danger-color, #d00820);
-    box-shadow: 0 4px 10px rgba(208, 8, 32, 0.2);
-  }
 }
 
 // Медиа-запросы для адаптивности
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .draftsHeader {
     margin-bottom: 2rem;
     
     h2 {
       font-size: 2rem;
     }
-  }
-  
-  .rowHeader {
-    flex-direction: column;
-  }
-  
-  .rowDate {
-    margin-left: 0;
-    margin-top: 6px;
-  }
-  
-  .rowContent {
-    padding: 16px;
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
-  }
-  
-  .rowLead {
-    line-clamp: 1;
-    font-size: 0.95rem;
-  }
-  
-  .actionButton {
-    width: 36px;
-    height: 36px;
-  }
-}
-
-@media (max-width: 480px) {
-  .draftsControls {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .deleteSelected {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .draftRow {
-    flex-direction: column;
-  }
-  
-  .rowCheck {
-    width: 100%;
-    padding: 12px;
-    border-right: none;
-    border-bottom: 1px solid var(--border-color-light, #f0f0f0);
-    justify-content: flex-start;
-  }
-  
-  .statusBadge {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-  }
-  
-  .rowActions {
-    position: absolute;
-    bottom: 16px;
-    right: 16px;
-    margin-top: 0;
-    background-color: rgba(255, 255, 255, 0.9);
-    border-radius: 12px;
-    padding: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(4px);
-  }
-  
-  .draftRow:hover .rowActions {
-    opacity: 1;
-  }
-  
-  .draftTitle {
-    font-size: 1.1rem;
   }
 } 

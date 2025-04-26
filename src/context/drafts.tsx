@@ -327,8 +327,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           topics: [],
           isLocalOnly: true,
           // Добавляем другие обязательные поля из Draft
-          created_at: Date.now(), // Используем числовой timestamp вместо строки
-          updated_at: Date.now(), // Используем числовой timestamp вместо строки
+          created_at: storedDraft.timestamp || Date.now(), // Используем timestamp из хранилища или текущее время
+          updated_at: storedDraft.timestamp || Date.now(), // Используем timestamp из хранилища или текущее время
           created_by: {
             // Минимальные требования для поля created_by
             id: 0,

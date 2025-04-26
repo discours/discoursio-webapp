@@ -5,14 +5,20 @@
 
 .draftContent {
   position: relative;
-  padding: 6px 10px;
-  border-radius: 8px;
-  transition: all 0.3s ease;
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  background-color: white;
+  border: 1px solid rgb(0 0 0 / 4%);
   
   &:hover {
+    box-shadow: 0 3px 16px rgb(0 0 0 / 6%);
+    transform: translateY(-2px);
+    
     .actions {
       opacity: 1;
       visibility: visible;
+      transform: translateY(0);
     }
     
     .coverOverlay {
@@ -25,7 +31,9 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
 }
 
 .coverOverlay {
@@ -38,7 +46,7 @@
   background-position: center;
   opacity: 0.08;
   z-index: -1;
-  border-radius: 8px;
+  border-radius: 10px;
   pointer-events: none;
   transition: opacity 0.3s ease;
 }
@@ -53,6 +61,7 @@
   white-space: nowrap;
   margin-left: 10px;
   flex-shrink: 0;
+  color: var(--text-color-muted, #666);
 
   .icon {
     height: 1.1rem;
@@ -64,11 +73,12 @@
 .localBadge {
   display: inline-flex;
   align-items: center;
-  margin-left: 8px;
+  margin-right: 8px;
   padding: 3px 6px;
   font-size: 0.9rem;
   font-weight: 600;
   transition: all 0.3s ease;
+  color: #e65100;
 
   &:hover {
     transform: scale(1.1);
@@ -90,11 +100,18 @@
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
 }
 
 .title {
   font-weight: 700;
   display: block;
+  color: var(--text-color-dark, #222);
+  transition: color 0.2s ease;
+  
+  &:hover {
+    color: var(--primary-color, #06d);
+  }
 }
 
 .subtitle {
@@ -104,28 +121,48 @@
 }
 
 .actions {
-  font-size: 1.1rem;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   position: relative;
   z-index: 2;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  transform: translateY(5px);
+  padding-top: 8px;
+  border-top: 1px solid rgb(0 0 0 / 5%);
+  margin-top: 8px;
 
   .actionItem {
     border: 0;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     cursor: pointer;
     gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    background-color: transparent;
+    text-decoration: none;
+    
+    &:hover {
+      color: var(--primary-color, #000);
+      background-color: rgb(0 0 0 / 4%);
+    }
 
     &.delete {
       color: #d00820;
+      
+      &:hover {
+        background-color: rgba(208, 8, 32, 0.1);
+      }
     }
 
     &.publish {
-      color: #2bb452;
+      &:hover {
+        background-color: rgba(43, 180, 82, 0.1);
+      }
     }
   }
 }
@@ -136,13 +173,18 @@
   width: 1.2rem;
 }
 
+.actionText {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
 @media (width <= 768px) {
   .draftContent {
-    padding: 8px;
+    padding: 10px;
   }
   
   .contentTop {
-    margin-bottom: 8px;
+    margin-bottom: 10px;
   }
 
   .titleContainer {
@@ -155,6 +197,16 @@
     line-height: 1.6rem;
   }
   
+  .actions {
+    gap: 8px;
+    justify-content: space-between;
+  }
+  
+  .actionItem {
+    flex: 1;
+    justify-content: center !important;
+  }
+  
   .actionText {
     display: none;
   }
@@ -162,9 +214,6 @@
   .actionIcon {
     height: 1.4rem;
     width: 1.4rem;
-  }
-  
-  .actions {
-    gap: 18px;
+    margin: 0 !important;
   }
 }

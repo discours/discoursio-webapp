@@ -16,6 +16,41 @@ i18nextInit()
 
 const SPEC_REGEX = /\s*г\./
 
+/**
+ * Преобразует timestamp в объект Date с проверкой формата
+ * @param timestamp - Временная метка (в секундах или миллисекундах)
+ * @returns Объект Date или null при ошибке
+ */
+export const createValidDate = (timestamp: number | string | undefined | null): Date | null => {
+  if (timestamp === undefined || timestamp === null) return null;
+  
+  // Преобразуем в число, если передана строка
+  const numericTimestamp = typeof timestamp === 'string' ? Number(timestamp) : timestamp;
+  
+  if (isNaN(numericTimestamp)) return null;
+  
+  let date: Date;
+  
+  // Если timestamp в секундах (10 цифр), конвертируем в миллисекунды
+  if (String(numericTimestamp).length <= 10) {
+    date = new Date(numericTimestamp * 1000);
+  } else {
+    // Иначе предполагаем, что timestamp уже в миллисекундах
+    date = new Date(numericTimestamp);
+  }
+  
+  // Проверка валидности даты и разумности года
+  if (isNaN(date.getTime())) return null;
+  
+  const year = date.getFullYear();
+  if (year < 1900 || year > 2100) {
+    console.error('Invalid year in date:', year, date);
+    return null;
+  }
+  
+  return date;
+};
+
 export type LocalizeContextType = {
   t: i18n['t']
   lang: Accessor<Language>
@@ -23,6 +58,7 @@ export type LocalizeContextType = {
   formatTime: (date: Date, options?: Intl.DateTimeFormatOptions) => string
   formatDate: (date: Date, options?: Intl.DateTimeFormatOptions) => string
   formatTimeAgo: (date: Date) => string
+  createValidDate: (timestamp: number | string | undefined | null) => Date | null
 }
 
 export type Language = 'ru' | 'en'
@@ -67,6 +103,20 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
   }
 
   const formatDate = (date: Date, options: Intl.DateTimeFormatOptions = {}) => {
+    // Проверка корректности даты
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      console.error('Invalid date provided to formatDate:', date);
+      return '';
+    }
+    
+    // Дополнительная проверка на адекватность года
+    const year = date.getFullYear();
+    if (year < 1900 || year > 2100) {
+      console.error('Invalid year in date:', year, date);
+      // Если год некорректный, используем текущую дату
+      date = new Date();
+    }
+
     const opts = Object.assign(
       {},
       {
@@ -90,7 +140,8 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
     setLang,
     formatTime,
     formatDate,
-    formatTimeAgo
+    formatTimeAgo,
+    createValidDate
   }
 
   return (
