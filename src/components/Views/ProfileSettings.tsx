@@ -17,7 +17,7 @@ import { createStore } from 'solid-js/store'
 import { useLocalize } from '~/context/localize'
 import { useProfile } from '~/context/profile'
 import { useSession } from '~/context/session'
-import { useSnackbar, useUI } from '~/context/ui'
+import { useUI } from '~/context/ui'
 import { InputMaybe, ProfileInput } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { handleFileUpload } from '~/lib/handleFileUpload'
@@ -33,6 +33,7 @@ import { Modal } from '../_shared/Modal'
 import { Popover } from '../_shared/Popover'
 import { SocialNetworkInput } from '../_shared/SocialNetworkInput'
 
+import { toast } from 'solid-toast'
 import styles from '~/styles/views/ProfileSettings.module.scss'
 import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
@@ -59,7 +60,6 @@ export const ProfileSettings = () => {
   const [slugError, setSlugError] = createSignal<string>()
   const [nameError, setNameError] = createSignal<string>()
   const { form, submit, updateFormField, setForm } = useProfile()
-  const { showSnackbar } = useSnackbar()
   const { loadSession, session } = useSession()
   const [prevForm, setPrevForm] = createStore<ProfileInput>()
   const { showConfirm } = useUI()
@@ -114,14 +114,18 @@ export const ProfileSettings = () => {
       // Отправляем все данные формы, включая bio
       await submit(form)
       setPrevForm(clone(form))
-      showSnackbar({ body: t('Profile successfully saved') })
+      toast(t('Profile successfully saved'), {
+        icon: 'success'
+      })
     } catch (error) {
       if (error?.toString().search('duplicate_slug')) {
         setSlugError(t('The address is already taken'))
         slugInputRef?.focus()
         return
       }
-      showSnackbar({ type: 'error', body: t('Error') })
+      toast(t('Error'), {
+        icon: 'error'
+      })
     } finally {
       setIsSaving(false)
     }

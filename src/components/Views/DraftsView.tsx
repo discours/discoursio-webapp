@@ -1,18 +1,16 @@
 import { For, Show, createEffect, createSignal, on, onMount } from 'solid-js'
+import { toast } from 'solid-toast'
 import { DraftCard } from '~/components/Draft'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import { useSnackbar } from '~/context/ui'
 import { Draft } from '~/graphql/schema/core.gen'
-
 import styles from '~/styles/views/DraftsView.module.scss'
 
 export const DraftsView = (_props: { drafts?: Draft[] }) => {
   const { requireAuthentication, session } = useSession()
   const { t } = useLocalize()
   const { publishDraft, deleteDraft, drafts, loadDrafts, removeLocalDraft } = useDrafts()
-  const { showSnackbar } = useSnackbar()
   const [isLoading, setIsLoading] = createSignal(true)
 
   const handleDraftDelete = async (d: Draft | ExtendedDraft) => {
@@ -40,8 +38,8 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       await loadDrafts()
     } catch (error) {
       console.error('[DraftsView] Error deleting draft:', error)
-      showSnackbar({
-        body: t('Error deleting draft')
+      toast(t('Error deleting draft'), {
+        icon: 'error'
       })
     }
   }

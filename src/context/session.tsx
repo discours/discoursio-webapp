@@ -25,7 +25,8 @@ import {
   onMount,
   useContext
 } from 'solid-js'
-import { type ModalSource, useSnackbar } from '~/context/ui'
+import toast from 'solid-toast'
+import { type ModalSource } from '~/context/ui'
 import { graphqlClientCreate } from '~/graphql/client'
 import { authApiUrl, authorizerClientId, authorizerRedirectUrl, coreApiUrl } from '../config'
 import { useLocalize } from './localize'
@@ -107,7 +108,6 @@ export const SessionProvider = (props: {
   children: JSX.Element
 }) => {
   const { t } = useLocalize()
-  const { showSnackbar } = useSnackbar()
   const [searchParams, changeSearchParams] = useSearchParams<{
     mode?: string
     m?: string
@@ -286,9 +286,8 @@ export const SessionProvider = (props: {
       }
     } catch (error) {
       console.error('Ошибка в requireAuthentication:', error)
-      showSnackbar({
-        type: 'error',
-        body: t('Try again later')
+      toast(t('Try again later'), {
+        icon: 'error'
       })
     }
   }
@@ -376,7 +375,7 @@ export const SessionProvider = (props: {
     if (authResult) {
       setSession({} as AuthToken)
       setIsSessionLoaded(true)
-      showSnackbar({ body: t("You've successfully logged out") })
+      toast(t("You've successfully logged out"))
       return true
     }
     return false
@@ -425,7 +424,7 @@ export const SessionProvider = (props: {
     console.debug('[context.session] resend verify email response:', resp)
     if (resp.errors.length > 0) {
       resp.errors.forEach((error) => {
-        showSnackbar({ type: 'error', body: error.message })
+        toast(error.message, { icon: 'error' })
       })
       return false
     }

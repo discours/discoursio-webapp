@@ -9,7 +9,7 @@ import { Loading } from '~/components/_shared/Loading'
 import { Popup } from '~/components/_shared/Popup/Popup'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import { useSnackbar, useUI } from '~/context/ui'
+import { useUI } from '~/context/ui'
 import { Author, Reaction, ReactionKind } from '~/graphql/schema/core.gen'
 import { saveScrollPosition } from '~/utils/scroll'
 import { SharePopup } from '../Article/SharePopup'
@@ -19,6 +19,7 @@ import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { EditorData } from '../SimpleRichEditor/lib/types'
 import { CommentDate } from './CommentDate'
 
+import toast from 'solid-toast'
 import styles from './CommentCard.module.scss'
 /**
  * Свойства компонента CommentCard
@@ -86,7 +87,6 @@ export type CommentCardProps = {
 export const CommentCard = (props: CommentCardProps): JSX.Element => {
   const { t } = useLocalize()
   const { showModal } = useUI()
-  const { showSnackbar } = useSnackbar()
   const { session } = useSession()
   const [isExpanded, setExpanded] = createSignal(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = createSignal(false)
@@ -233,7 +233,9 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
     console.log('[CommentCard] Opening edit editor for comment:', props.comment.id)
     if (!canEdit()) {
       console.warn('[CommentCard] User cannot edit this comment')
-      showSnackbar({ type: 'error', body: t('You cannot edit this comment') })
+      toast(t('You cannot edit this comment'), {
+        icon: 'error'
+      })
       return
     }
 

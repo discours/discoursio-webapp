@@ -2,8 +2,9 @@ import { clsx } from 'clsx'
 import { createSignal, onMount } from 'solid-js'
 
 import { useLocalize } from '~/context/localize'
-import { useSnackbar, useUI } from '~/context/ui'
+import { useUI } from '~/context/ui'
 
+import { toast } from 'solid-toast'
 import styles from './Donate.module.scss'
 
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -27,7 +28,6 @@ export const Donate = () => {
   const [showingPayment, setShowingPayment] = createSignal<boolean>()
   const [period, setPeriod] = createSignal(monthly)
   const [amount, setAmount] = createSignal(0)
-  const { showSnackbar } = useSnackbar()
 
   const initiated = () => {
     try {
@@ -116,9 +116,8 @@ export const Donate = () => {
         // действие при неуспешной оплате
         console.debug('[donate] options', options)
 
-        showSnackbar({
-          type: 'error',
-          body: reason
+        toast(reason, {
+          icon: 'error'
         })
       }
     )

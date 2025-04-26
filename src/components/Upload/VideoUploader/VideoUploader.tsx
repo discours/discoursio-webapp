@@ -1,10 +1,10 @@
 import { createDropzone } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
 import { For, Show, createSignal } from 'solid-js'
+import { ToastOptions, toast } from 'solid-toast'
 
 import { VideoPlayer } from '~/components/_shared/VideoPlayer'
 import { useLocalize } from '~/context/localize'
-import { useSnackbar } from '~/context/ui'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { composeMediaItems } from '~/lib/composeMediaItems'
 import { validateUrl } from '~/utils/validate'
@@ -22,20 +22,20 @@ export const VideoUploader = (props: Props) => {
   const [dragActive, setDragActive] = createSignal(false)
   const [error, setError] = createSignal<string>()
   const [incorrectUrl, setIncorrectUrl] = createSignal<boolean>(false)
-  const { showSnackbar } = useSnackbar()
   const [urlInput, setUrlInput] = createSignal<HTMLInputElement | undefined>()
 
   const { setRef: dropzoneRef, files: droppedFiles } = createDropzone({
-    onDrop: async () => {
+    onDrop: () => {
       setDragActive(false)
       if (droppedFiles().length > 1) {
         setError(t('Many files, choose only one'))
       } else if (droppedFiles()[0].file.type.startsWith('video/')) {
-        await showSnackbar({
-          body: t(
+        toast(
+          t(
             'This functionality is currently not available, we would like to work on this issue. Use the download link.'
-          )
-        })
+          ),
+          {} as ToastOptions
+        )
       } else {
         setError(t('Video format not supported'))
       }
@@ -90,11 +90,14 @@ export const VideoUploader = (props: Props) => {
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onClick={() =>
-            showSnackbar({
-              body: t(
+            toast(
+              t(
                 'This functionality is currently not available, we would like to work on this issue. Use the download link.'
-              )
-            })
+              ),
+              {
+                icon: 'error'
+              }
+            )
           }
           ref={dropzoneRef}
           class={clsx(styles.dropArea, { [styles.active]: dragActive() })}

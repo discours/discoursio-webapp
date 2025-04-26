@@ -8,9 +8,10 @@ import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'
 import { useLocalize } from '~/context/localize'
 import { UpdateProfileInput, useSession } from '~/context/session'
-import { DEFAULT_HEADER_OFFSET, useSnackbar, useUI } from '~/context/ui'
+import { DEFAULT_HEADER_OFFSET, useUI } from '~/context/ui'
 import { validateEmail } from '~/utils/validate'
 
+import toast from 'solid-toast'
 import styles from '~/styles/views/ProfileSettings.module.scss'
 
 type FormField = 'oldPassword' | 'newPassword' | 'newPasswordConfirm' | 'email'
@@ -21,7 +22,6 @@ export const ProfileSecurityView = (_props: any) => {
   const { t } = useLocalize()
   const { updateProfile, session, isSessionLoaded } = useSession()
   const { showConfirm } = useUI()
-  const { showSnackbar } = useSnackbar()
   const [newPasswordError, setNewPasswordError] = createSignal<string | undefined>()
   const [oldPasswordError, setOldPasswordError] = createSignal<string | undefined>()
   const [emailError, setEmailError] = createSignal<string | undefined>()
@@ -93,7 +93,9 @@ export const ProfileSecurityView = (_props: any) => {
         left: 0,
         behavior: 'smooth'
       })
-      showSnackbar({ type: 'error', body: t('Incorrect new password confirm') })
+      toast(t('Incorrect new password confirm'), {
+        icon: 'error'
+      })
       setNewPasswordError(t('Passwords are not equal'))
     }
   }
@@ -115,7 +117,9 @@ export const ProfileSecurityView = (_props: any) => {
         if (oldPasswordRef) {
           // && errors.some((obj: Error) => obj.message === 'incorrect old password')) {
           setOldPasswordError(t('Incorrect old password'))
-          showSnackbar({ type: 'error', body: t('Incorrect old password') })
+          toast(t('Incorrect old password'), {
+            icon: 'error'
+          })
           const rect = oldPasswordRef.getBoundingClientRect()
           const topPosition = (window?.scrollY || 0) + rect.top - DEFAULT_HEADER_OFFSET * 2
           window?.scrollTo({
@@ -127,7 +131,9 @@ export const ProfileSecurityView = (_props: any) => {
         }
         return
       }
-      showSnackbar({ type: 'success', body: t('Profile successfully saved') })
+      toast(t('Profile successfully saved'), {
+        icon: 'success'
+      })
     } catch (error) {
       console.error(error)
     } finally {

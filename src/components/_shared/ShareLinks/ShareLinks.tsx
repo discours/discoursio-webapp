@@ -3,10 +3,10 @@ import { clsx } from 'clsx'
 import { Show, createSignal } from 'solid-js'
 
 import { useLocalize } from '~/context/localize'
-import { useSnackbar } from '~/context/ui'
 import { Icon } from '../Icon'
 import { Popover } from '../Popover'
 
+import toast from 'solid-toast'
 import popupStyles from '../Popup/Popup.module.scss'
 import styles from './ShareLinks.module.scss'
 
@@ -23,7 +23,6 @@ type Props = {
 export const ShareLinks = (props: Props) => {
   const { t } = useLocalize()
   const [isLinkCopied, setIsLinkCopied] = createSignal(false)
-  const { showSnackbar } = useSnackbar()
 
   const [share] = createSocialShare(() => ({
     title: props.title,
@@ -46,7 +45,9 @@ export const ShareLinks = (props: Props) => {
         props.onShareClick?.()
       }, 3000)
     } else {
-      showSnackbar({ body: t('Link copied') })
+      toast(t('Link copied'), {
+        icon: 'success'
+      })
     }
   }
 

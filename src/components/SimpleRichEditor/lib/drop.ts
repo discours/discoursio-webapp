@@ -1,6 +1,6 @@
 import { createSignal } from 'solid-js'
+import { toast } from 'solid-toast'
 import { useLocalize } from '~/context/localize'
-import { useSnackbar } from '~/context/ui'
 
 /**
  * Hook for handling file drops and uploads in editor
@@ -25,7 +25,6 @@ import { useSnackbar } from '~/context/ui'
  */
 export const useDropFiles = () => {
   const { t } = useLocalize()
-  const { showSnackbar } = useSnackbar()
   const [selection, setSelection] = createSignal<Range | null>(null)
 
   /**
@@ -64,43 +63,39 @@ export const useDropFiles = () => {
     const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'))
 
     if (imageFiles.length === 0) {
-      showSnackbar({
-        body: t('Only image files are allowed'),
-        type: 'error'
+      toast(t('Only image files are allowed'), {
+        icon: 'error'
       })
       return
     }
 
     if (imageFiles.length > 100) {
-      showSnackbar({
-        body: t('Maximum 100 files allowed'),
-        type: 'error'
+      toast(t('Maximum 100 files allowed'), {
+        icon: 'error'
       })
       return
     }
 
     const oversizedFiles = imageFiles.filter((file) => file.size > 5 * 1024 * 1024)
     if (oversizedFiles.length > 0) {
-      showSnackbar({
-        body: t('Some files exceed 5MB limit'),
-        type: 'error'
+      toast(t('Some files exceed 5MB limit'), {
+        icon: 'error'
       })
       return
     }
 
     try {
-      showSnackbar({ body: t('Uploading images...') })
+      toast(t('Uploading images...'))
 
       // Здесь должна быть логика загрузки файлов
       // Например:
       // await uploadImages(imageFiles)
 
-      showSnackbar({ body: t('Images uploaded successfully') })
+      toast(t('Images uploaded successfully'))
     } catch (error) {
       console.error('Upload error:', error)
-      showSnackbar({
-        body: t('Failed to upload images'),
-        type: 'error'
+      toast(t('Failed to upload images'), {
+        icon: 'error'
       })
     }
   }

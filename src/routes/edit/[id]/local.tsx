@@ -1,11 +1,11 @@
 import { RouteSectionProps, useNavigate } from '@solidjs/router'
 import { createEffect } from 'solid-js'
+import { toast } from 'solid-toast'
 import { EditView } from '~/components/Views/EditView'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import { useSnackbar } from '~/context/ui'
 
 /**
  * Страница редактирования локального черновика
@@ -15,7 +15,6 @@ export default function EditLocalPage(props: RouteSectionProps) {
   const { drafts, loadDrafts, setCurrentDraft } = useDrafts()
   const navigate = useNavigate()
   const { requireAuthentication } = useSession()
-  const { showSnackbar } = useSnackbar()
   const { t } = useLocalize()
 
   // Загружаем черновик при монтировании
@@ -30,7 +29,7 @@ export default function EditLocalPage(props: RouteSectionProps) {
       const draftId = props.params.id
 
       if (!draftId) {
-        showSnackbar({ body: t('Draft ID is required') })
+        toast(t('Draft ID is required'))
         navigate('/drafts')
         return
       }
@@ -47,7 +46,7 @@ export default function EditLocalPage(props: RouteSectionProps) {
         setCurrentDraft(draft)
       } else {
         // Если локальный черновик не найден, показываем уведомление
-        showSnackbar({ body: t('Local draft not found') })
+        toast(t('Local draft not found'))
         navigate('/drafts')
       }
     }, 'edit')

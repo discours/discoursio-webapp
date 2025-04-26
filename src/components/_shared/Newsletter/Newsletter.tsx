@@ -1,7 +1,7 @@
 import { JSX, Show, createSignal } from 'solid-js'
 
+import { toast } from 'solid-toast'
 import { useLocalize } from '~/context/localize'
-import { useSnackbar } from '~/context/ui'
 import { validateEmail } from '~/utils/validate'
 import { Button } from '../Button'
 import { Icon } from '../Icon'
@@ -17,7 +17,6 @@ export const Newsletter = (props: Props) => {
   const [title, setTitle] = createSignal('')
   const [email, setEmail] = createSignal('')
   const [emailError, setEmailError] = createSignal<string>('')
-  const { showSnackbar } = useSnackbar()
 
   const validate = (): boolean => {
     if (!email()) {
@@ -58,7 +57,7 @@ export const Newsletter = (props: Props) => {
 
     if (response.ok) {
       setTitle(t('Following'))
-      showSnackbar({ body: t('Thank you for subscribing') })
+      toast(t('Thank you for subscribing'))
     } else {
       if (response.status === 400) {
         setEmailError(t('Please check your email address'))

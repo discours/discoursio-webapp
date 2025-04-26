@@ -1,5 +1,6 @@
 import type { Accessor, JSX } from 'solid-js'
 import { createContext, createSignal, onCleanup, useContext } from 'solid-js'
+import toast from 'solid-toast'
 import { loadCommentsBranch as loadCommentsBranchApi, loadReactions } from '~/graphql/api/public'
 import createReactionMutation from '~/graphql/mutation/core/reaction-create'
 import destroyReactionMutation from '~/graphql/mutation/core/reaction-destroy'
@@ -13,7 +14,6 @@ import {
 } from '~/graphql/schema/core.gen'
 import { useLocalize } from './localize'
 import { useSession } from './session'
-import { useSnackbar } from './ui'
 
 /**
  * Определяет тип данных для контекста реакций.
@@ -55,7 +55,6 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
   const [reactionsByAuthor, setReactionsByAuthor] = createSignal<Record<number, Reaction[]>>({})
   const [commentsByAuthor, setCommentsByAuthor] = createSignal<Record<number, Reaction[]>>({})
   const { t } = useLocalize()
-  const { showSnackbar } = useSnackbar()
   const { client } = useSession()
 
   const addShoutReactions = (rrr: Reaction[]) => {
@@ -132,7 +131,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
       throw new Error('cannot create reaction')
     }
     const { error, reaction } = result
-    if (error) await showSnackbar({ type: 'error', body: t(error) })
+    if (error) toast(t(error), { icon: 'error' })
     if (reaction) {
       updateShoutInStores(reaction)
     }
@@ -209,7 +208,9 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
     }
     const { error, reaction } = result
     if (error) {
-      await showSnackbar({ type: 'error', body: t(error) })
+      toast(t(error), {
+        icon: 'error'
+      })
       return { error }
     }
     if (reaction?.id) {

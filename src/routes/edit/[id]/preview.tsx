@@ -1,10 +1,10 @@
 import { RouteSectionProps, useNavigate } from '@solidjs/router'
 import { Show, createEffect, createSignal } from 'solid-js'
+import { toast } from 'solid-toast'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import { useSnackbar } from '~/context/ui'
 
 /**
  * Компонент предпросмотра черновика
@@ -15,7 +15,6 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
   const { drafts, loadDrafts, syncDraft, setCurrentDraft } = useDrafts()
   const navigate = useNavigate()
   const { requireAuthentication } = useSession()
-  const { showSnackbar } = useSnackbar()
   const { t } = useLocalize()
   const [isLoading, setIsLoading] = createSignal(true)
   const [previewData, setPreviewData] = createSignal<ExtendedDraft | null>(null)
@@ -34,7 +33,7 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
         const draftId = props.params.id
 
         if (!draftId) {
-          showSnackbar({ body: t('Draft ID is required') })
+          toast(t('Draft ID is required'))
           navigate('/drafts')
           return
         }
@@ -64,12 +63,12 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
           setPreviewData(draft)
         } else {
           // Если черновик не найден, показываем уведомление
-          showSnackbar({ body: t('Draft not found') })
+          toast(t('Draft not found'))
           navigate('/drafts')
         }
       } catch (error) {
         console.error('[DraftPreviewPage] Error loading draft:', error)
-        showSnackbar({ body: t('Error loading draft') })
+        toast(t('Error loading draft'))
       } finally {
         setIsLoading(false)
       }

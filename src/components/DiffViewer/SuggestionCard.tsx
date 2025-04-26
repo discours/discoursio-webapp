@@ -1,10 +1,10 @@
 import { Show, createSignal } from 'solid-js'
+import { toast } from 'solid-toast'
 import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { useSnackbar } from '~/context/ui'
 import {
   MutationCreate_ReactionArgs,
   Reaction,
@@ -27,7 +27,6 @@ export interface SuggestionCardProps {
  */
 export const SuggestionCard = (props: SuggestionCardProps) => {
   const { session } = useSession()
-  const { showSnackbar } = useSnackbar()
   const { t, formatDate } = useLocalize()
   const { createShoutReaction } = useReactions()
 
@@ -46,10 +45,7 @@ export const SuggestionCard = (props: SuggestionCardProps) => {
    */
   const createModeratorReaction = async (kind: ReactionKind) => {
     if (!canUserModerate()) {
-      showSnackbar({
-        type: 'error',
-        body: t('Only author can moderate suggestions')
-      })
+      toast(t('Only author can moderate suggestions'), {})
       return
     }
 
@@ -69,15 +65,13 @@ export const SuggestionCard = (props: SuggestionCardProps) => {
         } as ReactionInput
       } as MutationCreate_ReactionArgs)
 
-      showSnackbar({
-        type: 'success',
-        body: kind === ReactionKind.Accept ? t('Suggestion accepted') : t('Suggestion rejected')
+      toast(kind === ReactionKind.Accept ? t('Suggestion accepted') : t('Suggestion rejected'), {
+        icon: 'success'
       })
     } catch (error) {
       console.error('[SuggestionCard] Error moderating reaction:', error)
-      showSnackbar({
-        type: 'error',
-        body: t('Failed to moderate suggestion')
+      toast(t('Failed to moderate suggestion'), {
+        icon: 'error'
       })
     } finally {
       setIsProcessing(false)

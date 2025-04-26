@@ -5,7 +5,6 @@ import SwiperCore from 'swiper'
 import { Manipulation, Navigation, Pagination } from 'swiper/modules'
 import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { useLocalize } from '~/context/localize'
-import { useSnackbar } from '~/context/ui'
 import { composeMediaItems } from '~/lib/composeMediaItems'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { handleFileUpload } from '~/lib/handleFileUpload'
@@ -17,6 +16,7 @@ import { Loading } from '../Loading'
 import { Popover } from '../Popover'
 import { SwiperRef } from './swiper'
 
+import toast from 'solid-toast'
 import { useSession } from '~/context/session'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { UploadedFile } from '~/types/upload'
@@ -38,8 +38,6 @@ export const EditorSwiper = (props: Props) => {
   const { session } = useSession()
   let mainSwipeRef: SwiperRef | null
   let thumbSwipeRef: SwiperRef | null
-
-  const { showSnackbar } = useSnackbar()
 
   const handleSlideDescriptionChange = (index: number, field: string, value: string | undefined) => {
     if (props.onImageChange) {
@@ -90,7 +88,9 @@ export const EditorSwiper = (props: Props) => {
     const isValid = validateUploads('image', selectedFiles)
 
     if (!isValid) {
-      await showSnackbar({ type: 'error', body: t('Invalid file type') })
+      toast(t('Invalid file type'), {
+        icon: 'error'
+      })
       setLoading(false)
       return
     }
@@ -107,7 +107,9 @@ export const EditorSwiper = (props: Props) => {
       swipeToUploaded()
     } catch (error) {
       console.error('[runUpload]', error)
-      showSnackbar({ type: 'error', body: t('Error') })
+      toast(t('Error'), {
+        icon: 'error'
+      })
       setLoading(false)
     }
   }

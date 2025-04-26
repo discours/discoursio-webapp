@@ -1,9 +1,10 @@
 import { clsx } from 'clsx'
 import { JSX, Show, createSignal } from 'solid-js'
+import { toast } from 'solid-toast'
 
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import { useSnackbar, useUI } from '~/context/ui'
+import { useUI } from '~/context/ui'
 import { validateEmail } from '~/utils/validate'
 
 import { AuthModalHeader } from './AuthModalHeader'
@@ -32,7 +33,6 @@ export const LoginForm = () => {
   // FIXME: use signal or remove
   const [_isLinkSent, setIsLinkSent] = createSignal(false)
   let authFormRef: HTMLFormElement
-  const { showSnackbar } = useSnackbar()
   const { signIn, authError } = useSession()
 
   const handleEmailInput = (newEmail: string) => {
@@ -124,7 +124,9 @@ export const LoginForm = () => {
         }
       }
       hideModal()
-      showSnackbar({ body: t('Welcome!') })
+      toast(t('Welcome!'), {
+        icon: 'success'
+      })
     } catch (error) {
       console.error(error)
       setSubmitError(authError())

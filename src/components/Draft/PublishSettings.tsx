@@ -19,12 +19,13 @@ import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useTopics } from '~/context/topics'
-import { useSnackbar, useUI } from '~/context/ui'
+import { useUI } from '~/context/ui'
 import { Author, DraftInput, Topic } from '~/graphql/schema/core.gen'
 import { UploadedFile } from '~/types/upload'
 import { Modal } from '../_shared/Modal'
 import { TopicSelect } from '../_shared/TopicSelect'
 
+import toast from 'solid-toast'
 // TODO: should not be here, implement more components
 import stylesBeside from '../Feed/Beside.module.scss'
 import styles from './PublishSettings.module.scss'
@@ -438,7 +439,6 @@ const extractTopicsFromValue = (value: unknown): Topic[] => {
 export const PublishSettings = () => {
   const { t } = useLocalize()
   const { currentDraft, publishDraft, syncDraft, updateDraft } = useDrafts()
-  const { showSnackbar } = useSnackbar()
   const { showModal } = useUI()
   const { loadTopics, sortedTopics } = useTopics()
   const { session } = useSession()
@@ -1064,12 +1064,16 @@ export const PublishSettings = () => {
     updateDraft(draftToUpdate)
       .then(() => {
         // Показываем уведомление об успешном сохранении
-        showSnackbar({ body: t('Draft saved successfully') })
+        toast(t('Draft saved successfully'), {
+          icon: 'success'
+        })
         setSavingDraft(false)
       })
       .catch((error) => {
         console.error('[handleSaveDraft] Ошибка сохранения черновика:', error)
-        showSnackbar({ body: t('Error saving draft'), type: 'error' })
+        toast(t('Error saving draft'), {
+          icon: 'error'
+        })
         setSavingDraft(false)
       })
   }

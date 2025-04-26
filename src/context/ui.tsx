@@ -3,72 +3,8 @@ import type { Accessor, JSX } from 'solid-js'
 import { createContext, createEffect, createSignal, on, useContext } from 'solid-js'
 
 import { ButtonVariant } from '../components/_shared/Button/Button'
-import { delay } from '../utils/delay'
 
-const DEFAULT_DURATION = 3000 // 3 sec
 export const DEFAULT_HEADER_OFFSET = 80 // 80px for header
-
-const messagesToShow: SnackbarMessage[] = []
-let currentCheckMessagesPromise: void | PromiseLike<void> | null = null
-
-type SnackbarMessage = {
-  type?: 'success' | 'error'
-  body: string | JSX.Element
-  duration?: number
-}
-
-export type SnackbarContextType = {
-  snackbarMessage: Accessor<SnackbarMessage | null | undefined>
-  showSnackbar: (message: SnackbarMessage) => Promise<void>
-}
-
-export const SnackbarContext = createContext<SnackbarContextType>({
-  snackbarMessage: () => undefined,
-  showSnackbar: async (_m: SnackbarMessage) => undefined
-} as SnackbarContextType)
-
-export function useSnackbar() {
-  return useContext(SnackbarContext)
-}
-
-export const SnackbarProvider = (props: { children: JSX.Element }) => {
-  const [snackbarMessage, setSnackbarMessage] = createSignal<SnackbarMessage | null>()
-
-  const checkMessages = async () => {
-    if (messagesToShow.length === 0) {
-      currentCheckMessagesPromise = null
-      return
-    }
-
-    setSnackbarMessage(messagesToShow[0])
-    await delay(messagesToShow[0].duration || DEFAULT_DURATION)
-    setSnackbarMessage(null)
-    await delay(1000)
-    messagesToShow.shift()
-    await checkMessages()
-  }
-
-  const showSnackbar = async (message: SnackbarMessage): Promise<void> => {
-    const messageToShow = {
-      type: message.type ?? 'success',
-      body: message.body,
-      duration: message.duration ?? DEFAULT_DURATION
-    }
-
-    messagesToShow.push(messageToShow)
-
-    if (!currentCheckMessagesPromise) {
-      currentCheckMessagesPromise = checkMessages()
-      await currentCheckMessagesPromise
-    }
-
-    return currentCheckMessagesPromise
-  }
-
-  const value: SnackbarContextType = { snackbarMessage, showSnackbar }
-
-  return <SnackbarContext.Provider value={value}>{props.children}</SnackbarContext.Provider>
-}
 
 export type ModalSource =
   | 'discussions'
@@ -222,9 +158,5 @@ export const UIProvider = (props: { children: JSX.Element }) => {
     hideModal
   }
 
-  return (
-    <UIContext.Provider value={value}>
-      <SnackbarProvider>{props.children}</SnackbarProvider>
-    </UIContext.Provider>
-  )
+  return <UIContext.Provider value={value}>{props.children}</UIContext.Provider>
 }

@@ -1,9 +1,10 @@
 import { A, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show } from 'solid-js'
+import { toast } from 'solid-toast'
 import type { ExtendedDraft } from '~/context/drafts'
 import { createValidDate, useLocalize } from '~/context/localize'
-import { useSnackbar, useUI } from '~/context/ui'
+import { useUI } from '~/context/ui'
 import { Icon } from '../_shared/Icon'
 
 import styles from './DraftCard.module.scss'
@@ -30,7 +31,6 @@ type Props = {
 export const DraftCard = (props: Props) => {
   const { t, formatDate } = useLocalize()
   const { showConfirm } = useUI()
-  const { showSnackbar } = useSnackbar()
   const navigate = useNavigate()
 
   // Получение URL для редактирования черновика
@@ -56,7 +56,9 @@ export const DraftCard = (props: Props) => {
     if (props.draft.id) {
       navigate(`/edit/${props.draft.id}/settings`)
     } else {
-      showSnackbar({ body: t('Cannot publish draft without ID') })
+      toast(t('Cannot publish draft without ID'), {
+        icon: 'error'
+      })
     }
   }
 
@@ -73,7 +75,9 @@ export const DraftCard = (props: Props) => {
     if (isConfirmed) {
       props.onDelete()
 
-      await showSnackbar({ body: t('Draft successfully deleted') })
+      toast(t('Draft successfully deleted'), {
+        icon: 'success'
+      })
     }
   }
 
@@ -96,7 +100,9 @@ export const DraftCard = (props: Props) => {
     if (props.draft.id) {
       navigate(`/edit/${props.draft.localId}/preview`)
     } else {
-      showSnackbar({ body: t('Cannot preview draft without ID') })
+      toast(t('Cannot preview draft without ID'), {
+        icon: 'error'
+      })
     }
   }
 

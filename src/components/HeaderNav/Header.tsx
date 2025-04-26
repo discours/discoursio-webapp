@@ -2,6 +2,7 @@ import { A, redirect, useLocation, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import { isServer } from 'solid-js/web'
+import { Toaster } from 'solid-toast'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
@@ -9,7 +10,6 @@ import { capitalize } from '~/utils/capitalize'
 import { SharePopup, getShareUrl } from '../Article/SharePopup'
 import { AuthModal } from '../AuthModal'
 import { SearchModal } from '../SearchModal/SearchModal'
-import { Snackbar } from '../Snackbar/Snackbar'
 import { ConfirmModal } from '../_shared/ConfirmModal'
 import { Icon } from '../_shared/Icon'
 import { Modal } from '../_shared/Modal'
@@ -425,7 +425,7 @@ export const Header = (props: Props) => {
           </div>
         </nav>
 
-        <Snackbar />
+        <Toaster />
       </div>
     </header>
   )
