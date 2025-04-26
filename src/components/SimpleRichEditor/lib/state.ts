@@ -2,13 +2,7 @@ import { Accessor, createMemo, createSignal } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { debounce } from 'throttle-debounce'
 import { getCommandType } from './commands'
-import {
-  applyFormatting as applyFormat,
-  getActiveFormats,
-  removeFormatting as removeFormat,
-  removeFormatting,
-  resetFormat
-} from './format'
+import { applyFormatting as applyFormat, getActiveFormats, removeFormatting, resetFormat } from './format'
 import { CommandType, HistoryJournal, Position } from './types'
 
 /**

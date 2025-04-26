@@ -198,10 +198,10 @@ export const ToolbarControl: Component<{
       let groupTitle = ''
       if (iconName === 'editor-text-size') {
         // Дропдаун "TT"
-        groupTitle = index === 0 ? t('Заголовки') : t('Выделение') // Заголовки, Выделение
+        groupTitle = index === 0 ? t('Headers') : t('Blocks') // Заголовки, Блоки
       } else if (iconName === 'editor-ul') {
         // Дропдаун "Списки"
-        groupTitle = t('Списки') // Списки
+        groupTitle = t('Lists') // Списки
       }
 
       return {

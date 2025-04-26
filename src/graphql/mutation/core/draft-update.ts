@@ -14,8 +14,6 @@ export default gql`
         media { url pic source artist title body date genre lyrics }
         topics { id title slug }
         authors { id name slug }
-        created_at
-        updated_at
       }
     }
   }

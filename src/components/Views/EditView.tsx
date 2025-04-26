@@ -211,99 +211,81 @@ export const EditView = (props: { draft?: Draft }) => {
   const handleDocumentClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement
 
-    // Проверяем, не является ли клик внутри заголовка или текстового поля
-    const isTitleClick = target.closest('.titleInput') || target.closest('input[type="text"]')
-
-    // Проверка для редактора лида (когда он видим)
-    const isLeadEditorClick = target.closest('[data-field-type="lead"]')
-
-    // Улучшенная проверка для превью лида
-    const isLeadPreviewClick = Boolean(
-      target.closest(`.${styles.leadContentDisplay}`) ||
+    // Упрощенная проверка на клик по пустой области
+    // Интерактивные элементы, по которым клик не должен считаться пустой областью
+    const isInteractiveOrSpecialElement = Boolean(
+      target.closest('button') ||
+        target.closest('a') ||
+        target.closest('input') ||
+        target.closest('textarea') ||
+        target.closest('select') ||
+        target.closest('[role="button"]') ||
+        target.closest('[contenteditable="true"]') ||
+        target.closest('.interactive') ||
+        target.closest('.titleInput') ||
+        target.closest('[data-field-type="lead"]') ||
+        target.closest(`.${styles.leadContentDisplay}`) ||
         target.closest(`.${styles.leadContentText}`) ||
-        target.classList?.contains(styles.leadContentDisplay) ||
-        target.classList?.contains(styles.leadContentText)
+        target.closest(`.${styles.headingActions}`) ||
+        target.closest('[data-field-type="body"]') ||
+        target.closest('.settingsControl') ||
+        target.closest('button[value="ellipsis"]') ||
+        target.closest('svg[data-icon="ellipsis"]') ||
+        target.closest('.settingsControlContainer') ||
+        target.tagName.toLowerCase() === 'button' ||
+        target.tagName.toLowerCase() === 'a' ||
+        target.tagName.toLowerCase() === 'input' ||
+        target.tagName.toLowerCase() === 'textarea' ||
+        target.tagName.toLowerCase() === 'select'
     )
 
-    // Проверка для ссылок действий над заголовком
-    const isHeadingActionsClick = Boolean(target.closest(`.${styles.headingActions}`))
+    // Проверка на клик по пустой области страницы
+    const isEmptyAreaClick = Boolean(
+      !isInteractiveOrSpecialElement &&
+        (target === document.body ||
+          target === document.documentElement ||
+          (target.tagName.toLowerCase() === 'div' && !target.getAttribute('contenteditable')))
+    )
 
-    // Проверка для основного редактора
-    const isBodyClick = Boolean(target.closest('[data-field-type="body"]'))
-
-    // Если клик не в заголовке и не в действиях над заголовком, сбрасываем состояние клика на заголовок
-    if (!isTitleClick && !isHeadingActionsClick) {
+    // Если клик по заголовку, устанавливаем флаг клика по заголовку
+    const isTitleClick = target.closest('.titleInput') || target.closest('input[type="text"]')
+    if (isTitleClick) {
+      setIsTitleClicked(true)
+    } else if (!target.closest(`.${styles.headingActions}`)) {
+      // Если клик не в заголовке и не в действиях над заголовком, сбрасываем состояние
       setIsTitleClicked(false)
     }
 
-    // Добавляем логирование для отладки, какой элемент обнаружен
-    if (isLeadPreviewClick) {
-      console.log('[EditView] Click detected on lead preview, skipping body focus')
-      return // Явно пропускаем обработку, если клик на превью
-    }
-
-    // Если клик в редакторе лида, тоже пропускаем (пусть обработчик редактора сам разбирается)
-    if (isLeadEditorClick) {
-      console.log('[EditView] Click detected in lead editor, skipping body focus')
+    // Если клик не по пустой области или редактор лида открыт, прекращаем выполнение
+    if (!isEmptyAreaClick || isLeadVisible()) {
       return
     }
 
-    // Если клик по заголовку, показываем действия и предотвращаем фокус на основном редакторе
-    if (isTitleClick) {
-      console.log('[EditView] Click detected on title, showing actions')
-      setIsTitleClicked(true)
-      // Предотвращаем всплытие события до document
-      e.stopPropagation()
-      e.preventDefault()
-      return
-    }
+    // Устанавливаем фокус на основной редактор при клике на пустую область
+    console.log('[EditView] Empty area click detected, focusing body editor')
+    const bodyEditor = bodyEditorRef()
+    if (bodyEditor) {
+      // Установка фокуса в конец документа
+      bodyEditor.focus()
 
-    // Если клик по действиям заголовка, предотвращаем фокус на основном редакторе
-    if (isHeadingActionsClick) {
-      console.log('[EditView] Click detected on heading actions, skipping body focus')
-      e.stopPropagation()
-      return
-    }
+      // Перемещение курсора в конец контента
+      const selection = window.getSelection()
+      const range = document.createRange()
 
-    // Если клик не в заголовке, не в редакторе/превью лида и не в основном редакторе,
-    // то устанавливаем фокус на основной редактор
-    if (
-      !isTitleClick &&
-      !isLeadEditorClick &&
-      !isLeadPreviewClick &&
-      !isBodyClick &&
-      !isHeadingActionsClick
-    ) {
-      // Дополнительная защита - если редактор лида открыт, не перехватываем фокус
-      if (isLeadVisible()) {
-        console.log('[EditView] Lead editor is visible, skipping focus to body')
-        return
-      }
-
-      const bodyEditor = bodyEditorRef()
-      if (bodyEditor) {
-        // Установка фокуса в конец документа
-        bodyEditor.focus()
-
-        // Перемещение курсора в конец контента
-        const selection = window.getSelection()
-        const range = document.createRange()
-
-        if (selection && bodyEditor.childNodes.length > 0) {
-          const lastChild = bodyEditor.lastChild
-          if (lastChild) {
-            // Если последний узел - текстовый, устанавливаем курсор в его конец
-            if (lastChild.nodeType === Node.TEXT_NODE) {
-              range.setStart(lastChild, lastChild.textContent?.length || 0)
-            } else {
-              // Иначе пытаемся разместить курсор внутри последнего элемента
-              range.selectNodeContents(lastChild)
-              range.collapse(false) // collapse to end
-            }
-            if (selection) {
-              selection.removeAllRanges()
-              selection.addRange(range)
-            }
+      if (selection && bodyEditor.childNodes.length > 0) {
+        const lastChild = bodyEditor.lastChild
+        if (lastChild) {
+          // Если последний узел - текстовый, устанавливаем курсор в его конец
+          if (lastChild.nodeType === Node.TEXT_NODE) {
+            range.setStart(lastChild, lastChild.textContent?.length || 0)
+          } else {
+            // Иначе пытаемся разместить курсор внутри последнего элемента
+            range.selectNodeContents(lastChild)
+            range.collapse(false) // collapse to end
+          }
+          if (selection) {
+            selection.removeAllRanges()
+            selection.addRange(range)
           }
         }
       }

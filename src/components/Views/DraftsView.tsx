@@ -1,4 +1,4 @@
-import { For, Show, createEffect, on } from 'solid-js'
+import { For, Show, createEffect, createSignal, on, onMount } from 'solid-js'
 import { DraftCard } from '~/components/Draft'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
@@ -13,6 +13,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
   const { t } = useLocalize()
   const { publishDraft, deleteDraft, drafts, loadDrafts, removeLocalDraft } = useDrafts()
   const { showSnackbar } = useSnackbar()
+  const [isLoading, setIsLoading] = createSignal(true)
 
   const handleDraftDelete = async (d: Draft | ExtendedDraft) => {
     // Проверяем, является ли черновик только локальным
@@ -50,17 +51,30 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
     console.log('[DraftsView] current drafts:', drafts())
   })
 
+  // Функция загрузки данных черновиков
+  const loadData = async () => {
+    setIsLoading(true)
+    try {
+      await loadDrafts()
+      console.log('[DraftsView] drafts loaded')
+    } catch (error) {
+      console.error('[DraftsView] Error loading drafts:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   // Загружаем черновики при монтировании и при изменении сессии
   createEffect(
     on(
       () => session()?.access_token,
-      async (token, prevToken) => {
+      async (token: string | undefined, prevToken: string | undefined) => {
         console.log('[DraftsView] token changed:', { token: !!token, prevToken: !!prevToken })
 
         if (token) {
           console.log('[DraftsView] session is ready, loading drafts...')
           try {
-            await loadDrafts()
+            await loadData()
           } catch (err) {
             console.error('[DraftsView] Failed to load drafts:', err)
           }
@@ -69,7 +83,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
           try {
             await requireAuthentication(async () => {
               console.log('[DraftsView] authenticated, loading drafts...')
-              await loadDrafts()
+              await loadData()
             }, 'edit')
           } catch (err) {
             console.error('[DraftsView] Authentication failed:', err)
@@ -79,6 +93,11 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       {}
     )
   ) // Убираем defer чтобы эффект сработал сразу
+
+  // Загрузка данных при монтировании компонента
+  onMount(() => {
+    loadData()
+  })
 
   return (
     <div class={styles.draftsView}>
@@ -90,8 +109,10 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
             </div>
 
             <Show
-              when={drafts()?.length > 0}
-              fallback={<div class={styles.noDrafts}>{t('No drafts')}</div>}
+              when={!isLoading() && drafts()?.length > 0}
+              fallback={
+                <div class={styles.noDrafts}>{isLoading() ? t('Loading drafts...') : t('No drafts')}</div>
+              }
             >
               <div class={styles.draftsList}>
                 <For each={drafts()}>

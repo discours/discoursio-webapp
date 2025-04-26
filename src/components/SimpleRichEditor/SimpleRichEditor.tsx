@@ -26,13 +26,7 @@ import { isGroup } from './lib/commands'
 import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
 import { isEmptyContent } from './lib/empty'
 import { getAllFootnotes, getFootnoteById, insertFootnote, removeFootnote } from './lib/footnotes'
-import {
-  type SelectionState,
-  applyFormatting,
-  hasFormatting,
-  removeFormatting,
-  toggleBlockFormat
-} from './lib/format'
+import { type SelectionState, applyFormatting, removeFormatting, toggleFormatting } from './lib/format'
 import { getEditorPosition, isTouchDevice } from './lib/helpers'
 import { validateUrl } from './lib/link'
 import { useSelection } from './lib/selection'
@@ -47,12 +41,19 @@ import {
   saveEditorContent,
   saveVersionToStorage
 } from './lib/storage'
-import { CommandGroupType, CommandType } from './lib/types'
-import { EditorData, EditorFieldType, FormType, Position } from './lib/types'
+import {
+  CommandGroupType,
+  CommandType,
+  EditorData,
+  EditorFieldType,
+  FormType,
+  Position,
+  ToolbarMode
+} from './lib/types'
 import { replaceSelection } from './lib/utils'
 import { InlineFormOptions, validateVideoUrl, validateWebUrl } from './lib/validation'
 import { PlusMenu, handlePlusMenuAction, handleSquibFormatting } from './menu/PlusMenu'
-import { SimpleToolbar, ToolbarMode } from './menu/SimpleToolbar'
+import { SimpleToolbar } from './menu/SimpleToolbar'
 import { SquibMenu } from './menu/SquibMenu'
 
 import styles from './SimpleRichEditor.module.scss'
@@ -1032,13 +1033,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       return
     }
 
-    // Определяем типы команд для разной логики
-    const inlineCommands: CommandType[] = ['bold', 'italic', 'highlight']
-    const blockToggleCommands: CommandType[] = ['h1', 'h2', 'h3', 'blockquote', 'p']
-    const listCommands: CommandType[] = ['bulletList', 'orderedList']
-    const specialCommands: CommandType[] = ['link', 'video', 'image', 'audio', 'footnote']
-    // Прочие команды (punchline, squib, align-*, bg-*) пока будут использовать applyFormatting
-
     // Восстанавливаем выделение (если есть)
     restoreSelection()
     const activeSelection = window.getSelection()
@@ -1059,10 +1053,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     // Сохраняем выделение перед модификацией
     saveSelection()
 
-    // --- Маршрутизация по типу команды ---
-
-    if (specialCommands.includes(command)) {
-      // --- Особая обработка для ссылок, медиа, сносок ---
+    // --- Специальная обработка для ссылок, медиа, сносок ---
+    if (['link', 'image', 'video', 'audio', 'footnote'].includes(command)) {
       if (command === 'link') {
         const linkElement = findLinkAncestor(activeSelection.anchorNode)
         const initialUrl = linkElement ? linkElement.getAttribute('href') || '' : ''
@@ -1091,36 +1083,16 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         }
         return
       }
-    } else if (inlineCommands.includes(command)) {
-      // --- Переключение Inline Форматирования ---
-      console.log(
-        `[handleAction] Applying inline formatting: ${command}, current state:`,
-        hasFormatting(command, state)
-      )
-      if (hasFormatting(command, state)) {
-        removeFormatting(command, state)
-      } else {
-        applyFormatting(command, state)
-      }
-    } else if (blockToggleCommands.includes(command)) {
-      // --- Переключение Блочного Форматирования ---
-      console.log(`[handleAction] Applying block formatting: ${command}`)
-      toggleBlockFormat(command, state, editor) // Передаем editor
-    } else if (listCommands.includes(command)) {
-      // --- Переключение Списков через execCommand ---
-      const commandId = command === 'bulletList' ? 'insertUnorderedList' : 'insertOrderedList'
-      document.execCommand(commandId, false)
-      // execCommand может не вызвать 'input', поэтому обновляем состояние вручную
-      // С небольшой задержкой, чтобы браузер успел применить команду
-      setTimeout(() => {
-        handleChange(props.fieldType ? String(props.fieldType) : 'content')
-        trackSelectionAndCursor()
-      }, 100) // Задержку для списков оставляем 100 мс
     } else {
-      // --- Обработка прочих команд (punchline, squib, align-*, bg-*) ---
-      // Пока просто применяем форматирование. Для переключения нужна своя логика.
-      console.log(`[handleAction] Applying default formatting for command: ${command}`)
-      applyFormatting(command, state)
+      // --- Унифицированная обработка форматирования ---
+      console.log(`[handleAction] Processing command: ${command}`)
+
+      // Используем универсальный обработчик форматирования
+      const result = toggleFormatting(command, state, editor)
+
+      if (!result.success) {
+        console.error(`[handleAction] Error processing command ${command}:`, result.error)
+      }
     }
 
     // --- Финальное обновление состояния ---
@@ -1150,15 +1122,36 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const showInlineForm = (type: FormType, onSubmit: (value: string) => void, initialValue?: string) => {
     if (!type) return
 
-    // Устанавливаем позицию формы
-    setFormPosition(
-      getEditorPosition(editorRef() || null, {
-        type: 'float',
-        placement: 'right',
-        offset: 10,
-        centerHorizontally: true
+    // Получаем текущую позицию курсора для точного позиционирования формы
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const rect = range.getBoundingClientRect()
+
+      // Устанавливаем позицию формы относительно курсора
+      setFormPosition({
+        top: rect.bottom + window.scrollY + 5, // 5px отступ от курсора
+        left: rect.left + window.scrollX
       })
-    )
+    } else {
+      // Запасной вариант, если нет выделения
+      const cursorPos = cursorPosition()
+      if (cursorPos) {
+        setFormPosition({
+          top: cursorPos.top + window.scrollY + 5,
+          left: cursorPos.left + window.scrollX
+        })
+      } else {
+        // Если нет информации о курсоре, используем центр редактора
+        const editorRect = editorRef()?.getBoundingClientRect()
+        if (editorRect) {
+          setFormPosition({
+            top: editorRect.top + window.scrollY + editorRect.height / 2,
+            left: editorRect.left + window.scrollX + editorRect.width / 2
+          })
+        }
+      }
+    }
 
     // Если initialValue передан явно, используем его
     if (initialValue !== undefined) {

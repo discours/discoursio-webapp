@@ -32,7 +32,7 @@ export const DraftCard = (props: Props) => {
   const { showConfirm } = useUI()
   const { showSnackbar } = useSnackbar()
   const navigate = useNavigate()
-  
+
   // Получение URL для редактирования черновика
   const getEditUrl = () => {
     if (props.draft.id) {
@@ -42,14 +42,14 @@ export const DraftCard = (props: Props) => {
     }
     return '#'
   }
-  
+
   // Обработчик клика на заголовок для редактирования
   const handleEditClick = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     navigate(getEditUrl())
   }
-  
+
   const handlePublishLinkClick = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -76,7 +76,7 @@ export const DraftCard = (props: Props) => {
       await showSnackbar({ body: t('Draft successfully deleted') })
     }
   }
-  
+
   /**
    * Обработчик клика на кнопку просмотра/превью
    * - Если есть опубликованная версия, переходим на опубликованную страницу
@@ -85,17 +85,18 @@ export const DraftCard = (props: Props) => {
   const handleViewClick = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     if (props.draft.hasPublishedVersion && props.draft.slug) {
       // Переходим на страницу опубликованной версии
       navigate(`/${props.draft.slug}`)
+      return
+    }
+
+    // Переходим на страницу превью черновика
+    if (props.draft.id) {
+      navigate(`/edit/${props.draft.localId}/preview`)
     } else {
-      // Переходим на страницу превью черновика
-      if (props.draft.id) {
-        navigate(`/edit/${props.draft.localId}/preview`)
-      } else {
-        showSnackbar({ body: t('Cannot preview draft without ID') })
-      }
+      showSnackbar({ body: t('Cannot preview draft without ID') })
     }
   }
 
@@ -115,9 +116,9 @@ export const DraftCard = (props: Props) => {
               </span>
             </Show>
             {(() => {
-              const date = createValidDate(props.draft.created_at);
-              if (!date) return '';
-              return formatDate(date, { hour: '2-digit', minute: '2-digit' });
+              const date = createValidDate(props.draft.created_at)
+              if (!date) return ''
+              return formatDate(date, { hour: '2-digit', minute: '2-digit' })
             })()}
           </div>
         </div>
@@ -136,32 +137,29 @@ export const DraftCard = (props: Props) => {
             <Icon name="pencil-outline" class={styles.actionIcon} />
             <span class={styles.actionText}>{t('Edit')}</span>
           </A>
-          
+
           <span
             onClick={handleViewClick}
             class={styles.actionItem}
-            title={props.draft.hasPublishedVersion 
-              ? t('View published version') 
-              : t('Preview how it will look published')}
+            title={
+              props.draft.hasPublishedVersion
+                ? t('View published version')
+                : t('Preview how it will look published')
+            }
           >
-            <Icon 
-              name={props.draft.hasPublishedVersion ? "eye-off" : "eye"} 
-              class={styles.actionIcon} 
-            />
+            <Icon name={props.draft.hasPublishedVersion ? 'eye-off' : 'eye'} class={styles.actionIcon} />
             <span class={styles.actionText}>
               {props.draft.hasPublishedVersion ? t('View') : t('Preview')}
             </span>
           </span>
-          
+
           <span
             onClick={handlePublishLinkClick}
             class={clsx(styles.actionItem, styles.publish)}
             title={props.draft.isLocalOnly ? t('Save draft') : t('Publish')}
           >
             <Icon name={props.draft.isLocalOnly ? 'cloud-upload' : 'publish'} class={styles.actionIcon} />
-            <span class={styles.actionText}>
-              {t(props.draft.isLocalOnly ? 'Save draft' : 'Publish')}
-            </span>
+            <span class={styles.actionText}>{t(props.draft.isLocalOnly ? 'Save draft' : 'Publish')}</span>
           </span>
           <span
             onClick={handleDeleteLinkClick}

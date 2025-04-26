@@ -525,14 +525,18 @@
 }
 
 .inlineFormWrapper {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 100;
-  background: var(--bg-color);
+  position: fixed;
+  z-index: 1000;
+  max-width: 300px;
+  width: auto;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 10%);
+  border-radius: 4px;
+  background: var(--color-bg-light, #fff);
 
   .inlineForm {
-    background: var(--bg-color);
+    border-color: var(--color-border-light, #e5e7eb);
+    background: var(--color-bg-light, #fff);
+    width: 100%;
   }
 }
 

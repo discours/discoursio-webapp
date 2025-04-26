@@ -647,8 +647,10 @@ export const getActiveFormats = (selection?: Selection, editor?: HTMLDivElement)
     )
 
     // Добавление проверки highlight для выделения
-    formats.highlight = commonAncestors.some(node => 
-      node.nodeName === 'MARK' || node.nodeName === 'SPAN' && node.parentElement?.classList.contains('highlight')
+    formats.highlight = commonAncestors.some(
+      (node) =>
+        node.nodeName === 'MARK' ||
+        (node.nodeName === 'SPAN' && node.parentElement?.classList.contains('highlight'))
     )
 
     console.log('[getActiveFormats] Selection formats:', formats)
@@ -990,7 +992,6 @@ export const toggleFormatting = (
     // Определяем тип команды по тегу и атрибутам
     const isBlockCommand = ['h1', 'h2', 'h3', 'blockquote', 'p'].includes(command)
     const isListCommand = ['bulletList', 'orderedList'].includes(command)
-    // const isInlineCommand = ['bold', 'italic', 'highlight', 'link'].includes(command)
 
     // Проверяем, активно ли уже это форматирование
     const isFormatActive = hasFormatting(command, state)
@@ -1133,120 +1134,120 @@ const findFirstTextNode = (element: HTMLElement): Node | null => {
 /**
  * Специализированная функция для применения highlight-форматирования
  * Использует ТОЛЬКО тег <mark> для выделения текста
- * 
+ *
  * @param range Диапазон для обработки
  */
 export const applyHighlightFormatting = (range: Range): void => {
   try {
-    if (!range) return;
-    
+    if (!range) return
+
     // Клонируем диапазон для безопасных операций
-    const clonedRange = range.cloneRange();
-    
+    const clonedRange = range.cloneRange()
+
     // Сохраняем начало и конец выделения
-    const startContainer = range.startContainer;
-    const startOffset = range.startOffset;
-    const endContainer = range.endContainer;
-    const endOffset = range.endOffset;
-    
+    const startContainer = range.startContainer
+    const startOffset = range.startOffset
+    const endContainer = range.endContainer
+    const endOffset = range.endOffset
+
     // Извлекаем содержимое выделения
-    const fragment = clonedRange.extractContents();
-    const tempDiv = document.createElement('div');
-    tempDiv.appendChild(fragment);
-    
+    const fragment = clonedRange.extractContents()
+    const tempDiv = document.createElement('div')
+    tempDiv.appendChild(fragment)
+
     console.log(`[applyHighlightFormatting] Текст для форматирования: "${tempDiv.textContent}"`)
-    
+
     // Рекурсивная функция для обработки узлов
     const processNode = (node: Node): void => {
       // Пропускаем уже обработанные mark элементы
-      if (node.nodeName === 'MARK') return;
-      
+      if (node.nodeName === 'MARK') return
+
       // Обрабатываем текстовые узлы
       if (node.nodeType === Node.TEXT_NODE && node.textContent && node.textContent.trim() !== '') {
         // Создаем mark и помещаем в него текстовый узел
-        const mark = document.createElement('mark');
-        mark.textContent = node.textContent;
+        const mark = document.createElement('mark')
+        mark.textContent = node.textContent
         if (node.parentNode) {
-          node.parentNode.replaceChild(mark, node);
+          node.parentNode.replaceChild(mark, node)
         }
-        return;
+        return
       }
-      
+
       // Для элементов рекурсивно обрабатываем каждый дочерний узел
       if (node.nodeType === Node.ELEMENT_NODE) {
         // Копируем массив дочерних узлов, чтобы можно было изменять DOM в процессе итерации
-        const childNodes = Array.from(node.childNodes);
-        childNodes.forEach(childNode => {
-          processNode(childNode);
-        });
+        const childNodes = Array.from(node.childNodes)
+        childNodes.forEach((childNode) => {
+          processNode(childNode)
+        })
       }
-    };
-    
-    // Применяем обработку ко всем узлам в выделении
-    processNode(tempDiv);
-    
-    // Вставляем обновленное содержимое обратно в документ
-    range.deleteContents();
-    while (tempDiv.firstChild) {
-      range.insertNode(tempDiv.firstChild);
-      range.collapse(false);
     }
-    
+
+    // Применяем обработку ко всем узлам в выделении
+    processNode(tempDiv)
+
+    // Вставляем обновленное содержимое обратно в документ
+    range.deleteContents()
+    while (tempDiv.firstChild) {
+      range.insertNode(tempDiv.firstChild)
+      range.collapse(false)
+    }
+
     // Восстанавливаем исходный диапазон выделения
     try {
-      const selection = window.getSelection();
+      const selection = window.getSelection()
       if (selection) {
-        selection.removeAllRanges();
-        
-        const newRange = document.createRange();
-        newRange.setStart(startContainer, startOffset);
-        newRange.setEnd(endContainer, endOffset);
-        selection.addRange(newRange);
+        selection.removeAllRanges()
+
+        const newRange = document.createRange()
+        newRange.setStart(startContainer, startOffset)
+        newRange.setEnd(endContainer, endOffset)
+        selection.addRange(newRange)
       }
     } catch (e) {
-      console.error('[applyHighlightFormatting] Error restoring selection:', e);
+      console.error('[applyHighlightFormatting] Error restoring selection:', e)
     }
-    
+
     // Имитируем событие ввода для обновления состояния редактора
     const inputEvent = new InputEvent('input', {
       bubbles: true,
       cancelable: true,
       inputType: 'formatApply'
-    });
-    range.commonAncestorContainer.dispatchEvent(inputEvent);
+    })
+    range.commonAncestorContainer.dispatchEvent(inputEvent)
   } catch (error) {
-    console.error('[applyHighlightFormatting] Error:', error);
+    console.error('[applyHighlightFormatting] Error:', error)
   }
-};
+}
 
 /**
  * Специализированная функция для удаления форматирования highlight
  * Обрабатывает ТОЛЬКО теги <mark>
- * 
+ *
  * @param range Диапазон для обработки
  */
 export const removeHighlightFormatting = (range: Range): void => {
   try {
     // Клонируем диапазон для безопасных операций
     const clonedRange = range.cloneRange()
-    
+
     // Сохраняем начало и конец выделения
     const startContainer = range.startContainer
     const startOffset = range.startOffset
     const endContainer = range.endContainer
     const endOffset = range.endOffset
-    
+
     // Создаем временный контейнер
     const tempContainer = document.createElement('div')
     tempContainer.appendChild(clonedRange.cloneContents())
-    
+
     // Находим все теги mark
     const markElements = tempContainer.querySelectorAll('mark')
-    
+
     console.log(`[removeHighlightFormatting] Found: ${markElements.length} marks`)
-    
+
     // Обработка тегов mark: заменяем их содержимым
-    markElements.forEach(mark => {
+    markElements.forEach((mark) => {
       const parent = mark.parentNode
       if (parent) {
         // Создаем новый фрагмент с содержимым mark
@@ -1257,47 +1258,47 @@ export const removeHighlightFormatting = (range: Range): void => {
         parent.replaceChild(fragment, mark)
       }
     })
-    
+
     // Рекурсивная функция для очистки DOM-структуры от пустых span
     const cleanupEmptySpans = (element: Element) => {
       // Сначала обрабатываем все дочерние элементы
-      Array.from(element.children).forEach(child => {
+      Array.from(element.children).forEach((child) => {
         cleanupEmptySpans(child)
       })
-      
+
       // Затем проверяем, стал ли текущий элемент пустым или бесполезным
       if (element.tagName === 'SPAN' && element.attributes.length === 0 && element.parentElement) {
         // Перемещаем все содержимое в родительский элемент
         const parent = element.parentElement
         const fragment = document.createDocumentFragment()
-        
+
         while (element.firstChild) {
           fragment.appendChild(element.firstChild)
         }
-        
+
         parent.insertBefore(fragment, element)
         parent.removeChild(element)
       }
     }
-    
+
     // Выполняем очистку для удаления лишних пустых span
     cleanupEmptySpans(tempContainer)
-    
+
     // Применяем измененное содержимое
     range.deleteContents()
-    
+
     // Вставляем обработанное содержимое
     while (tempContainer.firstChild) {
       range.insertNode(tempContainer.firstChild)
       range.collapse(false)
     }
-    
+
     // Восстанавливаем исходный диапазон выделения
     try {
       const selection = window.getSelection()
       if (selection) {
         selection.removeAllRanges()
-        
+
         const newRange = document.createRange()
         newRange.setStart(startContainer, startOffset)
         newRange.setEnd(endContainer, endOffset)
@@ -1306,7 +1307,7 @@ export const removeHighlightFormatting = (range: Range): void => {
     } catch (e) {
       console.error('[removeHighlightFormatting] Error restoring selection:', e)
     }
-    
+
     // Имитируем событие ввода для обновления состояния редактора
     const inputEvent = new InputEvent('input', {
       bubbles: true,
@@ -1316,41 +1317,5 @@ export const removeHighlightFormatting = (range: Range): void => {
     range.commonAncestorContainer.dispatchEvent(inputEvent)
   } catch (error) {
     console.error('[removeHighlightFormatting] Error:', error)
-  }
-}
-
-/**
- * Проверяет наличие выделения текста
- * @param range Диапазон выделения
- * @returns true если текст выделен (содержит теги mark)
- */
-const isHighlighted = (range: Range): boolean => {
-  if (!range) return false
-
-  try {
-    // Создаем временный элемент для проверки содержимого выделения
-    const tempElement = document.createElement('div')
-    tempElement.appendChild(range.cloneContents())
-
-    // Проверяем наличие тегов MARK в выделении
-    const hasMarkTags = !!tempElement.querySelector('mark')
-
-    // Если выделение содержит только один узел, проверяем его родительские элементы
-    if (!hasMarkTags && range.startContainer === range.endContainer) {
-      // Получаем родительский элемент текущего узла
-      const container = range.startContainer
-      const element =
-        container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as HTMLElement)
-
-      if (element) {
-        // Проверяем, находится ли узел внутри тега mark
-        return !!element.closest('mark')
-      }
-    }
-
-    return hasMarkTags
-  } catch (error) {
-    console.error('Error in isHighlighted:', error)
-    return false
   }
 }

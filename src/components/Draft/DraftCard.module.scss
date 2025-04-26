@@ -155,13 +155,13 @@
       color: #d00820;
       
       &:hover {
-        background-color: rgba(208, 8, 32, 0.1);
+        background-color: rgb(208 8 32 / 10%);
       }
     }
 
     &.publish {
       &:hover {
-        background-color: rgba(43, 180, 82, 0.1);
+        background-color: rgb(43 180 82 / 10%);
       }
     }
   }

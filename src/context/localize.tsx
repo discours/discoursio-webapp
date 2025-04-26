@@ -22,41 +22,44 @@ const SPEC_REGEX = /\s*г\./
  * @returns Объект Date или null при ошибке
  */
 export const createValidDate = (timestamp: number | string | undefined | null): Date | null => {
-  if (timestamp === undefined || timestamp === null) return null;
-  
+  if (timestamp === undefined || timestamp === null) return null
+
   // Преобразуем в число, если передана строка
-  const numericTimestamp = typeof timestamp === 'string' ? Number(timestamp) : timestamp;
-  
-  if (isNaN(numericTimestamp)) return null;
-  
-  let date: Date;
-  
+  const numericTimestamp = typeof timestamp === 'string' ? Number(timestamp) : timestamp
+
+  if (Number.isNaN(numericTimestamp)) return null
+
+  let date: Date
+
   // Если timestamp в секундах (10 цифр), конвертируем в миллисекунды
   if (String(numericTimestamp).length <= 10) {
-    date = new Date(numericTimestamp * 1000);
+    date = new Date(numericTimestamp * 1000)
   } else {
     // Иначе предполагаем, что timestamp уже в миллисекундах
-    date = new Date(numericTimestamp);
+    date = new Date(numericTimestamp)
   }
-  
+
   // Проверка валидности даты и разумности года
-  if (isNaN(date.getTime())) return null;
-  
-  const year = date.getFullYear();
+  if (Number.isNaN(date.getTime())) return null
+
+  const year = date.getFullYear()
   if (year < 1900 || year > 2100) {
-    console.error('Invalid year in date:', year, date);
-    return null;
+    console.error('Invalid year in date:', year, date)
+    return null
   }
-  
-  return date;
-};
+
+  return date
+}
 
 export type LocalizeContextType = {
   t: i18n['t']
   lang: Accessor<Language>
   setLang: (lang: Language) => void
   formatTime: (date: Date, options?: Intl.DateTimeFormatOptions) => string
-  formatDate: (date: Date |string | number | null | undefined, options?: Intl.DateTimeFormatOptions) => string
+  formatDate: (
+    date: Date | string | number | null | undefined,
+    options?: Intl.DateTimeFormatOptions
+  ) => string
   formatTimeAgo: (date: Date) => string
 }
 
@@ -101,15 +104,21 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
     return date.toLocaleTimeString(lang(), opts)
   }
 
-  const formatDate = (rawDate: Date | string | number | null | undefined, options: Intl.DateTimeFormatOptions = {}) => {
-    let validDate = rawDate instanceof Date ? rawDate : createValidDate(rawDate as string | number | null | undefined) || new Date()
+  const formatDate = (
+    rawDate: Date | string | number | null | undefined,
+    options: Intl.DateTimeFormatOptions = {}
+  ) => {
+    let validDate =
+      rawDate instanceof Date
+        ? rawDate
+        : createValidDate(rawDate as string | number | null | undefined) || new Date()
 
     // Дополнительная проверка на адекватность года
     const year = validDate.getFullYear()
     if (year < 1900 || year > 2100) {
-      console.error('Invalid year in date:', year, validDate);
+      console.error('Invalid year in date:', year, validDate)
       // Если год некорректный, используем текущую дату
-      validDate = new Date();
+      validDate = new Date()
     }
 
     const opts = Object.assign(
@@ -135,7 +144,7 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
     setLang,
     formatTime,
     formatDate,
-    formatTimeAgo,
+    formatTimeAgo
   }
 
   return (

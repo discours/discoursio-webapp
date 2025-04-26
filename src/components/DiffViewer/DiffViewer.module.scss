@@ -1,0 +1,31 @@
+.diffContainer {
+    font-family: monospace; // Или другой шрифт по вашему выбору
+    white-space: pre-wrap; // Сохраняет пробелы и переносы строк
+    word-wrap: break-word;
+    line-height: 1.4;
+    padding: 5px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    background-color: #fdfdfd;
+  }
+  
+  .insertion {
+    background-color: #e6ffed; // Светло-зеленый фон для вставок
+    color: #246633;
+    text-decoration: none; // Убираем стандартное подчеркивание для <ins>
+    padding: 1px 2px;
+    border-radius: 3px;
+
+    // border-bottom: 2px solid #77cc88;
+  }
+  
+  .deletion {
+    background-color: #ffeef0; // Светло-красный фон для удалений
+    color: #b32d3a;
+    text-decoration: line-through; // Стандартное зачеркивание для <del>
+    padding: 1px 2px;
+    border-radius: 3px;
+
+    // border-bottom: 2px solid #ffaaaa;
+  }
+  
