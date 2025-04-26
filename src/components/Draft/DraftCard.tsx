@@ -2,7 +2,7 @@ import { A, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show } from 'solid-js'
 import type { ExtendedDraft } from '~/context/drafts'
-import { useLocalize } from '~/context/localize'
+import { createValidDate, useLocalize } from '~/context/localize'
 import { useSnackbar, useUI } from '~/context/ui'
 import { Icon } from '../_shared/Icon'
 
@@ -28,7 +28,7 @@ type Props = {
  */
 
 export const DraftCard = (props: Props) => {
-  const { t, formatDate, createValidDate } = useLocalize()
+  const { t, formatDate } = useLocalize()
   const { showConfirm } = useUI()
   const { showSnackbar } = useSnackbar()
   const navigate = useNavigate()
@@ -38,7 +38,7 @@ export const DraftCard = (props: Props) => {
     if (props.draft.id) {
       return `/edit/${props.draft.id}`
     } else if (props.draft.localId) {
-      return `/edit/local/${props.draft.localId}`
+      return `/edit/${props.draft.localId}/local`
     }
     return '#'
   }
@@ -55,8 +55,6 @@ export const DraftCard = (props: Props) => {
     e.stopPropagation()
     if (props.draft.id) {
       navigate(`/edit/${props.draft.id}/settings`)
-    } else if (props.draft.localId) {
-      navigate(`/edit/local/${props.draft.localId}/settings`)
     } else {
       showSnackbar({ body: t('Cannot publish draft without ID') })
     }
@@ -76,6 +74,28 @@ export const DraftCard = (props: Props) => {
       props.onDelete()
 
       await showSnackbar({ body: t('Draft successfully deleted') })
+    }
+  }
+  
+  /**
+   * Обработчик клика на кнопку просмотра/превью
+   * - Если есть опубликованная версия, переходим на опубликованную страницу
+   * - Иначе переходим в режим превью
+   */
+  const handleViewClick = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (props.draft.hasPublishedVersion && props.draft.slug) {
+      // Переходим на страницу опубликованной версии
+      navigate(`/${props.draft.slug}`)
+    } else {
+      // Переходим на страницу превью черновика
+      if (props.draft.id) {
+        navigate(`/edit/${props.draft.localId}/preview`)
+      } else {
+        showSnackbar({ body: t('Cannot preview draft without ID') })
+      }
     }
   }
 
@@ -116,6 +136,23 @@ export const DraftCard = (props: Props) => {
             <Icon name="pencil-outline" class={styles.actionIcon} />
             <span class={styles.actionText}>{t('Edit')}</span>
           </A>
+          
+          <span
+            onClick={handleViewClick}
+            class={styles.actionItem}
+            title={props.draft.hasPublishedVersion 
+              ? t('View published version') 
+              : t('Preview how it will look published')}
+          >
+            <Icon 
+              name={props.draft.hasPublishedVersion ? "eye-off" : "eye"} 
+              class={styles.actionIcon} 
+            />
+            <span class={styles.actionText}>
+              {props.draft.hasPublishedVersion ? t('View') : t('Preview')}
+            </span>
+          </span>
+          
           <span
             onClick={handlePublishLinkClick}
             class={clsx(styles.actionItem, styles.publish)}

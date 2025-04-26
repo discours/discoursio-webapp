@@ -56,9 +56,8 @@ export type LocalizeContextType = {
   lang: Accessor<Language>
   setLang: (lang: Language) => void
   formatTime: (date: Date, options?: Intl.DateTimeFormatOptions) => string
-  formatDate: (date: Date, options?: Intl.DateTimeFormatOptions) => string
+  formatDate: (date: Date |string | number | null | undefined, options?: Intl.DateTimeFormatOptions) => string
   formatTimeAgo: (date: Date) => string
-  createValidDate: (timestamp: number | string | undefined | null) => Date | null
 }
 
 export type Language = 'ru' | 'en'
@@ -102,19 +101,15 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
     return date.toLocaleTimeString(lang(), opts)
   }
 
-  const formatDate = (date: Date, options: Intl.DateTimeFormatOptions = {}) => {
-    // Проверка корректности даты
-    if (!(date instanceof Date) || isNaN(date.getTime())) {
-      console.error('Invalid date provided to formatDate:', date);
-      return '';
-    }
-    
+  const formatDate = (rawDate: Date | string | number | null | undefined, options: Intl.DateTimeFormatOptions = {}) => {
+    let validDate = rawDate instanceof Date ? rawDate : createValidDate(rawDate as string | number | null | undefined) || new Date()
+
     // Дополнительная проверка на адекватность года
-    const year = date.getFullYear();
+    const year = validDate.getFullYear()
     if (year < 1900 || year > 2100) {
-      console.error('Invalid year in date:', year, date);
+      console.error('Invalid year in date:', year, validDate);
       // Если год некорректный, используем текущую дату
-      date = new Date();
+      validDate = new Date();
     }
 
     const opts = Object.assign(
@@ -127,7 +122,7 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
       options
     )
 
-    return date.toLocaleDateString(lang(), opts).replace(SPEC_REGEX, '')
+    return validDate.toLocaleDateString(lang(), opts).replace(SPEC_REGEX, '')
   }
 
   const timeAgo = createMemo(() => new TimeAgo(lang()))
@@ -141,7 +136,6 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
     formatTime,
     formatDate,
     formatTimeAgo,
-    createValidDate
   }
 
   return (

@@ -96,8 +96,6 @@ export const FullArticle = (props: Props) => {
   const [commentsWrapper, setCommentsWrapper] = createSignal<HTMLElement | undefined>()
   const [canEdit, setCanEdit] = createSignal<boolean>(false)
 
-  const formattedDate = createMemo(() => formatDate(new Date((props.article.published_at || 0) * 1000)))
-
   const body = createMemo(() => {
     let body = props.article.body || ''
     if (props.article.layout === 'literature' || body.length < 2) {
@@ -394,7 +392,7 @@ export const FullArticle = (props: Props) => {
 
       <div class={clsx(styles.shoutStatsItem, styles.shoutStatsItemAdditionalData)}>
         <div class={clsx(styles.shoutStatsItem, styles.shoutStatsItemAdditionalDataItem)}>
-          {formattedDate()}
+          {formatDate(props.article.published_at)}
         </div>
       </div>
 

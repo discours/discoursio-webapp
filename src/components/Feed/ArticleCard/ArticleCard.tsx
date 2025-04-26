@@ -10,13 +10,13 @@ import { useSession } from '~/context/session'
 import type { Author, Maybe, ReactionKind, Shout } from '~/graphql/schema/core.gen'
 import { capitalize } from '~/utils/capitalize'
 import { descFromBody } from '~/utils/meta'
-import { CoverImage } from '../../Article/CoverImage'
-import { SharePopup, getShareUrl } from '../../Article/SharePopup'
-import { AuthorLink } from '../../Author/AuthorLink'
-import { CardTopic } from '../CardTopic'
-import { FeedArticlePopup } from '../FeedArticlePopup'
+import { CoverImage } from '~/components/Article/CoverImage'
+import { SharePopup, getShareUrl } from '~/components/Article/SharePopup'
+import { AuthorLink } from '~/components/Author/AuthorLink/AuthorLink'
+import { CardTopic } from '~/components/Feed/CardTopic'
+import { FeedArticlePopup } from '~/components/Feed/FeedArticlePopup'
 
-import stylesHeader from '../../HeaderNav/Header.module.scss'
+import stylesHeader from '~/components/HeaderNav/Header.module.scss'
 import styles from './ArticleCard.module.scss'
 
 export type ArticleCardProps = {
@@ -105,10 +105,6 @@ export const ArticleCard = (props: ArticleCardProps) => {
   const description = descFromBody(props.article.body)
   const aspectRatio: Accessor<string> = () => LAYOUT_ASPECT[props.article.layout as string]
   const { title, subtitle } = getTitleAndSubtitle(props.article)
-
-  const formattedDate = createMemo<string>(() =>
-    props.article.published_at ? formatDate(new Date(props.article.published_at * 1000)) : ''
-  )
 
   const canEdit = createMemo(
     () =>
@@ -249,7 +245,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
               </div>
             </Show>
             <Show when={!props.settings?.nodate}>
-              <time class={styles.shoutDate}>{formattedDate()}</time>
+              <time class={styles.shoutDate}>{formatDate(props.article.published_at)}</time>
             </Show>
           </div>
         </Show>

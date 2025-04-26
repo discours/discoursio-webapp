@@ -488,7 +488,7 @@ export const AuthorView = (props: AuthorViewProps) => {
                   return (
                     <Switch>
                       <Match when={articles.length === 1}>
-                        <Row1 article={articles[0]} noauthor={true} nodate={true} />
+                        <Row1 article={articles[0]} noauthor={true} nodate={false} />
                       </Match>
                       <Match when={articles.length === 2}>
                         <Row2 articles={articles} noauthor={true} nodate={true} isEqual={true} />
