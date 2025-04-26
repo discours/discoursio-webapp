@@ -10,8 +10,6 @@
   transition: all 0.3s ease;
   
   &:hover {
-    background-color: rgba(0, 0, 0, 0.02);
-    
     .actions {
       opacity: 1;
       visibility: visible;
@@ -138,7 +136,7 @@
   width: 1.2rem;
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .draftContent {
     padding: 8px;
   }
