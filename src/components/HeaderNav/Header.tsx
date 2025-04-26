@@ -7,6 +7,7 @@ import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import { capitalize } from '~/utils/capitalize'
+import { ClientOnly } from '~/utils/clientonly'
 import { SharePopup, getShareUrl } from '../Article/SharePopup'
 import { AuthModal } from '../AuthModal'
 import { SearchModal } from '../SearchModal/SearchModal'
@@ -425,7 +426,9 @@ export const Header = (props: Props) => {
           </div>
         </nav>
 
-        <Toaster />
+        <ClientOnly>
+          <Toaster />
+        </ClientOnly>
       </div>
     </header>
   )
