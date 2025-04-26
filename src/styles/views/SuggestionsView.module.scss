@@ -1,0 +1,192 @@
+@use '~/styles/mixins' as *;
+@use '~/styles/variables' as *;
+
+.container {
+  width: 100%;
+  max-width: $content-width;
+  margin: 0 auto;
+  padding: $spacing-4;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+}
+
+.item {
+  position: relative;
+  width: 100%;
+  background: var(--surface-1);
+  border-radius: $radius-lg;
+  overflow: hidden;
+  transition: all 0.2s ease;
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.reactionControls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.reactionCount {
+  font-family: Muller, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.333;
+  letter-spacing: -0.01em;
+  color: #141414;
+}
+
+.reactionButton {
+  padding: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.5;
+  
+  &:hover {
+    opacity: 1;
+  }
+  
+  svg {
+    width: 16px;
+    height: 16px;
+    fill: #CCC;
+  }
+}
+
+.commentSection {
+  padding: 12px;
+  background: rgb(43 180 82 / 10%);
+  
+  .comment {
+    font-family: Muller, sans-serif;
+    font-size: 12px;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    color: #000;
+  }
+}
+
+.formatControls {
+  display: flex;
+  gap: 3px;
+  padding: 8px;
+  background: #FFF;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 25%);
+  border-radius: 4px;
+  
+  button {
+    padding: 4px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    
+    svg {
+      width: 20px;
+      height: 20px;
+      fill: #898C94;
+    }
+    
+    &:hover svg {
+      fill: #141414;
+    }
+  }
+}
+
+.reactionDialog {
+  position: fixed;
+  bottom: $spacing-4;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-1);
+  border-radius: $radius-lg;
+  padding: $spacing-4;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  max-width: 90vw;
+  width: 600px;
+
+  .selectedText {
+    font-size: $font-size-sm;
+    color: var(--text-2);
+    margin-bottom: $spacing-4;
+    padding: $spacing-2;
+    background: var(--surface-2);
+    border-radius: $radius-sm;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+
+  .dialogButtons {
+    display: flex;
+    gap: $spacing-2;
+    justify-content: flex-end;
+
+    button {
+      @include button-base;
+
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+      padding: $spacing-2 $spacing-4;
+      border-radius: $radius-md;
+      font-size: $font-size-sm;
+      transition: all 0.2s ease;
+
+      &.proposeButton {
+        background: var(--primary);
+        color: var(--on-primary);
+
+        &:hover {
+          background: var(--primary-dark);
+        }
+      }
+
+      &.askButton {
+        background: var(--secondary);
+        color: var(--on-secondary);
+
+        &:hover {
+          background: var(--secondary-dark);
+        }
+      }
+
+      &.cancelButton {
+        background: var(--surface-2);
+        color: var(--text-1);
+
+        &:hover {
+          background: var(--surface-3);
+        }
+      }
+    }
+  }
+}
+
+.loadMore {
+  display: flex;
+  justify-content: center;
+  margin-top: $spacing-4;
+
+  button {
+    @include button-base;
+
+    background: var(--surface-2);
+    color: var(--text-1);
+    padding: $spacing-2 $spacing-4;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--surface-3);
+    }
+  }
+} 
