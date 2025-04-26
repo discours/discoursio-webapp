@@ -14,13 +14,12 @@ import {
   updateLastSync
 } from '~/components/SimpleRichEditor/lib/storage'
 import { EditorData, EditorFieldType } from '~/components/SimpleRichEditor/lib/types'
-import publishShoutMutation from '~/graphql/mutation/core/article-publish'
 import unpublishShoutMutation from '~/graphql/mutation/core/article-unpublish'
 import createDraftMutation from '~/graphql/mutation/core/draft-create'
 import deleteDraftMutation from '~/graphql/mutation/core/draft-delete'
 import publishDraftMutation from '~/graphql/mutation/core/draft-publish'
-import unpublishDraftMutation from '~/graphql/mutation/core/draft-unpublish'
 import updateDraftMutation from '~/graphql/mutation/core/draft-update'
+import loadShoutQuery from '~/graphql/query/core/article-load'
 import loadDraftsQuery from '~/graphql/query/core/drafts-load'
 import type {
   CreateDraftMutationMutation,
@@ -40,6 +39,7 @@ export const AUTO_SAVE_DELAY = 1000
 export interface ExtendedDraft extends Draft {
   isLocalOnly?: boolean
   localId?: string
+  hasPublishedVersion?: boolean // Флаг, указывающий наличие опубликованной версии с тем же слагом
 }
 
 type DraftsContextType = {
@@ -53,8 +53,6 @@ type DraftsContextType = {
   updateDraft: (draft: DraftInput) => Promise<OperationResult<UpdateDraftMutationMutation>>
   deleteDraft: (id: number) => Promise<OperationResult<DeleteDraftMutationMutation>>
   publishDraft: (draftId: number) => Promise<OperationResult<PublishDraftMutationMutation>>
-  unpublishDraft: (draftId: number) => Promise<OperationResult<UnpublishDraftMutationMutation>>
-  publishShout: (shoutId: number) => Promise<OperationResult<PublishDraftMutationMutation>>
   unpublishShout: (shoutId: number) => Promise<OperationResult<UnpublishDraftMutationMutation>>
   isEditorPanelVisible: Accessor<boolean>
   toggleEditorPanel: () => void
@@ -68,6 +66,7 @@ type DraftsContextType = {
   ) => void
   loadLocalDrafts: () => ExtendedDraft[]
   removeLocalDraft: (draftId: number) => boolean
+  checkPublishedVersion: (slug: string) => Promise<boolean>
 }
 
 export const DraftsContext = createContext<DraftsContextType>({} as DraftsContextType)
@@ -402,6 +401,27 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     }
   }
 
+  /**
+   * Проверка наличия опубликованной версии с тем же слагом
+   * @param {string} slug - Слаг для проверки
+   * @returns {Promise<boolean>} - Результат проверки
+   */
+  const checkPublishedVersion = async (slug: string): Promise<boolean> => {
+    if (!slug) return false
+
+    try {
+      // Используем запрос get_shout, который возвращает опубликованный материал по слагу
+      const response = await client()?.query(loadShoutQuery, { slug })
+      return !!response?.data?.get_shout
+    } catch (error) {
+      console.error(`[DraftsProvider] Ошибка проверки публикации для слага ${slug}:`, error)
+      return false
+    }
+  }
+
+  /**
+   * Загрузка черновиков с проверкой опубликованных версий
+   */
   const loadDrafts = async () => {
     if (!client()) {
       console.warn('[drafts] client is not ready')
@@ -562,9 +582,19 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       // Объединяем серверные черновики с локальными
       const allDrafts = [...updatedDrafts, ...localOnlyDrafts]
 
+      // Добавляем проверку наличия публикаций для каждого черновика
+      const draftsWithPublishedCheck = await Promise.all(
+        allDrafts.map(async (draft) => {
+          if (draft.slug) {
+            draft.hasPublishedVersion = await checkPublishedVersion(draft.slug)
+          }
+          return draft
+        })
+      )
+
       // Обновляем список черновиков
-      console.log('[drafts] setting drafts with local changes applied:', allDrafts)
-      setDrafts(allDrafts)
+      console.log('[drafts] setting drafts with local changes applied:', draftsWithPublishedCheck)
+      setDrafts(draftsWithPublishedCheck)
     } catch (error) {
       console.error('[drafts] error loading drafts:', error)
 
@@ -709,24 +739,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     }
   }
 
-  const unpublishDraft = async (
-    draftId: number
-  ): Promise<OperationResult<UnpublishDraftMutationMutation>> => {
-    const response = await client()?.mutation(unpublishDraftMutation, { draft_id: draftId })
-    if (response?.data?.unpublish_draft) {
-      setDrafts(drafts().map((d) => (d.id === draftId ? response.data.unpublish_draft : d)))
-    }
-    return response as OperationResult<UnpublishDraftMutationMutation>
-  }
-
-  const publishShout = async (shoutId: number): Promise<OperationResult<PublishDraftMutationMutation>> => {
-    const response = await client()?.mutation(publishShoutMutation, { shout_id: shoutId })
-    if (response?.data?.publish_shout) {
-      setDrafts(drafts().map((d) => (d.id === shoutId ? response.data.publish_shout : d)))
-    }
-    return response as OperationResult<PublishDraftMutationMutation>
-  }
-
   const unpublishShout = async (
     shoutId: number
   ): Promise<OperationResult<UnpublishDraftMutationMutation>> => {
@@ -748,8 +760,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     updateDraft,
     deleteDraft,
     publishDraft,
-    unpublishDraft,
-    publishShout,
     unpublishShout,
     isEditorPanelVisible,
     toggleEditorPanel,
@@ -757,7 +767,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     syncDraft,
     updateDraftField,
     loadLocalDrafts,
-    removeLocalDraft
+    removeLocalDraft,
+    checkPublishedVersion
   }
 
   return <DraftsContext.Provider value={value}>{props.children}</DraftsContext.Provider>
