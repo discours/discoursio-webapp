@@ -1,11 +1,11 @@
 import { RouteSectionProps } from '@solidjs/router'
 
+import { Show, createSignal } from 'solid-js'
+import { AuthGuard } from '~/components/AuthGuard'
 import { SuggestionsView } from '~/components/Views/SuggestionsView'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { createSignal, Show } from 'solid-js'
-import { useLocalize } from '~/context/localize'
 import { ExtendedDraft } from '~/context/drafts'
-import { AuthGuard } from '~/components/AuthGuard'
+import { useLocalize } from '~/context/localize'
 
 export const SuggestBox = (props: RouteSectionProps) => {
   const { t } = useLocalize()

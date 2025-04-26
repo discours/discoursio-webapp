@@ -1,13 +1,12 @@
 import { For, Show, createEffect, createSignal } from 'solid-js'
+import { Loading } from '~/components/_shared/Loading'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSnackbar } from '~/context/ui'
 import { Reaction, ReactionBy, ReactionKind } from '~/graphql/schema/core.gen'
-import { Loading } from '~/components/_shared/Loading'
 import { SuggestionCard } from '../DiffViewer/SuggestionCard'
 
 import styles from '~/styles/views/SuggestionsView.module.scss'
-
 
 /**
  * Интерфейс пропсов компонента SuggestionsView
@@ -55,13 +54,8 @@ export const SuggestionsView = (props: Props) => {
       for (const r of rrr) {
         await loadReactionsBy({
           by: {
-              shout_id: r.shout,
-              kinds: [
-                  ReactionKind.Accept,
-                  ReactionKind.Reject,
-                  ReactionKind.Ask,
-                  ReactionKind.Propose
-              ]
+            shout_id: r.shout,
+            kinds: [ReactionKind.Accept, ReactionKind.Reject, ReactionKind.Ask, ReactionKind.Propose]
           } as unknown as ReactionBy
         })
       }
@@ -105,25 +99,25 @@ export const SuggestionsView = (props: Props) => {
 
   return (
     <div class={styles.container}>
-    <Show when={!isLoading() || suggestions().length > 0} fallback={<Loading />}>
+      <Show when={!isLoading() || suggestions().length > 0} fallback={<Loading />}>
         <div class={styles.list}>
-        <For each={suggestions()}>
+          <For each={suggestions()}>
             {(r: Reaction) => (
-            <div class={styles.item}>
+              <div class={styles.item}>
                 <SuggestionCard reaction={r} />
-            </div>
+              </div>
             )}
-        </For>
+          </For>
         </div>
 
         <Show when={hasMore() && !isLoading()}>
-        <div class={styles.loadMore}>
+          <div class={styles.loadMore}>
             <button onClick={loadMore} class="button button-primary">
-            {t('Load more')}
+              {t('Load more')}
             </button>
-        </div>
+          </div>
         </Show>
-    </Show>
+      </Show>
     </div>
   )
 }
