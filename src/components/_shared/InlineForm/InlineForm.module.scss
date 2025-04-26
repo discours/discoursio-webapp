@@ -1,13 +1,16 @@
 .InlineForm {
-  border: 1px solid;
+  border: 1px solid var(--color-border-light, #e5e7eb);
   position: relative;
   width: 100%;
+  border-radius: 4px;
+  overflow: hidden;
 
   .form {
     display: flex;
     flex-flow: row nowrap;
     padding: 8px 11px;
     width: 100%;
+    align-items: center;
 
     input {
       margin: 0 12px 0 0;
@@ -16,9 +19,11 @@
       border: none;
       min-width: 200px;
       display: block;
+      font-size: 14px;
+      height: 32px;
 
       &::placeholder {
-        color: var(--black-100);
+        color: var(--color-text-secondary, #9ca3af);
       }
 
       &:focus {
@@ -28,12 +33,31 @@
 
     button {
       margin-left: 8px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s ease;
+
+      &:hover {
+        background: var(--color-gray-100, #f3f4f6);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     }
   }
 
   .linkError {
     padding: 6px 11px;
-    color: var(--default-color);
+    color: var(--color-danger, #ef4444);
     font-size: 0.7em;
     position: absolute;
     bottom: -3rem;
@@ -41,7 +65,7 @@
     right: 0;
     height: 0;
     background: #fff;
-    border: 1px solid #e9e9ee;
+    border: 1px solid var(--color-danger-light, #fee2e2);
     border-radius: 2px;
     opacity: 0;
     transition:
