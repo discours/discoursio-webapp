@@ -6,6 +6,7 @@ import {
   applyFormatting as applyFormat,
   getActiveFormats,
   removeFormatting as removeFormat,
+  removeFormatting,
   resetFormat
 } from './format'
 import { CommandType, HistoryJournal, Position } from './types'
@@ -225,7 +226,7 @@ export const useEditor = (props: EditorProps) => {
     // Применение/удаление форматирования
     const isActive = state.activeFormats.has(cmd)
     if (isActive) {
-      removeFormat(cmd, state.selection)
+      removeFormatting(cmd, state.selection)
       setState('activeFormats', (formats: Set<CommandType>) => {
         const newFormats = new Set(formats)
         newFormats.delete(cmd)

@@ -123,7 +123,7 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
   const config = FORMAT_CONFIG[command]
 
   if (!config) {
-    console.log('No config found for command:', command)
+    console.log(`[applyFormatting] No config found for command: ${command}`)
     return
   }
 
@@ -141,14 +141,9 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
 
     // Если уже есть форматирование этого типа, предотвращаем создание вложенных тегов
     if (formattedParent) {
-      console.log('Formatting already exists, preventing nested tags')
-      // Вместо создания нового тега просто позиционируем курсор
-      range.collapse(true)
-      const selection = window.getSelection()
-      if (selection) {
-        selection.removeAllRanges()
-        selection.addRange(range)
-      }
+      console.log('[applyFormatting] Formatting already exists, preventing nested tags')
+      // Позиционируем курсор внутри существующего форматированного элемента
+      restoreSelectionState(range, formattedParent, 0, false)
       return
     }
 
@@ -156,16 +151,15 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
     const wrapper = createElement(command)
     wrapper.textContent = '\u200B' // Zero-width space для пустого тега
 
-    // Вставляем элемент и позиционируем курсор внутри него
+    // Вставляем элемент
     range.insertNode(wrapper)
-    range.selectNodeContents(wrapper)
-    range.collapse(true)
 
+    // Позиционируем курсор внутри нового элемента
+    restoreSelectionState(range, wrapper, 0, false)
     return
   }
 
   // Обработка выделения текста
-  // Сначала клонируем выделение для анализа
   const fragment = range.cloneContents()
   const tempDiv = document.createElement('div')
   tempDiv.appendChild(fragment)
@@ -173,22 +167,22 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
   // Проверяем, есть ли уже форматированные элементы этого типа в выделении
   const existingFormatted = tempDiv.querySelectorAll(config.tag)
 
-  // Если все выделение уже отформатировано этим форматом, предотвращаем создание вложенных тегов
+  // Избегаем создания вложенных тегов
   if (existingFormatted.length > 0) {
     const formattedText = Array.from(existingFormatted).reduce(
       (acc, el) => acc + (el.textContent || ''),
       ''
     )
+
+    // Если все выделение уже отформатировано этим форматом, не делаем ничего
     if (formattedText.length === (tempDiv.textContent || '').length) {
-      console.log('Selection already completely formatted, preventing nested tags')
+      console.log('[applyFormatting] Selection already completely formatted, preventing nested tags')
       return
     }
   }
 
-  // Теперь извлекаем и форматируем контент
+  // Извлекаем и форматируем контент
   const content = range.extractContents()
-
-  // Проверяем содержимое на уже отформатированные элементы
   const contentDiv = document.createElement('div')
   contentDiv.appendChild(content)
 
@@ -216,14 +210,12 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
   range.insertNode(wrapper)
 
   // Позиционируем выделение вокруг всего нового элемента
-  range.setStartBefore(wrapper)
-  range.setEndAfter(wrapper)
-
-  // Обновляем выделение в документе
-  const selection = window.getSelection()
-  if (selection) {
-    selection.removeAllRanges()
-    selection.addRange(range)
+  if (state.text) {
+    // Если был выделен текст, выделяем весь форматированный элемент
+    restoreSelectionState(range, wrapper, 0, true)
+  } else {
+    // Если был курсор, ставим его внутрь элемента
+    restoreSelectionState(range, wrapper, 0, false)
   }
 }
 
@@ -250,11 +242,14 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
     if (!element) return
 
     // Находим ближайший родительский элемент с требуемым форматированием
+    // Используем правильный селектор для поиска элемента, поддерживая работу с mark, strong, em и т.д.
     const formattedParent = element.closest(config.tag)
 
     if (formattedParent) {
-      // Находим позицию текущего курсора внутри форматированного элемента
-      const offset = range.startOffset
+      // Запоминаем предыдущий или родительский узел перед удалением
+      const prevNode = formattedParent.previousSibling || (formattedParent.parentNode as Node)
+      const nodeOffset =
+        prevNode === formattedParent.previousSibling ? prevNode.textContent?.length || 0 : 0
 
       // Создаем временный контейнер для содержимого форматированного элемента
       const tempContainer = document.createDocumentFragment()
@@ -270,27 +265,14 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
       // Удаляем пустой форматированный элемент
       formattedParent.parentNode?.removeChild(formattedParent)
 
-      // Устанавливаем позицию курсора в то же место, где он был
-      try {
-        const newTextNode = range.startContainer
-        const newRange = document.createRange()
-        newRange.setStart(newTextNode, Math.min(offset, newTextNode.textContent?.length || 0))
-        newRange.setEnd(newTextNode, Math.min(offset, newTextNode.textContent?.length || 0))
-
-        const selection = window.getSelection()
-        if (selection) {
-          selection.removeAllRanges()
-          selection.addRange(newRange)
-        }
-      } catch (error) {
-        console.error('Error setting cursor position after removing formatting:', error)
-      }
+      // Используем универсальную функцию для восстановления позиции курсора
+      restoreSelectionState(range, prevNode, nodeOffset)
     }
 
     return
   }
 
-  // Упрощенный алгоритм для выделения текста
+  // Алгоритм для выделения текста
   // 1. Извлекаем содержимое выделения
   const fragment = range.extractContents()
 
@@ -299,7 +281,10 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
   tempDiv.appendChild(fragment)
 
   // 3. Находим все элементы с заданным форматированием
+  // Используем правильный селектор для поиска элементов, поддерживая работу с mark, strong, em и т.д.
   const formattedElements = tempDiv.querySelectorAll(config.tag)
+
+  console.log(`[removeFormatting] Found ${formattedElements.length} ${config.tag} elements to remove`)
 
   // 4. Заменяем форматированные элементы их содержимым (удаляем форматирование)
   formattedElements.forEach((el) => {
@@ -332,19 +317,30 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
   // 7. Вставляем фрагмент обратно в документ
   range.insertNode(newFragment)
 
-  // 8. Восстанавливаем выделение
+  // 8. Используем универсальную функцию для восстановления выделения
   try {
-    // Пытаемся выделить вставленное содержимое
-    range.setStartBefore(range.startContainer.firstChild || range.startContainer)
-    range.setEndAfter(range.endContainer.lastChild || range.endContainer)
+    if (state.text) {
+      // Если было выделение, пытаемся выделить содержимое снова
+      const startNode = range.startContainer.firstChild || range.startContainer
+      const endNode = range.endContainer.lastChild || range.endContainer
 
-    const selection = window.getSelection()
-    if (selection) {
-      selection.removeAllRanges()
-      selection.addRange(range)
+      // Создаем новый диапазон
+      const newRange = document.createRange()
+      newRange.setStartBefore(startNode)
+      newRange.setEndAfter(endNode)
+
+      // Восстанавливаем выделение
+      const selection = window.getSelection()
+      if (selection) {
+        selection.removeAllRanges()
+        selection.addRange(newRange)
+      }
+    } else {
+      // Если было пустое выделение, позиционируем курсор
+      restoreSelectionState(range, range.startContainer)
     }
   } catch (error) {
-    console.error('Error restoring selection after removing formatting:', error)
+    console.error('[removeFormatting] Error restoring selection:', error)
   }
 }
 
@@ -381,78 +377,68 @@ export const checkFormat = (tag: string, range: Range): boolean => {
 export function hasFormatting(format: CommandType, state: SelectionState): boolean {
   if (!state.range) return false
 
+  const config = FORMAT_CONFIG[format]
+  if (!config) return false
+
+  const tag = config.tag.toUpperCase()
+
   // Если нет выделения, проверяем текущую позицию курсора
   if (state.isEmpty) {
     const node = state.range.startContainer
-    if (node?.nodeType === Node.TEXT_NODE) {
-      // Для текстового узла проверяем родительский элемент
-      const parentNode = node.parentElement
-      if (!parentNode) return false
 
-      // Проверка inline форматирования
-      if (format === 'bold') return hasTagOrStyle(parentNode, 'B', 'STRONG', 'font-weight', 'bold', '700')
-      if (format === 'italic') return hasTagOrStyle(parentNode, 'I', 'EM', 'font-style', 'italic')
-      if (format === 'highlight') return hasTagOrStyle(parentNode, 'MARK', null, 'background-color')
-      if (format === 'link') return parentNode.tagName === 'A' || !!findAncestor(parentNode, 'A')
-      if (format === 'punchline') return hasTagOrStyle(parentNode, 'SPAN.punchline')
+    // Проверяем, находится ли курсор внутри элемента с нужным форматированием
+    if (node) {
+      const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement)
 
-      // Проверка блочного форматирования
-      if (format === 'blockquote') return !!findAncestor(parentNode, 'BLOCKQUOTE')
-      if (format === 'h1') return !!findAncestor(parentNode, 'H1')
-      if (format === 'h2') return !!findAncestor(parentNode, 'H2')
-      if (format === 'h3') return !!findAncestor(parentNode, 'H3')
-      if (format === 'p') return !!findAncestor(parentNode, 'P')
+      if (!element) return false
+
+      // Проверяем текущий элемент и его предков на соответствие требуемому тегу
+      if (tag === 'MARK') {
+        // Для highlight проверяем и тег mark, и стили background-color
+        return hasTagOrStyle(element, 'MARK', null, 'background-color')
+      } else if (tag === 'STRONG') {
+        return hasTagOrStyle(element, 'B', 'STRONG', 'font-weight', 'bold', '700')
+      } else if (tag === 'EM') {
+        return hasTagOrStyle(element, 'I', 'EM', 'font-style', 'italic')
+      } else if (tag === 'A') {
+        return element.tagName === 'A' || !!findAncestor(element, 'A')
+      } else {
+        // Для остальных тегов просто проверяем, есть ли такой предок
+        return !!element.closest(tag.toLowerCase()) || !!findAncestor(element, (el) => el.tagName === tag)
+      }
     }
   } else {
     // Для выделенного текста
     const selectedNodes = getNodesInRange(state.range)
     if (selectedNodes.length === 0) return false
 
-    // Для inline форматирования проверяем все узлы в выделении
-    if (
-      format === 'bold' ||
-      format === 'italic' ||
-      format === 'highlight' ||
-      format === 'link' ||
-      format === 'punchline'
-    ) {
-      // Форматирование активно, если все узлы имеют его
-      return selectedNodes.every((node: Node) => {
-        const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element)
-        if (!element) return false
+    // Проверяем все узлы в выделении
+    // Форматирование активно, если все текстовые узлы имеют его
+    const textNodes = selectedNodes.filter((node) => node.nodeType === Node.TEXT_NODE)
 
-        if (format === 'bold') return hasTagOrStyle(element, 'B', 'STRONG', 'font-weight', 'bold', '700')
-        if (format === 'italic') return hasTagOrStyle(element, 'I', 'EM', 'font-style', 'italic')
-        if (format === 'highlight') return hasTagOrStyle(element, 'MARK', null, 'background-color')
-        if (format === 'link') return element.tagName === 'A' || !!findAncestor(element, 'A')
-        if (format === 'punchline') return hasTagOrStyle(element, 'SPAN.punchline')
+    // Если нет текстовых узлов, проверяем все узлы
+    const nodesToCheck = textNodes.length > 0 ? textNodes : selectedNodes
 
-        return false
-      })
-    }
+    return nodesToCheck.every((node: Node) => {
+      const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement)
 
-    // Для блочного форматирования проверяем общий контейнер
-    if (
-      format === 'blockquote' ||
-      format === 'h1' ||
-      format === 'h2' ||
-      format === 'h3' ||
-      format === 'p'
-    ) {
-      const firstElement =
-        selectedNodes[0].nodeType === Node.TEXT_NODE
-          ? selectedNodes[0].parentElement
-          : (selectedNodes[0] as Element)
+      if (!element) return false
 
-      if (!firstElement) return false
-
-      // Используем первый элемент для определения блочного форматирования
-      if (format === 'blockquote') return !!findAncestor(firstElement, 'BLOCKQUOTE')
-      if (format === 'h1') return !!findAncestor(firstElement, 'H1')
-      if (format === 'h2') return !!findAncestor(firstElement, 'H2')
-      if (format === 'h3') return !!findAncestor(firstElement, 'H3')
-      if (format === 'p') return !!findAncestor(firstElement, 'P')
-    }
+      if (tag === 'MARK') {
+        return hasTagOrStyle(element, 'MARK', null, 'background-color')
+      } else if (tag === 'STRONG') {
+        return hasTagOrStyle(element, 'B', 'STRONG', 'font-weight', 'bold', '700')
+      } else if (tag === 'EM') {
+        return hasTagOrStyle(element, 'I', 'EM', 'font-style', 'italic')
+      } else if (tag === 'A') {
+        return element.tagName === 'A' || !!findAncestor(element, 'A')
+      } else if (['H1', 'H2', 'H3', 'BLOCKQUOTE', 'P', 'DIV'].includes(tag)) {
+        // Для блочных элементов достаточно, чтобы один элемент имел форматирование
+        return !!findAncestor(element, tag)
+      } else {
+        return !!element.closest(tag.toLowerCase()) || !!findAncestor(element, (el) => el.tagName === tag)
+      }
+    })
   }
 
   return false
@@ -477,12 +463,18 @@ function hasTagOrStyle(
   value1?: string,
   value2?: string
 ): boolean {
+  if (!element) return false
+
   // Проверка на селектор класса (например, 'SPAN.punchline')
   if (tag1.includes('.')) {
     const [tagName, className] = tag1.split('.')
+
+    // Проверяем непосредственно текущий элемент
     if (element.tagName === tagName && element.classList.contains(className)) {
       return true
     }
+
+    // Проверяем предков
     return !!findAncestor(element, (el) => el.tagName === tagName && el.classList.contains(className))
   }
 
@@ -491,18 +483,51 @@ function hasTagOrStyle(
     return true
   }
 
-  // Проверка на наличие стилевого свойства
+  // Проверка предков с соответствующим тегом
+  const hasParentWithTag =
+    element.closest(tag1.toLowerCase()) !== null || (tag2 && element.closest(tag2.toLowerCase()) !== null)
+
+  if (hasParentWithTag) {
+    return true
+  }
+
+  // Проверка на наличие стилевого свойства (если указано)
   if (style) {
+    // Проверяем непосредственные стили элемента
     const computedStyle = window.getComputedStyle(element)
     const styleValue = computedStyle.getPropertyValue(style)
 
     // Если значения не указаны, проверяем наличие любого значения
     if (!value1 && !value2) {
-      return styleValue !== '' && styleValue !== 'none' && styleValue !== 'normal'
+      const hasStyle = styleValue !== '' && styleValue !== 'none' && styleValue !== 'normal'
+      if (hasStyle) return true
+    } else {
+      // Проверка на соответствие одному из значений
+      const matchesValue = Boolean(
+        (value1 && styleValue.includes(value1)) || (value2 && styleValue.includes(value2))
+      )
+      if (matchesValue) return true
     }
 
-    // Проверка на соответствие одному из значений
-    return Boolean((value1 && styleValue.includes(value1)) || (value2 && styleValue.includes(value2)))
+    // Проверяем родительские элементы на наличие стиля
+    let parent: HTMLElement | null = element.parentElement
+    while (parent) {
+      const parentStyle = window.getComputedStyle(parent)
+      const parentStyleValue = parentStyle.getPropertyValue(style)
+
+      if (!value1 && !value2) {
+        if (parentStyleValue !== '' && parentStyleValue !== 'none' && parentStyleValue !== 'normal') {
+          return true
+        }
+      } else if (
+        (value1 && parentStyleValue.includes(value1)) ||
+        (value2 && parentStyleValue.includes(value2))
+      ) {
+        return true
+      }
+
+      parent = parent.parentElement
+    }
   }
 
   // Проверка на наличие родительского элемента с соответствующим тегом
@@ -604,10 +629,6 @@ export const getActiveFormats = (selection?: Selection, editor?: HTMLDivElement)
     // Проверка inline форматирования через document.queryCommandState
     formats.bold = document.queryCommandState('bold')
     formats.italic = document.queryCommandState('italic')
-    // formats.underline = document.queryCommandState('underline')
-    // formats.strike = document.queryCommandState('strikethrough')
-    // formats.superscript = document.queryCommandState('superscript')
-    // formats.subscript = document.queryCommandState('subscript')
 
     // Для более сложных форматов проверяем общие элементы
     const commonAncestors = getCommonFormatAncestors(range, editor)
@@ -624,23 +645,11 @@ export const getActiveFormats = (selection?: Selection, editor?: HTMLDivElement)
     formats.punchline = commonAncestors.some(
       (node) => node.nodeName === 'DIV' && node.parentElement?.classList.contains('punchline')
     )
-    /*
-    formats.alignLeft = commonAncestors.some(node => 
-      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-left')
-    )
-    formats.alignCenter = commonAncestors.some(node => 
-      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-center')
-    )
-    formats.alignRight = commonAncestors.some(node => 
-      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-right')
-    )
-    formats.alignJustify = commonAncestors.some(node => 
-      node.nodeName === 'DIV' && node.parentElement?.classList.contains('align-justify')
-    )
-    */
 
     // Добавление проверки highlight для выделения
-    formats.highlight = isHighlighted(range)
+    formats.highlight = commonAncestors.some(node => 
+      node.nodeName === 'MARK' || node.nodeName === 'SPAN' && node.parentElement?.classList.contains('highlight')
+    )
 
     console.log('[getActiveFormats] Selection formats:', formats)
   } catch (e) {
@@ -666,25 +675,6 @@ export const hasAlignClass = (node: Node, alignment: string): boolean => {
     if (style?.includes(`text-align: ${alignment}`)) return true
   }
   return false
-}
-
-/**
- * Проверяет наличие выделения текста
- * @param range Диапазон выделения
- * @returns true если текст выделен
- */
-const isHighlighted = (range: Range): boolean => {
-  // Создаем временный элемент для проверки содержимого выделения
-  const tempElement = document.createElement('div')
-  tempElement.appendChild(range.cloneContents())
-
-  // Проверяем наличие тегов MARK или SPAN с background
-  return (
-    !!tempElement.querySelector('mark') ||
-    Array.from(tempElement.querySelectorAll('span')).some(
-      (span) => span.style.backgroundColor || span.getAttribute('style')?.includes('background')
-    )
-  )
 }
 
 /**
@@ -767,8 +757,6 @@ export const resetFormat = (editor: HTMLElement, range?: Range) => {
   selection.addRange(range)
 }
 
-// Legacy support with proper typing
-export const formatCommand = hasFormatting
 export const applyFormat = (_kind: string, cmd: CommandType, range: Range) => {
   const selection = window.getSelection()
   if (!selection) return
@@ -786,8 +774,6 @@ export const applyFormat = (_kind: string, cmd: CommandType, range: Range) => {
     }
   })
 }
-
-export const removeFormat = removeFormatting
 
 /**
  * Создает объект SelectionState из объекта Selection
@@ -956,21 +942,415 @@ export const toggleBlockFormat = (
     return // Stop if replacement failed
   }
 
-  // --- Restore Selection (Basic) ---
-  // This part is fragile. Selecting the whole node is simplest but disruptive.
-  // Collapsing to start/end is better but might not match user expectation.
+  // Восстанавливаем позицию курсора
   try {
-    const selection = window.getSelection()
-    if (selection) {
-      const newRange = document.createRange()
-      // Place cursor at the beginning of the new block
-      newRange.setStart(newBlock, 0)
-      newRange.collapse(true)
-      selection.removeAllRanges()
-      selection.addRange(newRange)
+    // Позиционируем курсор в начало блока или на первый текстовый узел
+    const firstTextNode = findFirstTextNode(newBlock)
+
+    if (firstTextNode) {
+      // Если есть текстовый узел, ставим курсор в его начало
+      restoreSelectionState(range, firstTextNode, 0)
+    } else {
+      // Иначе ставим курсор в начало блока
+      restoreSelectionState(range, newBlock, 0)
     }
   } catch (e) {
     console.error('[toggleBlockFormat] Error restoring selection:', e)
-    editorRoot.focus() // Fallback focus
+    // Если восстановление не удалось, просто фокусируемся на редакторе
+    if (editorRoot) {
+      editorRoot.focus()
+    }
+  }
+}
+
+/**
+ * Универсальная функция для применения/удаления форматирования
+ * Объединяет логику для всех типов форматирования
+ *
+ * @param command Команда форматирования
+ * @param state Текущее состояние выделения
+ * @param editorRoot Корневой элемент редактора (опционально, для блочных элементов)
+ * @returns Результат операции (успех/ошибка)
+ */
+export const toggleFormatting = (
+  command: CommandType,
+  state: SelectionState,
+  editorRoot?: HTMLElement | null
+): { success: boolean; error?: string } => {
+  if (!state.range) {
+    return { success: false, error: 'Нет выделения' }
+  }
+
+  const config = FORMAT_CONFIG[command]
+  if (!config) {
+    return { success: false, error: `Неизвестная команда: ${command}` }
+  }
+
+  try {
+    // Определяем тип команды по тегу и атрибутам
+    const isBlockCommand = ['h1', 'h2', 'h3', 'blockquote', 'p'].includes(command)
+    const isListCommand = ['bulletList', 'orderedList'].includes(command)
+    // const isInlineCommand = ['bold', 'italic', 'highlight', 'link'].includes(command)
+
+    // Проверяем, активно ли уже это форматирование
+    const isFormatActive = hasFormatting(command, state)
+    console.log(`[toggleFormatting] ${command} is active:`, isFormatActive)
+
+    // Разная логика в зависимости от типа команды
+    if (isBlockCommand && editorRoot) {
+      // Блочные команды используют toggleBlockFormat
+      toggleBlockFormat(command, state, editorRoot)
+    } else if (isListCommand) {
+      // Для списков лучше работает стандартный execCommand
+      const commandId = command === 'bulletList' ? 'insertUnorderedList' : 'insertOrderedList'
+      document.execCommand(commandId, false)
+    } else if (isFormatActive) {
+      // Удаляем форматирование
+      removeFormatting(command, state)
+
+      // Дополнительная очистка при выделении (для сложных случаев)
+      if (!state.isEmpty) {
+        const selection = window.getSelection()
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+          const checkDiv = document.createElement('div')
+          checkDiv.appendChild(range.cloneContents())
+
+          const tagName = config.tag.toLowerCase()
+          const remainingTags = checkDiv.querySelectorAll(tagName)
+
+          if (remainingTags.length > 0) {
+            console.log(`[toggleFormatting] Found remaining ${tagName} tags, applying additional cleanup`)
+            // Используем removeFormat только для команд, где это имеет смысл
+            if (['bold', 'italic', 'highlight'].includes(command)) {
+              document.execCommand('removeFormat', false)
+            }
+          }
+        }
+      }
+    } else {
+      // Применяем форматирование
+      applyFormatting(command, state)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error(`[toggleFormatting] Error for command ${command}:`, error)
+    return { success: false, error: String(error) }
+  }
+}
+
+/**
+ * Универсальная функция для восстановления выделения после операций форматирования
+ * @param range Диапазон выделения для восстановления
+ * @param target Целевой элемент или узел для позиционирования (опционально)
+ * @param offset Смещение курсора (опционально)
+ * @param expandToElement Флаг, указывающий нужно ли расширить выделение на весь элемент
+ * @returns Успешность восстановления выделения
+ */
+export const restoreSelectionState = (
+  range: Range,
+  target?: Node | null,
+  offset?: number,
+  expandToElement = false
+): boolean => {
+  try {
+    if (!range) return false
+
+    const selection = window.getSelection()
+    if (!selection) return false
+
+    // Создаем новый диапазон для манипуляций
+    const newRange = document.createRange()
+
+    if (target) {
+      // Если указан целевой узел, позиционируем на нем
+      const nodeOffset = offset !== undefined ? offset : 0
+
+      try {
+        newRange.setStart(target, nodeOffset)
+        newRange.setEnd(target, nodeOffset)
+      } catch (e) {
+        console.error('[restoreSelectionState] Error setting range on target:', e)
+
+        // Запасной вариант: пытаемся выбрать текстовый узел внутри target
+        if (target.nodeType === Node.ELEMENT_NODE) {
+          const firstTextNode = findFirstTextNode(target as HTMLElement)
+          if (firstTextNode) {
+            newRange.setStart(firstTextNode, 0)
+            newRange.setEnd(firstTextNode, 0)
+          } else {
+            newRange.selectNodeContents(target)
+            newRange.collapse(true)
+          }
+        }
+      }
+
+      // Если нужно выделить весь элемент
+      if (expandToElement && target.nodeType === Node.ELEMENT_NODE) {
+        newRange.selectNodeContents(target)
+      }
+    } else {
+      // Используем оригинальный диапазон, если нет целевого узла
+      newRange.setStart(range.startContainer, range.startOffset)
+      newRange.setEnd(range.endContainer, range.endOffset)
+    }
+
+    // Применяем выделение
+    selection.removeAllRanges()
+    selection.addRange(newRange)
+
+    return true
+  } catch (error) {
+    console.error('[restoreSelectionState] Error restoring selection:', error)
+    return false
+  }
+}
+
+/**
+ * Находит первый текстовый узел внутри элемента (рекурсивно)
+ */
+const findFirstTextNode = (element: HTMLElement): Node | null => {
+  if (!element) return null
+
+  // Для всех дочерних узлов
+  for (const child of Array.from(element.childNodes)) {
+    // Если это текстовый узел с содержимым, возвращаем его
+    if (child.nodeType === Node.TEXT_NODE && child.textContent?.trim()) {
+      return child
+    }
+
+    // Рекурсивный поиск внутри элементов
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      const found = findFirstTextNode(child as HTMLElement)
+      if (found) return found
+    }
+  }
+
+  return null
+}
+
+/**
+ * Специализированная функция для применения highlight-форматирования
+ * Использует ТОЛЬКО тег <mark> для выделения текста
+ * 
+ * @param range Диапазон для обработки
+ */
+export const applyHighlightFormatting = (range: Range): void => {
+  try {
+    if (!range) return;
+    
+    // Клонируем диапазон для безопасных операций
+    const clonedRange = range.cloneRange();
+    
+    // Сохраняем начало и конец выделения
+    const startContainer = range.startContainer;
+    const startOffset = range.startOffset;
+    const endContainer = range.endContainer;
+    const endOffset = range.endOffset;
+    
+    // Извлекаем содержимое выделения
+    const fragment = clonedRange.extractContents();
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(fragment);
+    
+    console.log(`[applyHighlightFormatting] Текст для форматирования: "${tempDiv.textContent}"`)
+    
+    // Рекурсивная функция для обработки узлов
+    const processNode = (node: Node): void => {
+      // Пропускаем уже обработанные mark элементы
+      if (node.nodeName === 'MARK') return;
+      
+      // Обрабатываем текстовые узлы
+      if (node.nodeType === Node.TEXT_NODE && node.textContent && node.textContent.trim() !== '') {
+        // Создаем mark и помещаем в него текстовый узел
+        const mark = document.createElement('mark');
+        mark.textContent = node.textContent;
+        if (node.parentNode) {
+          node.parentNode.replaceChild(mark, node);
+        }
+        return;
+      }
+      
+      // Для элементов рекурсивно обрабатываем каждый дочерний узел
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        // Копируем массив дочерних узлов, чтобы можно было изменять DOM в процессе итерации
+        const childNodes = Array.from(node.childNodes);
+        childNodes.forEach(childNode => {
+          processNode(childNode);
+        });
+      }
+    };
+    
+    // Применяем обработку ко всем узлам в выделении
+    processNode(tempDiv);
+    
+    // Вставляем обновленное содержимое обратно в документ
+    range.deleteContents();
+    while (tempDiv.firstChild) {
+      range.insertNode(tempDiv.firstChild);
+      range.collapse(false);
+    }
+    
+    // Восстанавливаем исходный диапазон выделения
+    try {
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        
+        const newRange = document.createRange();
+        newRange.setStart(startContainer, startOffset);
+        newRange.setEnd(endContainer, endOffset);
+        selection.addRange(newRange);
+      }
+    } catch (e) {
+      console.error('[applyHighlightFormatting] Error restoring selection:', e);
+    }
+    
+    // Имитируем событие ввода для обновления состояния редактора
+    const inputEvent = new InputEvent('input', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'formatApply'
+    });
+    range.commonAncestorContainer.dispatchEvent(inputEvent);
+  } catch (error) {
+    console.error('[applyHighlightFormatting] Error:', error);
+  }
+};
+
+/**
+ * Специализированная функция для удаления форматирования highlight
+ * Обрабатывает ТОЛЬКО теги <mark>
+ * 
+ * @param range Диапазон для обработки
+ */
+export const removeHighlightFormatting = (range: Range): void => {
+  try {
+    // Клонируем диапазон для безопасных операций
+    const clonedRange = range.cloneRange()
+    
+    // Сохраняем начало и конец выделения
+    const startContainer = range.startContainer
+    const startOffset = range.startOffset
+    const endContainer = range.endContainer
+    const endOffset = range.endOffset
+    
+    // Создаем временный контейнер
+    const tempContainer = document.createElement('div')
+    tempContainer.appendChild(clonedRange.cloneContents())
+    
+    // Находим все теги mark
+    const markElements = tempContainer.querySelectorAll('mark')
+    
+    console.log(`[removeHighlightFormatting] Found: ${markElements.length} marks`)
+    
+    // Обработка тегов mark: заменяем их содержимым
+    markElements.forEach(mark => {
+      const parent = mark.parentNode
+      if (parent) {
+        // Создаем новый фрагмент с содержимым mark
+        const fragment = document.createDocumentFragment()
+        while (mark.firstChild) {
+          fragment.appendChild(mark.firstChild)
+        }
+        parent.replaceChild(fragment, mark)
+      }
+    })
+    
+    // Рекурсивная функция для очистки DOM-структуры от пустых span
+    const cleanupEmptySpans = (element: Element) => {
+      // Сначала обрабатываем все дочерние элементы
+      Array.from(element.children).forEach(child => {
+        cleanupEmptySpans(child)
+      })
+      
+      // Затем проверяем, стал ли текущий элемент пустым или бесполезным
+      if (element.tagName === 'SPAN' && element.attributes.length === 0 && element.parentElement) {
+        // Перемещаем все содержимое в родительский элемент
+        const parent = element.parentElement
+        const fragment = document.createDocumentFragment()
+        
+        while (element.firstChild) {
+          fragment.appendChild(element.firstChild)
+        }
+        
+        parent.insertBefore(fragment, element)
+        parent.removeChild(element)
+      }
+    }
+    
+    // Выполняем очистку для удаления лишних пустых span
+    cleanupEmptySpans(tempContainer)
+    
+    // Применяем измененное содержимое
+    range.deleteContents()
+    
+    // Вставляем обработанное содержимое
+    while (tempContainer.firstChild) {
+      range.insertNode(tempContainer.firstChild)
+      range.collapse(false)
+    }
+    
+    // Восстанавливаем исходный диапазон выделения
+    try {
+      const selection = window.getSelection()
+      if (selection) {
+        selection.removeAllRanges()
+        
+        const newRange = document.createRange()
+        newRange.setStart(startContainer, startOffset)
+        newRange.setEnd(endContainer, endOffset)
+        selection.addRange(newRange)
+      }
+    } catch (e) {
+      console.error('[removeHighlightFormatting] Error restoring selection:', e)
+    }
+    
+    // Имитируем событие ввода для обновления состояния редактора
+    const inputEvent = new InputEvent('input', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'formatRemove'
+    })
+    range.commonAncestorContainer.dispatchEvent(inputEvent)
+  } catch (error) {
+    console.error('[removeHighlightFormatting] Error:', error)
+  }
+}
+
+/**
+ * Проверяет наличие выделения текста
+ * @param range Диапазон выделения
+ * @returns true если текст выделен (содержит теги mark)
+ */
+const isHighlighted = (range: Range): boolean => {
+  if (!range) return false
+
+  try {
+    // Создаем временный элемент для проверки содержимого выделения
+    const tempElement = document.createElement('div')
+    tempElement.appendChild(range.cloneContents())
+
+    // Проверяем наличие тегов MARK в выделении
+    const hasMarkTags = !!tempElement.querySelector('mark')
+
+    // Если выделение содержит только один узел, проверяем его родительские элементы
+    if (!hasMarkTags && range.startContainer === range.endContainer) {
+      // Получаем родительский элемент текущего узла
+      const container = range.startContainer
+      const element =
+        container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as HTMLElement)
+
+      if (element) {
+        // Проверяем, находится ли узел внутри тега mark
+        return !!element.closest('mark')
+      }
+    }
+
+    return hasMarkTags
+  } catch (error) {
+    console.error('Error in isHighlighted:', error)
+    return false
   }
 }
