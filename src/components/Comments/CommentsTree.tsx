@@ -11,6 +11,7 @@ import {
   onMount,
   untrack
 } from 'solid-js'
+import toast from 'solid-toast'
 import { useDrafts } from '~/context/drafts'
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
@@ -28,6 +29,7 @@ import { MutationCreate_ReactionArgs } from '~/graphql/schema/core.gen'
 import { COMMENTS_PER_PAGE } from '../Article/FullArticle'
 import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { cleanupContent, sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
+import { EditorData } from '../SimpleRichEditor/lib/types'
 import { Button } from '../_shared/Button'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
 import { Loading } from '../_shared/Loading'
@@ -35,9 +37,6 @@ import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { CommentCard } from './CommentCard'
 import { CommentsHeader } from './CommentsHeader'
 
-import toast from 'solid-toast'
-import { removeLocalVersion } from '../SimpleRichEditor/lib/storage'
-import { EditorData } from '../SimpleRichEditor/lib/types'
 import styles from './CommentsTree.module.scss'
 
 /**
@@ -175,7 +174,7 @@ interface CommentsTreeProps {
 export const CommentsTree = (props: CommentsTreeProps) => {
   const { session, client } = useSession()
   const { t } = useLocalize()
-  const { getEditorContent, setEditorContent } = useDrafts()
+  const { getEditorContent, setEditorContent, removeDraftByKey } = useDrafts()
   const [onlyNew, setOnlyNew] = createSignal(false)
   const [clickedReplyId, setClickedReplyId] = createSignal<number | undefined>()
   const {
@@ -443,9 +442,9 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     // Дополнительная очистка черновика редактирования
     const draftKey = `draft-${props.shoutId}-comment-edit-${commentId}`
 
-    // Удаляем локальную версию и черновик
-    removeLocalVersion(draftKey)
-    setEditorContent(draftKey, '')
+    // Удаляем локальную версию и черновик с помощью removeDraftByKey
+    removeDraftByKey(draftKey)
+    setEditorContent(draftKey, '') // Очищаем и в контексте
 
     // Сбрасываем состояние редактирования
     batch(() => {
@@ -556,15 +555,16 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       if (isEdit) {
         // Удаляем локальную версию при сохранении
         const draftKey = `draft-${props.shoutId}-comment-edit-${commentId}`
-        removeLocalVersion(draftKey)
+        removeDraftByKey(draftKey)
         handleClear()
       } else if (isReply) {
         // Удаляем локальную версию при отправке ответа
         const draftKey = `draft-${props.shoutId}-comment-${clickedReplyId()}`
-        removeLocalVersion(draftKey)
+        removeDraftByKey(draftKey)
       } else {
         // Удаляем локальную версию при отправке нового комментария
-        removeLocalVersion(`draft-${props.shoutId}-comment-new`)
+        const draftKey = `draft-${props.shoutId}-comment-new`
+        removeDraftByKey(draftKey)
       }
 
       const result = isEdit ? await updateShoutReaction(input) : await createShoutReaction(input)
@@ -641,14 +641,14 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         // Удаляем временные данные редактирования
         if (commentId !== undefined) {
           // Если была отмена редактирования, удаляем локальную версию
-          removeLocalVersion(draftKey)
+          removeDraftByKey(draftKey)
           setEditorContent(draftKey, '')
         }
       } else {
         // Очищаем основной редактор при отмене нового комментария
         setLocalContent('')
         setMainEditorContent('')
-        removeLocalVersion(draftKey)
+        removeDraftByKey(draftKey)
         setEditorContent(draftKey, '')
       }
     })
@@ -695,7 +695,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         console.log('[CommentsTree] Saving main editor content before switching to reply mode')
         setMainEditorContent(currentContent)
 
-        // Сохраняем в локальное хранилище
+        // Сохраняем в черновик через контекст
         setEditorContent(`draft-${props.shoutId}-comment-new`, currentContent)
       }
     }
@@ -708,7 +708,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         console.log(`[CommentsTree] Saving reply content for comment #${currentReplyId}`)
         setReplyEditorContents((prev) => ({ ...prev, [`${currentReplyId}`]: currentContent }))
 
-        // Сохраняем в локальное хранилище
+        // Сохраняем в черновик через контекст
         setEditorContent(`draft-${props.shoutId}-comment-${currentReplyId}`, currentContent)
       }
     }
@@ -721,7 +721,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       // Устанавливаем новый режим ответа
       setClickedReplyId(replyToCommentId)
 
-      // Загружаем существующий контент для данного ответа, если он есть
+      // Загружаем существующий контент для данного ответа, если он есть, через getEditorContent
       const savedReplyContent =
         replyEditorContents()[`${replyToCommentId}`] ||
         getEditorContent(`draft-${props.shoutId}-comment-${replyToCommentId}`) ||
@@ -754,7 +754,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         console.log('[CommentsTree] Saving main editor content before switching to edit mode')
         setMainEditorContent(currentContent)
 
-        // Сохраняем в локальное хранилище
+        // Сохраняем в черновик через контекст
         setEditorContent(`draft-${props.shoutId}-comment-new`, currentContent)
       }
     }
@@ -767,7 +767,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         console.log(`[CommentsTree] Saving reply content for comment #${currentReplyId}`)
         setReplyEditorContents((prev) => ({ ...prev, [`${currentReplyId}`]: currentContent }))
 
-        // Сохраняем в локальное хранилище
+        // Сохраняем в черновик через контекст
         setEditorContent(`draft-${props.shoutId}-comment-${currentReplyId}`, currentContent)
       }
     }
@@ -779,7 +779,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       // Устанавливаем режим редактирования
       setEditingCommentId(commentId)
 
-      // Получаем содержимое комментария для редактирования
+      // Получаем содержимое комментария для редактирования из getEditorContent
       const editContent =
         getEditorContent(`draft-${props.shoutId}-comment-edit-${commentId}`) || commentToEdit.body || ''
 
@@ -1454,6 +1454,8 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     // Сохраняем в черновик и в локальное состояние для основного редактора
     if (!clickedReplyId() && !editingCommentId()) {
       setMainEditorContent(data.content)
+      // Сохраняем черновик основного редактора через контекст
+      setEditorContent(`draft-${props.shoutId}-comment-new`, data.content)
     }
 
     untrack(() => setEditorContent(`draft-${props.shoutId}-comment-new`, localContent()))
@@ -1782,7 +1784,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           : `draft-${props.shoutId}-comment-new`
 
     // Удаляем локальные версии
-    removeLocalVersion(draftKey)
+    removeDraftByKey(draftKey)
     setEditorContent(draftKey, '')
 
     // Если это был основной редактор, очищаем его сохраненное состояние
@@ -1847,7 +1849,12 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                   placeholder={t('Write a comment...')}
                   onChange={handleEditorChange}
                   onBlur={() => handleEditorBlur(`draft-${props.shoutId}-comment-new`)}
-                  content={getEditorContent(`draft-${props.shoutId}-comment-new`) || mainEditorContent()}
+                  // Инициализируем контент основного редактора из getEditorContent
+                  content={
+                    mainEditorContent() || // Сначала пробуем состояние UI
+                    getEditorContent(`draft-${props.shoutId}-comment-new`) || // Затем черновик
+                    ''
+                  }
                 />
                 <EditorControls
                   mode="new"
@@ -1941,8 +1948,11 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                           onLoadReplies={loadCommentReplies}
                           content={
                             editingCommentId() === comment.id
-                              ? getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`)
-                              : undefined
+                              ? localContent() || // Сначала состояние UI
+                                getEditorContent(`draft-${props.shoutId}-comment-edit-${comment.id}`) || // Затем черновик
+                                comment.body || // Иначе из комментария
+                                ''
+                              : undefined // Не передаем контент, если не редактируем
                           }
                         >
                           <CommentBranch

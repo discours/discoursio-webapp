@@ -5,7 +5,7 @@
 
 import { isEmptyContent } from '~/components/SimpleRichEditor/lib/empty'
 import { DraftInput } from '~/graphql/schema/core.gen'
-import { cleanupContent } from './sanitize'
+import { cleanupContent } from '../components/SimpleRichEditor/lib/sanitize'
 
 /**
  * Регулярное выражение для URL адресов

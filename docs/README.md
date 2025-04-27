@@ -3,14 +3,9 @@
 Проект использует: SolidJS, Typescript, GraphQL, SASS
 
 - [Функциональные возможности](features.md)
-- [Система учёта просмотров](views.md)
 - [Аналитика и метрики](analytics.md)
+- Как работает [счётчик просмотров](views-counter.md)
 - [Кеширование загружаемых данных](caching.md)
-
-## Редакторы
-
-- [Редактор на основе TipTap](../src/components/Editor/README.md)
-- [Коллаборативный режим TipTap](../src/components/Editor/editor-collab.md)
 - [Легковесный нативный редактор](../src/components/SimpleRichEditor/README.md)
 
 ## Ленты

@@ -876,7 +876,10 @@
 
   .editorModesSelected {
     cursor: default;
-    opacity: 0.6;
+    
+    &::before {
+      content: '✦';
+    }
   }
 }
 
