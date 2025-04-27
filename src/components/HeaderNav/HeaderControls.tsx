@@ -308,9 +308,7 @@ const EditingSelector = () => {
         >
           <Icon name="eye" class={styles.editorModeIcon} />
           <div class={styles.editorModeTitle}>{t('Preview')}</div>
-          <div class={styles.editorModeDescription}>
-            {t('Look at how the material will look when published')}
-          </div>
+          <div class={styles.editorModeDescription}>{t('This is how the post will look when published')}</div>
         </li>
         {/* Режим редактирования */}
         <li
@@ -330,9 +328,9 @@ const EditingSelector = () => {
         >
           <Icon name="comment" class={styles.editorModeIcon} />
           {/* Используем 'Commenting' на основе существующего UI */}
-          <div class={styles.editorModeTitle}>{t('Commenting')}</div>
+          <div class={styles.editorModeTitle}>{t('Ask and suggest')}</div>
           <div class={styles.editorModeDescription}>
-            {t('Suggest edits and comments to make the material better')}
+            {t('Suggest edits and comments to make the post better')}
           </div>
         </li>
       </ul>

@@ -140,7 +140,7 @@ export default function ArticlePage(props: RouteSectionProps<SlugPageProps>) {
   // console.log('[ArticlePage] props:', props)
 
   return (
-    <Switch fallback={<div>Loading...</div>}>
+    <Switch>
       <Match when={currentSlug().startsWith('@')}>
         <AuthorPage
           {...({

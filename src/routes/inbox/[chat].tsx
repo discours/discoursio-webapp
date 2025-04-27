@@ -60,10 +60,8 @@ export const ChatPage = (props: RouteSectionProps<{ authors: Author[] }>) => {
   return (
     <PageLayout hideFooter={true} title={t('Inbox')}>
       <NoHydration>
-        <Show when={!authors.loading} fallback={<div>Loading...</div>}>
-          <Show when={!authors.error} fallback={<div>Error: {authors.error?.message}</div>}>
-            <InboxView authors={authors() || []} chat={chat()} />
-          </Show>
+        <Show when={!authors.loading && !authors.error}>
+          <InboxView authors={authors() || []} chat={chat()} />
         </Show>
       </NoHydration>
     </PageLayout>

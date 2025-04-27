@@ -13,7 +13,7 @@ import { Button } from '../_shared/Button'
 import styles from '~/styles/views/SuggestionsView.module.scss'
 
 export type Props = {
-  shoutId?: number
+  shoutId: number
 }
 
 export const SuggestionsView = (props: Props) => {
@@ -145,7 +145,7 @@ export const SuggestionsView = (props: Props) => {
 
   return (
     <div class={styles.container}>
-      <Show when={!loading()} fallback={<div>Loading...</div>}>
+      <Show when={!loading()}>
         <div class={styles.list}>
           <For each={suggestions()}>
             {(suggestion: Reaction) => (

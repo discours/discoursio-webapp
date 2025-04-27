@@ -1163,14 +1163,6 @@ export const EditView = (props: { draft?: Draft }) => {
 
     // Парсим содержимое с улучшенной обработкой кавычек
     const parsedContent = parseJsonContent(storedContent || '') || draftContent
-
-    // Логируем для отладки
-    console.log('[EditView] Body content initialization:', {
-      storedContent: String(storedContent || '').substring(0, 100),
-      draftContent: String(draftContent || '').substring(0, 100),
-      parsedContent: String(parsedContent || '').substring(0, 100)
-    })
-
     return parsedContent
   }
 
