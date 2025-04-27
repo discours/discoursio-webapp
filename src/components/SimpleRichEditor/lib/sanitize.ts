@@ -128,7 +128,10 @@ export const isSanitizationSupported = (): boolean => {
 export const cleanupContent = (content: string): string => {
   if (!content) return ''
 
-  let result = content
+  // Сначала исправляем незавершенные HTML-теги
+  const fixedHtml = fixBrokenHtml(content)
+
+  let result = fixedHtml
 
   // 1. Заменяем пустые параграфы на параграфы с переносами
   result = result.replace(/<p>\s*<\/p>/gi, '<p><br></p>')
@@ -148,4 +151,34 @@ export const cleanupContent = (content: string): string => {
   }
 
   return result
+}
+/**
+ * Исправляет некорректную HTML-структуру с незавершенными тегами
+ * @param html Исходный HTML
+ * @returns Исправленный HTML с корректной структурой
+ */
+export const fixBrokenHtml = (html: string): string => {
+  if (!html) return ''
+
+  try {
+    // Создаем парсер для работы с HTML
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html')
+
+    // Получаем HTML из переработанного DOM
+    const result = doc.body?.innerHTML || ''
+
+    // Если результат пустой или сильно отличается от исходного HTML,
+    // возвращаем исходный HTML, так как парсер мог удалить слишком много
+    if (!result || (result.length < html.length * 0.5 && html.length > 20)) {
+      console.warn('[SimpleRichEditor] HTML parser removed too much content, using DOMPurify instead')
+      return sanitizeHtml(html)
+    }
+
+    return result
+  } catch (e) {
+    console.error('[SimpleRichEditor] Error fixing broken HTML:', e)
+    // В случае ошибки используем DOMPurify для очистки HTML
+    return sanitizeHtml(html)
+  }
 }

@@ -308,7 +308,9 @@ const EditingSelector = () => {
         >
           <Icon name="eye" class={styles.editorModeIcon} />
           <div class={styles.editorModeTitle}>{t('Preview')}</div>
-          <div class={styles.editorModeDescription}>{t('This is how the post will look when published')}</div>
+          <div class={styles.editorModeDescription}>
+            {t('This is how the post will look when published')}
+          </div>
         </li>
         {/* Режим редактирования */}
         <li

@@ -37,11 +37,34 @@ import { useTopics } from './topics'
 
 export const AUTO_SAVE_DELAY = 1000
 
+/**
+ * Проверяет валидность временной метки
+ *
+ * @param timestamp Временная метка для проверки
+ * @returns Валидированная метка времени или текущее время
+ */
+const validateTimestamp = (timestamp: number): number => {
+  const now = Date.now()
+  const minValidDate = new Date('2020-01-01').getTime() // Минимальная валидная дата (1 января 2020)
+  const maxValidDate = now + 86400000 // Максимальная валидная дата (сегодня + 1 день)
+
+  // Проверяем, находится ли метка в разумных пределах
+  if (!timestamp || timestamp < minValidDate || timestamp > maxValidDate) {
+    console.warn(
+      `[drafts] Invalid timestamp detected: ${new Date(timestamp).toISOString()}, using current time instead`
+    )
+    return now
+  }
+
+  return timestamp
+}
+
 // Интерфейс для расширенной информации о черновике
 export interface ExtendedDraft extends Draft {
   isLocalOnly?: boolean
   localId?: string
   hasPublishedVersion?: boolean // Флаг, указывающий наличие опубликованной версии с тем же слагом
+  // FIXME: это должно быть поле самой публикации
   published_at?: number // Timestamp публикации статьи
 }
 
@@ -247,7 +270,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     if (fieldName === 'lead' || fieldName === 'body') {
       const contentObject = {
         content: cleanValue, // Чистый HTML внутри JSON
-        timestamp: Date.now(),
+        timestamp: validateTimestamp(Date.now()),
         source: 'local'
       }
       saveDraftField(draftId, fieldName, JSON.stringify(contentObject))
@@ -316,6 +339,9 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         const draftId =
           typeof storedDraft.id === 'string' ? Number.parseInt(storedDraft.id, 10) : storedDraft.id
 
+        // Валидируем временную метку
+        const validTimestamp = validateTimestamp(storedDraft.timestamp || 0)
+
         // Создаем объект черновика
         const localDraft: ExtendedDraft = {
           id: draftId,
@@ -330,8 +356,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           topics: [],
           isLocalOnly: true,
           // Добавляем другие обязательные поля из Draft
-          created_at: storedDraft.timestamp || Date.now(), // Используем timestamp из хранилища или текущее время
-          updated_at: storedDraft.timestamp || Date.now(), // Используем timestamp из хранилища или текущее время
+          created_at: validTimestamp, // Используем валидированный timestamp из хранилища или текущее время
+          updated_at: validTimestamp, // Используем валидированный timestamp из хранилища или текущее время
           created_by: {
             // Минимальные требования для поля created_by
             id: 0,
@@ -503,12 +529,12 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         const serverDraft = serverDraftsMap.get(draftId)
         // Загружаем полные локальные данные ТОЛЬКО когда они нужны
         const localFields = getAllDraftFields(draftId) as DraftInput & { [key: string]: string | number }
-        const localTimestamp = localMeta.timestamp || 0
+        const localTimestamp = validateTimestamp(localMeta.timestamp || 0)
 
         if (serverDraft) {
           // Черновик есть и локально, и на сервере
           console.log(`[drafts] Draft ${draftId} found both locally and on server.`)
-          const serverTimestamp = serverDraft.updated_at || 0
+          const serverTimestamp = validateTimestamp(serverDraft.updated_at || 0)
 
           // Создаем базовый объединенный черновик из серверной версии
           const mergedDraft: ExtendedDraft = { ...serverDraft }
@@ -634,6 +660,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
               [key: string]: string | number
             }
             if (localFields) {
+              const validTimestamp = validateTimestamp(localMeta.timestamp || 0)
               const localDraft: ExtendedDraft = {
                 /* ... структура как в шаге 4 ... */
                 id: draftId,
@@ -648,8 +675,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
                 topics: (tryParseJson(localFields.topic_ids || localFields.topics, 'topics') || []).map(
                   (tid: number) => topicEntities()[tid]
                 ),
-                created_at: localMeta.timestamp || 0,
-                updated_at: localMeta.timestamp || 0,
+                created_at: validTimestamp,
+                updated_at: validTimestamp,
                 created_by: { id: 0, slug: '', user: '' },
                 community: {
                   id: 0,
