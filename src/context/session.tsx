@@ -286,9 +286,7 @@ export const SessionProvider = (props: {
       }
     } catch (error) {
       console.error('Ошибка в requireAuthentication:', error)
-      toast(t('Try again later'), {
-        icon: 'error'
-      })
+      toast.error(t('Try again later'))
     }
   }
 
@@ -375,7 +373,7 @@ export const SessionProvider = (props: {
     if (authResult) {
       setSession({} as AuthToken)
       setIsSessionLoaded(true)
-      toast(t("You've successfully logged out"))
+      toast.success(t("You've successfully logged out"))
       return true
     }
     return false
@@ -424,7 +422,7 @@ export const SessionProvider = (props: {
     console.debug('[context.session] resend verify email response:', resp)
     if (resp.errors.length > 0) {
       resp.errors.forEach((error) => {
-        toast(error.message, { icon: 'error' })
+        toast.error(error.message)
       })
       return false
     }

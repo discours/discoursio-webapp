@@ -427,7 +427,12 @@ export const Header = (props: Props) => {
         </nav>
 
         <ClientOnly>
-          <Toaster />
+          <Toaster
+            position="bottom-center"
+            toastOptions={{
+              className: styles.snackbar
+            }}
+          />
         </ClientOnly>
       </div>
     </header>

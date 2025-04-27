@@ -33,7 +33,7 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
         const draftId = props.params.id
 
         if (!draftId) {
-          toast(t('Draft ID is required'))
+          toast.error(t('Draft ID is required'))
           navigate('/drafts')
           return
         }
@@ -63,12 +63,12 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
           setPreviewData(draft)
         } else {
           // Если черновик не найден, показываем уведомление
-          toast(t('Draft not found'))
+          toast.error(t('Draft not found'))
           navigate('/drafts')
         }
       } catch (error) {
         console.error('[DraftPreviewPage] Error loading draft:', error)
-        toast(t('Error loading draft'))
+        toast.error(t('Error loading draft'))
       } finally {
         setIsLoading(false)
       }

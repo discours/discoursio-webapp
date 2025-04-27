@@ -45,7 +45,7 @@ export const SuggestionCard = (props: SuggestionCardProps) => {
    */
   const createModeratorReaction = async (kind: ReactionKind) => {
     if (!canUserModerate()) {
-      toast(t('Only author can moderate suggestions'), {})
+      toast.error(t('Only author can moderate suggestions'))
       return
     }
 
@@ -65,14 +65,10 @@ export const SuggestionCard = (props: SuggestionCardProps) => {
         } as ReactionInput
       } as MutationCreate_ReactionArgs)
 
-      toast(kind === ReactionKind.Accept ? t('Suggestion accepted') : t('Suggestion rejected'), {
-        icon: 'success'
-      })
+      toast.success(kind === ReactionKind.Accept ? t('Suggestion accepted') : t('Suggestion rejected'))
     } catch (error) {
       console.error('[SuggestionCard] Error moderating reaction:', error)
-      toast(t('Failed to moderate suggestion'), {
-        icon: 'error'
-      })
+      toast.error(t('Failed to moderate suggestion'))
     } finally {
       setIsProcessing(false)
     }

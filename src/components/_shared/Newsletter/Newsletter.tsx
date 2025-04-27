@@ -57,7 +57,7 @@ export const Newsletter = (props: Props) => {
 
     if (response.ok) {
       setTitle(t('Following'))
-      toast(t('Thank you for subscribing'))
+      toast.success(t('Thank you for subscribing'))
     } else {
       if (response.status === 400) {
         setEmailError(t('Please check your email address'))

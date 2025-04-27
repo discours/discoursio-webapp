@@ -980,3 +980,12 @@
   opacity: 0.8;
   margin-top: 2px;
 }
+
+.snackbar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  z-index: 1000;
+}

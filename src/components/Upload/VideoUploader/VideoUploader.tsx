@@ -1,7 +1,7 @@
 import { createDropzone } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
 import { For, Show, createSignal } from 'solid-js'
-import { ToastOptions, toast } from 'solid-toast'
+import { toast } from 'solid-toast'
 
 import { VideoPlayer } from '~/components/_shared/VideoPlayer'
 import { useLocalize } from '~/context/localize'
@@ -30,11 +30,10 @@ export const VideoUploader = (props: Props) => {
       if (droppedFiles().length > 1) {
         setError(t('Many files, choose only one'))
       } else if (droppedFiles()[0].file.type.startsWith('video/')) {
-        toast(
+        toast.error(
           t(
             'This functionality is currently not available, we would like to work on this issue. Use the download link.'
-          ),
-          {} as ToastOptions
+          )
         )
       } else {
         setError(t('Video format not supported'))
@@ -90,7 +89,7 @@ export const VideoUploader = (props: Props) => {
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onClick={() =>
-            toast(
+            toast.error(
               t(
                 'This functionality is currently not available, we would like to work on this issue. Use the download link.'
               ),

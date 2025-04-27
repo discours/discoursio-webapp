@@ -93,9 +93,7 @@ export const ProfileSecurityView = (_props: any) => {
         left: 0,
         behavior: 'smooth'
       })
-      toast(t('Incorrect new password confirm'), {
-        icon: 'error'
-      })
+      toast.error(t('Incorrect new password confirm'))
       setNewPasswordError(t('Passwords are not equal'))
     }
   }
@@ -117,9 +115,7 @@ export const ProfileSecurityView = (_props: any) => {
         if (oldPasswordRef) {
           // && errors.some((obj: Error) => obj.message === 'incorrect old password')) {
           setOldPasswordError(t('Incorrect old password'))
-          toast(t('Incorrect old password'), {
-            icon: 'error'
-          })
+          toast.error(t('Incorrect old password'))
           const rect = oldPasswordRef.getBoundingClientRect()
           const topPosition = (window?.scrollY || 0) + rect.top - DEFAULT_HEADER_OFFSET * 2
           window?.scrollTo({
@@ -131,9 +127,7 @@ export const ProfileSecurityView = (_props: any) => {
         }
         return
       }
-      toast(t('Profile successfully saved'), {
-        icon: 'success'
-      })
+      toast.error(t('Profile successfully saved'))
     } catch (error) {
       console.error(error)
     } finally {

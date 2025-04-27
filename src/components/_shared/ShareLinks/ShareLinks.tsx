@@ -45,9 +45,7 @@ export const ShareLinks = (props: Props) => {
         props.onShareClick?.()
       }, 3000)
     } else {
-      toast(t('Link copied'), {
-        icon: 'success'
-      })
+      toast.success(t('Link copied'))
     }
   }
 

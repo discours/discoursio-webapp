@@ -394,9 +394,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         return response || []
       } catch (error) {
         console.error('[CommentsTree] Error loading comments:', error)
-        toast(t('Failed to load comments'), {
-          icon: 'error'
-        })
+        toast.error(t('Failed to load comments'))
         return []
       } finally {
         setIsLoading(false)
@@ -470,9 +468,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     })
 
     if (!session()?.user) {
-      toast(t('Please sign in to comment'), {
-        icon: 'error'
-      })
+      toast.error(t('Please sign in to comment'))
       return
     }
 
@@ -480,15 +476,12 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     const cleanedContent = cleanupContent(localContent().trim())
 
     if (isContentEmpty(cleanedContent)) {
-      toast(t('Comment cannot be empty'), {
-        icon: 'error'
-      })
+      toast.error(t('Comment cannot be empty'))
       return
     }
 
     setPosting(true)
     // Сохраняем позицию скролла только для редактирования
-    const _scrollPosition = window.scrollY
     const isEdit = editingCommentId() !== undefined
     const isReply = clickedReplyId() !== undefined
 
@@ -508,9 +501,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
       // Проверяем, что в итоге содержимое не пустое
       if (isContentEmpty(sanitizedContent)) {
-        toast(t('Comment cannot be empty'), {
-          icon: 'error'
-        })
+        toast.error(t('Comment cannot be empty'))
         setPosting(false)
         return
       }
@@ -530,9 +521,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       const commentToEdit = isEdit ? comments().find((c) => c.id === commentId) : undefined
       if (isEdit && !commentToEdit) {
         console.error('[CommentsTree] Comment not found for editing:', commentId)
-        toast(t('Comment not found'), {
-          icon: 'error'
-        })
+        toast.error(t('Comment not found'))
         setPosting(false)
         return
       }
@@ -601,9 +590,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           // Очищаем состояние после успешного редактирования
           handleSubmitSuccess()
 
-          toast(t('Comment updated'), {
-            icon: 'success'
-          })
+          toast.success(t('Comment updated'))
         } else {
           // Для новых комментариев добавляем результат с сервера
           console.log('[CommentsTree] Comment created successfully')
@@ -614,9 +601,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           // Очищаем состояние после успешного создания
           handleSubmitSuccess()
 
-          toast(t('Comment saved'), {
-            icon: 'success'
-          })
+          toast.success(t('Comment saved'))
 
           // Прокручиваем к новому комментарию с небольшой задержкой для обновления DOM
           scrollToComment(serverData.id, true, 300)
@@ -624,9 +609,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       }
     } catch (error) {
       console.error('[CommentsTree] Error submitting comment:', error)
-      toast(t('Failed to save comment'), {
-        icon: 'error'
-      })
+      toast.error(t('Failed to save comment'))
     } finally {
       setPosting(false)
     }
@@ -701,9 +684,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   const handleReply = (replyToCommentId: number) => {
     if (!replyToCommentId) return
     if (!session()?.user) {
-      toast(t('Please sign in to reply'), {
-        icon: 'error'
-      })
+      toast.error(t('Please sign in to reply'))
       return
     }
 
@@ -756,17 +737,13 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   const handleEdit = (commentId: number) => {
     if (!commentId) return
     if (!session()?.user) {
-      toast(t('Please sign in to edit'), {
-        icon: 'error'
-      })
+      toast.error(t('Please sign in to edit'))
       return
     }
 
     const commentToEdit = comments().find((c) => c.id === commentId)
     if (!commentToEdit) {
-      toast(t('Comment not found'), {
-        icon: 'error'
-      })
+      toast.error(t('Comment not found'))
       return
     }
 
@@ -818,9 +795,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
   const handleDelete = async (id: number) => {
     if (!id) return
     if (!session()?.user) {
-      toast(t('Please sign in to delete'), {
-        icon: 'error'
-      })
+      toast.error(t('Please sign in to delete'))
       return
     }
 
@@ -844,9 +819,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           if (commentToDelete) {
             console.log('[CommentsTree] Restoring local comment:', id)
             addShoutReactions([commentToDelete])
-            toast(t('Comment restored'), {
-              icon: 'success'
-            })
+            toast.success(t('Comment restored'))
           }
         }, 500) // Ждем завершения анимации удаления
         return
@@ -890,9 +863,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
       if (result?.error) {
         console.error('[CommentsTree] Error in delete response:', result.error)
-        toast(t('Failed to delete comment'), {
-          icon: 'error'
-        })
+        toast.error(t('Failed to delete comment'))
 
         // Если удаление на сервере не удалось, восстанавливаем комментарий
         if (commentToDelete) {
@@ -905,9 +876,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       }
 
       // Показываем сообщение об успехе ТОЛЬКО после подтверждения с сервера
-      toast(t('Comment deleted'), {
-        icon: 'success'
-      })
+      toast.success(t('Comment deleted'))
 
       // Обновляем колбэк только при успешном удалении на сервере
       if (props.onDeleteComment) {
@@ -915,9 +884,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       }
     } catch (error) {
       console.error('[CommentsTree] Error deleting comment:', error)
-      toast(t('Failed to delete comment'), {
-        icon: 'error'
-      })
+      toast.error(t('Failed to delete comment'))
 
       // Пытаемся восстановить комментарий при ошибке
       const commentToRestore = comments().find((c) => c.id === id)
@@ -1336,9 +1303,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         }
       } catch (error) {
         console.error('[CommentBranch] Error loading replies:', error)
-        toast(t('Failed to load replies'), {
-          icon: 'error'
-        })
+        toast.error(t('Failed to load replies'))
       } finally {
         setIsLoadingReplies(false)
       }
@@ -1709,9 +1674,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       return response as LoadMoreItems
     } catch (error) {
       console.error('[CommentsTree] Error loading comments:', error)
-      toast(t('Failed to load comments'), {
-        icon: 'error'
-      })
+      toast.error(t('Failed to load comments'))
       return undefined
     } finally {
       // Сбрасываем флаг загрузки вне отслеживания реактивности
@@ -1753,9 +1716,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       return response || []
     } catch (error) {
       console.error('[CommentsTree] Error loading replies:', error)
-      toast(t('Failed to load replies'), {
-        icon: 'error'
-      })
+      toast.error(t('Failed to load replies'))
       return []
     }
   }

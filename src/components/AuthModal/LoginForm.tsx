@@ -124,9 +124,7 @@ export const LoginForm = () => {
         }
       }
       hideModal()
-      toast(t('Welcome!'), {
-        icon: 'success'
-      })
+      toast.success(t('Welcome!'))
     } catch (error) {
       console.error(error)
       setSubmitError(authError())

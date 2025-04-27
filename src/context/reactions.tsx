@@ -131,7 +131,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
       throw new Error('cannot create reaction')
     }
     const { error, reaction } = result
-    if (error) toast(t(error), { icon: 'error' })
+    if (error) toast.error(t(error))
     if (reaction) {
       updateShoutInStores(reaction)
     }
@@ -208,9 +208,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
     }
     const { error, reaction } = result
     if (error) {
-      toast(t(error), {
-        icon: 'error'
-      })
+      toast.error(t(error))
       return { error }
     }
     if (reaction?.id) {

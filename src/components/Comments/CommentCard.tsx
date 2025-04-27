@@ -233,9 +233,7 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
     console.log('[CommentCard] Opening edit editor for comment:', props.comment.id)
     if (!canEdit()) {
       console.warn('[CommentCard] User cannot edit this comment')
-      toast(t('You cannot edit this comment'), {
-        icon: 'error'
-      })
+      toast.error(t('You cannot edit this comment'))
       return
     }
 

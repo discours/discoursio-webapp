@@ -88,9 +88,7 @@ export const EditorSwiper = (props: Props) => {
     const isValid = validateUploads('image', selectedFiles)
 
     if (!isValid) {
-      toast(t('Invalid file type'), {
-        icon: 'error'
-      })
+      toast.error(t('Invalid file type'))
       setLoading(false)
       return
     }
@@ -107,9 +105,7 @@ export const EditorSwiper = (props: Props) => {
       swipeToUploaded()
     } catch (error) {
       console.error('[runUpload]', error)
-      toast(t('Error'), {
-        icon: 'error'
-      })
+      toast.error(t('Error'))
       setLoading(false)
     }
   }

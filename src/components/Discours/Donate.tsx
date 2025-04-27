@@ -116,9 +116,7 @@ export const Donate = () => {
         // действие при неуспешной оплате
         console.debug('[donate] options', options)
 
-        toast(reason, {
-          icon: 'error'
-        })
+        toast.error(reason)
       }
     )
   }
