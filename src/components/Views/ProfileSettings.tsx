@@ -114,18 +114,14 @@ export const ProfileSettings = () => {
       // Отправляем все данные формы, включая bio
       await submit(form)
       setPrevForm(clone(form))
-      toast(t('Profile successfully saved'), {
-        icon: 'success'
-      })
+      toast.success(t('Profile successfully saved'))
     } catch (error) {
       if (error?.toString().search('duplicate_slug')) {
         setSlugError(t('The address is already taken'))
         slugInputRef?.focus()
         return
       }
-      toast(t('Error'), {
-        icon: 'error'
-      })
+      toast.error(t('Error'))
     } finally {
       setIsSaving(false)
     }

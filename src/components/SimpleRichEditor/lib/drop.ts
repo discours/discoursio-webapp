@@ -63,40 +63,32 @@ export const useDropFiles = () => {
     const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'))
 
     if (imageFiles.length === 0) {
-      toast(t('Only image files are allowed'), {
-        icon: 'error'
-      })
+      toast.error(t('Only image files are allowed'))
       return
     }
 
     if (imageFiles.length > 100) {
-      toast(t('Maximum 100 files allowed'), {
-        icon: 'error'
-      })
+      toast.error(t('Maximum 100 files allowed'))
       return
     }
 
     const oversizedFiles = imageFiles.filter((file) => file.size > 5 * 1024 * 1024)
     if (oversizedFiles.length > 0) {
-      toast(t('Some files exceed 5MB limit'), {
-        icon: 'error'
-      })
+      toast.error(t('Some files exceed 5MB limit'))
       return
     }
 
     try {
-      toast(t('Uploading images...'))
+      toast.loading(t('Uploading images...'))
 
       // Здесь должна быть логика загрузки файлов
       // Например:
       // await uploadImages(imageFiles)
 
-      toast(t('Images uploaded successfully'))
+      toast.success(t('Images uploaded successfully'))
     } catch (error) {
       console.error('Upload error:', error)
-      toast(t('Failed to upload images'), {
-        icon: 'error'
-      })
+      toast.error(t('Failed to upload images'))
     }
   }
 

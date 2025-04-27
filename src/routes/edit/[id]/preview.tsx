@@ -1,6 +1,8 @@
 import { RouteSectionProps, useNavigate } from '@solidjs/router'
 import { Show, createEffect, createSignal } from 'solid-js'
 import { toast } from 'solid-toast'
+import { DraftPreview } from '~/components/Draft/DraftPreview'
+import { DraftPreviewToolbar } from '~/components/Draft/DraftPreviewToolbar'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
@@ -34,7 +36,7 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
 
         if (!draftId) {
           toast.error(t('Draft ID is required'))
-          navigate('/drafts')
+          navigate('/edit')
           return
         }
 
@@ -64,7 +66,7 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
         } else {
           // Если черновик не найден, показываем уведомление
           toast.error(t('Draft not found'))
-          navigate('/drafts')
+          navigate('/edit')
         }
       } catch (error) {
         console.error('[DraftPreviewPage] Error loading draft:', error)
@@ -75,91 +77,15 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
     }, 'edit')
   })
 
-  /**
-   * Обработчик кнопки "Редактировать"
-   */
-  const handleEditClick = () => {
-    const draft = previewData()
-    if (!draft) return
-
-    if (draft.isLocalOnly) {
-      navigate(`/edit/${draft.localId || draft.id}/local`)
-    } else {
-      navigate(`/edit/${draft.id}`)
-    }
-  }
-
-  /**
-   * Обработчик кнопки "Опубликовать"
-   */
-  const handlePublishClick = () => {
-    const draft = previewData()
-    if (!draft || !draft.id) return
-
-    navigate(`/edit/${draft.id}/settings`)
-  }
-
-  /**
-   * Рендер панели инструментов предпросмотра
-   */
-  const renderPreviewToolbar = () => {
-    return (
-      <div class="preview-toolbar">
-        <div class="container">
-          <div class="preview-toolbar__inner">
-            <div class="preview-toolbar__title">
-              {t('Preview Mode')}
-              <span class="preview-toolbar__subtitle">
-                {t('This is how your post will look when published')}
-              </span>
-            </div>
-            <div class="preview-toolbar__actions">
-              <button class="btn btn-outline-primary btn-sm" onClick={handleEditClick}>
-                {t('Edit')}
-              </button>
-              <button class="btn btn-primary btn-sm ml-2" onClick={handlePublishClick}>
-                {t('Publish')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <PageLayout title={`${t('Discours')} :: ${t('Preview')}`} hideFooter={false}>
-      {renderPreviewToolbar()}
+      <DraftPreviewToolbar />
 
       <Show
         when={!isLoading() && previewData()}
         fallback={<div class="container py-5">{t('Loading preview...')}</div>}
       >
-        <div class="container py-4">
-          <div class="row">
-            <div class="col-md-16 col-lg-14 col-xl-12 offset-xl-4 offset-lg-3 offset-md-2">
-              <article class="article">
-                <Show when={previewData()?.cover}>
-                  <div class="article__cover">
-                    <img src={previewData()?.cover || ''} alt={previewData()?.title || ''} />
-                  </div>
-                </Show>
-
-                <h1 class="article__title">{previewData()?.title || t('Unnamed draft')}</h1>
-
-                <Show when={previewData()?.subtitle}>
-                  <h2 class="article__subtitle">{previewData()?.subtitle}</h2>
-                </Show>
-
-                <Show when={previewData()?.lead}>
-                  <div class="article__lead" innerHTML={previewData()?.lead || ''} />
-                </Show>
-
-                <div class="article__content" innerHTML={previewData()?.body || ''} />
-              </article>
-            </div>
-          </div>
-        </div>
+        <DraftPreview previewData={previewData} />
       </Show>
     </PageLayout>
   )

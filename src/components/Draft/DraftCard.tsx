@@ -12,6 +12,7 @@ import styles from './DraftCard.module.scss'
 type Props = {
   draft: ExtendedDraft
   onDelete: () => void
+  onUnpublish: () => void
   onPublish: () => void
 }
 
@@ -24,6 +25,7 @@ type Props = {
  *   draft={draftData}
  *   onDelete={() => handleDelete(draftId)}
  *   onPublish={() => handlePublish(draftId)}
+ *   onUnpublish={() => handleUnpublish(draftId)}
  * />
  * ```
  */
@@ -56,9 +58,7 @@ export const DraftCard = (props: Props) => {
     if (props.draft.id) {
       navigate(`/edit/${props.draft.id}/settings`)
     } else {
-      toast(t('Cannot publish draft without ID'), {
-        icon: 'error'
-      })
+      toast.error(t('Cannot publish draft without ID'))
     }
   }
 
@@ -75,9 +75,7 @@ export const DraftCard = (props: Props) => {
     if (isConfirmed) {
       props.onDelete()
 
-      toast(t('Draft successfully deleted'), {
-        icon: 'success'
-      })
+      toast.success(t('Draft successfully deleted'))
     }
   }
 
@@ -97,24 +95,33 @@ export const DraftCard = (props: Props) => {
     }
 
     // Переходим на страницу превью черновика
-    if (props.draft.id) {
+    if (props.draft.isLocalOnly && props.draft.localId) {
       navigate(`/edit/${props.draft.localId}/preview`)
+    } else if (props.draft.id) {
+      navigate(`/edit/${props.draft.id}/preview`)
     } else {
-      toast(t('Cannot preview draft without ID'), {
-        icon: 'error'
-      })
+      toast.error(t('Cannot preview draft without ID'))
     }
+  }
+
+  const hasDateDiscrepancy = () => {
+    const draft = props.draft as ExtendedDraft
+    if (!draft.updated_at || !draft.published_at) return false
+    return new Date(draft.updated_at * 1000) > new Date(draft.published_at * 1000)
   }
 
   return (
     <div class={styles.draft}>
       <div class={styles.draftContent}>
         <div class={styles.contentTop}>
-          <div class={styles.titleContainer} onClick={handleEditClick}>
-            <span class={styles.title}>{props.draft.title || t('Unnamed draft')}</span>
-            <span class={styles.subtitle}>{props.draft.subtitle}</span>
-          </div>
-
+          {/* Заголовок */}
+          <A href={getEditUrl()} onClick={handleEditClick}>
+            <div class={styles.titleContainer} onClick={handleEditClick}>
+              <span class={styles.title}>{props.draft.title || t('Unnamed draft')}</span>
+              <span class={styles.subtitle}>{props.draft.subtitle}</span>
+            </div>
+          </A>
+          {/* Дата создания */}
           <div class={styles.created}>
             <Show when={props.draft.isLocalOnly}>
               <span class={styles.localBadge} title={t('This draft is saved only locally')}>
@@ -134,16 +141,7 @@ export const DraftCard = (props: Props) => {
         </Show>
 
         <div class={styles.actions}>
-          <A
-            class={styles.actionItem}
-            href={getEditUrl()}
-            title={t('Edit')}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Icon name="pencil-outline" class={styles.actionIcon} />
-            <span class={styles.actionText}>{t('Edit')}</span>
-          </A>
-
+          {/* Просмотр */}
           <span
             onClick={handleViewClick}
             class={styles.actionItem}
@@ -159,22 +157,52 @@ export const DraftCard = (props: Props) => {
             </span>
           </span>
 
-          <span
-            onClick={handlePublishLinkClick}
-            class={clsx(styles.actionItem, styles.publish)}
-            title={props.draft.isLocalOnly ? t('Save draft') : t('Publish')}
+          <Show
+            when={props.draft.hasPublishedVersion}
+            fallback={
+              <>
+                {/* Опубликовать */}
+                <span
+                  onClick={handlePublishLinkClick}
+                  class={clsx(styles.actionItem, styles.publish)}
+                  title={props.draft.isLocalOnly ? t('Save draft') : t('Publish')}
+                >
+                  <Icon
+                    name={props.draft.isLocalOnly ? 'cloud-upload' : 'publish'}
+                    class={styles.actionIcon}
+                  />
+                  <span class={styles.actionText}>
+                    {t(props.draft.isLocalOnly ? 'Save draft' : 'Publish')}
+                  </span>
+                </span>
+                {/* Удалить */}
+                <span
+                  onClick={handleDeleteLinkClick}
+                  class={clsx(styles.actionItem, styles.delete)}
+                  title={t('Delete')}
+                >
+                  <Icon name="trash" class={styles.actionIcon} />
+                  <span class={styles.actionText}>{t('Delete')}</span>
+                </span>
+              </>
+            }
           >
-            <Icon name={props.draft.isLocalOnly ? 'cloud-upload' : 'publish'} class={styles.actionIcon} />
-            <span class={styles.actionText}>{t(props.draft.isLocalOnly ? 'Save draft' : 'Publish')}</span>
-          </span>
-          <span
-            onClick={handleDeleteLinkClick}
-            class={clsx(styles.actionItem, styles.delete)}
-            title={t('Delete')}
-          >
-            <Icon name="trash" class={styles.actionIcon} />
-            <span class={styles.actionText}>{t('Delete')}</span>
-          </span>
+            {/* Снять с публикации */}
+            <span
+              onClick={props.onUnpublish}
+              class={clsx(styles.actionItem, styles.unpublish)}
+              title={t('Unpublish')}
+            >
+              <Icon name="eye-off" class={styles.actionIcon} />
+              <span class={styles.actionText}>{t('Unpublish')}</span>
+            </span>
+            {/* Индикатор расхождения версии */}
+            <Show when={hasDateDiscrepancy()}>
+              <span class={styles.dateWarning} title={t('Draft updated after publication')}>
+                <Icon name="warning" class={styles.warningIcon} />
+              </span>
+            </Show>
+          </Show>
         </div>
       </div>
     </div>

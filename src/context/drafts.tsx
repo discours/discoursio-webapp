@@ -31,7 +31,9 @@ import type {
   UnpublishShoutMutationMutation,
   UpdateDraftMutationMutation
 } from '~/graphql/schema/core.gen'
+import { tryParseJson } from '~/utils/tryjson'
 import { useSession } from './session'
+import { useTopics } from './topics'
 
 export const AUTO_SAVE_DELAY = 1000
 
@@ -40,6 +42,7 @@ export interface ExtendedDraft extends Draft {
   isLocalOnly?: boolean
   localId?: string
   hasPublishedVersion?: boolean // Флаг, указывающий наличие опубликованной версии с тем же слагом
+  published_at?: number // Timestamp публикации статьи
 }
 
 type DraftsContextType = {
@@ -73,6 +76,7 @@ export const DraftsContext = createContext<DraftsContextType>({} as DraftsContex
 const DRAFT_EDITOR_ID_REGEX = /draft-(\d+)-([a-z]+)/
 export const DraftsProvider = (props: { children: JSX.Element }) => {
   const { client, session } = useSession()
+  const { topicEntities } = useTopics()
   // все доступные для редактирования черновики
   const [drafts, setDrafts] = createSignal<ExtendedDraft[]>([])
   // текущий редактируемый черновик
@@ -429,7 +433,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     }
     console.log('[drafts] loading drafts, session:', !!session()?.access_token)
 
-    // Проверяем состояние клиента
     const currentClient = client()
     if (!currentClient) {
       console.warn('[drafts] client is null')
@@ -437,7 +440,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     }
 
     try {
-      const response = await currentClient.query(
+      // 1. Загружаем черновики с сервера
+      const serverResponse = await currentClient.query(
         loadDraftsQuery,
         {},
         {
@@ -446,163 +450,244 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         }
       )
 
-      // Проверяем наличие данных в ответе
-      if (!response?.data) {
-        console.warn('[drafts] no data in response')
-        if (response.error) {
-          console.error('[drafts] GraphQL error:', response.error)
+      let serverDrafts: ExtendedDraft[] = []
+      if (
+        serverResponse?.data?.load_drafts?.drafts &&
+        Array.isArray(serverResponse.data.load_drafts.drafts)
+      ) {
+        serverDrafts = serverResponse.data.load_drafts.drafts
+      } else {
+        // biome-ignore lint/style/useCollapsedElseIf: ok
+        if (serverResponse?.error) {
+          console.error('[drafts] GraphQL error loading server drafts:', serverResponse.error)
+        } else {
+          console.warn(
+            '[drafts] server drafts data is missing or not an array:',
+            serverResponse?.data?.load_drafts?.drafts
+          )
         }
-        return
+        // Продолжаем с пустым массивом серверных черновиков
       }
 
-      // Проверяем структуру ответа
-      const loadDraftsResponse = response.data.load_drafts
-      if (!loadDraftsResponse) {
-        console.warn('[drafts] no load_drafts in response data:', response.data)
-        return
-      }
+      console.log(`[drafts] Loaded ${serverDrafts.length} drafts from server.`)
 
-      // Проверяем наличие массива черновиков
-      const serverDrafts = loadDraftsResponse.drafts
-      if (!Array.isArray(serverDrafts)) {
-        console.warn('[drafts] drafts is not an array:', serverDrafts)
-        return
-      }
+      // 2. Загружаем метаданные локальных черновиков
+      // getAllDraftsFromStorage должна возвращать массив объектов типа { id: number | string, timestamp: number }
+      const localDraftMetas = getAllDraftsFromStorage()
+      console.log(`[drafts] Found ${localDraftMetas.length} local draft storages.`)
 
-      // Если с сервера пришел пустой список, но у нас есть локальные черновики - используем их
-      if (serverDrafts.length === 0 && drafts().length > 0) {
-        console.log('[drafts] using local drafts:', drafts())
-        return
-      }
-
-      // Перед установкой черновиков, применяем локальные изменения из localStorage
-      const updatedDrafts = serverDrafts.map((draft) => {
-        if (!draft.id) return draft
-
-        // Получаем локальные изменения для этого черновика
-        const localFields = getAllDraftFields(draft.id) as DraftInput & { [key: string]: string }
-        if (!localFields) return draft
-
-        console.log(`[drafts] Found local changes for draft ${draft.id}:`, localFields)
-
-        // biome-ignore lint/suspicious/noExplicitAny: updating
-        const updatedDraft = { ...draft } as { [key: string]: any }
-
-        // Применяем локальные изменения
-        Object.entries(localFields).forEach(([key, value]) => {
-          // Для полей, которые могут быть в JSON-формате, пытаемся распарсить их
-          if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
-            try {
-              const parsedValue = JSON.parse(value)
-              // Применяем присваивание через индексацию для любых ключей
-              updatedDraft[key] = parsedValue
-              console.log(`[drafts] Successfully parsed JSON for field ${key}`)
-            } catch (e) {
-              console.warn(`[drafts] Failed to parse JSON for field ${key}:`, e)
-              updatedDraft[key] = value
-            }
-          } else {
-            // Обновляем поля черновика как есть
-            updatedDraft[key] = value
-          }
-        })
-
-        // Специальная обработка для topics - если это строка, пытаемся парсить JSON
-        if (typeof localFields.topics === 'string') {
-          try {
-            if (localFields.topics.startsWith('[')) {
-              try {
-                updatedDraft.topics = JSON.parse(localFields.topics) as Topic[]
-                // Проверяем, что результат действительно массив
-                if (Array.isArray(updatedDraft.topics)) {
-                  console.log('[drafts] Successfully parsed topics as array:', updatedDraft.topics)
-                } else {
-                  console.warn('[drafts] topics parsed from JSON is not an array:', updatedDraft.topics)
-                  updatedDraft.topics = []
-                }
-              } catch (e) {
-                console.warn('[drafts] Failed to parse topics as JSON:', e)
-                updatedDraft.topics = []
-              }
-            } else {
-              console.warn('[drafts] topics field is not a valid JSON array:', localFields.topics)
-              updatedDraft.topics = []
-            }
-          } catch (e) {
-            console.warn('[drafts] Failed to process topics field:', e)
-            updatedDraft.topics = []
-          }
+      // 3. Создаем Map для быстрого доступа к серверным черновикам
+      const serverDraftsMap = new Map<number, ExtendedDraft>()
+      serverDrafts.forEach((draft) => {
+        if (draft?.id) {
+          // Добавлена проверка на существование draft и draft.id
+          serverDraftsMap.set(draft.id, { ...draft, isLocalOnly: false })
         }
-
-        // Специальная обработка для mainTopic - если это строка, пытаемся парсить JSON
-        if (typeof localFields.mainTopic === 'string') {
-          try {
-            if (localFields.mainTopic.startsWith('{')) {
-              try {
-                updatedDraft.mainTopic = JSON.parse(localFields.mainTopic) as Topic
-                // Проверяем, что результат действительно объект с id
-                if (
-                  !updatedDraft.mainTopic ||
-                  typeof updatedDraft.mainTopic !== 'object' ||
-                  !updatedDraft.mainTopic.id
-                ) {
-                  console.warn('[drafts] mainTopic parsed from JSON is not valid:', updatedDraft.mainTopic)
-                  updatedDraft.mainTopic = undefined
-                } else {
-                  console.log('[drafts] Successfully parsed mainTopic:', updatedDraft.mainTopic)
-                }
-              } catch (e) {
-                console.warn('[drafts] Failed to parse mainTopic as JSON:', e)
-                updatedDraft.mainTopic = undefined
-              }
-            } else {
-              console.warn('[drafts] mainTopic field is not a valid JSON object:', localFields.mainTopic)
-              updatedDraft.mainTopic = undefined
-            }
-          } catch (e) {
-            console.warn('[drafts] Failed to process mainTopic field:', e)
-            updatedDraft.mainTopic = undefined
-          }
-        }
-
-        // Проверяем конкретно заголовок
-        if (localFields.title) {
-          updatedDraft.title = localFields.title
-        }
-
-        // Отмечаем, что этот черновик не является только локальным
-        updatedDraft.isLocalOnly = false
-
-        return updatedDraft as ExtendedDraft
       })
 
-      // Загружаем локальные черновики, которых нет на сервере
-      const localOnlyDrafts = loadLocalDrafts()
+      const finalDrafts: ExtendedDraft[] = []
 
-      // Объединяем серверные черновики с локальными
-      const allDrafts = [...updatedDrafts, ...localOnlyDrafts]
+      // 4. Итерируем по локальным метаданным
+      for (const localMeta of localDraftMetas) {
+        if (!localMeta?.id) {
+          // Пропускаем, если нет ID
+          console.warn('[drafts] Local meta entry missing ID:', localMeta)
+          continue
+        }
+        const draftId = typeof localMeta.id === 'string' ? Number.parseInt(localMeta.id, 10) : localMeta.id
+        if (Number.isNaN(draftId)) {
+          console.warn('[drafts] Invalid local draft ID found:', localMeta.id)
+          continue
+        }
 
-      // Добавляем проверку наличия публикаций для каждого черновика
+        const serverDraft = serverDraftsMap.get(draftId)
+        // Загружаем полные локальные данные ТОЛЬКО когда они нужны
+        const localFields = getAllDraftFields(draftId) as DraftInput & { [key: string]: string | number }
+        const localTimestamp = localMeta.timestamp || 0
+
+        if (serverDraft) {
+          // Черновик есть и локально, и на сервере
+          console.log(`[drafts] Draft ${draftId} found both locally and on server.`)
+          const serverTimestamp = serverDraft.updated_at || 0
+
+          // Создаем базовый объединенный черновик из серверной версии
+          const mergedDraft: ExtendedDraft = { ...serverDraft }
+
+          // Если локальные данные (поля) существуют И локальное время новее серверного
+          if (localFields && localTimestamp > serverTimestamp) {
+            console.log(
+              `[drafts] Applying newer local fields to draft ${draftId}. Local: ${new Date(localTimestamp).toISOString()}, Server: ${new Date(serverTimestamp).toISOString()}`
+            )
+            Object.entries(localFields).forEach(([key, value]) => {
+              if (key === 'id')
+                return // Не перезаписываем ID
+                // biome-ignore lint/suspicious/noExplicitAny: Merging draft fields
+              ;(mergedDraft as any)[key] = tryParseJson(value, key)
+            })
+            // Обновляем updated_at на локальное время
+            mergedDraft.updated_at = localTimestamp
+            mergedDraft.isLocalOnly = false // Убеждаемся, что флаг снят
+          } else if (localFields && localTimestamp === serverTimestamp) {
+            console.log(
+              `[drafts] Local and server timestamps are equal for draft ${draftId}. Preferring local fields.`
+            )
+            // Применяем локальные поля при равенстве временных меток
+            Object.entries(localFields).forEach(([key, value]) => {
+              if (key === 'id') return // biome-ignore lint/suspicious/noExplicitAny: Merging draft fields
+              ;(mergedDraft as any)[key] = tryParseJson(value, key)
+            })
+            mergedDraft.isLocalOnly = false
+          } else {
+            console.log(
+              `[drafts] Server version is newer for draft ${draftId}, or no local fields found. Using server version.`
+            )
+          }
+
+          finalDrafts.push(mergedDraft)
+          serverDraftsMap.delete(draftId) // Удаляем из карты, так как обработали
+        } else {
+          // Черновик есть только локально
+          console.log(`[drafts] Draft ${draftId} found only locally.`)
+          if (localFields) {
+            // Создаем полный объект черновика на основе локальных данных
+            // Применяем tryParseJson ко всем полям, которые могут быть JSON
+            const localDraft: ExtendedDraft = {
+              id: draftId,
+              title: tryParseJson(localFields.title, 'title') || 'Без названия',
+              subtitle: tryParseJson(localFields.subtitle, 'subtitle') || '',
+              lead: tryParseJson(localFields.lead, 'lead') || '',
+              body: tryParseJson(localFields.body, 'body') || '',
+              slug: tryParseJson(localFields.slug, 'slug') || '',
+              cover: tryParseJson(localFields.cover, 'cover') || '',
+              cover_caption: tryParseJson(localFields.cover_caption, 'cover_caption') || '',
+              layout: tryParseJson(localFields.layout, 'layout') || 'article',
+              // Пытаемся получить topics/mainTopic из разных возможных ключей
+              topics: (tryParseJson(localFields.topic_ids || localFields.topics, 'topics') || []).map(
+                (tid: number) => ({
+                  id: tid,
+                  name: '',
+                  slug: '',
+                  pic: '',
+                  created_at: 0
+                })
+              ),
+              // Добавляем минимальные заглушки для обязательных полей типа Draft
+              created_at: localTimestamp, // Use local timestamp
+              updated_at: localTimestamp,
+              created_by: { id: 0, slug: '', user: '' }, // Placeholder
+              community: {
+                id: 0,
+                slug: '',
+                name: '',
+                pic: '',
+                created_at: 0,
+                created_by: { id: 0, slug: '', user: '' }
+              }, // Placeholder
+              isLocalOnly: true
+            }
+            finalDrafts.push(localDraft)
+          } else {
+            console.warn(`[drafts] Local draft ${draftId} has metadata but no fields found in storage.`)
+            // Можно решить удалить такой "пустой" локальный черновик
+            removeDraftFromStorage(draftId)
+          }
+        }
+      }
+
+      // 5. Добавляем оставшиеся черновики с сервера (те, которых не было локально)
+      serverDraftsMap.forEach((serverDraft) => {
+        console.log(`[drafts] Adding server-only draft ${serverDraft.id}.`)
+        finalDrafts.push(serverDraft)
+      })
+
+      // 6. Проверяем наличие опубликованных версий для всех итоговых черновиков
       const draftsWithPublishedCheck = await Promise.all(
-        allDrafts.map(async (draft) => {
+        finalDrafts.map(async (draft) => {
           if (draft.slug) {
-            draft.hasPublishedVersion = await checkPublishedVersion(draft.slug)
+            try {
+              draft.hasPublishedVersion = await checkPublishedVersion(draft.slug)
+            } catch (checkError) {
+              console.error(`[drafts] Error checking published version for slug ${draft.slug}:`, checkError)
+              draft.hasPublishedVersion = false // Считаем, что нет, если проверка упала
+            }
           }
           return draft
         })
       )
 
-      // Обновляем список черновиков
-      console.log('[drafts] setting drafts with local changes applied:', draftsWithPublishedCheck)
+      // 7. Обновляем список черновиков
+      console.log('[drafts] Setting final merged and deduplicated drafts:', draftsWithPublishedCheck)
       setDrafts(draftsWithPublishedCheck)
     } catch (error) {
-      console.error('[drafts] error loading drafts:', error)
+      console.error('[drafts] Critical error in loadDrafts:', error)
+      // В случае ошибки пытаемся загрузить только локальные, если список пуст
+      if (!drafts()?.length) {
+        try {
+          // Переиспользуем логику создания чисто локальных черновиков
+          const localDraftsFallback: ExtendedDraft[] = []
+          const localMetasFallback = getAllDraftsFromStorage()
+          for (const localMeta of localMetasFallback) {
+            const draftId =
+              typeof localMeta.id === 'string' ? Number.parseInt(localMeta.id, 10) : localMeta.id
+            if (Number.isNaN(draftId)) continue
+            const localFields = getAllDraftFields(draftId) as DraftInput & {
+              [key: string]: string | number
+            }
+            if (localFields) {
+              const localDraft: ExtendedDraft = {
+                /* ... структура как в шаге 4 ... */
+                id: draftId,
+                title: tryParseJson(localFields.title, 'title') || 'Без названия',
+                subtitle: tryParseJson(localFields.subtitle, 'subtitle') || '',
+                lead: tryParseJson(localFields.lead, 'lead') || '',
+                body: tryParseJson(localFields.body, 'body') || '',
+                slug: tryParseJson(localFields.slug, 'slug') || '',
+                cover: tryParseJson(localFields.cover, 'cover') || '',
+                cover_caption: tryParseJson(localFields.cover_caption, 'cover_caption') || '',
+                layout: tryParseJson(localFields.layout, 'layout') || 'article',
+                topics: (tryParseJson(localFields.topic_ids || localFields.topics, 'topics') || []).map(
+                  (tid: number) => topicEntities()[tid]
+                ),
+                created_at: localMeta.timestamp || 0,
+                updated_at: localMeta.timestamp || 0,
+                created_by: { id: 0, slug: '', user: '' },
+                community: {
+                  id: 0,
+                  slug: '',
+                  name: '',
+                  pic: '',
+                  created_at: 0,
+                  created_by: { id: 0, slug: '', user: '' }
+                },
+                isLocalOnly: true
+              }
+              localDraftsFallback.push(localDraft)
+            }
+          }
 
-      // В случае ошибки при загрузке с сервера, пробуем загрузить хотя бы локальные черновики
-      const localDrafts = loadLocalDrafts()
-      if (localDrafts.length) {
-        console.log('[drafts] loaded local drafts after server error:', localDrafts)
-        setDrafts(localDrafts)
+          if (localDraftsFallback.length) {
+            console.log(
+              '[drafts] Loaded local drafts as fallback after critical error:',
+              localDraftsFallback
+            )
+            // Проверяем публикации и для них
+            const fallbackWithCheck = await Promise.all(
+              localDraftsFallback.map(async (draft) => {
+                if (draft.slug) {
+                  try {
+                    draft.hasPublishedVersion = await checkPublishedVersion(draft.slug)
+                  } catch (_e) {
+                    draft.hasPublishedVersion = false
+                  }
+                }
+                return draft
+              })
+            )
+            setDrafts(fallbackWithCheck)
+          }
+        } catch (localError) {
+          console.error('[drafts] Error loading local drafts as fallback:', localError)
+        }
       }
     }
   }

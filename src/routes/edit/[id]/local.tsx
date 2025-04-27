@@ -30,7 +30,7 @@ export default function EditLocalPage(props: RouteSectionProps) {
 
       if (!draftId) {
         toast.error(t('Draft ID is required'))
-        navigate('/drafts')
+        navigate('/edit')
         return
       }
 
@@ -47,7 +47,7 @@ export default function EditLocalPage(props: RouteSectionProps) {
       } else {
         // Если локальный черновик не найден, показываем уведомление
         toast.error(t('Local draft not found'))
-        navigate('/drafts')
+        navigate('/edit')
       }
     }, 'edit')
   })

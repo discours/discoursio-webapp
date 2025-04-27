@@ -3,6 +3,10 @@
  * @description Модуль содержит функции валидации для SimpleRichEditor
  */
 
+import { isEmptyContent } from '~/components/SimpleRichEditor/lib/empty'
+import { DraftInput } from '~/graphql/schema/core.gen'
+import { cleanupContent } from './sanitize'
+
 /**
  * Регулярное выражение для URL адресов
  */
@@ -105,4 +109,113 @@ export const validateVideoUrl = (url: string, t?: (key: string) => string): stri
 export const validateFormInput = (value: string, options: InlineFormOptions | null): string => {
   if (!options || !options.validate) return ''
   return options.validate(value)
+}
+
+export interface ValidationError {
+  field: string
+  message: string
+}
+
+export interface ValidationResult {
+  isValid: boolean
+  errors: ValidationError[]
+}
+
+/**
+ * Проверяет черновик на готовность к публикации
+ * @param draft Черновик для проверки
+ * @returns Результат валидации с массивом ошибок
+ */
+export const validateDraftForPublishing = (draft: DraftInput): ValidationResult => {
+  const errors: ValidationError[] = []
+
+  // Проверка заголовка
+  if (!draft.title?.trim()) {
+    errors.push({
+      field: 'title',
+      message: 'Title is required'
+    })
+  }
+
+  // Применяем очистку к содержимому body перед валидацией
+  const cleanedBody = draft.body ? cleanupContent(draft.body) : null
+
+  // Проверка body на пустоту после очистки
+  if (isEmptyContent(cleanedBody)) {
+    // Используем cleanedBody
+    errors.push({
+      field: 'body',
+      message: 'Body cannot be empty'
+    })
+  } else {
+    // Проверка на минимальную длину текста
+    const tmpDiv = document.createElement('div')
+    tmpDiv.innerHTML = cleanedBody || '' // Используем cleanedBody
+    const plainText = tmpDiv.textContent?.trim() || ''
+    if (plainText.length < 10) {
+      errors.push({
+        field: 'body',
+        message: 'Body text should be at least 10 characters long'
+      })
+    }
+  }
+
+  // Проверка lead
+  if (draft.lead && isEmptyContent(draft.lead)) {
+    errors.push({
+      field: 'lead',
+      message: 'Lead cannot be empty if provided'
+    })
+  }
+
+  // Проверка тем
+  if (!draft.topic_ids?.length) {
+    errors.push({
+      field: 'topics',
+      message: 'At least one topic is required'
+    })
+  }
+
+  // Проверка главной темы
+  if (!draft.main_topic_id && draft.topic_ids?.length) {
+    errors.push({
+      field: 'main_topic',
+      message: 'Main topic is required when topics are present'
+    })
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  }
+}
+
+/**
+ * Проверяет черновик на возможность сохранения
+ * Менее строгие проверки чем для публикации
+ * @param draft Черновик для проверки
+ * @returns Результат валидации
+ */
+export const validateDraftForSaving = (draft: DraftInput): ValidationResult => {
+  const errors: ValidationError[] = []
+
+  // Базовые проверки
+  if (draft.body && isEmptyContent(draft.body)) {
+    errors.push({
+      field: 'body',
+      message: 'Body cannot be empty if provided'
+    })
+  }
+
+  if (draft.lead && isEmptyContent(draft.lead)) {
+    errors.push({
+      field: 'lead',
+      message: 'Lead cannot be empty if provided'
+    })
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  }
 }

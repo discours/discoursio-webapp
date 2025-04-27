@@ -1,15 +1,18 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createSignal, lazy, onCleanup, onMount } from 'solid-js'
+import { Show, createEffect, createSignal, lazy, onCleanup, onMount } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { debounce } from 'throttle-debounce'
 import {
-  getAllDraftFields,
   getDraftField,
   parseJsonContent,
   saveDraftField,
   updateLastSync
 } from '~/components/SimpleRichEditor/lib/storage'
+import {
+  validateDraftForPublishing,
+  validateDraftForSaving
+} from '~/components/SimpleRichEditor/lib/validation'
 import { UploadModalContent } from '~/components/Upload/UploadModalContent/UploadModalContent'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
@@ -33,6 +36,20 @@ import styles from './PublishSettings.module.scss'
 const GrowingTextarea = lazy(() => import('~/components/_shared/GrowingTextarea/GrowingTextarea'))
 const DESCRIPTION_MAX_LENGTH = 40
 const EMPTY_TOPIC: Topic = { id: -1, slug: '' }
+const EMPTY_FORM = {
+  id: 0,
+  layout: 'article',
+  title: '',
+  subtitle: '',
+  lead: '',
+  slug: '',
+  body: '',
+  cover: '',
+  cover_caption: '',
+  topics: [] as Topic[],
+  mainTopic: EMPTY_TOPIC,
+  seo: ''
+} as FormType
 
 const shorten = (str: string, maxLen: number) => {
   if (str.length <= maxLen) return str
@@ -61,14 +78,6 @@ type FormType = {
 interface ExtendedDraft extends DraftInput {
   topics?: Topic[]
   authors?: Author[]
-}
-
-// Преобразование draft в формат DraftInput
-const _draftToDraftInput = (draft: unknown): ExtendedDraft => {
-  if (!draft || typeof draft !== 'object') return { id: 0 }
-  const draftObj = draft as Record<string, unknown>
-  if (!draftObj.id) return { id: 0 }
-  return draft as ExtendedDraft
 }
 
 /**
@@ -438,7 +447,7 @@ const extractTopicsFromValue = (value: unknown): Topic[] => {
 
 export const PublishSettings = () => {
   const { t } = useLocalize()
-  const { currentDraft, publishDraft, syncDraft, updateDraft } = useDrafts()
+  const { currentDraft, publishDraft, syncDraft, updateDraft, unpublishShout } = useDrafts()
   const { showModal } = useUI()
   const { loadTopics, sortedTopics } = useTopics()
   const { session } = useSession()
@@ -446,20 +455,7 @@ export const PublishSettings = () => {
   const [coverImage, setCoverImage] = createSignal<UploadedFile | null>(null)
   const [isTopicsLoading, setIsTopicsLoading] = createSignal(true)
   const [isDirty, setIsDirty] = createSignal(false)
-  const [form, setForm] = createStore({
-    id: 0,
-    layout: 'article',
-    title: '',
-    subtitle: '',
-    lead: '',
-    slug: '',
-    body: '',
-    cover: '',
-    cover_caption: '',
-    topics: [] as Topic[],
-    mainTopic: EMPTY_TOPIC,
-    seo: ''
-  } as FormType)
+  const [form, setForm] = createStore(EMPTY_FORM)
   const [isLoading, setIsLoading] = createSignal(false)
   const [publishError, setPublishError] = createSignal<string | null>(null)
   const [coverUploadLoading, setCoverUploadLoading] = createSignal(false)
@@ -473,6 +469,7 @@ export const PublishSettings = () => {
     if (!draft || !draft.id) return
 
     try {
+      setSavingDraft(true)
       // Получаем данные из localStorage
       let leadContent = form.lead || ''
       let bodyContent = form.body || ''
@@ -520,6 +517,8 @@ export const PublishSettings = () => {
       console.log('[PublishSettings] Changes saved to server')
     } catch (error) {
       console.error('[PublishSettings] Error saving to server:', error)
+    } finally {
+      setSavingDraft(false)
     }
   })
 
@@ -832,250 +831,89 @@ export const PublishSettings = () => {
   }
 
   const handlePublishSubmit = async () => {
-    console.log('[PublishSettings] Начало процесса публикации для черновика:', form.id)
+    try {
+      const draftInput: DraftInput = {
+        id: form.id,
+        layout: form.layout || 'article',
+        title: form.title || '',
+        subtitle: form.subtitle || '',
+        lead: form.lead || '',
+        body: form.body || '',
+        slug: form.slug || '',
+        cover: form.cover || '',
+        cover_caption: form.cover_caption || '',
+        topic_ids: form.topics?.map((t) => t.id) || [],
+        main_topic_id: form.mainTopic?.id || null,
+        seo: form.seo || ''
+      }
 
-    // Сбрасываем ошибку и устанавливаем статус загрузки
-    setPublishError(null)
-    setIsLoading(true)
+      // Валидация перед публикацией
+      const validationResult = validateDraftForPublishing(draftInput)
+      if (!validationResult.isValid) {
+        const errorMessages = validationResult.errors.map((err) => err.message).join('\n')
+        setPublishError(errorMessages)
+        return
+      }
 
-    // Проверка наличия черновика
-    if (!form) {
-      console.error('[PublishSettings] Не удалось опубликовать: черновик не найден')
-      setPublishError('Не удалось опубликовать: черновик не найден')
-      setIsLoading(false)
-      return
+      // Публикация если валидация прошла успешно
+      const result = await publishDraft(form.id)
+      if (result?.data?.publish_draft?.draft) {
+        toast.success(t('Draft published successfully'))
+        navigate(`/${result.data.publish_draft.draft.slug}`)
+      }
+    } catch (error) {
+      console.error('[PublishSettings] Error publishing draft:', error)
+      setPublishError(error instanceof Error ? error.message : t('Unknown error occurred'))
     }
-
-    // Обязательная проверка наличия тем
-    if (!form.topics || form.topics.length === 0) {
-      console.error('[PublishSettings] Не удалось опубликовать: отсутствуют темы')
-      setPublishError('Для публикации необходимо выбрать как минимум одну тему')
-      setIsLoading(false)
-      return
-    } else {
-      console.log(
-        '[PublishSettings] Темы для публикации:',
-        form.topics.map((topic) =>
-          topic ? { id: topic.id, title: topic.title, slug: topic.slug } : 'null'
-        )
-      )
-    }
-
-    // Проверка обязательных полей
-    if (!form.title || form.title.trim() === '') {
-      console.error('[PublishSettings] Отсутствует заголовок черновика')
-      setPublishError('Заголовок обязателен для публикации')
-      setIsLoading(false)
-      return
-    }
-
-    if (!form.body || form.body.trim() === '') {
-      console.warn('[PublishSettings] Отсутствует текст черновика, но пытаемся опубликовать')
-    }
-
-    // Подробное логирование состояния черновика перед публикацией
-    console.log('[PublishSettings] Состояние черновика перед публикацией:', {
-      id: form.id,
-      title: form.title,
-      hasBody: !!form.body,
-      bodyLength: form.body?.length || 0,
-      hasLead: !!form.lead,
-      leadLength: form.lead?.length || 0,
-      topicsCount: form.topics.length,
-      mainTopicId: form.mainTopic?.id
-    })
-
-    // Создаем объект с данными для публикации
-    const updatedDraft: DraftInput = {
-      id: form.id,
-      layout: form.layout || 'article',
-      title: form.title || '',
-      subtitle: form.subtitle || '',
-      slug: form.slug || '',
-      lead: form.lead || '',
-      body: form.body || '',
-      cover: form.cover || currentDraft()?.cover || '',
-      main_topic_id: form.mainTopic?.id || form.topics[0]?.id || 0,
-      author_ids: (form.authors || []).map((author) => author?.id || 0).filter((id) => id > 0) || [],
-      topic_ids:
-        form.topics
-          .map((topic) => {
-            if (!topic || !topic.id) {
-              console.warn('[PublishSettings] Найдена некорректная тема:', topic)
-              return 0
-            }
-            return topic.id
-          })
-          .filter((id) => id > 0) || []
-    }
-
-    console.log('[PublishSettings] Данные для обновления черновика перед публикацией:', {
-      id: updatedDraft.id,
-      title: updatedDraft.title,
-      topicIds: updatedDraft.topic_ids,
-      mainTopicId: updatedDraft.main_topic_id,
-      bodyLength: updatedDraft.body?.length || 0,
-      leadLength: updatedDraft.lead?.length || 0
-    })
-
-    // Обновляем черновик с актуальными данными перед публикацией
-    updateDraft(updatedDraft)
-      .then((updateResult) => {
-        if (updateResult?.data?.update_draft?.error) {
-          console.error(
-            '[PublishSettings] Ошибка обновления черновика перед публикацией:',
-            updateResult.data.update_draft.error
-          )
-          setPublishError(`Ошибка сохранения: ${updateResult.data.update_draft.error}`)
-          setIsLoading(false)
-          return
-        }
-
-        console.log('[PublishSettings] Черновик успешно обновлен перед публикацией', {
-          draftId: updateResult?.data?.update_draft?.draft?.id
-        })
-
-        // После успешного обновления публикуем черновик
-        publishDraft(form.id)
-          .then((publishResult) => {
-            console.log('[PublishSettings] Получен ответ от API после публикации:', {
-              hasError: !!publishResult?.data?.publish_draft?.error,
-              errorMessage: publishResult?.data?.publish_draft?.error || 'нет',
-              hasDraft: !!publishResult?.data?.publish_draft?.draft,
-              draftId: publishResult?.data?.publish_draft?.draft?.id,
-              draftSlug: publishResult?.data?.publish_draft?.draft?.slug
-            })
-
-            if (publishResult?.data?.publish_draft?.error) {
-              console.error('[PublishSettings] Ошибка публикации:', publishResult.data.publish_draft.error)
-              setPublishError(`Ошибка публикации: ${publishResult.data.publish_draft.error}`)
-              setIsLoading(false)
-              return
-            }
-
-            const publishedDraft = publishResult?.data?.publish_draft?.draft
-            if (!publishedDraft) {
-              console.error(
-                '[PublishSettings] Ошибка публикации: не получены данные опубликованного черновика'
-              )
-              setPublishError('Ошибка публикации: не получены данные опубликованного черновика')
-              setIsLoading(false)
-              return
-            }
-
-            console.log('[PublishSettings] Черновик успешно опубликован!', {
-              id: publishedDraft.id,
-              slug: publishedDraft.slug,
-              title: publishedDraft.title
-            })
-
-            // Сохраняем данные об опубликованном материале в localStorage
-            try {
-              localStorage.setItem(
-                'last_published_material',
-                JSON.stringify({
-                  id: publishedDraft.id,
-                  slug: publishedDraft.slug,
-                  title: publishedDraft.title,
-                  date: new Date().toISOString()
-                })
-              )
-            } catch (e) {
-              console.warn(
-                '[PublishSettings] Не удалось сохранить данные о последнем опубликованном материале:',
-                e
-              )
-            }
-
-            // Перенаправляем на страницу опубликованного материала
-            const redirectPath = `/${publishedDraft.slug}`
-            console.log(
-              '[PublishSettings] Перенаправление на страницу опубликованного материала:',
-              redirectPath
-            )
-            navigate(redirectPath, { replace: true })
-            setIsLoading(false)
-          })
-          .catch((publishError: Error) => {
-            console.error('[PublishSettings] Ошибка при публикации черновика:', publishError)
-            setPublishError(`Ошибка публикации: ${publishError.message}`)
-            setIsLoading(false)
-          })
-      })
-      .catch((updateError: Error) => {
-        console.error('[PublishSettings] Ошибка при обновлении черновика перед публикацией:', updateError)
-        setPublishError(`Ошибка сохранения: ${updateError.message}`)
-        setIsLoading(false)
-      })
   }
 
   const handleSaveDraft = () => {
-    setSavingDraft(true)
+    if (isLoading() || savingDraft()) return
+    try {
+      setSavingDraft(true)
+      const draftInput: DraftInput = {
+        id: form.id,
+        layout: form.layout || 'article',
+        title: form.title || '',
+        subtitle: form.subtitle || '',
+        lead: form.lead || '',
+        body: form.body || '',
+        slug: form.slug || '',
+        cover: form.cover || '',
+        cover_caption: form.cover_caption || '',
+        topic_ids: form.topics?.map((t) => t.id) || [],
+        main_topic_id: form.mainTopic?.id || null,
+        seo: form.seo || ''
+      }
 
-    // Получаем текущий черновик и его ID
-    const draft = currentDraft()
-    const draftId = draft?.id || 0
-    if (!draftId) {
+      // Валидация перед сохранением
+      const validationResult = validateDraftForSaving(draftInput)
+      if (!validationResult.isValid) {
+        const errorMessages = validationResult.errors.map((err) => err.message).join('\n')
+        toast.error(errorMessages)
+        return
+      }
+
+      // Сохранение если валидация прошла успешно
+      saveDraftField(form.id, 'title', form.title)
+      saveDraftField(form.id, 'subtitle', form.subtitle)
+      saveDraftField(form.id, 'lead', form.lead)
+      saveDraftField(form.id, 'body', form.body)
+      saveDraftField(form.id, 'slug', form.slug)
+      saveDraftField(form.id, 'cover', form.cover)
+      saveDraftField(form.id, 'cover_caption', form.cover_caption)
+      saveDraftField(form.id, 'topics', JSON.stringify(form.topics))
+      saveDraftField(form.id, 'mainTopic', JSON.stringify(form.mainTopic))
+      saveDraftField(form.id, 'seo', form.seo)
+
+      updateLastSync(form.id)
+      toast.success(t('Draft saved successfully'))
       setSavingDraft(false)
-      return
+    } catch (error) {
+      console.error('[PublishSettings] Error saving draft:', error)
+      toast.error(error instanceof Error ? error.message : t('Unknown error occurred'))
+      setSavingDraft(false)
     }
-
-    // Получаем свежие данные из localStorage
-    const _fieldsFromStorage = getAllDraftFields(draftId)
-
-    // Подготавливаем объекты для контента lead и body
-    const leadContent = form.lead || ''
-    const bodyContent = form.body || ''
-    // Извлекаем текущие темы и главную тему
-    const currentTopics = form.topics || []
-
-    // Преобразуем данные для отправки на сервер
-    const draftToUpdate: DraftInput = {
-      id: draftId,
-      title: form.title,
-      subtitle: form.subtitle || '',
-      lead: leadContent,
-      body: bodyContent,
-      slug: form.slug || '',
-      cover: form.cover || '',
-      cover_caption: form.cover_caption || '',
-      layout: form.layout || 'article',
-      topic_ids: currentTopics.map((topic) => topic.id)
-    }
-
-    // Сохраняем поля в localStorage
-    console.log('[handleSaveDraft] Сохраняем поля в localStorage')
-
-    // Сохраняем простые поля как строки
-    saveDraftField(draftId, 'title', form.title)
-    saveDraftField(draftId, 'subtitle', form.subtitle || '')
-    saveDraftField(draftId, 'slug', form.slug || '')
-    saveDraftField(draftId, 'cover', form.cover || '')
-    saveDraftField(draftId, 'cover_caption', form.cover_caption || '')
-    saveDraftField(draftId, 'layout', form.layout || 'article')
-    saveDraftField(draftId, 'lead', leadContent || '')
-    saveDraftField(draftId, 'body', bodyContent || '')
-    saveDraftField(draftId, 'seo', form.seo || form.lead || form.body.substring(0, 300) || '')
-
-    // Обновляем время последней синхронизации
-    updateLastSync(draftId)
-
-    // Обновляем черновик на сервере
-    updateDraft(draftToUpdate)
-      .then(() => {
-        // Показываем уведомление об успешном сохранении
-        toast(t('Draft saved successfully'), {
-          icon: 'success'
-        })
-        setSavingDraft(false)
-      })
-      .catch((error) => {
-        console.error('[handleSaveDraft] Ошибка сохранения черновика:', error)
-        toast(t('Error saving draft'), {
-          icon: 'error'
-        })
-        setSavingDraft(false)
-      })
   }
 
   const removeSpecial = (ev: InputEvent) => {
@@ -1087,6 +925,41 @@ export const PublishSettings = () => {
   const [editingTitle, setEditingTitle] = createSignal(false)
   const [editingSubtitle, setEditingSubtitle] = createSignal(false)
   const [editingTeaser, setEditingTeaser] = createSignal(false) // Shout.seo
+
+  // Показываем toast при ошибке публикации
+  createEffect(() => {
+    const err = publishError()
+    if (err) {
+      toast.error(typeof err === 'string' ? err : t('Error'))
+    }
+  })
+
+  // Добавляем функцию для определения статуса публикации
+  const isPublished = () => {
+    const draft = currentDraft()
+    return draft?.published_at != null && draft?.published_at > 0
+  }
+
+  // Добавляем обработчик для снятия с публикации
+  const handleUnpublish = async () => {
+    try {
+      setIsLoading(true)
+      const draft = currentDraft()
+      if (!draft?.id) return
+
+      const result = await unpublishShout(draft.id)
+      if (result?.data?.unpublish_shout) {
+        toast.success(t('Article unpublished successfully'))
+        // После снятия с публикации обновляем данные
+        await loadLatestDraftData()
+      }
+    } catch (error) {
+      console.error('[PublishSettings] Error unpublishing article:', error)
+      toast.error(error instanceof Error ? error.message : t('Unknown error occurred'))
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <form class={clsx(styles.PublishSettings, 'inputs-wrapper')}>
@@ -1267,25 +1140,37 @@ export const PublishSettings = () => {
           <div class="row">
             <div class="col-md-19 col-lg-18 col-xl-16 offset-md-5">
               <div class={styles.content}>
-                <Button
-                  variant="light"
-                  value={t('Cancel changes')}
-                  class={styles.cancel}
-                  onClick={handleCancelClick}
-                  disabled={isLoading() || savingDraft()}
-                />
-                <Button
-                  variant="secondary"
-                  onClick={handleSaveDraft}
-                  value={savingDraft() ? t('Saving...') : t('Save draft')}
-                  disabled={isLoading() || savingDraft()}
-                />
-                <Button
-                  onClick={handlePublishSubmit}
-                  variant="primary"
-                  value={isLoading() ? t('Publishing...') : t('Publish')}
-                  disabled={isLoading() || savingDraft()}
-                />
+                <Show
+                  when={!isPublished()}
+                  fallback={
+                    <Button
+                      variant="primary"
+                      onClick={handleUnpublish}
+                      value={isLoading() ? t('Unpublishing...') : t('Unpublish')}
+                      disabled={isLoading() || savingDraft()}
+                    />
+                  }
+                >
+                  <Button
+                    variant="light"
+                    value={t('Cancel changes')}
+                    class={styles.cancel}
+                    onClick={handleCancelClick}
+                    disabled={isLoading() || savingDraft()}
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={handleSaveDraft}
+                    value={savingDraft() ? t('Saving...') : t('Save draft')}
+                    disabled={isLoading() || savingDraft()}
+                  />
+                  <Button
+                    onClick={handlePublishSubmit}
+                    variant="primary"
+                    value={isLoading() ? t('Publishing...') : t('Publish')}
+                    disabled={isLoading() || savingDraft()}
+                  />
+                </Show>
               </div>
             </div>
           </div>
@@ -1301,11 +1186,6 @@ export const PublishSettings = () => {
       <Modal variant="medium" name="inviteMembers">
         <InviteMembers variant={'coauthors'} title={t('Invite collaborators')} />
       </Modal>
-
-      {/* Отображение ошибки публикации */}
-      <Show when={publishError()}>
-        <div class={styles.errorMessage}>{publishError()}</div>
-      </Show>
     </form>
   )
 }

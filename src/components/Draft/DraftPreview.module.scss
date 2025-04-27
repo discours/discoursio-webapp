@@ -1,0 +1,212 @@
+// Стили для страницы предпросмотра черновика
+
+// Панель инструментов превью
+.previewToolbar {
+    background-color: #2c3e50; // Более сдержанный цвет
+    color: white;
+    padding: 16px 0; // Увеличен отступ
+    box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    text-align: center;
+  }
+
+  .previewToolbarSubtitle {
+    margin-left: 2em;
+    font-size: 1.4rem;
+    font-weight: normal;
+    opacity: 0.8;
+  }
+
+  .previewIcon {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .editButton, .publishButton {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .editButton {
+    background-color: transparent;
+    border: 1px solid rgb(255 255 255 / 70%);
+    color: white;
+  
+    &:hover {
+      background-color: rgb(255 255 255 / 10%);
+    }
+  }
+  
+  .publishButton {
+    background-color: white;
+    border: 1px solid white;
+    color: var(--primary-color, #2638d9);
+  
+    &:hover {
+      background-color: rgb(255 255 255 / 90%);
+    }
+  }
+  
+  // Индикатор загрузки
+  .loadingIndicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    gap: 16px;
+    color: var(--text-secondary);
+    font-size: 1.6rem;
+  }
+  
+  .spinningIcon {
+    width: 36px;
+    height: 36px;
+    animation: spin 1.5s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  // Стили для статьи
+  .article {
+    max-width: 780px;
+    margin: 0 auto;
+    font-family: var(--font-family);
+    color: var(--text-color);
+    padding: 0 16px;
+  }
+  
+  .articleCover {
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    
+    img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+  }
+  
+  .coverCaption {
+    font-size: 1.4rem;
+    color: #666;
+    padding: 8px 0;
+    font-style: italic;
+  }
+  
+  .articleTitle {
+    font-size: 3.6rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0 0 20px;
+    color: var(--title-color, #111827);
+  }
+  
+  .articleSubtitle {
+    font-size: 2.2rem;
+    font-weight: 400;
+    line-height: 1.4;
+    margin: 0 0 30px;
+    color: var(--subtitle-color, #4b5563);
+  }
+  
+  .articleLead {
+    font-size: 1.8rem;
+    font-weight: 500;
+    line-height: 1.5;
+    margin-bottom: 40px;
+    color: var(--text-color, #111827);
+    padding-left: 16px;
+    border-left: 3px solid #2c3e50;
+  }
+  
+  .articleContent {
+    font-size: 1.7rem;
+    line-height: 1.7;
+    
+    p {
+        margin-bottom: 1.8em;
+    }
+    
+    h2 {
+      font-size: 2.4rem;
+      font-weight: 600;
+      margin: 1.5em 0 0.8em;
+    }
+    
+    h3 {
+      font-size: 2rem;
+      font-weight: 600;
+      margin: 1.3em 0 0.7em;
+    }
+    
+    ul, ol {
+      margin-bottom: 1.5em;
+      padding-left: 2em;
+    }
+    
+    li {
+      margin-bottom: 0.5em;
+    }
+    
+    blockquote {
+      border-left: 3px solid #2c3e50; 
+      padding-left: 16px;
+      margin-left: 0;
+      font-style: italic;
+      color: #4b5563;
+    }
+    
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+      margin: 1.5em 0;
+    }
+    
+    a {
+      color: #2c3e50;
+      text-decoration: none;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+    
+    pre, code {
+      background-color: #f3f4f6;
+      border-radius: 4px;
+      padding: 0.2em 0.4em;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+    
+    pre {
+      padding: 1em;
+      overflow-x: auto;
+      
+      code {
+        background-color: transparent;
+        padding: 0;
+      }
+    }
+  }

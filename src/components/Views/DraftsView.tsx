@@ -10,7 +10,7 @@ import styles from '~/styles/views/DraftsView.module.scss'
 export const DraftsView = (_props: { drafts?: Draft[] }) => {
   const { requireAuthentication, session } = useSession()
   const { t } = useLocalize()
-  const { publishDraft, deleteDraft, drafts, loadDrafts, removeLocalDraft } = useDrafts()
+  const { publishDraft, deleteDraft, drafts, loadDrafts, removeLocalDraft, unpublishShout } = useDrafts()
   const [isLoading, setIsLoading] = createSignal(true)
 
   const handleDraftDelete = async (d: Draft | ExtendedDraft) => {
@@ -38,9 +38,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       await loadDrafts()
     } catch (error) {
       console.error('[DraftsView] Error deleting draft:', error)
-      toast(t('Error deleting draft'), {
-        icon: 'error'
-      })
+      toast.error(t('Error deleting draft'))
     }
   }
 
@@ -97,6 +95,19 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
     loadData()
   })
 
+  const handleUnpublish = async (draftId: number) => {
+    try {
+      const result = await unpublishShout(draftId)
+      if (result?.data?.unpublish_shout) {
+        toast.success(t('Article unpublished successfully'))
+        await loadDrafts()
+      }
+    } catch (error) {
+      console.error('[DraftsView] Error unpublishing article:', error)
+      toast.error(error instanceof Error ? error.message : t('Unknown error occurred'))
+    }
+  }
+
   return (
     <div class={styles.draftsView}>
       <div class="wide-container">
@@ -119,6 +130,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
                       <DraftCard
                         draft={draft}
                         onDelete={() => handleDraftDelete(draft)}
+                        onUnpublish={() => handleUnpublish(draft.id)}
                         onPublish={() => publishDraft(draft.id)}
                       />
                     </div>

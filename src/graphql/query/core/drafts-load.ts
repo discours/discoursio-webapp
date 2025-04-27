@@ -14,7 +14,6 @@ export default gql`
             cover_caption
             body
             media { url pic source artist title body date genre lyrics }
-            updated_by { id name slug pic created_at }
             topics { id title slug }
             authors { id name slug pic }
             created_at
