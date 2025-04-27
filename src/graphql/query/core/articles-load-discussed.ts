@@ -12,14 +12,7 @@ export default gql`
       cover
       cover_caption
       main_topic { id slug title }
-      authors {
-        id
-        name
-        slug
-        pic
-        created_at
-        bio
-      }
+      authors { id name slug pic created_at bio }
       created_at
       published_at
       featured_at
