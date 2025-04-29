@@ -5,7 +5,9 @@ import { Icon } from '~/components/_shared/Icon'
 import modalStyles from '~/components/_shared/Modal/Modal.module.scss'
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
-import type { Shout } from '~/graphql/schema/core.gen'
+import { loadAuthorsSearch } from '~/graphql/api/public'
+import type { Author, Shout } from '~/graphql/schema/core.gen'
+import { AuthorSearchItem } from './AuthorSearchItem'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { byScore } from '~/utils/sort'
 import { SearchResultItem } from './SearchResultItem'
@@ -47,6 +49,32 @@ export const SearchModal = () => {
   const [offset, setOffset] = createSignal<number>(0)
   const [hasMore, setHasMore] = createSignal(false)
   const [sentinelEl, setSentinelEl] = createSignal<HTMLDivElement>()
+  
+  // Author search related states
+  const [authorResults, setAuthorResults] = createSignal<Author[]>([])
+  const [isLoadingAuthors, setIsLoadingAuthors] = createSignal(false)
+
+  const fetchAuthorsSearch = async (query: string) => {
+    if (query.length < 3) {
+      setAuthorResults([])
+      return []
+    }
+    
+    setIsLoadingAuthors(true)
+    
+    try {
+      // Fetch up to 6 authors
+      const authorsResult = await loadAuthorsSearch(query, 6, 0)()
+      setAuthorResults(authorsResult || [])
+      return authorsResult || []
+    } catch (error) {
+      console.error('[SearchModal] Error fetching authors:', error)
+      setAuthorResults([])
+      return []
+    } finally {
+      setIsLoadingAuthors(false)
+    }
+  }
 
   const fetchSearchResults = async (resetResults = false) => {
     if (inputValue().trim().length < 3) {
@@ -54,6 +82,7 @@ export const SearchModal = () => {
     }
 
     const currentOffset = resetResults ? 0 : offset()
+    const searchQuery = inputValue().trim()
 
     setIsLoading(true)
     saveScrollPosition()
@@ -61,9 +90,12 @@ export const SearchModal = () => {
     if (resetResults) {
       setOffset(0)
       setSearchResultsList([])
+      
+      // Fetch authors when resetting results
+      fetchAuthorsSearch(searchQuery)
     }
 
-    await loadFeedSearch(inputValue().trim(), {
+    await loadFeedSearch(searchQuery, {
       offset: currentOffset,
       limit: FEED_PAGE_SIZE
     })
@@ -209,7 +241,8 @@ export const SearchModal = () => {
       <Show when={!isLoading() || searchResultsList().length > 0}>
         <Show when={searchResultsList().length > 0}>
           <div class={styles.searchResults}>
-            <For each={prepareSearchResults(searchResultsList(), inputValue())}>
+            {/* First 3 shouts */}
+            <For each={prepareSearchResults(searchResultsList(), inputValue()).slice(0, 3)}>
               {(article: Shout) => (
                 <div>
                   <SearchResultItem
@@ -223,6 +256,40 @@ export const SearchModal = () => {
                 </div>
               )}
             </For>
+            
+            {/* Authors block */}
+            <Show when={authorResults().length > 0}>
+              <div class={styles.searchAuthorsBlock}>
+                <h3 class={styles.searchAuthorsTitle}>{t('Authors')}</h3>
+                <div class={styles.searchAuthorsGrid}>
+                  <For each={authorResults()}>
+                    {(author: Author) => (
+                      <div class={styles.searchAuthorsItem}>
+                        <AuthorSearchItem author={author} />
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </Show>
+            
+            {/* Remaining shouts */}
+            <Show when={searchResultsList().length > 3}>
+              <For each={prepareSearchResults(searchResultsList(), inputValue()).slice(3)}>
+                {(article: Shout) => (
+                  <div>
+                    <SearchResultItem
+                      article={article}
+                      settings={{
+                        isFloorImportant: true,
+                        isSingle: true,
+                        nodate: true
+                      }}
+                    />
+                  </div>
+                )}
+              </For>
+            </Show>
 
             {/* Sentinel element for infinite scroll */}
             <div ref={setSentinelEl} data-testid="search-sentinel" style={sentinelStyle}>

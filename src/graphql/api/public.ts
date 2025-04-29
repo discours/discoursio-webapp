@@ -8,6 +8,7 @@ import loadShoutsUnratedQuery from '~/graphql/query/core/articles-load-unrated'
 import getAuthorQuery from '~/graphql/query/core/author-by'
 import loadAuthorsAllQuery from '~/graphql/query/core/authors-all'
 import loadAuthorsByQuery from '~/graphql/query/core/authors-load-by'
+import loadAuthorsSearchQuery from '~/graphql/query/core/authors-load-search'
 import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
 import getAuthorsByTopicQuery from '~/graphql/query/core/topic-authors'
 import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
@@ -326,6 +327,39 @@ export const useShoutsSearch = (text: string, options: LoadShoutsOptions) => {
   )
 }
 
+/**
+ * Реактивный ресурс для поиска авторов
+ * Особенности:
+ * - Автоматическое обновление при изменении запроса
+ * - Дебаунсинг запросов
+ * - Отмена устаревших запросов
+ *
+ * @example
+ * ```tsx
+ * const [query, setQuery] = createSignal('')
+ * const [results] = useAuthorsSearch(query(), {
+ *   limit: 10,
+ *   offset: page() * 10
+ * })
+ *
+ * return (
+ *   <Show when={!results.loading} fallback={<SearchSkeleton />}>
+ *     <For each={results()}>{author =>
+ *       <AuthorBadge author={author} />
+ *     }</For>
+ *   </Show>
+ * )
+ * ```
+ */
+export const useAuthorsSearch = (text: string, limit?: number, offset?: number) => {
+  return createQueryResource<Author[], { text: string, limit?: number, offset?: number }>(
+    loadAuthorsSearchQuery,
+    () => ({ text, limit, offset }),
+    defaultClient,
+    true // withAbort
+  )
+}
+
 // Unrated Shouts API
 /**
  * Реактивный ресурс для загрузки неоцененных шаутов
@@ -350,6 +384,26 @@ export const loadUnratedShouts = createLoader<Shout[], LoadShoutsOptions>(
   loadShoutsUnratedQuery,
   (options: LoadShoutsOptions) => ({ options }) as QueryLoad_Shouts_UnratedArgs
 )
+
+/**
+ * Прямой метод без кеширования
+ * Загрузка авторов по поисковому запросу
+ * Используется для SSR и начальной загрузки данных
+ * 
+ * @example
+ * ```tsx
+ * // В SearchModal:
+ * const authorResults = await loadAuthorsSearch("search term", 10, 0)()
+ * ```
+ */
+export const loadAuthorsSearch = (text: string, limit?: number, offset?: number) => {
+  return async () => {
+    const resp = await defaultClient
+      .query(loadAuthorsSearchQuery, { text, limit, offset })
+      .toPromise()
+    return resp?.data?.load_authors_search as Author[]
+  }
+}
 
 // Single Author API
 /**
