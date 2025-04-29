@@ -7,8 +7,8 @@ import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { loadAuthorsSearch } from '~/graphql/api/public'
 import type { Author, Shout } from '~/graphql/schema/core.gen'
-import { AuthorSearchItem } from './AuthorSearchItem'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
+import { AuthorSearchItem } from './AuthorSearchItem'
 import { SearchResultItem } from './SearchResultItem'
 
 import styles from './SearchModal.module.scss'
@@ -48,19 +48,19 @@ export const SearchModal = () => {
   const [offset, setOffset] = createSignal<number>(0)
   const [hasMore, setHasMore] = createSignal(false)
   const [sentinelEl, setSentinelEl] = createSignal<HTMLDivElement>()
-  
+
   // Author search related states
   const [authorResults, setAuthorResults] = createSignal<Author[]>([])
-  const [isLoadingAuthors, setIsLoadingAuthors] = createSignal(false)
+  const [_isLoadingAuthors, setIsLoadingAuthors] = createSignal(false)
 
   const fetchAuthorsSearch = async (query: string) => {
     if (query.length < 3) {
       setAuthorResults([])
       return []
     }
-    
+
     setIsLoadingAuthors(true)
-    
+
     try {
       // Fetch up to 6 authors
       const authorsResult = await loadAuthorsSearch(query, 6, 0)()
@@ -89,7 +89,7 @@ export const SearchModal = () => {
     if (resetResults) {
       setOffset(0)
       setSearchResultsList([])
-      
+
       // Fetch authors when resetting results
       fetchAuthorsSearch(searchQuery)
     }
@@ -255,7 +255,7 @@ export const SearchModal = () => {
                 </div>
               )}
             </For>
-            
+
             {/* Authors block */}
             <Show when={authorResults().length > 0}>
               <div class={styles.searchAuthorsBlock}>
@@ -271,7 +271,7 @@ export const SearchModal = () => {
                 </div>
               </div>
             </Show>
-            
+
             {/* Remaining shouts */}
             <Show when={searchResultsList().length > 3}>
               <For each={prepareSearchResults(searchResultsList(), inputValue()).slice(3)}>

@@ -352,7 +352,7 @@ export const useShoutsSearch = (text: string, options: LoadShoutsOptions) => {
  * ```
  */
 export const useAuthorsSearch = (text: string, limit?: number, offset?: number) => {
-  return createQueryResource<Author[], { text: string, limit?: number, offset?: number }>(
+  return createQueryResource<Author[], { text: string; limit?: number; offset?: number }>(
     loadAuthorsSearchQuery,
     () => ({ text, limit, offset }),
     defaultClient,
@@ -389,7 +389,7 @@ export const loadUnratedShouts = createLoader<Shout[], LoadShoutsOptions>(
  * Прямой метод без кеширования
  * Загрузка авторов по поисковому запросу
  * Используется для SSR и начальной загрузки данных
- * 
+ *
  * @example
  * ```tsx
  * // В SearchModal:
@@ -398,9 +398,7 @@ export const loadUnratedShouts = createLoader<Shout[], LoadShoutsOptions>(
  */
 export const loadAuthorsSearch = (text: string, limit?: number, offset?: number) => {
   return async () => {
-    const resp = await defaultClient
-      .query(loadAuthorsSearchQuery, { text, limit, offset })
-      .toPromise()
+    const resp = await defaultClient.query(loadAuthorsSearchQuery, { text, limit, offset }).toPromise()
     return resp?.data?.load_authors_search as Author[]
   }
 }

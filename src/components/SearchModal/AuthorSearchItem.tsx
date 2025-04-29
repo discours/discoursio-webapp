@@ -7,11 +7,8 @@ interface AuthorSearchItemProps {
 
 export const AuthorSearchItem = (props: AuthorSearchItemProps) => {
   return (
-    <div style={{ "margin-bottom": "20px" }}>
-      <AuthorBadge 
-        author={props.author} 
-        showMessageButton={false} 
-      />
+    <div style={{ 'margin-bottom': '20px' }}>
+      <AuthorBadge author={props.author} showMessageButton={false} />
     </div>
   )
 }
