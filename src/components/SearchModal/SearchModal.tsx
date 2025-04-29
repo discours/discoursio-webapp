@@ -9,7 +9,6 @@ import { loadAuthorsSearch } from '~/graphql/api/public'
 import type { Author, Shout } from '~/graphql/schema/core.gen'
 import { AuthorSearchItem } from './AuthorSearchItem'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { byScore } from '~/utils/sort'
 import { SearchResultItem } from './SearchResultItem'
 
 import styles from './SearchModal.module.scss'
