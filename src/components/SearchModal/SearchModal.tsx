@@ -8,36 +8,12 @@ import { useLocalize } from '~/context/localize'
 import { loadAuthorsSearch } from '~/graphql/api/public'
 import type { Author, Shout } from '~/graphql/schema/core.gen'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { AuthorSearchItem } from './AuthorSearchItem'
-import { SearchResultItem } from './SearchResultItem'
+import { SearchAll } from './Views/SearchAll'
+import { SearchShouts } from './Views/SearchShouts'
+import { SearchAuthors } from './Views/SearchAuthors'
+import { SearchNav } from './Views/SearchNav'
 
-import styles from './SearchModal.module.scss'
-
-// @@TODO handle empty article options after backend support (subtitle, cover, etc.)
-// @@TODO implement FILTERS & TOPICS
-
-const getSearchCoincidences = ({ str, intersection }: { str: string; intersection: string }) =>
-  `<span>${str.replaceAll(
-    new RegExp(intersection, 'gi'),
-    (casePreservedMatch) => `<span class="blackModeIntersection">${casePreservedMatch}</span>`
-  )}</span>`
-
-const prepareSearchResults = (list: Shout[], searchValue: string) =>
-  list.map((article) => ({
-    ...article,
-    title: article.title
-      ? getSearchCoincidences({
-          str: article.title,
-          intersection: searchValue
-        })
-      : '',
-    subtitle: article.subtitle
-      ? getSearchCoincidences({
-          str: article.subtitle,
-          intersection: searchValue
-        })
-      : ''
-  }))
+import styles from './Styles/SearchModal.module.scss'
 
 export const SearchModal = () => {
   const { t } = useLocalize()
@@ -48,11 +24,13 @@ export const SearchModal = () => {
   const [offset, setOffset] = createSignal<number>(0)
   const [hasMore, setHasMore] = createSignal(false)
   const [sentinelEl, setSentinelEl] = createSignal<HTMLDivElement>()
+  const [currentView, setCurrentView] = createSignal('all')
 
   // Author search related states
   const [authorResults, setAuthorResults] = createSignal<Author[]>([])
   const [_isLoadingAuthors, setIsLoadingAuthors] = createSignal(false)
 
+  // Fetch 6 authors for main Search Modal
   const fetchAuthorsSearch = async (query: string) => {
     if (query.length < 3) {
       setAuthorResults([])
@@ -62,7 +40,7 @@ export const SearchModal = () => {
     setIsLoadingAuthors(true)
 
     try {
-      // Fetch up to 6 authors
+
       const authorsResult = await loadAuthorsSearch(query, 6, 0)()
       setAuthorResults(authorsResult || [])
       return authorsResult || []
@@ -223,97 +201,67 @@ export const SearchModal = () => {
         onClick={() => {
           const query = inputValue().trim()
           if (query.length >= 3) {
-            debouncedSearch.cancel() // Cancel any pending debounced search
+            debouncedSearch.cancel() 
             fetchSearchResults(true)
           }
         }}
         value={isLoading() ? <div class={styles.searchLoader} /> : <Icon name="search" />}
       />
 
-      <p
-        class={styles.searchDescription}
-        innerHTML={t(
-          'To find publications, art, comments, authors and topics of interest to you, just start typing your query'
-        )}
-      />
-
-      <Show when={!isLoading() || searchResultsList().length > 0}>
-        <Show when={searchResultsList().length > 0}>
-          <div class={styles.searchResults}>
-            {/* First 3 shouts */}
-            <For each={prepareSearchResults(searchResultsList(), inputValue()).slice(0, 3)}>
-              {(article: Shout) => (
-                <div>
-                  <SearchResultItem
-                    article={article}
-                    settings={{
-                      isFloorImportant: true,
-                      isSingle: true,
-                      nodate: true
-                    }}
-                  />
-                </div>
-              )}
-            </For>
-
-            {/* Authors block */}
-            <Show when={authorResults().length > 0}>
-              <div class={styles.searchAuthorsBlock}>
-                <h3 class={styles.searchAuthorsTitle}>{t('Authors')}</h3>
-                <div class={styles.searchAuthorsGrid}>
-                  <For each={authorResults()}>
-                    {(author: Author) => (
-                      <div class={styles.searchAuthorsItem}>
-                        <AuthorSearchItem author={author} />
-                      </div>
-                    )}
-                  </For>
-                </div>
-              </div>
-            </Show>
-
-            {/* Remaining shouts */}
-            <Show when={searchResultsList().length > 3}>
-              <For each={prepareSearchResults(searchResultsList(), inputValue()).slice(3)}>
-                {(article: Shout) => (
-                  <div>
-                    <SearchResultItem
-                      article={article}
-                      settings={{
-                        isFloorImportant: true,
-                        isSingle: true,
-                        nodate: true
-                      }}
-                    />
-                  </div>
-                )}
-              </For>
-            </Show>
-
-            {/* Sentinel element for infinite scroll */}
-            <div ref={setSentinelEl} data-testid="search-sentinel" style={sentinelStyle}>
-              <Show when={isLoading() && hasMore()}>
-                <div class={styles.searchLoader} />
-              </Show>
-            </div>
-
-            {/* Loading indicator at the bottom when loading more */}
-            <Show when={isLoading() && searchResultsList().length > 0}>
-              <div class={styles.searchLoader} />
-            </Show>
-          </div>
-        </Show>
-
-        <Show when={inputValue().trim().length >= 3 && searchResultsList().length === 0 && !isLoading()}>
-          <p class={styles.searchDescription} innerHTML={t("We couldn't find anything for your request")} />
-        </Show>
+      <Show when={inputValue().trim().length < 3}>
+        <p
+          class={styles.searchDescription}
+          innerHTML={t(
+            'To find publications, art, comments, authors and topics of interest to you, just start typing your query'
+          )}
+        />
       </Show>
 
-      {/* Show initial loading state when there are no results yet */}
-      <Show when={isLoading() && searchResultsList().length === 0}>
-        <div class={styles.loadingContainer}>
-          <div class={styles.searchLoader} />
-        </div>
+      <Show when={inputValue().trim().length >= 3}>
+        <SearchNav view={currentView()} setView={setCurrentView} />
+      </Show>
+
+      <Show when={!isLoading() || searchResultsList().length > 0}>
+        <Show when={searchResultsList().length > 0 || authorResults().length > 0}>
+          {/* Render the appropriate component based on current view */}
+          <Show when={currentView() === 'all'}>
+            <SearchAll 
+              searchValue={inputValue()}
+              isLoading={isLoading()}
+              hasMore={hasMore()}
+              setSentinelEl={setSentinelEl}
+              sentinelStyle={sentinelStyle}
+              shoutsList={searchResultsList()}
+              authorsList={authorResults()}
+            />
+          </Show>
+
+          <Show when={currentView() === 'shouts'}>
+            <SearchShouts 
+              searchValue={inputValue()}
+              isLoading={isLoading()}
+              hasMore={hasMore()}
+              setSentinelEl={setSentinelEl}
+              sentinelStyle={sentinelStyle}
+              shoutsList={searchResultsList()}
+            />
+          </Show>
+
+          <Show when={currentView() === 'authors'}>
+            <SearchAuthors
+              searchValue={inputValue()}
+              isLoading={isLoading()}
+              hasMore={hasMore()}
+              setSentinelEl={setSentinelEl}
+              sentinelStyle={sentinelStyle}
+              authorsList={authorResults()}
+            />
+          </Show>
+        </Show>
+
+        <Show when={inputValue().trim().length >= 3 && searchResultsList().length === 0 && authorResults().length === 0 && !isLoading()}>
+          <p class={styles.searchDescription} innerHTML={t("We couldn't find anything for your request")} />
+        </Show>
       </Show>
     </div>
   )

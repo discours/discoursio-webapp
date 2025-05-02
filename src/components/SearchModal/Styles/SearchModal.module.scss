@@ -63,11 +63,33 @@
   color: rgb(255 255 255 / 64%);
 }
 
+.searchNavButton {
+  cursor: pointer;
+  color: #fff;
+  text-decoration: none;
+  padding: 4px 8px;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.searchNavButtonSelected {
+  border-bottom: 2px solid #fff;
+  padding-bottom: 6px;
+}
+
 .searchAuthorsBlock {
   margin: 2.5rem 0;
   padding: 2rem 0;
   border-top: 1px solid rgb(255 255 255 / 10%);
   border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+
+.searchAuthorsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .searchAuthorsTitle {
