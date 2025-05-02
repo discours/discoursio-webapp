@@ -8,7 +8,7 @@ import {
   on,
   useContext
 } from 'solid-js'
-import { getAuthor, loadAuthors, loadAuthorsAll } from '~/graphql/api/public'
+import { getAuthor, loadAuthors, loadAuthorsAll, loadAuthorsSearch } from '~/graphql/api/public'
 import {
   Author,
   Maybe,
@@ -22,6 +22,22 @@ import { byStat } from '~/utils/sort'
 import { useFeed } from './feed'
 
 const TOP_AUTHORS_COUNT = 5
+
+// Define the structure for authors search state, similar to FeedState in feed.tsx
+interface AuthorsSearchState {
+  authors: Author[]
+  isLoading: boolean
+  hasMore: boolean
+  isEmpty?: boolean
+  error?: Error
+}
+
+const emptySearch: AuthorsSearchState = {
+  authors: [],
+  isLoading: false,
+  hasMore: false,
+  isEmpty: true
+}
 
 // Универсальная функция фильтрации и сортировки
 function filterAndSort<Author>(
@@ -43,6 +59,10 @@ type AuthorsContextType = {
   authorsByTopic: Accessor<{ [topicSlug: string]: Author[] }>
   setAuthorsSort: (stat: string) => void
   loadAllAuthors: () => Promise<Author[]>
+  // search-related properties
+  searchAuthorsState: Accessor<AuthorsSearchState>
+  loadAuthorsSearchResults: (text: string, limit?: number, offset?: number) => Promise<void>
+  resetAuthorsSearch: () => void
 }
 
 const AuthorsContext = createContext<AuthorsContextType>({} as AuthorsContextType)
@@ -54,6 +74,10 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
   const [authorsSorted, setAuthorsSorted] = createSignal<Author[]>([])
   const [sortBy, setSortBy] = createSignal<SortFunction<Author>>()
   const { feedByAuthor } = useFeed()
+
+  // state for authors search
+  const [searchAuthorsState, setSearchAuthorsState] = createSignal<AuthorsSearchState>(emptySearch)
+
   const setAuthorsSort = (stat: string) => setSortBy(() => byStat(stat) as SortFunction<Author>)
 
   // Эффект для отслеживания изменений сигнала sortBy и обновления authorsSorted
@@ -113,6 +137,58 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
       console.error('Error loading authors:', error)
       throw error
     }
+  }
+
+  // method to load authors search results
+  const loadAuthorsSearchResults = async (text: string, limit = 20, offset = 0) => {
+    if (!text || text.trim().length < 3) {
+      setSearchAuthorsState({
+        authors: [],
+        isLoading: false,
+        hasMore: false,
+        isEmpty: true
+      })
+      return
+    }
+
+    // Set loading state
+    setSearchAuthorsState((prev) => ({ ...prev, isLoading: true }))
+
+    try {
+      console.debug('[AuthorsProvider] Searching authors:', { text, limit, offset })
+      const result = await loadAuthorsSearch(text, limit, offset)()
+      console.debug('[AuthorsProvider] Search results:', {
+        count: result?.length,
+        hasMore: (result || []).length >= limit
+      })
+
+      // If this is a new search (offset is 0), replace the entire list
+      // Otherwise, append the new results to the existing list
+      setSearchAuthorsState((prev) => ({
+        authors: offset ? [...prev.authors, ...(result || [])] : result || [],
+        isLoading: false,
+        hasMore: (result || []).length >= limit,
+        isEmpty: !result?.length && offset === 0
+      }))
+
+      // Add the results to our entity collection
+      if (result?.length) {
+        addAuthors(result)
+      }
+    } catch (error) {
+      console.error('[AuthorsProvider] Search API error:', error)
+      setSearchAuthorsState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: error as Error,
+        isEmpty: offset === 0 ? true : prev.isEmpty
+      }))
+    }
+  }
+
+  // Method to reset search state
+  const resetAuthorsSearch = () => {
+    setSearchAuthorsState(emptySearch)
   }
 
   const topAuthors = createMemo(() => {
@@ -185,7 +261,11 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
     loadAllAuthors, // without stat
     topAuthors,
     authorsByTopic,
-    setAuthorsSort
+    setAuthorsSort,
+    // New search methods
+    searchAuthorsState,
+    loadAuthorsSearchResults,
+    resetAuthorsSearch
   }
 
   return <AuthorsContext.Provider value={contextValue}>{props.children}</AuthorsContext.Provider>

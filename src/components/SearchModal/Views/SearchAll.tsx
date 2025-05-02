@@ -2,14 +2,14 @@ import { For, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { AuthorSearchItem } from './../AuthorSearchItem'
 import { SearchResultItem } from './../SearchResultItem'
+import styles from './../Styles/SearchModal.module.scss'
 import { SearchAllProps } from './types'
 import { getSearchCoincidences } from './utils'
-import styles from './../Styles/SearchModal.module.scss'
 
 export const SearchAll = (props: SearchAllProps) => {
   const { t } = useLocalize()
-  
-  const prepareSearchResults = (list: typeof props.shoutsList) => 
+
+  const prepareSearchResults = (list: typeof props.shoutsList) =>
     list.map((article) => ({
       ...article,
       title: article.title
@@ -44,12 +44,12 @@ export const SearchAll = (props: SearchAllProps) => {
         )}
       </For>
 
-      {/* Authors block */}
+      {/* Authors block - first 6 authors */}
       <Show when={props.authorsList.length > 0}>
         <div class={styles.searchAuthorsBlock}>
           <h3 class={styles.searchAuthorsTitle}>{t('Authors')}</h3>
           <div class={styles.searchAuthorsGrid}>
-            <For each={props.authorsList}>
+            <For each={props.authorsList.slice(0, 6)}>
               {(author) => (
                 <div class={styles.searchAuthorsItem}>
                   <AuthorSearchItem author={author} />
@@ -59,7 +59,6 @@ export const SearchAll = (props: SearchAllProps) => {
           </div>
         </div>
       </Show>
-
     </div>
   )
 }

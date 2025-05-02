@@ -1,7 +1,7 @@
 import { For, Show } from 'solid-js'
 import { AuthorSearchItem } from './../AuthorSearchItem'
-import { SearchAuthorsProps } from './types'
 import styles from './../Styles/SearchModal.module.scss'
+import { SearchAuthorsProps } from './types'
 
 export const SearchAuthors = (props: SearchAuthorsProps) => {
   return (
@@ -17,12 +17,13 @@ export const SearchAuthors = (props: SearchAuthorsProps) => {
           </For>
         </div>
       </Show>
-      
-      <Show when={props.isLoading}>
-        <div class={styles.loadingContainer}>
+
+      {/* Sentinel element for infinite scroll */}
+      <div ref={props.setSentinelEl} data-testid="search-sentinel-authors" style={props.sentinelStyle}>
+        <Show when={props.isLoading && props.hasMore}>
           <div class={styles.searchLoader} />
-        </div>
-      </Show>
+        </Show>
+      </div>
     </div>
   )
 }

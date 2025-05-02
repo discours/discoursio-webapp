@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createResource, createSignal, onCleanup, onMount } from 'solid-js'
+import { Show, createEffect, createResource, createSignal, onCleanup, onMount } from 'solid-js'
 import { debounce } from 'throttle-debounce'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
@@ -9,9 +9,9 @@ import { loadAuthorsSearch } from '~/graphql/api/public'
 import type { Author, Shout } from '~/graphql/schema/core.gen'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { SearchAll } from './Views/SearchAll'
-import { SearchShouts } from './Views/SearchShouts'
 import { SearchAuthors } from './Views/SearchAuthors'
 import { SearchNav } from './Views/SearchNav'
+import { SearchShouts } from './Views/SearchShouts'
 
 import styles from './Styles/SearchModal.module.scss'
 
@@ -23,15 +23,18 @@ export const SearchModal = () => {
   const [isLoading, setIsLoading] = createSignal(false)
   const [offset, setOffset] = createSignal<number>(0)
   const [hasMore, setHasMore] = createSignal(false)
-  const [sentinelEl, setSentinelEl] = createSignal<HTMLDivElement>()
+
+  // Use separate sentinel elements for shouts and authors
+  const [shoutsSentinelEl, setShoutsSentinelEl] = createSignal<HTMLDivElement>()
+  const [authorsSentinelEl, setAuthorsSentinelEl] = createSignal<HTMLDivElement>()
   const [currentView, setCurrentView] = createSignal('all')
 
   // Author search related states
   const [authorResults, setAuthorResults] = createSignal<Author[]>([])
   const [_isLoadingAuthors, setIsLoadingAuthors] = createSignal(false)
 
-  // Fetch 6 authors for main Search Modal
-  const fetchAuthorsSearch = async (query: string) => {
+  // Fetch FEED_PAGE_SIZE authors but only show 6 in SearchAll
+  const fetchAuthorsSearch = async (query: string, resetResults = true) => {
     if (query.length < 3) {
       setAuthorResults([])
       return []
@@ -40,13 +43,19 @@ export const SearchModal = () => {
     setIsLoadingAuthors(true)
 
     try {
+      const authorsResult = await loadAuthorsSearch(query, FEED_PAGE_SIZE, 0)()
 
-      const authorsResult = await loadAuthorsSearch(query, 6, 0)()
-      setAuthorResults(authorsResult || [])
+      // Only reset authors list if resetResults is true (new search)
+      if (resetResults) {
+        setAuthorResults(authorsResult || [])
+      }
+
       return authorsResult || []
     } catch (error) {
       console.error('[SearchModal] Error fetching authors:', error)
-      setAuthorResults([])
+      if (resetResults) {
+        setAuthorResults([])
+      }
       return []
     } finally {
       setIsLoadingAuthors(false)
@@ -104,6 +113,7 @@ export const SearchModal = () => {
       fetchSearchResults(true)
     } else {
       setSearchResultsList([])
+      setAuthorResults([])
       setHasMore(false)
       setOffset(0)
     }
@@ -117,8 +127,14 @@ export const SearchModal = () => {
       await debouncedSearch()
     } else {
       setSearchResultsList([])
+      setAuthorResults([])
       setHasMore(false)
       setOffset(0)
+    }
+
+    // Clear author results when query is less than 3 characters
+    if (newValue.trim().length < 3) {
+      setAuthorResults([])
     }
   }
 
@@ -133,6 +149,7 @@ export const SearchModal = () => {
       await fetchSearchResults(true)
     } else {
       setSearchResultsList([])
+      setAuthorResults([])
       setHasMore(false)
       setOffset(0)
     }
@@ -141,19 +158,47 @@ export const SearchModal = () => {
     setIsLoading(false)
   }
 
-  // Setup intersection observer for infinite scroll
-  let observer: IntersectionObserver | undefined
+  // Setup intersection observers for infinite scroll
+  let shoutsObserver: IntersectionObserver | undefined
+  let authorsObserver: IntersectionObserver | undefined
 
-  const setupObserver = () => {
-    if (observer) observer.disconnect()
+  // Function to load more authors with pagination
+  const loadMoreAuthors = async () => {
+    if (inputValue().trim().length < 3 || isLoading() || !hasMore()) return
+
+    setIsLoading(true)
+    const currentQuery = inputValue().trim()
+    try {
+      const authorOffset = authorResults().length
+      const newAuthors = await loadAuthorsSearch(currentQuery, FEED_PAGE_SIZE, authorOffset)()
+
+      if (newAuthors && newAuthors.length > 0) {
+        setAuthorResults([...authorResults(), ...newAuthors])
+        setHasMore(newAuthors.length >= FEED_PAGE_SIZE)
+      } else {
+        setHasMore(false)
+      }
+    } catch (error) {
+      console.error('[SearchModal] Error fetching more authors:', error)
+      setHasMore(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Setup observer for shouts
+  const setupShoutsObserver = () => {
+    if (shoutsObserver) shoutsObserver.disconnect()
+    const shoutsSentinel = shoutsSentinelEl()
+    if (!shoutsSentinel) return
 
     const modalInnerElement = document.querySelector(`.${modalStyles.modalInner}`) as Element
     if (!modalInnerElement) return
 
-    observer = new IntersectionObserver(
+    shoutsObserver = new IntersectionObserver(
       async (entries) => {
         if (entries[0].isIntersecting && hasMore() && !isLoading()) {
-          await fetchSearchResults(false)
+          await fetchSearchResults(false) // Load more shouts
         }
       },
       {
@@ -163,26 +208,58 @@ export const SearchModal = () => {
       }
     )
 
-    const element = sentinelEl()
-    if (element) {
-      observer.observe(element)
-    }
+    shoutsObserver.observe(shoutsSentinel)
   }
 
-  // Observer setup effect
+  // Setup observer for authors
+  const setupAuthorsObserver = () => {
+    if (authorsObserver) authorsObserver.disconnect()
+    const authorsSentinel = authorsSentinelEl()
+    if (!authorsSentinel) return
+
+    const modalInnerElement = document.querySelector(`.${modalStyles.modalInner}`) as Element
+    if (!modalInnerElement) return
+
+    authorsObserver = new IntersectionObserver(
+      async (entries) => {
+        if (entries[0].isIntersecting && hasMore() && !isLoading()) {
+          await loadMoreAuthors() // Load more authors
+        }
+      },
+      {
+        root: modalInnerElement,
+        rootMargin: '100px',
+        threshold: 0.1
+      }
+    )
+
+    authorsObserver.observe(authorsSentinel)
+  }
+
+  // Set up observers when sentinel elements change
   createEffect(() => {
-    if (sentinelEl()) {
-      // Use a small delay to ensure the modal is fully rendered
-      setTimeout(setupObserver, 100)
+    const shoutsSentinel = shoutsSentinelEl()
+    if (shoutsSentinel) {
+      setupShoutsObserver()
     }
   })
 
-  // Lifecycle hooks
-  onMount(setupObserver)
+  createEffect(() => {
+    const authorsSentinel = authorsSentinelEl()
+    if (authorsSentinel) {
+      setupAuthorsObserver()
+    }
+  })
+
+  // Cleanup observers on unmount
+  onMount(() => {
+    // Initial setup will happen via createEffects when sentinels are set
+  })
 
   onCleanup(() => {
     debouncedSearch.cancel()
-    if (observer) observer.disconnect()
+    if (shoutsObserver) shoutsObserver.disconnect()
+    if (authorsObserver) authorsObserver.disconnect()
   })
 
   return (
@@ -201,7 +278,7 @@ export const SearchModal = () => {
         onClick={() => {
           const query = inputValue().trim()
           if (query.length >= 3) {
-            debouncedSearch.cancel() 
+            debouncedSearch.cancel()
             fetchSearchResults(true)
           }
         }}
@@ -218,30 +295,37 @@ export const SearchModal = () => {
       </Show>
 
       <Show when={inputValue().trim().length >= 3}>
-        <SearchNav view={currentView()} setView={setCurrentView} />
+        <SearchNav
+          view={currentView()}
+          setView={(view) => {
+            // When switching views, reset the offset if needed
+            if (view !== currentView()) {
+              setCurrentView(view)
+              setHasMore(true)
+            }
+          }}
+        />
       </Show>
 
-      <Show when={!isLoading() || searchResultsList().length > 0}>
+      <Show when={(!isLoading() || searchResultsList().length > 0) && inputValue().trim().length >= 3}>
         <Show when={searchResultsList().length > 0 || authorResults().length > 0}>
           {/* Render the appropriate component based on current view */}
           <Show when={currentView() === 'all'}>
-            <SearchAll 
+            <SearchAll
               searchValue={inputValue()}
               isLoading={isLoading()}
               hasMore={hasMore()}
-              setSentinelEl={setSentinelEl}
-              sentinelStyle={sentinelStyle}
               shoutsList={searchResultsList()}
               authorsList={authorResults()}
             />
           </Show>
 
           <Show when={currentView() === 'shouts'}>
-            <SearchShouts 
+            <SearchShouts
               searchValue={inputValue()}
               isLoading={isLoading()}
               hasMore={hasMore()}
-              setSentinelEl={setSentinelEl}
+              setSentinelEl={setShoutsSentinelEl}
               sentinelStyle={sentinelStyle}
               shoutsList={searchResultsList()}
             />
@@ -252,14 +336,21 @@ export const SearchModal = () => {
               searchValue={inputValue()}
               isLoading={isLoading()}
               hasMore={hasMore()}
-              setSentinelEl={setSentinelEl}
+              setSentinelEl={setAuthorsSentinelEl}
               sentinelStyle={sentinelStyle}
               authorsList={authorResults()}
             />
           </Show>
         </Show>
 
-        <Show when={inputValue().trim().length >= 3 && searchResultsList().length === 0 && authorResults().length === 0 && !isLoading()}>
+        <Show
+          when={
+            inputValue().trim().length >= 3 &&
+            searchResultsList().length === 0 &&
+            authorResults().length === 0 &&
+            !isLoading()
+          }
+        >
           <p class={styles.searchDescription} innerHTML={t("We couldn't find anything for your request")} />
         </Show>
       </Show>

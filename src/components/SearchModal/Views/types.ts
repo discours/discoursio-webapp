@@ -1,19 +1,28 @@
 import type { Author, Shout } from '~/graphql/schema/core.gen'
 
 export interface SearchBaseProps {
-  searchValue: string;
-  isLoading: boolean;
-  hasMore: boolean;
-  setSentinelEl: (el: HTMLDivElement) => void;
-  sentinelStyle: { [key: string]: string };
+  searchValue: string
+  isLoading: boolean
+  hasMore: boolean
 }
 
-export interface SearchShoutsProps extends SearchBaseProps {
-  shoutsList: Shout[];
+export interface InfiniteScrollProps extends SearchBaseProps {
+  setSentinelEl: (el: HTMLDivElement) => void
+  sentinelStyle: { [key: string]: string }
 }
 
-export interface SearchAuthorsProps extends SearchBaseProps {
-  authorsList: Author[];
+export interface SearchShoutsProps extends InfiniteScrollProps {
+  shoutsList: Shout[]
 }
 
-export interface SearchAllProps extends SearchShoutsProps, SearchAuthorsProps {}
+export interface SearchAuthorsProps extends InfiniteScrollProps {
+  authorsList: Author[]
+}
+
+export interface SearchAllProps {
+  searchValue: string
+  isLoading: boolean
+  hasMore: boolean
+  shoutsList: Shout[]
+  authorsList: Author[]
+}
