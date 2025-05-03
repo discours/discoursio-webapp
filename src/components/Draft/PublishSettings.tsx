@@ -271,7 +271,7 @@ export const PublishSettings = () => {
             </p>
 
             <h4>{t('Slug')}</h4>
-            <div class={styles.errorMessage}>{validationErrors().slug}</div>
+            <div class={styles.errorMessage}>{t(validationErrors().slug || '')}</div>
             <div class="pretty-form__item">
               <input
                 type="text"
