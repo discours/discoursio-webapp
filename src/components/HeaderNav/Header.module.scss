@@ -984,17 +984,6 @@
   margin-top: 2px;
 }
 
-.snackbar {
-  position: fixed;
-  z-index: 10000;
-  border-radius: var(--toast-border-radius);
-  background: var(--toast-background);
-  color: var(--toast-text-color);
-  box-shadow: var(--toast-box-shadow);
-  padding: var(--toast-padding);
-  font-size: var(--toast-font-size);
-}
-
 .toastContainer {
   display: flex;
   flex-direction: column;
@@ -1016,11 +1005,12 @@
 }
 
 .snackbar {
-  margin: 0 !important;
-  position: relative !important;
-  transform: none !important;
-  top: auto !important;
-  left: auto !important;
-  right: auto !important;
-  bottom: auto !important;
+  position: fixed;
+  z-index: 10000;
+  border-radius: var(--toast-border-radius);
+  background: var(--toast-background);
+  color: var(--toast-text-color);
+  box-shadow: var(--toast-box-shadow);
+  padding: var(--toast-padding);
+  font-size: var(--toast-font-size);
 }

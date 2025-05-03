@@ -87,18 +87,15 @@
   --toast-success-background: #4CAF50;
   --toast-info-background: var(--blue-link);
   --toast-warning-background: #FF9800;
-  
   --toast-text-color: var(--default-color);
   --toast-error-text-color: var(--background-color);
   --toast-success-text-color: var(--background-color);
   --toast-info-text-color: var(--background-color);
   --toast-warning-text-color: var(--background-color);
-  
   --toast-border-radius: var(--comment-radius-md);
   --toast-font-size: 16px;
   --toast-padding: var(--comment-spacing-lg);
   --toast-box-shadow: var(--comment-shadow-lg);
-  
   --toast-icon-size: 20px;
   --toast-animation-duration: 0.5s;
 }

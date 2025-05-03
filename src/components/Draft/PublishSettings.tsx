@@ -37,12 +37,14 @@ export const PublishSettings = () => {
   const { t } = useLocalize()
   const {
     currentDraft,
+    updateDraftField,
     publishDraft,
     unpublishShout,
-    updateDraftField,
     validationErrors,
     validateCurrentDraft,
-    clearValidationErrors
+    clearValidationErrors,
+    setCurrentDraft,
+    drafts
   } = useDrafts()
   const { showModal } = useUI()
   const { loadTopics, sortedTopics } = useTopics()
@@ -220,7 +222,9 @@ export const PublishSettings = () => {
 
   const isPublished = () => {
     const draft = currentDraft()
-    return draft?.published_at != null && draft?.published_at > 0
+
+    // Проверяем наличие связанной публикации со статусом published_at
+    return draft?.publication?.published_at && draft.publication.published_at > 0
   }
 
   const handleUnpublish = async () => {
@@ -231,10 +235,48 @@ export const PublishSettings = () => {
       return
     }
 
+    // Флаг, указывающий, перенаправлять ли на список черновиков вместо редактора
+    const redirectToDraftsList = false // Изменить на true для перенаправления на список черновиков
+
+    console.log(
+      `[PublishSettings] Снятие публикации для статьи #${draft.id}, isPublished=${isPublished()}, publication=`,
+      draft.publication
+    )
+
     try {
       const result = await unpublishShout(draft.id)
       if (result?.data?.unpublish_shout) {
         toast.success(t('Article unpublished successfully'))
+
+        // Загрузка черновиков уже происходит внутри unpublishShout
+        // await loadDrafts()
+
+        // Находим обновленный черновик в списке
+        const updatedDraft = drafts().find((d) => d.id === draft.id)
+        if (updatedDraft) {
+          setCurrentDraft(updatedDraft)
+          console.log(
+            `[PublishSettings] Обновлен черновик после снятия публикации: ${updatedDraft.id}`,
+            `isPublished=${isPublished()}`,
+            `publication=${updatedDraft.publication}`
+          )
+
+          // Явно проверяем, что published_at сброшен
+          if (updatedDraft.publication?.published_at) {
+            console.warn(
+              `[PublishSettings] Внимание! После снятия публикации publication.published_at всё ещё установлен: ${updatedDraft.publication.published_at}`
+            )
+          }
+
+          // Перенаправляем пользователя
+          if (redirectToDraftsList) {
+            // На список черновиков
+            navigate('/drafts')
+          } else {
+            // На страницу редактирования черновика
+            navigate(`/edit/${updatedDraft.id}`)
+          }
+        }
       } else if (result?.error) {
         toast.error(t(result.error.message))
       }
@@ -318,8 +360,7 @@ export const PublishSettings = () => {
               value={t('Invite collaborators')}
             />
 
-
-<h4>{t('Material card')}</h4>
+            <h4>{t('Material card')}</h4>
             <div class={styles.articlePreview}>
               <div class={styles.actions}>
                 <Button
@@ -407,7 +448,6 @@ export const PublishSettings = () => {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>

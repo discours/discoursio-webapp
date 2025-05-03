@@ -47,13 +47,13 @@
     min-height: 50px;
 
     // Для средних экранов - половина ширины
-    @media (min-width: 768px) {
+    @media (width >= 768px) {
       width: 50vw;
       max-width: 420px;
     }
 
     // Для широких экранов - треть ширины
-    @media (min-width: 1200px) {
+    @media (width >= 1200px) {
       width: 33vw;
       max-width: 420px;
     }
@@ -111,12 +111,14 @@
   @keyframes toast-in {
     0% {
       opacity: 0;
-      transform: none !important;
+      transform: none;
     }
+
     50% {
       opacity: 0.5;
-      transform: none !important;
+      transform: none;
     }
+
     100% {
       opacity: 1;
     }
@@ -128,17 +130,15 @@
     z-index: 10000;
     bottom: 20px;
     left: 50%;
-    transform: none !important;
+    transform: none;
     
     // Используем переменные для стилей
     border-radius: var(--toast-border-radius);
     background: var(--toast-background);
     color: var(--toast-text-color);
     box-shadow: var(--toast-box-shadow);
-    
     padding: var(--toast-padding);
     font-size: var(--toast-font-size);
-    
     animation: toast-in-bottom var(--toast-animation-duration) cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
   }
 
@@ -146,11 +146,12 @@
   @keyframes toast-in-bottom {
     0% {
       opacity: 0;
-      transform: none !important;
+      transform: none;
     }
+
     100% {
       opacity: 1;
-      transform: none !important;
+      transform: none;
     }
   }
 }

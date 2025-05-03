@@ -2,7 +2,7 @@ import { A, redirect, useLocation, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import { isServer } from 'solid-js/web'
-import { Toaster, toast, resolveValue } from 'solid-toast'
+import { Toaster } from 'solid-toast'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
@@ -433,8 +433,8 @@ export const Header = (props: Props) => {
               className: styles.snackbar,
               duration: 4000,
               style: {
-                'background': 'var(--toast-background)',
-                'color': 'var(--toast-text-color)',
+                background: 'var(--toast-background)',
+                color: 'var(--toast-text-color)',
                 'border-radius': 'var(--toast-border-radius)',
                 'box-shadow': 'var(--toast-box-shadow)',
                 'font-size': 'var(--toast-font-size)'

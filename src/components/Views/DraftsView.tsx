@@ -47,16 +47,27 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
     console.log('[DraftsView] current drafts:', drafts())
   })
 
+  // Отслеживаем состояние загрузки
+  createEffect(() => {
+    console.log('[DraftsView] isLoading:', isLoading(), 'drafts count:', drafts()?.length || 0)
+  })
+
   // Функция загрузки данных черновиков
   const loadData = async () => {
     setIsLoading(true)
     try {
       await loadDrafts()
-      console.log('[DraftsView] drafts loaded')
+      console.log('[DraftsView] drafts loaded, count:', drafts()?.length || 0)
     } catch (error) {
       console.error('[DraftsView] Error loading drafts:', error)
     } finally {
       setIsLoading(false)
+      console.log(
+        '[DraftsView] loading finished, isLoading:',
+        false,
+        'drafts count:',
+        drafts()?.length || 0
+      )
     }
   }
 
@@ -69,13 +80,16 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
 
         if (token) {
           console.log('[DraftsView] session is ready, loading drafts...')
+          setIsLoading(true)
           try {
             await loadData()
           } catch (err) {
             console.error('[DraftsView] Failed to load drafts:', err)
+            setIsLoading(false)
           }
         } else {
           console.log('[DraftsView] no session, requiring authentication...')
+          setIsLoading(true)
           try {
             await requireAuthentication(async () => {
               console.log('[DraftsView] authenticated, loading drafts...')
@@ -83,6 +97,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
             }, 'edit')
           } catch (err) {
             console.error('[DraftsView] Authentication failed:', err)
+            setIsLoading(false)
           }
         }
       },
@@ -118,9 +133,18 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
             </div>
 
             <Show
-              when={!isLoading() && drafts()?.length > 0}
+              when={drafts()?.length > 0}
               fallback={
-                <div class={styles.noDrafts}>{isLoading() ? t('Loading drafts...') : t('No drafts')}</div>
+                <div class={styles.noDrafts}>
+                  {isLoading() ? (
+                    <div class={styles.loadingMessage}>{t('Loading drafts...')}</div>
+                  ) : (
+                    <div class={styles.emptyMessage}>
+                      <h3>{t('No drafts yet')}</h3>
+                      <p>{t('Create a new draft to start writing')}</p>
+                    </div>
+                  )}
+                </div>
               }
             >
               <div class={styles.draftsList}>
