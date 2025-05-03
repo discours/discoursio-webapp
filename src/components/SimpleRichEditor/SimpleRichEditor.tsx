@@ -21,7 +21,7 @@ import { useUI } from '~/context/ui'
 import { MODALS } from '~/context/ui'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { UploadedFile } from '~/types/upload'
-import { InlineFormOptions, validateVideoUrl, validateWebUrl } from '../../lib/validateDraft'
+import { validateVideoUrl, validateWebUrl } from '../../lib/validateDraft'
 import { handleAudioUploaderResult } from './lib/audio'
 import { isGroup } from './lib/commands'
 import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
@@ -48,6 +48,7 @@ import {
   EditorData,
   EditorFieldType,
   FormType,
+  InlineFormOptions,
   Position,
   ToolbarMode
 } from './lib/types'
@@ -1170,9 +1171,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
     // Устанавливаем опции формы
     editorFormOptions = {
-      type,
       onSubmit,
-      validate: type === 'video' ? (url) => validateVideoUrl(url, t) : (url) => validateWebUrl(url, t)
+      validate: type === 'video' ? (url: string) => validateVideoUrl(url) : (url: string) => validateWebUrl(url)
     }
   }
 
