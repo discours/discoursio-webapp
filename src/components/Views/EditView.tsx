@@ -1,31 +1,28 @@
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
+import { Show, createEffect, createSignal, on, onCleanup, onMount, untrack } from 'solid-js'
 import { debounce } from 'throttle-debounce'
 
-import { DropArea } from '~/components/_shared/DropArea'
 import { Icon } from '~/components/_shared/Icon'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Modal } from '~/components/_shared/Modal'
-import { Popover } from '~/components/_shared/Popover'
 import { EditorSwiper } from '~/components/_shared/SolidSwiper'
 import { useConnect } from '~/context/connect'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import type { Draft, DraftInput, MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
-import { getFileUrl } from '~/lib/getThumbUrl'
-import { LayoutType } from '~/types/nav'
 import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
-import { getProvider } from '../SimpleRichEditor/lib/awareness'
+import { getProvider, destroyProvider } from '../SimpleRichEditor/lib/awareness'
 import { isEmptyContent } from '../SimpleRichEditor/lib/empty'
 import { CommandType, EditorData } from '../SimpleRichEditor/lib/types'
 import { AudioUploader } from '../Upload/AudioUploader'
 import { VideoUploader } from '../Upload/VideoUploader'
-import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'
+import { SubtitleComponent, TitleSection } from '../Draft/DraftEditorHead'
+import { LeadComponent } from '../Draft/DraftEditorLead'
 
 import styles from '~/styles/views/EditView.module.scss'
+import { AudioProfile } from '../Draft/DraftAudio'
 
-export const MAX_HEADER_LIMIT = 100
 export const EMPTY_TOPIC: Topic = {
   id: -1,
   slug: ''
@@ -54,9 +51,10 @@ export const featuredEditorCommands = [
 ]
 
 /**
- * EditView component
+ * Компонент для редактирования черновика
  *
- * @returns EditView component
+ * @param props Свойства компонента
+ * @returns React компонент
  */
 export const EditView = (props: { draft?: Draft }) => {
   const { t } = useLocalize()
@@ -72,64 +70,173 @@ export const EditView = (props: { draft?: Draft }) => {
     clearValidationErrors
   } = useDrafts()
 
-  const [subtitleInput, setSubtitleInput] = createSignal<HTMLTextAreaElement | undefined>()
+  // Базовые сигналы
+  const [subtitleInput, setSubtitleInput] = createSignal<HTMLTextAreaElement>()
   const [isSubtitleVisible, setIsSubtitleVisible] = createSignal(false)
   const [isLeadVisible, setIsLeadVisible] = createSignal(false)
   const [mediaItems, setMediaItems] = createSignal<MediaItem[]>([])
   const [bodyEditorRef, setBodyEditorRef] = createSignal<HTMLDivElement>()
+  const [leadEditorRef, setLeadEditorRef] = createSignal<HTMLDivElement>()
   const [isBodyEditorFocused, setIsBodyEditorFocused] = createSignal(false)
   const [isTitleClicked, setIsTitleClicked] = createSignal(false)
   const [originalLeadContent, setOriginalLeadContent] = createSignal('')
-  const [leadEditorRef, setLeadEditorRef] = createSignal<HTMLDivElement>()
+  const [isScrolled, setIsScrolled] = createSignal(false)
+  const [networkStatus, setNetworkStatus] = createSignal(navigator.onLine)
+  const [awarenessUnsubscribe, setAwarenessUnsubscribe] = createSignal<(() => void) | null>(null)
+  const [baseAudioFields, setBaseAudioFields] = createSignal({
+    artist: '',
+    date: '',
+    genre: ''
+  })
 
+  // Флаг для блокировки внешних обновлений во время ввода
+  let isUserTyping = false
+  let userTypingTimer: ReturnType<typeof setTimeout> | null = null
+
+  // Дебаунсированные функции
   const debouncedValidate = debounce(1000, () => {
-    console.log('[EditView] Debounced validation triggered.')
     validateCurrentDraft()
   })
 
+  const debouncedUpdateSlug = debounce(300, (draftId: number, title: string) => {
+    updateDraftField(draftId, 'slug', slugify(title), false)
+    debouncedValidate()
+  })
+
+  const debouncedUpdateFromAwareness = debounce(300, (updates: Partial<Draft>) => {
+    if (isUserTyping) {
+      setTimeout(() => debouncedUpdateFromAwareness(updates), 500)
+      return
+    }
+
+    setCurrentDraft({ ...(currentDraft() || {}), ...updates } as ExtendedDraft)
+  })
+
+  // Блокировка внешних обновлений на время ввода - переработано полностью
+  const blockExternalUpdates = (duration = 5000) => {
+    if (userTypingTimer) {
+      clearTimeout(userTypingTimer)
+    }
+
+    isUserTyping = true
+
+    userTypingTimer = setTimeout(() => {
+      isUserTyping = false
+    }, duration)
+  }
+
+  // Проверка, находится ли фокус в редакторе
+  const isEditorFocused = () => {
+    const activeElement = document.activeElement
+    const bodyEditor = bodyEditorRef()
+    const leadEditor = leadEditorRef()
+
+    return (
+      activeElement === bodyEditor ||
+      activeElement === leadEditor ||
+      activeElement?.classList.contains('titleInput') ||
+      activeElement?.classList.contains('subtitleInput') ||
+      activeElement?.closest('[contenteditable="true"]') !== null ||
+      activeElement?.tagName === 'INPUT'
+    )
+  }
+
+  // Инициализация компонента
   onMount(async () => {
     clearValidationErrors()
+
+    // Слушатели событий
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('online', handleNetworkStatusChange)
+    window.addEventListener('offline', handleNetworkStatusChange)
+    setNetworkStatus(navigator.onLine)
+
     if (props.draft?.id) {
       setCurrentDraft(props.draft as Draft)
       await syncDraft(props.draft.id)
-      console.log(`[EditView] Synced draft ${props.draft.id} on mount.`)
 
       const draft = currentDraft()
       if (draft) {
         setIsLeadVisible(false)
         setIsSubtitleVisible(Boolean(draft.subtitle))
-        setMediaItems((draft.media || []) as MediaItem[])
-      }
 
-      if (navigator.onLine) {
-        initializeAwareness(props.draft)
-      } else {
-        console.log('[EditView] Network is offline, working in offline mode')
+        // Распарсим строковое представление media если оно есть
+        if (draft.media) {
+          try {
+            if (typeof draft.media === 'string') {
+              const parsedMedia = JSON.parse(draft.media)
+              setMediaItems(Array.isArray(parsedMedia) ? parsedMedia : [])
+            } else {
+              setMediaItems(draft.media as MediaItem[])
+            }
+          } catch (e) {
+            console.error('[EditView] Failed to parse media data:', e)
+            setMediaItems([])
+          }
+        } else {
+          setMediaItems([])
+        }
+
+        // Инициализируем Awareness только после установки текущего черновика
+        if (navigator.onLine) {
+          try {
+            initializeAwareness(draft)
+          } catch (error) {
+            console.error('[EditView] Failed to initialize awareness:', error)
+          }
+        }
       }
-    } else {
-      console.warn('[EditView] No draft passed via props or draft has no ID.')
     }
-
-    document.addEventListener('click', handleDocumentClick)
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('online', handleNetworkStatusChange)
-    window.addEventListener('offline', handleNetworkStatusChange)
-    setNetworkStatus(navigator.onLine)
   })
 
-  // Отдельная регистрация очистки для предотвращения перекрытия событий
+  // Очистка при размонтировании
   onCleanup(() => {
+    // Очистка таймеров и обработчиков
+    if (userTypingTimer) {
+      clearTimeout(userTypingTimer)
+    }
+
+    // Удаляем слушатели событий ввода с редакторов
+    const bodyEditor = bodyEditorRef()
+    const leadEditor = leadEditorRef()
+
+    if (bodyEditor) {
+      bodyEditor.removeEventListener('input', handleEditorInput)
+    }
+
+    if (leadEditor) {
+      leadEditor.removeEventListener('input', handleEditorInput)
+    }
+
+    // Отменяем дебаунсированные функции
     clearValidationErrors()
     debouncedValidate.cancel()
+    debouncedUpdateFromAwareness.cancel()
+    debouncedUpdateSlug.cancel()
+
+    // Отписываемся от провайдера Awareness
+    try {
+      const unsubscribeFn = awarenessUnsubscribe()
+      if (unsubscribeFn) {
+        unsubscribeFn()
+      }
+
+      const draft = currentDraft()
+      if (draft) {
+        const editorId = `draft-${draft.id}`
+        destroyProvider(editorId)
+      }
+    } catch (error) {
+      console.error('[EditView] Error during awareness cleanup:', error)
+    }
+
+    // Удаляем слушатели событий
     window.removeEventListener('scroll', handleScroll)
-    window.removeEventListener('keydown', handleKeyDown)
-    window.removeEventListener('click', handleDocumentClick)
     window.removeEventListener('online', handleNetworkStatusChange)
     window.removeEventListener('offline', handleNetworkStatusChange)
   })
 
-  // Очищаем ошибки при смене черновика
+  // Эффекты
   createEffect(
     on(
       () => currentDraft()?.id,
@@ -145,17 +252,22 @@ export const EditView = (props: { draft?: Draft }) => {
     on(currentDraft, (d?: Draft) => {
       if (!d) return
       setIsSubtitleVisible(Boolean(d.subtitle))
-      setMediaItems((d.media || []) as MediaItem[])
 
-      // Проверяем заголовок и другие поля редактора
-      console.log('[EditView] Current draft updated:', {
-        title: d.title,
-        subtitle: d.subtitle,
-        lead: d.lead ? 'has lead content' : 'no lead content'
-      })
-
-      if (d.lead && !isLeadVisible()) {
-        // setIsLeadVisible(false)
+      // Распарсим строковое представление media если оно есть
+      if (d.media) {
+        try {
+          if (typeof d.media === 'string') {
+            const parsedMedia = JSON.parse(d.media)
+            setMediaItems(Array.isArray(parsedMedia) ? parsedMedia : [])
+          } else {
+            setMediaItems(d.media as MediaItem[])
+          }
+        } catch (e) {
+          console.error('[EditView] Failed to parse media data from draft:', e)
+          setMediaItems([])
+        }
+      } else {
+        setMediaItems([])
       }
     })
   )
@@ -173,31 +285,7 @@ export const EditView = (props: { draft?: Draft }) => {
     }
   })
 
-  createEffect(() => {
-    if (isLeadVisible()) {
-      setTimeout(() => {
-        if (!isLeadVisible()) return
-
-        const editorElement = leadEditorRef()
-        if (editorElement) {
-          if (document.activeElement !== editorElement) {
-            const draft = currentDraft()
-            if (!draft?.id) return
-            const leadContent = getEditorContent(`draft-${draft.id}-lead`) || ''
-            if (isEmptyContent(leadContent)) {
-              editorElement.classList.add('placeholder-visible')
-            } else {
-              editorElement.classList.remove('placeholder-visible')
-            }
-            editorElement.focus()
-            console.log('[EditView] Focused lead editor via effect')
-          }
-        }
-      }, 200)
-    }
-  })
-
-  const [isScrolled, setIsScrolled] = createSignal(false)
+  // Основные обработчики событий
   const handleScroll = () => setIsScrolled(window.scrollY > 0)
 
   const handleDocumentClick = (e: MouseEvent) => {
@@ -205,35 +293,35 @@ export const EditView = (props: { draft?: Draft }) => {
 
     const isInteractiveOrSpecialElement = Boolean(
       target.closest('button') ||
-        target.closest('a') ||
-        target.closest('input') ||
-        target.closest('textarea') ||
-        target.closest('select') ||
-        target.closest('[role="button"]') ||
-        target.closest('[contenteditable="true"]') ||
-        target.closest('.interactive') ||
-        target.closest('.titleInput') ||
-        target.closest('[data-field-type="lead"]') ||
-        target.closest(`.${styles.leadContentDisplay}`) ||
-        target.closest(`.${styles.leadContentText}`) ||
-        target.closest(`.${styles.headingActions}`) ||
-        target.closest('[data-field-type="body"]') ||
-        target.closest('.settingsControl') ||
-        target.closest('button[value="ellipsis"]') ||
-        target.closest('svg[data-icon="ellipsis"]') ||
-        target.closest('.settingsControlContainer') ||
-        target.tagName.toLowerCase() === 'button' ||
-        target.tagName.toLowerCase() === 'a' ||
-        target.tagName.toLowerCase() === 'input' ||
-        target.tagName.toLowerCase() === 'textarea' ||
-        target.tagName.toLowerCase() === 'select'
+      target.closest('a') ||
+      target.closest('input') ||
+      target.closest('textarea') ||
+      target.closest('select') ||
+      target.closest('[role="button"]') ||
+      target.closest('[contenteditable="true"]') ||
+      target.closest('.interactive') ||
+      target.closest('.titleInput') ||
+      target.closest('[data-field-type="lead"]') ||
+      target.closest(`.${styles.leadContentDisplay}`) ||
+      target.closest(`.${styles.leadContentText}`) ||
+      target.closest(`.${styles.headingActions}`) ||
+      target.closest('[data-field-type="body"]') ||
+      target.closest('.settingsControl') ||
+      target.closest('button[value="ellipsis"]') ||
+      target.closest('svg[data-icon="ellipsis"]') ||
+      target.closest('.settingsControlContainer') ||
+      target.tagName.toLowerCase() === 'button' ||
+      target.tagName.toLowerCase() === 'a' ||
+      target.tagName.toLowerCase() === 'input' ||
+      target.tagName.toLowerCase() === 'textarea' ||
+      target.tagName.toLowerCase() === 'select'
     )
 
     const isEmptyAreaClick = Boolean(
       !isInteractiveOrSpecialElement &&
-        (target === document.body ||
-          target === document.documentElement ||
-          (target.tagName.toLowerCase() === 'div' && !target.getAttribute('contenteditable')))
+      (target === document.body ||
+        target === document.documentElement ||
+        (target.tagName.toLowerCase() === 'div' && !target.getAttribute('contenteditable')))
     )
 
     const isTitleClick = target.closest('.titleInput') || target.closest('input[type="text"]')
@@ -247,7 +335,7 @@ export const EditView = (props: { draft?: Draft }) => {
       return
     }
 
-    console.log('[EditView] Empty area click detected, focusing body editor')
+    // Фокус на редакторе при клике в пустую область
     const bodyEditor = bodyEditorRef()
     if (bodyEditor) {
       bodyEditor.focus()
@@ -264,168 +352,235 @@ export const EditView = (props: { draft?: Draft }) => {
             range.selectNodeContents(lastChild)
             range.collapse(false)
           }
-          if (selection) {
-            selection.removeAllRanges()
-            selection.addRange(range)
-          }
+          selection.removeAllRanges()
+          selection.addRange(range)
         }
       }
     }
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
+    blockExternalUpdates()
+
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault()
-      console.log('[EditView] Ctrl+S pressed. Auto-save handled by context.')
     }
   }
 
+  const handleEditorInput = () => {
+    blockExternalUpdates()
+  }
+
+  const handleNetworkStatusChange = () => {
+    setNetworkStatus(navigator.onLine)
+    const draftId = currentDraft()?.id
+
+    if (navigator.onLine && draftId) {
+      // Синхронизация с сервером при восстановлении соединения
+      syncDraft(draftId).then(() => {
+        const draft = currentDraft()
+        if (draft && getProvider().getConnectionState() !== 'connected') {
+          // Переинициализируем awareness с задержкой для стабильности
+          setTimeout(() => {
+            try {
+              initializeAwareness(draft)
+            } catch (error) {
+              console.error('[EditView] Failed to re-initialize awareness after network change:', error)
+            }
+          }, 1000)
+        }
+      }).catch(error => {
+        console.error('[EditView] Failed to sync draft after network change:', error)
+      })
+    } else if (!navigator.onLine) {
+      // Если сеть отключена, показываем уведомление и продолжаем работу офлайн
+      console.warn('[EditView] Network is offline, continuing in offline mode')
+    }
+  }
+
+  // Обработка изменений полей
   const handleInputChange = (key: keyof DraftInput, val: string | EditorData) => {
+    if (isEditorFocused()) {
+      blockExternalUpdates()
+    }
+
     const draft = currentDraft()
     if (!draft?.id) return
 
-    const isEditorUpdate = typeof val === 'object' && val !== null && 'content' in val
+    try {
+      updateDraftField(draft.id, key, val, typeof val === 'object')
 
-    console.log(
-      `[EditView] Updating draft field ${key}:`,
-      typeof val === 'object' ? 'EditorData object' : val.substring(0, 50)
-    )
-
-    updateDraftField(draft.id, key, val, isEditorUpdate)
-
-    if (key === 'title' && typeof val === 'string') {
-      updateDraftField(draft.id, 'slug', slugify(val), false)
-      debouncedValidate()
-    }
-  }
-
-  const handleAwarenessUpdates = (_params: {
-    added: number[]
-    updated: number[]
-    removed: number[]
-  }) => {
-    const draftId = currentDraft()?.id
-    if (!draftId) return
-
-    const awarenessProvider = getProvider()
-    if (awarenessProvider.getConnectionState() !== 'connected') return
-
-    const draftFields = awarenessProvider.getDraftContent(draftId)
-
-    if (Object.keys(draftFields).length > 0) {
-      let needsUpdate = false
-      const updates: Partial<Draft> = {}
-
-      Object.entries(draftFields).forEach(([fieldName, fieldData]) => {
-        if (currentDraft() && fieldName in currentDraft()! && fieldName !== 'id' && fieldData.content) {
-          const contentToSet = fieldData.content
-
-          if (fieldName === 'body' || fieldName === 'lead') {
-            setEditorContent(`draft-${draftId}-${fieldName}`, contentToSet)
-          }
-
-          if (currentDraft()![fieldName as keyof Draft] !== contentToSet) {
-            // biome-ignore lint/suspicious/noExplicitAny: ok
-            updates[fieldName as keyof Draft] = contentToSet as any
-            needsUpdate = true
-          }
-        }
-      })
-
-      if (needsUpdate) {
-        console.log('[EditView] Applying awareness updates to currentDraft', updates)
-        setCurrentDraft({ ...(currentDraft() || {}), ...(updates || {}) } as ExtendedDraft)
+      if (key === 'title' && typeof val === 'string') {
+        debouncedUpdateSlug(draft.id, val)
       }
+    } catch (error) {
+      console.error(`[EditView] Error updating field ${key}:`, error)
     }
-  }
-
-  const OfflineIndicator = () => {
-    return (
-      <Show when={!networkStatus()}>
-        <div class={styles.offlineIndicator}>
-          <Icon name="alert-triangle" />
-          <span>{t('Offline mode: Changes will be saved when connection is restored')}</span>
-        </div>
-      </Show>
-    )
   }
 
   const handleTitleInputChange = (value: string) => {
-    handleInputChange('title', value)
-    handleInputChange('slug', slugify(value))
+    if (isEditorFocused()) {
+      blockExternalUpdates()
+    }
+
+    const draft = currentDraft()
+    if (!draft?.id) return
+
+    updateDraftField(draft.id, 'title', value, false)
+    debouncedUpdateSlug(draft.id, value)
   }
 
+  // Обработка медиа - полностью переписано для защиты от многократной сериализации
   const handleAddMedia = (data: MediaItem[]) => {
-    const newMedia = [...mediaItems(), ...data]
-    const draftId = currentDraft()?.id
-    if (draftId) {
-      updateDraftField(draftId, 'media', JSON.stringify(newMedia), false)
+    if (!Array.isArray(data) || !data.length) {
+      console.warn('[EditView] Invalid media data received', data)
+      return
+    }
+
+    const draft = currentDraft()
+    if (!draft?.id) return
+
+    if (isEditorFocused()) {
+      blockExternalUpdates()
+    }
+
+    try {
+      // Получаем существующие медиа и объединяем с новыми
+      const existingMedia = [...mediaItems()]
+      const newMedia = [...existingMedia, ...data]
+
+      // Обновляем локальное состояние
+      setMediaItems(newMedia)
+
+      // Обновляем поле черновика
+      updateDraftField(draft.id, 'media', JSON.stringify(newMedia), false)
+    } catch (error) {
+      console.error('[EditView] Error adding media:', error)
     }
   }
+
   const handleSortedMedia = (data: MediaItem[]) => {
-    const draftId = currentDraft()?.id
-    if (draftId) {
-      updateDraftField(draftId, 'media', JSON.stringify(data), false)
+    if (!Array.isArray(data)) {
+      console.warn('[EditView] Invalid sorted media data', data)
+      return
+    }
+
+    const draft = currentDraft()
+    if (!draft?.id) return
+
+    if (isEditorFocused()) {
+      blockExternalUpdates()
+    }
+
+    try {
+      // Обновляем локальное состояние
+      setMediaItems(data)
+
+      // Обновляем поле черновика
+      updateDraftField(draft.id, 'media', JSON.stringify(data), false)
+    } catch (error) {
+      console.error('[EditView] Error sorting media:', error)
     }
   }
 
   const handleMediaDelete = (index: number) => {
-    const copy = [...mediaItems()]
-    if (copy?.length > 0) copy.splice(index, 1)
-    const draftId = currentDraft()?.id
-    if (draftId) {
-      updateDraftField(draftId, 'media', JSON.stringify(copy), false)
+    const media = mediaItems()
+    if (!Array.isArray(media) || index < 0 || index >= media.length) {
+      console.warn('[EditView] Invalid media index for deletion', index)
+      return
+    }
+
+    const draft = currentDraft()
+    if (!draft?.id) return
+
+    if (isEditorFocused()) {
+      blockExternalUpdates()
+    }
+
+    try {
+      // Создаем копию и удаляем элемент
+      const updatedMedia = [...media]
+      updatedMedia.splice(index, 1)
+
+      // Обновляем локальное состояние
+      setMediaItems(updatedMedia)
+
+      // Обновляем поле черновика
+      updateDraftField(draft.id, 'media', JSON.stringify(updatedMedia), false)
+    } catch (error) {
+      console.error('[EditView] Error deleting media:', error)
     }
   }
 
   const handleMediaChange = (index: number, value: MediaItem) => {
-    const updated = mediaItems().map((item, idx) => (idx === index ? value : item))
-    const draftId = currentDraft()?.id
-    if (draftId) {
-      updateDraftField(draftId, 'media', JSON.stringify(updated), false)
+    const media = mediaItems()
+    if (!Array.isArray(media) || index < 0 || index >= media.length) {
+      console.warn('[EditView] Invalid media index for update', index)
+      return
+    }
+
+    if (!value || typeof value !== 'object') {
+      console.warn('[EditView] Invalid media value for update', value)
+      return
+    }
+
+    const draft = currentDraft()
+    if (!draft?.id) return
+
+    if (isEditorFocused()) {
+      blockExternalUpdates()
+    }
+
+    try {
+      // Создаем новый массив с обновленным элементом
+      const updatedMedia = media.map((item, idx) => idx === index ? value : item)
+
+      // Обновляем локальное состояние
+      setMediaItems(updatedMedia)
+
+      // Обновляем поле черновика
+      updateDraftField(draft.id, 'media', JSON.stringify(updatedMedia), false)
+    } catch (error) {
+      console.error('[EditView] Error updating media:', error)
     }
   }
-
-  const [baseAudioFields, setBaseAudioFields] = createSignal({
-    artist: '',
-    date: '',
-    genre: ''
-  })
 
   const handleBaseFieldsChange = (key: string, value: string) => {
-    if (mediaItems().length > 0) {
-      const updated = mediaItems().map((media) => ({ ...media, [key]: value }))
-      handleInputChange('media', JSON.stringify(updated))
-    } else {
-      setBaseAudioFields({ ...baseAudioFields(), [key]: value })
+    if (isEditorFocused()) {
+      blockExternalUpdates()
+    }
+
+    try {
+      const media = mediaItems()
+      if (Array.isArray(media) && media.length > 0) {
+        // Обновляем все элементы медиа с новым значением поля
+        const updated = media.map(item => ({ ...item, [key]: value }))
+
+        const draft = currentDraft()
+        if (!draft?.id) return
+
+        // Обновляем локальное состояние
+        setMediaItems(updated)
+
+        // Обновляем поле черновика
+        updateDraftField(draft.id, 'media', JSON.stringify(updated), false)
+      } else {
+        // Если медиа нет, обновляем базовые поля
+        setBaseAudioFields(prev => ({ ...prev, [key]: value }))
+      }
+    } catch (error) {
+      console.error('[EditView] Error updating base fields:', error)
     }
   }
 
-  const articleTitle = () => {
-    switch (currentDraft()?.layout as LayoutType) {
-      case 'audio': {
-        return t('Album name')
-      }
-      case 'image': {
-        return t('Gallery name')
-      }
-      default: {
-        return t('Header')
-      }
-    }
-  }
-
+  // Работа с лидом и подзаголовком
   const showSubtitleInput = () => {
     setIsSubtitleVisible(true)
-    console.log('[EditView] Showing subtitle input')
 
     setTimeout(() => {
       const input = subtitleInput()
       if (input) {
         input.focus()
-        console.log('[EditView] Subtitle input focused')
-      } else {
-        console.warn('[EditView] Could not focus subtitle input - element not found')
       }
     }, 100)
   }
@@ -437,32 +592,10 @@ export const EditView = (props: { draft?: Draft }) => {
     if (!draft?.id) return
     const draftId = draft.id
 
-    let currentLead = ''
-
-    if (draftId) {
-      // Сначала проверяем getEditorContent, затем draft.lead
-      const storedLead = getEditorContent(`draft-${draftId}-lead`)
-      currentLead = storedLead || draft?.lead || ''
-
-      console.log('[EditView] showLeadInput extracting content:', {
-        draftId,
-        retrievedContent:
-          typeof currentLead === 'string'
-            ? currentLead.substring(0, 50)
-            : JSON.stringify(currentLead).substring(0, 50)
-      })
-    }
-
+    // Получаем текущее содержимое лида
+    const storedLead = getEditorContent(`draft-${draftId}-lead`)
+    const currentLead = storedLead || draft?.lead || ''
     setOriginalLeadContent(currentLead)
-
-    console.log('[EditView] showLeadInput', {
-      draftId,
-      currentLead:
-        typeof currentLead === 'string'
-          ? currentLead.substring(0, 50)
-          : JSON.stringify(currentLead).substring(0, 50),
-      isEmpty: isEmptyContent(currentLead)
-    })
 
     // Сохраняем в контексте
     setEditorContent(`draft-${draftId}-lead`, currentLead)
@@ -475,91 +608,86 @@ export const EditView = (props: { draft?: Draft }) => {
       if (editorElement) {
         try {
           editorElement.focus()
-          console.log('[EditView] Lead editor focused successfully')
         } catch (e) {
           console.error('[EditView] Error focusing lead editor:', e)
         }
-      } else {
-        console.warn('[EditView] Could not focus lead editor - element not found')
       }
     }, 100)
   }
 
-  const hideLeadInput = () => {
-    setIsLeadVisible(false)
-  }
-
   const saveLead = () => {
+    if (isEditorFocused()) {
+      blockExternalUpdates()
+    }
+
     const draft = currentDraft()
     if (!draft?.id) return
     const draftId = draft.id
     const editorId = `draft-${draftId}-lead`
 
-    const leadContent = getEditorContent(editorId) || ''
+    try {
+      const leadContent = getEditorContent(editorId) || ''
 
-    if (isEmptyContent(leadContent)) {
-      cancelLead()
-      return
+      if (isEmptyContent(leadContent)) {
+        cancelLead()
+        return
+      }
+
+      updateDraftField(draftId, 'lead', leadContent, true)
+      setIsLeadVisible(false)
+    } catch (error) {
+      console.error('[EditView] Error saving lead:', error)
     }
-
-    console.log('[EditView] Saving lead content via context:', {
-      draftId,
-      contentLength: leadContent.length
-    })
-
-    updateDraftField(draftId, 'lead', leadContent, true)
-
-    hideLeadInput()
   }
 
   const cancelLead = () => {
+    if (isEditorFocused()) {
+      blockExternalUpdates()
+    }
+
     const draft = currentDraft()
     if (!draft?.id) return
     const draftId = draft.id
 
-    const originalContent = originalLeadContent()
-    console.log('[EditView] Canceling lead edit, restoring original content via context:', {
-      draftId,
-      originalContent
-    })
-
-    updateDraftField(draftId, 'lead', originalContent, true)
-
-    hideLeadInput()
+    try {
+      const originalContent = originalLeadContent()
+      updateDraftField(draftId, 'lead', originalContent, true)
+      setIsLeadVisible(false)
+    } catch (error) {
+      console.error('[EditView] Error canceling lead:', error)
+    }
   }
 
   const handleLeadEditorChange = (data: EditorData) => {
+    if (isEditorFocused()) {
+      blockExternalUpdates(4000) // Увеличиваем время блокировки для сложного ввода
+    }
+
     const draft = currentDraft()
     if (!draft?.id) return
-    const draftId = draft.id
 
-    // Сохраняем контент без скрытия редактора
-    updateDraftField(draftId, 'lead', data, true)
-
-    // Фокусируем редактор снова после обновления контента
-    setTimeout(() => {
-      const editorElement = leadEditorRef()
-      if (editorElement && isLeadVisible()) {
-        editorElement.focus()
+    try {
+      // Проверка типа данных
+      if (!data || typeof data !== 'object' || !('content' in data)) {
+        console.error('[EditView] Invalid lead editor data:', data)
+        return
       }
-    }, 10)
+
+      // Обновление без реактивных перерендеров
+      updateDraftField(draft.id, 'lead', data, true)
+    } catch (error) {
+      console.error('[EditView] Error updating lead editor:', error)
+    }
   }
 
   const handleBodyEditorFocus = (isFocused: boolean) => {
     setIsBodyEditorFocused(isFocused)
 
-    // Проверяем, что фокус получен основным редактором, а не потерян редактором вступления
     if (isFocused && isLeadVisible()) {
-      console.log('[EditView] Body editor focused while lead editor is visible, saving lead')
-
-      // Проверяем, действительно ли фокус переместился в body-редактор
-      // Это предотвратит срабатывание при нажатии клавиш в lead-редакторе
       const activeElement = document.activeElement
       const leadEditor = leadEditorRef()
 
-      // Если активный элемент - редактор вступления или его потомок, не закрываем редактор
       if (leadEditor && (activeElement === leadEditor || leadEditor.contains(activeElement))) {
-        console.log('[EditView] Lead editor still has focus, skipping auto-save')
         return
       }
 
@@ -582,48 +710,157 @@ export const EditView = (props: { draft?: Draft }) => {
     }
   }
 
-  const [networkStatus, setNetworkStatus] = createSignal(navigator.onLine)
-
-  const handleNetworkStatusChange = () => {
-    setNetworkStatus(navigator.onLine)
-    const draftId = currentDraft()?.id
-
-    if (navigator.onLine && draftId) {
-      console.log('[EditView] Network is back online, attempting sync.')
-      syncDraft(draftId)
-
-      if (getProvider().getConnectionState() !== 'connected') {
-        console.log('[EditView] Network is back online, connecting to awareness')
-        const draft = currentDraft()
-        if (draft) {
-          initializeAwareness(draft)
-        }
-      }
-    }
-  }
-
+  // Работа с Awareness - упрощено, чтобы исключить конфликты
   const initializeAwareness = (draft: Draft) => {
     try {
+      // Отписываемся от предыдущего провайдера, если он был
+      const unsubscribeFn = awarenessUnsubscribe()
+      if (unsubscribeFn) {
+        unsubscribeFn()
+        setAwarenessUnsubscribe(null)
+      }
+
       const awarenessProvider = getProvider()
       const { addHandler } = useConnect()
       const editorId = `draft-${draft.id}`
-      console.log('[EditView] Connecting to awareness for draft', draft.id)
-      awarenessProvider['addHandler'] = addHandler
-      awarenessProvider.connect(editorId)
-      const unsubscribe = awarenessProvider.onAwarenessChange(handleAwarenessUpdates)
-      console.log('[EditView] Connected to awareness for draft', draft.id)
 
-      onCleanup(() => {
-        unsubscribe()
-        window.removeEventListener('scroll', handleScroll)
-        window.removeEventListener('keydown', handleKeyDown)
-        window.removeEventListener('click', handleDocumentClick)
-        window.removeEventListener('online', handleNetworkStatusChange)
-        window.removeEventListener('offline', handleNetworkStatusChange)
+      // Проверяем соединение перед подключением
+      if (awarenessProvider.getConnectionState() === 'disconnected') {
+        // Используем существующие методы
+        try {
+          destroyProvider(editorId)
+        } catch (e) {
+          console.log('[EditView] No provider to destroy', e)
+        }
+      }
+
+      awarenessProvider['addHandler'] = addHandler
+
+      // Устанавливаем обработчик изменения состояния соединения
+      awarenessProvider.onConnectionStateChanged((state) => {
+        console.log(`[EditView] Awareness connection state changed: ${state}`)
+        if (state === 'disconnected' && navigator.onLine) {
+          // Если соединение разорвано, но интернет есть - пытаемся переподключиться
+          setTimeout(() => {
+            try {
+              console.log('[EditView] Attempting to reconnect to awareness')
+              awarenessProvider.connect(editorId)
+            } catch (reconnectError) {
+              console.error('[EditView] Failed to reconnect to awareness:', reconnectError)
+            }
+          }, 2000)
+        }
       })
+
+      // Подключаемся к провайдеру
+      awarenessProvider.connect(editorId)
+
+      // Устанавливаем обработчик изменений и сохраняем функцию отписки
+      const unsubscribe = awarenessProvider.onAwarenessChange(handleAwarenessUpdates)
+      setAwarenessUnsubscribe(() => unsubscribe)
     } catch (error) {
       console.error('[EditView] Failed to connect to awareness:', error)
     }
+  }
+
+  // Полностью переработанная обработка awareness-обновлений
+  const handleAwarenessUpdates = (_params: {
+    added: number[]
+    updated: number[]
+    removed: number[]
+  }) => {
+    // Если фокус в любом из полей ввода - блокируем внешние обновления полностью
+    if (isUserTyping || isEditorFocused()) {
+      return
+    }
+
+    const draftId = currentDraft()?.id
+    if (!draftId) return
+
+    const awarenessProvider = getProvider()
+    if (awarenessProvider.getConnectionState() !== 'connected') return
+
+    try {
+      const draftFields = awarenessProvider.getDraftContent(draftId)
+
+      if (!draftFields || Object.keys(draftFields).length === 0) {
+        return
+      }
+
+      const updates: Partial<Draft> = {}
+      let needsUpdate = false
+
+      Object.entries(draftFields).forEach(([fieldName, fieldData]) => {
+        if (!currentDraft() || !(fieldName in currentDraft()!) || fieldName === 'id' || !fieldData.content) {
+          return
+        }
+
+        const contentToSet = fieldData.content
+
+        // Особая обработка для media
+        if (fieldName === 'media' && typeof contentToSet === 'string') {
+          try {
+            // Распарсим строку JSON и проверим, что это массив
+            const parsedMedia = JSON.parse(contentToSet)
+            if (Array.isArray(parsedMedia)) {
+              const currentMediaJson = JSON.stringify(mediaItems())
+              // Сравниваем с текущим значением, чтобы избежать циклических обновлений
+              if (currentMediaJson !== contentToSet) {
+                setMediaItems(parsedMedia)
+                needsUpdate = true
+                // biome-ignore lint/suspicious/noExplicitAny: ok
+                updates[fieldName as keyof Draft] = parsedMedia as any
+              }
+            }
+          } catch (e) {
+            console.error('[EditView] Failed to parse media data from awareness:', e)
+          }
+        }
+        // Для редакторских полей (тело, лид)
+        else if (fieldName === 'body' || fieldName === 'lead') {
+          const editorId = `draft-${draftId}-${fieldName}`
+          const currentContent = getEditorContent(editorId)
+
+          if (currentContent !== contentToSet) {
+            setEditorContent(editorId, contentToSet)
+            needsUpdate = true
+            // biome-ignore lint/suspicious/noExplicitAny: ok
+            updates[fieldName as keyof Draft] = contentToSet as any
+          }
+        }
+        // Для всех остальных полей
+        else {
+          const currentValue = currentDraft()![fieldName as keyof Draft]
+          if (currentValue !== contentToSet) {
+            needsUpdate = true
+            // biome-ignore lint/suspicious/noExplicitAny: ok
+            updates[fieldName as keyof Draft] = contentToSet as any
+          }
+        }
+      })
+
+      // Если есть изменения - обновляем черновик
+      if (needsUpdate && Object.keys(updates).length > 0) {
+        setCurrentDraft({
+          ...currentDraft()!,
+          ...updates
+        } as ExtendedDraft)
+      }
+    } catch (error) {
+      console.error('[EditView] Error processing awareness updates:', error)
+    }
+  }
+
+  // Оффлайн индикатор
+  const OfflineIndicator = () => {
+    return (
+      <Show when={!networkStatus()}>
+        <div class={styles.offlineIndicator}>
+          <Icon name="alert-triangle" />
+          <span>{t('Offline mode: Changes will be saved when connection is restored')}</span>
+        </div>
+      </Show>
+    )
   }
 
   return (
@@ -631,6 +868,8 @@ export const EditView = (props: { draft?: Draft }) => {
       <div
         class={clsx(styles.editor, { [styles.audioEditor]: currentDraft()?.layout === 'audio' })}
         onScroll={handleScroll}
+        onKeyDown={handleKeyDown}
+        onClick={handleDocumentClick}
       >
         <div class="wide-container">
           <div class="row">
@@ -639,230 +878,84 @@ export const EditView = (props: { draft?: Draft }) => {
                 [styles.isScrolled]: isScrolled()
               })}
             >
-              <div class="col-md-19 col-lg-18 col-xl-16 offset-md-5">
-                {(() => {
-                  const draft = currentDraft()
-                  if (!draft) return null
+              <Show when={currentDraft()}>
+                <div class="col-md-19 col-lg-18 col-xl-16 offset-md-5">
+                  <OfflineIndicator />
 
-                  return (
-                    <>
-                      <OfflineIndicator />
-                      <div class={styles.headingActions}>
-                        <Show when={isTitleClicked() && !isSubtitleVisible() && draft.layout !== 'audio'}>
-                          <a class={styles.action} onClick={showSubtitleInput}>
-                            {t('Add subtitle')}
-                          </a>
-                        </Show>
-                        <Show
-                          when={
-                            isTitleClicked() && !isLeadVisible() && !draft.lead && draft.layout !== 'audio'
-                          }
-                        >
-                          <a class={styles.action} onClick={showLeadInput}>
-                            {t('Add intro')}
-                          </a>
-                        </Show>
-                      </div>
-                      <div class={clsx({ [styles.audioHeader]: draft.layout === 'audio' })}>
-                        <div class={styles.inputContainer}>
-                          <GrowingTextarea
-                            allowEnterKey={true}
-                            onChange={(value) => handleTitleInputChange(value)}
-                            class={styles.titleInput}
-                            placeholder={articleTitle()}
-                            initialValue={draft.title || ''}
-                            maxLength={MAX_HEADER_LIMIT}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setIsTitleClicked(true)
-                              console.log('[EditView] Title clicked')
-                            }}
-                          />
+                  <TitleSection
+                    draft={currentDraft()}
+                    isTitleClicked={isTitleClicked()}
+                    isSubtitleVisible={isSubtitleVisible()}
+                    isLeadVisible={isLeadVisible()}
+                    onTitleClick={() => setIsTitleClicked(true)}
+                    onShowSubtitle={showSubtitleInput}
+                    onShowLead={showLeadInput}
+                    onTitleChange={handleTitleInputChange}
+                    validationErrors={validationErrors()}
+                  />
 
-                          <Show when={validationErrors().title}>
-                            <div class={styles.validationError}>{validationErrors().title}</div>
-                          </Show>
+                  {/* Специальные компоненты для аудио */}
+                  <Show when={currentDraft()?.layout === 'audio'}>
+                    <AudioProfile
+                      draft={currentDraft()}
+                      mediaItems={mediaItems()}
+                      onFieldChange={handleBaseFieldsChange}
+                      onCoverChange={(url) => handleInputChange('cover', url)}
+                    />
+                  </Show>
 
-                          <Show when={draft.layout === 'audio'}>
-                            <div class={styles.additional}>
-                              <input
-                                type="text"
-                                placeholder={t('Artist...')}
-                                class={styles.additionalInput}
-                                value={mediaItems()[0]?.artist || ''}
-                                onChange={(event) => handleBaseFieldsChange('artist', event.target.value)}
-                              />
-                              <input
-                                type="number"
-                                min="1900"
-                                max={new Date().getFullYear()}
-                                step="1"
-                                class={styles.additionalInput}
-                                placeholder={t('Release date...')}
-                                value={mediaItems()[0]?.date || ''}
-                                onChange={(event) => handleBaseFieldsChange('date', event.target.value)}
-                              />
-                              <input
-                                type="text"
-                                placeholder={t('Genre...')}
-                                class={styles.additionalInput}
-                                value={mediaItems()[0]?.genre || ''}
-                                onChange={(event) => handleBaseFieldsChange('genre', event.target.value)}
-                              />
-                            </div>
-                          </Show>
-                          <Show when={draft.layout !== 'audio'}>
-                            <Show when={isSubtitleVisible()}>
-                              <GrowingTextarea
-                                textAreaRef={setSubtitleInput}
-                                allowEnterKey={false}
-                                onChange={(value: string) => handleInputChange('subtitle', value || '')}
-                                class={styles.subtitleInput}
-                                placeholder={t('Subheader')}
-                                initialValue={draft.subtitle || ''}
-                                maxLength={MAX_HEADER_LIMIT}
-                              />
-                            </Show>
-                            <Show when={isLeadVisible()}>
-                              <div class={styles.leadEditorWrapper}>
-                                <SimpleRichEditor
-                                  editorId={`draft-${draft.id}-lead`}
-                                  fieldType="lead"
-                                  toolbar="bottom"
-                                  commands={['bold', 'italic', 'link']}
-                                  placeholder={t('A short introduction to keep the reader interested')}
-                                  content={getEditorContent(`draft-${draft.id}-lead`) || draft.lead || ''}
-                                  onChange={(data) => handleLeadEditorChange(data)}
-                                  onInit={(instance) => setLeadEditorRef(instance.editor)}
-                                  onBlur={() => {
-                                    console.log('[EditView] Lead editor blur detected, saving lead content')
-                                    saveLead()
-                                  }}
-                                />
-                              </div>
-                            </Show>
-                            <Show when={!isLeadVisible() && draft.lead}>
-                              <div
-                                class={styles.leadContentDisplay}
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
+                  {/* Подзаголовок */}
+                  <Show when={currentDraft()?.layout !== 'audio'}>
+                    <SubtitleComponent
+                      draft={currentDraft()}
+                      isVisible={isSubtitleVisible()}
+                      onSubtitleChange={(value) => handleInputChange('subtitle', value)}
+                      setSubtitleInput={setSubtitleInput}
+                    />
 
-                                  if (isLeadVisible()) {
-                                    console.log('[EditView] Lead editor already visible, skipping click')
-                                    return
-                                  }
+                    {/* Лид */}
+                    <LeadComponent
+                      draft={currentDraft()}
+                      isVisible={isLeadVisible()}
+                      getEditorContent={getEditorContent}
+                      setLeadEditorRef={setLeadEditorRef}
+                      onLeadChange={handleLeadEditorChange}
+                      onLeadSave={saveLead}
+                      onShowLead={showLeadInput}
+                      handleEditorInput={handleEditorInput}
+                    />
+                  </Show>
 
-                                  console.log('[EditView] Click on lead preview, showing lead editor')
+                  {/* Медиакомпоненты по типу лейаута */}
+                  <Show when={currentDraft()?.layout === 'image'}>
+                    <EditorSwiper
+                      images={mediaItems()}
+                      onImageChange={handleMediaChange}
+                      onImageDelete={(index: number) => handleMediaDelete(index)}
+                      onImagesAdd={(value: MediaItem[]) => handleAddMedia(value)}
+                      onImagesSorted={(value: MediaItem[]) => handleSortedMedia(value)}
+                    />
+                  </Show>
 
-                                  showLeadInput()
+                  <Show when={currentDraft()?.layout === 'video'}>
+                    <VideoUploader
+                      video={mediaItems()}
+                      onVideoAdd={(data: MediaItem[]) => handleAddMedia(data)}
+                      onVideoDelete={(index: number) => handleMediaDelete(index)}
+                    />
+                  </Show>
 
-                                  setTimeout(() => {
-                                    if (!isLeadVisible()) {
-                                      console.log('[EditView] Ensuring lead editor is visible')
-                                      setIsLeadVisible(true)
-                                    }
-                                  }, 100)
-                                }}
-                              >
-                                {(() => {
-                                  const draftId = draft.id || 0
-                                  const leadContent =
-                                    getEditorContent(`draft-${draftId}-lead`) || draft.lead || ''
-
-                                  const finalLead = leadContent
-
-                                  if (isEmptyContent(finalLead)) {
-                                    return null
-                                  }
-
-                                  return (
-                                    <>
-                                      <div innerHTML={finalLead} class={styles.leadContentText} />
-                                    </>
-                                  )
-                                })()}
-                              </div>
-                            </Show>
-                          </Show>
-                        </div>
-                        <Show when={draft.layout === 'audio'}>
-                          <Show
-                            when={draft.cover}
-                            fallback={
-                              <DropArea
-                                isSquare={true}
-                                placeholder={t('Add cover')}
-                                description={
-                                  <>
-                                    {t('min. 1400×1400 pix')}
-                                    <br />
-                                    {t('jpg, .png, max. 10 mb.')}
-                                  </>
-                                }
-                                isMultiply={false}
-                                fileType={'image'}
-                                onUpload={(val: { url: string }[]) =>
-                                  handleInputChange('cover', val[0].url)
-                                }
-                              />
-                            }
-                          >
-                            <div
-                              class={styles.cover}
-                              style={{
-                                'background-image': `url(${getFileUrl(draft.cover || '', {
-                                  width: 1600
-                                })})`
-                              }}
-                            >
-                              <Popover content={t('Delete cover')}>
-                                {(triggerRef: (_el: HTMLElement | null) => void) => (
-                                  <div
-                                    ref={triggerRef}
-                                    class={styles.delete}
-                                    onClick={() => handleInputChange('cover', '')}
-                                  >
-                                    <Icon name="close-white" />
-                                  </div>
-                                )}
-                              </Popover>
-                            </div>
-                          </Show>
-                        </Show>
-                      </div>
-
-                      <Show when={draft.layout === 'image'}>
-                        <EditorSwiper
-                          images={mediaItems()}
-                          onImageChange={handleMediaChange}
-                          onImageDelete={(index: number) => handleMediaDelete(index)}
-                          onImagesAdd={(value: MediaItem[]) => handleAddMedia(value)}
-                          onImagesSorted={(value: MediaItem[]) => handleSortedMedia(value)}
-                        />
-                      </Show>
-
-                      <Show when={draft.layout === 'video'}>
-                        <VideoUploader
-                          video={mediaItems()}
-                          onVideoAdd={(data: MediaItem[]) => handleAddMedia(data)}
-                          onVideoDelete={(index: number) => handleMediaDelete(index)}
-                        />
-                      </Show>
-
-                      <Show when={draft.layout === 'audio'}>
-                        <AudioUploader
-                          audio={mediaItems()}
-                          baseFields={baseAudioFields()}
-                          onAudioAdd={(value) => handleAddMedia(value)}
-                          onAudioChange={handleMediaChange}
-                          onAudioSorted={(value) => handleSortedMedia(value)}
-                        />
-                      </Show>
-                    </>
-                  )
-                })()}
-              </div>
+                  <Show when={currentDraft()?.layout === 'audio'}>
+                    <AudioUploader
+                      audio={mediaItems()}
+                      baseFields={baseAudioFields()}
+                      onAudioAdd={(value) => handleAddMedia(value)}
+                      onAudioChange={handleMediaChange}
+                      onAudioSorted={(value) => handleSortedMedia(value)}
+                    />
+                  </Show>
+                </div>
+              </Show>
             </div>
           </div>
         </div>
@@ -883,10 +976,12 @@ export const EditView = (props: { draft?: Draft }) => {
                     toolbar="float"
                     commands={featuredEditorCommands as readonly (CommandType | readonly CommandType[])[]}
                     content={getEditorContent(`draft-${draft.id}-body`) || draft.body || ''}
-                    onChange={(data) => handleInputChange('body', data)}
+                    onChange={(data) => untrack(() => handleInputChange('body', data))}
                     onInit={(instance) => {
                       setBodyEditorRef(instance.editor)
-                      console.log('[EditView] Body editor initialized')
+                      if (instance.editor) {
+                        instance.editor.addEventListener('input', handleEditorInput)
+                      }
                     }}
                     onFocus={() => handleBodyEditorFocus(true)}
                     onBlur={() => handleBodyEditorFocus(false)}

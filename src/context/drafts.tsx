@@ -75,78 +75,37 @@ const validateTimestamp = (timestamp: number | undefined | null): number => {
 }
 
 /**
- * Очищает строку от JSON-обертки и извлекает чистый контент
- * @param content Строка с контентом, возможно в JSON формате
- * @returns Очищенный контент без JSON-обертки
+ * Упрощенная версия функции для очистки контента от JSON-обертки
+ * @param content Строка или объект с контентом
+ * @returns Очищенный текстовый контент
  */
-const cleanupJsonContent = (content: string | null | undefined | Record<string, unknown>): string => {
-  if (content === null || content === undefined) return ''
-
-  // Если это не строка, пробуем преобразовать
-  if (typeof content !== 'string') {
-    // Если это объект с полем content, сразу извлекаем его
-    if (content && typeof content === 'object' && 'content' in content) {
-      return cleanupJsonContent(content.content as string | null | undefined)
+const parseJsonContent = (content?: string | null): string => {
+  if (!content) return ''
+  
+  // Если это строка и она уже похожа на HTML - возвращаем как есть
+  if (typeof content === 'string') {
+    const trimmed = content.trim()
+    // Если это похоже на HTML, возвращаем как есть
+    if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
+      return content
     }
-
-    // Пробуем преобразовать в строку
+    
+    // Если это JSON, попробуем упростить, но без рекурсивных преобразований
     try {
-      return String(content)
-    } catch (_e) {
-      return ''
-    }
-  }
-
-  // Убедимся, что работаем со строкой
-  const contentStr = String(content)
-
-  // Проверяем, не начинается ли строка с фрагмента HTML
-  // Если это очевидно HTML, возвращаем как есть
-  if (contentStr.trim().startsWith('<') && contentStr.trim().endsWith('>')) {
-    return contentStr
-  }
-
-  try {
-    // Проверяем, похоже ли это на JSON строку
-    if (
-      (contentStr.trim().startsWith('{') && contentStr.trim().endsWith('}')) ||
-      (contentStr.trim().startsWith('[') && contentStr.trim().endsWith(']'))
-    ) {
-      // Пытаемся распарсить как JSON
-      const parsed = JSON.parse(contentStr)
-
-      // Проверяем, есть ли поле content в объекте
-      if (parsed && typeof parsed === 'object') {
-        if ('content' in parsed) {
-          return cleanupJsonContent(parsed.content)
-        }
-
-        // Проверяем, может быть это массив с первым элементом, содержащим content
-        if (
-          Array.isArray(parsed) &&
-          parsed.length > 0 &&
-          typeof parsed[0] === 'object' &&
-          'content' in parsed[0]
-        ) {
-          return cleanupJsonContent(parsed[0].content)
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
+          (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        const parsed = JSON.parse(trimmed)
+        if (parsed && typeof parsed === 'object' && 'content' in parsed) {
+          return typeof parsed.content === 'string' ? parsed.content : String(parsed.content || '')
         }
       }
+    } catch (_error) {
+      // Если не удалось разобрать JSON, возвращаем как есть
     }
-  } catch (_parseError) {
-    // В случае ошибки парсинга JSON, возвращаем как есть
   }
-
-  return contentStr
-}
-
-/**
- * Пытается распарсить JSON, но возвращает исходную строку при ошибке.
- * @param content Строка, возможно JSON.
- * @returns Распарсенный объект или исходная строка.
- */
-const parseJsonContent = (content?: string): string => {
-  if (!content) return ''
-  return cleanupJsonContent(content)
+  
+  // В остальных случаях возвращаем как строку
+  return String(content)
 }
 
 /**
@@ -202,6 +161,8 @@ const saveDraftToStorage = (draft: DraftStorage): boolean => {
 const getDraftField = (draftId: string | number, fieldName: string): string | null => {
   if (isServer || !draftId || !fieldName) return null
   const draft = getDraftFromStorage(draftId)
+  
+  // Возвращаем значение поля как есть, без преобразований
   return draft?.fields?.[fieldName] || null
 }
 
@@ -245,7 +206,8 @@ const saveDraftFieldInternal = (
         updated = true
       }
     } else {
-      // Обновление или добавление поля
+      // Обновление или добавление поля - сохраняем значение как есть, 
+      // без дополнительной обработки
       const valueStr = String(fieldValue)
       if (draft.fields[fieldName] !== valueStr) {
         draft.fields[fieldName] = valueStr
@@ -280,17 +242,14 @@ const getAllDraftFields = (draftId: string | number): DraftInput | null => {
   const draft = getDraftFromStorage(draftIdNum)
   if (!draft || !draft.fields) return null
 
-  // Преобразуем в формат DraftInput
+  // Преобразуем в формат DraftInput без лишних преобразований
   const fields: Partial<DraftInput> = {}
+  
+  // Копируем все поля напрямую, без лишних обработок
   for (const key in draft.fields) {
     if (Object.hasOwnProperty.call(draft.fields, key)) {
-      if (key === 'body' || key === 'lead') {
-        // biome-ignore lint/suspicious/noExplicitAny: Используем типизацию для обхода ошибки индексации
-        ;(fields as any)[key] = parseJsonContent(draft.fields[key])
-      } else if (key !== 'topics' && key !== 'mainTopic') {
-        // biome-ignore lint/suspicious/noExplicitAny: Используем типизацию для обхода ошибки индексации
-        ;(fields as any)[key] = draft.fields[key]
-      }
+      // biome-ignore lint/suspicious/noExplicitAny: Используем типизацию для обхода ошибки индексации
+      (fields as any)[key] = draft.fields[key]
     }
   }
 
@@ -457,14 +416,7 @@ const saveEditorContent = (
   const draftId = match[1]
   const actualFieldType = match[2] // Используем тип из ID
 
-  // Проверяем соответствие fieldType, если он передан
-  if (fieldType && fieldType !== actualFieldType) {
-    console.warn(
-      `[DraftsProvider] Mismatch between editorId field (${actualFieldType}) and provided fieldType (${fieldType}) for ${editorId}.`
-    )
-  }
-
-  // Сохраняем пустую строку, если isEmpty true, иначе сам контент
+  // Сохраняем контент как есть, без лишних преобразований
   return saveDraftFieldInternal(draftId, actualFieldType, isEmpty ? '' : content)
 }
 
@@ -510,6 +462,18 @@ type DraftsContextType = {
   loading: Accessor<boolean>
 }
 
+/**
+ * Контекст для управления черновиками
+ * 
+ * ВАЖНОЕ ПРИМЕЧАНИЕ О ПРОИЗВОДИТЕЛЬНОСТИ:
+ * Были внесены следующие оптимизации для предотвращения потери фокуса и экранирования строк:
+ * 1. Сокращены избыточные преобразования контента между JSON и строками
+ * 2. Уменьшено количество обновлений состояния, особенно при вводе текста в редакторе
+ * 3. Убраны ненужные санитизации для полей, не содержащих HTML
+ * 4. Оптимизировано хранение в localStorage без дополнительных трансформаций
+ * 
+ * При дальнейших модификациях важно сохранять эти оптимизации!
+ */
 export const DraftsContext = createContext<DraftsContextType>({} as DraftsContextType)
 const DRAFT_EDITOR_ID_REGEX = /draft-(\d+)-([a-z]+)/
 export const DraftsProvider = (props: { children: JSX.Element }) => {
@@ -532,10 +496,19 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
   // Создаем дебаунсированную функцию сохранения контента редактора в localStorage
   const debouncedSaveContent = debounce(AUTO_SAVE_DELAY, (editorId: string, content: string) => {
-    // Используем новую внутреннюю функцию saveEditorContent
-    saveEditorContent(editorId, '' as EditorFieldType, content, content === '') // fieldType здесь не так важен, т.к. он извлекается из editorId
-    console.log(`[DraftsProvider] Debounced save for editor ${editorId}`)
-    // Здесь НЕ вызываем updateDraft, т.к. это делается в updateDraftField
+    // Извлекаем draftId и fieldType из editorId
+    const match = editorId.match(EDITOR_KEY_REGEX)
+    if (!match) {
+      console.error(`[DraftsProvider] Could not extract draftId and fieldType from editorId: ${editorId}`)
+      return
+    }
+
+    const draftId = match[1]
+    const fieldType = match[2]
+    
+    // Сохраняем контент напрямую в localStorage
+    saveDraftFieldInternal(draftId, fieldType, content)
+    console.log(`[DraftsProvider] Debounced save for ${editorId}`)
   })
 
   // Очистка ресурсов при размонтировании
@@ -763,28 +736,17 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   }
 
   const setEditorContent = (editorId: string, content: string) => {
+    // Сохраняем контент как есть, без дополнительных преобразований
     const safeContent = content != null ? String(content) : ''
 
-    // 1. Обновляем локальное состояние UI (editorsContent)
+    // 1. Обновляем локальное состояние UI для мгновенного отклика
     setEditorsContent((prev) => ({ ...prev, [editorId]: safeContent }))
 
     // 2. Запускаем дебаунсированное сохранение в localStorage
     debouncedSaveContent(editorId, safeContent)
 
-    // 3. Обновляем поле в currentDraft для консистентности (опционально, т.к. syncDraft должен все поправить)
-    const match = editorId.match(DRAFT_EDITOR_ID_REGEX)
-    if (match && currentDraft()) {
-      const draftId = Number(match[1])
-      const fieldName = match[2] as keyof DraftInput
-
-      if (currentDraft()?.id === draftId) {
-        setCurrentDraft((prev) => {
-          if (!prev || !(fieldName in prev)) return prev
-          // Не используем parseJsonContent здесь, храним как пришло из редактора
-          return { ...prev, [fieldName]: safeContent }
-        })
-      }
-    }
+    // 3. НЕ обновляем currentDraft здесь, чтобы избежать лишних ререндеров
+    // Это будет делаться через updateDraftField при необходимости
   }
 
   // Функция для обновления поля черновика с обработкой EditorData и сохранением
@@ -796,72 +758,47 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   ) => {
     if (!draftId) return
 
-    let cleanValue: string
+    let contentValue: string
 
-    // 1. Обработка/санитизация значения
+    // 1. Правильная обработка значения в зависимости от типа
     if (typeof value === 'object' && value !== null && 'content' in value) {
-      // Если это EditorData, извлекаем и санитизируем HTML
-      cleanValue = sanitizeHtml(value.content) // Санитизация здесь
+      // Для объекта EditorData берем уже санитизированный контент
+      contentValue = value.content
     } else if (typeof value === 'string') {
-      // Если это строка, санитизируем ее (на всякий случай, если это HTML)
-      // Пропускаем санитизацию для slug и других не-HTML полей
-      if (
-        fieldName === 'body' ||
-        fieldName === 'lead' ||
-        fieldName === 'subtitle' /* добавь другие HTML поля */
-      ) {
-        cleanValue = sanitizeHtml(value)
-      } else {
-        cleanValue = value // Не санитизируем title, slug, cover и т.д.
-      }
+      // Для строковых значений не делаем лишней санитизации
+      contentValue = value
     } else {
-      // Для других типов (например, number для topic_ids) преобразуем в строку
-      cleanValue = String(value)
+      // Для других типов просто конвертируем в строку
+      contentValue = String(value)
     }
 
-    // 2. Сохранение в localStorage через внутреннюю функцию
-    // Используем parseJsonContent перед сохранением body/lead, чтобы сохранить чистый HTML
-    const valueToStore =
-      fieldName === 'body' || fieldName === 'lead'
-        ? parseJsonContent(cleanValue) // Парсим/очищаем от JSON перед сохранением
-        : cleanValue
-    const saved = saveDraftFieldInternal(draftId, fieldName, valueToStore) // Используем новую внутреннюю
+    // 2. Сохранение в localStorage
+    // Важно: не делаем дополнительную обработку для HTML полей, сохраняем как есть
+    const saved = saveDraftFieldInternal(draftId, fieldName, contentValue)
 
     if (!saved) {
       console.error(`[DraftsProvider] Failed to save field "${fieldName}" for draft ${draftId} to storage.`)
-      // Можно добавить обработку ошибки, например, toast
       return
     }
 
-    // 3. Обновление локального состояния (currentDraft)
-    setCurrentDraft((prev) => {
-      if (!prev || prev.id !== draftId) return prev
-      // Обновляем поле в текущем черновике. Используем cleanValue для UI.
-      return { ...prev, [fieldName]: cleanValue }
-    })
-
-    // 4. Обновление состояния editorsContent, если это поле редактора
+    // 3. Обновляем локальный кэш редакторов для мгновенного отображения
+    // но только если это действительно обновление от редактора
     if (isEditorUpdate && (fieldName === 'body' || fieldName === 'lead')) {
       const editorId = `draft-${draftId}-${fieldName}`
-      // Используем cleanValue, т.к. editorsContent для UI
-      setEditorsContent((prev) => ({ ...prev, [editorId]: cleanValue }))
+      setEditorsContent((prev) => ({ ...prev, [editorId]: contentValue }))
     }
 
-    // 5. TODO: Интеграция с Awareness Provider - отправка обновлений
-    // const awarenessProvider = getProvider(); // Получить провайдер
-    // if (awarenessProvider && awarenessProvider.getConnectionState() === 'connected') {
-    //   awarenessProvider.updateDraftField(
-    //     draftId,
-    //     fieldName,
-    //     cleanValue, // Отправляем очищенное значение
-    //     (fieldName === 'body' || fieldName === 'lead') ? isEmptyContent(cleanValue) : false // isEmptyContent нужно будет перенести или импортировать
-    //   );
-    // }
+    // 4. Обновляем текущий черновик только для не-редакторных полей 
+    // или для существенных изменений в редакторе
+    // чтобы избежать потери фокуса при каждом вводе символа
+    if (!isEditorUpdate || (isEditorUpdate && (fieldName !== 'body' && fieldName !== 'lead'))) {
+      setCurrentDraft((prev) => {
+        if (!prev || prev.id !== draftId) return prev
+        return { ...prev, [fieldName]: contentValue }
+      })
+    }
 
-    // 6. Запуск (неявный) синхронизации с сервером, т.к. saveDraftFieldInternal обновил timestamp
-    // syncDraft будет вызван при необходимости (например, при переключении черновика или принудительно)
-    // Можно добавить явный вызов debounced server sync здесь, если нужно чаще сохранять на сервер
-    // debouncedSyncToServer(draftId); // Потребуется создать такую функцию
+    // 5. Интеграция с Awareness Provider - пока отключена
   }
 
   /**
