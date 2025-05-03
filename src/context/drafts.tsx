@@ -78,21 +78,14 @@ const cleanupJsonContent = (content: string | null | undefined | Record<string, 
   if (typeof content !== 'string') {
     // Если это объект с полем content, сразу извлекаем его
     if (content && typeof content === 'object' && 'content' in content) {
-      const contentField = content.content
-      return cleanupJsonContent(contentField as string | null | undefined)
+      return cleanupJsonContent(content.content as string | null | undefined)
     }
 
     // Пробуем преобразовать в строку
     try {
-      const jsonString = JSON.stringify(content)
-      return cleanupJsonContent(jsonString)
+      return String(content)
     } catch (_e) {
-      try {
-        const strContent = String(content)
-        return cleanupJsonContent(strContent)
-      } catch (_e2) {
-        return ''
-      }
+      return ''
     }
   }
 
@@ -117,7 +110,6 @@ const cleanupJsonContent = (content: string | null | undefined | Record<string, 
       // Проверяем, есть ли поле content в объекте
       if (parsed && typeof parsed === 'object') {
         if ('content' in parsed) {
-          // Рекурсивно проверяем содержимое контента, так как оно тоже может быть JSON
           return cleanupJsonContent(parsed.content)
         }
 
@@ -133,8 +125,7 @@ const cleanupJsonContent = (content: string | null | undefined | Record<string, 
       }
     }
   } catch (_parseError) {
-    // В случае ошибки парсинга JSON, логируем и возвращаем как есть
-    console.debug('[DraftsProvider] Content is not valid JSON, using as is')
+    // В случае ошибки парсинга JSON, возвращаем как есть
   }
 
   return contentStr
@@ -147,7 +138,7 @@ const cleanupJsonContent = (content: string | null | undefined | Record<string, 
  */
 const parseJsonContent = (content?: string): string => {
   if (!content) return ''
-  return cleanupJsonContent(content) // Используем cleanupJsonContent для парсинга и очистки
+  return cleanupJsonContent(content)
 }
 
 /**
@@ -215,10 +206,9 @@ const getDraftField = (draftId: string | number, fieldName: string): string | nu
  * @returns true в случае успеха, false при ошибке.
  */
 const saveDraftFieldInternal = (
-  // Переименовано во избежание конфликта с методом контекста
   draftId: string | number,
   fieldName: string,
-  fieldValue: string | null | undefined // Тип поля разрешает null/undefined
+  fieldValue: string | null | undefined
 ): boolean => {
   if (isServer || !draftId || !fieldName) return false
 
@@ -248,8 +238,7 @@ const saveDraftFieldInternal = (
       }
     } else {
       // Обновление или добавление поля
-      // fieldValue здесь уже гарантированно строка (или должен быть при вызове)
-      const valueStr = String(fieldValue) // Дополнительное приведение на всякий случай
+      const valueStr = String(fieldValue)
       if (draft.fields[fieldName] !== valueStr) {
         draft.fields[fieldName] = valueStr
         updated = true
@@ -258,7 +247,6 @@ const saveDraftFieldInternal = (
 
     if (updated) {
       draft.timestamp = currentTimestamp // Обновляем общую временную метку черновика
-      console.debug(`[DraftsProvider] Saving field "${fieldName}" for draft ${draftIdNum}`)
       return saveDraftToStorage(draft)
     }
 
@@ -278,26 +266,21 @@ const saveDraftFieldInternal = (
  */
 const getAllDraftFields = (draftId: string | number): DraftInput | null => {
   if (isServer || !draftId) return null
-  // Приводим ID к числу
   const draftIdNum = Number(draftId)
   if (Number.isNaN(draftIdNum)) return null
 
   const draft = getDraftFromStorage(draftIdNum)
   if (!draft || !draft.fields) return null
 
-  // Преобразуем в формат DraftInput (пока без topic_ids и т.п.)
-  // Используем cleanupJsonContent для потенциально вложенных JSON
+  // Преобразуем в формат DraftInput
   const fields: Partial<DraftInput> = {}
   for (const key in draft.fields) {
     if (Object.hasOwnProperty.call(draft.fields, key)) {
-      // Особая обработка для body и lead
       if (key === 'body' || key === 'lead') {
-        // Мы знаем, что значение - строка, и целевое поле должно принимать строку.
-        // biome-ignore lint/suspicious/noExplicitAny: Используем `as any` для обхода сложной ошибки вывода типов при индексированном доступе.
+        // biome-ignore lint/suspicious/noExplicitAny: Используем типизацию для обхода ошибки индексации
         ;(fields as any)[key] = parseJsonContent(draft.fields[key])
       } else if (key !== 'topics' && key !== 'mainTopic') {
-        // Игнорируем темы здесь
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        // biome-ignore lint/suspicious/noExplicitAny: Используем типизацию для обхода ошибки индексации
         ;(fields as any)[key] = draft.fields[key]
       }
     }
@@ -444,9 +427,7 @@ const removeDraftFromStorage = (draftId: string | number): boolean => {
 const EDITOR_KEY_REGEX = /draft-(\d+)-([a-z]+)/
 
 /**
- * Сохраняет контент конкретного поля редактора (отличается от saveDraftField тем,
- * что может вызываться чаще, например, при автосохранении).
- * По сути, это обертка над saveDraftFieldInternal.
+ * Сохраняет контент конкретного поля редактора.
  * @param editorId ID редактора (например, "draft-123-body")
  * @param fieldType Тип поля ("body", "lead")
  * @param content Контент для сохранения
@@ -457,27 +438,26 @@ const saveEditorContent = (
   editorId: string,
   fieldType: EditorFieldType,
   content: string,
-  isEmpty: boolean // isEmpty может быть не нужен здесь, saveDraftFieldInternal обработает null/undefined
+  isEmpty: boolean
 ): boolean => {
   const match = editorId.match(EDITOR_KEY_REGEX)
-  if (match) {
-    const draftId = match[1]
-    const actualFieldType = match[2] // Используем тип из ID
-
-    // Проверяем соответствие fieldType, если он передан
-    if (fieldType && fieldType !== actualFieldType) {
-      console.warn(
-        `[DraftsProvider] Mismatch between editorId field (${actualFieldType}) and provided fieldType (${fieldType}) for ${editorId}. Using field from editorId.`
-      )
-    }
-
-    console.debug(`[DraftsProvider] Saving editor content for ${editorId} (Field: ${actualFieldType})`)
-    // Сохраняем пустую строку, если isEmpty true, иначе сам контент
-    return saveDraftFieldInternal(draftId, actualFieldType, isEmpty ? '' : content)
-  } else {
+  if (!match) {
     console.error(`[DraftsProvider] Could not extract draftId and fieldType from editorId: ${editorId}`)
     return false
   }
+
+  const draftId = match[1]
+  const actualFieldType = match[2] // Используем тип из ID
+
+  // Проверяем соответствие fieldType, если он передан
+  if (fieldType && fieldType !== actualFieldType) {
+    console.warn(
+      `[DraftsProvider] Mismatch between editorId field (${actualFieldType}) and provided fieldType (${fieldType}) for ${editorId}.`
+    )
+  }
+
+  // Сохраняем пустую строку, если isEmpty true, иначе сам контент
+  return saveDraftFieldInternal(draftId, actualFieldType, isEmpty ? '' : content)
 }
 
 // Интерфейс для расширенной информации о черновике
@@ -487,6 +467,7 @@ export interface ExtendedDraft extends Draft {
   hasPublishedVersion?: boolean // Флаг, указывающий наличие опубликованной версии с тем же слагом
   published_at?: number | null // Timestamp публикации статьи (может быть null)
   mainTopic?: Topic | null // Явно добавляем поле, которое используется ниже
+  authors: Draft['authors'] // Добавляем обязательное поле для исправления ошибки типа
 }
 
 type DraftsContextType = {
@@ -583,13 +564,10 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
       if (localTimestamp > serverTimestamp) {
         console.log(`[DraftsProvider] Local version of draft ${draftId} is newer. Using local as base.`)
-        // Собираем базовый черновик из локальных данных
-        // Обеспечиваем наличие обязательных полей, которых может не быть в localDraftData.fields
+        // Создаем минимальный Draft-совместимый объект, если currentDraftObj пуст
         const serverBase = currentDraftObj || {
-          /* Создаем минимальный Draft-совместимый объект, если currentDraftObj пуст */
           id: draftId,
           created_at: 0,
-          // updated_at будет перезаписан
           community: {
             id: 0,
             slug: '',
@@ -599,17 +577,20 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
             created_by: { id: 0, slug: '', user: '' }
           },
           created_by: { id: 0, slug: '', user: '' },
-          // Добавьте другие обязательные поля с заглушками, если они есть
           title: '',
           slug: '',
-          layout: 'article'
+          layout: 'article',
+          topics: [], // Добавляем пустой массив для topics
+          authors: [] // Добавляем пустой массив для authors
         }
 
         baseDraft = {
           ...serverBase,
           ...(localDraftData?.fields || {}), // Перезаписываем поля из локалки
           updated_at: localTimestamp, // Используем локальную метку (число)
-          isLocalOnly: !currentDraftObj // Флаг, если черновик только локальный
+          isLocalOnly: !currentDraftObj, // Флаг, если черновик только локальный
+          topics: serverBase.topics || [], // Гарантируем наличие topics
+          authors: serverBase.authors || [] // Гарантируем наличие authors
         }
         fieldsToApply = localDraftData?.fields || null
       } else {
@@ -623,8 +604,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           return undefined // Не можем продолжить без серверных данных
         }
         baseDraft = { ...currentDraftObj }
-        // Если есть локальные поля, но они старше, мы их ИГНОРИРУЕМ при формировании baseDraft,
-        // но можем решить синхронизировать их на сервер позже, если они не синхронизированы.
+        // Проверяем только несинхронизированные данные
         fieldsToApply =
           localDraftData && (!localDraftData.lastSync || localDraftData.timestamp > localDraftData.lastSync)
             ? localDraftData.fields
@@ -892,11 +872,10 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           cover_caption: fields.cover_caption || '',
           created_at: validateTimestamp(local.timestamp), // Числовой timestamp
           updated_at: validateTimestamp(local.timestamp), // Числовой timestamp
-          // Темы и авторов здесь не будет, т.к. они не хранятся так в localStorage
+          // Обязательные поля
           topics: [],
+          authors: [], // Добавляем пустой массив для обязательного поля authors
           mainTopic: null, // Локально mainTopic не храним в нужном формате
-          authors: [],
-          // stat: { comments: 0, views: 0, reactions: 0 }, // Убираем stat, если его нет в ExtendedDraft
           // Оставляем только поля, которые есть в Draft/ExtendedDraft
           // Добавляем обязательные поля из Draft, если они нужны
           created_by: { id: 0, slug: '', user: '' }, // Заглушка
@@ -984,23 +963,17 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         Array.isArray(serverResponse.data.load_drafts.drafts)
       ) {
         serverDrafts = serverResponse.data.load_drafts.drafts
+        console.log(`[drafts] Loaded ${serverDrafts.length} drafts from server.`)
+      } else if (serverResponse?.error) {
+        console.error('[drafts] GraphQL error loading server drafts:', serverResponse.error)
       } else {
-        // biome-ignore lint/style/useCollapsedElseIf: ok
-        if (serverResponse?.error) {
-          console.error('[drafts] GraphQL error loading server drafts:', serverResponse.error)
-        } else {
-          console.warn(
-            '[drafts] server drafts data is missing or not an array:',
-            serverResponse?.data?.load_drafts?.drafts
-          )
-        }
-        // Продолжаем с пустым массивом серверных черновиков
+        console.warn(
+          '[drafts] server drafts data is missing or not an array:',
+          serverResponse?.data?.load_drafts?.drafts
+        )
       }
 
-      console.log(`[drafts] Loaded ${serverDrafts.length} drafts from server.`)
-
       // 2. Загружаем метаданные локальных черновиков
-      // getAllDraftsFromStorage должна возвращать массив объектов типа { id: number | string, timestamp: number }
       const localDraftMetas = getAllDraftsFromStorage()
       console.log(`[drafts] Found ${localDraftMetas.length} local draft storages.`)
 
@@ -1008,20 +981,19 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       const serverDraftsMap = new Map<number, ExtendedDraft>()
       serverDrafts.forEach((draft) => {
         if (draft?.id) {
-          // Добавлена проверка на существование draft и draft.id
           serverDraftsMap.set(draft.id, { ...draft, isLocalOnly: false })
         }
       })
 
       const finalDrafts: ExtendedDraft[] = []
 
-      // 4. Итерируем по локальным метаданным
+      // 4. Обработка черновиков, которые есть и на сервере, и локально
       for (const localMeta of localDraftMetas) {
         if (!localMeta?.id) {
-          // Пропускаем, если нет ID
           console.warn('[drafts] Local meta entry missing ID:', localMeta)
           continue
         }
+
         const draftId = typeof localMeta.id === 'string' ? Number.parseInt(localMeta.id, 10) : localMeta.id
         if (Number.isNaN(draftId)) {
           console.warn('[drafts] Invalid local draft ID found:', localMeta.id)
@@ -1029,106 +1001,70 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         }
 
         const serverDraft = serverDraftsMap.get(draftId)
-        // Загружаем полные локальные данные ТОЛЬКО когда они нужны
         const localFields = getAllDraftFields(draftId) as DraftInput & { [key: string]: string | number }
         const localTimestamp = validateTimestamp(localMeta.timestamp || 0)
 
         if (serverDraft) {
           // Черновик есть и локально, и на сервере
-          console.log(`[drafts] Draft ${draftId} found both locally and on server.`)
           const serverTimestamp = validateTimestamp(serverDraft.updated_at || 0)
-
-          // Создаем базовый объединенный черновик из серверной версии
           const mergedDraft: ExtendedDraft = { ...serverDraft }
 
-          // Если локальные данные (поля) существуют И локальное время новее серверного
+          // Если локальные данные есть И они новее серверных, используем их
           if (localFields && localTimestamp > serverTimestamp) {
-            console.log(
-              `[drafts] Applying newer local fields to draft ${draftId}. Local: ${new Date(localTimestamp).toISOString()}, Server: ${new Date(serverTimestamp).toISOString()}`
-            )
             Object.entries(localFields).forEach(([key, value]) => {
               if (key === 'id')
-                return // Не перезаписываем ID
-                // biome-ignore lint/suspicious/noExplicitAny: Merging draft fields
+                return // biome-ignore lint/suspicious/noExplicitAny: Типизация при слиянии объектов
               ;(mergedDraft as any)[key] = tryParseJson(value, key)
             })
-            // Обновляем updated_at на локальное время
             mergedDraft.updated_at = localTimestamp
-            mergedDraft.isLocalOnly = false // Убеждаемся, что флаг снят
-          } else if (localFields && localTimestamp === serverTimestamp) {
-            console.log(
-              `[drafts] Local and server timestamps are equal for draft ${draftId}. Preferring local fields.`
-            )
-            // Применяем локальные поля при равенстве временных меток
-            Object.entries(localFields).forEach(([key, value]) => {
-              if (key === 'id') return // biome-ignore lint/suspicious/noExplicitAny: Merging draft fields
-              ;(mergedDraft as any)[key] = tryParseJson(value, key)
-            })
-            mergedDraft.isLocalOnly = false
-          } else {
-            console.log(
-              `[drafts] Server version is newer for draft ${draftId}, or no local fields found. Using server version.`
-            )
           }
 
           finalDrafts.push(mergedDraft)
           serverDraftsMap.delete(draftId) // Удаляем из карты, так как обработали
-        } else {
-          // Черновик есть только локально
-          console.log(`[drafts] Draft ${draftId} found only locally.`)
-          if (localFields) {
-            // Создаем полный объект черновика на основе локальных данных
-            // Применяем tryParseJson ко всем полям, которые могут быть JSON
-            const localDraft: ExtendedDraft = {
-              id: draftId,
-              title: tryParseJson(localFields.title, 'title') || 'Без названия',
-              subtitle: tryParseJson(localFields.subtitle, 'subtitle') || '',
-              lead: tryParseJson(localFields.lead, 'lead') || '',
-              body: tryParseJson(localFields.body, 'body') || '',
-              slug: tryParseJson(localFields.slug, 'slug') || '',
-              cover: tryParseJson(localFields.cover, 'cover') || '',
-              cover_caption: tryParseJson(localFields.cover_caption, 'cover_caption') || '',
-              layout: tryParseJson(localFields.layout, 'layout') || 'article',
-              // Пытаемся получить topics/mainTopic из разных возможных ключей
-              topics: (tryParseJson(localFields.topic_ids || localFields.topics, 'topics') || []).map(
-                (tid: number) => ({
-                  id: tid,
-                  name: '',
-                  slug: '',
-                  pic: '',
-                  created_at: 0
-                })
-              ),
-              // Добавляем минимальные заглушки для обязательных полей типа Draft
-              created_at: localTimestamp, // Use local timestamp
-              updated_at: localTimestamp,
-              created_by: { id: 0, slug: '', user: '' }, // Placeholder
-              community: {
-                id: 0,
-                slug: '',
-                name: '',
-                pic: '',
-                created_at: 0,
-                created_by: { id: 0, slug: '', user: '' }
-              }, // Placeholder
-              isLocalOnly: true
-            }
-            finalDrafts.push(localDraft)
-          } else {
-            console.warn(`[drafts] Local draft ${draftId} has metadata but no fields found in storage.`)
-            // Можно решить удалить такой "пустой" локальный черновик
-            removeDraftFromStorage(draftId)
+        } else if (localFields) {
+          // Черновик есть только локально - создаем из локальных данных
+          const localDraft: ExtendedDraft = {
+            id: draftId,
+            title: tryParseJson(localFields.title, 'title') || 'Без названия',
+            subtitle: tryParseJson(localFields.subtitle, 'subtitle') || '',
+            lead: tryParseJson(localFields.lead, 'lead') || '',
+            body: tryParseJson(localFields.body, 'body') || '',
+            slug: tryParseJson(localFields.slug, 'slug') || '',
+            cover: tryParseJson(localFields.cover, 'cover') || '',
+            cover_caption: tryParseJson(localFields.cover_caption, 'cover_caption') || '',
+            layout: tryParseJson(localFields.layout, 'layout') || 'article',
+            // Пытаемся получить topics/mainTopic из разных возможных ключей
+            topics: (tryParseJson(localFields.topic_ids || localFields.topics, 'topics') || [])
+              .map((tid: number) => topicEntities()[tid])
+              .filter(Boolean), // Фильтруем undefined значения
+            authors: [], // Добавляем пустой массив для authors
+            created_at: localTimestamp,
+            updated_at: localTimestamp,
+            created_by: { id: 0, slug: '', user: '' },
+            community: {
+              id: 0,
+              slug: '',
+              name: '',
+              pic: '',
+              created_at: 0,
+              created_by: { id: 0, slug: '', user: '' }
+            },
+            isLocalOnly: true
           }
+          finalDrafts.push(localDraft)
+        } else {
+          // Локальный черновик без полей - удаляем
+          console.warn(`[drafts] Local draft ${draftId} has metadata but no fields found in storage.`)
+          removeDraftFromStorage(draftId)
         }
       }
 
-      // 5. Добавляем оставшиеся черновики с сервера (те, которых не было локально)
+      // 5. Добавляем оставшиеся черновики с сервера
       serverDraftsMap.forEach((serverDraft) => {
-        console.log(`[drafts] Adding server-only draft ${serverDraft.id}.`)
         finalDrafts.push(serverDraft)
       })
 
-      // 6. Проверяем наличие опубликованных версий для всех итоговых черновиков
+      // 6. Проверяем наличие опубликованных версий
       const draftsWithPublishedCheck = await Promise.all(
         finalDrafts.map(async (draft) => {
           if (draft.slug) {
@@ -1136,7 +1072,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
               draft.hasPublishedVersion = await checkPublishedVersion(draft.slug)
             } catch (checkError) {
               console.error(`[drafts] Error checking published version for slug ${draft.slug}:`, checkError)
-              draft.hasPublishedVersion = false // Считаем, что нет, если проверка упала
+              draft.hasPublishedVersion = false
             }
           }
           return draft
@@ -1144,81 +1080,81 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       )
 
       // 7. Обновляем список черновиков
-      console.log('[drafts] Setting final merged and deduplicated drafts:', draftsWithPublishedCheck)
+      console.log('[drafts] Setting final merged drafts:', draftsWithPublishedCheck)
       setDrafts(draftsWithPublishedCheck)
     } catch (error) {
       console.error('[drafts] Critical error in loadDrafts:', error)
-      // В случае ошибки пытаемся загрузить только локальные, если список пуст
+
+      // В случае ошибки загружаем только локальные черновики
       if (!drafts()?.length) {
         try {
-          // Переиспользуем логику создания чисто локальных черновиков
-          const localDraftsFallback: ExtendedDraft[] = []
-          const localMetasFallback = getAllDraftsFromStorage()
-          for (const localMeta of localMetasFallback) {
-            const draftId =
-              typeof localMeta.id === 'string' ? Number.parseInt(localMeta.id, 10) : localMeta.id
-            if (Number.isNaN(draftId)) continue
-            const localFields = getAllDraftFields(draftId) as DraftInput & {
-              [key: string]: string | number
-            }
-            if (localFields) {
-              const validTimestamp = validateTimestamp(localMeta.timestamp || 0)
-              const localDraft: ExtendedDraft = {
-                /* ... структура как в шаге 4 ... */
-                id: draftId,
-                title: tryParseJson(localFields.title, 'title') || 'Без названия',
-                subtitle: tryParseJson(localFields.subtitle, 'subtitle') || '',
-                lead: tryParseJson(localFields.lead, 'lead') || '',
-                body: tryParseJson(localFields.body, 'body') || '',
-                slug: tryParseJson(localFields.slug, 'slug') || '',
-                cover: tryParseJson(localFields.cover, 'cover') || '',
-                cover_caption: tryParseJson(localFields.cover_caption, 'cover_caption') || '',
-                layout: tryParseJson(localFields.layout, 'layout') || 'article',
-                topics: (tryParseJson(localFields.topic_ids || localFields.topics, 'topics') || []).map(
-                  (tid: number) => topicEntities()[tid]
-                ),
-                created_at: validTimestamp,
-                updated_at: validTimestamp,
-                created_by: { id: 0, slug: '', user: '' },
-                community: {
-                  id: 0,
-                  slug: '',
-                  name: '',
-                  pic: '',
-                  created_at: 0,
-                  created_by: { id: 0, slug: '', user: '' }
-                },
-                isLocalOnly: true
-              }
-              localDraftsFallback.push(localDraft)
-            }
-          }
-
+          const localDraftsFallback = await loadLocalDraftsAsFallback()
           if (localDraftsFallback.length) {
-            console.log(
-              '[drafts] Loaded local drafts as fallback after critical error:',
-              localDraftsFallback
-            )
-            // Проверяем публикации и для них
-            const fallbackWithCheck = await Promise.all(
-              localDraftsFallback.map(async (draft) => {
-                if (draft.slug) {
-                  try {
-                    draft.hasPublishedVersion = await checkPublishedVersion(draft.slug)
-                  } catch (_e) {
-                    draft.hasPublishedVersion = false
-                  }
-                }
-                return draft
-              })
-            )
-            setDrafts(fallbackWithCheck)
+            setDrafts(localDraftsFallback)
           }
         } catch (localError) {
           console.error('[drafts] Error loading local drafts as fallback:', localError)
         }
       }
     }
+  }
+
+  /**
+   * Загружает только локальные черновики как запасной вариант при ошибке сервера
+   */
+  const loadLocalDraftsAsFallback = async (): Promise<ExtendedDraft[]> => {
+    const localDraftsFallback: ExtendedDraft[] = []
+    const localMetas = getAllDraftsFromStorage()
+
+    for (const meta of localMetas) {
+      const draftId = typeof meta.id === 'string' ? Number.parseInt(meta.id, 10) : meta.id
+      if (Number.isNaN(draftId)) continue
+
+      const fields = getAllDraftFields(draftId) as DraftInput & { [key: string]: string | number }
+      if (!fields) continue
+
+      const timestamp = validateTimestamp(meta.timestamp || 0)
+      const draft: ExtendedDraft = {
+        id: draftId,
+        title: tryParseJson(fields.title, 'title') || 'Без названия',
+        subtitle: tryParseJson(fields.subtitle, 'subtitle') || '',
+        lead: tryParseJson(fields.lead, 'lead') || '',
+        body: tryParseJson(fields.body, 'body') || '',
+        slug: tryParseJson(fields.slug, 'slug') || '',
+        cover: tryParseJson(fields.cover, 'cover') || '',
+        cover_caption: tryParseJson(fields.cover_caption, 'cover_caption') || '',
+        layout: tryParseJson(fields.layout, 'layout') || 'article',
+        topics: (tryParseJson(fields.topic_ids || fields.topics, 'topics') || [])
+          .map((tid: number) => topicEntities()[tid])
+          .filter(Boolean),
+        authors: [],
+        created_at: timestamp,
+        updated_at: timestamp,
+        created_by: { id: 0, slug: '', user: '' },
+        community: {
+          id: 0,
+          slug: '',
+          name: '',
+          pic: '',
+          created_at: 0,
+          created_by: { id: 0, slug: '', user: '' }
+        },
+        isLocalOnly: true
+      }
+
+      // Проверяем публикацию
+      if (draft.slug) {
+        try {
+          draft.hasPublishedVersion = await checkPublishedVersion(draft.slug)
+        } catch (_e) {
+          draft.hasPublishedVersion = false
+        }
+      }
+
+      localDraftsFallback.push(draft)
+    }
+
+    return localDraftsFallback
   }
 
   const createDraft = async (draft: DraftInput): Promise<OperationResult<CreateDraftMutationMutation>> => {
@@ -1261,7 +1197,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     console.log(`[DraftsProvider] Публикация черновика #${draftId}`)
 
     try {
-      // Дополнительная проверка черновика перед публикацией
       // Находим черновик в общем списке
       const draftToPublish = drafts().find((d) => d.id === draftId)
 
@@ -1270,75 +1205,50 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         throw new Error(`Черновик #${draftId} не найден`)
       }
 
-      // Проверяем наличие темы перед публикацией
-      // У Draft нет свойства topic_ids, нужно извлекать идентификаторы из массива topics
-      const topicIds = draftToPublish.topics
-        ? draftToPublish.topics
-            .filter((topic): topic is Topic => Boolean(topic?.id))
-            .map((topic) => topic.id)
-        : []
+      // Извлекаем идентификаторы тем
+      const topicIds =
+        draftToPublish.topics
+          ?.filter((topic): topic is Topic => Boolean(topic?.id))
+          .map((topic) => topic.id) || []
 
+      // Проверяем наличие тем перед публикацией
       if (topicIds.length) {
         console.log(
           `[DraftsProvider] У черновика #${draftId} найдено ${topicIds.length} тем: ${topicIds.join(', ')}`
         )
       } else {
-        console.warn(
-          `[DraftsProvider] У черновика #${draftId} отсутствуют темы, пытаемся использовать резервные варианты`
-        )
+        console.warn(`[DraftsProvider] У черновика #${draftId} отсутствуют темы, пытаемся добавить`)
 
-        // Пробуем сначала использовать темы из объекта Draft
-        if (draftToPublish.topics && draftToPublish.topics.length > 0) {
-          // Проверяем наличие тем в массиве topics
+        // Получаем все доступные темы через useTopics
+        const availableTopics = Object.values(topicEntities())
+        if (availableTopics.length) {
+          // Берем первую доступную тему как запасной вариант
+          const defaultTopicId = availableTopics[0].id
           console.log(
-            `[DraftsProvider] У черновика #${draftId} найдены темы в массиве topics, используем их`
+            `[DraftsProvider] Используем тему по умолчанию ID=${defaultTopicId} для черновика #${draftId}`
           )
 
-          // Извлекаем идентификаторы тем с дополнительной проверкой
-          const extractedTopicIds = draftToPublish.topics
-            .filter((topic): topic is Topic => Boolean(topic?.id))
-            .map((topic) => topic.id)
-            .filter((id) => id > 0)
-
-          if (extractedTopicIds.length > 0) {
-            console.log(
-              `[DraftsProvider] Восстановлено ${extractedTopicIds.length} тем для черновика #${draftId}`
-            )
-
-            // Создаем обновленный объект черновика
-            const updatedDraft: DraftInput = {
-              id: draftId,
-              topic_ids: extractedTopicIds,
-              main_topic_id: extractedTopicIds[0]
-            }
-
-            // Обновляем черновик перед публикацией
-            console.log(`[DraftsProvider] Обновляем темы черновика #${draftId} перед публикацией`)
-            await updateDraft(updatedDraft)
-          } else {
-            console.warn(
-              `[DraftsProvider] Не удалось восстановить темы для черновика #${draftId}, публикация может завершиться с ошибкой`
-            )
+          // Обновляем черновик с темой по умолчанию
+          const updatedDraft: DraftInput = {
+            id: draftId,
+            topic_ids: [defaultTopicId],
+            main_topic_id: defaultTopicId
           }
+
+          await updateDraft(updatedDraft)
         } else {
           console.warn(
-            `[DraftsProvider] У черновика #${draftId} отсутствуют темы, публикация может завершиться с ошибкой`
+            `[DraftsProvider] Нет доступных тем для черновика #${draftId}, публикация может завершиться ошибкой`
           )
         }
       }
 
-      // Непосредственно публикуем черновик
+      // Публикуем черновик
       const response = await client()?.mutation(publishDraftMutation, { draft_id: draftId })
-
-      console.log(`[DraftsProvider] Результат публикации черновика #${draftId}:`, {
-        success: !!response?.data?.publish_draft?.draft,
-        error: response?.data?.publish_draft?.error || null,
-        draftData: response?.data?.publish_draft?.draft ? 'получен' : 'отсутствует'
-      })
 
       if (response?.data?.publish_draft?.draft) {
         setDrafts(drafts().map((d) => (d.id === draftId ? response.data.publish_draft.draft : d)))
-        console.log(`[DraftsProvider] Обновлен список черновиков после публикации #${draftId}`)
+        console.log(`[DraftsProvider] Успешно опубликован черновик #${draftId}`)
       } else if (response?.data?.publish_draft?.error) {
         console.error(
           `[DraftsProvider] Ошибка при публикации черновика #${draftId}:`,
@@ -1395,8 +1305,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     const draft = currentDraft()
     if (!draft) {
       console.warn('[DraftsProvider] No current draft to validate.')
-      setValidationErrors({}) // Очищаем ошибки, если черновика нет
-      return false // Считаем невалидным, если нет черновика
+      setValidationErrors({})
+      return false
     }
 
     // Собираем DraftInput из текущего черновика
@@ -1410,26 +1320,21 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       slug: draft.slug || '',
       cover: draft.cover || '',
       cover_caption: draft.cover_caption || '',
-      // Обрабатываем topics и mainTopic, обеспечивая правильные типы
+      // Убеждаемся, что topic_ids - это массив чисел
       topic_ids:
         draft.topics?.map((t) => t?.id).filter((id): id is number => typeof id === 'number' && id > 0) ||
         [],
       main_topic_id: draft.mainTopic?.id || null,
       seo: draft.seo || '',
-      // Добавьте другие поля, если они участвуют в валидации
       author_ids: draft.authors?.map((a) => a?.id).filter((id): id is number => !!id) || []
     }
-
-    console.log('[DraftsProvider] Validating draft input:', draftInput)
 
     const validationResult = validateDraftForPublishing(draftInput)
 
     if (validationResult.isValid) {
-      console.log('[DraftsProvider] Draft validation successful.')
       setValidationErrors({}) // Очищаем ошибки при успехе
       return true
     } else {
-      console.warn('[DraftsProvider] Draft validation failed:', validationResult.errors)
       // Преобразуем массив ошибок в объект для сигнала
       const errorsMap: Partial<Record<keyof DraftInput, string>> = {}
       validationResult.errors.forEach((error) => {
@@ -1440,8 +1345,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
             errorsMap[fieldKey] = error.message
           }
         }
-        // TODO: Как обрабатывать ошибки без поля (error.field === null)?
-        // Возможно, добавить общее поле '_error' или показывать их отдельно?
       })
       setValidationErrors(errorsMap)
       return false

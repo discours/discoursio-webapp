@@ -1172,7 +1172,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     // Устанавливаем опции формы
     editorFormOptions = {
       onSubmit,
-      validate: type === 'video' ? (url: string) => validateVideoUrl(url) : (url: string) => validateWebUrl(url)
+      validate:
+        type === 'video' ? (url: string) => validateVideoUrl(url) : (url: string) => validateWebUrl(url)
     }
   }
 
