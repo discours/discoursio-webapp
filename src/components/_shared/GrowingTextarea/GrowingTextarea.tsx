@@ -26,6 +26,11 @@ export const GrowingTextarea = (props: Props) => {
   const [isFocused, setIsFocused] = createSignal(false)
 
   createEffect(() => {
+    if (isFocused()) {
+      console.log('[GrowingTextarea] Focused, ignoring initialValue update')
+      return
+    }
+
     if (((props.maxLength && props.initialValue?.length) || 0) > (props.maxLength || 0)) {
       setValue(props.initialValue?.slice(0, props.maxLength || 0) || '')
     } else {
@@ -65,11 +70,7 @@ export const GrowingTextarea = (props: Props) => {
             maxlength={props.maxLength}
             autocomplete="off"
             class={clsx(styles.textInput, props.class)}
-            value={
-              props.initialValue && props.maxLength
-                ? props.initialValue?.slice(0, props.maxLength)
-                : props.initialValue
-            }
+            value={value()}
             onKeyDown={props.allowEnterKey ? handleKeyDown : () => 1}
             onInput={(event) => handleChangeValue(event.target.value)}
             placeholder={props.placeholder}

@@ -3,33 +3,9 @@
  * @description Модуль содержит функции валидации для SimpleRichEditor
  */
 
-import { isEmptyContent } from '~/components/SimpleRichEditor/lib/empty'
+import { VIMEO_URL_REGEX, WEB_URL_REGEX, YOUTUBE_URL_REGEX } from '~/components/SimpleRichEditor/lib/types'
 import { DraftInput } from '~/graphql/schema/core.gen'
-import { cleanupContent } from '../components/SimpleRichEditor/lib/sanitize'
-
-/**
- * Регулярное выражение для URL адресов
- */
-export const WEB_URL_REGEX = /^(https|http)?:\/\//
-
-/**
- * Регулярное выражение для Vimeo URL
- */
-export const VIMEO_URL_REGEX = /^(https?:\/\/)?(www\.)?vimeo\.com\/([0-9]+)/
-
-/**
- * Регулярное выражение для YouTube URL
- */
-export const YOUTUBE_URL_REGEX = /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/
-
-/**
- * Интерфейс для опций инлайн-форм
- */
-export interface InlineFormOptions {
-  type: string
-  onSubmit: (value: string) => void
-  validate?: (url: string) => string
-}
+import { parseJsonContent } from '../components/SimpleRichEditor/lib/storage'
 
 /**
  * Валидирует URL адрес
@@ -100,117 +76,126 @@ export const validateVideoUrl = (url: string, t?: (key: string) => string): stri
 }
 
 /**
- * Функция валидации формы с использованием опций
- *
- * @param value Значение для валидации
- * @param options Опции формы с функцией валидации
- * @returns Строка с ошибкой или пустая строка, если валидация прошла успешно
+ * Тип ошибки валидации
+ * @property field - Поле, содержащее ошибку
+ * @property message - Сообщение об ошибке
  */
-export const validateFormInput = (value: string, options: InlineFormOptions | null): string => {
-  if (!options || !options.validate) return ''
-  return options.validate(value)
-}
-
-export interface ValidationError {
-  field: string
+export type ValidationError = {
+  field: keyof DraftInput | null
   message: string
 }
 
-export interface ValidationResult {
+/**
+ * Результат валидации черновика
+ * @property isValid - Флаг, указывающий на валидность черновика
+ * @property errors - Массив ошибок валидации
+ */
+export type ValidationResult = {
   isValid: boolean
   errors: ValidationError[]
 }
 
 /**
+ * Очищает HTML от кавычек и JSON-обертки
+ * @param content строка для очистки
+ * @returns очищенная строка
+ */
+const cleanupHtmlContent = (content: string | null | undefined): string => {
+  if (!content) return ''
+
+  let cleanContent = content
+
+  // Если значение содержит кавычки в начале и в конце
+  if (cleanContent?.startsWith('"') && cleanContent?.endsWith('"')) {
+    try {
+      // Пробуем распарсить как JSON-строку
+      const parsed = JSON.parse(cleanContent)
+      if (typeof parsed === 'string') {
+        cleanContent = parsed
+      }
+    } catch (e) {
+      console.debug('[validateDraft] Could not parse content as JSON, using as is:', e)
+      // Если не смогли распарсить, просто убираем внешние кавычки
+      cleanContent = cleanContent.substring(1, cleanContent.length - 1)
+    }
+  }
+
+  // Используем parseJsonContent для очистки JSON-обертки, если она есть
+  let parsedSuccessfully = false
+  let potentialStringContent = cleanContent
+  try {
+    const parsed = parseJsonContent(cleanContent)
+    // Убедимся, что результат парсинга - строка
+    if (typeof parsed === 'string') {
+      potentialStringContent = parsed
+      parsedSuccessfully = true
+    } else {
+      console.debug('[validateDraft] Parsed content is not a string, keeping original.')
+    }
+  } catch (e) {
+    // Если не удалось распарсить как JSON, оставляем как есть
+    console.debug('[validateDraft] Could not parse content as JSON, using as is:', e)
+  }
+  // Обновляем cleanContent только если парсинг был успешен и вернул строку
+  if (parsedSuccessfully) {
+    cleanContent = potentialStringContent
+  }
+
+  // Дополнительная очистка от экранированных кавычек
+  // Убедимся, что cleanContent все еще строка перед вызовом replace
+  if (typeof cleanContent === 'string') {
+    cleanContent = cleanContent.replace(/\\\\"/g, '"')
+  } else {
+    // Если cleanContent не строка после всех попыток, вернем пустую строку или исходное значение?
+    // Вернем пустую строку, так как функция должна возвращать string
+    console.warn(
+      '[validateDraft] cleanContent ended up as non-string, returning empty string. Original content:',
+      content
+    )
+    return ''
+  }
+
+  return cleanContent
+}
+
+/**
  * Проверяет черновик на готовность к публикации
- * @param draft Черновик для проверки
- * @returns Результат валидации с массивом ошибок
+ * @param draft черновик для проверки
+ * @returns результат валидации
  */
 export const validateDraftForPublishing = (draft: DraftInput): ValidationResult => {
   const errors: ValidationError[] = []
 
   // Проверка заголовка
-  if (!draft.title?.trim()) {
+  if (!draft.title || draft.title.trim() === '') {
     errors.push({
       field: 'title',
       message: 'Title is required'
     })
   }
 
-  // Применяем очистку к содержимому body перед валидацией
-  const cleanedBody = draft.body ? cleanupContent(draft.body) : null
-
-  // Проверка body на пустоту после очистки
-  if (isEmptyContent(cleanedBody)) {
-    // Используем cleanedBody
+  // Проверка текста
+  const bodyContent = cleanupHtmlContent(draft.body)
+  if (!bodyContent || bodyContent.trim() === '' || bodyContent === '<br>') {
     errors.push({
       field: 'body',
-      message: 'Body cannot be empty'
-    })
-  } else {
-    // Проверка на минимальную длину текста
-    const tmpDiv = document.createElement('div')
-    tmpDiv.innerHTML = cleanedBody || '' // Используем cleanedBody
-    const plainText = tmpDiv.textContent?.trim() || ''
-    if (plainText.length < 10) {
-      errors.push({
-        field: 'body',
-        message: 'Body text should be at least 10 characters long'
-      })
-    }
-  }
-
-  // Проверка lead
-  if (draft.lead && isEmptyContent(draft.lead)) {
-    errors.push({
-      field: 'lead',
-      message: 'Lead cannot be empty if provided'
+      message: 'Content is required'
     })
   }
 
-  // Проверка тем
-  if (!draft.topic_ids?.length) {
+  // Проверка темы
+  if (!draft.topic_ids || !draft.topic_ids.length) {
     errors.push({
-      field: 'topics',
+      field: 'topic_ids',
       message: 'At least one topic is required'
     })
   }
 
-  // Проверка главной темы
-  if (!draft.main_topic_id && draft.topic_ids?.length) {
+  // Проверка слага
+  if (!draft.slug || draft.slug.trim() === '') {
     errors.push({
-      field: 'main_topic',
-      message: 'Main topic is required when topics are present'
-    })
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  }
-}
-
-/**
- * Проверяет черновик на возможность сохранения
- * Менее строгие проверки чем для публикации
- * @param draft Черновик для проверки
- * @returns Результат валидации
- */
-export const validateDraftForSaving = (draft: DraftInput): ValidationResult => {
-  const errors: ValidationError[] = []
-
-  // Базовые проверки
-  if (draft.body && isEmptyContent(draft.body)) {
-    errors.push({
-      field: 'body',
-      message: 'Body cannot be empty if provided'
-    })
-  }
-
-  if (draft.lead && isEmptyContent(draft.lead)) {
-    errors.push({
-      field: 'lead',
-      message: 'Lead cannot be empty if provided'
+      field: 'slug',
+      message: 'URL is required'
     })
   }
 

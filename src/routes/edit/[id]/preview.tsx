@@ -20,12 +20,19 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
   const { t } = useLocalize()
   const [isLoading, setIsLoading] = createSignal(true)
   const [previewData, setPreviewData] = createSignal<ExtendedDraft | null>(null)
+  const [isSyncAttempted, setIsSyncAttempted] = createSignal(false)
 
   // Загружаем черновик при монтировании
   createEffect(async () => {
+    // Предотвращаем повторные вызовы, если синхронизация уже выполнялась
+    if (isSyncAttempted()) return
+
     await requireAuthentication(async () => {
       setIsLoading(true)
       try {
+        // Помечаем, что попытка синхронизации началась
+        setIsSyncAttempted(true)
+
         // Загружаем все черновики, если их еще нет
         if (!drafts().length) {
           await loadDrafts()
@@ -52,17 +59,28 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
         )
 
         if (draft) {
-          // Синхронизируем черновик для получения последних изменений
-          if (draft.id && !draft.isLocalOnly) {
-            const syncedDraft = await syncDraft(draft.id)
-            if (syncedDraft) {
-              draft = syncedDraft
-            }
-          }
-
-          // Устанавливаем черновик для предпросмотра
+          // Устанавливаем черновик для предпросмотра сразу (для быстрого отображения)
           setCurrentDraft(draft)
           setPreviewData(draft)
+
+          try {
+            // Синхронизируем черновик для получения последних изменений, но только для нелокальных черновиков
+            if (draft.id && !draft.isLocalOnly) {
+              console.log(`[DraftPreviewPage] Syncing draft ${draft.id}`)
+              const syncedDraft = await syncDraft(draft.id)
+
+              // Обновляем данные только если синхронизация успешна
+              if (syncedDraft) {
+                console.log(`[DraftPreviewPage] Successfully synced draft ${draft.id}`)
+                draft = syncedDraft
+                setCurrentDraft(draft)
+                setPreviewData(draft)
+              }
+            }
+          } catch (syncError) {
+            console.error('[DraftPreviewPage] Error syncing draft:', syncError)
+            // Продолжаем с существующим черновиком, если синхронизация не удалась
+          }
         } else {
           // Если черновик не найден, показываем уведомление
           toast.error(t('Draft not found'))

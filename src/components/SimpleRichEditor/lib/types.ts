@@ -194,10 +194,25 @@ export interface InlineFormOptions {
   title?: string
   initialValue?: string
   placeholder?: string
-  validate?: (value: string) => boolean | string
+  validate?: (value: string) => Promise<string> | string
   onSubmit: (value: string) => void
   onCancel?: () => void
 }
+
+/**
+ * Регулярное выражение для URL адресов
+ */
+export const WEB_URL_REGEX = /^(https|http)?:\/\//
+
+/**
+ * Регулярное выражение для Vimeo URL
+ */
+export const VIMEO_URL_REGEX = /^(https?:\/\/)?(www\.)?vimeo\.com\/([0-9]+)/
+
+/**
+ * Регулярное выражение для YouTube URL
+ */
+export const YOUTUBE_URL_REGEX = /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/
 
 /**
  * Параметры для плюс-меню

@@ -1,5 +1,5 @@
 import { RouteSectionProps, redirect } from '@solidjs/router'
-import { createEffect, on } from 'solid-js'
+import { createEffect, createMemo, on } from 'solid-js'
 import { AuthGuard } from '~/components/AuthGuard'
 import { EditSettingsView } from '~/components/Views/EditSettingsView'
 import { PageLayout } from '~/components/_shared/PageLayout'
@@ -11,19 +11,23 @@ export default (props: RouteSectionProps) => {
   const { t } = useLocalize()
   const { drafts, setCurrentDraft } = useDrafts()
 
+  // Мемоизируем ID черновика, чтобы избежать лишних вычислений
+  const draftId = createMemo(() => props.params.id)
+
   /**
    * Эффект для загрузки черновика при открытии настроек публикации
+   * Используем defer: true чтобы предотвратить каскадные обновления
    */
   createEffect(
     on(
-      () => props.params.id,
-      (draftId: string) => {
-        if (!draftId) {
+      draftId,
+      (id: string) => {
+        if (!id) {
           redirect('/edit')
           return
         }
 
-        const parsedId = Number.parseInt(draftId)
+        const parsedId = Number.parseInt(id)
         const draftsArray = drafts()
 
         if (!draftsArray || !Array.isArray(draftsArray)) return
@@ -37,12 +41,16 @@ export default (props: RouteSectionProps) => {
           console.warn(`[EditSettingsRoute] Draft with id=${parsedId} not found`)
           redirect('/edit')
         }
-      }
+      },
+      { defer: true } // Откладываем выполнение эффекта, чтобы избежать циклических обновлений
     )
   )
 
+  // Мемоизируем заголовок страницы
+  const pageTitle = createMemo(() => `${t('Discours')} :: ${t('Publication settings')}`)
+
   return (
-    <PageLayout title={`${t('Discours')} :: ${t('Publication settings')}`} hideFooter={true}>
+    <PageLayout title={pageTitle()} hideFooter={true}>
       <AuthGuard>
         <EditSettingsView />
       </AuthGuard>

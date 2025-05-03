@@ -88,7 +88,7 @@ export const DraftCard = (props: Props) => {
     e.preventDefault()
     e.stopPropagation()
 
-    if (props.draft.hasPublishedVersion && props.draft.slug) {
+    if (props.draft.publication?.published_at && props.draft.slug) {
       // Переходим на страницу опубликованной версии
       navigate(`/${props.draft.slug}`)
       return
@@ -104,10 +104,8 @@ export const DraftCard = (props: Props) => {
     }
   }
 
-  const hasDateDiscrepancy = () => {
-    const draft = props.draft as ExtendedDraft
-    if (!draft.updated_at || !draft.published_at) return false
-    return new Date(draft.updated_at * 1000) > new Date(draft.published_at * 1000)
+  const isModifiedSincePublish = () => {
+    return props.draft.publication?.published_at && props.draft.publication?.published_at > 0
   }
 
   return (
@@ -121,7 +119,7 @@ export const DraftCard = (props: Props) => {
               <span class={styles.subtitle}>{props.draft.subtitle}</span>
             </div>
           </A>
-          {/* Дата создания */}
+          {/* Дата создания и статус */}
           <div class={styles.created}>
             <Show when={props.draft.isLocalOnly}>
               <span class={styles.localBadge} title={t('This draft is saved only locally')}>
@@ -141,24 +139,32 @@ export const DraftCard = (props: Props) => {
         </Show>
 
         <div class={styles.actions}>
+          <Show when={isModifiedSincePublish()}>
+            <span class={styles.modifiedIndicator} title={t('Draft has changes since last publication')}>
+              <Icon name="sync-problem" class={styles.modifiedIcon} />
+            </span>
+          </Show>
           {/* Просмотр */}
           <span
             onClick={handleViewClick}
             class={styles.actionItem}
             title={
-              props.draft.hasPublishedVersion
+              props.draft.publication?.published_at
                 ? t('View published version')
                 : t('Preview how it will look published')
             }
           >
-            <Icon name={props.draft.hasPublishedVersion ? 'eye-off' : 'eye'} class={styles.actionIcon} />
+            <Icon
+              name={props.draft.publication?.published_at ? 'eye-off' : 'eye'}
+              class={styles.actionIcon}
+            />
             <span class={styles.actionText}>
-              {props.draft.hasPublishedVersion ? t('View') : t('Preview')}
+              {props.draft.publication?.published_at ? t('View') : t('Preview')}
             </span>
           </span>
 
           <Show
-            when={props.draft.hasPublishedVersion}
+            when={props.draft.publication?.published_at}
             fallback={
               <>
                 {/* Опубликовать */}
@@ -196,12 +202,6 @@ export const DraftCard = (props: Props) => {
               <Icon name="eye-off" class={styles.actionIcon} />
               <span class={styles.actionText}>{t('Unpublish')}</span>
             </span>
-            {/* Индикатор расхождения версии */}
-            <Show when={hasDateDiscrepancy()}>
-              <span class={styles.dateWarning} title={t('Draft updated after publication')}>
-                <Icon name="warning" class={styles.warningIcon} />
-              </span>
-            </Show>
           </Show>
         </div>
       </div>

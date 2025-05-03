@@ -112,7 +112,7 @@ export const normalizeContent = (content: string): string => {
   })
 
   // Проверяем на пустые параграфы или избыточные переносы
-  let html = tempDiv.innerHTML
+  let html = tempDiv.innerHTML || ''
   html = html.replace(/(<p>\s*<\/p>){2,}/gi, '<p><br></p>')
   html = html.replace(/(<p><br\s*\/?><\/p>){3,}/gi, '<p><br></p><p><br></p>')
 

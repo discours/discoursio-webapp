@@ -52,7 +52,7 @@ export const TopicView = (props: Props) => {
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
   const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
   const [topic, setTopic] = createSignal<Topic>()
-  createEffect(on(topicEntities, (ttt) => setTopic(ttt[props.topicSlug])))
+  createEffect(on(topicEntities, (ttt: Record<string, Topic>) => setTopic(ttt[props.topicSlug])))
 
   // 2. Добавим эффект для обработки начальных данных
   createEffect(() => {

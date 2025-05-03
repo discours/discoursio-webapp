@@ -86,7 +86,7 @@ export const Sidebar = () => {
           )
         } else if (ft && topics) {
           const topicsSlugs = Object.keys(ft).filter((slug) => ft[slug]?.length > 0)
-          const availableTopics = topicsSlugs.map((slug) => topics[slug]).filter(Boolean)
+          const availableTopics = Object.values(topics).filter((t: Topic) => topicsSlugs.includes(t.slug))
 
           setTopicsList(
             availableTopics.length

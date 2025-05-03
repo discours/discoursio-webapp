@@ -257,6 +257,9 @@ const EditingSelector = () => {
     }
     // Резервный вариант или обработка ошибки
     console.warn('[EditingSelector] Не удалось определить базовый путь из:', loc.pathname)
+    if (loc.pathname === '/edit/') {
+      return '/edit'
+    }
     return ''
   }
 
