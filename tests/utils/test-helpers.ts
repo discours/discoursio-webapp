@@ -26,7 +26,7 @@ export const TEST_CREDENTIALS = {
 /**
  * Проверяет доступность сервера без его запуска
  * Для использования в beforeAll хуках тестовых файлов
- * 
+ *
  * @param page - Экземпляр страницы Playwright
  * @returns {Promise<boolean>} - Возвращает true, если сервер доступен
  */

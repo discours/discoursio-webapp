@@ -1,31 +1,30 @@
-// biome-ignore lint/correctness/noNodejsModules: тесты
 import { type Page, expect, test } from '@playwright/test'
-import { baseUrl, checkServerWithoutStarting } from './utils/test-helpers'
+import { checkServerWithoutStarting } from './utils/test-helpers'
 
 /* Global starting test config */
 
 const TEST_LOGIN = process.env.TEST_LOGIN
 const TEST_PASSWORD = process.env.TEST_PASSWORD
 const EXPECT_EDIT_URL = /\/edit\/[a-zA-Z0-9-]+/
-let page: Page | null = null;
+let page: Page | null = null
 
 test.beforeAll(async ({ browser }) => {
   console.log('Инициализация тестов действий с черновиками...')
-  
+
   // Создаем страницу для тестов
   page = await browser.newPage()
   test.setTimeout(150000)
-  
+
   // Проверяем доступность сервера без его запуска
   await checkServerWithoutStarting(page)
-  
+
   // Проверяем, что страница загрузилась корректно
   // biome-ignore lint/performance/useTopLevelRegex: <explanation>
   await expect(page).toHaveTitle(/Дискурс/)
   console.log('Тесты действий с черновиками инициализированы успешно!')
   if (page) {
     await page.close()
-    page = null; // Устанавливаем null после закрытия
+    page = null // Устанавливаем null после закрытия
   }
 })
 

@@ -1,49 +1,48 @@
-// biome-ignore lint/correctness/noNodejsModules: <explanation>
 import { type Page, expect, test } from '@playwright/test'
-import { baseUrl, checkServerWithoutStarting } from './utils/test-helpers'
+import { checkServerWithoutStarting } from './utils/test-helpers'
 
 const TEST_PASSWORD = process.env.TEST_PASSWORD
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-let context: any = null;
-let page: Page | null = null;
+let context: any = null
+let page: Page | null = null
 
 /* Global starting test config */
 
 test.beforeAll(async ({ browser }) => {
   console.log('Инициализация тестов действий авторов...')
-  
+
   // Создаем контекст и страницу
   context = await browser.newContext()
   page = await context.newPage()
   test.setTimeout(150000)
-  
+
   if (page) {
     // Проверяем доступность сервера без его запуска
     await checkServerWithoutStarting(page)
-  
+
     // Проверяем, что страница загрузилась корректно
     // biome-ignore lint/performance/useTopLevelRegex: <explanation>
     await expect(page).toHaveTitle(/Дискурс/)
     await page.getByRole('link', { name: 'Войти' }).click()
     console.log('Тесты действий авторов инициализированы успешно!')
-  
+
     // Закрываем страницу
     await page.close()
-    page = null; // Устанавливаем null после закрытия
+    page = null // Устанавливаем null после закрытия
   }
 })
 
 // Добавляем хук afterAll для закрытия контекста
 test.afterAll(async () => {
   if (page) {
-    await page.close();
-    page = null;
+    await page.close()
+    page = null
   }
   if (context) {
-    await context.close();
-    context = null;
+    await context.close()
+    context = null
   }
-});
+})
 
 /* TESTS section */
 

@@ -1,30 +1,29 @@
-// biome-ignore lint/correctness/noNodejsModules: <explanation>
 import { type Page, expect, test } from '@playwright/test'
-import { baseUrl, checkServerWithoutStarting } from './utils/test-helpers'
+import { checkServerWithoutStarting } from './utils/test-helpers'
 
 const TEST_LOGIN = process.env.TEST_LOGIN
 const TEST_PASSWORD = process.env.TEST_PASSWORD
 
 // Объявляем глобальную переменную page как nullable
-let page: Page | null = null;
+let page: Page | null = null
 
 test.beforeAll(async ({ browser }) => {
   console.log('Инициализация тестов авторизации...')
-  
+
   // Создаем страницу для тестов
   page = await browser.newPage()
   test.setTimeout(150000)
-  
+
   // Проверяем доступность сервера без его запуска
   await checkServerWithoutStarting(page)
-  
+
   // Проверяем, что страница загрузилась корректно
   // biome-ignore lint/performance/useTopLevelRegex: <explanation>
   await expect(page).toHaveTitle(/Дискурс/)
   await page.getByRole('link', { name: 'Войти' }).click()
   console.log('Тесты авторизации инициализированы успешно!')
   await page.close()
-  page = null; // Устанавливаем null после закрытия
+  page = null // Устанавливаем null после закрытия
 })
 
 test.afterAll(async () => {
