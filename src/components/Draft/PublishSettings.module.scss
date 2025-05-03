@@ -9,19 +9,20 @@
     line-height: 2.4rem;
   }
 
+  .errorMessage {
+    color: var(--danger-color);
+    font-size: 1.3rem;
+    margin-top: -4px;
+    margin-bottom: 4px;
+    font-weight: 500;
+    min-height: 20px;
+  }
+
   .inputContainer {
     position: relative;
     flex: 1;
     display: flex;
     flex-flow: column;
-
-    .validationError {
-      position: absolute;
-      z-index: 1;
-      top: calc(100% + 4px);
-      font-size: small;
-      color: var(--danger-color);
-    }
   }
 
   .commonSettings {

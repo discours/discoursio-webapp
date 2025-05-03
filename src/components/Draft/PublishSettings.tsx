@@ -18,7 +18,7 @@ import { Author, DraftInput, Maybe, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
 import { UploadedFile } from '~/types/upload'
 import { Modal } from '../_shared/Modal'
-import { TopicSelect } from '../_shared/TopicSelect'
+import { TopicPillsCloud } from '../_shared/TopicPillsCloud'
 
 import stylesBeside from '../Feed/Beside.module.scss'
 import styles from './PublishSettings.module.scss'
@@ -206,7 +206,7 @@ export const PublishSettings = () => {
         clearValidationErrors()
         navigate(`/${result.data.publish_draft.draft.slug}`)
       } else if (result?.error) {
-        toast.error(result.error.message)
+        toast.error(t(result.error.message) || t('Unknown error during publishing'))
       } else {
         toast.error(t('Unknown error during publishing'))
       }
@@ -236,7 +236,7 @@ export const PublishSettings = () => {
       if (result?.data?.unpublish_shout) {
         toast.success(t('Article unpublished successfully'))
       } else if (result?.error) {
-        toast.error(result.error.message)
+        toast.error(t(result.error.message))
       }
     } catch (error) {
       console.error('[PublishSettings] Error unpublishing article:', error)
@@ -264,7 +264,62 @@ export const PublishSettings = () => {
               </button>
             </div>
             <h1>{t('Publish Settings')}</h1>
-            <h4>{t('Material card')}</h4>
+            <p class="description">
+              {t(
+                'Choose a title image for the article. You can immediately see how the publication card will look like.'
+              )}
+            </p>
+
+            <h4>{t('Slug')}</h4>
+            <div class={styles.errorMessage}>{validationErrors().slug}</div>
+            <div class="pretty-form__item">
+              <input
+                type="text"
+                name="slug"
+                id="slug"
+                value={draft()?.slug || ''}
+                onInput={(e) => {
+                  const input = e.target as HTMLInputElement
+                  handleFieldChange('slug', input.value)
+                }}
+              />
+            </div>
+
+            <h4>{t('Topics')}</h4>
+            <div class={styles.errorMessage}>
+              {t(validationErrors().topic_ids || validationErrors().main_topic_id || '')}
+            </div>
+            <p class="description">
+              {t(
+                'Add a few topics so that the reader knows what your content is about and can find it on pages of topics that interest them. Topics can be swapped, the first topic becomes the title'
+              )}
+            </p>
+            <div class={styles.inputContainer}>
+              <div class={clsx('pretty-form__item', styles.topicSelectContainer)}>
+                <Show
+                  when={!isTopicsLoading()}
+                  fallback={<div class="loading-indicator">{t('Loading topics...')}</div>}
+                >
+                  <TopicPillsCloud
+                    topics={sortedTopics()}
+                    onChange={handleTopicSelectChange}
+                    selectedTopics={draft()?.topics?.filter((t: Maybe<Topic>) => t !== null) || []}
+                    onMainTopicChange={handleMainTopicChange}
+                    mainTopic={draft()?.mainTopic || EMPTY_TOPIC}
+                  />
+                </Show>
+              </div>
+            </div>
+
+            <h4>{t('Collaborators')}</h4>
+            <Button
+              variant="primary"
+              onClick={() => showModal('inviteMembers')}
+              value={t('Invite collaborators')}
+            />
+
+
+<h4>{t('Material card')}</h4>
             <div class={styles.articlePreview}>
               <div class={styles.actions}>
                 <Button
@@ -352,62 +407,7 @@ export const PublishSettings = () => {
                 </div>
               </div>
             </div>
-            <p class="description">
-              {t(
-                'Choose a title image for the article. You can immediately see how the publication card will look like.'
-              )}
-            </p>
 
-            <h4>{t('Slug')}</h4>
-            <div class="pretty-form__item">
-              <input
-                type="text"
-                name="slug"
-                id="slug"
-                value={draft()?.slug || ''}
-                onInput={(e) => {
-                  const input = e.target as HTMLInputElement
-                  handleFieldChange('slug', input.value)
-                }}
-              />
-              <Show when={validationErrors().slug}>
-                <div class="error-message">{validationErrors().slug}</div>
-              </Show>
-            </div>
-
-            <h4>{t('Topics')}</h4>
-            <p class="description">
-              {t(
-                'Add a few topics so that the reader knows what your content is about and can find it on pages of topics that interest them. Topics can be swapped, the first topic becomes the title'
-              )}
-            </p>
-            <div class={styles.inputContainer}>
-              <div class={clsx('pretty-form__item', styles.topicSelectContainer)}>
-                <Show
-                  when={!isTopicsLoading()}
-                  fallback={<div class="loading-indicator">{t('Loading topics...')}</div>}
-                >
-                  <TopicSelect
-                    topics={sortedTopics()}
-                    onChange={handleTopicSelectChange}
-                    selectedTopics={draft()?.topics?.filter((t: Maybe<Topic>) => t !== null) || []}
-                    onMainTopicChange={handleMainTopicChange}
-                    mainTopic={draft()?.mainTopic || EMPTY_TOPIC}
-                  />
-                  <Show when={validationErrors().topic_ids || validationErrors().main_topic_id}>
-                    <div class="error-message">
-                      {validationErrors().topic_ids || validationErrors().main_topic_id}
-                    </div>
-                  </Show>
-                </Show>
-              </div>
-            </div>
-            <h4>{t('Collaborators')}</h4>
-            <Button
-              variant="primary"
-              onClick={() => showModal('inviteMembers')}
-              value={t('Invite collaborators')}
-            />
           </div>
         </div>
       </div>
