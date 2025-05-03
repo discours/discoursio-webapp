@@ -24,6 +24,29 @@ export const TEST_CREDENTIALS = {
 }
 
 /**
+ * Проверяет доступность сервера без его запуска
+ * Для использования в beforeAll хуках тестовых файлов
+ * 
+ * @param page - Экземпляр страницы Playwright
+ * @returns {Promise<boolean>} - Возвращает true, если сервер доступен
+ */
+export async function checkServerWithoutStarting(page: Page): Promise<boolean> {
+  try {
+    console.log('Проверка доступности сервера...')
+    await page.goto(baseUrl)
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
+      console.warn('Тайм-аут при ожидании networkidle, продолжаем...')
+    })
+    console.log('Сервер доступен и отвечает')
+    return true
+  } catch (e) {
+    console.error('Сервер недоступен:', e)
+    return false
+  }
+}
+
+/**
  * Проверяет, авторизован ли пользователь
  * @param page - Экземпляр страницы Playwright
  * @returns {Promise<boolean>} Возвращает true если пользователь авторизован

@@ -68,14 +68,11 @@ export default defineConfig({
   ],
 
   /* Run local dev server before starting the tests */
-  /* If process env CI is set to false */
-  webServer: process.env.CI
-    ? undefined
-    : {
-        command: 'npm run start',
-        url: 'https://localhost:3000',
-        ignoreHTTPSErrors: true,
-        reuseExistingServer: !process.env.CI,
-        timeout: 5 * 60 * 1000
-      }
+  webServer: {
+    command: process.env.E2E ? 'echo "Using existing server"' : 'npm run start',
+    url: 'https://localhost:3000',
+    ignoreHTTPSErrors: true,
+    reuseExistingServer: true,
+    timeout: 5 * 60 * 1000
+  }
 })

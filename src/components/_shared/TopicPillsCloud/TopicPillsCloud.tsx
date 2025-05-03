@@ -40,7 +40,7 @@ type TopicPillsCloudProps = {
 
 export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
   const { t } = useLocalize()
-  const topicsContext = useTopics()
+  const { sortedTopics, topicsByShouts, isLoading: topicsLoading } = useTopics()
   const [searchTerm, setSearchTerm] = createSignal('')
   const [isLoading, setIsLoading] = createSignal(false)
   const [popularTopics, setPopularTopics] = createSignal<Topic[]>([])
@@ -54,7 +54,7 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
   createEffect(() => {
     if (props.topics && props.topics.length > 0) {
       // Проверяем, есть ли темы в контексте
-      const shoutTopics = topicsContext.topicsByShouts()
+      const shoutTopics = topicsByShouts()
 
       // Если есть популярные темы по публикациям, берем их
       if (shoutTopics && shoutTopics.length > 0) {
@@ -83,7 +83,7 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
       }
     } else {
       // Если нет тем в props, отображаем состояние загрузки
-      setIsLoading(topicsContext.isLoading())
+      setIsLoading(topicsLoading())
     }
   })
 
@@ -200,7 +200,7 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
       // Если тема существует в доступных, берем полную информацию оттуда
       enrichedTopic = availableTopics.find((t) => t.id === topic.id) || topic
     } else {
-      const contextTopic = topicsContext.getTopicById(topic.id)
+      const contextTopic = sortedTopics().find((t) => t.id === topic.id)
       if (contextTopic) {
         console.log(`[TopicPillsCloud] Главная тема с ID ${topic.id} найдена в контексте`)
         enrichedTopic = contextTopic
@@ -265,7 +265,7 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
       }
 
       // Если темы нет в доступных, но она есть в контексте, берем из контекста
-      const contextTopic = topicsContext.getTopicById(topic.id)
+      const contextTopic = sortedTopics().find((t) => t.id === topic.id)
       if (contextTopic) {
         console.log(`[TopicPillsCloud] Тема с ID ${topic.id} найдена в контексте:`, contextTopic)
         return { ...contextTopic } // Создаем копию для безопасности
@@ -277,7 +277,7 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
 
     // Фильтруем темы, чтобы оставить только существующие в доступных или контексте
     const existingTopics = enrichedTopics.filter(
-      (topic) => availableTopicIds.has(topic.id) || topicsContext.getTopicById(topic.id) !== null
+      (topic) => availableTopicIds.has(topic.id) || sortedTopics().find((t) => t.id === topic.id) !== null
     )
 
     if (existingTopics.length !== validTopics.length) {

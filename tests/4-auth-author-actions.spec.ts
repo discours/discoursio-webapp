@@ -1,66 +1,49 @@
 // biome-ignore lint/correctness/noNodejsModules: <explanation>
-import https from 'node:https'
 import { type Page, expect, test } from '@playwright/test'
+import { baseUrl, checkServerWithoutStarting } from './utils/test-helpers'
 
 const TEST_PASSWORD = process.env.TEST_PASSWORD
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-let context: any
-let page: Page
+let context: any = null;
+let page: Page | null = null;
 
 /* Global starting test config */
 
-function httpsGet(url: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    https
-      .get(
-        url,
-        {
-          rejectUnauthorized: false // Ignore SSL certificate errors
-        },
-        (res) => {
-          if (res.statusCode === 200) {
-            resolve()
-          } else {
-            reject(new Error(`Request failed with status code ${res.statusCode}`))
-          }
-        }
-      )
-      .on('error', (error) => {
-        reject(error)
-      })
-  })
-}
-async function waitForServer(url: string, timeout = 150000) {
-  const start = Date.now()
-  while (Date.now() - start < timeout) {
-    try {
-      await httpsGet(url)
-      return true
-    } catch (error) {
-      // Ignore errors and try again
-      console.log(`Error fetching ${url}: ${error}`)
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-  }
-  throw new Error(`Server at ${url} did not start within ${timeout} ms`)
-}
-
 test.beforeAll(async ({ browser }) => {
-  console.log('Waiting for the server to start...')
-  await new Promise((resolve) => setTimeout(resolve, 5000))
-  const baseURL = process.env.BASE_URL || 'https://localhost:3000'
-  console.log('Base URL:', baseURL)
-  await waitForServer(baseURL)
+  console.log('Инициализация тестов действий авторов...')
+  
+  // Создаем контекст и страницу
   context = await browser.newContext()
   page = await context.newPage()
   test.setTimeout(150000)
-  await page.goto(baseURL)
-  // biome-ignore lint/performance/useTopLevelRegex: <explanation>
-  await expect(page).toHaveTitle(/Дискурс/)
-  await page.getByRole('link', { name: 'Войти' }).click()
-  console.log('Localhost server started successfully!')
-  await page.close()
+  
+  if (page) {
+    // Проверяем доступность сервера без его запуска
+    await checkServerWithoutStarting(page)
+  
+    // Проверяем, что страница загрузилась корректно
+    // biome-ignore lint/performance/useTopLevelRegex: <explanation>
+    await expect(page).toHaveTitle(/Дискурс/)
+    await page.getByRole('link', { name: 'Войти' }).click()
+    console.log('Тесты действий авторов инициализированы успешно!')
+  
+    // Закрываем страницу
+    await page.close()
+    page = null; // Устанавливаем null после закрытия
+  }
 })
+
+// Добавляем хук afterAll для закрытия контекста
+test.afterAll(async () => {
+  if (page) {
+    await page.close();
+    page = null;
+  }
+  if (context) {
+    await context.close();
+    context = null;
+  }
+});
 
 /* TESTS section */
 
