@@ -156,6 +156,7 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
       console.log('[TopicPillsCloud] Нет выбранных тем, но есть главная тема - несогласованное состояние')
       // Используем defer:true через on(()=>{}) для разрыва цикла обновлений
       on(
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: test
         () => {},
         () => {
           console.log('[TopicPillsCloud] Отложенное исправление несогласованного состояния')
