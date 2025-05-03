@@ -16,6 +16,7 @@ import { TopicsProvider } from './context/topics'
 import { UIProvider } from './context/ui'
 
 import '~/styles/app.scss'
+import '~/styles/toast.scss'
 
 export const Providers: Component<{ children?: JSX.Element }> = (props) => {
   return (
