@@ -79,26 +79,26 @@
   padding-bottom: 6px;
 }
 
-.searchAuthorsBlock {
+.searchAllBlock {
   margin: 2.5rem 0;
   padding: 2rem 0;
   border-top: 1px solid rgb(255 255 255 / 10%);
   border-bottom: 1px solid rgb(255 255 255 / 10%);
 }
 
-.searchAuthorsColumn {
+.searchAllBlockColumn {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.searchAuthorsTitle {
+.searchBlockTitle {
   font-size: 2rem;
   margin: 0 0 2rem;
   color: #fff;
 }
 
-.searchAuthorsGrid {
+.searchBlockGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;

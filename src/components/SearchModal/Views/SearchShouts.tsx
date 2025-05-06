@@ -1,8 +1,9 @@
 import { For, Show } from 'solid-js'
 import styles from './../Styles/SearchModal.module.scss'
-import { ShoutsResultItem } from './ShoutsResultItem'
 import { SearchShoutsProps } from './types'
 import { getSearchCoincidences } from './utils'
+
+import { ArticleCard } from '../../Feed/ArticleCard'
 
 export const SearchShouts = (props: SearchShoutsProps) => {
   const prepareSearchResults = (list: typeof props.shoutsList) =>
@@ -27,7 +28,7 @@ export const SearchShouts = (props: SearchShoutsProps) => {
       <For each={prepareSearchResults(props.shoutsList)}>
         {(article) => (
           <div>
-            <ShoutsResultItem
+            <ArticleCard
               article={article}
               settings={{
                 isFloorImportant: true,

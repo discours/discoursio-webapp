@@ -1,10 +1,11 @@
 import { For, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import styles from './../Styles/SearchModal.module.scss'
-import { AuthorsResultItem } from './AuthorsResultItem'
-import { ShoutsResultItem } from './ShoutsResultItem'
 import { SearchAllProps } from './types'
 import { getSearchCoincidences } from './utils'
+
+import { AuthorBadge } from '../../Author/AuthorBadge'
+import { ArticleCard } from '../../Feed/ArticleCard'
 
 export const SearchAll = (props: SearchAllProps) => {
   const { t } = useLocalize()
@@ -32,27 +33,24 @@ export const SearchAll = (props: SearchAllProps) => {
       <For each={prepareSearchResults(props.shoutsList.slice(0, 5))}>
         {(article) => (
           <div>
-            <ShoutsResultItem
-              article={article}
-              settings={{
+            <ArticleCard article={article} settings={{
                 isFloorImportant: true,
                 isSingle: true,
                 nodate: true
-              }}
-            />
+              }} />
           </div>
         )}
       </For>
 
-      {/* Authors block - first 6 authors */}
-      <Show when={props.authorsList.length > 0}>
-        <div class={styles.searchAuthorsBlock}>
-          <h3 class={styles.searchAuthorsTitle}>{t('Authors')}</h3>
-          <div class={styles.searchAuthorsGrid}>
+      {/* Authors and Topics block - each 6 times */}
+      <Show when={props.authorsList.length > 0 || props.topicsList.length > 0}>
+        <div class={styles.searchAllBlock}>
+          <h3 class={styles.searchBlockTitle}>{t('Authors')}</h3>
+          <div class={styles.searchBlockGrid}>
             <For each={props.authorsList.slice(0, 6)}>
               {(author) => (
-                <div class={styles.searchAuthorsItem}>
-                  <AuthorsResultItem author={author} />
+                <div class={styles.searchBlockItem}>
+                  <AuthorBadge author={author} showMessageButton={false} />
                 </div>
               )}
             </For>
