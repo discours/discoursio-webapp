@@ -1,6 +1,6 @@
 import { For, Show } from 'solid-js'
-import { ShoutsResultItem } from './ShoutsResultItem'
 import styles from './../Styles/SearchModal.module.scss'
+import { ShoutsResultItem } from './ShoutsResultItem'
 import { SearchShoutsProps } from './types'
 import { getSearchCoincidences } from './utils'
 

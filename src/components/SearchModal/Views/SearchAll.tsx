@@ -1,8 +1,8 @@
 import { For, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
+import styles from './../Styles/SearchModal.module.scss'
 import { AuthorsResultItem } from './AuthorsResultItem'
 import { ShoutsResultItem } from './ShoutsResultItem'
-import styles from './../Styles/SearchModal.module.scss'
 import { SearchAllProps } from './types'
 import { getSearchCoincidences } from './utils'
 

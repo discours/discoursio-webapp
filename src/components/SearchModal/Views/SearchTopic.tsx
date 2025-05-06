@@ -17,15 +17,11 @@ export const SearchTopics = (props: SearchTopicsProps) => {
     <>
       <Show when={props.topicsList.length > 0}>
         <div class={styles.searchResults}>
-          <For each={props.topicsList}>
-            {(topic) => (
-              <TopicBadge topic={topic} showStat={true} />
-            )}
-          </For>
+          <For each={props.topicsList}>{(topic) => <TopicBadge topic={topic} showStat={true} />}</For>
         </div>
-        
+
         {/* Sentinel element for infinite scrolling */}
-        <div ref={props.setSentinelEl} style={props.sentinelStyle}></div>
+        <div ref={props.setSentinelEl} style={props.sentinelStyle} />
       </Show>
     </>
   )

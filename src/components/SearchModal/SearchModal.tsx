@@ -5,17 +5,17 @@ import { Icon } from '~/components/_shared/Icon'
 import modalStyles from '~/components/_shared/Modal/Modal.module.scss'
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
+import { useTopics } from '~/context/topics'
 import { loadAuthorsSearch } from '~/graphql/api/public'
 import type { Author, Shout, Topic } from '~/graphql/schema/core.gen'
-import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { useTopics } from '~/context/topics'
 import { dummyFilter } from '~/intl/dummyFilter'
+import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 
-import { SearchNav } from './Views/SearchNav'
 import { SearchAll } from './Views/SearchAll'
+import { SearchAuthors } from './Views/SearchAuthors'
+import { SearchNav } from './Views/SearchNav'
 import { SearchShouts } from './Views/SearchShouts'
 import { SearchTopics } from './Views/SearchTopic'
-import { SearchAuthors } from './Views/SearchAuthors'
 
 import styles from './Styles/SearchModal.module.scss'
 
@@ -41,7 +41,7 @@ export const SearchModal = () => {
   // Topic search related states
   const { topicsByShouts } = useTopics()
   const [topicsResultList, setTopicsResultList] = createSignal<Topic[]>([])
-  const [isLoadingTopics, setIsLoadingTopics] = createSignal(false)
+  const [_isLoadingTopics, setIsLoadingTopics] = createSignal(false)
 
   // Function to fetch Authors based on the search input
   const fetchAuthorsResults = async (query: string, resetResults = true) => {
@@ -151,7 +151,7 @@ export const SearchModal = () => {
   }
 
   // Function to fetch Topics based on the search input
-  const fetchTopicsResults = async (query: string, resetResults = true) => {
+  const fetchTopicsResults = (query: string, resetResults = true) => {
     if (query.length < 3) {
       setTopicsResultList([])
       return []
@@ -163,11 +163,11 @@ export const SearchModal = () => {
       // Get all topics and filter with dummyFilter
       const allTopics = topicsByShouts()
       const filteredTopics = dummyFilter(allTopics, query, lang()) as Topic[]
-      
+
       if (resetResults) {
         setTopicsResultList(filteredTopics || [])
       }
-      
+
       return filteredTopics || []
     } catch (error) {
       console.error('[SearchModal] Error filtering topics:', error)
@@ -287,9 +287,9 @@ export const SearchModal = () => {
     const modalInnerElement = document.querySelector(`.${modalStyles.modalInner}`) as Element
     if (!modalInnerElement) return
     topicsObserver = new IntersectionObserver(
-      async (entries) => {
-      // For topics we don't need pagination since we're filtering client-side
-      // But we could add it if needed in the future
+      async (_entries) => {
+        // For topics we don't need pagination since we're filtering client-side
+        // But we could add it if needed in the future
       },
       {
         root: modalInnerElement,

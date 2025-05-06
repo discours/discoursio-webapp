@@ -1,6 +1,6 @@
 import { For, Show } from 'solid-js'
-import { AuthorsResultItem } from './AuthorsResultItem'
 import styles from './../Styles/SearchModal.module.scss'
+import { AuthorsResultItem } from './AuthorsResultItem'
 import { SearchAuthorsProps } from './types'
 
 export const SearchAuthors = (props: SearchAuthorsProps) => {
