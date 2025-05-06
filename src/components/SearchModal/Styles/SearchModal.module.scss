@@ -79,6 +79,12 @@
   padding-bottom: 6px;
 }
 
+.searchAuthorsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .searchAllBlock {
   margin: 2.5rem 0;
   padding: 2rem 0;
@@ -86,19 +92,13 @@
   border-bottom: 1px solid rgb(255 255 255 / 10%);
 }
 
-.searchAllBlockColumn {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.searchBlockTitle {
+.searchAllBlockTitle {
   font-size: 2rem;
   margin: 0 0 2rem;
   color: #fff;
 }
 
-.searchBlockGrid {
+.searchAllBlockGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;

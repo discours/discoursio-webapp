@@ -6,7 +6,7 @@ import styles from './../Styles/SearchModal.module.scss'
 
 export const SearchNav = (props: { view: string; setView: (view: string) => void }) => {
   const { t } = useLocalize()
-  const SEARCH_VIEWS = ['all', 'shouts', 'topics', 'authors']
+  const SEARCH_VIEWS = ['all', 'articles', 'topics', 'authors']
 
   return (
     <div class="wide-container">
@@ -23,8 +23,8 @@ export const SearchNav = (props: { view: string; setView: (view: string) => void
               >
                 {viewKey === 'all'
                   ? t('All')
-                  : viewKey === 'shouts'
-                    ? t('Shouts')
+                  : viewKey === 'articles'
+                    ? t('Articles')
                     : viewKey === 'topics'
                       ? t('Topics')
                       : viewKey === 'authors'

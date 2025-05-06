@@ -4,8 +4,9 @@ import styles from './../Styles/SearchModal.module.scss'
 import { SearchAllProps } from './types'
 import { getSearchCoincidences } from './utils'
 
-import { AuthorBadge } from '../../Author/AuthorBadge'
-import { ArticleCard } from '../../Feed/ArticleCard'
+import { AuthorBadge } from '~/components/Author/AuthorBadge'
+import { ArticleCard } from '~/components/Feed/ArticleCard'
+import { TopicBadge } from '~/components/Topic/TopicBadge/TopicBadge'
 
 export const SearchAll = (props: SearchAllProps) => {
   const { t } = useLocalize()
@@ -33,27 +34,45 @@ export const SearchAll = (props: SearchAllProps) => {
       <For each={prepareSearchResults(props.shoutsList.slice(0, 5))}>
         {(article) => (
           <div>
-            <ArticleCard article={article} settings={{
+            <ArticleCard
+              article={article}
+              settings={{
                 isFloorImportant: true,
                 isSingle: true,
                 nodate: true
-              }} />
+              }}
+            />
           </div>
         )}
       </For>
 
-      {/* Authors and Topics block - each 6 times */}
+      {/* Topics and Authors in two columns */}
       <Show when={props.authorsList.length > 0 || props.topicsList.length > 0}>
         <div class={styles.searchAllBlock}>
-          <h3 class={styles.searchBlockTitle}>{t('Authors')}</h3>
-          <div class={styles.searchBlockGrid}>
-            <For each={props.authorsList.slice(0, 6)}>
-              {(author) => (
-                <div class={styles.searchBlockItem}>
-                  <AuthorBadge author={author} showMessageButton={false} />
-                </div>
-              )}
-            </For>
+          <div class={styles.searchAllBlockGrid}>
+            {/* Topics column */}
+            <div>
+              <h3 class={styles.searchBlockTitle}>{t('Topics')}</h3>
+              <div class={styles.searchAuthorsColumn}>
+                <For each={props.topicsList.slice(0, 6)}>
+                  {(topic) => <TopicBadge topic={topic} showStat={true} />}
+                </For>
+              </div>
+            </div>
+
+            {/* Authors column */}
+            <div>
+              <h3 class={styles.searchBlockTitle}>{t('Authors')}</h3>
+              <div class={styles.searchAuthorsColumn}>
+                <For each={props.authorsList.slice(0, 6)}>
+                  {(author) => (
+                    <div class={styles.searchAllBlockItem}>
+                      <AuthorBadge author={author} showMessageButton={false} />
+                    </div>
+                  )}
+                </For>
+              </div>
+            </div>
           </div>
         </div>
       </Show>
