@@ -1,7 +1,7 @@
 import { For, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
-import { AuthorSearchItem } from './../AuthorSearchItem'
-import { SearchResultItem } from './../SearchResultItem'
+import { AuthorsResultItem } from './AuthorsResultItem'
+import { ShoutsResultItem } from './ShoutsResultItem'
 import styles from './../Styles/SearchModal.module.scss'
 import { SearchAllProps } from './types'
 import { getSearchCoincidences } from './utils'
@@ -32,7 +32,7 @@ export const SearchAll = (props: SearchAllProps) => {
       <For each={prepareSearchResults(props.shoutsList.slice(0, 5))}>
         {(article) => (
           <div>
-            <SearchResultItem
+            <ShoutsResultItem
               article={article}
               settings={{
                 isFloorImportant: true,
@@ -52,7 +52,7 @@ export const SearchAll = (props: SearchAllProps) => {
             <For each={props.authorsList.slice(0, 6)}>
               {(author) => (
                 <div class={styles.searchAuthorsItem}>
-                  <AuthorSearchItem author={author} />
+                  <AuthorsResultItem author={author} />
                 </div>
               )}
             </For>

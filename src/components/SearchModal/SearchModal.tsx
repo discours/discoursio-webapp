@@ -6,17 +6,21 @@ import modalStyles from '~/components/_shared/Modal/Modal.module.scss'
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { loadAuthorsSearch } from '~/graphql/api/public'
-import type { Author, Shout } from '~/graphql/schema/core.gen'
+import type { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { SearchAll } from './Views/SearchAll'
-import { SearchAuthors } from './Views/SearchAuthors'
+import { useTopics } from '~/context/topics'
+import { dummyFilter } from '~/intl/dummyFilter'
+
 import { SearchNav } from './Views/SearchNav'
+import { SearchAll } from './Views/SearchAll'
 import { SearchShouts } from './Views/SearchShouts'
+import { SearchTopics } from './Views/SearchTopic'
+import { SearchAuthors } from './Views/SearchAuthors'
 
 import styles from './Styles/SearchModal.module.scss'
 
 export const SearchModal = () => {
-  const { t } = useLocalize()
+  const { t, lang } = useLocalize()
   const { loadFeedSearch, searchFeed } = useFeed()
   const sentinelStyle = { height: '1px', padding: '0', margin: '0', opacity: '0' }
   const [inputValue, setInputValue] = createSignal('')
@@ -24,19 +28,25 @@ export const SearchModal = () => {
   const [offset, setOffset] = createSignal<number>(0)
   const [hasMore, setHasMore] = createSignal(false)
 
-  // Use separate sentinel elements for shouts and authors
+  // Use separate sentinel elements for shouts, authors and topics
   const [shoutsSentinelEl, setShoutsSentinelEl] = createSignal<HTMLDivElement>()
   const [authorsSentinelEl, setAuthorsSentinelEl] = createSignal<HTMLDivElement>()
+  const [topicsSentinelEl, setTopicsSentinelEl] = createSignal<HTMLDivElement>()
   const [currentView, setCurrentView] = createSignal('all')
 
   // Author search related states
-  const [authorResults, setAuthorResults] = createSignal<Author[]>([])
+  const [authorsResultsList, setAuthorsResultsList] = createSignal<Author[]>([])
   const [_isLoadingAuthors, setIsLoadingAuthors] = createSignal(false)
 
-  // Fetch FEED_PAGE_SIZE authors but only show 6 in SearchAll
-  const fetchAuthorsSearch = async (query: string, resetResults = true) => {
+  // Topic search related states
+  const { topicsByShouts } = useTopics()
+  const [topicsResultList, setTopicsResultList] = createSignal<Topic[]>([])
+  const [isLoadingTopics, setIsLoadingTopics] = createSignal(false)
+
+  // Function to fetch Authors based on the search input
+  const fetchAuthorsResults = async (query: string, resetResults = true) => {
     if (query.length < 3) {
-      setAuthorResults([])
+      setAuthorsResultsList([])
       return []
     }
 
@@ -47,14 +57,14 @@ export const SearchModal = () => {
 
       // Only reset authors list if resetResults is true (new search)
       if (resetResults) {
-        setAuthorResults(authorsResult || [])
+        setAuthorsResultsList(authorsResult || [])
       }
 
       return authorsResult || []
     } catch (error) {
       console.error('[SearchModal] Error fetching authors:', error)
       if (resetResults) {
-        setAuthorResults([])
+        setAuthorsResultsList([])
       }
       return []
     } finally {
@@ -62,7 +72,8 @@ export const SearchModal = () => {
     }
   }
 
-  const fetchSearchResults = async (resetResults = false) => {
+  // Function to fetch Shouts based on the search input
+  const fetchShoutsResults = async (resetResults = false) => {
     if (inputValue().trim().length < 3) {
       return []
     }
@@ -75,10 +86,11 @@ export const SearchModal = () => {
 
     if (resetResults) {
       setOffset(0)
-      setSearchResultsList([])
+      setshoutsResultsList([])
 
       // Fetch authors when resetting results
-      fetchAuthorsSearch(searchQuery)
+      fetchAuthorsResults(searchQuery)
+      fetchTopicsResults(searchQuery)
     }
 
     await loadFeedSearch(searchQuery, {
@@ -93,15 +105,15 @@ export const SearchModal = () => {
     setHasMore(more)
 
     if (newShouts?.length) {
-      setSearchResultsList(newShouts)
+      setshoutsResultsList(newShouts)
     }
 
     restoreScrollPosition()
     return resetResults ? newShouts || [] : []
   }
 
-  const [searchResultsList, { mutate: setSearchResultsList }] = createResource<Shout[]>(
-    fetchSearchResults,
+  const [shoutsResultsList, { mutate: setshoutsResultsList }] = createResource<Shout[]>(
+    fetchShoutsResults,
     { ssrLoadFrom: 'initial', initialValue: [] }
   )
 
@@ -110,10 +122,10 @@ export const SearchModal = () => {
   const debouncedSearch = debounce(500, () => {
     const query = inputValue().trim()
     if (query.length >= 3) {
-      fetchSearchResults(true)
+      fetchShoutsResults(true)
     } else {
-      setSearchResultsList([])
-      setAuthorResults([])
+      setshoutsResultsList([])
+      setAuthorsResultsList([])
       setHasMore(false)
       setOffset(0)
     }
@@ -126,15 +138,45 @@ export const SearchModal = () => {
     if (newValue.trim()) {
       await debouncedSearch()
     } else {
-      setSearchResultsList([])
-      setAuthorResults([])
+      setshoutsResultsList([])
+      setAuthorsResultsList([])
       setHasMore(false)
       setOffset(0)
     }
 
     // Clear author results when query is less than 3 characters
     if (newValue.trim().length < 3) {
-      setAuthorResults([])
+      setAuthorsResultsList([])
+    }
+  }
+
+  // Function to fetch Topics based on the search input
+  const fetchTopicsResults = async (query: string, resetResults = true) => {
+    if (query.length < 3) {
+      setTopicsResultList([])
+      return []
+    }
+
+    setIsLoadingTopics(true)
+
+    try {
+      // Get all topics and filter with dummyFilter
+      const allTopics = topicsByShouts()
+      const filteredTopics = dummyFilter(allTopics, query, lang()) as Topic[]
+      
+      if (resetResults) {
+        setTopicsResultList(filteredTopics || [])
+      }
+      
+      return filteredTopics || []
+    } catch (error) {
+      console.error('[SearchModal] Error filtering topics:', error)
+      if (resetResults) {
+        setTopicsResultList([])
+      }
+      return []
+    } finally {
+      setIsLoadingTopics(false)
     }
   }
 
@@ -146,10 +188,10 @@ export const SearchModal = () => {
 
     const query = inputValue().trim()
     if (query.length >= 3) {
-      await fetchSearchResults(true)
+      await fetchShoutsResults(true)
     } else {
-      setSearchResultsList([])
-      setAuthorResults([])
+      setshoutsResultsList([])
+      setAuthorsResultsList([])
       setHasMore(false)
       setOffset(0)
     }
@@ -161,6 +203,7 @@ export const SearchModal = () => {
   // Setup intersection observers for infinite scroll
   let shoutsObserver: IntersectionObserver | undefined
   let authorsObserver: IntersectionObserver | undefined
+  let topicsObserver: IntersectionObserver | undefined
 
   // Function to load more authors with pagination
   const loadMoreAuthors = async () => {
@@ -169,11 +212,11 @@ export const SearchModal = () => {
     setIsLoading(true)
     const currentQuery = inputValue().trim()
     try {
-      const authorOffset = authorResults().length
+      const authorOffset = authorsResultsList().length
       const newAuthors = await loadAuthorsSearch(currentQuery, FEED_PAGE_SIZE, authorOffset)()
 
       if (newAuthors && newAuthors.length > 0) {
-        setAuthorResults([...authorResults(), ...newAuthors])
+        setAuthorsResultsList([...authorsResultsList(), ...newAuthors])
         setHasMore(newAuthors.length >= FEED_PAGE_SIZE)
       } else {
         setHasMore(false)
@@ -198,7 +241,7 @@ export const SearchModal = () => {
     shoutsObserver = new IntersectionObserver(
       async (entries) => {
         if (entries[0].isIntersecting && hasMore() && !isLoading()) {
-          await fetchSearchResults(false) // Load more shouts
+          await fetchShoutsResults(false) // Load more shouts
         }
       },
       {
@@ -236,6 +279,27 @@ export const SearchModal = () => {
     authorsObserver.observe(authorsSentinel)
   }
 
+  // Setup observer for topics
+  const setupTopicsObserver = () => {
+    if (topicsObserver) topicsObserver.disconnect()
+    const topicsSentinel = topicsSentinelEl()
+    if (!topicsSentinel) return
+    const modalInnerElement = document.querySelector(`.${modalStyles.modalInner}`) as Element
+    if (!modalInnerElement) return
+    topicsObserver = new IntersectionObserver(
+      async (entries) => {
+      // For topics we don't need pagination since we're filtering client-side
+      // But we could add it if needed in the future
+      },
+      {
+        root: modalInnerElement,
+        rootMargin: '100px',
+        threshold: 0.1
+      }
+    )
+    topicsObserver.observe(topicsSentinel)
+  }
+
   // Set up observers when sentinel elements change
   createEffect(() => {
     const shoutsSentinel = shoutsSentinelEl()
@@ -251,6 +315,13 @@ export const SearchModal = () => {
     }
   })
 
+  createEffect(() => {
+    const topicsSentinel = topicsSentinelEl()
+    if (topicsSentinel) {
+      setupTopicsObserver()
+    }
+  })
+
   // Cleanup observers on unmount
   onMount(() => {
     // Initial setup will happen via createEffects when sentinels are set
@@ -260,6 +331,7 @@ export const SearchModal = () => {
     debouncedSearch.cancel()
     if (shoutsObserver) shoutsObserver.disconnect()
     if (authorsObserver) authorsObserver.disconnect()
+    if (topicsObserver) topicsObserver.disconnect()
   })
 
   return (
@@ -279,7 +351,7 @@ export const SearchModal = () => {
           const query = inputValue().trim()
           if (query.length >= 3) {
             debouncedSearch.cancel()
-            fetchSearchResults(true)
+            fetchShoutsResults(true)
           }
         }}
         value={isLoading() ? <div class={styles.searchLoader} /> : <Icon name="search" />}
@@ -307,16 +379,17 @@ export const SearchModal = () => {
         />
       </Show>
 
-      <Show when={(!isLoading() || searchResultsList().length > 0) && inputValue().trim().length >= 3}>
-        <Show when={searchResultsList().length > 0 || authorResults().length > 0}>
+      <Show when={(!isLoading() || shoutsResultsList().length > 0) && inputValue().trim().length >= 3}>
+        <Show when={shoutsResultsList().length > 0 || authorsResultsList().length > 0}>
           {/* Render the appropriate component based on current view */}
           <Show when={currentView() === 'all'}>
             <SearchAll
               searchValue={inputValue()}
               isLoading={isLoading()}
               hasMore={hasMore()}
-              shoutsList={searchResultsList()}
-              authorsList={authorResults()}
+              shoutsList={shoutsResultsList()}
+              authorsList={authorsResultsList()}
+              topicsList={topicsResultList()}
             />
           </Show>
 
@@ -327,7 +400,18 @@ export const SearchModal = () => {
               hasMore={hasMore()}
               setSentinelEl={setShoutsSentinelEl}
               sentinelStyle={sentinelStyle}
-              shoutsList={searchResultsList()}
+              shoutsList={shoutsResultsList()}
+            />
+          </Show>
+
+          <Show when={currentView() === 'topics'}>
+            <SearchTopics
+              searchValue={inputValue()}
+              isLoading={isLoading()}
+              hasMore={hasMore()}
+              setSentinelEl={setTopicsSentinelEl}
+              sentinelStyle={sentinelStyle}
+              topicsList={topicsResultList()}
             />
           </Show>
 
@@ -338,7 +422,7 @@ export const SearchModal = () => {
               hasMore={hasMore()}
               setSentinelEl={setAuthorsSentinelEl}
               sentinelStyle={sentinelStyle}
-              authorsList={authorResults()}
+              authorsList={authorsResultsList()}
             />
           </Show>
         </Show>
@@ -346,8 +430,8 @@ export const SearchModal = () => {
         <Show
           when={
             inputValue().trim().length >= 3 &&
-            searchResultsList().length === 0 &&
-            authorResults().length === 0 &&
+            shoutsResultsList().length === 0 &&
+            authorsResultsList().length === 0 &&
             !isLoading()
           }
         >

@@ -1,5 +1,5 @@
 import { For, Show } from 'solid-js'
-import { AuthorSearchItem } from './../AuthorSearchItem'
+import { AuthorsResultItem } from './AuthorsResultItem'
 import styles from './../Styles/SearchModal.module.scss'
 import { SearchAuthorsProps } from './types'
 
@@ -11,7 +11,7 @@ export const SearchAuthors = (props: SearchAuthorsProps) => {
           <For each={props.authorsList}>
             {(author) => (
               <div>
-                <AuthorSearchItem author={author} />
+                <AuthorsResultItem author={author} />
               </div>
             )}
           </For>

@@ -1,4 +1,4 @@
-import type { Author, Shout } from '~/graphql/schema/core.gen'
+import type { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 
 export interface SearchBaseProps {
   searchValue: string
@@ -19,10 +19,15 @@ export interface SearchAuthorsProps extends InfiniteScrollProps {
   authorsList: Author[]
 }
 
+export interface SearchTopicsProps extends InfiniteScrollProps {
+  topicsList: Topic[]
+}
+
 export interface SearchAllProps {
   searchValue: string
   isLoading: boolean
   hasMore: boolean
   shoutsList: Shout[]
   authorsList: Author[]
+  topicsList: Topic[]
 }
