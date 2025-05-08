@@ -1,41 +1,52 @@
-import { useLocalize } from "~/context/localize"
-import { Draft } from "~/graphql/schema/core.gen"
-import { LayoutType } from "~/types/nav"
-import styles from "~/styles/views/EditView.module.scss"
-import { Show, untrack } from "solid-js"
-import GrowingTextarea from "../_shared/GrowingTextarea/GrowingTextarea"
-import clsx from "clsx"
-
+import clsx from 'clsx'
+import { Show, untrack } from 'solid-js'
+import { useLocalize } from '~/context/localize'
+import { Draft } from '~/graphql/schema/core.gen'
+import styles from '~/styles/views/EditView.module.scss'
+import { LayoutType } from '~/types/nav'
+import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'
 
 export const MAX_HEADER_LIMIT = 100
 
+// Заменяем any на конкретный тип для validationErrors
+type ValidationErrors = {
+  title?: string
+  slug?: string
+  topic_ids?: string
+  main_topic_id?: string
+  [key: string]: string | undefined
+}
+
 /**
  * Компонент для заголовка и подзаголовка
- * 
+ *
  * @param props Свойства компонента
  * @returns React компонент
  */
 export const TitleSection = (props: {
-  draft?: Draft,
-  isTitleClicked: boolean,
-  isSubtitleVisible: boolean,
-  isLeadVisible: boolean,
-  onTitleClick: () => void,
-  onShowSubtitle: () => void,
-  onShowLead: () => void,
-  onTitleChange: (value: string) => void,
-  validationErrors: any
+  draft?: Draft
+  isTitleClicked: boolean
+  isSubtitleVisible: boolean
+  isLeadVisible: boolean
+  onTitleClick: () => void
+  onShowSubtitle: () => void
+  onShowLead: () => void
+  onTitleChange: (value: string) => void
+  validationErrors: ValidationErrors
 }) => {
   const { t } = useLocalize()
-  
+
   const articleTitle = () => {
     switch (props.draft?.layout as LayoutType) {
-      case 'audio': return t('Album name')
-      case 'image': return t('Gallery name')
-      default: return t('Header')
+      case 'audio':
+        return t('Album name')
+      case 'image':
+        return t('Gallery name')
+      default:
+        return t('Header')
     }
   }
-  
+
   return (
     <>
       <div class={styles.headingActions}>
@@ -44,7 +55,14 @@ export const TitleSection = (props: {
             {t('Add subtitle')}
           </a>
         </Show>
-        <Show when={props.isTitleClicked && !props.isLeadVisible && !props.draft?.lead && props.draft?.layout !== 'audio'}>
+        <Show
+          when={
+            props.isTitleClicked &&
+            !props.isLeadVisible &&
+            !props.draft?.lead &&
+            props.draft?.layout !== 'audio'
+          }
+        >
           <a class={styles.action} onClick={props.onShowLead}>
             {t('Add intro')}
           </a>
@@ -76,18 +94,18 @@ export const TitleSection = (props: {
 
 /**
  * Компонент для подзаголовка
- * 
+ *
  * @param props Свойства компонента
  * @returns React компонент
  */
 export const SubtitleComponent = (props: {
-  draft?: Draft,
-  isVisible: boolean,
-  onSubtitleChange: (value: string) => void,
+  draft?: Draft
+  isVisible: boolean
+  onSubtitleChange: (value: string) => void
   setSubtitleInput: (el: HTMLTextAreaElement) => void
 }) => {
   const { t } = useLocalize()
-  
+
   return (
     <Show when={props.isVisible && props.draft}>
       <GrowingTextarea

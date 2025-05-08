@@ -758,3 +758,102 @@
   bottom: 0;
   border-top: 1px solid var(--color-border-light);
 }
+
+.localVersionBox {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background-color: var(--color-background-tertiary);
+  border-radius: 6px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.localVersionText {
+  color: var(--color-text-secondary);
+  margin-right: 12px;
+  margin-bottom: 4px;
+}
+
+.localVersionActions {
+  display: flex;
+  gap: 8px;
+}
+
+.loadVersion,
+.clearVersion {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.loadVersion {
+  background-color: var(--color-primary);
+  color: white;
+  
+  &:hover {
+    background-color: var(--color-primary-hover);
+  }
+}
+
+.clearVersion {
+  background-color: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  
+  &:hover {
+    background-color: var(--color-background-hover);
+  }
+}
+
+// Новые стили для переключателя локальной версии
+.localVersionSwitcher {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.switcherBtn {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  
+  &:hover {
+    background: var(--color-background-hover);
+  }
+  
+  &.clearBtn {
+    padding: 6px;
+    border-color: var(--color-border);
+    
+    &:hover {
+      background: var(--color-background-danger-light);
+      border-color: var(--color-danger-light);
+    }
+  }
+}
+
+.switcherIcon {
+  display: flex;
+  align-items: center;
+  margin-right: 6px;
+  
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}

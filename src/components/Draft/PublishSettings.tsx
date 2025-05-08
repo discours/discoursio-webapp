@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, lazy, onCleanup, onMount } from 'solid-js'
+import { Show, batch, createEffect, createMemo, createSignal, lazy, onCleanup, onMount } from 'solid-js'
 import toast from 'solid-toast'
 
 import { type EditorData } from '~/components/SimpleRichEditor/lib/types'
@@ -14,7 +14,7 @@ import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useTopics } from '~/context/topics'
 import { useUI } from '~/context/ui'
-import { Author, DraftInput, Maybe, Topic } from '~/graphql/schema/core.gen'
+import { Author, DraftInput, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
 import { UploadedFile } from '~/types/upload'
 import { Modal } from '../_shared/Modal'
@@ -25,7 +25,6 @@ import styles from './PublishSettings.module.scss'
 
 const GrowingTextarea = lazy(() => import('~/components/_shared/GrowingTextarea/GrowingTextarea'))
 const DESCRIPTION_MAX_LENGTH = 40
-const EMPTY_TOPIC: Topic = { id: -1, slug: '' }
 
 const shorten = (str: string, maxLen: number) => {
   if (str.length <= maxLen) return str
@@ -42,12 +41,10 @@ export const PublishSettings = () => {
     unpublishShout,
     validationErrors,
     validateCurrentDraft,
-    clearValidationErrors,
-    setCurrentDraft,
-    drafts
+    clearValidationErrors
   } = useDrafts()
   const { showModal } = useUI()
-  const { loadTopics, sortedTopics } = useTopics()
+  const { loadTopics } = useTopics()
   const { session } = useSession()
   const navigate = useNavigate()
   const [coverImage, setCoverImage] = createSignal<UploadedFile | null>(null)
@@ -62,22 +59,24 @@ export const PublishSettings = () => {
     const draft = currentDraft()
     if (!draft?.id) return
 
-    let valueToSave: string | EditorData
+    batch(() => {
+      let valueToSave: string | EditorData
 
-    if (typeof value === 'object' && value !== null) {
-      console.warn(`[PublishSettings] Unexpected object type in handleFieldChange for key ${key}:`, value)
-      valueToSave = JSON.stringify(value)
-    } else {
-      valueToSave = String(value)
-    }
+      if (typeof value === 'object' && value !== null) {
+        console.warn(`[PublishSettings] Unexpected object type in handleFieldChange for key ${key}:`, value)
+        valueToSave = JSON.stringify(value)
+      } else {
+        valueToSave = String(value)
+      }
 
-    if (key === 'title') {
-      const title = value as string
-      const newSlug = slugify(title)
-      updateDraftField(draft.id, 'slug', newSlug, false)
-    }
+      if (key === 'title') {
+        const title = value as string
+        const newSlug = slugify(title)
+        updateDraftField(draft.id, 'slug', newSlug, false)
+      }
 
-    updateDraftField(draft.id, key, valueToSave, false)
+      updateDraftField(draft.id, key, valueToSave, false)
+    })
 
     console.log(`[PublishSettings] Updated field ${key} via context for draft ${draft.id}`)
   }
@@ -108,7 +107,7 @@ export const PublishSettings = () => {
     })
   })
 
-  const description = () => {
+  const description = createMemo(() => {
     const draft = currentDraft()
     if (!draft) return ''
 
@@ -129,156 +128,101 @@ export const PublishSettings = () => {
       return shorten(cleanBodyText, DESCRIPTION_MAX_LENGTH)
     }
     return ''
-  }
+  })
 
   const handleUploadModalContentCloseSetCover = (image: UploadedFile | undefined) => {
     const draftId = currentDraft()?.id
     if (!draftId) return
 
-    showModal('uploadCoverImage')
-    setCoverUploadLoading(true)
-    setCoverImage(image || null)
-    updateDraftField(draftId, 'cover' as keyof DraftInput, image?.url || '', false)
-    setCoverUploadLoading(false)
+    batch(() => {
+      showModal('uploadCoverImage')
+      setCoverUploadLoading(true)
+      setCoverImage(image || null)
+      updateDraftField(draftId, 'cover', image?.url || '', false)
+      setCoverUploadLoading(false)
+    })
   }
 
   const handleDeleteCoverImage = () => {
     const draftId = currentDraft()?.id
     if (!draftId) return
-    setCoverImage(null)
-    updateDraftField(draftId, 'cover' as keyof DraftInput, '', false)
-  }
 
-  const handleTopicSelectChange = (newSelectedTopics: Topic[]) => {
-    const draft = currentDraft()
-    if (!draft?.id) return
-
-    const topicIds = newSelectedTopics.map((t) => t.id).filter((id) => id > 0)
-
-    updateDraftField(draft.id, 'topic_ids', JSON.stringify(topicIds), false)
-
-    const currentMainTopicId = draft.mainTopic?.id
-    if (
-      newSelectedTopics.length > 0 &&
-      (!currentMainTopicId || currentMainTopicId <= 0 || currentMainTopicId === topicIds[0])
-    ) {
-      const newMainTopicId = topicIds[0]
-      updateDraftField(draft.id, 'main_topic_id' as keyof DraftInput, String(newMainTopicId), false)
-    } else if (newSelectedTopics.length === 0) {
-      updateDraftField(draft.id, 'main_topic_id' as keyof DraftInput, '', false)
-    }
-
-    console.log(`[PublishSettings] Updated topics for draft ${draft.id}`)
-  }
-
-  const handleMainTopicChange = (mainTopic: Topic) => {
-    const draft = currentDraft()
-    if (!draft?.id) return
-    updateDraftField(draft.id, 'main_topic_id' as keyof DraftInput, String(mainTopic.id), false)
-    console.log(`[PublishSettings] Updated main topic for draft ${draft.id}`)
+    batch(() => {
+      setCoverImage(null)
+      updateDraftField(draftId, 'cover', '', false)
+    })
   }
 
   const handleBackClick = () => {
-    navigate(`/edit/${currentDraft()?.id}`)
+    const draft = currentDraft()
+    if (draft?.isLocalOnly && draft?.localId) {
+      navigate(`/edit/${draft.localId}/local`)
+    } else if (draft?.id) {
+      navigate(`/edit/${draft.id}`)
+    } else {
+      navigate('/edit')
+    }
   }
 
   const handlePublishSubmit = async () => {
+    const draft = currentDraft()
+    if (!draft?.id) return
+
     setIsLoading(true)
     clearValidationErrors()
-    const draft = currentDraft()
-    if (!draft?.id) {
-      toast.error(t('Draft not found'))
-      setIsLoading(false)
-      return
-    }
 
     try {
-      const isValid = await validateCurrentDraft()
-
-      if (!isValid) {
-        toast.error(t('Please fix the errors before publishing.'))
-        setIsLoading(false)
+      const validationResult = await validateCurrentDraft()
+      if (!validationResult) {
+        console.warn('[PublishSettings] Draft validation failed')
         return
       }
 
       const result = await publishDraft(draft.id)
+      const publishedDraftId = result?.data?.publish_draft?.draft?.id
 
-      if (result?.data?.publish_draft?.draft) {
-        toast.success(t('Draft published successfully'))
-        clearValidationErrors()
-        navigate(`/${result.data.publish_draft.draft.slug}`)
+      if (publishedDraftId) {
+        batch(() => {
+          toast.success(t('Article published successfully'))
+          navigate(`/shout/${publishedDraftId}`)
+        })
       } else if (result?.error) {
-        toast.error(t(result.error.message) || t('Unknown error during publishing'))
+        toast.error(t(result.error.message || 'Error publishing article'))
       } else {
-        toast.error(t('Unknown error during publishing'))
+        toast.error(t('Error publishing article'))
       }
     } catch (error) {
-      console.error('[PublishSettings] Error publishing draft:', error)
+      console.error('[PublishSettings] Error publishing article:', error)
       toast.error(error instanceof Error ? error.message : t('Unknown error occurred'))
     } finally {
       setIsLoading(false)
     }
   }
 
-  const isPublished = () => {
+  const isPublished = createMemo(() => {
     const draft = currentDraft()
-
-    // Проверяем наличие связанной публикации со статусом published_at
-    return draft?.publication?.published_at && draft.publication.published_at > 0
-  }
+    return !!draft?.published_at
+  })
 
   const handleUnpublish = async () => {
-    setIsLoading(true)
     const draft = currentDraft()
-    if (!draft?.id) {
-      setIsLoading(false)
-      return
-    }
+    if (!draft?.id) return
 
-    // Флаг, указывающий, перенаправлять ли на список черновиков вместо редактора
-    const redirectToDraftsList = false // Изменить на true для перенаправления на список черновиков
-
-    console.log(
-      `[PublishSettings] Снятие публикации для статьи #${draft.id}, isPublished=${isPublished()}, publication=`,
-      draft.publication
-    )
+    setIsLoading(true)
 
     try {
       const result = await unpublishShout(draft.id)
-      if (result?.data?.unpublish_shout) {
-        toast.success(t('Article unpublished successfully'))
+      const unpublishedShoutId = result?.data?.unpublish_shout?.shout?.id
 
-        // Загрузка черновиков уже происходит внутри unpublishShout
-        // await loadDrafts()
-
-        // Находим обновленный черновик в списке
-        const updatedDraft = drafts().find((d) => d.id === draft.id)
-        if (updatedDraft) {
-          setCurrentDraft(updatedDraft)
-          console.log(
-            `[PublishSettings] Обновлен черновик после снятия публикации: ${updatedDraft.id}`,
-            `isPublished=${isPublished()}`,
-            `publication=${updatedDraft.publication}`
-          )
-
-          // Явно проверяем, что published_at сброшен
-          if (updatedDraft.publication?.published_at) {
-            console.warn(
-              `[PublishSettings] Внимание! После снятия публикации publication.published_at всё ещё установлен: ${updatedDraft.publication.published_at}`
-            )
-          }
-
-          // Перенаправляем пользователя
-          if (redirectToDraftsList) {
-            // На список черновиков
-            navigate('/drafts')
-          } else {
-            // На страницу редактирования черновика
-            navigate(`/edit/${updatedDraft.id}`)
-          }
-        }
+      if (unpublishedShoutId) {
+        batch(() => {
+          toast.success(t('Article unpublished successfully'))
+          navigate(`/edit/${draft.id}`)
+        })
       } else if (result?.error) {
-        toast.error(t(result.error.message))
+        toast.error(t(result.error.message || 'Error unpublishing article'))
+      } else {
+        toast.error(t('Error unpublishing article'))
       }
     } catch (error) {
       console.error('[PublishSettings] Error unpublishing article:', error)
@@ -342,13 +286,7 @@ export const PublishSettings = () => {
                   when={!isTopicsLoading()}
                   fallback={<div class="loading-indicator">{t('Loading topics...')}</div>}
                 >
-                  <TopicPillsCloud
-                    topics={sortedTopics()}
-                    onChange={handleTopicSelectChange}
-                    selectedTopics={draft()?.topics?.filter((t: Maybe<Topic>) => t !== null) || []}
-                    onMainTopicChange={handleMainTopicChange}
-                    mainTopic={draft()?.mainTopic || EMPTY_TOPIC}
-                  />
+                  <TopicPillsCloud draftId={currentDraft()?.id || -1} />
                 </Show>
               </div>
             </div>

@@ -1,10 +1,12 @@
 import { A, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show } from 'solid-js'
+import { Show, createSignal } from 'solid-js'
 import { toast } from 'solid-toast'
 import type { ExtendedDraft } from '~/context/drafts'
+import { useDrafts } from '~/context/drafts'
 import { createValidDate, useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
+import { Author, DraftInput, Maybe, Topic } from '~/graphql/schema/core.gen'
 import { Icon } from '../_shared/Icon'
 
 import styles from './DraftCard.module.scss'
@@ -14,6 +16,9 @@ type Props = {
   onDelete: () => void
   onUnpublish: () => void
   onPublish: () => void
+  onSwitchToLocal?: () => void
+  onSwitchToServer?: () => void
+  activeVersion?: 'local' | 'server'
 }
 
 /**
@@ -26,6 +31,9 @@ type Props = {
  *   onDelete={() => handleDelete(draftId)}
  *   onPublish={() => handlePublish(draftId)}
  *   onUnpublish={() => handleUnpublish(draftId)}
+ *   onSwitchToLocal={() => handleSwitchToLocal(draftId)}
+ *   onSwitchToServer={() => handleSwitchToServer(draftId)}
+ *   activeVersion="server"
  * />
  * ```
  */
@@ -34,6 +42,10 @@ export const DraftCard = (props: Props) => {
   const { t, formatDate } = useLocalize()
   const { showConfirm } = useUI()
   const navigate = useNavigate()
+  const { updateDraft, loadDrafts, setCurrentDraft } = useDrafts()
+
+  // Добавляем сигнал для отслеживания видимости переключателя
+  const [isVersionSwitcherVisible, setVersionSwitcherVisible] = createSignal(false)
 
   // Получение URL для редактирования черновика
   const getEditUrl = () => {
@@ -55,10 +67,80 @@ export const DraftCard = (props: Props) => {
   const handlePublishLinkClick = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (props.draft.id) {
-      navigate(`/edit/${props.draft.id}/settings`)
-    } else {
+
+    if (!props.draft.id) {
       toast.error(t('Cannot publish draft without ID'))
+      return
+    }
+
+    console.log(`[DraftCard] Начинаем публикацию черновика #${props.draft.id}`)
+
+    try {
+      // Явно обновляем черновик на сервере со всеми последними изменениями
+      // Это гарантирует, что title и lead будут доступны на странице настроек
+      const updatedDraft: DraftInput = {
+        id: props.draft.id,
+        layout: props.draft.layout || 'article',
+        title: props.draft.title || '',
+        subtitle: props.draft.subtitle || '',
+        lead: props.draft.lead || '',
+        slug: props.draft.slug || '',
+        body: props.draft.body || '',
+        cover: props.draft.cover || '',
+        main_topic_id: props.draft.topics?.[0]?.id || 0,
+        author_ids: (props.draft.authors || []).map?.((author?: Maybe<Author>) => author?.id || 0) || [],
+        topic_ids:
+          (props.draft.topics || [])
+            .map?.((topic?: Maybe<Topic>) => {
+              if (!topic || !topic.id) {
+                console.warn('[DraftCard] Найдена некорректная тема в массиве:', topic)
+                return 0
+              }
+              return topic.id
+            })
+            .filter((id) => id > 0) || []
+      }
+
+      // Проверяем, что у нас есть хотя бы одна тема
+      if (!updatedDraft.topic_ids || !updatedDraft.topic_ids.length) {
+        console.warn('[DraftCard] После фильтрации не найдено валидных тем, что может привести к ошибке')
+        // Пытаемся найти main_topic_id в качестве резервного варианта
+        if (updatedDraft.main_topic_id && updatedDraft.main_topic_id > 0) {
+          console.log('[DraftCard] Используем main_topic_id в качестве резервного варианта для тем')
+          updatedDraft.topic_ids = [updatedDraft.main_topic_id]
+        }
+      }
+
+      console.log('[DraftCard] Отправка черновика на сервер перед публикацией:', {
+        draftId: updatedDraft.id,
+        title: updatedDraft.title,
+        topicIds: updatedDraft.topic_ids,
+        mainTopicId: updatedDraft.main_topic_id
+      })
+
+      // Сохраняем черновик перед дальнейшими действиями
+      updateDraft(updatedDraft)
+        .then(async (result) => {
+          if (result?.data?.update_draft?.draft) {
+            setCurrentDraft(result.data.update_draft.draft as ExtendedDraft)
+          }
+          await loadDrafts()
+          navigate(`/edit/${props.draft.id}/settings`)
+        })
+        .catch((error: Error) => {
+          console.error('[DraftCard] Ошибка обновления черновика перед публикацией:', error)
+          navigate(`/edit/${props.draft.id}/settings`)
+        })
+    } catch (error) {
+      console.error('[DraftCard] Ошибка в обработчике публикации:', error)
+      toast.error(t('An error occurred while processing publication'))
+
+      // При любой ошибке пытаемся перейти на страницу настроек
+      if (props.draft.id) {
+        const fallbackUrl = `/edit/${props.draft.id}/settings`
+        console.log(`[DraftCard] Аварийный переход на настройки: ${fallbackUrl}`)
+        navigate(fallbackUrl)
+      }
     }
   }
 
@@ -73,8 +155,8 @@ export const DraftCard = (props: Props) => {
       declineButtonVariant: 'primary'
     })
     if (isConfirmed) {
+      console.log('[DraftCard] Вызываем обработчик удаления:', props.draft.id || props.draft.localId)
       props.onDelete()
-
       toast.success(t('Draft successfully deleted'))
     }
   }
@@ -104,8 +186,209 @@ export const DraftCard = (props: Props) => {
     }
   }
 
+  /**
+   * Проверяет, были ли внесены изменения в черновик после публикации
+   */
   const isModifiedSincePublish = () => {
     return props.draft.publication?.published_at && props.draft.publication?.published_at > 0
+  }
+
+  /**
+   * Проверяет, есть ли у черновика опубликованная версия
+   */
+  const isPublished = () => {
+    return (
+      !!props.draft.publication?.published_at ||
+      ('published_at' in props.draft && !!props.draft.published_at)
+    )
+  }
+
+  /**
+   * Определяет, является ли черновик локальной версией
+   */
+  const isLocalVersion = () => {
+    return (
+      props.activeVersion === 'local' || ('isLocalOnly' in props.draft && props.draft.isLocalOnly === true)
+    )
+  }
+
+  /**
+   * Возвращает заголовок для индикатора переключения версий
+   */
+  const getVersionSwitchTitle = () => {
+    if (props.activeVersion === 'server' && props.onSwitchToLocal) {
+      return t('Switch to local version')
+    }
+    if (props.activeVersion === 'local' && props.onSwitchToServer) {
+      return t('Switch to server version')
+    }
+    if (props.onSwitchToLocal) {
+      return t('Switch to local version')
+    }
+    if (props.onSwitchToServer) {
+      return t('Switch to server version')
+    }
+    return t('This draft has changes since last publication')
+  }
+
+  /**
+   * Возвращает название иконки для индикатора переключения версий
+   */
+  const getVersionSwitchIcon = () => {
+    // Явно отображаем иконку в зависимости от активного состояния
+    if (props.activeVersion === 'local') {
+      return 'file-storage' // Иконка локального хранения
+    }
+    if (props.activeVersion === 'server') {
+      return 'cloud' // Иконка сервера/облака
+    }
+    // Для состояния без активной версии
+    return 'version-branch'
+  }
+
+  /**
+   * Возвращает класс стиля для индикатора переключения версий
+   */
+  const getVersionSwitchClass = () => {
+    if (props.activeVersion === 'local') {
+      return styles.localVersion
+    }
+    if (props.activeVersion === 'server') {
+      return styles.serverVersion
+    }
+    return styles.modifiedIndicator
+  }
+
+  /**
+   * Обработчик клика на кнопку локальной версии
+   */
+  const handleLocalButtonClick = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (props.activeVersion === 'local') {
+      return // Уже активна локальная версия
+    }
+
+    if (props.onSwitchToLocal) {
+      console.log('[DraftCard] Явный вызов переключения на локальную версию')
+      props.onSwitchToLocal()
+    }
+  }
+
+  /**
+   * Обработчик клика на кнопку серверной версии
+   */
+  const handleServerButtonClick = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (props.activeVersion === 'server') {
+      return // Уже активна серверная версия
+    }
+
+    if (props.onSwitchToServer) {
+      console.log('[DraftCard] Явный вызов переключения на серверную версию')
+      props.onSwitchToServer()
+    }
+  }
+
+  /**
+   * Определяет, можно ли кликнуть на индикатор переключения версий
+   */
+  const isVersionSwitchClickable = () => {
+    // Переключение возможно если есть хотя бы один обработчик
+    return !!props.onSwitchToLocal || !!props.onSwitchToServer
+  }
+
+  /**
+   * Обработчик клика на индикатор расхождения версий
+   */
+  const handleVersionIndicatorClick = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setVersionSwitcherVisible(!isVersionSwitcherVisible())
+  }
+
+  /**
+   * Обработчик перехода к настройкам с предварительным сохранением черновика
+   */
+  const handleSettingsClick = async (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!props.draft.id) {
+      toast.error(t('Cannot open settings without draft ID'))
+      return
+    }
+
+    console.log(`[DraftCard] Подготовка к переходу в настройки черновика #${props.draft.id}`)
+
+    try {
+      // Обновляем черновик на сервере со всеми последними изменениями
+      const updatedDraft: DraftInput = {
+        id: props.draft.id,
+        layout: props.draft.layout || 'article',
+        title: props.draft.title || '',
+        subtitle: props.draft.subtitle || '',
+        lead: props.draft.lead || '',
+        slug: props.draft.slug || '',
+        body: props.draft.body || '',
+        cover: props.draft.cover || '',
+        main_topic_id: props.draft.topics?.[0]?.id || 0,
+        author_ids: (props.draft.authors || []).map?.((author?: Maybe<Author>) => author?.id || 0) || [],
+        topic_ids:
+          (props.draft.topics || [])
+            .map?.((topic?: Maybe<Topic>) => {
+              if (!topic || !topic.id) {
+                console.warn('[DraftCard] Найдена некорректная тема в массиве:', topic)
+                return 0
+              }
+              return topic.id
+            })
+            .filter((id) => id > 0) || []
+      }
+
+      // Проверяем наличие тем
+      if (!updatedDraft.topic_ids || !updatedDraft.topic_ids.length) {
+        console.warn('[DraftCard] После фильтрации не найдено валидных тем, что может привести к ошибке')
+        if (updatedDraft.main_topic_id && updatedDraft.main_topic_id > 0) {
+          console.log('[DraftCard] Используем main_topic_id в качестве резервного варианта для тем')
+          updatedDraft.topic_ids = [updatedDraft.main_topic_id]
+        }
+      }
+
+      console.log('[DraftCard] Отправка черновика на сервер перед переходом в настройки:', {
+        draftId: updatedDraft.id,
+        title: updatedDraft.title,
+        topicIds: updatedDraft.topic_ids,
+        mainTopicId: updatedDraft.main_topic_id
+      })
+
+      // Сохраняем черновик перед переходом
+      updateDraft(updatedDraft)
+        .then(async (result) => {
+          if (result?.data?.update_draft?.draft) {
+            setCurrentDraft(result.data.update_draft.draft as ExtendedDraft)
+          }
+          await loadDrafts()
+          navigate(`/edit/${props.draft.id}/settings`)
+        })
+        .catch((error: Error) => {
+          console.error('[DraftCard] Ошибка обновления черновика перед переходом в настройки:', error)
+          navigate(`/edit/${props.draft.id}/settings`)
+        })
+    } catch (error) {
+      console.error('[DraftCard] Ошибка в обработчике перехода в настройки:', error)
+      toast.error(t('An error occurred while processing settings'))
+
+      // При любой ошибке пытаемся перейти на страницу настроек
+      if (props.draft.id) {
+        const fallbackUrl = `/edit/${props.draft.id}/settings`
+        console.log(`[DraftCard] Аварийный переход на настройки: ${fallbackUrl}`)
+        navigate(fallbackUrl)
+      }
+    }
   }
 
   return (
@@ -121,7 +404,7 @@ export const DraftCard = (props: Props) => {
           </A>
           {/* Дата создания и статус */}
           <div class={styles.created}>
-            <Show when={props.draft.isLocalOnly}>
+            <Show when={isLocalVersion()}>
               <span class={styles.localBadge} title={t('This draft is saved only locally')}>
                 <Icon name="file-storage" class={styles.localIcon} />
               </span>
@@ -139,72 +422,116 @@ export const DraftCard = (props: Props) => {
         </Show>
 
         <div class={styles.actions}>
-          <Show when={isModifiedSincePublish()}>
-            <span class={styles.modifiedIndicator} title={t('Draft has changes since last publication')}>
-              <Icon name="sync-problem" class={styles.modifiedIcon} />
+          {/* Кнопка переключения версий */}
+          <Show when={isVersionSwitchClickable()}>
+            <span
+              class={clsx(styles.actionItem, styles.versionSwitcher, getVersionSwitchClass())}
+              title={getVersionSwitchTitle()}
+              onClick={handleVersionIndicatorClick}
+            >
+              {/* Индикатор расхождения версий */}
+              <Show when={isModifiedSincePublish()}>
+                <Icon name="sync-problem" class={styles.versionSyncIcon} />
+              </Show>
+
+              {/* Переключатель версий */}
+              <Show when={isVersionSwitcherVisible()}>
+                <div class={styles.pillSwitch}>
+                  <button
+                    class={clsx(styles.pillOption, styles.localPill, {
+                      [styles.activePill]: props.activeVersion === 'local'
+                    })}
+                    onClick={handleLocalButtonClick}
+                  >
+                    <Icon
+                      name={props.activeVersion === 'local' ? getVersionSwitchIcon() : 'file-storage'}
+                      class={styles.pillIcon}
+                    />
+                  </button>
+                  <button
+                    class={clsx(styles.pillOption, styles.serverPill, {
+                      [styles.activePill]: props.activeVersion === 'server'
+                    })}
+                    onClick={handleServerButtonClick}
+                  >
+                    <Icon
+                      name={props.activeVersion === 'server' ? getVersionSwitchIcon() : 'cloud'}
+                      class={styles.pillIcon}
+                    />
+                  </button>
+                </div>
+              </Show>
             </span>
           </Show>
-          {/* Просмотр */}
+
+          {/* Предпросмотр */}
           <span
             onClick={handleViewClick}
             class={styles.actionItem}
-            title={
-              props.draft.publication?.published_at
-                ? t('View published version')
-                : t('Preview how it will look published')
-            }
+            title={isPublished() ? t('View published article') : t('Preview')}
           >
-            <Icon
-              name={props.draft.publication?.published_at ? 'eye-off' : 'eye'}
-              class={styles.actionIcon}
-            />
-            <span class={styles.actionText}>
-              {props.draft.publication?.published_at ? t('View') : t('Preview')}
-            </span>
+            <Icon name="eye" class={styles.actionIcon} />
+            <span class={styles.actionText}>{isPublished() ? t('View') : t('Preview')}</span>
           </span>
 
+          {/* Публикация/Снятие с публикации */}
           <Show
-            when={props.draft.publication?.published_at}
+            when={isPublished()}
             fallback={
-              <>
-                {/* Опубликовать */}
-                <span
-                  onClick={handlePublishLinkClick}
-                  class={clsx(styles.actionItem, styles.publish)}
-                  title={props.draft.isLocalOnly ? t('Save draft') : t('Publish')}
-                >
-                  <Icon
-                    name={props.draft.isLocalOnly ? 'cloud-upload' : 'publish'}
-                    class={styles.actionIcon}
-                  />
-                  <span class={styles.actionText}>
-                    {t(props.draft.isLocalOnly ? 'Save draft' : 'Publish')}
-                  </span>
+              <span
+                onClick={handlePublishLinkClick}
+                class={styles.actionItem}
+                title={props.draft.isLocalOnly ? t('Save draft') : t('Publish')}
+              >
+                <Icon
+                  name={props.draft.isLocalOnly ? 'cloud-upload' : 'publish'}
+                  class={styles.actionIcon}
+                />
+                <span class={styles.actionText}>
+                  {t(props.draft.isLocalOnly ? 'Save draft' : 'Publish')}
                 </span>
-                {/* Удалить */}
-                <span
-                  onClick={handleDeleteLinkClick}
-                  class={clsx(styles.actionItem, styles.delete)}
-                  title={t('Delete')}
-                >
-                  <Icon name="trash" class={styles.actionIcon} />
-                  <span class={styles.actionText}>{t('Delete')}</span>
-                </span>
-              </>
+              </span>
             }
           >
-            {/* Снять с публикации */}
-            <span
-              onClick={props.onUnpublish}
-              class={clsx(styles.actionItem, styles.unpublish)}
-              title={t('Unpublish')}
-            >
-              <Icon name="eye-off" class={styles.actionIcon} />
-              <span class={styles.actionText}>{t('Unpublish')}</span>
-            </span>
+            {/* Кнопки для опубликованной статьи */}
+            <div class={styles.publishedActions}>
+              {/* Кнопка настроек */}
+              <span onClick={handleSettingsClick} class={styles.actionItem} title={t('Settings')}>
+                <Icon name="settings" class={styles.actionIcon} />
+                <span class={styles.actionText}>{t('Settings')}</span>
+              </span>
+
+              {/* Кнопка снятия с публикации */}
+              <span
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  console.log('[DraftCard] Вызываем обработчик снятия с публикации:', props.draft.id)
+                  props.onUnpublish()
+                }}
+                class={styles.actionItem}
+                title={t('Unpublish')}
+              >
+                <Icon name="eye-off" class={styles.actionIcon} />
+                <span class={styles.actionText}>{t('Unpublish')}</span>
+              </span>
+            </div>
           </Show>
+
+          {/* Удаление - всегда присутствует */}
+          <span onClick={handleDeleteLinkClick} class={styles.actionItem} title={t('Delete')}>
+            <Icon name="trash" class={styles.actionIcon} />
+            <span class={styles.actionText}>{t('Delete')}</span>
+          </span>
         </div>
       </div>
+
+      {/* Индикатор изменений после публикации - отображаем компактно */}
+      <Show when={isModifiedSincePublish()}>
+        <div class={styles.modifiedBadge} title={t('Modified since publish')}>
+          <Icon name="sync-problem" class={styles.modifiedIcon} />
+        </div>
+      </Show>
     </div>
   )
 }

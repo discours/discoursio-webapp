@@ -1,25 +1,19 @@
 .draft {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   position: relative;
 }
 
 .draftContent {
   position: relative;
-  padding: 10px 12px;
+  padding: 14px 16px;
   border-radius: 10px;
   transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
   background-color: white;
-  border: 1px solid rgb(0 0 0 / 4%);
+  border: 1px solid rgb(0 0 0 / 6%);
   
   &:hover {
-    box-shadow: 0 3px 16px rgb(0 0 0 / 6%);
+    box-shadow: 0 3px 12px rgb(0 0 0 / 8%);
     transform: translateY(-2px);
-    
-    .actions {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-    }
     
     .coverOverlay {
       opacity: 0.15;
@@ -99,8 +93,9 @@
 }
 
 .titleContainer {
-  font-size: 1.8rem;
-  line-height: 2.2rem;
+  font-size: 1.6rem;
+  line-height: 2rem;
+  font-weight: 600;
   position: relative;
   z-index: 2;
   flex: 1;
@@ -110,102 +105,199 @@
 }
 
 .title {
-  font-weight: 700;
   display: block;
-  color: var(--text-color-dark, #222);
+  color: #222;
   transition: color 0.2s ease;
   
   &:hover {
-    color: var(--primary-color, #06d);
+    color: #06d;
   }
 }
 
 .subtitle {
   font-size: 1.4rem;
-  line-height: 1.8rem;
+  line-height: 1.6rem;
   opacity: 0.75;
+  font-weight: normal;
+}
+
+.versionIndicator {
+  position: absolute;
+  top: 50%;
+  left: -14px;
+  width: 28px;
+  height: 28px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10;
+  background-color: white;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
+  border: 1px solid rgb(0 0 0 / 8%);
+  
+  &.clickable {
+    cursor: pointer;
+    
+    &:hover {
+      transform: translateY(-50%) scale(1.1);
+    }
+  }
+  
+  &.switchToLocal {
+    color: #e65100;
+    background-color: rgb(230 81 0 / 10%);
+    
+    &:hover {
+      background-color: rgb(230 81 0 / 20%);
+    }
+  }
+  
+  &.switchToServer {
+    color: #2196f3;
+    background-color: rgb(33 150 243 / 10%);
+    
+    &:hover {
+      background-color: rgb(33 150 243 / 20%);
+    }
+  }
+}
+
+.versionText {
+  margin-left: 4px;
 }
 
 .actions {
   display: flex;
-  gap: 10px;
   position: relative;
   z-index: 2;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
-  transform: translateY(5px);
-  padding-top: 8px;
-  border-top: 1px solid rgb(0 0 0 / 5%);
-  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgb(0 0 0 / 6%);
+  margin-top: 10px;
+  width: 100%;
+  justify-content: space-between;
+}
 
-  .actionItem {
-    border: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    background-color: transparent;
-    text-decoration: none;
+.actionItem {
+  flex: 1;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  gap: 6px;
+  padding: 6px 8px;
+  margin: 0 4px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background-color: transparent;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  
+  &:first-child {
+    margin-left: 0;
+  }
+  
+  &:last-child {
+    margin-right: 0;
+  }
+  
+  &:hover {
+    background-color: rgb(0 0 0 / 5%);
+  }
+  
+  &.versionAction {
+    &.localVersion {
+      color: #e65100;
 
-    &.delete {
-      color: #d00820;
-      
       &:hover {
-        background-color: rgb(208 8 32 / 10%);
+        background-color: rgb(230 81 0 / 5%);
       }
     }
+    
+    &.serverVersion {
+      color: #2196f3;
 
-    &.publish {
       &:hover {
-        background-color: rgb(43 180 82 / 10%);
+        background-color: rgb(33 150 243 / 5%);
       }
     }
   }
-}
-
-.actionIcon {
-  display: inline-block;
-  height: 1.2rem;
-  width: 1.2rem;
+  
+  &:nth-child(2) {
+    color: #06d;
+  }
+  
+  &:nth-child(3) {
+    color: #2baa4e;
+  }
+  
+  &:nth-child(4) {
+    color: #d00820;
+  }
 }
 
 .actionText {
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actionIcon {
+  flex-shrink: 0;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+}
+
+.versionSyncIcon {
+  flex-shrink: 0;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  color: #ff9800;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+}
+
+.versionToggle {
+  display: none;
+}
+
+.versionToggleText {
+  font-size: 14px;
 }
 
 @media (width <= 768px) {
   .draftContent {
-    padding: 10px;
+    padding: 12px;
   }
   
-  .contentTop {
-    margin-bottom: 10px;
-  }
-
-  .titleContainer {
-    font-size: 1.6rem;
-    line-height: 2rem;
+  .versionToggle {
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
   }
   
-  .subtitle {
-    font-size: 1.2rem;
-    line-height: 1.6rem;
+  .versionToggleText {
+    display: none;
   }
   
   .actions {
-    gap: 8px;
     justify-content: space-between;
   }
   
   .actionItem {
-    flex: 1;
-    justify-content: center !important;
+    padding: 6px;
+    margin: 0 2px;
   }
   
   .actionText {
@@ -213,8 +305,197 @@
   }
   
   .actionIcon {
-    height: 1.4rem;
-    width: 1.4rem;
-    margin: 0 !important;
+    width: 16px;
+    height: 16px;
+  }
+  
+  .pillText {
+    display: none;
+  }
+}
+
+@media (width <= 480px) {
+  .actionItem {
+    padding: 5px;
+    margin: 0 1px;
+  }
+  
+  .actionIcon {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.versionControls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.versionButton {
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: rgb(0 0 0 / 5%);
+  }
+  
+  &.localVersion {
+    color: var(--color-primary);
+  }
+  
+  &.serverVersion {
+    color: var(--color-secondary);
+  }
+  
+  &.activeVersion {
+    background-color: rgb(0 0 0 / 8%);
+    pointer-events: none;
+  }
+  
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.versionIcon {
+  margin-right: 5px;
+  width: 16px;
+  height: 16px;
+}
+
+.versionButtons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.versionSwitcher {
+  padding: 3px !important;
+  margin: 0 !important;
+  position: relative;
+  
+  &:hover {
+    background-color: transparent !important;
+  }
+
+  .pillSwitch {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 8px;
+    display: flex;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgb(0 0 0 / 10%);
+    height: 26px;
+    min-width: 80px;
+    background: white;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+    z-index: 100;
+  }
+}
+
+.pillSwitch {
+  display: flex;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgb(0 0 0 / 10%);
+  height: 26px;
+  width: 100%;
+}
+
+.pillOption {
+  flex: 1;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0 6px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  color: #666;
+  
+  &:hover {
+    background-color: rgb(0 0 0 / 5%);
+  }
+  
+  &.activePill {
+    cursor: default;
+    font-weight: 500;
+  }
+}
+
+.localPill {
+  border-radius: 20px 0 0 20px;
+  
+  &.activePill {
+    background-color: rgb(230 81 0 / 10%);
+    color: #e65100;
+  }
+}
+
+.serverPill {
+  border-radius: 0 20px 20px 0;
+  
+  &.activePill {
+    background-color: rgb(33 150 243 / 10%);
+    color: #2196f3;
+  }
+}
+
+.pillIcon {
+  width: 14px;
+  height: 14px;
+  margin-right: 3px;
+}
+
+.pillText {
+  display: inline-block;
+}
+
+.modifiedBadge {
+  display: none;
+}
+
+.versionStatus {
+  position: absolute;
+  top: -8px;
+  right: 10px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background-color: #f5f5f5;
+  color: #666;
+  font-weight: 500;
+  opacity: 0.8;
+  display: none;
+  
+  @media (width <= 768px) {
+    top: 15px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+.publishedActions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+
+  .actionItem {
+    &:hover {
+      color: var(--color-primary);
+    }
   }
 }

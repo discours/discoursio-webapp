@@ -3,6 +3,7 @@ import { Show, createSignal, onCleanup, onMount } from 'solid-js'
 import { Panel } from '~/components/Sidebar/Sidebar'
 import { Icon } from '~/components/_shared/Icon'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
+import { Loading } from '~/components/_shared/Loading'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import type { Topic } from '~/graphql/schema/core.gen'
@@ -31,7 +32,7 @@ export const EditSettingsView = () => {
   onMount(() => window.addEventListener('scroll', handleScroll, { passive: true }))
 
   return (
-    <Show when={currentDraft()?.id}>
+    <Show when={currentDraft()} fallback={<Loading />}>
       <div class={styles.container}>
         <form>
           <div class="wide-container">

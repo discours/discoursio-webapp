@@ -988,10 +988,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  
-  /* Общий контейнер будет выровнен по низу правой части экрана */
-  bottom: 20px !important;
-  right: 20px;
+  z-index: 10000;
 }
 
 .toasterContainer {
@@ -999,8 +996,8 @@
   flex-direction: column-reverse;
   gap: 8px;
   position: fixed;
-  bottom: 60px;
-  right: 20px;
+  right: 0;
+  margin: 40px;
   z-index: 10000;
 }
 

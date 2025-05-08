@@ -1551,128 +1551,88 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         />
       </Show>
 
-      {/* Editor Content */}
-      <div
-        class={clsx(styles.editor, {
-          [styles.empty]: isEditorEmpty(),
-          [styles.withTopToolbar]: currentToolbarMode() === 'top',
-          [styles.withBottomToolbar]: currentToolbarMode() === 'bottom',
-          [styles.focused]: hasFocus()
-        })}
-        data-editor-id={props.editorId}
-        data-field-type={props.fieldType}
-      >
-        <div
-          ref={initEditor}
-          class={clsx(styles.content, {
-            [styles['placeholder-visible']]: shouldShowPlaceholderState()
-          })}
-          contentEditable={!props.readOnly}
-          data-placeholder={props.placeholder}
-          onInput={handleInput}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          onPaste={handlePaste}
-          onDrop={handleDropFiles}
-          onClick={handleContentClick}
-          onKeyDown={handleKeyDown}
-        />
-      </div>
-
-      {/* Other UI Elements */}
-      <Show when={currentToolbarMode() === 'bottom'}>
-        <SimpleToolbar
-          commands={displayedCommands()}
-          onAction={handleAction}
-          currentFormats={activeFormats()}
-          class={styles.bottomToolbar}
-          mode={currentToolbarMode() as ToolbarMode}
-          editorId={props.editorId}
-        />
-      </Show>
-      <Show when={currentToolbarMode() === 'float'}>
-        <SimpleToolbar
-          commands={displayedCommands()}
-          onAction={handleAction}
-          currentFormats={activeFormats()}
-          class={clsx(styles.floatingToolbar)}
-          position={getFloatingToolbarPosition()}
-          mode={currentToolbarMode() as ToolbarMode}
-          editorId={props.editorId}
-        />
-      </Show>
-      <Show when={showSquibEditor() && currentSquib()}>
-        <SquibMenu
-          commands={props.commands as CommandType[]}
-          currentFormats={activeFormats()}
-          isVisible={true}
-          onAction={(action) => {
-            const squibElement = currentSquib()
-            if (squibElement && handleSquibFormatting(action as string)) {
-              handleChange(props.fieldType ? String(props.fieldType) : 'content')
-              editorRef()?.focus()
-            }
-          }}
-          onClose={() => {
-            setShowSquibEditor(false)
-            setCurrentSquib(null)
-          }}
-          position={{ top: 50, left: 50 } as Position}
-        />
-      </Show>
+      {/* Переключатель локальной версии */}
       <Show when={showLocalVersionLink()}>
-        <div class={styles.localVersionLabel}>
-          {t('Local version exists')}
-          <button onClick={loadLocalVersion} class={styles.localVersionRestore}>
-            {t('Restore')}
+        <div class={styles.localVersionSwitcher}>
+          <button
+            onClick={loadLocalVersion}
+            class={styles.switcherBtn}
+            title={t('You have a newer local version, click to use it')}
+          >
+            <span class={styles.switcherIcon}>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M8 2V8L11 11"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M8 15C11.866 15 15 11.866 15 8C15 4.13401 11.866 1 8 1C4.13401 1 1 4.13401 1 8C1 11.866 4.13401 15 8 15Z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                />
+              </svg>
+            </span>
+            {t('Use local version')}
           </button>
-          <button onClick={handleClearLocalVersion} class={styles.localVersionClear}>
-            {t('Clear')}
+          <button
+            onClick={handleClearLocalVersion}
+            class={clsx(styles.switcherBtn, styles.clearBtn)}
+            title={t('Delete local version')}
+          >
+            <span class={styles.switcherIcon}>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12 4L4 12M4 4L12 12"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </span>
           </button>
         </div>
       </Show>
 
       {/* Footnote Editor Modal/Section */}
-      <Show when={showFootnoteEditor()}>
-        <Portal>
-          {' '}
-          {/* Use Portal for modals */}
-          <div
-            class={styles.modalOverlay}
-            onClick={() => {
-              setShowFootnoteEditor(false)
-              restoreSelection()
+      <Show when={showFootnoteEditor() && editingFootnote()}>
+        <div class={styles.footnoteEditor}>
+          <h3 class={styles.footnoteEditorTitle}>{t('Enter footnote text')}</h3>
+          <SimpleRichEditor
+            content={footnoteContent()}
+            onChange={(data) => {
+              if (data) {
+                setFootnoteContent(data.content)
+              }
             }}
-          >
-            {' '}
-            {/* Basic overlay */}
-            <div class={styles.footnoteEditorModal} onClick={(e) => e.stopPropagation()}>
-              {' '}
-              {/* Prevent closing on modal click */}
-              <h3>{editingFootnote() ? t('Edit footnote') : t('Add footnote')}</h3>
-              <textarea
-                class={styles.footnoteEditorContent}
-                value={footnoteContent()}
-                onInput={(e) => setFootnoteContent(e.currentTarget.value)}
-                data-editor-type="footnote"
-                rows={4}
-                autofocus
-              />
-              <div class={styles.footnoteEditorActions}>
-                <button onClick={() => handleFootnoteSubmit(footnoteContent())}>{t('Сохранить')}</button>
-                <button
-                  onClick={() => {
-                    setShowFootnoteEditor(false)
-                    setFootnoteContent('')
-                    restoreSelection()
-                  }}
-                >
-                  {t('Отмена')}
-                </button>
-              </div>
-            </div>
+            commands={['bold', 'italic', 'link']}
+            toolbar="bottom"
+            plus={false}
+            placeholder={t('Enter text')}
+          />
+          <div class={styles.footnoteEditorActions}>
+            <button class={styles.cancelBtn} onClick={() => setShowFootnoteEditor(false)}>
+              {t('Cancel')}
+            </button>
+            <button class={styles.saveBtn} onClick={() => handleFootnoteSubmit(footnoteContent())}>
+              {t('Save')}
+            </button>
           </div>
-        </Portal>
+        </div>
       </Show>
 
       {/* Footnote List */}
@@ -1752,24 +1712,107 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       {/* Plus Menu */}
       <Show when={shouldShowPlusMenu()}>
         <PlusMenu
-          position={getPlusMenuPosition()}
-          isVisible={true}
           onAction={(action) => {
             handlePlusMenuAction(action, editorRef()!, {
               showLinkForm: () => showInlineForm('link', handleInsertLink),
-              showVideoForm: () => showInlineForm('video', handleInsertVideo, ''), // Add empty string for initialValue
+              showVideoForm: () => showInlineForm('video', handleInsertVideo, ''),
               showImageUploadModal,
               showAudioUploader,
               handleChange
             })
           }}
-          onClose={() => {
-            trackSelectionAndCursor()
-            editorRef()?.focus()
-          }}
-          editorId={props.editorId} // Pass editorId if needed by PlusMenu
+          position={getPlusMenuPosition()}
+          isVisible={!showForm() && !showSquibEditor() && hasFocus() && isCursorOnEmptyLine()}
+          editorId={props.editorId}
         />
       </Show>
-    </div> // End editorWrapper
+
+      {/* Editor Content */}
+      <div
+        class={clsx(styles.editor, {
+          [styles.empty]: isEditorEmpty(),
+          [styles.withTopToolbar]: currentToolbarMode() === 'top',
+          [styles.withBottomToolbar]: currentToolbarMode() === 'bottom',
+          [styles.focused]: hasFocus()
+        })}
+        data-editor-id={props.editorId}
+        data-field-type={props.fieldType}
+      >
+        <div
+          ref={initEditor}
+          class={clsx(styles.content, {
+            [styles['placeholder-visible']]: shouldShowPlaceholderState()
+          })}
+          contentEditable={!props.readOnly}
+          data-placeholder={props.placeholder}
+          onInput={handleInput}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onPaste={handlePaste}
+          onDrop={handleDropFiles}
+          onClick={handleContentClick}
+          onKeyDown={handleKeyDown}
+        />
+      </div>
+
+      {/* Other UI Elements */}
+      <Show when={currentToolbarMode() === 'bottom'}>
+        <SimpleToolbar
+          commands={displayedCommands()}
+          onAction={handleAction}
+          currentFormats={activeFormats()}
+          class={styles.bottomToolbar}
+          mode={currentToolbarMode() as ToolbarMode}
+          editorId={props.editorId}
+        />
+      </Show>
+      <Show when={currentToolbarMode() === 'float'}>
+        <SimpleToolbar
+          commands={displayedCommands()}
+          onAction={handleAction}
+          currentFormats={activeFormats()}
+          class={clsx(styles.floatingToolbar)}
+          position={getFloatingToolbarPosition()}
+          mode={currentToolbarMode() as ToolbarMode}
+          editorId={props.editorId}
+        />
+      </Show>
+      <Show when={showSquibEditor() && currentSquib()}>
+        <SquibMenu
+          commands={props.commands as CommandType[]}
+          currentFormats={activeFormats()}
+          isVisible={true}
+          onAction={(action) => {
+            const squibElement = currentSquib()
+            if (squibElement && handleSquibFormatting(action as string)) {
+              handleChange(props.fieldType ? String(props.fieldType) : 'content')
+              editorRef()?.focus()
+            }
+          }}
+          onClose={() => {
+            setShowSquibEditor(false)
+            setCurrentSquib(null)
+          }}
+          position={{ top: 50, left: 50 } as Position}
+        />
+      </Show>
+
+      {/* Forms and Modal Portals */}
+      <Portal mount={document.body}>
+        <Show when={showForm() !== null}>
+          <InlineForm
+            onBlur={(e: FocusEvent) => {
+              if (isClickInsideToolbar(e)) return
+              setShowForm(null)
+              editorRef()?.focus()
+            }}
+            onClose={() => setShowForm(null)}
+            onSubmit={(value) => handleInlineFormSubmit(showForm()!, value)}
+            initialValue={formInitialValue()}
+            placeholder={showForm() === 'video' ? t('Enter video URL (YouTube, Vimeo)') : t('Enter URL')}
+          />
+        </Show>
+      </Portal>
+    </div>
   )
 }

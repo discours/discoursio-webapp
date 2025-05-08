@@ -9,6 +9,7 @@ import styles from './InlineForm.module.scss'
 
 type Props = {
   onClose: () => void
+  onBlur?: (event: FocusEvent) => void
   onClear?: () => void
   onSubmit: (value: string) => void
   validate?: (value: string) => string | Promise<string>

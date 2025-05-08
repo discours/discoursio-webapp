@@ -1,10 +1,8 @@
 import { OperationResult } from '@urql/core'
-import { Accessor, JSX, createContext, createSignal, onCleanup, useContext } from 'solid-js'
+import { Accessor, JSX, batch, createContext, createSignal, onCleanup, useContext } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
-
-import { sanitizeHtml } from '~/components/SimpleRichEditor/lib/sanitize'
-import { EditorData, EditorFieldType } from '~/components/SimpleRichEditor/lib/types'
+import { EditorData } from '~/components/SimpleRichEditor/lib/types'
 import unpublishShoutMutation from '~/graphql/mutation/core/article-unpublish'
 import createDraftMutation from '~/graphql/mutation/core/draft-create'
 import deleteDraftMutation from '~/graphql/mutation/core/draft-delete'
@@ -13,6 +11,7 @@ import updateDraftMutation from '~/graphql/mutation/core/draft-update'
 import loadShoutQuery from '~/graphql/query/core/article-load'
 import loadDraftsQuery from '~/graphql/query/core/drafts-load'
 import type {
+  Author,
   CreateDraftMutationMutation,
   DeleteDraftMutationMutation,
   Draft,
@@ -81,7 +80,7 @@ const validateTimestamp = (timestamp: number | undefined | null): number => {
  */
 const parseJsonContent = (content?: string | null): string => {
   if (!content) return ''
-  
+
   // Если это строка и она уже похожа на HTML - возвращаем как есть
   if (typeof content === 'string') {
     const trimmed = content.trim()
@@ -89,11 +88,13 @@ const parseJsonContent = (content?: string | null): string => {
     if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
       return content
     }
-    
+
     // Если это JSON, попробуем упростить, но без рекурсивных преобразований
     try {
-      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
-          (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      if (
+        (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+        (trimmed.startsWith('[') && trimmed.endsWith(']'))
+      ) {
         const parsed = JSON.parse(trimmed)
         if (parsed && typeof parsed === 'object' && 'content' in parsed) {
           return typeof parsed.content === 'string' ? parsed.content : String(parsed.content || '')
@@ -103,7 +104,7 @@ const parseJsonContent = (content?: string | null): string => {
       // Если не удалось разобрать JSON, возвращаем как есть
     }
   }
-  
+
   // В остальных случаях возвращаем как строку
   return String(content)
 }
@@ -161,7 +162,7 @@ const saveDraftToStorage = (draft: DraftStorage): boolean => {
 const getDraftField = (draftId: string | number, fieldName: string): string | null => {
   if (isServer || !draftId || !fieldName) return null
   const draft = getDraftFromStorage(draftId)
-  
+
   // Возвращаем значение поля как есть, без преобразований
   return draft?.fields?.[fieldName] || null
 }
@@ -206,7 +207,7 @@ const saveDraftFieldInternal = (
         updated = true
       }
     } else {
-      // Обновление или добавление поля - сохраняем значение как есть, 
+      // Обновление или добавление поля - сохраняем значение как есть,
       // без дополнительной обработки
       const valueStr = String(fieldValue)
       if (draft.fields[fieldName] !== valueStr) {
@@ -244,12 +245,12 @@ const getAllDraftFields = (draftId: string | number): DraftInput | null => {
 
   // Преобразуем в формат DraftInput без лишних преобразований
   const fields: Partial<DraftInput> = {}
-  
+
   // Копируем все поля напрямую, без лишних обработок
   for (const key in draft.fields) {
     if (Object.hasOwnProperty.call(draft.fields, key)) {
       // biome-ignore lint/suspicious/noExplicitAny: Используем типизацию для обхода ошибки индексации
-      (fields as any)[key] = draft.fields[key]
+      ;(fields as any)[key] = draft.fields[key]
     }
   }
 
@@ -393,33 +394,6 @@ const removeDraftFromStorage = (draftId: string | number): boolean => {
 
 const EDITOR_KEY_REGEX = /draft-(\d+)-([a-z]+)/
 
-/**
- * Сохраняет контент конкретного поля редактора.
- * @param editorId ID редактора (например, "draft-123-body")
- * @param fieldType Тип поля ("body", "lead")
- * @param content Контент для сохранения
- * @param isEmpty Флаг, пустое ли содержимое
- * @returns true в случае успеха
- */
-const saveEditorContent = (
-  editorId: string,
-  fieldType: EditorFieldType,
-  content: string,
-  isEmpty: boolean
-): boolean => {
-  const match = editorId.match(EDITOR_KEY_REGEX)
-  if (!match) {
-    console.error(`[DraftsProvider] Could not extract draftId and fieldType from editorId: ${editorId}`)
-    return false
-  }
-
-  const draftId = match[1]
-  const actualFieldType = match[2] // Используем тип из ID
-
-  // Сохраняем контент как есть, без лишних преобразований
-  return saveDraftFieldInternal(draftId, actualFieldType, isEmpty ? '' : content)
-}
-
 // Интерфейс для расширенной информации о черновике
 export interface ExtendedDraft extends Draft {
   isLocalOnly?: boolean
@@ -449,7 +423,7 @@ type DraftsContextType = {
   updateDraftField: (
     draftId: number,
     fieldName: keyof DraftInput,
-    value: string | EditorData,
+    value: string | EditorData | number[],
     isEditorUpdate: boolean
   ) => void
   loadLocalDrafts: () => ExtendedDraft[]
@@ -464,14 +438,14 @@ type DraftsContextType = {
 
 /**
  * Контекст для управления черновиками
- * 
+ *
  * ВАЖНОЕ ПРИМЕЧАНИЕ О ПРОИЗВОДИТЕЛЬНОСТИ:
  * Были внесены следующие оптимизации для предотвращения потери фокуса и экранирования строк:
  * 1. Сокращены избыточные преобразования контента между JSON и строками
  * 2. Уменьшено количество обновлений состояния, особенно при вводе текста в редакторе
  * 3. Убраны ненужные санитизации для полей, не содержащих HTML
  * 4. Оптимизировано хранение в localStorage без дополнительных трансформаций
- * 
+ *
  * При дальнейших модификациях важно сохранять эти оптимизации!
  */
 export const DraftsContext = createContext<DraftsContextType>({} as DraftsContextType)
@@ -505,7 +479,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
     const draftId = match[1]
     const fieldType = match[2]
-    
+
     // Сохраняем контент напрямую в localStorage
     saveDraftFieldInternal(draftId, fieldType, content)
     console.log(`[DraftsProvider] Debounced save for ${editorId}`)
@@ -647,7 +621,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           cover: fieldsToApply.cover || baseDraft.cover || '',
           cover_caption: fieldsToApply.cover_caption || baseDraft.cover_caption || '',
           // Темы берем из baseDraft, так как localStorage хранит только сериализованные ID
-          topic_ids: baseDraft.topics
+          topic_ids: Array.isArray(baseDraft.topics)
             ? baseDraft.topics
                 .filter((topic): topic is Topic => Boolean(topic?.id))
                 .map((topic) => topic.id)
@@ -753,7 +727,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   const updateDraftField = (
     draftId: number,
     fieldName: keyof DraftInput,
-    value: string | EditorData,
+    value: string | EditorData | number[],
     isEditorUpdate: boolean
   ) => {
     if (!draftId) return
@@ -764,6 +738,49 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     if (typeof value === 'object' && value !== null && 'content' in value) {
       // Для объекта EditorData берем уже санитизированный контент
       contentValue = value.content
+    } else if (Array.isArray(value)) {
+      // Для массивов (например, topic_ids) преобразуем в JSON-строку
+      contentValue = JSON.stringify(value)
+
+      // Если это topic_ids, также обновляем topics в currentDraft для синхронизации UI
+      if (fieldName === 'topic_ids') {
+        console.log(`[DraftsProvider] Обновление topic_ids для черновика #${draftId}:`, value)
+
+        // Находим соответствующие темы по их ID
+        const draft = currentDraft()
+        if (draft && draft.id === draftId) {
+          // Обновляем topics в черновике, если он загружен
+          const topics = Array.isArray(draft.topics) ? [...draft.topics] : []
+          const topicIds = new Set(value as number[])
+
+          // Фильтруем topics, оставляя только те, которые есть в topicIds
+          const filteredTopics = topics.filter((topic): topic is Topic =>
+            Boolean(topic?.id && topicIds.has(topic.id))
+          )
+
+          // Обновляем черновик с отфильтрованными темами
+          setCurrentDraft({ ...draft, topics: filteredTopics })
+
+          // Синхронизируем с сервером
+          batch(async () => {
+            try {
+              const draftInput: DraftInput = {
+                id: draftId,
+                topic_ids: value as number[]
+              }
+              const response = await updateDraft(draftInput)
+              if (response?.data?.update_draft?.error) {
+                console.error(
+                  '[DraftsProvider] Ошибка при синхронизации тем с сервером:',
+                  response.data.update_draft.error
+                )
+              }
+            } catch (error) {
+              console.error('[DraftsProvider] Ошибка при синхронизации тем с сервером:', error)
+            }
+          })
+        }
+      }
     } else if (typeof value === 'string') {
       // Для строковых значений не делаем лишней санитизации
       contentValue = value
@@ -783,17 +800,25 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
     // 3. Обновляем локальный кэш редакторов для мгновенного отображения
     // но только если это действительно обновление от редактора
+    // чтобы избежать потери фокуса при каждом вводе символа
     if (isEditorUpdate && (fieldName === 'body' || fieldName === 'lead')) {
       const editorId = `draft-${draftId}-${fieldName}`
       setEditorsContent((prev) => ({ ...prev, [editorId]: contentValue }))
     }
 
-    // 4. Обновляем текущий черновик только для не-редакторных полей 
+    // 4. Обновляем текущий черновик только для не-редакторных полей
     // или для существенных изменений в редакторе
     // чтобы избежать потери фокуса при каждом вводе символа
-    if (!isEditorUpdate || (isEditorUpdate && (fieldName !== 'body' && fieldName !== 'lead'))) {
+    if (!isEditorUpdate || (isEditorUpdate && fieldName !== 'body' && fieldName !== 'lead')) {
       setCurrentDraft((prev) => {
         if (!prev || prev.id !== draftId) return prev
+
+        // Для topic_ids обновляем только если на этом шаге еще не обновили
+        if (fieldName === 'topic_ids' && Array.isArray(value)) {
+          // Уже обновлено выше, просто возвращаем prev
+          return prev
+        }
+
         return { ...prev, [fieldName]: contentValue }
       })
     }
@@ -1112,43 +1137,56 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         throw new Error(`Черновик #${draftId} не найден`)
       }
 
-      // Извлекаем идентификаторы тем
-      const topicIds =
-        draftToPublish.topics
-          ?.filter((topic): topic is Topic => Boolean(topic?.id))
-          .map((topic) => topic.id) || []
-
-      // Проверяем наличие тем перед публикацией
-      if (topicIds.length) {
-        console.log(
-          `[DraftsProvider] У черновика #${draftId} найдено ${topicIds.length} тем: ${topicIds.join(', ')}`
-        )
-      } else {
-        console.warn(`[DraftsProvider] У черновика #${draftId} отсутствуют темы, пытаемся добавить`)
-
-        // Получаем все доступные темы через useTopics
-        const availableTopics = Object.values(topicEntities())
-        if (availableTopics.length) {
-          // Берем первую доступную тему как запасной вариант
-          const defaultTopicId = availableTopics[0].id
-          console.log(
-            `[DraftsProvider] Используем тему по умолчанию ID=${defaultTopicId} для черновика #${draftId}`
-          )
-
-          // Обновляем черновик с темой по умолчанию
-          const updatedDraft: DraftInput = {
-            id: draftId,
-            topic_ids: [defaultTopicId],
-            main_topic_id: defaultTopicId
-          }
-
-          await updateDraft(updatedDraft)
-        } else {
-          console.warn(
-            `[DraftsProvider] Нет доступных тем для черновика #${draftId}, публикация может завершиться ошибкой`
-          )
-        }
+      // Создаем DraftInput для валидации
+      const draftInput: DraftInput = {
+        id: draftId,
+        layout: draftToPublish.layout || 'article',
+        title: draftToPublish.title || '',
+        subtitle: draftToPublish.subtitle || '',
+        lead: draftToPublish.lead || '',
+        body: draftToPublish.body || '',
+        slug: draftToPublish.slug || '',
+        cover: draftToPublish.cover || '',
+        cover_caption: draftToPublish.cover_caption || '',
+        topic_ids: Array.isArray(draftToPublish.topics)
+          ? draftToPublish.topics
+              .filter((topic): topic is Topic => Boolean(topic?.id))
+              .map((topic) => topic.id)
+          : [],
+        main_topic_id: draftToPublish.mainTopic?.id || null,
+        seo: draftToPublish.seo || '',
+        author_ids: draftToPublish.authors?.map((a) => a?.id).filter((id): id is number => !!id) || []
       }
+
+      // Проводим валидацию перед публикацией
+      const validationResult = validateDraftForPublishing(draftInput)
+      if (!validationResult.isValid) {
+        console.error(`[DraftsProvider] Черновик #${draftId} не прошел валидацию:`, validationResult.errors)
+
+        // Формируем объект с ошибками для поддержки уже существующего кода
+        const errorsMap: Partial<Record<keyof DraftInput, string>> = {}
+        validationResult.errors.forEach((error) => {
+          if (error.field) {
+            errorsMap[error.field] = error.message
+          }
+        })
+
+        // Устанавливаем ошибки в состояние для отображения
+        setValidationErrors(errorsMap)
+
+        // Возвращаем объект с ошибкой для обработки в компоненте
+        return {
+          data: {
+            publish_draft: {
+              error: 'Пожалуйста исправьте ошибки',
+              draft: null
+            }
+          }
+        } as OperationResult<PublishDraftMutationMutation>
+      }
+
+      // Очищаем ошибки валидации перед публикацией
+      clearValidationErrors()
 
       // Публикуем черновик
       const response = await client()?.mutation(publishDraftMutation, { draft_id: draftId })
@@ -1173,46 +1211,82 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   const unpublishShout = async (
     shoutId: number
   ): Promise<OperationResult<UnpublishShoutMutationMutation>> => {
-    const response = await client()?.mutation(unpublishShoutMutation, { shout_id: shoutId })
+    try {
+      // Перед снятием с публикации отображаем статус загрузки
+      console.log(`[DraftsProvider] Снимаем с публикации статью #${shoutId}...`)
 
-    if (response?.data?.unpublish_shout) {
-      // Получаем shout из ответа
-      const shoutData = response.data.unpublish_shout.shout
+      // Выполняем запрос на снятие с публикации
+      const response = await client()?.mutation(unpublishShoutMutation, { shout_id: shoutId })
 
-      // Проверяем, что получили корректный ответ с данными черновика
-      if (shoutData) {
-        console.log(`[DraftsProvider] Получен ответ на снятие публикации: ${shoutData.id}`)
+      // Проверяем наличие данных в ответе
+      if (response?.data?.unpublish_shout) {
+        // Получаем shout из ответа
+        const shoutData = response.data.unpublish_shout.shout
 
-        // Загружаем черновики с сервера для получения актуальных данных
-        await loadDrafts()
-
-        // Находим обновленный черновик в списке
-        const updatedDraft = drafts().find((d) => d.id === shoutId)
-
-        if (updatedDraft) {
-          console.log(
-            `[DraftsProvider] Найден черновик в списке после снятия публикации: ${updatedDraft.id}`
+        // Проверяем наличие ошибки
+        if (response.data.unpublish_shout.error) {
+          console.error(
+            `[DraftsProvider] Ошибка при снятии с публикации для статьи #${shoutId}:`,
+            response.data.unpublish_shout.error
           )
-
-          // Если текущий черновик имеет тот же ID, обновляем его
-          if (currentDraft()?.id === shoutId) {
-            setCurrentDraft(updatedDraft)
-          }
-
           return response as OperationResult<UnpublishShoutMutationMutation>
         }
 
-        console.warn(
-          `[DraftsProvider] После loadDrafts() не найден черновик с ID=${shoutId} в списке drafts`
-        )
-      } else {
-        console.error('[DraftsProvider] Ответ на снятие публикации не содержит данных shout')
-      }
-    } else if (response?.error) {
-      console.error(`[DraftsProvider] Ошибка при снятии публикации для статьи #${shoutId}:`, response.error)
-    }
+        // Проверяем, что получили корректный ответ с данными черновика
+        if (shoutData) {
+          console.log(`[DraftsProvider] Получен ответ на снятие публикации: ${shoutData.id}`)
 
-    return response as OperationResult<UnpublishShoutMutationMutation>
+          // Загружаем черновики с сервера для получения актуальных данных
+          await loadDrafts()
+
+          // Находим обновленный черновик в списке
+          const updatedDraft = drafts().find((d) => d.id === shoutId)
+
+          if (updatedDraft) {
+            console.log(
+              `[DraftsProvider] Найден черновик в списке после снятия публикации: ${updatedDraft.id}`
+            )
+
+            // Если текущий черновик имеет тот же ID, обновляем его
+            if (currentDraft()?.id === shoutId) {
+              setCurrentDraft(updatedDraft)
+            }
+
+            // Обновляем список черновиков, устанавливая published_at в null
+            setDrafts(
+              drafts().map((d) => {
+                if (d.id === shoutId) {
+                  return {
+                    ...d,
+                    published_at: null,
+                    publication: d.publication ? { ...d.publication, published_at: null } : null
+                  } as ExtendedDraft
+                }
+                return d
+              })
+            )
+
+            return response as OperationResult<UnpublishShoutMutationMutation>
+          }
+
+          console.warn(
+            `[DraftsProvider] После loadDrafts() не найден черновик с ID=${shoutId} в списке drafts`
+          )
+        } else {
+          console.error('[DraftsProvider] Ответ на снятие публикации не содержит данных shout')
+        }
+      } else if (response?.error) {
+        console.error(
+          `[DraftsProvider] Ошибка при снятии публикации для статьи #${shoutId}:`,
+          response.error
+        )
+      }
+
+      return response as OperationResult<UnpublishShoutMutationMutation>
+    } catch (error) {
+      console.error(`[DraftsProvider] Критическая ошибка при снятии публикации статьи #${shoutId}:`, error)
+      throw error
+    }
   }
 
   const toggleEditorPanel = () => setIsEditorPanelVisible(!isEditorPanelVisible())
@@ -1263,17 +1337,30 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       cover: draft.cover || '',
       cover_caption: draft.cover_caption || '',
       // Убеждаемся, что topic_ids - это массив чисел
-      topic_ids:
-        draft.topics?.map((t) => t?.id).filter((id): id is number => typeof id === 'number' && id > 0) ||
-        [],
+      topic_ids: Array.isArray(draft.topics)
+        ? draft.topics
+            .filter((t): t is Topic => t !== null && t !== undefined && typeof t.id === 'number')
+            .map((t) => t.id)
+        : [],
       main_topic_id: draft.mainTopic?.id || null,
       seo: draft.seo || '',
-      author_ids: draft.authors?.map((a) => a?.id).filter((id): id is number => !!id) || []
+      author_ids: Array.isArray(draft.authors)
+        ? draft.authors
+            .filter((a): a is Author => a !== null && a !== undefined && typeof a.id === 'number')
+            .map((a) => a.id)
+        : []
     }
+
+    console.log('[DraftsProvider] Валидация черновика:', {
+      draftId: draft.id,
+      topicIds: draftInput.topic_ids,
+      mainTopicId: draftInput.main_topic_id
+    })
 
     const validationResult = validateDraftForPublishing(draftInput)
 
     if (validationResult.isValid) {
+      console.log('[DraftsProvider] Валидация успешна')
       setValidationErrors({}) // Очищаем ошибки при успехе
       return true
     } else {
@@ -1288,6 +1375,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           }
         }
       })
+      console.warn('[DraftsProvider] Ошибки валидации:', errorsMap)
       setValidationErrors(errorsMap)
       return false
     }
@@ -1336,3 +1424,15 @@ export const useDrafts = () => {
 
 // Экспортируем тип DraftInput для использования в других компонентах
 export type { DraftInput } from '~/graphql/schema/core.gen'
+
+/**
+ * Преобразует список тем-объектов в массив их идентификаторов для DraftInput
+ *
+ * @param {Array<Partial<Topic> | null | undefined>} topics - Массив объектов тем или Maybe<Topic>[]
+ * @returns {number[]} Массив идентификаторов тем
+ */
+export const topicsToTopicIds = (topics?: Array<Partial<Topic> | null | undefined> | null): number[] => {
+  if (!Array.isArray(topics)) return []
+
+  return topics.filter((topic): topic is Topic => Boolean(topic?.id)).map((topic) => topic.id)
+}

@@ -1,5 +1,6 @@
 import { clsx } from 'clsx'
 import { Show, createEffect, createSignal, on, onCleanup, onMount, untrack } from 'solid-js'
+import { batch } from 'solid-js'
 import { debounce } from 'throttle-debounce'
 
 import { Icon } from '~/components/_shared/Icon'
@@ -11,17 +12,17 @@ import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import type { Draft, DraftInput, MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
+import { AudioProfile } from '../Draft/DraftAudio'
+import { SubtitleComponent, TitleSection } from '../Draft/DraftEditorHead'
+import { LeadComponent } from '../Draft/DraftEditorLead'
 import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
-import { getProvider, destroyProvider } from '../SimpleRichEditor/lib/awareness'
+import { destroyProvider, getProvider } from '../SimpleRichEditor/lib/awareness'
 import { isEmptyContent } from '../SimpleRichEditor/lib/empty'
 import { CommandType, EditorData } from '../SimpleRichEditor/lib/types'
 import { AudioUploader } from '../Upload/AudioUploader'
 import { VideoUploader } from '../Upload/VideoUploader'
-import { SubtitleComponent, TitleSection } from '../Draft/DraftEditorHead'
-import { LeadComponent } from '../Draft/DraftEditorLead'
 
 import styles from '~/styles/views/EditView.module.scss'
-import { AudioProfile } from '../Draft/DraftAudio'
 
 export const EMPTY_TOPIC: Topic = {
   id: -1,
@@ -251,24 +252,27 @@ export const EditView = (props: { draft?: Draft }) => {
   createEffect(
     on(currentDraft, (d?: Draft) => {
       if (!d) return
-      setIsSubtitleVisible(Boolean(d.subtitle))
 
-      // Распарсим строковое представление media если оно есть
-      if (d.media) {
-        try {
-          if (typeof d.media === 'string') {
-            const parsedMedia = JSON.parse(d.media)
-            setMediaItems(Array.isArray(parsedMedia) ? parsedMedia : [])
-          } else {
-            setMediaItems(d.media as MediaItem[])
+      batch(() => {
+        setIsSubtitleVisible(Boolean(d.subtitle))
+
+        // Распарсим строковое представление media если оно есть
+        if (d.media) {
+          try {
+            if (typeof d.media === 'string') {
+              const parsedMedia = JSON.parse(d.media)
+              setMediaItems(Array.isArray(parsedMedia) ? parsedMedia : [])
+            } else {
+              setMediaItems(d.media as MediaItem[])
+            }
+          } catch (e) {
+            console.error('[EditView] Error parsing media:', e)
+            setMediaItems([])
           }
-        } catch (e) {
-          console.error('[EditView] Failed to parse media data from draft:', e)
+        } else {
           setMediaItems([])
         }
-      } else {
-        setMediaItems([])
-      }
+      })
     })
   )
 
@@ -276,12 +280,15 @@ export const EditView = (props: { draft?: Draft }) => {
     if (isBodyEditorFocused() && isLeadVisible()) {
       const draft = currentDraft()
       if (!draft?.id) return
-      const leadContent = getEditorContent(`draft-${draft.id}-lead`) || ''
-      if (isEmptyContent(leadContent)) {
-        cancelLead()
-      } else {
-        saveLead()
-      }
+
+      untrack(() => {
+        const leadContent = getEditorContent(`draft-${draft.id}-lead`) || ''
+        if (isEmptyContent(leadContent)) {
+          cancelLead()
+        } else {
+          saveLead()
+        }
+      })
     }
   })
 
@@ -293,35 +300,35 @@ export const EditView = (props: { draft?: Draft }) => {
 
     const isInteractiveOrSpecialElement = Boolean(
       target.closest('button') ||
-      target.closest('a') ||
-      target.closest('input') ||
-      target.closest('textarea') ||
-      target.closest('select') ||
-      target.closest('[role="button"]') ||
-      target.closest('[contenteditable="true"]') ||
-      target.closest('.interactive') ||
-      target.closest('.titleInput') ||
-      target.closest('[data-field-type="lead"]') ||
-      target.closest(`.${styles.leadContentDisplay}`) ||
-      target.closest(`.${styles.leadContentText}`) ||
-      target.closest(`.${styles.headingActions}`) ||
-      target.closest('[data-field-type="body"]') ||
-      target.closest('.settingsControl') ||
-      target.closest('button[value="ellipsis"]') ||
-      target.closest('svg[data-icon="ellipsis"]') ||
-      target.closest('.settingsControlContainer') ||
-      target.tagName.toLowerCase() === 'button' ||
-      target.tagName.toLowerCase() === 'a' ||
-      target.tagName.toLowerCase() === 'input' ||
-      target.tagName.toLowerCase() === 'textarea' ||
-      target.tagName.toLowerCase() === 'select'
+        target.closest('a') ||
+        target.closest('input') ||
+        target.closest('textarea') ||
+        target.closest('select') ||
+        target.closest('[role="button"]') ||
+        target.closest('[contenteditable="true"]') ||
+        target.closest('.interactive') ||
+        target.closest('.titleInput') ||
+        target.closest('[data-field-type="lead"]') ||
+        target.closest(`.${styles.leadContentDisplay}`) ||
+        target.closest(`.${styles.leadContentText}`) ||
+        target.closest(`.${styles.headingActions}`) ||
+        target.closest('[data-field-type="body"]') ||
+        target.closest('.settingsControl') ||
+        target.closest('button[value="ellipsis"]') ||
+        target.closest('svg[data-icon="ellipsis"]') ||
+        target.closest('.settingsControlContainer') ||
+        target.tagName.toLowerCase() === 'button' ||
+        target.tagName.toLowerCase() === 'a' ||
+        target.tagName.toLowerCase() === 'input' ||
+        target.tagName.toLowerCase() === 'textarea' ||
+        target.tagName.toLowerCase() === 'select'
     )
 
     const isEmptyAreaClick = Boolean(
       !isInteractiveOrSpecialElement &&
-      (target === document.body ||
-        target === document.documentElement ||
-        (target.tagName.toLowerCase() === 'div' && !target.getAttribute('contenteditable')))
+        (target === document.body ||
+          target === document.documentElement ||
+          (target.tagName.toLowerCase() === 'div' && !target.getAttribute('contenteditable')))
     )
 
     const isTitleClick = target.closest('.titleInput') || target.closest('input[type="text"]')
@@ -377,21 +384,23 @@ export const EditView = (props: { draft?: Draft }) => {
 
     if (navigator.onLine && draftId) {
       // Синхронизация с сервером при восстановлении соединения
-      syncDraft(draftId).then(() => {
-        const draft = currentDraft()
-        if (draft && getProvider().getConnectionState() !== 'connected') {
-          // Переинициализируем awareness с задержкой для стабильности
-          setTimeout(() => {
-            try {
-              initializeAwareness(draft)
-            } catch (error) {
-              console.error('[EditView] Failed to re-initialize awareness after network change:', error)
-            }
-          }, 1000)
-        }
-      }).catch(error => {
-        console.error('[EditView] Failed to sync draft after network change:', error)
-      })
+      syncDraft(draftId)
+        .then(() => {
+          const draft = currentDraft()
+          if (draft && getProvider().getConnectionState() !== 'connected') {
+            // Переинициализируем awareness с задержкой для стабильности
+            setTimeout(() => {
+              try {
+                initializeAwareness(draft)
+              } catch (error) {
+                console.error('[EditView] Failed to re-initialize awareness after network change:', error)
+              }
+            }, 1000)
+          }
+        })
+        .catch((error) => {
+          console.error('[EditView] Failed to sync draft after network change:', error)
+        })
     } else if (!navigator.onLine) {
       // Если сеть отключена, показываем уведомление и продолжаем работу офлайн
       console.warn('[EditView] Network is offline, continuing in offline mode')
@@ -408,11 +417,13 @@ export const EditView = (props: { draft?: Draft }) => {
     if (!draft?.id) return
 
     try {
-      updateDraftField(draft.id, key, val, typeof val === 'object')
+      batch(() => {
+        updateDraftField(draft.id, key, val, typeof val === 'object')
 
-      if (key === 'title' && typeof val === 'string') {
-        debouncedUpdateSlug(draft.id, val)
-      }
+        if (key === 'title' && typeof val === 'string') {
+          debouncedUpdateSlug(draft.id, val)
+        }
+      })
     } catch (error) {
       console.error(`[EditView] Error updating field ${key}:`, error)
     }
@@ -426,8 +437,10 @@ export const EditView = (props: { draft?: Draft }) => {
     const draft = currentDraft()
     if (!draft?.id) return
 
-    updateDraftField(draft.id, 'title', value, false)
-    debouncedUpdateSlug(draft.id, value)
+    batch(() => {
+      updateDraftField(draft.id, 'title', value, false)
+      debouncedUpdateSlug(draft.id, value)
+    })
   }
 
   // Обработка медиа - полностью переписано для защиты от многократной сериализации
@@ -445,15 +458,17 @@ export const EditView = (props: { draft?: Draft }) => {
     }
 
     try {
-      // Получаем существующие медиа и объединяем с новыми
-      const existingMedia = [...mediaItems()]
-      const newMedia = [...existingMedia, ...data]
+      untrack(() => {
+        batch(() => {
+          // Получаем существующие медиа и объединяем с новыми
+          const existingMedia = [...mediaItems()]
+          const newMedia = [...existingMedia, ...data]
 
-      // Обновляем локальное состояние
-      setMediaItems(newMedia)
-
-      // Обновляем поле черновика
-      updateDraftField(draft.id, 'media', JSON.stringify(newMedia), false)
+          // Обновляем локальное состояние и поле черновика атомарно
+          setMediaItems(newMedia)
+          updateDraftField(draft.id, 'media', JSON.stringify(newMedia), false)
+        })
+      })
     } catch (error) {
       console.error('[EditView] Error adding media:', error)
     }
@@ -473,11 +488,12 @@ export const EditView = (props: { draft?: Draft }) => {
     }
 
     try {
-      // Обновляем локальное состояние
-      setMediaItems(data)
-
-      // Обновляем поле черновика
-      updateDraftField(draft.id, 'media', JSON.stringify(data), false)
+      untrack(() => {
+        batch(() => {
+          setMediaItems(data)
+          updateDraftField(draft.id, 'media', JSON.stringify(data), false)
+        })
+      })
     } catch (error) {
       console.error('[EditView] Error sorting media:', error)
     }
@@ -498,15 +514,14 @@ export const EditView = (props: { draft?: Draft }) => {
     }
 
     try {
-      // Создаем копию и удаляем элемент
-      const updatedMedia = [...media]
-      updatedMedia.splice(index, 1)
-
-      // Обновляем локальное состояние
-      setMediaItems(updatedMedia)
-
-      // Обновляем поле черновика
-      updateDraftField(draft.id, 'media', JSON.stringify(updatedMedia), false)
+      untrack(() => {
+        batch(() => {
+          const updatedMedia = [...media]
+          updatedMedia.splice(index, 1)
+          setMediaItems(updatedMedia)
+          updateDraftField(draft.id, 'media', JSON.stringify(updatedMedia), false)
+        })
+      })
     } catch (error) {
       console.error('[EditView] Error deleting media:', error)
     }
@@ -532,14 +547,13 @@ export const EditView = (props: { draft?: Draft }) => {
     }
 
     try {
-      // Создаем новый массив с обновленным элементом
-      const updatedMedia = media.map((item, idx) => idx === index ? value : item)
-
-      // Обновляем локальное состояние
-      setMediaItems(updatedMedia)
-
-      // Обновляем поле черновика
-      updateDraftField(draft.id, 'media', JSON.stringify(updatedMedia), false)
+      untrack(() => {
+        batch(() => {
+          const updatedMedia = media.map((item, idx) => (idx === index ? value : item))
+          setMediaItems(updatedMedia)
+          updateDraftField(draft.id, 'media', JSON.stringify(updatedMedia), false)
+        })
+      })
     } catch (error) {
       console.error('[EditView] Error updating media:', error)
     }
@@ -551,23 +565,21 @@ export const EditView = (props: { draft?: Draft }) => {
     }
 
     try {
-      const media = mediaItems()
-      if (Array.isArray(media) && media.length > 0) {
-        // Обновляем все элементы медиа с новым значением поля
-        const updated = media.map(item => ({ ...item, [key]: value }))
+      untrack(() => {
+        batch(() => {
+          const media = mediaItems()
+          if (Array.isArray(media) && media.length > 0) {
+            const updated = media.map((item) => ({ ...item, [key]: value }))
+            const draft = currentDraft()
+            if (!draft?.id) return
 
-        const draft = currentDraft()
-        if (!draft?.id) return
-
-        // Обновляем локальное состояние
-        setMediaItems(updated)
-
-        // Обновляем поле черновика
-        updateDraftField(draft.id, 'media', JSON.stringify(updated), false)
-      } else {
-        // Если медиа нет, обновляем базовые поля
-        setBaseAudioFields(prev => ({ ...prev, [key]: value }))
-      }
+            setMediaItems(updated)
+            updateDraftField(draft.id, 'media', JSON.stringify(updated), false)
+          } else {
+            setBaseAudioFields((prev) => ({ ...prev, [key]: value }))
+          }
+        })
+      })
     } catch (error) {
       console.error('[EditView] Error updating base fields:', error)
     }
@@ -626,15 +638,17 @@ export const EditView = (props: { draft?: Draft }) => {
     const editorId = `draft-${draftId}-lead`
 
     try {
-      const leadContent = getEditorContent(editorId) || ''
+      batch(() => {
+        const leadContent = getEditorContent(editorId) || ''
 
-      if (isEmptyContent(leadContent)) {
-        cancelLead()
-        return
-      }
+        if (isEmptyContent(leadContent)) {
+          cancelLead()
+          return
+        }
 
-      updateDraftField(draftId, 'lead', leadContent, true)
-      setIsLeadVisible(false)
+        updateDraftField(draftId, 'lead', leadContent, true)
+        setIsLeadVisible(false)
+      })
     } catch (error) {
       console.error('[EditView] Error saving lead:', error)
     }
@@ -647,67 +661,68 @@ export const EditView = (props: { draft?: Draft }) => {
 
     const draft = currentDraft()
     if (!draft?.id) return
-    const draftId = draft.id
 
-    try {
-      const originalContent = originalLeadContent()
-      updateDraftField(draftId, 'lead', originalContent, true)
+    batch(() => {
+      // Восстанавливаем исходное содержимое лида
+      updateDraftField(draft.id, 'lead', originalLeadContent(), true)
       setIsLeadVisible(false)
-    } catch (error) {
-      console.error('[EditView] Error canceling lead:', error)
-    }
+    })
   }
 
   const handleLeadEditorChange = (data: EditorData) => {
     if (isEditorFocused()) {
-      blockExternalUpdates(4000) // Увеличиваем время блокировки для сложного ввода
+      blockExternalUpdates(4000)
     }
 
     const draft = currentDraft()
     if (!draft?.id) return
 
     try {
-      // Проверка типа данных
       if (!data || typeof data !== 'object' || !('content' in data)) {
         console.error('[EditView] Invalid lead editor data:', data)
         return
       }
 
-      // Обновление без реактивных перерендеров
-      updateDraftField(draft.id, 'lead', data, true)
+      untrack(() => {
+        updateDraftField(draft.id, 'lead', data, true)
+      })
     } catch (error) {
       console.error('[EditView] Error updating lead editor:', error)
     }
   }
 
   const handleBodyEditorFocus = (isFocused: boolean) => {
-    setIsBodyEditorFocused(isFocused)
+    batch(() => {
+      setIsBodyEditorFocused(isFocused)
 
-    if (isFocused && isLeadVisible()) {
-      const activeElement = document.activeElement
-      const leadEditor = leadEditorRef()
+      if (isFocused && isLeadVisible()) {
+        const activeElement = document.activeElement
+        const leadEditor = leadEditorRef()
 
-      if (leadEditor && (activeElement === leadEditor || leadEditor.contains(activeElement))) {
-        return
-      }
-
-      setTimeout(() => {
-        if (!isLeadVisible()) return
-
-        const draft = currentDraft()
-        if (!draft?.id) return
-
-        const leadContent = getEditorContent(`draft-${draft.id}-lead`)
-
-        if (!leadContent || isEmptyContent(leadContent)) {
-          cancelLead()
-        } else {
-          saveLead()
+        if (leadEditor && (activeElement === leadEditor || leadEditor.contains(activeElement))) {
+          return
         }
 
-        setIsLeadVisible(false)
-      }, 50)
-    }
+        setTimeout(() => {
+          if (!isLeadVisible()) return
+
+          const draft = currentDraft()
+          if (!draft?.id) return
+
+          untrack(() => {
+            const leadContent = getEditorContent(`draft-${draft.id}-lead`)
+
+            if (!leadContent || isEmptyContent(leadContent)) {
+              cancelLead()
+            } else {
+              saveLead()
+            }
+
+            setIsLeadVisible(false)
+          })
+        }, 50)
+      }
+    })
   }
 
   // Работа с Awareness - упрощено, чтобы исключить конфликты
@@ -781,71 +796,82 @@ export const EditView = (props: { draft?: Draft }) => {
     if (awarenessProvider.getConnectionState() !== 'connected') return
 
     try {
-      const draftFields = awarenessProvider.getDraftContent(draftId)
+      untrack(() => {
+        const draftFields = awarenessProvider.getDraftContent(draftId)
 
-      if (!draftFields || Object.keys(draftFields).length === 0) {
-        return
-      }
-
-      const updates: Partial<Draft> = {}
-      let needsUpdate = false
-
-      Object.entries(draftFields).forEach(([fieldName, fieldData]) => {
-        if (!currentDraft() || !(fieldName in currentDraft()!) || fieldName === 'id' || !fieldData.content) {
+        if (!draftFields || Object.keys(draftFields).length === 0) {
           return
         }
 
-        const contentToSet = fieldData.content
+        const updates: Partial<Draft> = {}
+        let needsUpdate = false
 
-        // Особая обработка для media
-        if (fieldName === 'media' && typeof contentToSet === 'string') {
-          try {
-            // Распарсим строку JSON и проверим, что это массив
-            const parsedMedia = JSON.parse(contentToSet)
-            if (Array.isArray(parsedMedia)) {
-              const currentMediaJson = JSON.stringify(mediaItems())
-              // Сравниваем с текущим значением, чтобы избежать циклических обновлений
-              if (currentMediaJson !== contentToSet) {
-                setMediaItems(parsedMedia)
+        Object.entries(draftFields).forEach(([fieldName, fieldData]) => {
+          if (
+            !currentDraft() ||
+            !(fieldName in currentDraft()!) ||
+            fieldName === 'id' ||
+            !fieldData.content
+          ) {
+            return
+          }
+
+          const contentToSet = fieldData.content
+
+          // Особая обработка для media
+          if (fieldName === 'media' && typeof contentToSet === 'string') {
+            try {
+              const parsedMedia = JSON.parse(contentToSet)
+              if (Array.isArray(parsedMedia)) {
+                const currentMediaJson = JSON.stringify(mediaItems())
+                if (currentMediaJson !== contentToSet) {
+                  batch(() => {
+                    setMediaItems(parsedMedia)
+                    needsUpdate = true
+                    // biome-ignore lint/suspicious/noExplicitAny: ok
+                    updates[fieldName as keyof Draft] = parsedMedia as any
+                  })
+                }
+              }
+            } catch (e) {
+              console.error('[EditView] Failed to parse media data from awareness:', e)
+            }
+          }
+          // Для редакторских полей (тело, лид)
+          else if (fieldName === 'body' || fieldName === 'lead') {
+            const editorId = `draft-${draftId}-${fieldName}`
+            const currentContent = getEditorContent(editorId)
+
+            if (currentContent !== contentToSet) {
+              batch(() => {
+                setEditorContent(editorId, contentToSet)
                 needsUpdate = true
                 // biome-ignore lint/suspicious/noExplicitAny: ok
-                updates[fieldName as keyof Draft] = parsedMedia as any
-              }
+                updates[fieldName as keyof Draft] = contentToSet as any
+              })
             }
-          } catch (e) {
-            console.error('[EditView] Failed to parse media data from awareness:', e)
           }
-        }
-        // Для редакторских полей (тело, лид)
-        else if (fieldName === 'body' || fieldName === 'lead') {
-          const editorId = `draft-${draftId}-${fieldName}`
-          const currentContent = getEditorContent(editorId)
+          // Для всех остальных полей
+          else {
+            const currentValue = currentDraft()![fieldName as keyof Draft]
+            if (currentValue !== contentToSet) {
+              needsUpdate = true
+              // biome-ignore lint/suspicious/noExplicitAny: ok
+              updates[fieldName as keyof Draft] = contentToSet as any
+            }
+          }
+        })
 
-          if (currentContent !== contentToSet) {
-            setEditorContent(editorId, contentToSet)
-            needsUpdate = true
-            // biome-ignore lint/suspicious/noExplicitAny: ok
-            updates[fieldName as keyof Draft] = contentToSet as any
-          }
-        }
-        // Для всех остальных полей
-        else {
-          const currentValue = currentDraft()![fieldName as keyof Draft]
-          if (currentValue !== contentToSet) {
-            needsUpdate = true
-            // biome-ignore lint/suspicious/noExplicitAny: ok
-            updates[fieldName as keyof Draft] = contentToSet as any
-          }
+        // Если есть изменения - обновляем черновик
+        if (needsUpdate && Object.keys(updates).length > 0) {
+          batch(() => {
+            setCurrentDraft({
+              ...currentDraft()!,
+              ...updates
+            } as ExtendedDraft)
+          })
         }
       })
-
-      // Если есть изменения - обновляем черновик
-      if (needsUpdate && Object.keys(updates).length > 0) {
-        setCurrentDraft({
-          ...currentDraft()!,
-          ...updates
-        } as ExtendedDraft)
-      }
     } catch (error) {
       console.error('[EditView] Error processing awareness updates:', error)
     }
