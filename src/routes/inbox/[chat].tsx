@@ -47,7 +47,7 @@ export const ChatPage = (props: RouteSectionProps<{ authors: Author[] }>) => {
     } else {
       try {
         // handle if params.id is an author's id
-        const me = session()?.user?.app_data?.profile.id as number
+        const me = session()?.author.id as number
         const author = Number.parseInt(params.chat)
         const result = await createChat([author, me], '')
         result.chat && setChat(result.chat)

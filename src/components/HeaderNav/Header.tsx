@@ -115,7 +115,7 @@ export const Header = (props: Props) => {
   const { showModal } = useUI()
   const handleCreatePostClick = (event: Event) => {
     event.preventDefault()
-    if (!session()?.access_token) {
+    if (!session()?.token) {
       setFixed(false)
       showModal('auth')
       return
@@ -295,7 +295,7 @@ export const Header = (props: Props) => {
           <Show when={props.title}>
             <div
               class={clsx(styles.articleControls, 'col-auto', {
-                [styles.articleControlsAuthorized]: session()?.user?.id
+                [styles.articleControlsAuthorized]: session()?.author?.id
               })}
             >
               <SharePopup
@@ -437,11 +437,27 @@ export const Header = (props: Props) => {
                 color: 'var(--toast-text-color)',
                 'border-radius': 'var(--toast-border-radius)',
                 'box-shadow': 'var(--toast-box-shadow)',
-                'font-size': 'var(--toast-font-size)'
+                'font-size': 'var(--toast-font-size)',
+                transform: 'none',
+                position: 'relative',
+                left: 'auto',
+                right: 'auto',
+                bottom: 'auto',
+                top: 'auto',
+                margin: '0'
               }
             }}
             gutter={8}
             containerClassName={styles.toasterContainer}
+            containerStyle={{
+              position: 'fixed',
+              bottom: '20px',
+              right: '20px',
+              'z-index': 10000,
+              display: 'flex',
+              'flex-direction': 'column-reverse',
+              gap: '8px'
+            }}
           />
         </ClientOnly>
       </div>

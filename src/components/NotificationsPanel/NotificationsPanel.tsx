@@ -153,7 +153,7 @@ export const NotificationsPanel = (props: Props) => {
 
   createEffect(
     on(session, async (s) => {
-      if (s?.access_token) {
+      if (s?.token) {
         setIsLoading(true)
         await loadNextPage()
         setIsLoading(false)

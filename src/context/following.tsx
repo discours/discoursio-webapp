@@ -71,20 +71,20 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
     communities: []
   })
 
-  const getToken = () => session()?.access_token
+  const getToken = () => session()?.token
 
   const [follows] = createResource(getToken, async (token) => {
     if (!token) return null
     const result = await client()
       ?.query(loadAuthorFollowers, {
-        user: session()?.user?.id
+        user: session()?.author?.id
       })
       .toPromise()
     return result?.data || null
   })
 
   const [followsResource] = createResource(
-    () => session()?.user?.app_data?.profile?.slug,
+    () => session()?.author?.slug,
     async (slug) => {
       if (!(slug && client())) return null
       const response = await client()?.query(loadAuthorFollowsQuery, { slug }).toPromise()
@@ -116,8 +116,10 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
   const fetchData = async () => {
     setLoading(true)
     try {
-      if (session()?.access_token) {
-        const result = await client()?.query(loadAuthorFollowers, { user: session()?.user?.id }).toPromise()
+      if (session()?.token) {
+        const result = await client()
+          ?.query(loadAuthorFollowers, { user: session()?.author?.id })
+          .toPromise()
         if (result?.data) {
           setState((subs: FollowingData) => {
             if (result.data.authors) subs.authors = result.data.authors as Author[]
@@ -134,7 +136,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
   }
 
   const follow = async (what: FollowingEntity, slug: string) => {
-    if (!session()?.access_token) {
+    if (!session()?.token) {
       showModal('auth')
       return
     }
@@ -155,7 +157,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
   }
 
   const unfollow = async (what: FollowingEntity, slug: string) => {
-    if (!session()?.access_token) {
+    if (!session()?.token) {
       showModal('auth')
       return
     }
@@ -177,17 +179,16 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
 
   createEffect(
     on(
-      () => session?.()?.user?.app_data,
-      (appdata) => {
-        if (appdata) {
-          const { authors, followers, topics } = appdata
+      [() => session?.()?.author, () => followsResource?.()?.authors, () => followsResource?.()?.topics],
+      ([author, followedAuthors, followedTopics]) => {
+        if (author) {
           setState((subs) => {
-            if (authors) subs.authors = authors
-            if (topics) subs.topics = topics
+            if (followedAuthors) subs.authors = followedAuthors
+            if (followedTopics) subs.topics = followedTopics
             return subs
           })
           setFollowers(followers)
-          if (!authors) fetchData()
+          if (!followedAuthors) fetchData()
         }
       }
     )
@@ -200,7 +201,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
   ): Promise<boolean> => {
     let hasChanged = false
 
-    if (!session()?.access_token) {
+    if (!session()?.token) {
       showModal('auth')
       return isFollowed
     }

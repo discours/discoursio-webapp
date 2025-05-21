@@ -42,7 +42,7 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
   const [messageToReply, setMessageToReply] = createSignal<MessageType | null>(null)
   const [isScrollToNewVisible, setIsScrollToNewVisible] = createSignal(false)
   const { session } = useSession()
-  const authorId = createMemo<number>(() => session()?.user?.app_data?.profile?.id || 0)
+  const authorId = createMemo<number>(() => session()?.author?.id || 0)
   const { showModal } = useUI()
   const handleOpenInviteModal = () => showModal('inviteMembers')
   let messagesContainerRef: HTMLDivElement | null

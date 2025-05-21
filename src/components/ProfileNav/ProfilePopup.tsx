@@ -13,7 +13,7 @@ type ProfilePopupProps = Omit<PopupProps, 'children'>
 
 export const ProfilePopup = (props: ProfilePopupProps) => {
   const { session, signOut } = useSession()
-  const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
+  const author = createMemo<Author>(() => session()?.author as Author)
   const { t } = useLocalize()
 
   return (

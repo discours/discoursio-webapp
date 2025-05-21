@@ -37,7 +37,7 @@ export const SuggestionCard = (props: SuggestionCardProps) => {
    * Проверяет, может ли текущий пользователь модерировать реакцию
    */
   const canUserModerate = () => {
-    return session()?.access_token && props.canModerate
+    return session()?.token && props.canModerate
   }
 
   /**

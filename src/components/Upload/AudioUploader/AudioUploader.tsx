@@ -54,7 +54,7 @@ export const AudioUploader = (props: Props) => {
   }
 
   const handleUpload = async (files: UploadFile[]) => {
-    const result = await handleFileUpload(files, session()?.access_token || '', 'audio')
+    const result = await handleFileUpload(files, session()?.token || '', 'audio')
 
     if (result) {
       props.onAudioAdd(composeMediaItems(result))

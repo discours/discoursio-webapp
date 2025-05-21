@@ -36,7 +36,7 @@ export const DropArea = (props: Props) => {
   const runUpload = async (files: UploadFile[]) => {
     try {
       setLoading(true)
-      const tkn = session()?.access_token as string
+      const tkn = session()?.token as string
       tkn &&
         Promise.all(files.map((file) => handleFileUpload(file, tkn)))
           .then(props.onUpload)

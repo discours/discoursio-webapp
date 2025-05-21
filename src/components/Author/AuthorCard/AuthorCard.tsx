@@ -35,7 +35,7 @@ export const AuthorCard = (props: Props) => {
   const navigate = useNavigate()
   const { session, isSessionLoaded, requireAuthentication } = useSession()
   const { setForm } = useProfile()
-  const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
+  const author = createMemo<Author>(() => session()?.author as Author)
   const [authorSubs, setAuthorSubs] = createSignal<Array<Author | Topic | Community>>(
     props.flatFollows || []
   )

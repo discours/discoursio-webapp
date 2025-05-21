@@ -55,7 +55,7 @@ export const SendResetLinkForm = () => {
     try {
       const result = await forgotPassword({
         email: email(),
-        redirect_uri: window?.location?.origin || ''
+        redirect_url: window?.location?.origin || ''
       })
       if (result) {
         setMessage(result || '')

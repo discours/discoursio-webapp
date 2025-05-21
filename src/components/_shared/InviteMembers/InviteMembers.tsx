@@ -69,7 +69,6 @@ export const InviteMembers = (props: Props) => {
   ]
 
   // Функция получения страницы авторов для бесконечной прокрутки
-  // biome-ignore lint/suspicious/useAwait: createInfiniteScroll ожидает Promise, хотя await не требуется
   const fetcher = async (page: number) => {
     const start = page * PAGE_SIZE
     const end = start + PAGE_SIZE

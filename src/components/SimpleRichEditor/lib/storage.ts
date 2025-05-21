@@ -682,7 +682,6 @@ export const setupAutoSave = (
 ): (() => void) => {
   if (!editorId) {
     console.error('[SimpleRichEditor] Cannot setup autosave without editorId')
-    // biome-ignore lint/suspicious/noEmptyBlockStatements: ok
     return () => {}
   }
 

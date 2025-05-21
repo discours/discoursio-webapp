@@ -72,7 +72,7 @@ export const AuthorView = (props: AuthorViewProps) => {
   const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
 
   // derivatives
-  const me = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
+  const me = createMemo<Author>(() => session()?.author as Author)
 
   const { commentsByAuthor, addShoutReactions } = useReactions()
   const { feedByAuthor } = useFeed()
@@ -141,7 +141,7 @@ export const AuthorView = (props: AuthorViewProps) => {
   // Объединенный эффект для загрузки автора и его подписок
   createEffect(
     on(
-      [() => session()?.user?.app_data?.profile, () => myFollowers(), () => followsResource()],
+      [() => session()?.author, () => myFollowers(), () => followsResource()],
       async ([meData, followers, follows]) => {
         const slug = props.authorSlug
 

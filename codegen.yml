@@ -18,7 +18,7 @@ generates:
 
   # Generate types for core
   src/graphql/schema/core.gen.ts:
-    schema: 'https://core.dscrs.site'
+    schema: 'http://localhost:8000/graphql'
     documents: 
       - 'src/graphql/query/core/**/*.ts'
       - 'src/graphql/mutation/core/**/*.ts'

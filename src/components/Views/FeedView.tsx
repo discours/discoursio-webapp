@@ -41,7 +41,7 @@ export const FeedView = (props: FeedProps) => {
   const shouldShowPlaceholder = createMemo(() => {
     const feedType = myFeed()
     const currentFeed = feedByMode()
-    const isAuthorized = !!session()?.access_token
+    const isAuthorized = !!session()?.token
     const isEmpty = !currentFeed?.shouts?.length
     return (
       ['followed', 'coauthored', 'discussed', 'comments'].includes(feedType as string) &&
@@ -51,7 +51,7 @@ export const FeedView = (props: FeedProps) => {
 
   const placeholderType = createMemo(() => {
     const feedType = myFeed()
-    if (!session()?.access_token) return 'author'
+    if (!session()?.token) return 'author'
     return feedType || 'feed'
   })
 

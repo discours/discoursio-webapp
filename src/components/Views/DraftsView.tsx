@@ -99,7 +99,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
   // Загружаем черновики при монтировании и при изменении сессии
   createEffect(
     on(
-      () => session()?.access_token,
+      () => session()?.token,
       async (token: string | undefined, prevToken: string | undefined) => {
         console.log('[DraftsView] token changed:', { token: !!token, prevToken: !!prevToken })
 

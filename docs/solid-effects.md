@@ -81,7 +81,7 @@ Batch особенно важен когда:
 
 ```typescript
 // ✅ Безопасное чтение сессии в src/context/session.tsx
-const getToken = () => untrack(() => session()?.access_token)
+const getToken = () => untrack(() => session()?.token)
 
 const [client] = createResource(
   getToken,
@@ -96,6 +96,56 @@ const [client] = createResource(
 - Нужно прочитать значение без отслеживания
 - Есть риск циклических зависимостей
 - Значение используется только для вычислений
+
+### 4. Комплексный подход с изолированным обновлением данных
+
+Для наиболее сложных случаев можно применить комплексный подход, изолируя обновление состояний в отдельные функции и используя мемоизацию:
+
+```typescript
+// ✅ Изолированная обработка данных в LoadMoreWrapper
+// Вычисляем производные значения через createMemo
+const itemsLength = createMemo(() => items().length)
+const shouldHideLoadMore = createMemo(() => {
+  const len = itemsLength()
+  return len > 0 && len % props.pageSize !== 0
+})
+
+// Изолированная функция для безопасного обновления состояний
+const safeUpdateState = (newItems: LoadMoreItems) => {
+  // Выполняем все обновления вне отслеживания реактивности
+  untrack(() => {
+    // Группируем все обновления состояний
+    batch(() => {
+      setItems((prev) => {
+        const merged = [...prev, ...uniqueNewItems].sort(byCreated)
+        
+        // Обновляем зависимые состояния внутри одной транзакции
+        setOffset(merged.length)
+        
+        return merged
+      })
+      
+      // Другие обновления состояния...
+      setIsLoadMoreButtonVisible(uniqueNewItems.length >= props.pageSize)
+    })
+  })
+}
+
+// Используем defer для предотвращения каскадных обновлений
+createEffect(
+  on(itemsLength, (length) => {
+    console.log('Items updated:', length)
+    if (shouldHideLoadMore()) {
+      setIsLoadMoreButtonVisible(false)
+    }
+  }, { defer: true })
+)
+```
+
+Этот паттерн помогает в сложных случаях, когда:
+- Имеется множество взаимосвязанных состояний
+- Нужна тонкая гранулярность контроля над обновлениями
+- Важна производительность и предотвращение циклических зависимостей
 
 ## Продвинутые паттерны
 

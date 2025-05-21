@@ -70,7 +70,7 @@ export const ProfileSettings = () => {
   createEffect(() => {
     const s = session()
     if (s && !isFormInitialized()) {
-      const profileData = s?.user?.app_data?.profile
+      const profileData = s?.author
       if (profileData) {
         setPrevForm(profileData)
         const soc: string[] = filterNulls(profileData.links || [])
@@ -153,7 +153,7 @@ export const ProfileSettings = () => {
       setUploadError(false)
       setIsUserpicUpdating(true)
 
-      const result = await handleFileUpload(uploadFile, session()?.access_token || '', 'image')
+      const result = await handleFileUpload(uploadFile, session()?.token || '', 'image')
       updateFormField('pic', result.url)
 
       setUserpicFile(undefined)
@@ -348,7 +348,7 @@ export const ProfileSettings = () => {
                         updateFormField('about', String(sanitizeHtml(data.content)))
                       }
                       placeholder={t('About')}
-                      editorId={`profile-about-${session()?.user?.id || ''}`}
+                      editorId={`profile-about-${session()?.author?.id || ''}`}
                       fieldType="about"
                       toolbar="top"
                     />

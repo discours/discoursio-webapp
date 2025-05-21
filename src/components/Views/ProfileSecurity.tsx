@@ -41,7 +41,7 @@ export const ProfileSecurityView = (_props: any) => {
 
   createEffect(
     on(
-      () => session()?.user?.email,
+      () => session()?.author?.email,
       (email) => {
         setFormData((prevData: FormData) => ({ ...prevData, email }) as FormData)
       }
@@ -72,7 +72,7 @@ export const ProfileSecurityView = (_props: any) => {
       setEmailError()
       setFormData({
         ...initialState,
-        ['email']: session()?.user?.email
+        ['email']: session()?.author?.email || undefined
       })
       setIsFloatingPanelVisible(false)
     }

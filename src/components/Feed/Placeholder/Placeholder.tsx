@@ -141,11 +141,11 @@ export const Placeholder = (props: PlaceholderProps) => {
         </Show>
 
         <Show
-          when={session()?.access_token}
+          when={session()?.token}
           fallback={
             <A class={styles.button} href="?m=auth&mode=login">
               {t(
-                session()?.access_token
+                session()?.token
                   ? placeholderData()?.buttonLabelAuthor || ''
                   : placeholderData()?.buttonLabelFeed || ''
               )}
@@ -154,7 +154,7 @@ export const Placeholder = (props: PlaceholderProps) => {
         >
           <A class={styles.button} href={placeholderData()?.href}>
             {t(
-              session()?.access_token
+              session()?.token
                 ? placeholderData()?.buttonLabelAuthor || ''
                 : placeholderData()?.buttonLabelFeed || ''
             )}

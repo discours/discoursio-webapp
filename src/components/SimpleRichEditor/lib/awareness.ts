@@ -110,7 +110,7 @@ export function createAwarenessProvider(doc: Doc, awareness: Awareness) {
   }
 
   const { session } = useSession()
-  const token = () => session()?.access_token || ''
+  const token = () => session()?.token || ''
   const [_connectionState, setConnectionState] = createSignal<'connected' | 'disconnected'>('disconnected')
 
   const handleError = (error: Error) => {
@@ -616,7 +616,7 @@ export class AwarenessProvider {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: session()?.access_token || ''
+            Authorization: session()?.token || ''
           },
           body: JSON.stringify(message)
         })
@@ -848,6 +848,7 @@ export const useEditorAwareness = (editorId: string, draftId?: number | string, 
   // Получаем существующий или создаем новый провайдер
   const provider = getProvider()
   const awareness = provider.getAwareness()
+  const { session } = useSession()
 
   // Состояние подключения
   const [connectionState, setConnectionState] = createSignal<ConnectionState>(provider.getConnectionState())
@@ -897,11 +898,11 @@ export const useEditorAwareness = (editorId: string, draftId?: number | string, 
       const { session } = useSession()
       const userData = session()
 
-      if (userData?.user) {
+      if (userData?.author) {
         provider.setUserInfo(editorId, {
-          id: userData.user.id || 0,
-          name: (userData.user as { name?: string })?.name || 'Anonymous',
-          color: getRandomColor(userData.user.id || 0),
+          id: userData.author.id || 0,
+          name: (userData.author as { name?: string })?.name || 'Anonymous',
+          color: getRandomColor(userData.author.id || 0),
           tabId: crypto.randomUUID().slice(0, 8)
         })
       }
@@ -951,11 +952,7 @@ export const useEditorAwareness = (editorId: string, draftId?: number | string, 
    * Получает список пользователей, работающих над редактором
    */
   const getActiveUsers = () => {
-    const { session: sessionData } = useSession()
-    const userData = sessionData()
-    const currentUserId = userData?.user?.id
-
-    return provider.getConnectedUsers().filter((user) => user.user.id !== currentUserId)
+    return provider.getConnectedUsers().filter((payload) => payload.user.id !== session()?.author?.id)
   }
 
   // Возвращаем API

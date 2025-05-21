@@ -48,7 +48,7 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
   const { addHandler } = useConnect()
 
   const loadNotificationsGrouped = async (options: QueryLoad_NotificationsArgs) => {
-    if (session()?.access_token) {
+    if (session()?.token) {
       const resp = await client()?.query(getNotifications, options).toPromise()
       const result = resp?.data?.get_notifications
       const groups = result?.notifications || []
@@ -82,7 +82,7 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
 
   onMount(() => {
     addHandler((data: SSEMessage) => {
-      if (data.entity === 'reaction' && session()?.access_token) {
+      if (data.entity === 'reaction' && session()?.token) {
         console.info('[context.notifications] event', data)
         loadNotificationsGrouped({
           after: after() || now,
@@ -102,14 +102,14 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
   }
 
   const markSeenAll = async () => {
-    if (session()?.access_token) {
+    if (session()?.token) {
       const _resp = await client()?.mutation(markSeenAfterMutation, { after: after() }).toPromise()
       await loadNotificationsGrouped({ after: after() || now, limit: loadedNotificationsCount() })
     }
   }
 
   const markSeen = async (notification_id: number) => {
-    if (session()?.access_token) {
+    if (session()?.token) {
       await client()?.mutation(markSeenMutation, { notification_id }).toPromise()
       await loadNotificationsGrouped({ after: after() || now, limit: loadedNotificationsCount() })
     }

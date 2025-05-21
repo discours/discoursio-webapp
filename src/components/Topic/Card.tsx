@@ -36,7 +36,7 @@ export const TopicCard = (props: TopicProps) => {
     capitalize(lang() === 'en' ? props.topic.slug.replaceAll('-', ' ') : props.topic.title || '')
   )
   const { session, requireAuthentication } = useSession()
-  const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
+  const author = createMemo<Author>(() => session()?.author as Author)
   const { follow, unfollow, follows } = useFollowing()
   const [isFollowed, setIsFollowed] = createSignal(false)
   createEffect(

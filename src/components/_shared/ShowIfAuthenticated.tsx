@@ -13,7 +13,7 @@ export const ShowIfAuthenticated = (props: ShowIfAuthenticatedProps) => {
   const { session } = useSession()
 
   return (
-    <Show when={session()?.access_token} fallback={props.fallback}>
+    <Show when={session()?.token} fallback={props.fallback}>
       {props.children}
     </Show>
   )

@@ -4,7 +4,7 @@ import { Accessor, JSX, createContext, createEffect, createSignal, on, useContex
 import { createStore } from 'solid-js/store'
 import updateAuthorMuatation from '~/graphql/mutation/core/author-update'
 import { useAuthors } from './authors'
-import { AuthToken, useSession } from './session'
+import { useSession } from './session'
 
 type ProfileContextType = {
   author: Accessor<Author>
@@ -50,14 +50,11 @@ export const ProfileProvider = (props: { children: JSX.Element }) => {
   // when session is loaded
   createEffect(
     on(
-      () => session(),
-      (s: AuthToken | undefined) => {
-        if (s) {
-          const profile = s?.user?.app_data?.profile
-          if (profile?.id) {
-            setAuthor(profile)
-            addAuthor(profile)
-          }
+      () => session()?.author,
+      (author?: Author) => {
+        if (author) {
+          setAuthor(author)
+          addAuthor(author)
         }
       },
       { defer: true }

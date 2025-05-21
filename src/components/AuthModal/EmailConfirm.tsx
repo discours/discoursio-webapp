@@ -23,8 +23,8 @@ export const EmailConfirm = () => {
   const [emailConfirmed, setEmailConfirmed] = createSignal(false)
 
   createEffect(() => {
-    const email = session()?.user?.email
-    const isVerified = session()?.user?.email_verified
+    const email = session()?.author?.email
+    const isVerified = session()?.author?.email_verified
 
     if (email) {
       setEmail(email.toLowerCase())

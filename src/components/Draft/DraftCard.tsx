@@ -467,7 +467,7 @@ export const DraftCard = (props: Props) => {
           {/* Предпросмотр */}
           <span
             onClick={handleViewClick}
-            class={styles.actionItem}
+            class={clsx(styles.actionItem, styles.edit)}
             title={isPublished() ? t('View published article') : t('Preview')}
           >
             <Icon name="eye" class={styles.actionIcon} />
@@ -480,7 +480,7 @@ export const DraftCard = (props: Props) => {
             fallback={
               <span
                 onClick={handlePublishLinkClick}
-                class={styles.actionItem}
+                class={clsx(styles.actionItem, styles.publish)}
                 title={props.draft.isLocalOnly ? t('Save draft') : t('Publish')}
               >
                 <Icon
@@ -496,7 +496,7 @@ export const DraftCard = (props: Props) => {
             {/* Кнопки для опубликованной статьи */}
             <div class={styles.publishedActions}>
               {/* Кнопка настроек */}
-              <span onClick={handleSettingsClick} class={styles.actionItem} title={t('Settings')}>
+              <span onClick={handleSettingsClick} class={clsx(styles.actionItemz)} title={t('Settings')}>
                 <Icon name="settings" class={styles.actionIcon} />
                 <span class={styles.actionText}>{t('Settings')}</span>
               </span>
@@ -509,19 +509,19 @@ export const DraftCard = (props: Props) => {
                   console.log('[DraftCard] Вызываем обработчик снятия с публикации:', props.draft.id)
                   props.onUnpublish()
                 }}
-                class={styles.actionItem}
+                class={clsx(styles.actionItem, styles.delete)}
                 title={t('Unpublish')}
               >
                 <Icon name="eye-off" class={styles.actionIcon} />
-                <span class={styles.actionText}>{t('Unpublish')}</span>
+                <span class={clsx(styles.actionText, styles.publish)}>{t('Unpublish')}</span>
               </span>
             </div>
           </Show>
 
           {/* Удаление - всегда присутствует */}
-          <span onClick={handleDeleteLinkClick} class={styles.actionItem} title={t('Delete')}>
+          <span onClick={handleDeleteLinkClick} class={clsx(styles.actionItem, styles.delete)} title={t('Delete')}>
             <Icon name="trash" class={styles.actionIcon} />
-            <span class={styles.actionText}>{t('Delete')}</span>
+            <span class={clsx(styles.actionText)}>{t('Delete')}</span>
           </span>
         </div>
       </div>

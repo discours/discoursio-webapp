@@ -1,49 +1,109 @@
-import {
-  ApiResponse,
-  AuthToken,
-  Authorizer,
-  ConfigType,
-  ForgotPasswordInput,
-  GenericResponse,
-  LoginInput,
-  ResendVerifyEmailInput,
-  SignupInput,
-  UpdateProfileInput,
-  VerifyEmailInput
-} from '@authorizerdev/authorizer-js'
 import { useSearchParams } from '@solidjs/router'
 import { Client } from '@urql/core'
 import type { Accessor, JSX, Resource } from 'solid-js'
 import {
   createContext,
   createEffect,
-  createMemo,
   createResource,
   createSignal,
+  createMemo,
   on,
   onCleanup,
   onMount,
   useContext
 } from 'solid-js'
 import toast from 'solid-toast'
+import { useLocalize } from '~/context/localize'
 import { type ModalSource } from '~/context/ui'
 import { graphqlClientCreate } from '~/graphql/client'
-import { authApiUrl, authorizerClientId, authorizerRedirectUrl, coreApiUrl } from '../config'
-import { useLocalize } from './localize'
+import { Author } from '~/graphql/schema/core.gen'
+import { coreApiUrl } from '../config'
+import LoginMutation from '~/graphql/mutation/core/auth-login'
+import GetSessionMutation from '~/graphql/mutation/core/auth-get-session'
+import SignupMutation from '~/graphql/mutation/core/auth-signup'
+import LogoutMutation from '~/graphql/mutation/core/auth-logout'
+import ResetPasswordMutation from '~/graphql/mutation/core/auth-reset-password'
+import RequestPasswordResetMutation from '~/graphql/mutation/core/auth-request-password-reset'
+import ResendVerifyEmailMutation from '~/graphql/mutation/core/auth-resend-verify-email'
+import ConfirmEmailMutation from '~/graphql/mutation/core/auth-confirm-email'
+import UpdateProfileMutation from '~/graphql/mutation/core/auth-update-profile'
+import RefreshTokenMutation from '~/graphql/mutation/core/auth-refresh-token'
+import IsEmailUsedQuery from '~/graphql/query/core/auth-is-email-used'
 
-const defaultConfig: ConfigType = {
-  authorizerURL: authApiUrl.replace('/graphql', ''),
-  redirectURL: authorizerRedirectUrl,
-  clientID: authorizerClientId
+/**
+ * Ключ для хранения токена авторизации в localStorage
+ */
+export const AUTH_TOKEN_KEY = 'auth_token'
+
+/**
+ * Интерфейс токена авторизации
+ */
+export interface AuthPayload {
+  token: string
+  author: Author
+}
+
+/**
+ * Интерфейс данных входа
+ */
+export interface LoginInput {
+  email: string
+  password: string
+}
+
+/**
+ * Интерфейс данных регистрации
+ */
+export interface SignupInput {
+  email: string
+  password: string
+  name?: string
+}
+
+/**
+ * Интерфейс для обновления профиля
+ */
+export interface UpdateProfileInput {
+  name?: string
+  email?: string
+  bio?: string
+  about?: string
+  links?: string[]
+  pic?: string
+  slug?: string
+  old_password?: string
+  new_password?: string
+  confirm_new_password?: string
+}
+
+/**
+ * Интерфейс для запроса сброса пароля
+ */
+export interface ForgotPasswordInput {
+  email: string
+  redirect_url?: string
+}
+
+/**
+ * Интерфейс для подтверждения email
+ */
+export interface VerifyEmailInput {
+  token: string
+}
+
+/**
+ * Интерфейс для повторной отправки подтверждения email
+ */
+export interface ResendVerifyEmailInput {
+  email: string
 }
 
 export type SessionContextType = {
-  config: Accessor<ConfigType>
-  session: Resource<AuthToken>
+  session: Resource<AuthPayload | undefined>
   authError: Accessor<string>
   isSessionLoaded: Accessor<boolean>
-  loadSession: () => AuthToken | Promise<AuthToken> | undefined | null
-  setSession: (token: AuthToken) => void
+  loadSession: () => Promise<AuthPayload | undefined> | undefined
+  setSession: (token: AuthPayload | undefined) => void
   requireAuthentication: (callback: (() => Promise<void>) | (() => void), modalSource: ModalSource) => void
   signUp: (params: SignupInput) => Promise<boolean>
   signIn: (params: LoginInput) => Promise<boolean>
@@ -54,38 +114,12 @@ export type SessionContextType = {
   changePassword: (password: string, token: string) => Promise<boolean>
   confirmEmail: (input: VerifyEmailInput) => Promise<void>
   setIsSessionLoaded: (loaded: boolean) => void
-  authorizer: () => Authorizer
   isRegistered: (email: string) => Promise<string>
   resendVerifyEmail: (params: ResendVerifyEmailInput) => Promise<boolean>
   client: Accessor<Client | undefined>
-}
-
-const noop = () => null
-
-const metaRes = {
-  data: {
-    meta: {
-      version: 'latest',
-      client_id: authorizerClientId,
-      is_google_login_enabled: true,
-      is_facebook_login_enabled: true,
-      is_github_login_enabled: true,
-      is_linkedin_login_enabled: false,
-      is_apple_login_enabled: false,
-      is_twitter_login_enabled: true,
-      is_microsoft_login_enabled: false,
-      is_twitch_login_enabled: false,
-      is_roblox_login_enabled: false,
-      is_email_verification_enabled: true,
-      is_basic_authentication_enabled: true,
-      is_magic_link_login_enabled: true,
-      is_sign_up_enabled: true,
-      is_strong_password_enabled: false,
-      is_multi_factor_auth_enabled: true,
-      is_mobile_basic_authentication_enabled: true,
-      is_phone_verification_enabled: false
-    }
-  }
+  isAuthenticated: Accessor<boolean>
+  refreshClient: () => Promise<void>
+  refreshToken: () => Promise<boolean>
 }
 
 /**
@@ -104,7 +138,7 @@ export function useSession() {
  * @returns A JSX Element wrapping the children with session context.
  */
 export const SessionProvider = (props: {
-  onStateChangeCallback(state: AuthToken): unknown
+  onStateChangeCallback(state: AuthPayload | null): unknown
   children: JSX.Element
 }) => {
   const { t } = useLocalize()
@@ -120,14 +154,16 @@ export const SessionProvider = (props: {
   }>()
 
   const clearSearchParams = () => changeSearchParams({}, { replace: true })
-  const [config, setConfig] = createSignal<ConfigType>(defaultConfig)
-  const authorizer = createMemo(() => new Authorizer(config()))
   const [oauthState, setOauthState] = createSignal<string>()
 
   // Session expiration timer
   let minuteLater: ReturnType<typeof setTimeout> | null = null
   const [isSessionLoaded, setIsSessionLoaded] = createSignal(false)
   const [authError, setAuthError] = createSignal<string>('')
+
+  // Оптимизируем создание GraphQL клиента
+  const [client, setClient] = createSignal<Client>()
+  const [lastClientToken, setLastClientToken] = createSignal<string>('')
 
   // Handle auth state callback from outside
   onMount(() => {
@@ -136,8 +172,7 @@ export const SessionProvider = (props: {
       setOauthState(params.state)
       const scope = params.scope ? params.scope.toString().split(' ') : ['openid', 'profile', 'email']
       if (scope) console.info(`[context.session] scope: ${scope}`)
-      const url = params.redirect_uri || params.redirectURL || window.location.href
-      setConfig((c: ConfigType) => ({ ...c, redirectURL: url.split('?')[0] }))
+      // const url = params.redirect_uri || params.redirectURL || window.location.href
       changeSearchParams({ mode: 'confirm-email', m: 'auth' }, { replace: true })
     }
   })
@@ -168,69 +203,131 @@ export const SessionProvider = (props: {
   })
 
   /**
-   * Function to load session data by fetching the current session from the authorizer.
-   * It handles session expiration and sets up a timer to refresh the session as needed.
-   * @returns A Promise resolving to the AuthToken containing session information.
+   * Функция загрузки сессии через GraphQL API
    */
   const sessionData = async () => {
     try {
-      const s: ApiResponse<AuthToken> = await authorizer().getSession()
-      if (s?.data) {
-        console.info('[context.session] loading session', s)
-        clearSearchParams()
-        // Set session expiration time in local storage
-        const expires_at = new Date(Date.now() + s.data.expires_in * 1000)
-        localStorage?.setItem('expires_at', `${expires_at.getTime()}`)
+      console.info('[context.session] Attempting to load session via Discours GraphQL API')
+      // Проверяем наличие токена в localStorage
+      const storedToken = localStorage.getItem(AUTH_TOKEN_KEY)
 
-        // Set up session expiration check timer
-        minuteLater = setTimeout(checkSessionIsExpired, 60 * 1000)
-        console.info(`[context.session] will refresh in ${Math.round(s.data.expires_in / 60)} mins`)
+      if (storedToken) {
+        // Создаем клиент с токеном
+        const internalClient = graphqlClientCreate(coreApiUrl, storedToken)
 
-        // Set the session loaded flag
-        setIsSessionLoaded(true)
+        // Проверяем доступность API перед запросом данных
+        try {
+          // Запрашиваем данные пользователя с помощью GraphQL
+          const result = await internalClient
+            .mutation(GetSessionMutation,
+              {}
+            )
+            .toPromise()
 
-        return s.data
+          if (result.error) {
+            console.error('[context.session] Error refreshing session:', result.error)
+            localStorage.removeItem(AUTH_TOKEN_KEY)
+            setAuthError(`Ошибка обновления сессии: ${result.error.message || 'неизвестная ошибка'}`)
+            setIsSessionLoaded(true)
+            return undefined
+          }
+
+          if (result.data?.getSession) {
+            const { author, token } = result.data.getSession
+
+            // Формируем объект сессии
+            const AuthPayload: AuthPayload = {
+              token,
+              author: {
+                id: author.id,
+                slug: author.slug,
+                name: author.name,
+                pic: author.pic,
+                bio: author.bio,
+                links: author.links
+              }
+            }
+
+            console.info('[context.session] Successfully loaded session via Discours GraphQL API')
+            clearSearchParams()
+
+            // Устанавливаем флаг загрузки сессии
+            setIsSessionLoaded(true)
+
+            return AuthPayload
+          }
+          
+          console.error('[context.session] No valid session data returned')
+          // Если запрос не вернул данные, удаляем токен
+          localStorage.removeItem(AUTH_TOKEN_KEY)
+          setAuthError('Не удалось получить данные сессии')
+          setIsSessionLoaded(true)
+          return undefined
+        } catch (queryError) {
+          console.error('[context.session] Query error:', queryError)
+          // Если запрос завершился ошибкой, удаляем токен
+          localStorage.removeItem(AUTH_TOKEN_KEY)
+          setAuthError(
+            `Ошибка запроса данных: ${queryError instanceof Error ? queryError.message : 'неизвестная ошибка'}`
+          )
+        }
       }
-      console.info('[context.session] cannot refresh session', s.errors)
-      setAuthError(s.errors?.pop()?.message || '')
 
-      // Set the session loaded flag even if there's an error
+      console.info('[context.session] cannot refresh session - no valid token')
+      setAuthError('Сессия не найдена или истекла')
+
+      // Устанавливаем флаг загрузки сессии
       setIsSessionLoaded(true)
+      return undefined
     } catch (error) {
-      console.info('[context.session] cannot refresh session', error)
-      if (error) setAuthError(t('error'))
+      console.error('[context.session] cannot refresh session', error)
+      if (error instanceof Error) {
+        console.error('[context.session] error details:', error.message)
+        setAuthError(`Ошибка: ${error.message}`)
+      } else {
+        setAuthError(t('error'))
+      }
 
-      // Set the session loaded flag even if there's an error
+      // Устанавливаем флаг загрузки сессии
       setIsSessionLoaded(true)
+      return undefined
     }
-    return {} as AuthToken
   }
 
-  const [session, { refetch: loadSession, mutate: setSession }] = createResource<AuthToken>(sessionData, {
+  const [session, { mutate: setSession }] = createResource<AuthPayload | undefined>(sessionData, {
     ssrLoadFrom: 'initial',
-    initialValue: {} as AuthToken
+    initialValue: undefined
   })
 
+  // Явно определяем loadSession с соответствующим типом
+  const loadSession = async () => {
+    return await sessionData()
+  }
+
   /**
-   * Checks if the current session has expired and refreshes the session if necessary.
-   * Sets up a timer to check the session expiration every minute.
+   * Устанавливает таймер для проверки и обновления сессии
+   * @param {number} intervalMinutes - Интервал проверки в минутах (по умолчанию 30 минут)
    */
-  const checkSessionIsExpired = () => {
-    const expires_at_data = localStorage?.getItem('expires_at')
+  const setupSessionTimer = (intervalMinutes = 30) => {
+    if (minuteLater) clearTimeout(minuteLater)
 
-    if (expires_at_data) {
-      const expires_at = Number.parseFloat(expires_at_data)
-      const current_time = Date.now()
+    // Установка интервала в миллисекундах
+    const intervalMs = intervalMinutes * 60 * 1000
 
-      // Check if the session has expired
-      if (current_time >= expires_at) {
-        console.info('[context.session] Session has expired, refreshing.')
-        loadSession()
-      } else {
-        // Schedule the next check
-        minuteLater = setTimeout(checkSessionIsExpired, 60 * 1000)
+    minuteLater = setTimeout(async () => {
+      console.info(`[context.session] Refreshing session after ${intervalMinutes} minutes`)
+      try {
+        await loadSession()
+        console.info('[context.session] Session refresh completed')
+        // Если успешно обновили сессию, устанавливаем следующий таймер
+        setupSessionTimer(intervalMinutes)
+      } catch (error) {
+        console.error('[context.session] Failed to refresh session:', error)
+        // Если произошла ошибка, попробуем обновить сессию через меньший интервал
+        setupSessionTimer(Math.max(5, intervalMinutes / 2))
       }
-    }
+    }, intervalMs)
+    console.info(`[context.session] Will refresh in ${intervalMinutes} minutes`)
   }
 
   onCleanup(() => {
@@ -239,22 +336,97 @@ export const SessionProvider = (props: {
 
   // Initial effect
   onMount(() => {
-    setConfig({
-      ...defaultConfig,
-      ...metaRes,
-      redirectURL: window.location.origin
-    })
     loadSession()
   })
 
-  // Callback state updater
+  // Объединяем эффекты для работы с сессией
   createEffect(
-    on([() => props.onStateChangeCallback, session], ([_, ses]) => {
-      if (ses?.user?.id) props.onStateChangeCallback(ses)
-    })
+    on(
+      () => [session(), searchParams?.token, searchParams?.access_token, searchParams?.state] as const,
+      ([currentSession, token, access_token, state]) => {
+        // Обработка OAuth токенов
+        if (state && access_token) {
+          console.info('[context.session] Processing OAuth callback')
+          const storedState = localStorage.getItem('oauth_state')
+          
+          if (storedState === state) {
+            console.info('[context.session] OAuth state verified')
+            changeSearchParams(
+              {
+                mode: 'confirm-email',
+                m: 'auth',
+                access_token
+              },
+              { replace: true }
+            )
+            localStorage.removeItem('oauth_state')
+          } else {
+            console.warn('[context.session] OAuth state mismatch')
+            setAuthError('Ошибка авторизации: неверное состояние OAuth')
+          }
+          return
+        }
+
+        // Обработка обычных токенов
+        if (token) {
+          console.info('[context.session] Processing password reset token')
+          changeSearchParams(
+            {
+              mode: 'change-password',
+              m: 'auth',
+              token
+            },
+            { replace: true }
+          )
+        }
+
+        // Обработка изменения сессии
+        if (currentSession) {
+          const currentToken = currentSession.token
+          if (currentToken !== lastClientToken()) {
+            console.log('[session] Creating GraphQL client with token:', !!currentToken)
+            setLastClientToken(currentToken)
+            setClient(() => graphqlClientCreate(coreApiUrl, currentToken))
+            props.onStateChangeCallback(currentSession)
+            setupSessionTimer()
+          } else {
+            console.log('[session] Session exists but token unchanged, client already configured')
+          }
+        } else {
+          // Если сессия отсутствует, создаем клиент без токена
+          if (lastClientToken() !== '') {
+            console.log('[session] Using default client (no token)')
+            setLastClientToken('')
+            setClient(() => graphqlClientCreate(coreApiUrl))
+          }
+        }
+      },
+      { defer: true }
+    )
   )
 
-  const [authCallback, setAuthCallback] = createSignal<() => void>(noop)
+  const [authCallback, setAuthCallback] = createSignal<() => void>(() => {})
+  const [lastHandlerRun, setLastHandlerRun] = createSignal<string>('')
+
+  // Оптимизируем обработку authCallback
+  createEffect(
+    on(
+      authCallback,
+      (handler) => {
+        if (typeof handler === 'function' && handler !== noopSetter) {
+          const handlerId = Math.random().toString(36).substr(2, 9)
+          if (lastHandlerRun() !== handlerId) {
+            setLastHandlerRun(handlerId)
+            queueMicrotask(() => {
+              handler()
+              setAuthCallback(noopSetter)
+            })
+          }
+        }
+      },
+      { defer: true }
+    )
+  )
 
   /**
    * Requires the user to be authenticated before executing a callback function.
@@ -262,19 +434,43 @@ export const SessionProvider = (props: {
    * @param callback - The function to execute after authentication.
    * @param modalSource - The source of the authentication modal.
    */
-
   const requireAuthentication = async (
     callback: (() => Promise<void>) | (() => void),
     modalSource: ModalSource
   ) => {
-    console.info('require auth in ', modalSource)
+    console.info('[context.session] Require authentication from', modalSource)
     try {
       if (!client()) {
-        console.warn('[requireAuthentication] client is not ready')
+        console.warn('[requireAuthentication] GraphQL client is not ready')
+        toast.error(t('Connection error'))
         return
       }
-      if (session()?.access_token) {
-        await callback()
+
+      if (session()?.token) {
+        try {
+          await callback()
+        } catch (callbackError) {
+          console.error('[requireAuthentication] Callback execution error:', callbackError)
+          toast.error(t('Operation failed'))
+
+          // Если была ошибка авторизации, перенаправляем на форму входа
+          if (
+            callbackError instanceof Error &&
+            (callbackError.message.includes('unauthorized') ||
+              callbackError.message.includes('unauthenticated'))
+          ) {
+            // Сбрасываем сессию и перенаправляем на вход
+            setSession(undefined)
+            localStorage.removeItem(AUTH_TOKEN_KEY)
+            changeSearchParams(
+              {
+                mode: 'sign-in',
+                m: 'auth'
+              },
+              { replace: true }
+            )
+          }
+        }
       } else {
         changeSearchParams(
           {
@@ -285,203 +481,505 @@ export const SessionProvider = (props: {
         )
       }
     } catch (error) {
-      console.error('Ошибка в requireAuthentication:', error)
+      console.error('[requireAuthentication] Unexpected error:', error)
       toast.error(t('Try again later'))
     }
   }
 
-  createEffect(() => {
-    const handler = authCallback()
-    if (handler !== noop) {
-      handler()
-      setAuthCallback(() => noop)
+  const noopSetter = () => () => void 0
+
+  /**
+   * Функция входа через GraphQL API
+   */
+  const signIn = async (params: LoginInput): Promise<boolean> => {
+    try {
+      console.info('[context.session] Attempting to sign in via Discours GraphQL API', {
+        email: params.email
+      })
+      const internalClient = graphqlClientCreate(coreApiUrl)
+
+      // Выполняем мутацию login через GraphQL API
+      const result = await internalClient
+        .mutation(LoginMutation,
+          {
+            email: params.email,
+            password: params.password
+          }
+        )
+        .toPromise()
+
+      if (result.error) {
+        console.error('[signIn] GraphQL error:', result.error)
+        setAuthError(result.error.message || 'Ошибка сервера при попытке входа')
+        return false
+      }
+
+      if (result.data?.login?.success) {
+        const { author, token } = result.data.login
+
+        // Сохраняем токен в localStorage
+        localStorage.setItem(AUTH_TOKEN_KEY, token)
+
+        // Формируем объект сессии
+        const AuthPayload: AuthPayload = {
+          token,
+          author: {
+            id: author.id,
+            slug: author.slug,
+            name: author.name,
+            pic: author.pic,
+            bio: author.bio,
+            links: author.links
+          }
+        }
+
+        // Сразу обновляем клиент с новым токеном
+        console.log('[session] Immediately updating GraphQL client with token')
+        setLastClientToken(token)
+        setClient(() => graphqlClientCreate(coreApiUrl, token))
+
+        // Устанавливаем сессию
+        setSession(AuthPayload)
+        return true
+      }
+
+      setAuthError(result.data?.login?.error || 'Ошибка при входе')
+      return false
+    } catch (error) {
+      console.error('[signIn] error:', error)
+      if (error instanceof Error) {
+        console.error('[signIn] error details:', error.message)
+        setAuthError(error.message || 'Не удалось выполнить вход')
+      } else {
+        setAuthError(typeof error === 'string' ? error : 'Не удалось выполнить вход')
+      }
+      return false
     }
+  }
+
+  /**
+   * Регистрация нового пользователя через GraphQL API
+   */
+  const signUp = async (params: SignupInput): Promise<boolean> => {
+    try {
+      console.info('[context.session] Attempting to register via Discours GraphQL API', {
+        email: params.email
+      })
+      const internalClient = graphqlClientCreate(coreApiUrl)
+
+      // Выполняем мутацию registerUser через GraphQL API
+      const result = await internalClient
+        .mutation(SignupMutation,
+          {
+            email: params.email,
+            password: params.password,
+            name: params.name
+          }
+        )
+        .toPromise()
+
+      if (result.data?.registerUser?.success) {
+        const { author, token } = result.data.registerUser
+
+        // Сохраняем токен в localStorage
+        localStorage.setItem(AUTH_TOKEN_KEY, token)
+
+        // Формируем объект сессии
+        const AuthPayload: AuthPayload = {
+          token,
+          author: {
+            id: author.id,
+            slug: author.slug,
+            name: author.name,
+            pic: author.pic,
+            bio: author.bio,
+            links: author.links
+          }
+        }
+
+        // Сразу обновляем клиент с новым токеном
+        console.log('[session] Immediately updating GraphQL client with token')
+        setLastClientToken(token)
+        setClient(() => graphqlClientCreate(coreApiUrl, token))
+
+        setSession(AuthPayload)
+        return true
+      }
+
+      setAuthError(result.data?.registerUser?.error || 'Ошибка при регистрации')
+      return false
+    } catch (error) {
+      console.error('[signUp] error:', error)
+      setAuthError(typeof error === 'string' ? error : 'Не удалось зарегистрироваться')
+      return false
+    }
+  }
+
+  /**
+   * Обновление профиля пользователя через GraphQL API
+   */
+  const updateProfile = async (params: UpdateProfileInput): Promise<boolean> => {
+    try {
+      if (!session()?.token) {
+        setAuthError('Не авторизован')
+        return false
+      }
+
+      const internalClient = graphqlClientCreate(coreApiUrl, session()?.token)
+
+      // Выполняем мутацию update_author через GraphQL API
+      const result = await internalClient
+        .mutation(
+          UpdateProfileMutation,
+          {
+            profile: {
+              name: params.name,
+              bio: params.bio,
+              about: params.about,
+              links: params.links,
+              pic: params.pic,
+              slug: params.slug
+            }
+          }
+        )
+        .toPromise()
+
+      if (!result.data?.update_author?.error) {
+        // Обновляем данные пользователя в сессии
+        loadSession()
+        return true
+      }
+
+      setAuthError(result.data?.update_author?.error || 'Ошибка при обновлении профиля')
+      return false
+    } catch (error) {
+      console.error('[updateProfile] error:', error)
+      setAuthError(typeof error === 'string' ? error : 'Не удалось обновить профиль')
+      return false
+    }
+  }
+
+  /**
+   * Выход пользователя через GraphQL API
+   */
+  const signOut = async (): Promise<boolean> => {
+    try {
+      console.info('[context.session] Attempting to log out via Discours GraphQL API')
+      if (session()?.token) {
+        const internalClient = graphqlClientCreate(coreApiUrl, session()?.token)
+
+        // Выполняем мутацию logout через GraphQL API
+        await internalClient
+          .mutation(
+            LogoutMutation,
+            {}
+          )
+          .toPromise()
+      }
+
+      // Удаляем токен из localStorage
+      localStorage.removeItem(AUTH_TOKEN_KEY)
+
+      // Очищаем сессию
+      setSession(undefined)
+      setIsSessionLoaded(true)
+
+      toast.success(t("You've successfully logged out"))
+      return true
+    } catch (error) {
+      console.error('[signOut] error:', error)
+      return false
+    }
+  }
+
+  /**
+   * Изменение пароля через GraphQL API
+   */
+  const changePassword = async (password: string, token: string): Promise<boolean> => {
+    try {
+      const internalClient = graphqlClientCreate(coreApiUrl)
+
+      // Выполняем мутацию resetPassword через GraphQL API
+      const result = await internalClient
+        .mutation(
+          ResetPasswordMutation,
+          {
+            newPassword: password,
+            token
+          }
+        )
+        .toPromise()
+
+      return !!result.data?.resetPassword?.success
+    } catch (error) {
+      console.error('[changePassword] error:', error)
+      return false
+    }
+  }
+
+  /**
+   * Запрос на восстановление пароля через GraphQL API
+   */
+  const forgotPassword = async (params: ForgotPasswordInput): Promise<string> => {
+    try {
+      const internalClient = graphqlClientCreate(coreApiUrl)
+
+      // Выполняем мутацию requestPasswordReset через GraphQL API
+      const result = await internalClient
+        .mutation(
+          RequestPasswordResetMutation,
+          {
+            email: params.email
+          }
+        )
+        .toPromise()
+
+      if (result.data?.requestPasswordReset?.success) {
+        return ''
+      }
+
+      return 'Не удалось отправить письмо для сброса пароля'
+    } catch (error) {
+      console.error('[forgotPassword] error:', error)
+      return typeof error === 'string' ? error : 'Не удалось запросить сброс пароля'
+    }
+  }
+
+  /**
+   * Повторная отправка письма для подтверждения email
+   */
+  const resendVerifyEmail = async (params: ResendVerifyEmailInput): Promise<boolean> => {
+    try {
+      const internalClient = graphqlClientCreate(coreApiUrl)
+
+      // Выполняем мутацию для повторной отправки письма с подтверждением
+      const result = await internalClient
+        .mutation(
+          ResendVerifyEmailMutation,
+          {
+            email: params.email
+          }
+        )
+        .toPromise()
+
+      if (result.data?.sendLink) {
+        toast.success('Письмо для подтверждения отправлено. Пожалуйста, проверьте вашу почту')
+        return true
+      }
+
+      toast.error('Не удалось отправить письмо для подтверждения')
+      return false
+    } catch (error) {
+      console.error('[resendVerifyEmail] error:', error)
+      toast.error(typeof error === 'string' ? error : 'Не удалось отправить письмо для подтверждения')
+      return false
+    }
+  }
+
+  /**
+   * Проверка, зарегистрирован ли email
+   */
+  const isRegistered = async (email: string): Promise<string> => {
+    try {
+      const internalClient = graphqlClientCreate(coreApiUrl)
+
+      // Выполняем запрос isEmailUsed через GraphQL API
+      const result = await internalClient
+        .query(
+          IsEmailUsedQuery,
+          {
+            email
+          }
+        )
+        .toPromise()
+
+      return result.data?.isEmailUsed ? 'Email уже зарегистрирован' : ''
+    } catch (error) {
+      console.error('[isRegistered] error:', error)
+      return ''
+    }
+  }
+
+  /**
+   * Подтверждение email через GraphQL API
+   */
+  const confirmEmail = async (input: VerifyEmailInput): Promise<void> => {
+    try {
+      const internalClient = graphqlClientCreate(coreApiUrl)
+
+      // Выполняем мутацию confirmEmail через GraphQL API
+      const result = await internalClient
+        .mutation(
+          ConfirmEmailMutation,
+          {
+            token: input.token
+          }
+        )
+        .toPromise()
+
+      if (result.data?.confirmEmail?.success) {
+        const { author, token } = result.data.confirmEmail
+
+        // Сохраняем токен в localStorage
+        localStorage.setItem(AUTH_TOKEN_KEY, token)
+
+        // Формируем объект сессии
+        const AuthPayload: AuthPayload = {
+          token,
+          author: {
+            id: author.id,
+            slug: author.slug,
+            name: author.name,
+            pic: author.pic,
+            bio: author.bio,
+            links: author.links
+          }
+        }
+
+        // Сразу обновляем клиент с новым токеном
+        console.log('[session] Immediately updating GraphQL client with token')
+        setLastClientToken(token)
+        setClient(() => graphqlClientCreate(coreApiUrl, token))
+
+        setSession(AuthPayload)
+      }
+    } catch (error) {
+      console.error('[confirmEmail] error:', error)
+    }
+  }
+
+  /**
+   * OAuth авторизация через GraphQL API
+   * @param {string} provider - Провайдер OAuth (например, 'google', 'github')
+   */
+  const oauth = async (provider: string): Promise<void> => {
+    try {
+      console.info(`[context.session] Initiating OAuth flow with provider: ${provider}`)
+      const state = oauthState() || Math.random().toString(36).substring(2, 15)
+      const redirectUri = window.location.origin
+
+      // Сохраняем состояние в localStorage для проверки после возвращения
+      localStorage.setItem('oauth_state', state)
+
+      // Формируем URL для OAuth редиректа
+      const baseUrl = coreApiUrl.replace('/graphql', '')
+      const oauthUrl = `${baseUrl}/oauth/${provider}?state=${state}&redirect_uri=${redirectUri}`
+
+      console.info(`[context.session] Redirecting to OAuth provider: ${oauthUrl}`)
+      window.location.href = oauthUrl
+    } catch (error) {
+      console.error(`[context.session] OAuth error with provider ${provider}:`, error)
+      toast.error(t('Authentication failed'))
+
+      // Очищаем состояние в случае ошибки
+      localStorage.removeItem('oauth_state')
+    }
+  }
+
+  /**
+   * Вспомогательная функция, которая проверяет авторизован ли пользователь
+   * с учетом статуса загрузки сессии
+   */
+  const isAuthenticated = createMemo(() => {
+    const sessionLoaded = isSessionLoaded();
+    const hasToken = !!session()?.token;
+    const hasClient = !!client();
+    
+    if (hasToken && !hasClient) {
+      console.warn('[session] Inconsistent state: token exists but client is not initialized');
+    }
+    
+    return sessionLoaded && hasToken;
   })
 
   /**
-   * General function to authenticate a user using a specified authentication function.
-   * @param authFunction - The authentication function to use (e.g., signup, login).
-   * @param params - The parameters to pass to the authentication function.
-   * @returns An object containing data and errors from the authentication attempt.
+   * Принудительное обновление GraphQL клиента с текущим токеном
+   * Используется в случаях, когда клиент не был правильно инициализирован
+   * @returns Promise, который разрешается, когда клиент обновлен
    */
-  type AuthFunctionType = (
-    data: SignupInput | LoginInput | UpdateProfileInput
-  ) => Promise<ApiResponse<AuthToken | GenericResponse>>
-  const authenticate = async (
-    authFunction: AuthFunctionType,
-    params: SignupInput | LoginInput | UpdateProfileInput
-  ) => {
-    const resp = await authFunction(params)
-    console.debug('[context.session] authenticate:', resp)
-    if (resp?.data && resp?.errors.length === 0) setSession(resp.data as AuthToken)
-    return { data: resp?.data, errors: resp?.errors }
+  const refreshClient = () => {
+    return new Promise<void>((resolve) => {
+      const currentToken = session()?.token || '';
+      console.log('[session] Manually refreshing GraphQL client with token:', !!currentToken);
+      
+      // Создаем новый клиент с токеном
+      const newClient = graphqlClientCreate(coreApiUrl, currentToken);
+      
+      // Обновляем состояние
+      setLastClientToken(currentToken);
+      setClient(() => newClient);
+      
+      // Небольшая задержка для гарантии обновления состояния
+      setTimeout(() => {
+        if (!client()) {
+          console.warn('[session] Client still not available after refresh');
+        }
+        resolve();
+      }, 50);
+    });
   }
 
   /**
-   * Signs up a new user using the provided parameters.
-   * @param params - The signup input parameters.
-   * @returns A Promise resolving to `true` if signup was successful, otherwise `false`.
+   * Обновление токена авторизации через GraphQL API
+   * @returns Promise<boolean> - успешность обновления токена
    */
-  const signUp = async (params: SignupInput): Promise<boolean> => {
-    const resp = await authenticate(authorizer().signup as AuthFunctionType, params as SignupInput)
-    console.debug('[context.session] signUp:', resp)
-    if (resp?.data) {
-      setSession(resp.data as AuthToken)
-      return true
-    }
-    return false
-  }
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      console.info('[context.session] Attempting to refresh token via Discours GraphQL API')
+      const currentToken = session()?.token || localStorage.getItem(AUTH_TOKEN_KEY)
+      
+      if (!currentToken) {
+        console.warn('[refreshToken] No token available for refresh')
+        return false
+      }
+      
+      const internalClient = graphqlClientCreate(coreApiUrl, currentToken)
 
-  /**
-   * Signs in a user using the provided credentials.
-   * @param params - The login input parameters.
-   * @returns A Promise resolving to `true` if sign-in was successful, otherwise `false`.
-   */
-  const signIn = async (params: LoginInput): Promise<boolean> => {
-    const resp = await authenticate(authorizer().login as AuthFunctionType, params)
-    console.debug('[context.session] signIn:', resp)
-    if (resp?.data) {
-      setSession(resp.data as AuthToken)
-      return true
-    }
-    console.warn('[signIn] response: ', resp)
-    setAuthError(resp.errors.pop()?.message || '')
-    return false
-  }
+      // Выполняем мутацию refreshToken через GraphQL API
+      const result = await internalClient
+        .mutation(RefreshTokenMutation, {})
+        .toPromise()
 
-  /**
-   * Updates the user's profile with the provided parameters.
-   * @param params - The update profile input parameters.
-   * @returns A Promise resolving to `true` if the update was successful, otherwise `false`.
-   */
-  const updateProfile = async (params: UpdateProfileInput): Promise<boolean> => {
-    const resp = await authenticate(authorizer().updateProfile, params)
-    console.debug('[context.session] updateProfile response:', resp)
-    if (resp?.data) {
-      // Optionally refresh session or user data here
-      return true
-    }
-    return false
-  }
+      if (result.error) {
+        console.error('[refreshToken] GraphQL error:', result.error)
+        return false
+      }
 
-  /**
-   * Signs out the current user and clears the session.
-   * @returns A Promise resolving to `true` if sign-out was successful.
-   */
-  const signOut = async (): Promise<boolean> => {
-    const authResult: ApiResponse<GenericResponse> = await authorizer().logout()
-    if (authResult) {
-      setSession({} as AuthToken)
-      setIsSessionLoaded(true)
-      toast.success(t("You've successfully logged out"))
-      return true
-    }
-    return false
-  }
+      if (result.data?.refreshToken?.success) {
+        const { author, token } = result.data.refreshToken
 
-  /**
-   * Changes the user's password using a token from a password reset email.
-   * @param password - The new password.
-   * @param token - The token from the password reset email.
-   * @returns A Promise resolving to `true` if the password was changed successfully.
-   */
-  const changePassword = async (password: string, token: string): Promise<boolean> => {
-    const resp = await authorizer().resetPassword({
-      password,
-      token,
-      confirm_password: password
-    })
-    console.debug('[context.session] change password response:', resp)
-    if (resp.data) {
-      return true
-    }
-    return false
-  }
+        // Сохраняем новый токен в localStorage
+        localStorage.setItem(AUTH_TOKEN_KEY, token)
 
-  /**
-   * Initiates the forgot password process for the given email.
-   * @param params - The forgot password input parameters.
-   * @returns A Promise resolving to an error message if any, otherwise an empty string.
-   */
-  const forgotPassword = async (params: ForgotPasswordInput): Promise<string> => {
-    const resp = await authorizer().forgotPassword(params)
-    console.debug('[context.session] forgot password response:', resp)
-    if (resp.errors.length > 0) {
-      return resp.errors.pop()?.message || ''
-    }
-    return ''
-  }
+        // Формируем объект сессии
+        const AuthPayload: AuthPayload = {
+          token,
+          author: {
+            id: author.id,
+            slug: author.slug,
+            name: author.name,
+            pic: author.pic,
+            bio: author.bio,
+            links: author.links
+          }
+        }
 
-  /**
-   * Resends the verification email to the user.
-   * @param params - The resend verify email input parameters.
-   * @returns A Promise resolving to `true` if the email was sent successfully.
-   */
-  const resendVerifyEmail = async (params: ResendVerifyEmailInput): Promise<boolean> => {
-    const resp = await authorizer().resendVerifyEmail(params)
-    console.debug('[context.session] resend verify email response:', resp)
-    if (resp.errors.length > 0) {
-      resp.errors.forEach((error) => {
-        toast.error(error.message)
-      })
+        // Обновляем клиент с новым токеном
+        setLastClientToken(token)
+        setClient(() => graphqlClientCreate(coreApiUrl, token))
+
+        // Устанавливаем сессию
+        setSession(AuthPayload)
+        return true
+      }
+
+      console.error('[refreshToken] Token refresh failed:', result.data?.refreshToken?.error)
+      return false
+    } catch (error) {
+      console.error('[refreshToken] error:', error)
       return false
     }
-    return resp.data?.message === 'Verification email has been sent. Please check your inbox'
   }
-
-  /**
-   * Checks if an email is already registered.
-   * @param email - The email to check.
-   * @returns A Promise resolving to the message from the server indicating the registration status.
-   */
-  const isRegistered = async (email: string): Promise<string> => {
-    console.debug('[context.session] calling is_registered for ', email)
-    try {
-      const response = await authorizer().graphqlQuery({
-        query: 'query IsRegistered($email: String!) { is_registered(email: $email) { message }}',
-        variables: { email }
-      })
-      return response?.data?.is_registered?.message
-    } catch (error) {
-      console.warn(error)
-    }
-    return ''
-  }
-
-  const confirmEmail = async (input: VerifyEmailInput) => {
-    console.debug(`[context.session] calling authorizer's verify email with`, input)
-    const at: ApiResponse<AuthToken> = await authorizer().verifyEmail(input)
-    if (at?.data) {
-      setSession(at.data)
-    } else {
-      console.warn(at)
-    }
-  }
-
-  const oauth = async (oauthProvider: string) => {
-    console.debug(`[context.session] calling authorizer's oauth for`)
-    try {
-      await authorizer().oauthLogin(oauthProvider, [], window?.location?.origin || '', oauthState())
-    } catch (error) {
-      console.warn(error)
-    }
-  }
-
-  // authorized graphql client
-  const [client, setClient] = createSignal<Client>()
-  createEffect(
-    on(session, (token) => {
-      console.log('[session] Creating GraphQL client with token:', !!token?.access_token)
-      if (token?.access_token) {
-        const newClient = graphqlClientCreate(coreApiUrl, token.access_token)
-        console.log('[session] New GraphQL client created')
-        setClient(() => newClient)
-      } else {
-        console.log('[session] Using default client (no token)')
-        setClient(() => graphqlClientCreate(coreApiUrl))
-      }
-    })
-  )
 
   const actions = {
     loadSession,
@@ -493,27 +991,26 @@ export const SessionProvider = (props: {
     updateProfile,
     setIsSessionLoaded,
     setSession,
-    authorizer,
     forgotPassword,
     changePassword,
     oauth,
-    isRegistered
+    isRegistered,
+    refreshClient,
+    refreshToken
   }
   const value: SessionContextType = {
     client,
     authError,
-    config,
     session,
     isSessionLoaded,
     ...actions,
-    resendVerifyEmail
+    resendVerifyEmail,
+    isAuthenticated
   }
 
   return <SessionContext.Provider value={value}>{props.children}</SessionContext.Provider>
 }
 
-export const sessionStateChanged = (payload: AuthToken) => {
+export const sessionStateChanged = (payload: AuthPayload | null) => {
   console.log('[session] Session state changed:', payload)
 }
-
-export type { AuthToken, UpdateProfileInput }

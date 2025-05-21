@@ -32,7 +32,6 @@ export const AuthorBadge = (props: Props) => {
   const navigate = useNavigate()
   const { t, formatDate, lang } = useLocalize()
   const { session, requireAuthentication } = useSession()
-  const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
   const { follows } = useFollowing()
   const [isMobileView, setIsMobileView] = createSignal(false)
   const [isFollowed, setIsFollowed] = createSignal<boolean>(
@@ -41,7 +40,10 @@ export const AuthorBadge = (props: Props) => {
   createEffect(() => setIsMobileView(!mediaMatches.sm))
   createEffect(
     on(
-      [() => follows?.authors, () => props.author],
+      [
+        () => follows?.authors, 
+        () => props.author
+      ],
       ([followingAuthors, currentAuthor]) => {
         const authorFollowed = Boolean(
           followingAuthors?.some((followedAuthor) => followedAuthor.id === currentAuthor?.id)
@@ -128,7 +130,7 @@ export const AuthorBadge = (props: Props) => {
           </Show>
         </ConditionalWrapper>
       </div>
-      <Show when={props.author.slug !== author()?.slug && !props.nameOnly}>
+      <Show when={props.author.slug !== session()?.author?.slug && !props.nameOnly}>
         <div class={styles.actions}>
           <FollowingButton
             entity={FollowingEntity.Author}

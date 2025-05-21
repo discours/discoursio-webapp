@@ -96,7 +96,7 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   }
 
   const reconnectFn = () => {
-    const token = session()?.access_token
+    const token = session()?.token
     if (token) {
       console.log('[context.connect] Manual reconnection triggered')
       setRetried(0)
@@ -108,7 +108,7 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
   createEffect(
     on(
-      () => session()?.access_token,
+      () => session()?.token,
       (tkn) => {
         if (!tkn) {
           if (eventSource()) {

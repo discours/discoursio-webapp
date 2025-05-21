@@ -101,10 +101,11 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
    * Проверяет, может ли текущий пользователь редактировать комментарий
    */
   const canEdit = createMemo(() => {
-    const currentAuthor = session()?.user?.app_data?.profile
+    const currentAuthor = session()?.author
     return (
       Boolean(currentAuthor?.id) &&
-      (props.comment.created_by?.slug === currentAuthor?.slug || session()?.user?.roles?.includes('editor'))
+      (props.comment.created_by?.slug === currentAuthor?.slug ||
+        session()?.author?.roles?.includes('editor'))
     )
   })
 
@@ -209,7 +210,7 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
    * Обработчик для ответа на комментарий
    */
   const handleReply = () => {
-    if (!session()?.access_token) {
+    if (!session()?.token) {
       saveScrollPosition()
       showModal('auth')
       return
@@ -477,9 +478,9 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
                           <Show
                             when={
                               // Комментарий принадлежит не текущему пользователю
-                              session()?.user?.app_data?.profile?.slug !== props.comment.created_by?.slug &&
+                              session()?.author?.slug !== props.comment.created_by?.slug &&
                               // И текущий пользователь не редактор
-                              !session()?.user?.roles?.includes('editor')
+                              !session()?.author?.roles?.includes('editor')
                             }
                           >
                             <button

@@ -98,7 +98,7 @@ const LAYOUT_ASPECT: { [key: string]: string } = {
 export const ArticleCard = (props: ArticleCardProps) => {
   const { t, formatDate } = useLocalize()
   const { session } = useSession()
-  const author = createMemo<Author>(() => session()?.user?.app_data?.profile as Author)
+  const author = createMemo<Author>(() => session()?.author as Author)
   const [isActionPopupActive, setIsActionPopupActive] = createSignal(false)
   const [isCoverImageLoadError, setIsCoverImageLoadError] = createSignal(false)
   const [isCoverImageLoading, setIsCoverImageLoading] = createSignal(true)
@@ -111,7 +111,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
       Boolean(author()?.id) &&
       (props.article.authors?.some((a) => Boolean(a) && a?.id === author().id) ||
         props.article.created_by?.id === author().id ||
-        session()?.user?.roles?.includes('editor'))
+        session()?.author?.roles?.includes('editor'))
   )
   const navigate = useNavigate()
 

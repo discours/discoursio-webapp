@@ -349,7 +349,7 @@ try {
 ```tsx
 // Мемоизация вычисляемых значений
 const canEdit = createMemo(() => {
-  const currentAuthor = session()?.user?.app_data?.profile
+  const currentAuthor = session()?.author?.app_data?.profile
   return Boolean(currentAuthor?.id) && comment.created_by?.slug === currentAuthor?.slug
 })
 

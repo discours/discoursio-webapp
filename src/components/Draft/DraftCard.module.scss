@@ -227,15 +227,15 @@
     }
   }
   
-  &:nth-child(2) {
+  &.edit {
     color: #06d;
   }
   
-  &:nth-child(3) {
+  &.publish {
     color: #2baa4e;
   }
   
-  &:nth-child(4) {
+  &.delete {
     color: #d00820;
   }
 }

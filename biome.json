@@ -82,7 +82,9 @@
       "suspicious": {
         "noConsole": "off",
         "noConsoleLog": "off",
-        "noAssignInExpressions": "off"
+        "noAssignInExpressions": "off",
+        "useAwait": "off",
+        "noEmptyBlockStatements": "off"
       }
     }
   }

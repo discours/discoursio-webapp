@@ -37,9 +37,9 @@ export const UploadModalContent = (props: Props) => {
         fileName: file.name,
         fileType: file.file.type,
         fileSize: file.size,
-        hasToken: !!session()?.access_token
+        hasToken: !!session()?.token
       })
-      const result = await handleFileUpload(file, session()?.access_token || '', 'image')
+      const result = await handleFileUpload(file, session()?.token || '', 'image')
       console.log('[UploadModalContent] Upload successful:', result)
       props.onClose(result)
       setIsUploading(false)

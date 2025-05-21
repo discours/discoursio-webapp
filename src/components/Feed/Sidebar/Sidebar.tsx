@@ -39,7 +39,7 @@ export const Sidebar = () => {
         feedByAuthor,
         feedByTopic,
         () => follows,
-        () => session()?.access_token,
+        () => session()?.token,
         () => authorsEntities(),
         () => topicEntities(),
         () => topTopics()

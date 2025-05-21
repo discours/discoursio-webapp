@@ -108,7 +108,7 @@ export const VotersList = (props: VotersListProps) => {
               when={ratings().size > 0}
               fallback={
                 <li class={clsx(styles.item, styles.fallbackMessage)}>
-                  <Show when={!session()?.access_token} fallback={t('No one rated yet')}>
+                  <Show when={!session()?.token} fallback={t('No one rated yet')}>
                     <A href="?m=auth&mode=login">{t('Sign in')}</A>
                     {`, ${t('to see who rated')}`}
                   </Show>

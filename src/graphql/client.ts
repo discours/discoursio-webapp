@@ -52,31 +52,44 @@ export const createQueryResource = <T, V>(
 }
 
 /**
- * Создает GraphQL клиент с настроенными заголовками
+ * Создает GraphQL клиент с настроенными заголовками и обработкой ошибок
  * @param url - URL GraphQL API
  * @param token - Токен авторизации (опционально)
  * @param origin - Origin заголовок (опционально)
+ * @param timeout - Таймаут запроса в миллисекундах (по умолчанию 15000)
  * @returns Настроенный GraphQL клиент
  */
-export const graphqlClientCreate = (url: string, token = '', origin = 'discours.io'): Client => {
+export const graphqlClientCreate = (
+  url: string,
+  token = '',
+  timeout = 15000
+): Client => {
   const exchanges = [fetchExchange, cacheExchange]
   const options: ClientOptions = {
     url,
     exchanges,
-    fetchOptions: () => ({
-      headers: {
-        'content-type': 'application/json',
-        accept: 'application/graphql-response+json, application/graphql+json, application/json',
-        origin: origin || (typeof window !== 'undefined' ? window.location.origin : new URL(url).origin),
-        ...(token
-          ? {
-              authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`
-            }
-          : {})
-      },
-      credentials: 'include',
-      mode: 'cors'
-    })
+    fetchOptions: () => {
+      const controller = new AbortController()
+
+      // Устанавливаем таймаут для запроса
+      setTimeout(() => {
+        controller.abort()
+      }, timeout)
+      return {
+        signal: controller.signal,
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/graphql-response+json, application/graphql+json, application/json',
+          ...(token
+            ? {
+                authorization: token
+              }
+            : {})
+        },
+        credentials: 'include',
+        mode: 'cors'
+      }
+    }
   }
 
   return createClient(options)
@@ -84,6 +97,5 @@ export const graphqlClientCreate = (url: string, token = '', origin = 'discours.
 
 export const defaultClient: Client = graphqlClientCreate(
   coreApiUrl,
-  '',
-  typeof window !== 'undefined' ? window.location.origin : 'discours.io'
+  ''
 )

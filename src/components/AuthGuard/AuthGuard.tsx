@@ -10,7 +10,7 @@ type Props = {
 
 export const AuthGuard = (props: Props) => {
   const { session } = useSession()
-  const author = createMemo<number>(() => session()?.user?.app_data?.profile?.id || 0)
+  const author = createMemo<number>(() => session()?.author?.id || 0)
   const [, changeSearchParams] = useSearchParams()
   const { hideModal } = useUI()
 

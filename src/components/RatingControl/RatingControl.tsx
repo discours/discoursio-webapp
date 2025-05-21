@@ -35,14 +35,14 @@ export const RatingControl = (props: Props) => {
     (r.kind === ReactionKind.Like || r.kind === ReactionKind.Dislike) && r.reply_to === props.comment?.id
   const shoutRatingFilter = (r: Reaction) =>
     (r.kind === ReactionKind.Like || r.kind === ReactionKind.Dislike) && !r.reply_to
-  const mineFilter = (r: Reaction) => r.created_by.slug === session()?.user?.app_data?.profile?.slug
+  const mineFilter = (r: Reaction) => r.created_by.slug === session()?.author?.slug
 
   createEffect(on(() => props.myRate, setCurrentRate))
 
   createEffect(
     on(
-      [() => reactionsByShout()[props.shout?.id || 0], () => session()?.user?.app_data?.profile],
-      ([rrr, profile]) => {
+      [() => reactionsByShout()[props.shout?.id || 0], () => session()?.author],
+      ([rrr, author]) => {
         if (rrr !== ratings() && rrr) {
           // Удаляем дубликаты по id
           const uniqueReactions = Array.from(new Map(rrr.map((r) => [r.id, r])).values())
@@ -51,8 +51,8 @@ export const RatingControl = (props: Props) => {
           )
           // console.log('[RatingControl] filtered ratings:', shoutRatings)
           // console.debug('[RatingControl] profile:', profile)
-          if (profile) {
-            const mr = shoutRatings.find((r) => r.created_by.slug === profile.slug)
+          if (author) {
+            const mr = shoutRatings.find((r) => r.created_by.slug === author.slug)
             if (mr) {
               setCurrentRate(mr.kind)
             }
@@ -215,7 +215,7 @@ export const RatingControl = (props: Props) => {
   }
 
   const handleRatingClick = async () => {
-    if (!session()?.access_token) return
+    if (!session()?.token) return
 
     // Если попап уже открыт, просто игнорируем клик
     if (votersListVisible()) return
@@ -261,7 +261,7 @@ export const RatingControl = (props: Props) => {
       >
         <div class={styles.votersListContainer}>
           <Show
-            when={session()?.access_token}
+            when={session()?.token}
             fallback={
               <>
                 <A class={styles.signInMessage} href="?m=auth&mode=login">

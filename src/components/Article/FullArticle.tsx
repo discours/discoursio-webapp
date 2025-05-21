@@ -18,7 +18,7 @@ import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
-import { AuthToken, useSession } from '~/context/session'
+import { useSession } from '~/context/session'
 import { DEFAULT_HEADER_OFFSET, useUI } from '~/context/ui'
 import { ReactionKind } from '~/graphql/schema/core.gen'
 import type { Author, Maybe, Shout, Topic } from '~/graphql/schema/core.gen'
@@ -206,13 +206,11 @@ export const FullArticle = (props: Props) => {
 
   createEffect(
     on(
-      () => session(),
-      (s?: AuthToken) => {
-        const profile = s?.user?.app_data?.profile
-        if (!profile) return
-        const isEditor = s?.user?.roles?.includes('editor')
-        const isCreator = props.article.created_by?.id === profile.id
-        const fit = (a: Maybe<Author>) => a?.id === profile.id || isCreator || isEditor
+      () => session()?.author,
+      (author?: Author) => {
+        const isEditor = author?.roles?.includes('editor')
+        const isCreator = props.article.created_by?.id === author?.id
+        const fit = (a: Maybe<Author>) => a?.id === author?.id || isCreator || isEditor
         setCanEdit((_: boolean) => Boolean(props.article.authors?.some(fit)))
       }
     )
@@ -355,9 +353,8 @@ export const FullArticle = (props: Props) => {
 
   const myRate = createMemo(
     () =>
-      reactionsByShout()[props.article.id || 0]?.find(
-        (r) => r.created_by.slug === session()?.user?.app_data?.profile?.slug
-      )?.kind
+      reactionsByShout()[props.article.id || 0]?.find((r) => r.created_by.slug === session()?.author?.slug)
+        ?.kind
   )
   const ArticleActionsBar = () => (
     <div class={styles.shoutStats}>
@@ -642,7 +639,7 @@ export const FullArticle = (props: Props) => {
           <div class="col-md-16 offset-md-5">
             <ArticleActionsBar />
 
-            <Show when={session()?.access_token && !canEdit() && !isServer}>
+            <Show when={session()?.token && !canEdit() && !isServer}>
               <div class={styles.help}>
                 <button class="button">{t('Cooperate')}</button>
               </div>

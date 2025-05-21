@@ -630,7 +630,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
    */
   createEffect(
     on(myFeed, async (currentFeed) => {
-      if (!(session()?.access_token && currentFeed)) return
+      if (!(session()?.token && currentFeed)) return
 
       setIsFeedLoading(true)
       try {

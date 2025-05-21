@@ -82,7 +82,7 @@ const EditingHeader = (props: Props) => {
   const { toggleEditorPanel } = useDrafts()
   const { session } = useSession()
   const loc = useLocation()
-  const author = createMemo(() => session()?.user?.app_data?.profile as Author)
+  const author = createMemo(() => session()?.author as Author)
   const matchProfile = createMemo(() => loc.pathname.endsWith(author()?.slug))
 
   return (
@@ -149,7 +149,7 @@ const AuthorizedHeader = (props: Props) => {
   const { session } = useSession()
   const navigate = useNavigate()
   const loc = useLocation()
-  const author = createMemo(() => session()?.user?.app_data?.profile as Author)
+  const author = createMemo(() => session()?.author as Author)
   const matchProfile = createMemo(() => loc.pathname.endsWith(author()?.slug))
   const matchInbox = createMemo(() => loc.pathname.endsWith('inbox'))
 
@@ -349,7 +349,7 @@ export const HeaderControls = (props: Props) => {
   const loc = useLocation()
 
   const isEditingMode = createMemo(() => loc.pathname.startsWith('/edit/') && !loc.pathname.endsWith('new'))
-  const isAuthorized = createMemo(() => !!session()?.access_token)
+  const isAuthorized = createMemo(() => !!session()?.token)
 
   return (
     <div class={clsx('col-auto col-lg-7', styles.usernav)}>

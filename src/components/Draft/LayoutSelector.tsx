@@ -1,9 +1,11 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For } from 'solid-js'
+import toast from 'solid-toast'
 
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
+import { useSession } from '~/context/session'
 import { LayoutType } from '~/types/nav'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
@@ -13,11 +15,23 @@ import styles from './LayoutSelector.module.scss'
 export const LayoutSelector = () => {
   const { t } = useLocalize()
   const { createDraft, loadDrafts } = useDrafts()
+  const { refreshClient, isAuthenticated } = useSession()
   const navigate = useNavigate()
 
   const handleCreate = async (layout: LayoutType) => {
     try {
       console.debug('[routes : edit/new] handling create click...')
+      
+      // Проверяем авторизацию перед созданием черновика
+      if (!isAuthenticated()) {
+        console.warn('[routes : edit/new] user not authenticated')
+        toast.error(t('You need to be logged in to create drafts'))
+        return
+      }
+      
+      // Обновляем клиент для гарантии актуального токена и ждем завершения
+      await refreshClient()
+      
       const result = await createDraft({ layout })
       console.log('[routes : edit/new] result', result)
 
@@ -33,9 +47,15 @@ export const LayoutSelector = () => {
         await navigate(`/edit/${result.data.create_draft.draft.id}`, { replace: true })
       } else {
         console.warn('[routes : edit/new] failed to create draft:', result)
+        if (result?.error?.message.includes('авторизация')) {
+          toast.error(t('Authorization error. Please log in again'))
+        } else {
+          toast.error(t('Failed to create draft. Please try again'))
+        }
       }
     } catch (error) {
       console.error('[routes : edit/new] error:', error)
+      toast.error(t('Error creating draft. Please try again'))
     }
   }
 

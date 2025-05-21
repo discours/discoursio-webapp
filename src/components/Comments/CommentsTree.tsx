@@ -466,7 +466,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       isContentEmpty: isContentEmpty(localContent())
     })
 
-    if (!session()?.user) {
+    if (!session()?.author) {
       toast.error(t('Please sign in to comment'))
       return
     }
@@ -683,7 +683,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
   const handleReply = (replyToCommentId: number) => {
     if (!replyToCommentId) return
-    if (!session()?.user) {
+    if (!session()?.author) {
       toast.error(t('Please sign in to reply'))
       return
     }
@@ -736,7 +736,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
   const handleEdit = (commentId: number) => {
     if (!commentId) return
-    if (!session()?.user) {
+    if (!session()?.author) {
       toast.error(t('Please sign in to edit'))
       return
     }
@@ -794,7 +794,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
    */
   const handleDelete = async (id: number) => {
     if (!id) return
-    if (!session()?.user) {
+    if (!session()?.author) {
       toast.error(t('Please sign in to delete'))
       return
     }
@@ -932,7 +932,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         } else if (currentDate.getTime() > shoutLastSeen()) {
           const newComments = comments().filter((c) => {
             // Исключаем собственные комментарии из списка новых
-            if (session()?.user?.app_data?.profile?.id === c.created_by?.id) {
+            if (session()?.author?.id === c.created_by?.id) {
               return false
             }
 

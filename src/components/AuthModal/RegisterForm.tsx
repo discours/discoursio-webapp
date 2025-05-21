@@ -104,10 +104,7 @@ export const RegisterForm = () => {
 
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   const handleResendLink = async (_ev: any) => {
-    const success: boolean = await resendVerifyEmail({
-      email: email(),
-      identifier: 'basic_signup'
-    })
+    const success: boolean = await resendVerifyEmail({ email: email() })
     setIsSuccess(success)
   }
 

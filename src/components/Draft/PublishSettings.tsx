@@ -380,9 +380,7 @@ export const PublishSettings = () => {
                       initialValue={draft()?.seo || ''}
                     />
                   </Show>
-                  <div class={styles.shoutAuthor}>
-                    {session()?.user?.app_data?.profile?.name || t('Anonymous')}
-                  </div>
+                  <div class={styles.shoutAuthor}>{session()?.author?.name || t('Anonymous')}</div>
                 </div>
               </div>
             </div>

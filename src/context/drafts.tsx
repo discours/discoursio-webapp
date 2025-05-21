@@ -411,11 +411,11 @@ type DraftsContextType = {
   getEditorContent: (editorId: string) => string
   setEditorContent: (editorId: string, content: string) => void
   loadDrafts: () => Promise<void>
-  createDraft: (draft: DraftInput) => Promise<OperationResult<CreateDraftMutationMutation>>
-  updateDraft: (draft: DraftInput) => Promise<OperationResult<UpdateDraftMutationMutation>>
-  deleteDraft: (id: number) => Promise<OperationResult<DeleteDraftMutationMutation>>
-  publishDraft: (draftId: number) => Promise<OperationResult<PublishDraftMutationMutation>>
-  unpublishShout: (shoutId: number) => Promise<OperationResult<UnpublishShoutMutationMutation>>
+  createDraft: (draft: DraftInput) => Promise<OperationResult<CreateDraftMutationMutation> | void>
+  updateDraft: (draft: DraftInput) => Promise<OperationResult<UpdateDraftMutationMutation> | void>
+  deleteDraft: (id: number) => Promise<OperationResult<DeleteDraftMutationMutation> | void>
+  publishDraft: (draftId: number) => Promise<OperationResult<PublishDraftMutationMutation> | void>
+  unpublishShout: (shoutId: number) => Promise<OperationResult<UnpublishShoutMutationMutation> | void>
   isEditorPanelVisible: Accessor<boolean>
   toggleEditorPanel: () => void
   setIsEditorPanelVisible: (visible: boolean) => void
@@ -451,7 +451,7 @@ type DraftsContextType = {
 export const DraftsContext = createContext<DraftsContextType>({} as DraftsContextType)
 const DRAFT_EDITOR_ID_REGEX = /draft-(\d+)-([a-z]+)/
 export const DraftsProvider = (props: { children: JSX.Element }) => {
-  const { client, session } = useSession()
+  const { client, session, refreshClient } = useSession()
   const { topicEntities } = useTopics()
   // все доступные для редактирования черновики
   const [drafts, setDrafts] = createSignal<ExtendedDraft[]>([])
@@ -871,7 +871,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           mainTopic: null, // Локально mainTopic не храним в нужном формате
           // Оставляем только поля, которые есть в Draft/ExtendedDraft
           // Добавляем обязательные поля из Draft, если они нужны
-          created_by: { id: 0, slug: '', user: '' }, // Заглушка
+          created_by: { id: 0, slug: '' }, // Заглушка
           community: {
             // Заглушка
             id: 0,
@@ -879,7 +879,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
             name: '',
             pic: '',
             created_at: 0,
-            created_by: { id: 0, slug: '', user: '' }
+            created_by: { id: 0, slug: '' }
           },
           // Специальное поле для локальных черновиков
           isLocalOnly: true,
@@ -926,7 +926,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
    * Загрузка черновиков с проверкой опубликованных версий
    */
   const loadDrafts = async () => {
-    if (isServer || !session()?.access_token) {
+    if (isServer || !session()?.token) {
       if (!isServer) {
         console.warn('[DraftsProvider] Not loading drafts: user not logged in')
       }
@@ -1062,14 +1062,14 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         authors: [],
         created_at: timestamp,
         updated_at: timestamp,
-        created_by: { id: 0, slug: '', user: '' },
+        created_by: { id: 0, slug: '', },
         community: {
           id: 0,
           slug: '',
           name: '',
           pic: '',
           created_at: 0,
-          created_by: { id: 0, slug: '', user: '' }
+          created_by: { id: 0, slug: '' }
         },
         isLocalOnly: true
       }
@@ -1089,9 +1089,25 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     return localDraftsFallback
   }
 
-  const createDraft = async (draft: DraftInput): Promise<OperationResult<CreateDraftMutationMutation>> => {
+  const createDraft = async (draft: DraftInput): Promise<OperationResult<CreateDraftMutationMutation> | void> => {
     console.log('[drafts] creating draft', draft)
-    const response = await client()?.mutation(createDraftMutation, { draft_input: draft })
+
+    // Проверяем наличие клиента и авторизации
+    if (!client()) return Promise.reject(new Error('Client is not initialized'))
+    
+    // Проверяем токен авторизации
+    if (!session()?.token) return Promise.reject(new Error('No auth token available'))
+    
+    // Обновляем клиент для гарантии актуального токена и дожидаемся завершения
+    await refreshClient()
+    
+    // Получаем обновленный клиент после refreshClient
+    const currentClient = client()
+    if (!currentClient) {
+      return Promise.reject(new Error('Client is still not initialized after refresh'))
+    }
+    
+    const response = await currentClient.mutation(createDraftMutation, { draft_input: draft })
     console.log('[drafts] create response:', JSON.stringify(response, null, 2))
     if (response?.data?.create_draft?.draft) {
       const newDraft = response.data.create_draft.draft

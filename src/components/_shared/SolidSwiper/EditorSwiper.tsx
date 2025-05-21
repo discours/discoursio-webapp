@@ -97,7 +97,7 @@ export const EditorSwiper = (props: Props) => {
       setLoading(true)
       const results: UploadedFile[] = []
       for (const file of selectedFiles) {
-        const result = await handleFileUpload(file, session()?.access_token || '', 'image')
+        const result = await handleFileUpload(file, session()?.token || '', 'image')
         results.push(result)
       }
       props.onImagesAdd?.(composeMediaItems(results))
