@@ -1,7 +1,7 @@
-import { redirect } from '@solidjs/router'
+import { redirect, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
 import type { JSX } from 'solid-js'
-import { Show } from 'solid-js'
+import { Show, createEffect } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { useUI } from '~/context/ui'
 import { isPortrait } from '~/lib/mediaQuery'
@@ -21,6 +21,17 @@ interface Props {
 
 export const Modal = (props: Props) => {
   const { modal, hideModal } = useUI()
+  const location = useLocation()
+
+  // Close modal on route changes
+  createEffect((prevPath) => {
+    const currentPath = location.pathname
+    if (prevPath && prevPath !== currentPath && modal() === props.name) {
+      console.debug('[Modal] Route changed, hiding modal', { from: prevPath, to: currentPath })
+      handleHide()
+    }
+    return currentPath
+  }, location.pathname)
 
   const handleHide = () => {
     console.debug('[Modal.handleHide]', modal())

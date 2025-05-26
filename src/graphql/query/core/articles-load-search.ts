@@ -3,7 +3,6 @@ import { gql } from 'graphql-tag'
 export default gql`
   query LoadShoutsSearchQuery($text: String!, $options: LoadShoutsOptions) {
     load_shouts_search(text: $text, options: $options) {
-      score
       title
       slug
       created_at

@@ -63,6 +63,51 @@
   color: rgb(255 255 255 / 64%);
 }
 
+.searchNavButton {
+  cursor: pointer;
+  color: #fff;
+  text-decoration: none;
+  padding: 4px 8px;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.searchNavButtonSelected {
+  border-bottom: 2px solid #fff;
+  padding-bottom: 6px;
+}
+
+.searchAuthorsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.searchAllBlock {
+  margin: 2.5rem 0;
+  padding: 2rem 0;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+
+.searchAllBlockTitle {
+  font-size: 2rem;
+  margin: 0 0 2rem;
+  color: #fff;
+}
+
+.searchAllBlockGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  
+  @media (width <= 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
 .topicsList {
   display: flex;
   flex-wrap: wrap;
@@ -112,6 +157,19 @@
   border-bottom-color: transparent;
   border-radius: 50%;
   animation: rotation 1s linear infinite;
+}
+
+.searchResults {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
 }
 
 @keyframes rotation {

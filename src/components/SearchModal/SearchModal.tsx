@@ -1,104 +1,338 @@
-import { For, Show, createResource, createSignal, onCleanup } from 'solid-js'
+import { Show, createEffect, createResource, createSignal, onCleanup, onMount } from 'solid-js'
 import { debounce } from 'throttle-debounce'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
-import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import modalStyles from '~/components/_shared/Modal/Modal.module.scss'
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
-import type { Shout } from '~/graphql/schema/core.gen'
+import { useTopics } from '~/context/topics'
+import { loadAuthorsSearch } from '~/graphql/api/public'
+import type { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import { dummyFilter } from '~/intl/dummyFilter'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { byScore } from '~/utils/sort'
-import { SearchResultItem } from './SearchResultItem'
 
-import styles from './SearchModal.module.scss'
+import { SearchAll } from './Views/SearchAll'
+import { SearchAuthors } from './Views/SearchAuthors'
+import { SearchNav } from './Views/SearchNav'
+import { SearchShouts } from './Views/SearchShouts'
+import { SearchTopics } from './Views/SearchTopic'
 
-// @@TODO handle empty article options after backend support (subtitle, cover, etc.)
-// @@TODO implement FILTERS & TOPICS
-
-const getSearchCoincidences = ({ str, intersection }: { str: string; intersection: string }) =>
-  `<span>${str.replaceAll(
-    new RegExp(intersection, 'gi'),
-    (casePreservedMatch) => `<span class="blackModeIntersection">${casePreservedMatch}</span>`
-  )}</span>`
-
-const prepareSearchResults = (list: Shout[], searchValue: string) =>
-  list.sort(byScore as (a: Shout, b: Shout) => number).map((article, index) => ({
-    ...article,
-    id: index,
-    title: article.title
-      ? getSearchCoincidences({
-          str: article.title,
-          intersection: searchValue
-        })
-      : '',
-    subtitle: article.subtitle
-      ? getSearchCoincidences({
-          str: article.subtitle,
-          intersection: searchValue
-        })
-      : ''
-  }))
+import styles from './Styles/SearchModal.module.scss'
 
 export const SearchModal = () => {
-  const { t } = useLocalize()
+  const { t, lang } = useLocalize()
   const { loadFeedSearch, searchFeed } = useFeed()
-  const [isLoadMoreButtonVisible, setIsLoadMoreButtonVisible] = createSignal(false)
+  const sentinelStyle = { height: '1px', padding: '0', margin: '0', opacity: '0' }
   const [inputValue, setInputValue] = createSignal('')
   const [isLoading, setIsLoading] = createSignal(false)
   const [offset, setOffset] = createSignal<number>(0)
+  const [hasMore, setHasMore] = createSignal(false)
 
-  const fetchSearchResults = async () => {
+  // Use separate sentinel elements for shouts, authors and topics
+  const [shoutsSentinelEl, setShoutsSentinelEl] = createSignal<HTMLDivElement>()
+  const [authorsSentinelEl, setAuthorsSentinelEl] = createSignal<HTMLDivElement>()
+  const [topicsSentinelEl, setTopicsSentinelEl] = createSignal<HTMLDivElement>()
+  const [currentView, setCurrentView] = createSignal('all')
+
+  // Author search related states
+  const [authorsResultsList, setAuthorsResultsList] = createSignal<Author[]>([])
+  const [_isLoadingAuthors, setIsLoadingAuthors] = createSignal(false)
+
+  // Topic search related states
+  const { topicsByShouts } = useTopics()
+  const [topicsResultList, setTopicsResultList] = createSignal<Topic[]>([])
+  const [_isLoadingTopics, setIsLoadingTopics] = createSignal(false)
+
+  // Function to fetch Authors based on the search input
+  const fetchAuthorsResults = async (query: string, resetResults = true) => {
+    if (query.length < 3) {
+      setAuthorsResultsList([])
+      return []
+    }
+
+    setIsLoadingAuthors(true)
+
+    try {
+      const authorsResult = await loadAuthorsSearch(query, FEED_PAGE_SIZE, 0)()
+
+      // Only reset authors list if resetResults is true (new search)
+      if (resetResults) {
+        setAuthorsResultsList(authorsResult || [])
+      }
+
+      return authorsResult || []
+    } catch (error) {
+      console.error('[SearchModal] Error fetching authors:', error)
+      if (resetResults) {
+        setAuthorsResultsList([])
+      }
+      return []
+    } finally {
+      setIsLoadingAuthors(false)
+    }
+  }
+
+  // Function to fetch Shouts based on the search input
+  const fetchShoutsResults = async (resetResults = false) => {
+    if (inputValue().trim().length < 3) {
+      return []
+    }
+
+    const currentOffset = resetResults ? 0 : offset()
+    const searchQuery = inputValue().trim()
+
     setIsLoading(true)
     saveScrollPosition()
-    await loadFeedSearch(inputValue(), {
-      offset: offset(),
+
+    if (resetResults) {
+      setOffset(0)
+      setshoutsResultsList([])
+
+      // Fetch authors when resetting results
+      fetchAuthorsResults(searchQuery)
+      fetchTopicsResults(searchQuery)
+    }
+
+    await loadFeedSearch(searchQuery, {
+      offset: currentOffset,
       limit: FEED_PAGE_SIZE
     })
-    const { hasMore, shouts: newShouts } = searchFeed()
+
+    const { hasMore: more, shouts: newShouts } = searchFeed()
+
     setIsLoading(false)
-    setOffset(newShouts.length)
-    setIsLoadMoreButtonVisible(hasMore)
-    return newShouts
+    setOffset(currentOffset + (newShouts?.length || 0))
+    setHasMore(more)
+
+    if (newShouts?.length) {
+      setshoutsResultsList(newShouts)
+    }
+
+    restoreScrollPosition()
+    return resetResults ? newShouts || [] : []
   }
-  const [searchResultsList, { refetch: loadSearchResults, mutate: setSearchResultsList }] = createResource<
-    Shout[]
-  >(fetchSearchResults, { ssrLoadFrom: 'initial', initialValue: [] })
+
+  const [shoutsResultsList, { mutate: setshoutsResultsList }] = createResource<Shout[]>(
+    fetchShoutsResults,
+    { ssrLoadFrom: 'initial', initialValue: [] }
+  )
 
   const [searchEl, setSearchEl] = createSignal<HTMLInputElement | undefined>()
-  const debouncedLoadMore = debounce(500, loadSearchResults)
+
+  const debouncedSearch = debounce(500, () => {
+    const query = inputValue().trim()
+    if (query.length >= 3) {
+      fetchShoutsResults(true)
+    } else {
+      setshoutsResultsList([])
+      setAuthorsResultsList([])
+      setHasMore(false)
+      setOffset(0)
+    }
+  })
 
   const handleQueryInput = async () => {
-    setInputValue(searchEl()?.value ?? '')
-    if ((searchEl()?.value?.length || 0) > 2) {
-      await debouncedLoadMore()
+    const newValue = searchEl()?.value ?? ''
+    setInputValue(newValue)
+
+    if (newValue.trim()) {
+      await debouncedSearch()
     } else {
-      setIsLoading(false)
-      setSearchResultsList([])
+      setshoutsResultsList([])
+      setAuthorsResultsList([])
+      setHasMore(false)
+      setOffset(0)
+    }
+
+    // Clear author results when query is less than 3 characters
+    if (newValue.trim().length < 3) {
+      setAuthorsResultsList([])
+    }
+  }
+
+  // Function to fetch Topics based on the search input
+  const fetchTopicsResults = (query: string, resetResults = true) => {
+    if (query.length < 3) {
+      setTopicsResultList([])
+      return []
+    }
+
+    setIsLoadingTopics(true)
+
+    try {
+      // Get all topics and filter with dummyFilter
+      const allTopics = topicsByShouts()
+      const filteredTopics = dummyFilter(allTopics, query, lang()) as Topic[]
+
+      if (resetResults) {
+        setTopicsResultList(filteredTopics || [])
+      }
+
+      return filteredTopics || []
+    } catch (error) {
+      console.error('[SearchModal] Error filtering topics:', error)
+      if (resetResults) {
+        setTopicsResultList([])
+      }
+      return []
+    } finally {
+      setIsLoadingTopics(false)
     }
   }
 
   const enterQuery = async (ev: KeyboardEvent) => {
+    if (ev.key !== 'Enter') return
+
     setIsLoading(true)
-    if (ev.key === 'Enter' && inputValue().length > 2) {
-      await debouncedLoadMore()
+    debouncedSearch.cancel() // Cancel any pending debounced search
+
+    const query = inputValue().trim()
+    if (query.length >= 3) {
+      await fetchShoutsResults(true)
     } else {
-      setIsLoading(false)
-      setSearchResultsList([])
+      setshoutsResultsList([])
+      setAuthorsResultsList([])
+      setHasMore(false)
+      setOffset(0)
     }
-    restoreScrollPosition()
+
+    await restoreScrollPosition()
     setIsLoading(false)
   }
 
-  // Cleanup the debounce timer when the component unmounts
-  onCleanup(() => {
-    debouncedLoadMore.cancel()
-    // console.debug('[SearchModal] cleanup debouncing search')
+  // Setup intersection observers for infinite scroll
+  let shoutsObserver: IntersectionObserver | undefined
+  let authorsObserver: IntersectionObserver | undefined
+  let topicsObserver: IntersectionObserver | undefined
+
+  // Function to load more authors with pagination
+  const loadMoreAuthors = async () => {
+    if (inputValue().trim().length < 3 || isLoading() || !hasMore()) return
+
+    setIsLoading(true)
+    const currentQuery = inputValue().trim()
+    try {
+      const authorOffset = authorsResultsList().length
+      const newAuthors = await loadAuthorsSearch(currentQuery, FEED_PAGE_SIZE, authorOffset)()
+
+      if (newAuthors && newAuthors.length > 0) {
+        setAuthorsResultsList([...authorsResultsList(), ...newAuthors])
+        setHasMore(newAuthors.length >= FEED_PAGE_SIZE)
+      } else {
+        setHasMore(false)
+      }
+    } catch (error) {
+      console.error('[SearchModal] Error fetching more authors:', error)
+      setHasMore(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Setup observer for shouts
+  const setupShoutsObserver = () => {
+    if (shoutsObserver) shoutsObserver.disconnect()
+    const shoutsSentinel = shoutsSentinelEl()
+    if (!shoutsSentinel) return
+
+    const modalInnerElement = document.querySelector(`.${modalStyles.modalInner}`) as Element
+    if (!modalInnerElement) return
+
+    shoutsObserver = new IntersectionObserver(
+      async (entries) => {
+        if (entries[0].isIntersecting && hasMore() && !isLoading()) {
+          await fetchShoutsResults(false) // Load more shouts
+        }
+      },
+      {
+        root: modalInnerElement,
+        rootMargin: '100px',
+        threshold: 0.1
+      }
+    )
+
+    shoutsObserver.observe(shoutsSentinel)
+  }
+
+  // Setup observer for authors
+  const setupAuthorsObserver = () => {
+    if (authorsObserver) authorsObserver.disconnect()
+    const authorsSentinel = authorsSentinelEl()
+    if (!authorsSentinel) return
+
+    const modalInnerElement = document.querySelector(`.${modalStyles.modalInner}`) as Element
+    if (!modalInnerElement) return
+
+    authorsObserver = new IntersectionObserver(
+      async (entries) => {
+        if (entries[0].isIntersecting && hasMore() && !isLoading()) {
+          await loadMoreAuthors() // Load more authors
+        }
+      },
+      {
+        root: modalInnerElement,
+        rootMargin: '100px',
+        threshold: 0.1
+      }
+    )
+
+    authorsObserver.observe(authorsSentinel)
+  }
+
+  // Setup observer for topics
+  const setupTopicsObserver = () => {
+    if (topicsObserver) topicsObserver.disconnect()
+    const topicsSentinel = topicsSentinelEl()
+    if (!topicsSentinel) return
+    const modalInnerElement = document.querySelector(`.${modalStyles.modalInner}`) as Element
+    if (!modalInnerElement) return
+    topicsObserver = new IntersectionObserver(
+      async (_entries) => {
+        // For topics we don't need pagination since we're filtering client-side
+        // But we could add it if needed in the future
+      },
+      {
+        root: modalInnerElement,
+        rootMargin: '100px',
+        threshold: 0.1
+      }
+    )
+    topicsObserver.observe(topicsSentinel)
+  }
+
+  // Set up observers when sentinel elements change
+  createEffect(() => {
+    const shoutsSentinel = shoutsSentinelEl()
+    if (shoutsSentinel) {
+      setupShoutsObserver()
+    }
   })
 
-  const loadMoreResults = async () => {
-    const result = await fetchSearchResults()
-    return result as LoadMoreItems
-  }
+  createEffect(() => {
+    const authorsSentinel = authorsSentinelEl()
+    if (authorsSentinel) {
+      setupAuthorsObserver()
+    }
+  })
+
+  createEffect(() => {
+    const topicsSentinel = topicsSentinelEl()
+    if (topicsSentinel) {
+      setupTopicsObserver()
+    }
+  })
+
+  // Cleanup observers on unmount
+  onMount(() => {
+    // Initial setup will happen via createEffects when sentinels are set
+  })
+
+  onCleanup(() => {
+    debouncedSearch.cancel()
+    if (shoutsObserver) shoutsObserver.disconnect()
+    if (authorsObserver) authorsObserver.disconnect()
+    if (topicsObserver) topicsObserver.disconnect()
+  })
 
   return (
     <div class={styles.searchContainer}>
@@ -113,79 +347,97 @@ export const SearchModal = () => {
 
       <Button
         class={styles.searchButton}
-        onClick={debouncedLoadMore}
+        onClick={() => {
+          const query = inputValue().trim()
+          if (query.length >= 3) {
+            debouncedSearch.cancel()
+            fetchShoutsResults(true)
+          }
+        }}
         value={isLoading() ? <div class={styles.searchLoader} /> : <Icon name="search" />}
       />
 
-      <p
-        class={styles.searchDescription}
-        innerHTML={t(
-          'To find publications, art, comments, authors and topics of interest to you, just start typing your query'
-        )}
-      />
+      <Show when={inputValue().trim().length < 3}>
+        <p
+          class={styles.searchDescription}
+          innerHTML={t(
+            'To find publications, art, comments, authors and topics of interest to you, just start typing your query'
+          )}
+        />
+      </Show>
 
-      <Show when={!isLoading()}>
-        <Show when={searchResultsList()}>
-          <LoadMoreWrapper
-            loadFunction={loadMoreResults}
-            pageSize={FEED_PAGE_SIZE}
-            hidden={!isLoadMoreButtonVisible()}
-          >
-            <For each={prepareSearchResults(searchResultsList(), inputValue())}>
-              {(article: Shout) => (
-                <div>
-                  <SearchResultItem
-                    article={article}
-                    settings={{
-                      isFloorImportant: true,
-                      isSingle: true,
-                      nodate: true
-                    }}
-                  />
-                </div>
-              )}
-            </For>
-          </LoadMoreWrapper>
+      <Show when={inputValue().trim().length >= 3}>
+        <SearchNav
+          view={currentView()}
+          setView={(view) => {
+            // When switching views, reset the offset if needed
+            if (view !== currentView()) {
+              setCurrentView(view)
+              setHasMore(true)
+            }
+          }}
+        />
+      </Show>
+
+      <Show when={(!isLoading() || shoutsResultsList().length > 0) && inputValue().trim().length >= 3}>
+        <Show when={shoutsResultsList().length > 0 || authorsResultsList().length > 0}>
+          {/* Render the appropriate component based on current view */}
+          <Show when={currentView() === 'all'}>
+            <SearchAll
+              searchValue={inputValue()}
+              isLoading={isLoading()}
+              hasMore={hasMore()}
+              shoutsList={shoutsResultsList()}
+              authorsList={authorsResultsList()}
+              topicsList={topicsResultList()}
+            />
+          </Show>
+
+          <Show when={currentView() === 'articles'}>
+            <SearchShouts
+              searchValue={inputValue()}
+              isLoading={isLoading()}
+              hasMore={hasMore()}
+              setSentinelEl={setShoutsSentinelEl}
+              sentinelStyle={sentinelStyle}
+              shoutsList={shoutsResultsList()}
+            />
+          </Show>
+
+          <Show when={currentView() === 'topics'}>
+            <SearchTopics
+              searchValue={inputValue()}
+              isLoading={isLoading()}
+              hasMore={hasMore()}
+              setSentinelEl={setTopicsSentinelEl}
+              sentinelStyle={sentinelStyle}
+              topicsList={topicsResultList()}
+            />
+          </Show>
+
+          <Show when={currentView() === 'authors'}>
+            <SearchAuthors
+              searchValue={inputValue()}
+              isLoading={isLoading()}
+              hasMore={hasMore()}
+              setSentinelEl={setAuthorsSentinelEl}
+              sentinelStyle={sentinelStyle}
+              authorsList={authorsResultsList()}
+            />
+          </Show>
         </Show>
 
-        <Show when={Array.isArray(searchResultsList()) && searchResultsList().length === 0}>
+        <Show
+          when={
+            inputValue().trim().length >= 3 &&
+            shoutsResultsList().length === 0 &&
+            authorsResultsList().length === 0 &&
+            !isLoading()
+          }
+        >
           <p class={styles.searchDescription} innerHTML={t("We couldn't find anything for your request")} />
         </Show>
       </Show>
-
-      {/* @@TODO handle filter */}
-      {/* <Show when={FILTERS.length}>
-        <div class={styles.filterResults}>
-          <For each={FILTERS}>
-            {(filter) => (
-              <button
-                type="button"
-                class={styles.filterResultsControl}
-                onClick={() => setActiveFilter(filter)}
-              >
-                {filter.name}
-              </button>
-            )}
-          </For>
-        </div>
-      </Show> */}
-
-      {/* @@TODO handle topics */}
-      {/* <Show when={TOPICS.length}>
-        <div class="container-xl">
-          <div class="row">
-            <div class={clsx('col-md-18 offset-md-2', styles.topicsList)}>
-              <For each={TOPICS}>
-                {(topic) => (
-                  <button type="button" class={styles.topTopic} onClick={() => setActiveTopic(topic)}>
-                    {topic.name}
-                  </button>
-                )}
-              </For>
-            </div>
-          </div>
-        </div>
-      </Show> */}
     </div>
   )
 }
