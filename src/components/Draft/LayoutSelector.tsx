@@ -21,17 +21,17 @@ export const LayoutSelector = () => {
   const handleCreate = async (layout: LayoutType) => {
     try {
       console.debug('[routes : edit/new] handling create click...')
-      
+
       // Проверяем авторизацию перед созданием черновика
       if (!isAuthenticated()) {
         console.warn('[routes : edit/new] user not authenticated')
         toast.error(t('You need to be logged in to create drafts'))
         return
       }
-      
+
       // Обновляем клиент для гарантии актуального токена и ждем завершения
       await refreshClient()
-      
+
       const result = await createDraft({ layout })
       console.log('[routes : edit/new] result', result)
 

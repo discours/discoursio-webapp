@@ -4,9 +4,9 @@ import type { Accessor, JSX, Resource } from 'solid-js'
 import {
   createContext,
   createEffect,
+  createMemo,
   createResource,
   createSignal,
-  createMemo,
   on,
   onCleanup,
   onMount,
@@ -16,19 +16,19 @@ import toast from 'solid-toast'
 import { useLocalize } from '~/context/localize'
 import { type ModalSource } from '~/context/ui'
 import { graphqlClientCreate } from '~/graphql/client'
-import { Author } from '~/graphql/schema/core.gen'
-import { coreApiUrl } from '../config'
-import LoginMutation from '~/graphql/mutation/core/auth-login'
+import ConfirmEmailMutation from '~/graphql/mutation/core/auth-confirm-email'
 import GetSessionMutation from '~/graphql/mutation/core/auth-get-session'
-import SignupMutation from '~/graphql/mutation/core/auth-signup'
+import LoginMutation from '~/graphql/mutation/core/auth-login'
 import LogoutMutation from '~/graphql/mutation/core/auth-logout'
-import ResetPasswordMutation from '~/graphql/mutation/core/auth-reset-password'
+import RefreshTokenMutation from '~/graphql/mutation/core/auth-refresh-token'
 import RequestPasswordResetMutation from '~/graphql/mutation/core/auth-request-password-reset'
 import ResendVerifyEmailMutation from '~/graphql/mutation/core/auth-resend-verify-email'
-import ConfirmEmailMutation from '~/graphql/mutation/core/auth-confirm-email'
+import ResetPasswordMutation from '~/graphql/mutation/core/auth-reset-password'
+import SignupMutation from '~/graphql/mutation/core/auth-signup'
 import UpdateProfileMutation from '~/graphql/mutation/core/auth-update-profile'
-import RefreshTokenMutation from '~/graphql/mutation/core/auth-refresh-token'
 import IsEmailUsedQuery from '~/graphql/query/core/auth-is-email-used'
+import { Author } from '~/graphql/schema/core.gen'
+import { coreApiUrl } from '../config'
 
 /**
  * Ключ для хранения токена авторизации в localStorage
@@ -218,11 +218,7 @@ export const SessionProvider = (props: {
         // Проверяем доступность API перед запросом данных
         try {
           // Запрашиваем данные пользователя с помощью GraphQL
-          const result = await internalClient
-            .mutation(GetSessionMutation,
-              {}
-            )
-            .toPromise()
+          const result = await internalClient.mutation(GetSessionMutation, {}).toPromise()
 
           if (result.error) {
             console.error('[context.session] Error refreshing session:', result.error)
@@ -256,7 +252,7 @@ export const SessionProvider = (props: {
 
             return AuthPayload
           }
-          
+
           console.error('[context.session] No valid session data returned')
           // Если запрос не вернул данные, удаляем токен
           localStorage.removeItem(AUTH_TOKEN_KEY)
@@ -348,7 +344,7 @@ export const SessionProvider = (props: {
         if (state && access_token) {
           console.info('[context.session] Processing OAuth callback')
           const storedState = localStorage.getItem('oauth_state')
-          
+
           if (storedState === state) {
             console.info('[context.session] OAuth state verified')
             changeSearchParams(
@@ -392,13 +388,10 @@ export const SessionProvider = (props: {
           } else {
             console.log('[session] Session exists but token unchanged, client already configured')
           }
-        } else {
-          // Если сессия отсутствует, создаем клиент без токена
-          if (lastClientToken() !== '') {
-            console.log('[session] Using default client (no token)')
-            setLastClientToken('')
-            setClient(() => graphqlClientCreate(coreApiUrl))
-          }
+        } else if (lastClientToken() !== '') {
+          console.log('[session] Using default client (no token)')
+          setLastClientToken('')
+          setClient(() => graphqlClientCreate(coreApiUrl))
         }
       },
       { defer: true }
@@ -486,7 +479,7 @@ export const SessionProvider = (props: {
     }
   }
 
-  const noopSetter = () => () => void 0
+  const noopSetter = () => () => undefined
 
   /**
    * Функция входа через GraphQL API
@@ -500,12 +493,10 @@ export const SessionProvider = (props: {
 
       // Выполняем мутацию login через GraphQL API
       const result = await internalClient
-        .mutation(LoginMutation,
-          {
-            email: params.email,
-            password: params.password
-          }
-        )
+        .mutation(LoginMutation, {
+          email: params.email,
+          password: params.password
+        })
         .toPromise()
 
       if (result.error) {
@@ -569,13 +560,11 @@ export const SessionProvider = (props: {
 
       // Выполняем мутацию registerUser через GraphQL API
       const result = await internalClient
-        .mutation(SignupMutation,
-          {
-            email: params.email,
-            password: params.password,
-            name: params.name
-          }
-        )
+        .mutation(SignupMutation, {
+          email: params.email,
+          password: params.password,
+          name: params.name
+        })
         .toPromise()
 
       if (result.data?.registerUser?.success) {
@@ -629,19 +618,16 @@ export const SessionProvider = (props: {
 
       // Выполняем мутацию update_author через GraphQL API
       const result = await internalClient
-        .mutation(
-          UpdateProfileMutation,
-          {
-            profile: {
-              name: params.name,
-              bio: params.bio,
-              about: params.about,
-              links: params.links,
-              pic: params.pic,
-              slug: params.slug
-            }
+        .mutation(UpdateProfileMutation, {
+          profile: {
+            name: params.name,
+            bio: params.bio,
+            about: params.about,
+            links: params.links,
+            pic: params.pic,
+            slug: params.slug
           }
-        )
+        })
         .toPromise()
 
       if (!result.data?.update_author?.error) {
@@ -669,12 +655,7 @@ export const SessionProvider = (props: {
         const internalClient = graphqlClientCreate(coreApiUrl, session()?.token)
 
         // Выполняем мутацию logout через GraphQL API
-        await internalClient
-          .mutation(
-            LogoutMutation,
-            {}
-          )
-          .toPromise()
+        await internalClient.mutation(LogoutMutation, {}).toPromise()
       }
 
       // Удаляем токен из localStorage
@@ -701,13 +682,10 @@ export const SessionProvider = (props: {
 
       // Выполняем мутацию resetPassword через GraphQL API
       const result = await internalClient
-        .mutation(
-          ResetPasswordMutation,
-          {
-            newPassword: password,
-            token
-          }
-        )
+        .mutation(ResetPasswordMutation, {
+          newPassword: password,
+          token
+        })
         .toPromise()
 
       return !!result.data?.resetPassword?.success
@@ -726,12 +704,9 @@ export const SessionProvider = (props: {
 
       // Выполняем мутацию requestPasswordReset через GraphQL API
       const result = await internalClient
-        .mutation(
-          RequestPasswordResetMutation,
-          {
-            email: params.email
-          }
-        )
+        .mutation(RequestPasswordResetMutation, {
+          email: params.email
+        })
         .toPromise()
 
       if (result.data?.requestPasswordReset?.success) {
@@ -754,12 +729,9 @@ export const SessionProvider = (props: {
 
       // Выполняем мутацию для повторной отправки письма с подтверждением
       const result = await internalClient
-        .mutation(
-          ResendVerifyEmailMutation,
-          {
-            email: params.email
-          }
-        )
+        .mutation(ResendVerifyEmailMutation, {
+          email: params.email
+        })
         .toPromise()
 
       if (result.data?.sendLink) {
@@ -785,12 +757,9 @@ export const SessionProvider = (props: {
 
       // Выполняем запрос isEmailUsed через GraphQL API
       const result = await internalClient
-        .query(
-          IsEmailUsedQuery,
-          {
-            email
-          }
-        )
+        .query(IsEmailUsedQuery, {
+          email
+        })
         .toPromise()
 
       return result.data?.isEmailUsed ? 'Email уже зарегистрирован' : ''
@@ -809,12 +778,9 @@ export const SessionProvider = (props: {
 
       // Выполняем мутацию confirmEmail через GraphQL API
       const result = await internalClient
-        .mutation(
-          ConfirmEmailMutation,
-          {
-            token: input.token
-          }
-        )
+        .mutation(ConfirmEmailMutation, {
+          token: input.token
+        })
         .toPromise()
 
       if (result.data?.confirmEmail?.success) {
@@ -881,15 +847,15 @@ export const SessionProvider = (props: {
    * с учетом статуса загрузки сессии
    */
   const isAuthenticated = createMemo(() => {
-    const sessionLoaded = isSessionLoaded();
-    const hasToken = !!session()?.token;
-    const hasClient = !!client();
-    
+    const sessionLoaded = isSessionLoaded()
+    const hasToken = !!session()?.token
+    const hasClient = !!client()
+
     if (hasToken && !hasClient) {
-      console.warn('[session] Inconsistent state: token exists but client is not initialized');
+      console.warn('[session] Inconsistent state: token exists but client is not initialized')
     }
-    
-    return sessionLoaded && hasToken;
+
+    return sessionLoaded && hasToken
   })
 
   /**
@@ -899,24 +865,24 @@ export const SessionProvider = (props: {
    */
   const refreshClient = () => {
     return new Promise<void>((resolve) => {
-      const currentToken = session()?.token || '';
-      console.log('[session] Manually refreshing GraphQL client with token:', !!currentToken);
-      
+      const currentToken = session()?.token || ''
+      console.log('[session] Manually refreshing GraphQL client with token:', !!currentToken)
+
       // Создаем новый клиент с токеном
-      const newClient = graphqlClientCreate(coreApiUrl, currentToken);
-      
+      const newClient = graphqlClientCreate(coreApiUrl, currentToken)
+
       // Обновляем состояние
-      setLastClientToken(currentToken);
-      setClient(() => newClient);
-      
+      setLastClientToken(currentToken)
+      setClient(() => newClient)
+
       // Небольшая задержка для гарантии обновления состояния
       setTimeout(() => {
         if (!client()) {
-          console.warn('[session] Client still not available after refresh');
+          console.warn('[session] Client still not available after refresh')
         }
-        resolve();
-      }, 50);
-    });
+        resolve()
+      }, 50)
+    })
   }
 
   /**
@@ -927,18 +893,16 @@ export const SessionProvider = (props: {
     try {
       console.info('[context.session] Attempting to refresh token via Discours GraphQL API')
       const currentToken = session()?.token || localStorage.getItem(AUTH_TOKEN_KEY)
-      
+
       if (!currentToken) {
         console.warn('[refreshToken] No token available for refresh')
         return false
       }
-      
+
       const internalClient = graphqlClientCreate(coreApiUrl, currentToken)
 
       // Выполняем мутацию refreshToken через GraphQL API
-      const result = await internalClient
-        .mutation(RefreshTokenMutation, {})
-        .toPromise()
+      const result = await internalClient.mutation(RefreshTokenMutation, {}).toPromise()
 
       if (result.error) {
         console.error('[refreshToken] GraphQL error:', result.error)

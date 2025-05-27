@@ -59,11 +59,7 @@ export const createQueryResource = <T, V>(
  * @param timeout - Таймаут запроса в миллисекундах (по умолчанию 15000)
  * @returns Настроенный GraphQL клиент
  */
-export const graphqlClientCreate = (
-  url: string,
-  token = '',
-  timeout = 15000
-): Client => {
+export const graphqlClientCreate = (url: string, token = '', timeout = 15000): Client => {
   const exchanges = [fetchExchange, cacheExchange]
   const options: ClientOptions = {
     url,
@@ -95,7 +91,4 @@ export const graphqlClientCreate = (
   return createClient(options)
 }
 
-export const defaultClient: Client = graphqlClientCreate(
-  coreApiUrl,
-  ''
-)
+export const defaultClient: Client = graphqlClientCreate(coreApiUrl, '')

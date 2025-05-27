@@ -519,7 +519,11 @@ export const DraftCard = (props: Props) => {
           </Show>
 
           {/* Удаление - всегда присутствует */}
-          <span onClick={handleDeleteLinkClick} class={clsx(styles.actionItem, styles.delete)} title={t('Delete')}>
+          <span
+            onClick={handleDeleteLinkClick}
+            class={clsx(styles.actionItem, styles.delete)}
+            title={t('Delete')}
+          >
             <Icon name="trash" class={styles.actionIcon} />
             <span class={clsx(styles.actionText)}>{t('Delete')}</span>
           </span>

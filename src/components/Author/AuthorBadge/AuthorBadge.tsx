@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Match, Show, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { Match, Show, Switch, createEffect, createSignal, on } from 'solid-js'
 import { Button } from '~/components/_shared/Button'
 import { CheckButton } from '~/components/_shared/CheckButton'
 import { ConditionalWrapper } from '~/components/_shared/ConditionalWrapper'
@@ -40,10 +40,7 @@ export const AuthorBadge = (props: Props) => {
   createEffect(() => setIsMobileView(!mediaMatches.sm))
   createEffect(
     on(
-      [
-        () => follows?.authors, 
-        () => props.author
-      ],
+      [() => follows?.authors, () => props.author],
       ([followingAuthors, currentAuthor]) => {
         const authorFollowed = Boolean(
           followingAuthors?.some((followedAuthor) => followedAuthor.id === currentAuthor?.id)

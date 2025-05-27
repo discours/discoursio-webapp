@@ -1,4 +1,4 @@
-import { gql } from "@urql/core";
+import { gql } from '@urql/core'
 
 export default gql`
     mutation GetSession {
@@ -14,4 +14,4 @@ export default gql`
             token
         }
     }
-` 
+`

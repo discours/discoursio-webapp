@@ -407,32 +407,32 @@ export interface ExtendedDraft extends Draft {
 type DraftsContextType = {
   drafts: Accessor<ExtendedDraft[]>
   currentDraft: Accessor<ExtendedDraft | undefined>
-  setCurrentDraft: (draft?: ExtendedDraft) => void
+  setCurrentDraft: (draft?: ExtendedDraft) => undefined
   getEditorContent: (editorId: string) => string
-  setEditorContent: (editorId: string, content: string) => void
-  loadDrafts: () => Promise<void>
-  createDraft: (draft: DraftInput) => Promise<OperationResult<CreateDraftMutationMutation> | void>
-  updateDraft: (draft: DraftInput) => Promise<OperationResult<UpdateDraftMutationMutation> | void>
-  deleteDraft: (id: number) => Promise<OperationResult<DeleteDraftMutationMutation> | void>
-  publishDraft: (draftId: number) => Promise<OperationResult<PublishDraftMutationMutation> | void>
-  unpublishShout: (shoutId: number) => Promise<OperationResult<UnpublishShoutMutationMutation> | void>
+  setEditorContent: (editorId: string, content: string) => undefined
+  loadDrafts: () => Promise<undefined>
+  createDraft: (draft: DraftInput) => Promise<OperationResult<CreateDraftMutationMutation> | undefined>
+  updateDraft: (draft: DraftInput) => Promise<OperationResult<UpdateDraftMutationMutation> | undefined>
+  deleteDraft: (id: number) => Promise<OperationResult<DeleteDraftMutationMutation> | undefined>
+  publishDraft: (draftId: number) => Promise<OperationResult<PublishDraftMutationMutation> | undefined>
+  unpublishShout: (shoutId: number) => Promise<OperationResult<UnpublishShoutMutationMutation> | undefined>
   isEditorPanelVisible: Accessor<boolean>
-  toggleEditorPanel: () => void
-  setIsEditorPanelVisible: (visible: boolean) => void
+  toggleEditorPanel: () => boolean
+  setIsEditorPanelVisible: (visible: boolean) => undefined
   syncDraft: (draftId: number) => Promise<ExtendedDraft | undefined>
   updateDraftField: (
     draftId: number,
     fieldName: keyof DraftInput,
     value: string | EditorData | number[],
     isEditorUpdate: boolean
-  ) => void
+  ) => undefined
   loadLocalDrafts: () => ExtendedDraft[]
   removeLocalDraft: (draftId: number) => boolean
   checkPublishedVersion: (slug: string) => Promise<boolean>
   removeDraftByKey: (key: string) => boolean
   validationErrors: Accessor<Partial<Record<keyof DraftInput, string>>>
   validateCurrentDraft: () => Promise<boolean>
-  clearValidationErrors: () => void
+  clearValidationErrors: () => undefined
   loading: Accessor<boolean>
 }
 
@@ -709,7 +709,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     return ''
   }
 
-  const setEditorContent = (editorId: string, content: string) => {
+  const setEditorContent = (editorId: string, content: string): undefined => {
     // Сохраняем контент как есть, без дополнительных преобразований
     const safeContent = content != null ? String(content) : ''
 
@@ -721,6 +721,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
     // 3. НЕ обновляем currentDraft здесь, чтобы избежать лишних ререндеров
     // Это будет делаться через updateDraftField при необходимости
+    return undefined
   }
 
   // Функция для обновления поля черновика с обработкой EditorData и сохранением
@@ -729,8 +730,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     fieldName: keyof DraftInput,
     value: string | EditorData | number[],
     isEditorUpdate: boolean
-  ) => {
-    if (!draftId) return
+  ): undefined => {
+    if (!draftId) return undefined
 
     let contentValue: string
 
@@ -795,7 +796,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
     if (!saved) {
       console.error(`[DraftsProvider] Failed to save field "${fieldName}" for draft ${draftId} to storage.`)
-      return
+      return undefined
     }
 
     // 3. Обновляем локальный кэш редакторов для мгновенного отображения
@@ -824,6 +825,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     }
 
     // 5. Интеграция с Awareness Provider - пока отключена
+    return undefined
   }
 
   /**
@@ -930,7 +932,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       if (!isServer) {
         console.warn('[DraftsProvider] Not loading drafts: user not logged in')
       }
-      return
+      return undefined
     }
 
     setLoading(true)
@@ -1062,7 +1064,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         authors: [],
         created_at: timestamp,
         updated_at: timestamp,
-        created_by: { id: 0, slug: '', },
+        created_by: { id: 0, slug: '' },
         community: {
           id: 0,
           slug: '',
@@ -1089,24 +1091,26 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     return localDraftsFallback
   }
 
-  const createDraft = async (draft: DraftInput): Promise<OperationResult<CreateDraftMutationMutation> | void> => {
+  const createDraft = async (
+    draft: DraftInput
+  ): Promise<OperationResult<CreateDraftMutationMutation> | undefined> => {
     console.log('[drafts] creating draft', draft)
 
     // Проверяем наличие клиента и авторизации
     if (!client()) return Promise.reject(new Error('Client is not initialized'))
-    
+
     // Проверяем токен авторизации
     if (!session()?.token) return Promise.reject(new Error('No auth token available'))
-    
+
     // Обновляем клиент для гарантии актуального токена и дожидаемся завершения
     await refreshClient()
-    
+
     // Получаем обновленный клиент после refreshClient
     const currentClient = client()
     if (!currentClient) {
       return Promise.reject(new Error('Client is still not initialized after refresh'))
     }
-    
+
     const response = await currentClient.mutation(createDraftMutation, { draft_input: draft })
     console.log('[drafts] create response:', JSON.stringify(response, null, 2))
     if (response?.data?.create_draft?.draft) {
@@ -1400,8 +1404,9 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   /**
    * Очищает ошибки валидации.
    */
-  const clearValidationErrors = () => {
+  const clearValidationErrors = (): undefined => {
     setValidationErrors({})
+    return undefined
   }
 
   const value = {
