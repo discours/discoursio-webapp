@@ -1,13 +1,13 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createMemo } from 'solid-js'
+import { Show, createMemo, ErrorBoundary } from 'solid-js'
 
 import { useConnect } from '~/context/connect'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
-import type { Author } from '~/graphql/schema/core.gen'
+import { logDetailedError, getSessionDebugInfo } from '~/utils/debug'
 import { Userpic } from '../Author/Userpic'
 import { PublishButton } from '../Draft/PublishButton'
 import { ProfilePopup } from '../ProfileNav/ProfilePopup'
@@ -82,8 +82,11 @@ const EditingHeader = (props: Props) => {
   const { toggleEditorPanel } = useDrafts()
   const { session } = useSession()
   const loc = useLocation()
-  const author = createMemo(() => session()?.author as Author)
-  const matchProfile = createMemo(() => loc.pathname.endsWith(author()?.slug))
+  const author = createMemo(() => session()?.author || null)
+  const matchProfile = createMemo(() => {
+    const authorSlug = author()?.slug
+    return authorSlug ? loc.pathname.endsWith(authorSlug) : false
+  })
 
   return (
     <>
@@ -96,24 +99,47 @@ const EditingHeader = (props: Props) => {
         </div>
       </Show>
 
-      <ProfilePopup
-        onVisibilityChange={props.setIsProfilePopupVisible}
-        containerCssClass={styles.control}
-        trigger={
-          <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
-            <button class={styles.button}>
-              <div classList={{ entered: Boolean(matchProfile()) }}>
-                <Userpic
-                  size={'L'}
-                  name={author()?.name || ''}
-                  userpic={author()?.pic || ''}
-                  class={styles.userpic}
-                />
-              </div>
-            </button>
-          </div>
-        }
-      />
+      <ErrorBoundary
+        fallback={(err) => {
+          const currentSession = session()
+          const sessionDebugInfo = getSessionDebugInfo(currentSession)
+          
+          logDetailedError(err, 'EditingHeader ProfilePopup Error', {
+            location: 'EditingHeader',
+            sessionInfo: sessionDebugInfo,
+            pathname: loc.pathname,
+            hasAuthor: Boolean(currentSession?.author),
+            authorSlug: currentSession?.author?.slug
+          })
+          
+          return (
+            <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
+              <button class={styles.button} disabled title="Profile error - check console">
+                <Icon name="user" />
+              </button>
+            </div>
+          )
+        }}
+      >
+        <ProfilePopup
+          onVisibilityChange={props.setIsProfilePopupVisible}
+          containerCssClass={styles.control}
+          trigger={
+            <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
+              <button class={styles.button}>
+                <div classList={{ entered: Boolean(matchProfile()) }}>
+                  <Userpic
+                    size={'L'}
+                    name={author()?.name || ''}
+                    userpic={author()?.pic || ''}
+                    class={styles.userpic}
+                  />
+                </div>
+              </button>
+            </div>
+          }
+        />
+      </ErrorBoundary>
 
       <Show when={!(loc.pathname.startsWith('/edit/') && loc.pathname.endsWith('/settings'))}>
         <div class={styles.editorControls}>
@@ -149,8 +175,11 @@ const AuthorizedHeader = (props: Props) => {
   const { session } = useSession()
   const navigate = useNavigate()
   const loc = useLocation()
-  const author = createMemo(() => session()?.author as Author)
-  const matchProfile = createMemo(() => loc.pathname.endsWith(author()?.slug))
+  const author = createMemo(() => session()?.author || null)
+  const matchProfile = createMemo(() => {
+    const authorSlug = author()?.slug
+    return authorSlug ? loc.pathname.endsWith(authorSlug) : false
+  })
   const matchInbox = createMemo(() => loc.pathname.endsWith('inbox'))
 
   const handleCreatePostClick = (event: Event) => {
@@ -183,24 +212,47 @@ const AuthorizedHeader = (props: Props) => {
         </div>
       </Show>
 
-      <ProfilePopup
-        onVisibilityChange={props.setIsProfilePopupVisible}
-        containerCssClass={styles.control}
-        trigger={
-          <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
-            <button class={styles.button}>
-              <div classList={{ entered: Boolean(matchProfile()) }}>
-                <Userpic
-                  size={'L'}
-                  name={author()?.name || ''}
-                  userpic={author()?.pic || ''}
-                  class={styles.userpic}
-                />
-              </div>
-            </button>
-          </div>
-        }
-      />
+      <ErrorBoundary
+        fallback={(err) => {
+          const currentSession = session()
+          const sessionDebugInfo = getSessionDebugInfo(currentSession)
+          
+          logDetailedError(err, 'AuthorizedHeader ProfilePopup Error', {
+            location: 'AuthorizedHeader',
+            sessionInfo: sessionDebugInfo,
+            pathname: loc.pathname,
+            hasAuthor: Boolean(currentSession?.author),
+            authorSlug: currentSession?.author?.slug
+          })
+          
+          return (
+            <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
+              <button class={styles.button} disabled title="Profile error - check console">
+                <Icon name="user" />
+              </button>
+            </div>
+          )
+        }}
+      >
+        <ProfilePopup
+          onVisibilityChange={props.setIsProfilePopupVisible}
+          containerCssClass={styles.control}
+          trigger={
+            <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
+              <button class={styles.button}>
+                <div classList={{ entered: Boolean(matchProfile()) }}>
+                  <Userpic
+                    size={'L'}
+                    name={author()?.name || ''}
+                    userpic={author()?.pic || ''}
+                    class={styles.userpic}
+                  />
+                </div>
+              </button>
+            </div>
+          }
+        />
+      </ErrorBoundary>
     </>
   )
 }

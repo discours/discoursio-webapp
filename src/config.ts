@@ -1,5 +1,5 @@
 export const cdnUrl = import.meta.env.PUBLIC_CDN_URL || 'https://images.discours.io'
-export const coreApiUrl = import.meta.env.PUBLIC_CORE_API || 'https://core.discours.io'
+export const coreApiUrl = import.meta.env.PUBLIC_CORE_API || 'https://coretest.discours.io'
 export const chatApiUrl = import.meta.env.PUBLIC_CHAT_API || 'https://inbox.discours.io'
 export const authApiUrl = import.meta.env.PUBLIC_AUTH_API || 'https://auth.discours.io/graphql'
 export const sseUrl = import.meta.env.PUBLIC_REALTIME_EVENTS || 'https://connect.discours.io'
