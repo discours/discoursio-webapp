@@ -156,41 +156,19 @@ export const AllAuthorsView = (props: Props) => {
     </div>
   )
 
-  // Function to group authors by the first letter of their name
-  const groupAuthorsByFirstLetter = (authors: Author[]) => {
-    if (!Array.isArray(authors)) {
-      console.error('Expected authors to be an array, but got:', authors)
-      return {}
-    }
-
-    return authors.reduce(
-      (acc, author) => {
-        const firstLetter = (author.name ?? '').charAt(0).toUpperCase()
-        if (!acc[firstLetter]) {
-          acc[firstLetter] = []
-        }
-        acc[firstLetter].push(author)
-        return acc
-      },
-      {} as Record<string, Author[]>
-    )
-  }
-
   // Component to render the list of authors grouped by the first letter of their name
   const AbcAuthorsList = () => {
-    const groupedAuthors = createMemo(() => groupAuthorsByFirstLetter(authors()))
-
     return (
       <For each={alphabet().split('')}>
         {(letter) => (
-          <Show when={groupedAuthors()[letter]}>
+          <Show when={byLetterFiltered()[letter]}>
             <div class={clsx(styles.group, 'group')}>
               <h2 id={`letter-${alphabet()?.indexOf(letter) || ''}`}>{letter}</h2>
               <div class="container">
                 <div class="row">
                   <div class="col-lg-20">
                     <div class="row">
-                      <For each={groupedAuthors()[letter]}>
+                      <For each={byLetterFiltered()[letter]}>
                         {(author) => (
                           <div class={clsx(styles.topic, 'topic col-sm-12 col-md-8')}>
                             <div class="topic-title">
