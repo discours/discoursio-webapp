@@ -1,55 +1,160 @@
-.container {
-  border-bottom: 1px solid #dfdfdf;
-  border-top: 1px solid #dfdfdf;
-  margin-top: 1em;
-  padding: 0.8em 0 1em;
+.SocialProviders {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.text {
-  font-size:1.5rem;
-  font-weight: 500;
-  margin-bottom: 1em;
+.header {
+  display: flex;
+  align-items: center;
   text-align: center;
 }
 
-.social {
-  background-color: white;
+.divider {
+  font-family: Muller;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.2857142857142858em;
+  letter-spacing: -1%;
+  color: #000000;
+  width: 100%;
+}
+
+.providers {
   display: flex;
-  margin: 0 -5px;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+}
 
-  > * {
-    background-color: #f7f7f7;
-    cursor: pointer;
-    flex: 1;
-    margin: 0 5px;
-    padding: 0.5em !important;
-    text-align: center;
+.providerButton {
+  // Уменьшаем кнопки для лучшего размещения
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  flex: none !important; // Убираем flex: 1
+  
+  padding: 2px !important; // Уменьшаем padding для увеличения иконок
+  border-radius: 0 !important; // Острые углы как в дизайне
+  
+  // Центрирование иконки
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  
+  // Стили согласно требованиям - без бордера по умолчанию
+  border: none !important;
+  background: #F7F7F8 !important; // Серый фон из дизайна
+  color: #000000 !important;
+  
+  // Убираем все цветовые инверсии и фильтры
+  filter: none !important;
+  
+  // Ховер эффект - только тонкий бордер, без изменения фона
+  &:hover {
+    border: 1px solid #D0D0D8 !important;
+    background: #F7F7F8 !important; // Фон не меняется
+    filter: none !important; // Убираем любые фильтры
   }
+  
+  &:active {
+    border: 1px solid #BDBDC7 !important;
+    background: #F7F7F8 !important; // Фон не меняется
+    filter: none !important; // Убираем любые фильтры
+  }
+}
 
+.providerIcon {
+  width: 22px !important; // Увеличиваем иконки с 20px до 22px
+  height: 22px !important;
+  flex-shrink: 0;
+  margin: 0 !important;
+  
+  // Плавный переход для background-image
+  transition: background-image 0.2s ease !important;
+  filter: none !important;
+  
+  // Все иконки используют background-image подход
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  
+  // Скрываем любые img элементы, используем только background
   img {
-    height: 1em;
-    margin: 0 auto;
-    max-width: 1.8em;
-    vertical-align: middle;
-    width: auto;
+    display: none !important;
   }
+  
+  // Черные версии иконок по умолчанию
+  &[data-icon="facebook"] {
+    background-image: url('/icons/facebook.svg') !important;
+  }
+  
+  &[data-icon="vk"] {
+    background-image: url('/icons/vk.svg') !important;
+  }
+  
+  &[data-icon="github"] {
+    background-image: url('/icons/github.svg') !important;
+  }
+  
+  &[data-icon="telegram"] {
+    background-image: url('/icons/telegram.svg') !important;
+  }
+  
+  &[data-icon="twitter"] {
+    background-image: url('/icons/twitter.svg') !important;
+  }
+  
+  &[data-icon="yandex"] {
+    background-image: url('/icons/yandex.svg') !important;
+  }
+  
+  &[data-icon="google"] {
+    background-image: url('/icons/google.svg') !important;
+  }
+}
 
-  a, button {
-    border: none !important;
-    outline: none;
-    box-shadow: none;
+// Ховер эффекты - подмена на цветные версии
+.providerButton:hover {
+  .providerIcon[data-icon="facebook"] {
+    background-image: url('/icons/facebook-colored.svg') !important;
   }
+  
+  .providerIcon[data-icon="vk"] {
+    background-image: url('/icons/vk-colored.svg') !important;
+  }
+  
+  .providerIcon[data-icon="github"] {
+    background-image: url('/icons/github-colored.svg') !important;
+  }
+  
+  .providerIcon[data-icon="telegram"] {
+    background-image: url('/icons/telegram-colored.svg') !important;
+  }
+  
+  .providerIcon[data-icon="twitter"] {
+    // X.com остается черным (их новый дизайн)
+    background-image: url('/icons/twitter.svg') !important;
+  }
+  
+  .providerIcon[data-icon="yandex"] {
+    background-image: url('/icons/yandex-colored.svg') !important;
+  }
+  
+  .providerIcon[data-icon="google"] {
+    background-image: url('/icons/google-colored.svg') !important;
+  }
+}
 
-  .facebook,
-  .google,
-  .vk,
-  .telegram {
-    border: none;
-  }
-
-  .github:hover {
-    img {
-      filter: invert(1);
-    }
-  }
+.error {
+  color: #E53E3E;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 10px;
+  padding: 8px;
+  background: #FED7D7;
+  border-radius: 4px;
+  border: 1px solid #FEB2B2;
 }

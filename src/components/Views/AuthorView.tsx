@@ -79,6 +79,12 @@ export const AuthorView = (props: AuthorViewProps) => {
       setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
       console.log('[AuthorView] Set initial feed:', initialShouts.length, 'items')
     }
+    
+    // Инициализируем автора из пропсов если доступен
+    if (props.author) {
+      console.log('[AuthorView] Setting initial author from props:', props.author.slug, props.author.stat)
+      setAuthor(props.author)
+    }
   })
 
   // derivatives
@@ -106,7 +112,7 @@ export const AuthorView = (props: AuthorViewProps) => {
           const result = await loadReactions({
             by: {
               kinds: [ReactionKind.Comment],
-              author: currentAuthor.slug
+              created_by: currentAuthor.id
             },
             limit: COMMENTS_PER_PAGE,
             offset: 0
@@ -181,11 +187,8 @@ export const AuthorView = (props: AuthorViewProps) => {
         currentAuthor: author()?.slug
       })
 
-      if (slug && meData?.slug === slug) {
-        console.log('[AuthorView] Setting current user as author')
-        setAuthor(meData)
-        // Если у текущего пользователя нет статистики, она будет загружена отдельно
-      } else if (slug && (!author() || author()?.slug !== slug)) {
+      // Всегда загружаем автора через API для получения актуальной статистики
+      if (slug && (!author() || author()?.slug !== slug)) {
         console.log('[AuthorView] Loading author from API:', slug)
         await loadAuthor({ slug })
         const foundAuthor = authorsEntities()[slug]
@@ -193,9 +196,13 @@ export const AuthorView = (props: AuthorViewProps) => {
         if (foundAuthor) {
           console.log('[AuthorView] Author loaded successfully:', foundAuthor.slug, foundAuthor.stat)
           setAuthor(foundAuthor)
-          // Если у автора нет статистики, она будет загружена отдельно
         } else {
           console.warn('[AuthorView] Author not found:', slug)
+          // Fallback для собственного профиля если API не вернул данные
+          if (meData?.slug === slug) {
+            console.log('[AuthorView] Using session author as fallback')
+            setAuthor(meData)
+          }
         }
       }
     })
@@ -270,7 +277,7 @@ export const AuthorView = (props: AuthorViewProps) => {
             loadReactions({
               by: {
                 kinds: [ReactionKind.Comment],
-                author: author()?.slug
+                created_by: author()?.id
               },
               limit: COMMENTS_PER_PAGE,
               offset: 0
@@ -410,7 +417,7 @@ export const AuthorView = (props: AuthorViewProps) => {
       const result = await loadReactions({
         by: {
           kinds: [ReactionKind.Comment],
-          author: author()?.slug
+          created_by: author()?.id
         },
         limit: COMMENTS_PER_PAGE,
         offset: commented().length

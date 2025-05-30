@@ -7,9 +7,11 @@ import { useSession } from '~/context/session'
 import styles from './SocialProviders.module.scss'
 
 const socialProviders = [
+  { name: 'telegram', title: 'Telegram', icon: 'telegram' },
+  { name: 'x.com', title: 'X.com', icon: 'twitter' },
   { name: 'google', title: 'Google', icon: 'google' },
-  { name: 'facebook', title: 'Facebook', icon: 'facebook' },
   { name: 'github', title: 'GitHub', icon: 'github' },
+  { name: 'facebook', title: 'Facebook', icon: 'facebook' },
   { name: 'vk', title: 'VKontakte', icon: 'vk' },
   { name: 'yandex', title: 'Yandex', icon: 'yandex' }
 ]
@@ -26,7 +28,7 @@ export const SocialProviders = () => {
   return (
     <div class={styles.SocialProviders}>
       <div class={styles.header}>
-        <span class={styles.divider}>{t('Or continue with')}</span>
+        <span class={styles.divider}>{t('or sign in with social networks')}</span>
       </div>
 
       <div class={styles.providers}>
@@ -34,16 +36,19 @@ export const SocialProviders = () => {
           {(provider) => (
             <Button
               variant="outline"
-              size="L"
+              size="S"
               value={
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <Icon name={provider.icon} class={styles.providerIcon} />
-                  {provider.title}
-                </div>
+                <Icon 
+                  name={provider.icon} 
+                  class={styles.providerIcon}
+                  data-icon={provider.icon}
+                  title={provider.title}
+                />
               }
               onClick={() => handleSocialLogin(provider.name)}
               class={styles.providerButton}
               data-testid={`oauth-${provider.name}`}
+              title={`Войти через ${provider.title}`}
             />
           )}
         </For>

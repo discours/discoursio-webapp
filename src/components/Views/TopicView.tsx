@@ -16,7 +16,7 @@ import {
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { getAuthorsByTopic, getFollowersByTopic, loadAuthors, loadShouts } from '~/graphql/api/public'
+import { loadTopicAuthors, loadTopicFollowers, loadAuthors, loadShouts } from '~/graphql/api/public'
 import { Author, AuthorsBy, LoadShoutsOptions, Shout, Stat, Topic } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/lib/fromPeriod'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
@@ -92,11 +92,10 @@ export const TopicView = (props: Props) => {
   // Loading Followers and Authors for the topics
 
   const getTopicFollowers = async () => {
-    const topicFollowersFetcher = getFollowersByTopic(props.topicSlug)
-    const topicFollowers = await topicFollowersFetcher()
+    const topicFollowers = await loadTopicFollowers({ slug: props.topicSlug })()
     // sorting by maximum shouts
     if (topicFollowers) {
-      return topicFollowers.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
+      return topicFollowers.sort((a: Author, b: Author) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
     }
     return []
   }
@@ -106,11 +105,10 @@ export const TopicView = (props: Props) => {
   )
 
   const getTopicAuthors = async () => {
-    const topicAuthorsFetcher = getAuthorsByTopic(props.topicSlug)
-    const topicAuthors = await topicAuthorsFetcher()
+    const topicAuthors = await loadTopicAuthors({ slug: props.topicSlug })()
     // sorting by maximum shouts
     if (topicAuthors) {
-      return topicAuthors.sort((a, b) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
+      return topicAuthors.sort((a: Author, b: Author) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
     }
     return []
   }

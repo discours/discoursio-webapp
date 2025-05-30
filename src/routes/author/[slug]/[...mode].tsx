@@ -80,13 +80,13 @@ const fetchAuthorShouts = async (slug: string, offset?: number) => {
   return await shoutsLoader()
 }
 
-const fetchAuthorComments = async (slug: string, offset?: number) => {
+const fetchAuthorComments = async (author: Author, offset?: number) => {
   const opts: QueryLoad_Reactions_ByArgs = {
-    by: { kinds: [ReactionKind.Comment], author: slug },
+    by: { kinds: [ReactionKind.Comment], created_by: author.id },
     limit: COMMENTS_PER_PAGE,
     offset
   }
-  console.log('[fetchAuthorComments] Loading comments for author:', slug, 'with opts:', opts)
+  console.log('[fetchAuthorComments] Loading comments for author:', author.slug, 'with opts:', opts)
   const shoutsLoader = loadReactions(opts)
   const result = await shoutsLoader()
 
@@ -124,10 +124,21 @@ export const route = {
   load: async ({ params, location: { query } }: RouteSectionProps<{ articles: Shout[] }>) => {
     const offset: number = Number.parseInt(query.offset as string, 10)
     console.debug('route loading with offset', offset)
+    
+    // Сначала загружаем автора
+    const author = await fetchAuthor(params.slug)
+    
+    // Если автор загружен, можем загрузить его комментарии
+    let comments: Reaction[] = []
+    if (author) {
+      comments = await fetchAuthorComments(author, 0)
+    }
+    
     return {
-      author: await fetchAuthor(params.slug),
+      author,
       articles: await fetchAuthorShouts(params.slug, offset),
-      topics: await fetchAllTopics()
+      topics: await fetchAllTopics(),
+      comments
     }
   }
 }
@@ -178,7 +189,7 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
 
   // load author's profile
   const { addAuthor, authorsEntities } = useAuthors()
-  const [author, setAuthor] = createSignal<Author | undefined>(undefined)
+  const [author, setAuthor] = createSignal<Author | undefined>(props.data.author)
   createEffect(
     on(
       author,
@@ -246,10 +257,11 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
 
   // author's comments
   const [authorComments] = createResource(
-    () => props.params.slug,
-    async (slug) => {
+    () => author(),
+    async (authorData) => {
       try {
-        return props.data.comments || (await fetchAuthorComments(slug, 0))
+        if (!authorData) return []
+        return props.data.comments || (await fetchAuthorComments(authorData, 0))
       } catch (error) {
         console.error('Error loading author comments:', error)
         return []

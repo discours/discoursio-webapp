@@ -1,6 +1,6 @@
 import { createResource } from 'solid-js'
 import { defaultClient } from '~/graphql/client'
-import { createLoader, createQueryResource } from '~/graphql/client'
+import { createLoader, createQueryResource, createCacheableLoader, createCacheableQueryResource } from '~/graphql/client'
 import getShoutQuery from '~/graphql/query/core/article-load'
 import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
 import loadShoutsSearchQuery from '~/graphql/query/core/articles-load-search'
@@ -38,62 +38,57 @@ import {
 
 // Topics API
 /**
- * Прямой метод без кеширования
- * Прямой вызов для загрузки всех топиков
- * Используется с кешированием в IndexedDB (24 часа)
- * Подходит для SSR и одноразовых запросов
+ * Кешируемый метод для загрузки всех топиков
+ * Использует браузерное кеширование для оптимизации повторных запросов
+ * Подходит для SSR и клиентских запросов
+ * 
+ * @example
+ * ```ts
+ * // В route.load (SSR):
+ * const topicsLoader = loadTopics()
+ * const topics = await topicsLoader()
+ * 
+ * // В компоненте (клиент):
+ * const topics = await loadTopics()()
+ * ```
  */
 export const loadTopics = () => {
-  return async () => {
-    const resp = await defaultClient.query(loadTopicsQuery, {} as QueryGet_TopicArgs).toPromise()
-    return resp?.data?.get_topics_all as Topic[]
-  }
-}
-
-export const loadTopicsByCommunity = (options: QueryGet_Topics_By_CommunityArgs) => {
-  return async () => {
-    const resp = await defaultClient.query(loadTopicsByCommunityQuery, options).toPromise()
-    return resp?.data?.get_topics_by_community as Topic[]
-  }
+  return createCacheableLoader<Topic[], void>(
+    loadTopicsQuery,
+    () => ({} as QueryGet_TopicArgs),
+    true // Включаем браузерное кеширование для топиков
+  )(undefined)
 }
 
 /**
- * Реактивный ресурс для загрузки топиков через контекст
- * Кешируемый метод с автоматическим обновлением при изменении параметров
- * Включает:
- * - Кеширование в IndexedDB на 24 часа
- * - Автоматическую сортировку по популярности
- * - Обновление только при истечении кеша
- * - Мемоизацию для предотвращения лишних рендеров
- *
- * @example
- * ```tsx
- * // В компоненте:
- * const { sortedTopics } = useTopics() // Используем контекст вместо ресурса напрямую
- *
- * return (
- *   <For each={sortedTopics()}>{topic =>
- *     <TopicBadge topic={topic} />
- *   }</For>
- * )
- *
- * // Для случайного топика:
- * const { randomTopic } = useTopics()
- * <Show when={randomTopic()}>
- *   <TopicBadge topic={randomTopic()} />
- * </Show>
- * ```
- *
- * @see TopicsProvider для деталей реализации кеширования и мемоизации
- * @see docs/caching-v2.md для общей стратегии кеширования
+ * Реактивный ресурс для загрузки всех топиков с кешированием
+ * Оптимизирован для статичных данных с долгим временем жизни
  */
-export const useTopicsResource = createQueryResource<Topic[], void>(loadTopicsQuery, () => ({}))
+export const useTopicsResource = () => {
+  return createCacheableQueryResource<Topic[], void>(
+    loadTopicsQuery,
+    () => ({}),
+    true, // Включаем браузерное кеширование
+    defaultClient,
+    true // withAbort
+  )(undefined)
+}
+
+/**
+ * Загрузка топиков по сообществу с кешированием
+ */
+export const loadTopicsByCommunity = createCacheableLoader<Topic[], QueryGet_Topics_By_CommunityArgs>(
+  loadTopicsByCommunityQuery,
+  (args: QueryGet_Topics_By_CommunityArgs) => args,
+  true // Кешируем топики по сообществу
+)
 
 // Shouts API
 /**
- * Прямой метод без кеширования
- * Прямой вызов для загрузки шаутов
+ * Кешируемый метод для загрузки шаутов
+ * Использует браузерное кеширование для публичных статей
  * Подходит для SSR и одноразовых запросов без реактивности
+ * 
  * @example
  * ```ts
  * const shoutsLoader = loadShouts({
@@ -105,57 +100,39 @@ export const useTopicsResource = createQueryResource<Topic[], void>(loadTopicsQu
  * const shouts = await shoutsLoader()
  * ```
  */
-export const loadShouts = createLoader<Shout[], QueryLoad_Shouts_ByArgs>(
+export const loadShouts = createCacheableLoader<Shout[], QueryLoad_Shouts_ByArgs>(
   loadShoutsByQuery,
-  (args: QueryLoad_Shouts_ByArgs) => args
+  (args: QueryLoad_Shouts_ByArgs) => args,
+  true // Включаем кеширование для публичных статей
 )
 
 /**
- * Реактивный ресурс для загрузки шаутов
- * Кешируемый метод с автоматическим обновлением при изменении параметров
- * Особенности:
- * - Автоматическое отслеживание изменений args
- * - Встроенные состояния loading/error
- * - Отмена устаревших запросов
- * - Автоматическая перезагрузка при изменении параметров
- *
- * @example
- * ```tsx
- * const [shouts, { refetch }] = useShoutsResource({
- *   options: {
- *     limit: 10,
- *     filters: { featured: true }
- *   }
- * })
- *
- * // Правильная обработка всех состояний
- * return (
- *   <Show when={!shouts.loading} fallback={<Loading />}>
- *     <Show when={!shouts.error} fallback={<Error error={shouts.error} />}>
- *       <For each={shouts()}>{shout =>
- *         <ArticleCard shout={shout} />
- *       }</For>
- *     </Show>
- *   </Show>
- * )
- * ```
- *
- * @see docs/solid-async.md для деталей работы с асинхронными ресурсами
+ * Реактивный ресурс для загрузки шаутов с кешированием
+ * Оптимизирован для публичного контента
  */
-export const useShoutsResource = (initialArgs: QueryLoad_Shouts_ByArgs) => {
-  return createQueryResource<Shout[], QueryLoad_Shouts_ByArgs>(
-    loadShoutsByQuery,
-    () => initialArgs,
-    defaultClient,
-    true // withAbort
-  )
-}
+export const useShoutsResource = createCacheableQueryResource<Shout[], QueryLoad_Shouts_ByArgs>(
+  loadShoutsByQuery,
+  (args: QueryLoad_Shouts_ByArgs) => args,
+  true, // Включаем кеширование
+  defaultClient,
+  true // withAbort
+)
+
+/**
+ * Поиск статей с кешированием результатов
+ */
+export const loadShoutsSearch = createCacheableLoader<Shout[], QueryLoad_Shouts_SearchArgs>(
+  loadShoutsSearchQuery,
+  (args: QueryLoad_Shouts_SearchArgs) => args,
+  true // Кешируем результаты поиска
+)
 
 // Authors API
 /**
- * Прямой метод без кеширования
- * Прямой вызов для загрузки авторов с фильтрацией
+ * Кешируемый метод для загрузки авторов с фильтрацией
+ * Использует браузерное кеширование для публичных профилей
  * Подходит для SSR и одноразовых запросов
+ * 
  * @example
  * ```ts
  * // В AuthorsProvider:
@@ -167,68 +144,50 @@ export const useShoutsResource = (initialArgs: QueryLoad_Shouts_ByArgs) => {
  * const authors = await authorsLoader()
  * ```
  */
-export const loadAuthors = createLoader<Author[], QueryLoad_Authors_ByArgs>(
+export const loadAuthors = createCacheableLoader<Author[], QueryLoad_Authors_ByArgs>(
   loadAuthorsByQuery,
-  (options: QueryLoad_Authors_ByArgs) => options
+  (options: QueryLoad_Authors_ByArgs) => options,
+  true // Включаем кеширование для авторов
 )
 
 /**
- * Реактивный ресурс для загрузки авторов с пагинацией
- * Кешируемый метод с автоматическим обновлением при изменении параметров
- * Особенности:
- * - Автоматическое отслеживание изменений options
- * - Встроенные состояния loading/error
- * - Поддержка сортировки и фильтрации
- *
- * @example
- * ```tsx
- * // В AllAuthorsView:
- * const [authors, { refetch }] = useAuthorsResource({
- *   by: { order: 'followers' },
- *   limit: 20,
- *   offset: page() * 20
- * })
- *
- * return (
- *   <Show when={!authors.loading} fallback={<Loading />}>
- *     <For each={authors()}>{author =>
- *       <AuthorCard author={author} />
- *     }</For>
- *   </Show>
- * )
- * ```
+ * Реактивный ресурс для загрузки авторов с кешированием
  */
-export const useAuthorsResource = createQueryResource<Author[], QueryLoad_Authors_ByArgs>(
+export const useAuthorsResource = createCacheableQueryResource<Author[], QueryLoad_Authors_ByArgs>(
   loadAuthorsByQuery,
-  (options: QueryLoad_Authors_ByArgs) => options
+  (options: QueryLoad_Authors_ByArgs) => options,
+  true, // Включаем кеширование
+  defaultClient,
+  true // withAbort
 )
 
 /**
- * Прямой метод без кеширования
- * Прямой вызов для загрузки всех авторов
+ * Поиск авторов с кешированием
+ */
+export const loadAuthorsSearch = createCacheableLoader<Author[], QueryLoad_Authors_ByArgs>(
+  loadAuthorsSearchQuery,
+  (options: QueryLoad_Authors_ByArgs) => options,
+  true // Кешируем результаты поиска авторов
+)
+
+/**
+ * Кешируемый метод для загрузки всех авторов
  * Используется для начальной загрузки и кеширования
  */
 export const loadAuthorsAll = () => {
-  return async () => {
-    const resp = await defaultClient.query(loadAuthorsAllQuery, {}).toPromise()
-    return resp?.data?.get_authors_all as Author[]
-  }
-}
-
-/**
- * Реактивный ресурс для загрузки всех авторов
- * Кешируемый метод с автоматическим обновлением при изменении параметров
- * Используется в AuthorsProvider для глобального состояния
- */
-export const useAuthorsAllResource = () => {
-  return createResource(loadAuthorsAll())
+  return createCacheableLoader<Author[], void>(
+    loadAuthorsAllQuery,
+    () => ({}),
+    true // Включаем кеширование для списка всех авторов
+  )(undefined)
 }
 
 // Reactions API
 /**
- * Прямой метод без кеширования
- * Прямой вызов для загрузки реакций (комментариев)
+ * НЕ кешируемый метод для загрузки реакций (комментариев)
+ * Реакции часто обновляются и могут содержать персональные данные
  * Подходит для SSR и одноразовых запросов
+ * 
  * @example
  * ```ts
  * const reactionsLoader = loadReactions({
@@ -249,12 +208,8 @@ export const loadReactions = (options: QueryLoad_Reactions_ByArgs) => {
 }
 
 /**
- * Реактивный ресурс для загрузки реакций
- * Кешируемый метод с автоматическим обновлением при изменении параметров
- * Особенности:
- * - Автоматическое обновление при изменении options
- * - Поддержка разных типов реакций (комментарии, оценки)
- * - Интеграция с ReactionsProvider
+ * Реактивный ресурс для загрузки реакций БЕЗ кеширования
+ * Реакции требуют актуальных данных
  */
 export const useReactionsResource = (options: QueryLoad_Reactions_ByArgs) => {
   return createQueryResource<Reaction[], QueryLoad_Reactions_ByArgs>(
@@ -267,12 +222,9 @@ export const useReactionsResource = (options: QueryLoad_Reactions_ByArgs) => {
 
 // Single Shout API
 /**
- * Реактивный ресурс дл загрузки одного шаута
- * Особенности:
- * - Автоматическое обновление при изменении slug
- * - Встроенные состояния loading/error
- * - Интеграция с SSR через route.load
- *
+ * Кешируемый реактивный ресурс для загрузки одного шаута
+ * Использует браузерное кеширование для опубликованных статей
+ * 
  * @example
  * ```tsx
  * // В ArticleView:
@@ -286,137 +238,21 @@ export const useReactionsResource = (options: QueryLoad_Reactions_ByArgs) => {
  *   </Show>
  * )
  * ```
- *
- * @see docs/solid-async.md для деталей работы с SSR
  */
 export const useShout = (options: QueryGet_ShoutArgs) => {
-  return createQueryResource<Shout, QueryGet_ShoutArgs>(
+  return createCacheableQueryResource<Shout, QueryGet_ShoutArgs>(
     getShoutQuery,
     () => options,
-    defaultClient,
-    true // withAbort
-  )
-}
-
-// Search API
-/**
- * Реактивный ресурс для поиска шаутов
- * Особенности:
- * - Автоматическое обновление при изменении запроса
- * - Дебаунсинг запросов
- * - Отмена устаревших запросов
- *
- * @example
- * ```tsx
- * // В SearchView:
- * const [query, setQuery] = createSignal('')
- * const [results] = useShoutsSearch(query(), {
- *   limit: 10,
- *   offset: page() * 10
- * })
- *
- * return (
- *   <Show when={!results.loading} fallback={<SearchSkeleton />}>
- *     <For each={results()}>{shout =>
- *       <SearchResultItem shout={shout} />
- *     }</For>
- *   </Show>
- * )
- * ```
- */
-export const useShoutsSearch = (text: string, options: LoadShoutsOptions) => {
-  return createQueryResource<Shout[], QueryLoad_Shouts_SearchArgs>(
-    loadShoutsSearchQuery,
-    () => ({ text, options }),
+    true, // Включаем кеширование для статей
     defaultClient,
     true // withAbort
   )
 }
 
 /**
- * Реактивный ресурс для поиска авторов
- * Особенности:
- * - Автоматическое обновление при изменении запроса
- * - Дебаунсинг запросов
- * - Отмена устаревших запросов
- *
- * @example
- * ```tsx
- * const [query, setQuery] = createSignal('')
- * const [results] = useAuthorsSearch(query(), {
- *   limit: 10,
- *   offset: page() * 10
- * })
- *
- * return (
- *   <Show when={!results.loading} fallback={<SearchSkeleton />}>
- *     <For each={results()}>{author =>
- *       <AuthorBadge author={author} />
- *     }</For>
- *   </Show>
- * )
- * ```
- */
-export const useAuthorsSearch = (text: string, limit?: number, offset?: number) => {
-  return createQueryResource<Author[], { text: string; limit?: number; offset?: number }>(
-    loadAuthorsSearchQuery,
-    () => ({ text, limit, offset }),
-    defaultClient,
-    true // withAbort
-  )
-}
-
-// Unrated Shouts API
-/**
- * Реактивный ресурс для загрузки неоцененных шаутов
- * Кешируемый метод с автоматическим обновлением при изменении параметров
- * Используется в FeedView для показа контента требующего модерации
- */
-export const useUnratedShouts = (options: LoadShoutsOptions) => {
-  return createQueryResource<Shout[], QueryLoad_Shouts_UnratedArgs>(
-    loadShoutsUnratedQuery,
-    () => ({ options }),
-    defaultClient,
-    true // withAbort
-  )
-}
-
-/**
- * Прямой метод без кеширования
- * Загрузка неоцененных статей
- * Используется для SSR и начальной загрузки данных
- */
-export const loadUnratedShouts = createLoader<Shout[], LoadShoutsOptions>(
-  loadShoutsUnratedQuery,
-  (options: LoadShoutsOptions) => ({ options }) as QueryLoad_Shouts_UnratedArgs
-)
-
-/**
- * Прямой метод без кеширования
- * Загрузка авторов по поисковому запросу
- * Используется для SSR и начальной загрузки данных
- *
- * @example
- * ```tsx
- * // В SearchModal:
- * const authorResults = await loadAuthorsSearch("search term", 10, 0)()
- * ```
- */
-export const loadAuthorsSearch = (text: string, limit?: number, offset?: number) => {
-  return async () => {
-    const resp = await defaultClient.query(loadAuthorsSearchQuery, { text, limit, offset }).toPromise()
-    return resp?.data?.load_authors_search as Author[]
-  }
-}
-
-// Single Author API
-/**
- * Реактивный ресрс для загрузки данных автора
- * Особенности:
- * - Автоматическое обновление при изменении slug
- * - Интеграция с AuthorsProvider
- * - Поддержка SSR через route.load
- *
+ * Кешируемый реактивный ресурс для загрузки данных автора
+ * Использует браузерное кеширование для публичных профилей
+ * 
  * @example
  * ```tsx
  * // В AuthorView:
@@ -431,111 +267,65 @@ export const loadAuthorsSearch = (text: string, limit?: number, offset?: number)
  * ```
  */
 export const useAuthor = (options: QueryGet_AuthorArgs) => {
-  return createQueryResource<Author, QueryGet_AuthorArgs>(
+  return createCacheableQueryResource<Author, QueryGet_AuthorArgs>(
     getAuthorQuery,
     () => options,
+    true, // Включаем кеширование для авторов
     defaultClient,
     true // withAbort
   )
 }
 
-// @deprecated Legacy API
-// будет удалено в следующих версиях
-
+// Unrated Shouts API (НЕ кешируются - требуют актуальных данных для модерации)
 /**
- * Прямой метод без кеширования
- * Загрука статьи по slug
- * Используется для SSR и начальной загрузки данных
- *
- * @example
- * ```tsx
- * // В route.load:
- * const article = await getShout({ slug })()
- * ```
+ * Реактивный ресурс для загрузки неоцененных шаутов БЕЗ кеширования
+ * Используется в FeedView для показа контента требующего модерации
  */
-export const getShout = (options: QueryGet_ShoutArgs) => {
-  return async () => {
-    const resp = await defaultClient.query(getShoutQuery, options).toPromise()
-    return resp?.data?.get_shout as Shout
-  }
+export const useUnratedShouts = (options: LoadShoutsOptions) => {
+  return createQueryResource<Shout[], QueryLoad_Shouts_UnratedArgs>(
+    loadShoutsUnratedQuery,
+    () => ({ options }),
+    defaultClient,
+    true // withAbort
+  )
 }
 
 /**
- * Прямой метод без кеширования
- * Загрузка автора по slug
- * Используется для SSR и начальной загрузки данных
- *
- * @example
- * ```tsx
- * // В route.load:
- * const author = await getAuthor({ slug })()
- * ```
- */
-export const getAuthor = (options: QueryGet_AuthorArgs) => {
-  return async () => {
-    const resp = await defaultClient.query(getAuthorQuery, options).toPromise()
-    return resp?.data?.get_author as Author
-  }
-}
-
-/**
- * Прямой метод без кеширования
- * Загрузка авторов по топику
- * Используется для SSR и начальной загрузки данных
- *
- * @example
- * ```tsx
- * // В TopicView для SSR:
- * const authors = await getAuthorsByTopic(slug)()
- * ```
- */
-export const getAuthorsByTopic = (slug: string) => {
-  return async () => {
-    const resp = await defaultClient.query(getAuthorsByTopicQuery, { slug }).toPromise()
-    return resp?.data?.get_topic_authors as Author[]
-  }
-}
-
-/**
- * Прямой метод без кеширования
- * Загрузка подписчиков топика
+ * Прямой метод без кеширования для загрузки неоцененных статей
  * Используется для SSR и начальной загрузки данных
  */
-export const getFollowersByTopic = (slug: string) => {
-  return async () => {
-    const resp = await defaultClient.query(getFollowersByTopicQuery, { slug }).toPromise()
-    return resp?.data?.get_topic_followers as Author[]
-  }
-}
+export const loadUnratedShouts = createLoader<Shout[], LoadShoutsOptions>(
+  loadShoutsUnratedQuery,
+  (options: LoadShoutsOptions) => ({ options }) as QueryLoad_Shouts_UnratedArgs
+)
 
+// Topic Authors API (кешируется)
 /**
- * Прямой метод без кеширования
- * @deprecated Используйте useShoutsSearch вместо loadShoutsSearch
- * Активно используется в SearchModal для реактивного поиска
- *
- * @example
- * ```tsx
- * // Было в SearchModal:
- * const results = await loadShoutsSearch(query, options)()
- *
- * // Стало:
- * const [results] = useShoutsSearch(query(), options)
- * <For each={results()}>{result =>
- *   <SearchResultItem result={result} />
- * }</For>
- * ```
+ * Кешируемая загрузка авторов по топику
  */
-export const loadShoutsSearch = (text: string, options: LoadShoutsOptions) => {
-  return async () => {
-    const resp = await defaultClient
-      .query(loadShoutsSearchQuery, { text, options } as QueryLoad_Shouts_SearchArgs)
-      .toPromise()
-    return resp?.data?.load_shouts_search as Shout[]
-  }
+export const loadTopicAuthors = (args: QueryGet_AuthorArgs) => {
+  return createCacheableLoader<Author[], QueryGet_AuthorArgs>(
+    getAuthorsByTopicQuery,
+    () => args,
+    true // Кешируем авторов по топику
+  )(args)
 }
 
 /**
- * Загружает комментарии с учетом их иерархической структуры
+ * Кешируемая загрузка подписчиков топика
+ */
+export const loadTopicFollowers = (args: QueryGet_AuthorArgs) => {
+  return createCacheableLoader<Author[], QueryGet_AuthorArgs>(
+    getFollowersByTopicQuery,
+    () => args,
+    true // Кешируем подписчиков топика
+  )(args)
+}
+
+// Comments Branch API (НЕ кешируется - часто обновляется)
+/**
+ * Загружает комментарии с учетом их иерархической структуры БЕЗ кеширования
+ * Комментарии требуют актуальных данных
  */
 export const loadCommentsBranch = (opts: QueryLoad_Comments_BranchArgs) => {
   return async () => {
@@ -554,4 +344,31 @@ export const loadCommentsBranch = (opts: QueryLoad_Comments_BranchArgs) => {
       return []
     }
   }
+}
+
+// @deprecated Legacy API - будет удалено в следующих версиях
+// Оставляем для обратной совместимости, но используем кеширование где возможно
+
+/**
+ * @deprecated Используйте useShout вместо getShout
+ * Кешируемый метод для загрузки статьи по slug
+ */
+export const getShout = (options: QueryGet_ShoutArgs) => {
+  return createCacheableLoader<Shout, QueryGet_ShoutArgs>(
+    getShoutQuery,
+    () => options,
+    true // Включаем кеширование
+  )(options)
+}
+
+/**
+ * @deprecated Используйте useAuthor вместо getAuthor  
+ * Кешируемый метод для загрузки автора по slug
+ */
+export const getAuthor = (options: QueryGet_AuthorArgs) => {
+  return createCacheableLoader<Author, QueryGet_AuthorArgs>(
+    getAuthorQuery,
+    () => options,
+    true // Включаем кеширование
+  )(options)
 }

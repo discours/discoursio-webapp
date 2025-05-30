@@ -4,8 +4,8 @@
 
 - [README проекта](../README.md) - Основная информация о проекте
 - [CHANGELOG](../CHANGELOG.md) - История изменений
-- [Lightning CSS Integration](lightning-css-integration.md) - Интеграция Lightning CSS toolchain
-- [NPM Scripts](npm-scripts.md) - Документация по командам разработки
+- [Lightning CSS Integration](lightning-css-integration.md) - Подробное руководство по интеграции Lightning CSS
+- [NPM Scripts](npm-scripts.md) - Документация по npm командам проекта
 - [Архитектура](architecture.md) - Техническая архитектура проекта
 
 ## Разработка

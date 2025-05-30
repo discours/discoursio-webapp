@@ -187,6 +187,7 @@ export const SessionProvider = (props: {
   const [sessionToken, setSessionToken] = createSignal<string | undefined>()
   const [sessionAuthor, setSessionAuthor] = createSignal<Author | undefined>()
   const [isSessionLoaded, setIsSessionLoaded] = createSignal(false)
+  // Проверяем наличие токена сразу для корректной инициализации
   const [isSessionValidating, setIsSessionValidating] = createSignal(false)
   const [authError, setAuthError] = createSignal<string>('')
   const [client, setClient] = createSignal<Client>()
@@ -218,22 +219,8 @@ export const SessionProvider = (props: {
   // Изолированная функция загрузки сессии (принцип изоляции из solid-effects.md)
   const loadSessionData = async (token: string): Promise<AuthPayload | undefined> => {
     try {
-      console.log(
-        '[loadSessionData] Starting session data load with token:',
-        `${token.substring(0, 10)}...`
-      )
-
       const client = graphqlClientCreate(coreApiUrl, token)
-      console.log('[loadSessionData] GraphQL client created, executing GetSessionMutation')
-
       const result = await client.mutation(GetSessionMutation, {}).toPromise()
-
-      console.log('[loadSessionData] GraphQL result:', {
-        hasError: !!result.error,
-        error: result.error,
-        hasData: !!result.data,
-        sessionData: result.data?.getSession
-      })
 
       if (result.error) {
         console.error('[loadSessionData] GraphQL error:', result.error)
@@ -243,22 +230,13 @@ export const SessionProvider = (props: {
       if (result.data?.getSession) {
         const { author, token: newToken } = result.data.getSession
 
-        console.log('[loadSessionData] Session data received:', {
-          hasAuthor: !!author,
-          authorId: author?.id,
-          authorSlug: author?.slug,
-          newToken: `${newToken?.substring(0, 10)}...`,
-          tokenChanged: newToken !== token
-        })
-
-        // Обновляем токен в localStorage если изменился
-        if (newToken !== token && !isServer) {
-          console.log('[loadSessionData] Updating token in localStorage')
+        // Обновляем токен в localStorage если изменился И не пустой
+        if (newToken && newToken !== token && !isServer) {
           localStorage.setItem(AUTH_TOKEN_KEY, newToken)
         }
 
         return {
-          token: newToken,
+          token: newToken || token, // Используем newToken если есть, иначе исходный token
           author: {
             id: author.id,
             slug: author.slug,
@@ -270,7 +248,6 @@ export const SessionProvider = (props: {
         }
       }
 
-      console.warn('[loadSessionData] No session data in response')
       return undefined
     } catch (error) {
       console.error('[loadSessionData] Error:', error)
@@ -279,41 +256,43 @@ export const SessionProvider = (props: {
   }
 
   // Функция для безопасного обновления сессии (принцип batch из solid-effects.md)
-  const updateSession = (sessionData: AuthPayload | undefined) => {
-    console.log('[updateSession] Updating session with data:', {
-      hasSessionData: !!sessionData,
-      token: `${sessionData?.token?.substring(0, 10)}...`,
-      hasAuthor: !!sessionData?.author,
-      authorId: sessionData?.author?.id
-    })
-
+  const updateSession = (sessionData: AuthPayload | undefined, clearValidatingFlag = true) => {
     batch(() => {
       if (sessionData) {
-        console.log('[updateSession] Setting valid session data')
         setSessionToken(sessionData.token)
         setSessionAuthor(sessionData.author)
         setAuthError('')
 
         // Обновляем клиент если токен изменился
         if (sessionData.token !== lastClientToken()) {
-          console.log('[updateSession] Updating GraphQL client with new token')
           initializeClient(sessionData.token)
         }
 
-        props.onStateChangeCallback(sessionData)
+        // Вызываем callback внутри untrack чтобы избежать циклических зависимостей
+        untrack(() => {
+          props.onStateChangeCallback(sessionData)
+        })
+        
         setupSessionTimer()
       } else {
         // Очищаем сессию
-        console.log('[updateSession] Clearing session data')
         setSessionToken(undefined)
         setSessionAuthor(undefined)
         if (!isServer) {
           localStorage.removeItem(AUTH_TOKEN_KEY)
         }
         initializeClient() // Клиент без токена
+        
+        // Вызываем callback для очистки
+        untrack(() => {
+          props.onStateChangeCallback(null)
+        })
       }
 
-      setIsSessionValidating(false)
+      // Сбрасываем флаг валидации только если указано
+      if (clearValidatingFlag) {
+        setIsSessionValidating(false)
+      }
       setIsSessionLoaded(true)
     })
   }
@@ -471,8 +450,6 @@ export const SessionProvider = (props: {
 
   // Инициализация сессии при монтировании (используем defer для стабильности)
   onMount(async () => {
-    console.log('[SessionProvider] Mounting session provider')
-
     // Инициализируем базовый клиент
     initializeClient()
 
@@ -480,23 +457,19 @@ export const SessionProvider = (props: {
     const storedToken = isServer ? null : localStorage.getItem(AUTH_TOKEN_KEY)
 
     if (storedToken) {
-      console.log('[SessionProvider] Found stored token, setting up placeholder session')
-
-      // Немедленно устанавливаем токен для реактивности
-      setSessionToken(storedToken)
-      setSessionAuthor(undefined) // Автор будет загружен асинхронно
+      // Устанавливаем флаг валидации только когда действительно есть токен
       setIsSessionValidating(true)
 
       // Асинхронно загружаем полные данные сессии
       try {
-        await loadSession()
+        const sessionData = await loadSessionData(storedToken)
+        updateSession(sessionData, true) // Сбрасываем флаг валидации после загрузки
       } catch (error) {
         console.error('[SessionProvider] Error during session initialization:', error)
-        updateSession(undefined)
+        updateSession(undefined, true)
       }
     } else {
-      console.log('[SessionProvider] No stored token found')
-      updateSession(undefined)
+      updateSession(undefined, true)
     }
   })
 
@@ -558,7 +531,6 @@ export const SessionProvider = (props: {
    */
   const signIn = async (params: LoginInput): Promise<boolean> => {
     try {
-      console.info('[signIn] Attempting sign in:', { email: params.email })
       const authClient = graphqlClientCreate(coreApiUrl)
 
       const result = await authClient
@@ -950,7 +922,7 @@ export const SessionProvider = (props: {
     }
 
     // Валидация провайдера
-    const supportedProviders = ['google', 'facebook', 'github', 'vk', 'yandex']
+    const supportedProviders = ['telegram', 'x.com', 'google', 'github', 'facebook', 'vk', 'yandex']
     if (!supportedProviders.includes(provider.toLowerCase())) {
       console.error('[oauth] Unsupported provider:', provider)
       setAuthError(t('Unsupported OAuth provider'))
@@ -979,9 +951,16 @@ export const SessionProvider = (props: {
         timestamp: timestamp.toString()
       })
 
-      const oauthUrl = `${coreApiUrl.replace('/graphql', '')}/oauth/${provider.toLowerCase()}?${oauthParams.toString()}`
+      // Обрабатываем специальный случай для x.com (нормализуем до twitter для API)
+      const apiProvider = provider.toLowerCase() === 'x.com' ? 'twitter' : provider.toLowerCase()
 
-      console.info('[oauth] Redirecting to provider:', { provider, state: `${state.substring(0, 8)}...` })
+      const oauthUrl = `${coreApiUrl.replace('/graphql', '')}/oauth/${apiProvider}?${oauthParams.toString()}`
+
+      console.info('[oauth] Redirecting to provider:', {
+        provider,
+        apiProvider,
+        state: `${state.substring(0, 8)}...`
+      })
 
       // Перенаправляем на OAuth провайдера
       window.location.href = oauthUrl
@@ -1034,5 +1013,5 @@ export const SessionProvider = (props: {
 }
 
 export const sessionStateChanged = (payload: AuthPayload | null) => {
-  console.log('[SessionProvider] Session state changed:', payload)
+  // Session state change callback - можно использовать для дополнительной логики
 }
