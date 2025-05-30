@@ -124,16 +124,16 @@ export const route = {
   load: async ({ params, location: { query } }: RouteSectionProps<{ articles: Shout[] }>) => {
     const offset: number = Number.parseInt(query.offset as string, 10)
     console.debug('route loading with offset', offset)
-    
+
     // Сначала загружаем автора
     const author = await fetchAuthor(params.slug)
-    
+
     // Если автор загружен, можем загрузить его комментарии
     let comments: Reaction[] = []
     if (author) {
       comments = await fetchAuthorComments(author, 0)
     }
-    
+
     return {
       author,
       articles: await fetchAuthorShouts(params.slug, offset),

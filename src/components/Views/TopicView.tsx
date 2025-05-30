@@ -16,7 +16,7 @@ import {
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { loadTopicAuthors, loadTopicFollowers, loadAuthors, loadShouts } from '~/graphql/api/public'
+import { loadAuthors, loadShouts, loadTopicAuthors, loadTopicFollowers } from '~/graphql/api/public'
 import { Author, AuthorsBy, LoadShoutsOptions, Shout, Stat, Topic } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/lib/fromPeriod'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'

@@ -20,11 +20,7 @@ export const Icon = (passedProps: IconProps) => {
   const iconSrc = createMemo(() => `/icons/${props.name || 'default'}.svg`)
 
   return (
-    <div 
-      class={clsx('icon', styles.icon, props.class)} 
-      style={props.style}
-      data-icon={props['data-icon']}
-    >
+    <div class={clsx('icon', styles.icon, props.class)} style={props.style} data-icon={props['data-icon']}>
       <img
         alt={props.title || props.name}
         class={clsx(props.iconClassName)}

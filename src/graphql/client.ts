@@ -45,32 +45,32 @@ export const createCacheableLoader = <T, V>(
       try {
         const variables = getVariables(args)
         const queryString = query.loc?.source?.body || ''
-        
+
         const searchParams = new URLSearchParams({
           query: queryString,
           variables: JSON.stringify(variables)
         })
-        
-        const response = await fetch(`/graphql?${searchParams}`, { 
+
+        const response = await fetch(`/graphql?${searchParams}`, {
           signal,
           // Принимаем кешированные ответы
           cache: 'default'
         })
-        
+
         if (response.ok) {
           const result = await response.json()
           // API route возвращает только data, извлекаем первый ключ
           const key = Object.keys(result || {})[0]
           return result?.[key] as T
         }
-        
+
         // Если API route не поддерживает запрос, fallback к прямому GraphQL
         console.log('[GraphQL] API route failed, falling back to direct GraphQL client')
       } catch (error) {
         console.warn('[GraphQL] Browser cache failed, falling back to direct GraphQL:', error)
       }
     }
-    
+
     // Fallback к прямому GraphQL клиенту (SSR или при ошибке кеширования)
     const resp = await client.query(query, getVariables(args), { signal }).toPromise()
     const key = Object.keys(resp?.data || {})[0]

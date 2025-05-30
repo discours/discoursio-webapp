@@ -79,7 +79,7 @@ export const AuthorView = (props: AuthorViewProps) => {
       setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
       console.log('[AuthorView] Set initial feed:', initialShouts.length, 'items')
     }
-    
+
     // Инициализируем автора из пропсов если доступен
     if (props.author) {
       console.log('[AuthorView] Setting initial author from props:', props.author.slug, props.author.stat)

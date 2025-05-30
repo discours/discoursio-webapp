@@ -38,8 +38,8 @@ export const SocialProviders = () => {
               variant="outline"
               size="S"
               value={
-                <Icon 
-                  name={provider.icon} 
+                <Icon
+                  name={provider.icon}
                   class={styles.providerIcon}
                   data-icon={provider.icon}
                   title={provider.title}

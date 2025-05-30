@@ -1,6 +1,10 @@
-import { createResource } from 'solid-js'
 import { defaultClient } from '~/graphql/client'
-import { createLoader, createQueryResource, createCacheableLoader, createCacheableQueryResource } from '~/graphql/client'
+import {
+  createCacheableLoader,
+  createCacheableQueryResource,
+  createLoader,
+  createQueryResource
+} from '~/graphql/client'
 import getShoutQuery from '~/graphql/query/core/article-load'
 import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
 import loadShoutsSearchQuery from '~/graphql/query/core/articles-load-search'
@@ -41,13 +45,13 @@ import {
  * Кешируемый метод для загрузки всех топиков
  * Использует браузерное кеширование для оптимизации повторных запросов
  * Подходит для SSR и клиентских запросов
- * 
+ *
  * @example
  * ```ts
  * // В route.load (SSR):
  * const topicsLoader = loadTopics()
  * const topics = await topicsLoader()
- * 
+ *
  * // В компоненте (клиент):
  * const topics = await loadTopics()()
  * ```
@@ -55,7 +59,7 @@ import {
 export const loadTopics = () => {
   return createCacheableLoader<Topic[], void>(
     loadTopicsQuery,
-    () => ({} as QueryGet_TopicArgs),
+    () => ({}) as QueryGet_TopicArgs,
     true // Включаем браузерное кеширование для топиков
   )(undefined)
 }
@@ -88,7 +92,7 @@ export const loadTopicsByCommunity = createCacheableLoader<Topic[], QueryGet_Top
  * Кешируемый метод для загрузки шаутов
  * Использует браузерное кеширование для публичных статей
  * Подходит для SSR и одноразовых запросов без реактивности
- * 
+ *
  * @example
  * ```ts
  * const shoutsLoader = loadShouts({
@@ -132,7 +136,7 @@ export const loadShoutsSearch = createCacheableLoader<Shout[], QueryLoad_Shouts_
  * Кешируемый метод для загрузки авторов с фильтрацией
  * Использует браузерное кеширование для публичных профилей
  * Подходит для SSR и одноразовых запросов
- * 
+ *
  * @example
  * ```ts
  * // В AuthorsProvider:
@@ -187,7 +191,7 @@ export const loadAuthorsAll = () => {
  * НЕ кешируемый метод для загрузки реакций (комментариев)
  * Реакции часто обновляются и могут содержать персональные данные
  * Подходит для SSR и одноразовых запросов
- * 
+ *
  * @example
  * ```ts
  * const reactionsLoader = loadReactions({
@@ -224,7 +228,7 @@ export const useReactionsResource = (options: QueryLoad_Reactions_ByArgs) => {
 /**
  * Кешируемый реактивный ресурс для загрузки одного шаута
  * Использует браузерное кеширование для опубликованных статей
- * 
+ *
  * @example
  * ```tsx
  * // В ArticleView:
@@ -252,7 +256,7 @@ export const useShout = (options: QueryGet_ShoutArgs) => {
 /**
  * Кешируемый реактивный ресурс для загрузки данных автора
  * Использует браузерное кеширование для публичных профилей
- * 
+ *
  * @example
  * ```tsx
  * // В AuthorView:
@@ -362,7 +366,7 @@ export const getShout = (options: QueryGet_ShoutArgs) => {
 }
 
 /**
- * @deprecated Используйте useAuthor вместо getAuthor  
+ * @deprecated Используйте useAuthor вместо getAuthor
  * Кешируемый метод для загрузки автора по slug
  */
 export const getAuthor = (options: QueryGet_AuthorArgs) => {

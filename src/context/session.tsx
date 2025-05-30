@@ -272,7 +272,7 @@ export const SessionProvider = (props: {
         untrack(() => {
           props.onStateChangeCallback(sessionData)
         })
-        
+
         setupSessionTimer()
       } else {
         // Очищаем сессию
@@ -282,7 +282,7 @@ export const SessionProvider = (props: {
           localStorage.removeItem(AUTH_TOKEN_KEY)
         }
         initializeClient() // Клиент без токена
-        
+
         // Вызываем callback для очистки
         untrack(() => {
           props.onStateChangeCallback(null)
@@ -1012,6 +1012,6 @@ export const SessionProvider = (props: {
   return <SessionContext.Provider value={contextValue}>{props.children}</SessionContext.Provider>
 }
 
-export const sessionStateChanged = (payload: AuthPayload | null) => {
+export const sessionStateChanged = (_payload: AuthPayload | null) => {
   // Session state change callback - можно использовать для дополнительной логики
 }
