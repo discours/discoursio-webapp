@@ -4,9 +4,8 @@
 
 - [README проекта](../README.md) - Основная информация о проекте
 - [CHANGELOG](../CHANGELOG.md) - История изменений
-- [Руководство по OAuth](oauth-implementation.md) - Backend требования для OAuth
-- [Настройка OAuth](oauth-deployment.md) - Deployment guide для OAuth  
-- [CSS Оптимизация](css-optimization.md) - CSS Tooling и Tree Shaking оптимизация
+- [Lightning CSS Integration](lightning-css-integration.md) - Интеграция Lightning CSS toolchain
+- [NPM Scripts](npm-scripts.md) - Документация по командам разработки
 - [Архитектура](architecture.md) - Техническая архитектура проекта
 
 ## Разработка
@@ -24,6 +23,7 @@
 ## Компоненты
 
 - [UI Components](components.md) - Библиотека компонентов
+- [Styling Guide](styling.md) - Руководство по стилизации
 - [Icons](../src/components/_shared/Icon/icons/) - Иконки проекта
 
 # Документация  фронтенда discours.io

@@ -429,10 +429,21 @@
     }
 
     /* Отображение float-тулбара при выделении текста */
-    &:has(.content ::selection:not(:empty)) {
+    /* заменяем ::selection:not(:empty) на альтернативный метод */
+    &.hasSelection {
       .floatingToolbar {
         opacity: 1;
         visibility: visible;
+      }
+    }
+    
+    /* Fallback для браузеров с поддержкой ::selection */
+    @supports (selector(::selection)) {
+      &:has(.content ::selection) {
+        .floatingToolbar {
+          opacity: 1;
+          visibility: visible;
+        }
       }
     }
   }

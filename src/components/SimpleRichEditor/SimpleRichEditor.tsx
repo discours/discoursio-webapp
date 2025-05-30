@@ -178,6 +178,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [showLocalVersionLink, setShowLocalVersionLink] = createSignal(false)
   const [shouldShowPlaceholderState, setShouldShowPlaceholderState] = createSignal(false)
   const [isInitialFocusDone, setIsInitialFocusDone] = createSignal(false)
+  // Воркэраунд для Lightning CSS: отслеживаем выделение через класс
+  const [hasSelection, setHasSelection] = createSignal(false)
 
   let blurTimerRef = 0
   const blurTimeout = 150
@@ -497,6 +499,49 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       }
     })
   )
+
+  // Воркэраунд для Lightning CSS: отслеживаем выделение через класс
+  createEffect(() => {
+    if (isServer) return
+
+    const updateSelectionState = () => {
+      const selection = window.getSelection()
+      const editor = editorRef()
+
+      if (!selection || !editor) {
+        setHasSelection(false)
+        return
+      }
+
+      // Проверяем есть ли выделение и оно не пустое
+      const hasActiveSelection =
+        !selection.isCollapsed &&
+        selection.toString().trim().length > 0 &&
+        editor.contains(selection.anchorNode)
+
+      setHasSelection(hasActiveSelection)
+    }
+
+    const handleSelectionChange = () => updateSelectionState()
+
+    // Добавляем слушатель изменений выделения
+    document.addEventListener('selectionchange', handleSelectionChange)
+
+    // Также проверяем при изменении фокуса
+    const editor = editorRef()
+    if (editor) {
+      editor.addEventListener('mouseup', updateSelectionState)
+      editor.addEventListener('keyup', updateSelectionState)
+    }
+
+    onCleanup(() => {
+      document.removeEventListener('selectionchange', handleSelectionChange)
+      if (editor) {
+        editor.removeEventListener('mouseup', updateSelectionState)
+        editor.removeEventListener('keyup', updateSelectionState)
+      }
+    })
+  })
 
   // --- Core Logic --- Needed before event handlers
 
@@ -1733,7 +1778,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           [styles.empty]: isEditorEmpty(),
           [styles.withTopToolbar]: currentToolbarMode() === 'top',
           [styles.withBottomToolbar]: currentToolbarMode() === 'bottom',
-          [styles.focused]: hasFocus()
+          [styles.focused]: hasFocus(),
+          [styles.hasSelection]: hasSelection()
         })}
         data-editor-id={props.editorId}
         data-field-type={props.fieldType}

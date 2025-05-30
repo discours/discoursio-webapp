@@ -40,6 +40,24 @@ export default defineConfig({
   },
   envPrefix: 'PUBLIC_',
   css: {
+    // Включаем Lightning CSS transformer после исправления ::global
+    transformer: 'lightningcss',
+    lightningcss: {
+      // Целевые браузеры для максимальной совместимости
+      targets: {
+        chrome: 95,
+        firefox: 90,
+        safari: 14,
+        edge: 95
+      },
+      // Включаем только поддерживаемые draft CSS features
+      drafts: {
+        customMedia: true
+      }
+    },
+    modules: {
+      generateScopedName: '[name]__[local]___[hash:base64:5]'
+    },
     preprocessorOptions: {
       scss: {
         api: 'modern-compiler',
@@ -55,6 +73,7 @@ export default defineConfig({
     target: 'esnext',
     sourcemap: isDev,
     minify: 'terser',
+    cssMinify: 'lightningcss',
     chunkSizeWarningLimit: 777,
     terserOptions: {
       compress: {
