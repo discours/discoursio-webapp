@@ -34,15 +34,29 @@ type PlaceholderData = {
 }
 
 export type PlaceholderProps = {
-  type: keyof PlaceholderData // "followed" | "coauthored" | "discussed" | "author" | "feed" | "comments"
+  type: keyof PlaceholderData // "followed" | "coauthored" | "discussed" | "author" | "feed" | "comments" | "drafts"
   mode: 'feed' | 'profile'
+}
+
+const AUTHORSET = {
+  image: 'placeholder-join.webp',
+  header: 'Become an author',
+  text: 'Join our team of authors to start writing',
+  buttonLabel: 'Create post',
+  href: '/edit/new',
+  profileLinks: [
+    {
+      href: '/how-to-write-a-good-article',
+      label: 'How to write a good article'
+    }
+  ]
 }
 
 const data: PlaceholderData = {
   followed: {
     image: 'placeholder-feed.webp',
-    header: 'Feed settings',
-    text: 'Placeholder feed',
+    header: 'Create your own feed',
+    text: 'Choose your favorite authors and topics to follow',
     buttonLabelAuthor: 'Popular authors',
     buttonLabelFeed: 'Create own feed',
     href: '/author?by=followers'
@@ -50,35 +64,23 @@ const data: PlaceholderData = {
   coauthored: {
     image: 'placeholder-experts.webp',
     header: 'Find collaborators',
-    text: 'Placeholder feedCollaborations',
+    text: 'Find co-authors to collaborate on your next project',
     buttonLabel: 'Find co-authors',
     href: '/author?by=name'
   },
   discussed: {
     image: 'placeholder-discussions.webp',
     header: 'Participate in discussions',
-    text: 'Placeholder feedDiscussions',
+    text: 'Leave your comment and discuss the article with other readers',
     buttonLabelAuthor: 'Current discussions',
     buttonLabelFeed: 'Enter',
     href: '/feed/hot'
   },
-  author: {
-    image: 'placeholder-join.webp',
-    header: 'Join our team of authors',
-    text: 'Join our team of authors text',
-    buttonLabel: 'Create post',
-    href: '/edit/new',
-    profileLinks: [
-      {
-        href: '/how-to-write-a-good-article',
-        label: 'How to write a good article'
-      }
-    ]
-  },
+  author: AUTHORSET,
   comments: {
     image: 'placeholder-discussions.webp',
     header: 'Join discussions',
-    text: 'Placeholder feedDiscussions',
+    text: 'Leave your comment and discuss the article with other readers',
     buttonLabel: 'Go to discussions',
     href: '/feed/hot',
     profileLinks: [
@@ -91,7 +93,8 @@ const data: PlaceholderData = {
         label: 'Block rules'
       }
     ]
-  }
+  },
+  drafts: AUTHORSET
 }
 
 export const Placeholder = (props: PlaceholderProps) => {

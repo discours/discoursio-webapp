@@ -116,14 +116,17 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
   const loadAuthor = async (opts: QueryGet_AuthorArgs): Promise<Author | undefined> => {
     try {
       // Проверяем нужно ли декодировать slug
+      console.log(`[AuthorsProvider] Loading author with slug: "${opts.slug}"`)
+
+      let queryOptions = opts
       if (opts.slug) {
         const decodedSlug = decodeURIComponent(opts.slug)
         if (decodedSlug !== opts.slug) {
-          opts = { ...opts, slug: decodedSlug }
+          queryOptions = { ...opts, slug: decodedSlug }
         }
       }
-      
-      const fetcher = await getAuthor(opts)
+
+      const fetcher = await getAuthor(queryOptions)
       const author = await fetcher()
       if (author) {
         addAuthor(author as Author)

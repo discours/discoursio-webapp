@@ -451,7 +451,7 @@ type DraftsContextType = {
 export const DraftsContext = createContext<DraftsContextType>({} as DraftsContextType)
 const DRAFT_EDITOR_ID_REGEX = /draft-(\d+)-([a-z]+)/
 export const DraftsProvider = (props: { children: JSX.Element }) => {
-  const { client, session, refreshClient } = useSession()
+  const { client, session } = useSession()
   const { topicEntities } = useTopics()
   // все доступные для редактирования черновики
   const [drafts, setDrafts] = createSignal<ExtendedDraft[]>([])
@@ -1101,9 +1101,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
     // Проверяем токен авторизации
     if (!session()?.token) return Promise.reject(new Error('No auth token available'))
-
-    // Обновляем клиент для гарантии актуального токена и дожидаемся завершения
-    await refreshClient()
 
     // Получаем обновленный клиент после refreshClient
     const currentClient = client()

@@ -86,8 +86,27 @@ const fetchAuthorComments = async (slug: string, offset?: number) => {
     limit: COMMENTS_PER_PAGE,
     offset
   }
+  console.log('[fetchAuthorComments] Loading comments for author:', slug, 'with opts:', opts)
   const shoutsLoader = loadReactions(opts)
-  return await shoutsLoader()
+  const result = await shoutsLoader()
+
+  console.log('[fetchAuthorComments] Loaded reactions:', result?.length || 0)
+  if (result?.length) {
+    // Диагностика: проверяем типы загруженных реакций
+    const reactionTypes = result.map((r) => ({ id: r.id, kind: r.kind, body: r.body?.slice(0, 50) }))
+    console.log('[fetchAuthorComments] Reaction types loaded:', reactionTypes)
+
+    // Проверяем, есть ли реакции не типа Comment
+    const nonComments = result.filter((r) => r.kind !== ReactionKind.Comment)
+    if (nonComments.length > 0) {
+      console.warn(
+        '[fetchAuthorComments] Found non-comment reactions:',
+        nonComments.map((r) => ({ id: r.id, kind: r.kind }))
+      )
+    }
+  }
+
+  return result
 }
 
 const fetchAllTopics = async () => {

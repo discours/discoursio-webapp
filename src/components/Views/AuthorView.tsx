@@ -1,6 +1,6 @@
 import { A, useLocation, useParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
 import { CommentsList } from '~/components/Comments/CommentsList'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { Loading } from '~/components/_shared/Loading'
@@ -64,28 +64,45 @@ export const AuthorView = (props: AuthorViewProps) => {
   const [showExpandBioControl, setShowExpandBioControl] = createSignal(false)
   const [commented, setCommented] = createSignal<Reaction[]>(props.comments || [])
   const [followersLoaded, setFollowersLoaded] = createSignal(false)
-  const [followingsLoaded, setFollowingsLoaded] = createSignal(false)
   const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
+
+  // Немедленно инициализируем sortedFeed с пропсами
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
 
-  // derivatives
-  const me = createMemo<Author>(() => session()?.author as Author)
+  // Инициализируем loadMoreHidden сразу на основе начальных данных
+  // Важно: onMount гарантирует, что публикации отображаются сразу при загрузке страницы
+  onMount(() => {
+    const initialShouts = props.shouts || []
+    console.log('[AuthorView] onMount - initial shouts:', initialShouts.length)
+    if (initialShouts.length > 0) {
+      setSortedFeed(initialShouts)
+      setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
+      console.log('[AuthorView] Set initial feed:', initialShouts.length, 'items')
+    }
+  })
 
+  // derivatives
   const { commentsByAuthor, addShoutReactions } = useReactions()
   const { feedByAuthor } = useFeed()
 
-  // Обновляем мемо для статистики с дефолтными значениями
-  const stats = createMemo<AuthorStats>(() => ({
-    shouts: author()?.stat?.shouts ?? 0,
-    comments: author()?.stat?.comments ?? 0,
-    rating: author()?.stat?.rating ?? undefined
-  }))
+  // Обновляем мемо для статистики - показываем только данные из stat автора
+  const stats = createMemo<AuthorStats>(() => {
+    const authorData = author()
+    const result = {
+      shouts: authorData?.stat?.shouts ?? 0,
+      comments: authorData?.stat?.comments ?? 0,
+      rating: authorData?.stat?.rating ?? undefined
+    }
+    console.log('[AuthorView] Stats calculated:', result, 'for author:', authorData?.slug)
+    return result
+  })
 
   // Эффект для обработки изменения таба через браузер
   createEffect(
     on([currentTab, author], async ([tab, currentAuthor]) => {
       if (tab === 'comments' && currentAuthor && !commented().length) {
         try {
+          console.log('[AuthorView] Loading comments for author:', currentAuthor.slug)
           const result = await loadReactions({
             by: {
               kinds: [ReactionKind.Comment],
@@ -96,6 +113,24 @@ export const AuthorView = (props: AuthorViewProps) => {
           })()
 
           if (result) {
+            console.log('[AuthorView] Loaded reactions for author:', result.length)
+            // Диагностика: проверяем типы загруженных реакций
+            const reactionTypes = result.map((r) => ({
+              id: r.id,
+              kind: r.kind,
+              body: r.body?.slice(0, 50)
+            }))
+            console.log('[AuthorView] Reaction types loaded:', reactionTypes)
+
+            // Проверяем, есть ли реакции не типа Comment
+            const nonComments = result.filter((r) => r.kind !== ReactionKind.Comment)
+            if (nonComments.length > 0) {
+              console.warn(
+                '[AuthorView] Found non-comment reactions:',
+                nonComments.map((r) => ({ id: r.id, kind: r.kind }))
+              )
+            }
+
             addShoutReactions(result)
             setCommented(result)
             setLoadMoreCommentsHidden(result.length >= (currentAuthor.stat?.comments || 0))
@@ -122,7 +157,9 @@ export const AuthorView = (props: AuthorViewProps) => {
     on(
       () => feedByAuthor()[props.authorSlug],
       (authorFeed) => {
-        if (authorFeed?.length) {
+        // Обновляем только если данные из feedByAuthor отличаются от текущих
+        // и если у нас еще нет начальных данных или они пустые
+        if (authorFeed?.length && (!sortedFeed().length || authorFeed.length > sortedFeed().length)) {
           setSortedFeed(authorFeed)
           if (stats().shouts > 0) {
             setLoadMoreHidden(authorFeed.length >= stats().shouts)
@@ -131,64 +168,80 @@ export const AuthorView = (props: AuthorViewProps) => {
           }
         }
       },
-      { defer: false }
+      { defer: true }
     )
   )
 
-  // Объединенный эффект для загрузки автора и его подписок
+  // Эффект для загрузки данных автора
   createEffect(
-    on(
-      [() => session()?.author],
-      async ([meData]) => {
-        const slug = props.authorSlug
-        
-        if (slug && meData?.slug === slug) {
-          setAuthor(meData)
-          // Убедимся, что статистика существует
-          if (!meData.stat) {
-            console.error('Missing stats for current user', meData)
-          }
-        } else if (slug && !author()) {
-          await loadAuthor({ slug })
-          const foundAuthor = authorsEntities()[slug]
+    on([() => session()?.author, () => props.authorSlug], async ([meData, slug]) => {
+      console.log('[AuthorView] Author loading effect triggered:', {
+        sessionAuthor: meData?.slug,
+        targetSlug: slug,
+        currentAuthor: author()?.slug
+      })
 
-          if (foundAuthor) {
-            // Инициализируем статистику если её нет
-            if (!foundAuthor.stat) {
-              foundAuthor.stat = {
-                shouts: props.shouts?.length || 0,
-                comments: props.comments?.length || 0,
-                rating: 0
-              }
-            }
-            setAuthor(foundAuthor)
-          }
-        }
+      if (slug && meData?.slug === slug) {
+        console.log('[AuthorView] Setting current user as author')
+        setAuthor(meData)
+        // Если у текущего пользователя нет статистики, она будет загружена отдельно
+      } else if (slug && (!author() || author()?.slug !== slug)) {
+        console.log('[AuthorView] Loading author from API:', slug)
+        await loadAuthor({ slug })
+        const foundAuthor = authorsEntities()[slug]
 
-        // Единообразная загрузка followers/followings для любого автора
-        if (slug && author()) {
-          try {
-            const followsResp = await client()
-              ?.query(getAuthorFollowsQuery, { slug })
-              .toPromise()
-            const follows = followsResp?.data?.get_author_follows || {}
-            setFollowingArray([...(follows?.authors || []), ...(follows?.topics || [])])
-            setFollowingsLoaded(true)
-
-            const followersResp = await client()
-              ?.query(getAuthorFollowersQuery, { slug })
-              .toPromise()
-            setFollowers(followersResp?.data?.get_author_followers || [])
-            setFollowersLoaded(true)
-          } catch (error) {
-            console.error('[AuthorView] Error loading followers/followings:', error)
-            // Устанавливаем флаги в true даже при ошибке, чтобы не блокировать отображение
-            setFollowersLoaded(true)
-            setFollowingsLoaded(true)
-          }
+        if (foundAuthor) {
+          console.log('[AuthorView] Author loaded successfully:', foundAuthor.slug, foundAuthor.stat)
+          setAuthor(foundAuthor)
+          // Если у автора нет статистики, она будет загружена отдельно
+        } else {
+          console.warn('[AuthorView] Author not found:', slug)
         }
       }
-    )
+    })
+  )
+
+  // Отдельный эффект для загрузки фолловеров и подписок
+  createEffect(
+    on([author, () => props.authorSlug], async ([currentAuthor, slug]) => {
+      // Загружаем followers/followings только если автор установлен и еще не загружали для этого автора
+      if (slug && currentAuthor && !followersLoaded()) {
+        try {
+          console.log('[AuthorView] Loading followers/followings for:', slug)
+
+          // Проверяем доступность клиента с небольшой задержкой
+          let currentClient = client()
+          if (!currentClient) {
+            console.log('[AuthorView] GraphQL client not ready, waiting...')
+            // Ждем немного для инициализации клиента
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            currentClient = client()
+          }
+
+          if (!currentClient) {
+            console.warn('[AuthorView] GraphQL client still not ready, skipping followers load')
+            return
+          }
+
+          const followsResp = await currentClient.query(getAuthorFollowsQuery, { slug }).toPromise()
+          const follows = followsResp?.data?.get_author_follows || {}
+          setFollowingArray([...(follows?.authors || []), ...(follows?.topics || [])])
+          setFollowersLoaded(true)
+
+          const followersResp = await currentClient.query(getAuthorFollowersQuery, { slug }).toPromise()
+          setFollowers(followersResp?.data?.get_author_followers || [])
+          setFollowersLoaded(true)
+          console.log(
+            '[AuthorView] Loaded followers:',
+            followersResp?.data?.get_author_followers?.length || 0
+          )
+        } catch (error) {
+          console.error('[AuthorView] Error loading followers/followings:', error)
+          // Устанавливаем флаги в true даже при ошибке, чтобы не блокировать отображение
+          setFollowersLoaded(true)
+        }
+      }
+    })
   )
 
   // Обработка биографии
@@ -244,13 +297,13 @@ export const AuthorView = (props: AuthorViewProps) => {
       <ul class="view-switcher">
         <li classList={{ 'view-switcher__item--selected': !currentTab() }}>
           <A href={`/@${props.authorSlug}`}>{t('Publications')}</A>
-          <Show when={author()?.stat}>
+          <Show when={author() && stats().shouts > 0}>
             <span class="view-switcher__counter">{stats().shouts}</span>
           </Show>
         </li>
         <li classList={{ 'view-switcher__item--selected': currentTab() === 'comments' }}>
           <A href={`/@${props.authorSlug}/comments`}>{t('Comments')}</A>
-          <Show when={author()?.stat}>
+          <Show when={author() && stats().comments > 0}>
             <span class="view-switcher__counter">{stats().comments}</span>
           </Show>
         </li>
@@ -263,18 +316,10 @@ export const AuthorView = (props: AuthorViewProps) => {
     </div>
   )
 
-  // Эффект для обработки начальных данных
-  createEffect(on(() => props.shouts, (shouts) => {
-    if (shouts && shouts.length > 0) {
-      setSortedFeed(shouts)
-      setLoadMoreHidden(shouts.length < FEED_PAGE_SIZE)
-    }
-  }, { defer: false }))
-
   // Обновленная функция loadMore
   const loadMore = async () => {
     if (!author()) return []
-    
+
     saveScrollPosition()
     const offset = sortedFeed().length
 
@@ -331,12 +376,19 @@ export const AuthorView = (props: AuthorViewProps) => {
   // Effect: Reset sortedFeed When Author Slug Changes
   createEffect(
     on(
-      () => props.authorSlug,
-      (newSlug, prevSlug) => {
+      () => [props.authorSlug, props.shouts] as const,
+      ([newSlug, newShouts], prevValues) => {
+        const prevSlug = prevValues?.[0]
         if (newSlug !== prevSlug) {
           // Сбрасываем и сразу устанавливаем начальные данные для нового автора
-          setSortedFeed(props.shouts || [])
-          setLoadMoreHidden((props.shouts || []).length < FEED_PAGE_SIZE)
+          const initialShouts = newShouts || []
+          setSortedFeed(initialShouts)
+          setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
+
+          // Сбрасываем флаги загрузки фолловеров для нового автора
+          setFollowersLoaded(false)
+          setFollowers([])
+          setFollowingArray([])
         }
       },
       { defer: true }
@@ -349,6 +401,12 @@ export const AuthorView = (props: AuthorViewProps) => {
 
     saveScrollPosition()
     try {
+      console.log(
+        '[AuthorView] Loading more comments for author:',
+        author()?.slug,
+        'offset:',
+        commented().length
+      )
       const result = await loadReactions({
         by: {
           kinds: [ReactionKind.Comment],
@@ -359,6 +417,20 @@ export const AuthorView = (props: AuthorViewProps) => {
       })()
 
       if (result?.length) {
+        console.log('[AuthorView] Loaded more reactions:', result.length)
+        // Диагностика: проверяем типы загруженных реакций
+        const reactionTypes = result.map((r) => ({ id: r.id, kind: r.kind, body: r.body?.slice(0, 50) }))
+        console.log('[AuthorView] More reaction types loaded:', reactionTypes)
+
+        // Проверяем, есть ли реакции не типа Comment
+        const nonComments = result.filter((r) => r.kind !== ReactionKind.Comment)
+        if (nonComments.length > 0) {
+          console.warn(
+            '[AuthorView] Found non-comment reactions in loadMore:',
+            nonComments.map((r) => ({ id: r.id, kind: r.kind }))
+          )
+        }
+
         addShoutReactions(result)
         setCommented((prev) => [...prev, ...result])
         setLoadMoreCommentsHidden(commented().length >= stats().comments)
@@ -447,62 +519,83 @@ export const AuthorView = (props: AuthorViewProps) => {
         </Match>
 
         <Match when={currentTab() === 'comments'}>
-          <Show when={me() && me()?.slug === props.authorSlug && !me().stat?.comments}>
+          {/* Показываем плейсхолдер только если статистика показывает 0 комментариев */}
+          <Show when={stats().comments === 0 && author()}>
             <div class="wide-container">
               <Placeholder type={'comments'} mode="profile" />
             </div>
           </Show>
 
-          <div class="wide-container">
-            <div class="row">
-              <div class="col-md-20 col-lg-18">
-                <CommentsList
-                  comments={commented()}
-                  showArticleLink={true}
-                  withFilter={true}
-                  sortOrder={commentsOrder()}
-                  onFiltersChange={(filters) => setCommentsOrder(filters.sort || ReactionSort.Newest)}
-                  onDeleteComment={handleDeleteComment}
-                  loadMoreComments={loadMoreComments}
-                  loadMoreHidden={loadMoreCommentsHidden()}
-                  pageSize={COMMENTS_PER_PAGE}
-                />
+          {/* Показываем комментарии если статистика показывает больше 0 */}
+          <Show when={stats().comments > 0}>
+            <div class="wide-container">
+              <div class="row">
+                <div class="col-md-20 col-lg-18">
+                  <CommentsList
+                    comments={commented()}
+                    showArticleLink={true}
+                    withFilter={true}
+                    sortOrder={commentsOrder()}
+                    onFiltersChange={(filters) => setCommentsOrder(filters.sort || ReactionSort.Newest)}
+                    onDeleteComment={handleDeleteComment}
+                    loadMoreComments={loadMoreComments}
+                    loadMoreHidden={loadMoreCommentsHidden()}
+                    pageSize={COMMENTS_PER_PAGE}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          </Show>
         </Match>
 
         <Match when={!currentTab()}>
-          <Show when={me()?.slug === props.authorSlug && !me()?.stat?.shouts}>
+          {/* Показываем плейсхолдер только если статистика показывает 0 публикаций */}
+          <Show when={stats().shouts === 0 && author()}>
             <div class="wide-container">
               <Placeholder type={'author'} mode="profile" />
             </div>
           </Show>
 
-          <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
-            <For each={sortedFeed()}>
-              {(_article, index) => {
-                const i = index()
-                if (i % 3 === 0) {
-                  const articles = sortedFeed().slice(i, i + 3)
-                  return (
-                    <Switch>
-                      <Match when={articles.length === 1}>
-                        <Row1 article={articles[0]} noauthor={true} nodate={false} />
-                      </Match>
-                      <Match when={articles.length === 2}>
-                        <Row2 articles={articles} noauthor={true} nodate={true} isEqual={true} />
-                      </Match>
-                      <Match when={articles.length === 3}>
-                        <Row3 articles={articles} noauthor={true} nodate={true} />
-                      </Match>
-                    </Switch>
-                  )
-                }
-                return null
-              }}
-            </For>
-          </LoadMoreWrapper>
+          {/* Показываем публикации если статистика показывает больше 0 */}
+          <Show when={stats().shouts > 0}>
+            <Show
+              when={sortedFeed().length > 0}
+              fallback={
+                <div class="wide-container">
+                  <div class="row">
+                    <div class="col-md-20 col-lg-18">
+                      <div style="text-align: center; padding: 2rem;">{t('Loading publications...')}</div>
+                    </div>
+                  </div>
+                </div>
+              }
+            >
+              <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
+                <For each={sortedFeed()}>
+                  {(_article, index) => {
+                    const i = index()
+                    if (i % 3 === 0) {
+                      const articles = sortedFeed().slice(i, i + 3)
+                      return (
+                        <Switch>
+                          <Match when={articles.length === 1}>
+                            <Row1 article={articles[0]} noauthor={true} nodate={false} />
+                          </Match>
+                          <Match when={articles.length === 2}>
+                            <Row2 articles={articles} noauthor={true} nodate={true} isEqual={true} />
+                          </Match>
+                          <Match when={articles.length === 3}>
+                            <Row3 articles={articles} noauthor={true} nodate={true} />
+                          </Match>
+                        </Switch>
+                      )
+                    }
+                    return null
+                  }}
+                </For>
+              </LoadMoreWrapper>
+            </Show>
+          </Show>
         </Match>
       </Switch>
     </div>

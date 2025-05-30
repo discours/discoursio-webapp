@@ -1,6 +1,6 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, Suspense, createMemo } from 'solid-js'
+import { Show, Suspense, createEffect, createMemo } from 'solid-js'
 
 import { useConnect } from '~/context/connect'
 import { useDrafts } from '~/context/drafts'
@@ -80,7 +80,7 @@ const ConnectionIndicator = () => {
 const EditingHeader = (props: Props) => {
   const { t } = useLocalize()
   const { toggleEditorPanel } = useDrafts()
-  const { session } = useSession()
+  const { session, isSessionValidating } = useSession()
   const { showModal } = useUI()
   const loc = useLocation()
   const author = createMemo(() => session()?.author || null)
@@ -125,6 +125,7 @@ const EditingHeader = (props: Props) => {
                     name={author()?.name || ''}
                     userpic={author()?.pic || ''}
                     class={styles.userpic}
+                    loading={isSessionValidating()}
                   />
                 </div>
               </button>
@@ -164,7 +165,7 @@ const EditingHeader = (props: Props) => {
 // Компонент для авторизованного режима
 const AuthorizedHeader = (props: Props) => {
   const { t } = useLocalize()
-  const { session } = useSession()
+  const { session, isSessionValidating } = useSession()
   const { showModal } = useUI()
   const navigate = useNavigate()
   const loc = useLocation()
@@ -230,6 +231,7 @@ const AuthorizedHeader = (props: Props) => {
                     name={author()?.name || ''}
                     userpic={author()?.pic || ''}
                     class={styles.userpic}
+                    loading={isSessionValidating()}
                   />
                 </div>
               </button>
@@ -393,11 +395,33 @@ const EditingSelector = () => {
 
 // Основной компонент HeaderControls
 export const HeaderControls = (props: Props) => {
-  const { session } = useSession()
+  const { session, isSessionValidating } = useSession()
   const loc = useLocation()
 
   const isEditingMode = createMemo(() => loc.pathname.startsWith('/edit/') && !loc.pathname.endsWith('new'))
-  const isAuthorized = createMemo(() => !!session()?.token)
+
+  // Диагностика сессии
+  createEffect(() => {
+    const currentSession = session()
+    console.log('[HeaderControls] Session debug:', {
+      session: currentSession,
+      token: currentSession?.token,
+      author: currentSession?.author,
+      isValidating: isSessionValidating()
+    })
+  })
+
+  // Правильная логика определения авторизации: есть сессия с токеном И автором
+  const isAuthorized = createMemo(() => {
+    const currentSession = session()
+    const hasValidSession = currentSession?.token && currentSession?.author
+    console.log('[HeaderControls] Authorization check:', {
+      hasValidSession,
+      isValidating: isSessionValidating(),
+      result: hasValidSession || isSessionValidating()
+    })
+    return hasValidSession || isSessionValidating()
+  })
 
   return (
     <div class={clsx('col-auto col-lg-7', styles.usernav)}>

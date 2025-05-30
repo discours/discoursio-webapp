@@ -63,7 +63,7 @@ const BASE_CONFIG: Config = {
   WHOLE_DOCUMENT: false,
   RETURN_DOM: false,
   RETURN_DOM_FRAGMENT: false,
-  RETURN_TRUSTED_TYPE: true // Включаем поддержку Trusted Types
+  RETURN_TRUSTED_TYPE: false // Отключаем Trusted Types для совместимости
 }
 
 const NOTAGS_REGEXP = /<\/?[a-z][\s\S]*>/i
@@ -101,7 +101,17 @@ DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
  * @returns Очищенный HTML
  */
 export const sanitizeHtml = (html: string): string => {
-  return DOMPurify.sanitize(html, BASE_CONFIG)
+  console.log('[sanitizeHtml] Input:', { html: html?.substring(0, 100), length: html?.length })
+
+  const result = DOMPurify.sanitize(html, BASE_CONFIG)
+
+  console.log('[sanitizeHtml] Output:', {
+    result: String(result)?.substring(0, 100),
+    length: String(result)?.length,
+    type: typeof result
+  })
+
+  return String(result)
 }
 
 /**

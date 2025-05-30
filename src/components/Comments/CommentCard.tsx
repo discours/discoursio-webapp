@@ -354,10 +354,18 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
                 when={!isDeleted()}
                 fallback={<p class={styles.deletedMessage}>{t('This comment has been deleted')}</p>}
               >
-                <div
-                  class={styles.commentText}
-                  innerHTML={String(sanitizeHtml(props.comment.body || ''))}
-                />
+                {(() => {
+                  const body = props.comment.body || ''
+                  const sanitized = sanitizeHtml(body)
+                  console.log('[CommentCard] Rendering comment body:', {
+                    commentId: props.comment.id,
+                    originalBody: body?.substring(0, 100),
+                    sanitized: sanitized?.substring(0, 100),
+                    bodyLength: body?.length,
+                    sanitizedLength: sanitized?.length
+                  })
+                  return <div class={styles.commentText} innerHTML={String(sanitized)} />
+                })()}
               </Show>
 
               <div class={styles.commentActions}>

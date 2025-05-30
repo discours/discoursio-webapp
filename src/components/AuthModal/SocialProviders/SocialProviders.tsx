@@ -1,31 +1,55 @@
 import { For } from 'solid-js'
+import { Button } from '~/components/_shared/Button'
+import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import { Icon } from '../../_shared/Icon'
+
 import styles from './SocialProviders.module.scss'
 
-export const PROVIDERS = ['facebook', 'google', 'github'] // 'vk' | 'telegram'
+const socialProviders = [
+  { name: 'google', title: 'Google', icon: 'google' },
+  { name: 'facebook', title: 'Facebook', icon: 'facebook' },
+  { name: 'github', title: 'GitHub', icon: 'github' },
+  { name: 'vk', title: 'VKontakte', icon: 'vk' },
+  { name: 'yandex', title: 'Yandex', icon: 'yandex' }
+]
 
 export const SocialProviders = () => {
+  const { oauth, authError } = useSession()
   const { t } = useLocalize()
-  const { oauth } = useSession()
+
+  const handleSocialLogin = (provider: string) => {
+    console.log('[SocialProviders] Initiating OAuth for:', provider)
+    oauth(provider)
+  }
 
   return (
-    <div class={styles.container}>
-      <div class={styles.text}>{t('or sign in with social networks')}</div>
-      <div class={styles.social}>
-        <For each={PROVIDERS}>
+    <div class={styles.SocialProviders}>
+      <div class={styles.header}>
+        <span class={styles.divider}>{t('Or continue with')}</span>
+      </div>
+
+      <div class={styles.providers}>
+        <For each={socialProviders}>
           {(provider) => (
-            <button
-              type="button"
-              class={styles[provider as keyof typeof styles]}
-              onClick={(_e) => oauth(provider)}
-            >
-              <Icon name={provider} />
-            </button>
+            <Button
+              variant="outline"
+              size="L"
+              value={
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <Icon name={provider.icon} class={styles.providerIcon} />
+                  {provider.title}
+                </div>
+              }
+              onClick={() => handleSocialLogin(provider.name)}
+              class={styles.providerButton}
+              data-testid={`oauth-${provider.name}`}
+            />
           )}
         </For>
       </div>
+
+      {authError() && <div class={styles.error}>{authError()}</div>}
     </div>
   )
 }

@@ -15,7 +15,7 @@ import styles from './LayoutSelector.module.scss'
 export const LayoutSelector = () => {
   const { t } = useLocalize()
   const { createDraft, loadDrafts } = useDrafts()
-  const { refreshClient, isAuthenticated } = useSession()
+  const { isAuthenticated } = useSession()
   const navigate = useNavigate()
 
   const handleCreate = async (layout: LayoutType) => {
@@ -28,9 +28,6 @@ export const LayoutSelector = () => {
         toast.error(t('You need to be logged in to create drafts'))
         return
       }
-
-      // Обновляем клиент для гарантии актуального токена и ждем завершения
-      await refreshClient()
 
       const result = await createDraft({ layout })
       console.log('[routes : edit/new] result', result)

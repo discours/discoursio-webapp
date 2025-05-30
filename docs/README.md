@@ -1,3 +1,31 @@
+# Документация проекта
+
+## Основные документы
+
+- [README проекта](../README.md) - Основная информация о проекте
+- [CHANGELOG](../CHANGELOG.md) - История изменений
+- [Руководство по OAuth](oauth-implementation.md) - Backend требования для OAuth
+- [Настройка OAuth](oauth-deployment.md) - Deployment guide для OAuth  
+- [CSS Оптимизация](css-optimization.md) - CSS Tooling и Tree Shaking оптимизация
+- [Архитектура](architecture.md) - Техническая архитектура проекта
+
+## Разработка
+
+- [Git Workflow](git-workflow.md) - Правила работы с Git
+- [Code Style](code-style.md) - Стандарты кодирования
+- [Testing](testing.md) - Стратегия тестирования
+- [Deployment](deployment.md) - Процесс деплоя
+
+## API
+
+- [GraphQL Schema](../src/graphql/schema/) - Схемы GraphQL
+- [API Documentation](api.md) - REST API документация
+
+## Компоненты
+
+- [UI Components](components.md) - Библиотека компонентов
+- [Icons](../src/components/_shared/Icon/icons/) - Иконки проекта
+
 # Документация  фронтенда discours.io
 
 Проект использует: SolidJS, Typescript, GraphQL, SASS
@@ -41,3 +69,23 @@
 - [Работа с топиками](./topics.md)
 - [Облако тегов для выбора тем](./topic-pills-cloud.md)
 - [Система черновиков и публикации](./drafts.md)
+
+## Авторизация и безопасность
+- [OAuth Implementation Guide](./oauth-implementation.md) - Полное руководство по реализации OAuth
+- [OAuth Deployment Checklist](./oauth-deployment.md) - Чеклист для развертывания OAuth
+
+## Архитектура
+- [SolidJS Fine-grained Reactivity](./solid-memo.md) - Принципы реактивности
+- [State Management](./state-management.md) - Управление состоянием приложения
+
+## Тестирование  
+- [E2E Testing OAuth](../tests/oauth.spec.ts) - Автоматические тесты OAuth
+- [Component Testing](./testing.md) - Тестирование компонентов
+
+## API и интеграции
+- [GraphQL Schema](../src/graphql/schema/) - Схема GraphQL API
+- [Context Providers](../src/context/) - Контекстные провайдеры
+
+## Компоненты
+- [UI Components](../src/components/) - Переиспользуемые компоненты
+- [Form Components](../src/components/AuthModal/) - Компоненты форм

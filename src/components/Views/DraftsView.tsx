@@ -2,11 +2,13 @@ import { useNavigate } from '@solidjs/router'
 import { For, Show, createEffect, createSignal, on, onMount } from 'solid-js'
 import { toast } from 'solid-toast'
 import { DraftCard } from '~/components/Draft'
+import { Placeholder } from '~/components/Feed/Placeholder'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { Draft } from '~/graphql/schema/core.gen'
 import styles from '~/styles/views/DraftsView.module.scss'
+import { Loading } from '../_shared/Loading'
 
 export const DraftsView = (_props: { drafts?: Draft[] }) => {
   const { requireAuthentication, session } = useSession()
@@ -69,7 +71,26 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
 
   // Отслеживаем состояние черновиков
   createEffect(() => {
-    console.log('[DraftsView] current drafts:', drafts())
+    const currentDrafts = drafts()
+    console.log('[DraftsView] current drafts:', currentDrafts)
+    console.log('[DraftsView] drafts breakdown:', {
+      total: currentDrafts.length,
+      withId: currentDrafts.filter((d) => d.id).length,
+      withoutId: currentDrafts.filter((d) => !d.id).length,
+      localOnly: currentDrafts.filter((d) => 'isLocalOnly' in d && d.isLocalOnly).length,
+      serverOnly: currentDrafts.filter((d) => !('isLocalOnly' in d) || !d.isLocalOnly).length,
+      uniqueIds: uniqueDraftIds().length
+    })
+
+    // Логируем детали каждого черновика
+    currentDrafts.forEach((draft) => {
+      console.log(`[DraftsView] Draft ${draft.id}:`, {
+        title: draft.title,
+        isLocalOnly: 'isLocalOnly' in draft ? draft.isLocalOnly : false,
+        updated_at: draft.updated_at,
+        activeVersion: draft.id ? activeVersions()[draft.id] || 'server' : 'local'
+      })
+    })
   })
 
   // Отслеживаем состояние загрузки
@@ -116,10 +137,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
           console.log('[DraftsView] no session, requiring authentication...')
           setIsLoading(true)
           try {
-            await requireAuthentication(async () => {
-              console.log('[DraftsView] authenticated, loading drafts...')
-              await loadData()
-            }, 'edit')
+            await requireAuthentication(() => {}, 'edit')
           } catch (err) {
             console.error('[DraftsView] Authentication failed:', err)
             setIsLoading(false)
@@ -130,9 +148,10 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
     )
   ) // Убираем defer чтобы эффект сработал сразу
 
-  // Загрузка данных при монтировании компонента
+  // Эффект для ограничения доступа только авторизованными пользователями
   onMount(() => {
     loadData()
+    requireAuthentication(() => {}, 'edit')
   })
 
   /**
@@ -413,8 +432,15 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
    * @param {Draft | ExtendedDraft} draft - Черновик (локальный или серверный)
    */
   const renderDraftCard = (draft: Draft | ExtendedDraft) => {
+    console.log(`[DraftsView] renderDraftCard for draft ${draft.id}:`, {
+      title: draft.title,
+      hasId: !!draft.id,
+      isLocalOnly: 'isLocalOnly' in draft ? draft.isLocalOnly : false
+    })
+
     if (!draft.id) {
       // Для черновиков без ID отображаем как есть
+      console.log(`[DraftsView] Rendering draft without ID: ${draft.title}`)
       return (
         <DraftCard
           draft={draft as ExtendedDraft}
@@ -433,8 +459,19 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
     // Если текущий черновик не совпадает с активной версией, не отображаем его
     const isLocalDraft = 'isLocalOnly' in draft && draft.isLocalOnly === true
     if ((isLocalDraft && activeVersion !== 'local') || (!isLocalDraft && activeVersion !== 'server')) {
+      console.log(`[DraftsView] Skipping draft ${draft.id} - version mismatch:`, {
+        isLocalDraft,
+        activeVersion,
+        shouldShow: false
+      })
       return null
     }
+
+    console.log(`[DraftsView] Will render draft ${draft.id}:`, {
+      title: draft.title,
+      isLocalDraft,
+      activeVersion
+    })
 
     // Проверяем наличие рассинхронизации версий
     const hasSyncIssue = hasVersionSynchronizationIssue(draft)
@@ -483,19 +520,37 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
     const activeVersion = activeVersions()[draftId] || 'server'
     const draftToShow = activeVersion === 'local' && localVersion ? localVersion : serverVersion
 
+    console.log(`[DraftsView] renderDraftById ${draftId}:`, {
+      versionsFound: draftVersions.length,
+      hasServer: !!serverVersion,
+      hasLocal: !!localVersion,
+      activeVersion,
+      willShow: !!draftToShow,
+      draftToShowTitle: draftToShow?.title
+    })
+
     return draftToShow ? renderDraftCard(draftToShow) : null
   }
 
   // Используем uniqueDraftIds в рендеринге списка черновиков
   const renderDraftsList = () => {
     const uniqueIds = uniqueDraftIds()
+    const draftsWithoutId = drafts().filter((d) => !d.id)
+
+    console.log('[DraftsView] renderDraftsList:', {
+      totalDrafts: drafts().length,
+      uniqueIds: uniqueIds.length,
+      draftsWithoutId: draftsWithoutId.length,
+      uniqueIdsList: uniqueIds,
+      draftsWithoutIdTitles: draftsWithoutId.map((d) => d.title)
+    })
 
     return (
       <div class={styles.draftsList}>
         <For each={uniqueIds}>{(draftId) => renderDraftById(draftId)}</For>
 
         {/* Добавляем черновики без ID в конце */}
-        <For each={drafts().filter((d) => !d.id)}>{(draft) => renderDraftCard(draft)}</For>
+        <For each={draftsWithoutId}>{(draft) => renderDraftCard(draft)}</For>
       </div>
     )
   }
@@ -512,16 +567,13 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
             <Show
               when={drafts()?.length > 0}
               fallback={
-                <div class={styles.noDrafts}>
-                  {isLoading() ? (
-                    <div class={styles.loadingMessage}>{t('Loading drafts...')}</div>
-                  ) : (
-                    <div class={styles.emptyMessage}>
-                      <h3>{t('No drafts yet')}</h3>
-                      <p>{t('Create a new draft to start writing')}</p>
+                <Show when={!isLoading()} fallback={<Loading />}>
+                  <div class="row">
+                    <div class="col-md-20 col-lg-18">
+                      <Placeholder type="drafts" mode="profile" />
                     </div>
-                  )}
-                </div>
+                  </div>
+                </Show>
               }
             >
               {renderDraftsList()}
