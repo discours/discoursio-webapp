@@ -6,7 +6,6 @@ import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWra
 import { Loading } from '~/components/_shared/Loading'
 import { useAuthors } from '~/context/authors'
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
-import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
@@ -54,7 +53,6 @@ export const AuthorView = (props: AuthorViewProps) => {
   const { session, client } = useSession()
 
   const { loadAuthor, authorsEntities } = useAuthors()
-  const { followers: myFollowers, followsResource } = useFollowing()
 
   // signals
   const [isBioExpanded, setIsBioExpanded] = createSignal(false)
@@ -67,9 +65,8 @@ export const AuthorView = (props: AuthorViewProps) => {
   const [commented, setCommented] = createSignal<Reaction[]>(props.comments || [])
   const [followersLoaded, setFollowersLoaded] = createSignal(false)
   const [followingsLoaded, setFollowingsLoaded] = createSignal(false)
-  const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
-
   const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
+  const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
 
   // derivatives
   const me = createMemo<Author>(() => session()?.author as Author)
@@ -141,25 +138,12 @@ export const AuthorView = (props: AuthorViewProps) => {
   // Объединенный эффект для загрузки автора и его подписок
   createEffect(
     on(
-      [() => session()?.author, () => myFollowers(), () => followsResource()],
-      async ([meData, followers, follows]) => {
+      [() => session()?.author],
+      async ([meData]) => {
         const slug = props.authorSlug
-
+        
         if (slug && meData?.slug === slug) {
           setAuthor(meData)
-
-          // Only set followers when they're available
-          if (followers) {
-            setFollowers(followers)
-            setFollowersLoaded(true)
-          }
-
-          // Only set follows when they're available
-          if (follows) {
-            setFollowingArray([...(follows.authors || []), ...(follows.topics || [])])
-            setFollowingsLoaded(true)
-          }
-
           // Убедимся, что статистика существует
           if (!meData.stat) {
             console.error('Missing stats for current user', meData)
@@ -171,7 +155,6 @@ export const AuthorView = (props: AuthorViewProps) => {
           if (foundAuthor) {
             // Инициализируем статистику если её нет
             if (!foundAuthor.stat) {
-              console.warn('Missing stats for author, initializing defaults')
               foundAuthor.stat = {
                 shouts: props.shouts?.length || 0,
                 comments: props.comments?.length || 0,
@@ -179,21 +162,29 @@ export const AuthorView = (props: AuthorViewProps) => {
               }
             }
             setAuthor(foundAuthor)
+          }
+        }
 
-            if (foundAuthor) {
-              const followsResp = await client()
-                ?.query(getAuthorFollowsQuery, { slug: foundAuthor.slug })
-                .toPromise()
-              const follows = followsResp?.data?.get_author_follows || {}
-              setFollowingArray([...(follows?.authors || []), ...(follows?.topics || [])])
-              setFollowingsLoaded(true)
+        // Единообразная загрузка followers/followings для любого автора
+        if (slug && author()) {
+          try {
+            const followsResp = await client()
+              ?.query(getAuthorFollowsQuery, { slug })
+              .toPromise()
+            const follows = followsResp?.data?.get_author_follows || {}
+            setFollowingArray([...(follows?.authors || []), ...(follows?.topics || [])])
+            setFollowingsLoaded(true)
 
-              const followersResp = await client()
-                ?.query(getAuthorFollowersQuery, { slug: foundAuthor.slug })
-                .toPromise()
-              setFollowers(followersResp?.data?.get_author_followers || [])
-              setFollowersLoaded(true)
-            }
+            const followersResp = await client()
+              ?.query(getAuthorFollowersQuery, { slug })
+              .toPromise()
+            setFollowers(followersResp?.data?.get_author_followers || [])
+            setFollowersLoaded(true)
+          } catch (error) {
+            console.error('[AuthorView] Error loading followers/followings:', error)
+            // Устанавливаем флаги в true даже при ошибке, чтобы не блокировать отображение
+            setFollowersLoaded(true)
+            setFollowingsLoaded(true)
           }
         }
       }
@@ -273,17 +264,24 @@ export const AuthorView = (props: AuthorViewProps) => {
   )
 
   // Эффект для обработки начальных данных
-  createEffect(on(() => props.shouts, setSortedFeed))
+  createEffect(on(() => props.shouts, (shouts) => {
+    if (shouts && shouts.length > 0) {
+      setSortedFeed(shouts)
+      setLoadMoreHidden(shouts.length < FEED_PAGE_SIZE)
+    }
+  }, { defer: false }))
 
   // Обновленная функция loadMore
   const loadMore = async () => {
+    if (!author()) return []
+    
     saveScrollPosition()
     const offset = sortedFeed().length
 
     try {
       const authorShoutsFetcher = loadShouts({
         options: {
-          filters: { author: props.authorSlug },
+          filters: { author: author()!.slug },
           limit: FEED_PAGE_SIZE,
           offset
         }
@@ -330,16 +328,18 @@ export const AuthorView = (props: AuthorViewProps) => {
     Boolean(author()?.stat && author()?.stat?.comments === 0)
   )
 
-  // Effect: Reset sortedFeed When Author Slug Changes**
+  // Effect: Reset sortedFeed When Author Slug Changes
   createEffect(
     on(
       () => props.authorSlug,
       (newSlug, prevSlug) => {
         if (newSlug !== prevSlug) {
-          setSortedFeed([]) // Reset sortedFeed to prevent shouts from previous author
+          // Сбрасываем и сразу устанавливаем начальные данные для нового автора
+          setSortedFeed(props.shouts || [])
+          setLoadMoreHidden((props.shouts || []).length < FEED_PAGE_SIZE)
         }
       },
-      {}
+      { defer: true }
     )
   )
 
@@ -395,7 +395,7 @@ export const AuthorView = (props: AuthorViewProps) => {
   return (
     <div class={styles.authorPage}>
       <div class="wide-container">
-        <Show when={author() && followersLoaded() && followingsLoaded()} fallback={<Loading />}>
+        <Show when={author()} fallback={<Loading />}>
           <>
             <div class={styles.authorHeader}>
               <AuthorCard
