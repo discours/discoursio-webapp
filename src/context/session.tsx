@@ -36,6 +36,12 @@ import { coreApiUrl } from '../config'
 export const AUTH_TOKEN_KEY = 'auth_token'
 
 /**
+ * Интервал обновления токена в минутах (по умолчанию 30 минут)
+ * Можно настроить через переменную окружения TOKEN_REFRESH_INTERVAL
+ */
+const TOKEN_REFRESH_INTERVAL = Number(process.env.TOKEN_REFRESH_INTERVAL) || 30
+
+/**
  * Интерфейс токена авторизации
  */
 export interface AuthPayload {
@@ -231,6 +237,11 @@ export const SessionProvider = (props: {
           if (result.data?.getSession) {
             const { author, token } = result.data.getSession
 
+            // Обновляем токен в localStorage если он изменился
+            if (token !== storedToken) {
+              localStorage.setItem(AUTH_TOKEN_KEY, token)
+            }
+
             // Формируем объект сессии
             const AuthPayload: AuthPayload = {
               token,
@@ -241,7 +252,7 @@ export const SessionProvider = (props: {
                 pic: author.pic,
                 bio: author.bio,
                 links: author.links
-              }
+              },
             }
 
             console.info('[context.session] Successfully loaded session via Discours GraphQL API')
@@ -270,7 +281,8 @@ export const SessionProvider = (props: {
       }
 
       console.info('[context.session] cannot refresh session - no valid token')
-      setAuthError('Сессия не найдена или истекла')
+      // Не показываем ошибку если просто нет токена
+      setAuthError('')
 
       // Устанавливаем флаг загрузки сессии
       setIsSessionLoaded(true)
@@ -291,7 +303,6 @@ export const SessionProvider = (props: {
   }
 
   const [session, { mutate: setSession }] = createResource<AuthPayload | undefined>(sessionData, {
-    ssrLoadFrom: 'initial',
     initialValue: undefined
   })
 
@@ -301,29 +312,49 @@ export const SessionProvider = (props: {
   }
 
   /**
-   * Устанавливает таймер для проверки и обновления сессии
-   * @param {number} intervalMinutes - Интервал проверки в минутах (по умолчанию 30 минут)
+   * Устанавливает таймер для автоматического обновления токена
+   * 
+   * Система автоматического обновления токенов:
+   * - Обновляет токен каждые TOKEN_REFRESH_INTERVAL минут (по умолчанию 30)
+   * - При ошибке уменьшает интервал проверки в 2 раза (минимум 5 минут)
+   * - Интервал можно настроить через переменную окружения TOKEN_REFRESH_INTERVAL
+   * 
+   * @param {number} intervalMinutes - Интервал обновления в минутах (по умолчанию из TOKEN_REFRESH_INTERVAL)
    */
-  const setupSessionTimer = (intervalMinutes = 30) => {
+  const setupSessionTimer = (intervalMinutes = TOKEN_REFRESH_INTERVAL) => {
     if (minuteLater) clearTimeout(minuteLater)
 
     // Установка интервала в миллисекундах
     const intervalMs = intervalMinutes * 60 * 1000
 
     minuteLater = setTimeout(async () => {
-      console.info(`[context.session] Refreshing session after ${intervalMinutes} minutes`)
+      console.info(`[context.session] Refreshing token after ${intervalMinutes} minutes`)
       try {
-        await loadSession()
-        console.info('[context.session] Session refresh completed')
-        // Если успешно обновили сессию, устанавливаем следующий таймер
-        setupSessionTimer(intervalMinutes)
+        const currentSession = session()
+        
+        if (currentSession?.token) {
+          console.info('[context.session] Refreshing token...')
+          const refreshSuccess = await refreshToken()
+          
+          if (refreshSuccess) {
+            console.info('[context.session] Token refresh completed successfully')
+            setupSessionTimer(intervalMinutes)
+          } else {
+            console.warn('[context.session] Token refresh failed, trying session reload')
+            await loadSession()
+            setupSessionTimer(Math.max(5, intervalMinutes / 2))
+          }
+        } else {
+          console.warn('[context.session] No session found, attempting to load from storage')
+          await loadSession()
+          setupSessionTimer(Math.max(5, intervalMinutes / 2))
+        }
       } catch (error) {
-        console.error('[context.session] Failed to refresh session:', error)
-        // Если произошла ошибка, попробуем обновить сессию через меньший интервал
+        console.error('[context.session] Failed to refresh token:', error)
         setupSessionTimer(Math.max(5, intervalMinutes / 2))
       }
     }, intervalMs)
-    console.info(`[context.session] Will refresh in ${intervalMinutes} minutes`)
+    console.info(`[context.session] Token will be refreshed in ${intervalMinutes} minutes`)
   }
 
   onCleanup(() => {
@@ -332,7 +363,17 @@ export const SessionProvider = (props: {
 
   // Initial effect
   onMount(() => {
-    loadSession()
+    // Быстрая проверка наличия токена для немедленной инициализации
+    const storedToken = localStorage.getItem(AUTH_TOKEN_KEY)
+    if (storedToken) {
+      console.log('[session] Found stored token, initializing session...')
+      // Если есть токен, запускаем загрузку сессии
+      loadSession()
+    } else {
+      console.log('[session] No stored token found')
+      // Если токена нет, сразу помечаем сессию как загруженную
+      setIsSessionLoaded(true)
+    }
   })
 
   // Объединяем эффекты для работы с сессией
@@ -521,7 +562,7 @@ export const SessionProvider = (props: {
             pic: author.pic,
             bio: author.bio,
             links: author.links
-          }
+          },
         }
 
         // Сразу обновляем клиент с новым токеном
@@ -583,7 +624,7 @@ export const SessionProvider = (props: {
             pic: author.pic,
             bio: author.bio,
             links: author.links
-          }
+          },
         }
 
         // Сразу обновляем клиент с новым токеном
@@ -799,7 +840,7 @@ export const SessionProvider = (props: {
             pic: author.pic,
             bio: author.bio,
             links: author.links
-          }
+          },
         }
 
         // Сразу обновляем клиент с новым токеном
@@ -925,7 +966,7 @@ export const SessionProvider = (props: {
             pic: author.pic,
             bio: author.bio,
             links: author.links
-          }
+          },
         }
 
         // Обновляем клиент с новым токеном
