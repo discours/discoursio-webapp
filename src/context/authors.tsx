@@ -115,14 +115,22 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
 
   const loadAuthor = async (opts: QueryGet_AuthorArgs): Promise<Author | undefined> => {
     try {
-      console.debug('[context.authors] load author', opts)
+      // Проверяем нужно ли декодировать slug
+      if (opts.slug) {
+        const decodedSlug = decodeURIComponent(opts.slug)
+        if (decodedSlug !== opts.slug) {
+          opts = { ...opts, slug: decodedSlug }
+        }
+      }
+      
       const fetcher = await getAuthor(opts)
       const author = await fetcher()
-      if (author) addAuthor(author as Author)
-      console.debug('[context.authors] loaded author', author)
+      if (author) {
+        addAuthor(author as Author)
+      }
       return author
     } catch (error) {
-      console.error('[context.authors] Error loading author:', error)
+      console.error('[context.authors] Error loading author:', error, 'for opts:', opts)
       throw error
     }
   }

@@ -267,7 +267,7 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
                 <ReactionsProvider>
                   <AuthorView
                     author={author() as Author}
-                    authorSlug={props.params.slug}
+                    authorSlug={decodeURIComponent(props.params.slug)}
                     shouts={authorShouts() || []}
                     comments={authorComments() || []}
                   />
