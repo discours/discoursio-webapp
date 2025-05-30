@@ -1,6 +1,6 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createMemo } from 'solid-js'
+import { Show, Suspense, createMemo } from 'solid-js'
 
 import { useConnect } from '~/context/connect'
 import { useDrafts } from '~/context/drafts'
@@ -112,24 +112,26 @@ const EditingHeader = (props: Props) => {
         </button>
       </div>
 
-      <ProfilePopup
-        onVisibilityChange={props.setIsProfilePopupVisible}
-        containerCssClass={styles.control}
-        trigger={
-          <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
-            <button class={styles.button}>
-              <div classList={{ entered: Boolean(matchProfile()) }}>
-                <Userpic
-                  size={'L'}
-                  name={author()?.name || ''}
-                  userpic={author()?.pic || ''}
-                  class={styles.userpic}
-                />
-              </div>
-            </button>
-          </div>
-        }
-      />
+      <Suspense>
+        <ProfilePopup
+          onVisibilityChange={props.setIsProfilePopupVisible}
+          containerCssClass={styles.control}
+          trigger={
+            <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
+              <button class={styles.button}>
+                <div classList={{ entered: Boolean(matchProfile()) }}>
+                  <Userpic
+                    size={'L'}
+                    name={author()?.name || ''}
+                    userpic={author()?.pic || ''}
+                    class={styles.userpic}
+                  />
+                </div>
+              </button>
+            </div>
+          }
+        />
+      </Suspense>
 
       <Show when={!(loc.pathname.startsWith('/edit/') && loc.pathname.endsWith('/settings'))}>
         <div class={styles.editorControls}>
@@ -215,24 +217,26 @@ const AuthorizedHeader = (props: Props) => {
         </div>
       </Show>
 
-      <ProfilePopup
-        onVisibilityChange={props.setIsProfilePopupVisible}
-        containerCssClass={styles.control}
-        trigger={
-          <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
-            <button class={styles.button}>
-              <div classList={{ entered: Boolean(matchProfile()) }}>
-                <Userpic
-                  size={'L'}
-                  name={author()?.name || ''}
-                  userpic={author()?.pic || ''}
-                  class={styles.userpic}
-                />
-              </div>
-            </button>
-          </div>
-        }
-      />
+      <Suspense>
+        <ProfilePopup
+          onVisibilityChange={props.setIsProfilePopupVisible}
+          containerCssClass={styles.control}
+          trigger={
+            <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
+              <button class={styles.button}>
+                <div classList={{ entered: Boolean(matchProfile()) }}>
+                  <Userpic
+                    size={'L'}
+                    name={author()?.name || ''}
+                    userpic={author()?.pic || ''}
+                    class={styles.userpic}
+                  />
+                </div>
+              </button>
+            </div>
+          }
+        />
+      </Suspense>
     </>
   )
 }
