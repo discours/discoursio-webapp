@@ -2,47 +2,71 @@ import type { APIEvent } from '@solidjs/start/server'
 import { coreApiUrl } from '~/config'
 import { graphqlClientCreate } from '~/graphql/client'
 
+// Регулярное выражение для извлечения псевдонима запроса
+const QUERY_ALIAS_REGEX = /query\s+(\w+)/
+
 /**
- * Определяет, является ли GraphQL запрос статичным (подходящим для кеширования)
+ * Проверяет, можно ли кешировать GraphQL запрос в браузере
  * @param query - GraphQL запрос
- * @param variables - Переменные запроса
+ * @param variables - переменные запроса
  * @returns true если запрос можно кешировать в браузере
  */
-// biome-ignore lint/suspicious/noExplicitAny: proxy
-function isStaticQuery(query: string, variables?: Record<string, any>): boolean {
-  // Статичные запросы для кеширования (не содержат персональных данных)
-  // Используем только реальные имена операций GraphQL
-  const staticQueries = [
-    'get_topics_all', // Все топики
-    'get_topics_by_community', // Топики по сообществу
-    'get_authors_all', // Все авторы
-    'load_authors_by', // Поиск авторов (публичные профили)
-    'get_author', // Отдельный автор
-    'load_shouts_by', // Публичные статьи
-    'get_shout', // Отдельная статья
-    'load_shouts_search', // Поиск статей
-    'get_topic_authors', // Авторы по топику
-    'get_topic_followers' // Подписчики топика
+function isStaticQuery(query: string, variables?: Record<string, unknown>): boolean {
+  // Статичные операции для кеширования (не содержат персональных данных)
+  // Это реальные имена операций GraphQL (не псевдонимы)
+  const staticOperations = [
+    'get_topics_by_community',
+    'get_topics',
+    'get_authors',
+    'get_author',
+    'load_authors_by',
+    'get_shouts',
+    'get_shout',
+    'load_shouts_by',
+    'get_topic_followers',
+    'get_topic_authors',
+    'load_topic_authors',
+    'load_topic_followers'
   ]
 
-  // Проверяем, содержит ли запрос статичную операцию
-  const isStatic = staticQueries.some((q) => query.includes(q))
+  // Проверяем, содержит ли запрос статичные операции
+  const hasStaticOperation = staticOperations.some((operation) => query.includes(operation))
 
-  // Дополнительные проверки переменных
-  if (isStatic && variables) {
-    // Не кешируем запросы с авторизацией
-    if ('token' in variables || 'userId' in variables) {
+  // Извлекаем псевдоним запроса для более понятного логирования
+  const queryAliasMatch = query.match(QUERY_ALIAS_REGEX)
+  const queryAlias = queryAliasMatch?.[1] || 'UnnamedQuery'
+
+  // Находим реальные операции в запросе
+  const foundOperations = staticOperations.filter((op) => query.includes(op))
+  
+  if (!hasStaticOperation) {
+    console.log(`[GraphQL Route] Rejected: No static operations found in query ${queryAlias}`)
+    return false
+  }
+
+  // Дополнительная проверка переменных на отсутствие персональных данных
+  if (variables) {
+    const variableString = JSON.stringify(variables).toLowerCase()
+    // Исключаем запросы с персональными идентификаторами
+    if (
+      variableString.includes('user') ||
+      variableString.includes('author_id') ||
+      variableString.includes('my_') ||
+      variableString.includes('session') ||
+      variableString.includes('token')
+    ) {
+      console.log(
+        `[GraphQL Route] Rejected: Personal data detected in variables for ${queryAlias}`,
+        variables
+      )
       return false
-    }
-
-    // Не кешируем персонализованные запросы
-    if (query.includes('load_shouts_by') && variables.options?.filters?.author) {
-      // Кешируем запросы статей по автору (публичные)
-      return true
     }
   }
 
-  return isStatic
+  console.log(
+    `[GraphQL Route] Approved for caching: ${queryAlias} with operations [${foundOperations.join(', ')}]`
+  )
+  return true
 }
 
 /**
@@ -53,28 +77,22 @@ function isStaticQuery(query: string, variables?: Record<string, any>): boolean 
 function getCacheControl(query: string): string {
   // Топики редко меняются - долгое кеширование (также сохраняются в IndexedDB)
   if (
-    query.includes('get_topics_all') ||
+    query.includes('get_topics') ||
     query.includes('get_topic_authors') ||
-    query.includes('get_topics_by_community')
+    query.includes('load_topic_authors') ||
+    query.includes('get_topic_followers') ||
+    query.includes('load_topic_followers')
   ) {
     return 'public, max-age=10800, s-maxage=36000' // 3ч браузер, 10ч CDN
   }
 
   // Авторы меняются нечасто
-  if (
-    query.includes('get_authors_all') ||
-    query.includes('get_author') ||
-    query.includes('load_authors_by')
-  ) {
+  if (query.includes('get_authors') || query.includes('get_author') || query.includes('load_authors_by')) {
     return 'public, max-age=1800, s-maxage=3600' // 30мин браузер, 1ч CDN
   }
 
   // Статьи обновляются часто - короткое кеширование
-  if (
-    query.includes('get_shout') ||
-    query.includes('load_shouts_by') ||
-    query.includes('load_shouts_search')
-  ) {
+  if (query.includes('get_shouts') || query.includes('get_shout') || query.includes('load_shouts_by')) {
     return 'public, max-age=60, s-maxage=300' // 1мин браузер, 5мин CDN
   }
 
@@ -98,21 +116,24 @@ export async function GET({ request }: APIEvent) {
   const query = url.searchParams.get('query')
   const variablesParam = url.searchParams.get('variables')
 
+  console.log(`[GraphQL Route] Incoming request to ${url.pathname}`)
+
   if (!query) {
+    console.log('[GraphQL Route] Bad request: Missing query parameter')
     return new Response(JSON.stringify({ error: 'Missing query parameter' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     })
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: proxy
-  let variables: Record<string, any> = {}
+  let variables: Record<string, unknown> = {}
 
   // Парсим переменные если есть
   if (variablesParam) {
     try {
       variables = JSON.parse(variablesParam)
     } catch {
+      console.log('[GraphQL Route] Bad request: Invalid variables JSON')
       return new Response(JSON.stringify({ error: 'Invalid variables JSON' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
@@ -131,20 +152,24 @@ export async function GET({ request }: APIEvent) {
   const client = graphqlClientCreate(coreApiUrl)
 
   try {
+    console.log('[GraphQL Route] Executing GraphQL query...')
     // Выполняем GraphQL запрос
     const result = await client.query(query, variables).toPromise()
 
     if (result.error) {
-      console.error('[API] GraphQL error:', result.error)
+      console.error('[GraphQL Route] GraphQL error:', result.error)
       return new Response(JSON.stringify({ error: result.error.message }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
+    const cacheControl = getCacheControl(query)
+    console.log(`[GraphQL Route] Success: Returning cached response with ${cacheControl}`)
+
     const headers = new Headers({
       'Content-Type': 'application/json',
-      'Cache-Control': getCacheControl(query),
+      'Cache-Control': cacheControl,
       // Добавляем CORS для клиентских запросов
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET',
@@ -155,7 +180,7 @@ export async function GET({ request }: APIEvent) {
 
     return new Response(JSON.stringify(result.data), { headers })
   } catch (error) {
-    console.error('[API] GraphQL request failed:', error)
+    console.error('[GraphQL Route] GraphQL request failed:', error)
     return new Response(JSON.stringify({ error: 'GraphQL request failed' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

@@ -1,22 +1,19 @@
-import { type Author, FollowingEntity, type Topic } from '~/graphql/schema/core.gen'
-
-import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show, createEffect, createSignal, on } from 'solid-js'
 
+import { type Author, FollowingEntity, type Topic } from '~/graphql/schema/core.gen'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { capitalize } from '~/utils/capitalize'
 import { FollowingButton } from '../_shared/FollowingButton'
 import { FollowingCounters } from '../_shared/FollowingCounters/FollowingCounters'
 import { Icon } from '../_shared/Icon'
-
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { useUI } from '~/context/ui'
 import { Modal } from '../_shared/Modal'
-
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
+import { Button } from '../_shared/Button'
 
 import styles from './Full.module.scss'
 
@@ -165,6 +162,29 @@ export const FullTopic = (props: Props) => {
         />
       </div>
 
+      <div class={clsx(styles.topicActions)}>
+        <FollowingButton
+          entity={FollowingEntity.Topic}
+          slug={props.topic?.slug}
+          isFollowed={Boolean(followed())}
+          class={styles.followControl}
+        />
+
+    <Button
+      variant={'bordered'}
+      size="S"
+      value={t('Write about the topic')}
+      onClick={() => {}}
+      class={clsx(styles.followControl)}
+    />
+      </div>
+
+      <Show when={props.topic?.pic}>
+        <div class={styles.topicImage}>
+          <img src={props.topic?.pic || ''} alt={props.topic?.title || ''} />
+        </div>
+      </Show>
+
       <Show when={props.followers}>
         <Modal variant="medium" isResponsive={true} name="followers" maxHeight>
           <FollowersModalView />
@@ -175,21 +195,6 @@ export const FullTopic = (props: Props) => {
         <Modal variant="medium" isResponsive={true} name="following" maxHeight>
           <AuthorsModalView />
         </Modal>
-      </Show>
-
-      <div class={clsx(styles.topicActions)}>
-        <FollowingButton
-          entity={FollowingEntity.Topic}
-          slug={props.topic?.slug}
-          isFollowed={Boolean(followed())}
-          class={styles.followControl}
-        />
-        <A class={styles.writeControl} href={`/edit/new/?topicId=${props.topic?.id}`}>
-          {t('Write about the topic')}
-        </A>
-      </div>
-      <Show when={props.topic?.pic}>
-        <img src={props.topic?.pic || ''} alt={props.topic?.title || ''} />
       </Show>
     </div>
   )

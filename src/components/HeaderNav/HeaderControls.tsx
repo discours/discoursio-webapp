@@ -412,16 +412,9 @@ export const HeaderControls = (props: Props) => {
   })
 
   // Правильная логика определения авторизации: есть сессия с токеном И автором
-  const isAuthorized = createMemo(() => {
-    const currentSession = session()
-    const hasValidSession = currentSession?.token && currentSession?.author
-    console.log('[HeaderControls] Authorization check:', {
-      hasValidSession,
-      isValidating: isSessionValidating(),
-      result: hasValidSession || isSessionValidating()
-    })
-    return hasValidSession || isSessionValidating()
-  })
+  const isAuthorized = createMemo(
+    () => Boolean(session()?.token && session()?.author) || isSessionValidating()
+  )
 
   return (
     <div class={clsx('col-auto col-lg-7', styles.usernav)}>

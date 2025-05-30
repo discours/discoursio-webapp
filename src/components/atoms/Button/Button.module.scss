@@ -10,23 +10,23 @@
   border: none;
 
   &.primary {
-    background: var(--link-color, #4a6cf7);
+    background: #000000;
     color: #fff;
     
     &:hover {
-      background: var(--link-hover-color, #3a5bea);
+      background: #333333;
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgb(74 108 247 / 20%);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
     
     &:active {
       transform: translateY(0);
-      box-shadow: 0 2px 6px rgb(74 108 247 / 15%);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     }
     
     &:disabled {
-      background: var(--background-color-invert, #e8eaf6);
-      color: rgb(255 255 255 / 40%);
+      background: #f0f0f0;
+      color: rgb(0 0 0 / 40%);
       transform: none;
       box-shadow: none;
     }
@@ -34,41 +34,41 @@
 
   &.secondary {
     background: transparent;
-    border: 0.15rem solid var(--link-color, #4a6cf7);
-    color: var(--link-color, #4a6cf7);
+    border: 0.15rem solid #000000;
+    color: #000000;
     
     &:hover {
-      background: rgb(74 108 247 / 5%);
+      background: rgba(0, 0, 0, 0.05);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgb(74 108 247 / 10%);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
     
     &:active {
       transform: translateY(0);
-      box-shadow: 0 2px 6px rgb(74 108 247 / 5%);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     }
     
     &:disabled {
-      border: 0.15rem solid #696969;
-      color: #696969;
+      border: 0.15rem solid #cccccc;
+      color: #cccccc;
       transform: none;
       box-shadow: none;
     }
   }
 
   &.primary-square {
-    background: var(--link-color, #4a6cf7);
+    background: #000000;
     color: #fff;
     
     &:hover {
-      background: var(--link-hover-color, #3a5bea);
+      background: #333333;
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgb(74 108 247 / 20%);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
     
     &:active {
       transform: translateY(0);
-      box-shadow: 0 2px 6px rgb(74 108 247 / 15%);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     }
     
     &:disabled {
@@ -81,11 +81,11 @@
 
   &.secondary-square  {
     background: transparent;
-    border: 0.15rem solid var(--link-color, #4a6cf7);
-    color: var(--link-color, #4a6cf7);
+    border: 0.15rem solid #000000;
+    color: #000000;
     
     &:hover {
-      background: rgb(74 108 247 / 5%);
+      background: rgba(0, 0, 0, 0.05);
       transform: translateY(-1px);
     }
     
@@ -126,18 +126,18 @@
 
   &.subscribeButton {
     min-width: auto !important;
-    background: var(--link-color, #4a6cf7);
+    background: #000000;
     color: #fff;
     border: none;
     border-radius: 8px;
     padding: 0.8rem 1.6rem;
     font-weight: 500;
-    box-shadow: 0 2px 8px rgb(74 108 247 / 20%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 
     &:hover {
-      background: var(--link-hover-color, #3a5bea);
+      background: #333333;
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgb(74 108 247 / 25%);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
       transition: all 150ms ease-in;
     }
 
@@ -147,22 +147,22 @@
 
     &:active {
       transform: translateY(0);
-      box-shadow: 0 2px 6px rgb(74 108 247 / 15%);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     }
   }
 
   &.unsubscribeButton {
     min-width: auto !important;
     background: transparent;
-    border: 1px solid var(--gray-300, #d1d5db);
-    color: var(--gray-700, #4b5563);
+    border: 1px solid #000000;
+    color: #000000;
     border-radius: 8px;
     padding: 0.8rem 1.6rem;
     font-weight: 500;
 
     &:hover {
-      background: var(--gray-100, #f3f4f6);
-      border-color: var(--gray-400, #9ca3af);
+      background: rgba(0, 0, 0, 0.05);
+      border-color: #333333;
       transition: all 150ms ease-in;
     }
 
@@ -171,7 +171,7 @@
     }
 
     &:active {
-      background: var(--gray-200, #e5e7eb);
+      background: rgba(0, 0, 0, 0.1);
     }
   }
 

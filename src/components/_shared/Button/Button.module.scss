@@ -134,10 +134,10 @@
 
   &.subscribeButton {
     aspect-ratio: auto;
-    background-color: var(--background-color-invert);
-    border: 2px solid var(--background-color-invert);
+    background-color: #000000;
+    border: 2px solid #000000;
     border-radius: 0.8rem;
-    color: #{var(--default-color-invert)};
+    color: white;
     float: none;
     padding-bottom: 0.6rem;
     padding-top: 0.6rem;
@@ -150,11 +150,12 @@
     }
 
     &:hover {
-      background: #fff;
-      color: #000;
+      background: #333333;
+      border-color: #333333;
+      color: white;
 
       .icon img {
-        filter: none !important;
+        filter: invert(1) !important;
       }
 
       .buttonSubscribeLabel {
@@ -176,16 +177,17 @@
   }
 
   &.followed {
-    background: #fff;
-    color: #000;
+    background: white;
+    border: 2px solid #000000;
+    color: #000000;
 
     .icon img {
       filter: none;
     }
 
     &:hover {
-      background: #000;
-      color: #fff;
+      background: #000000;
+      color: white;
 
       .icon img {
         filter: invert(1);

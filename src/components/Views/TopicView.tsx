@@ -104,7 +104,8 @@ export const TopicView = (props: Props) => {
     getTopicFollowers
   )
 
-  const getTopicAuthors = async () => {
+  // Первая функция для авторов топика (переименована во избежание конфликта)
+  const getTopicAuthorsList = async () => {
     const topicAuthors = await loadTopicAuthors({ slug: props.topicSlug })()
     // sorting by maximum shouts
     if (topicAuthors) {
@@ -112,9 +113,13 @@ export const TopicView = (props: Props) => {
     }
     return []
   }
-  const [topicAuthors, { refetch: refetchAuthors }] = createResource(() => props.topicSlug, getTopicAuthors)
+  const [topicAuthors, { refetch: refetchAuthors }] = createResource(
+    () => props.topicSlug,
+    getTopicAuthorsList
+  )
 
-  const loadTopicAuthors = async () => {
+  // Вторая функция для топ-авторов (переименована для ясности)
+  const getTopicTopAuthors = async () => {
     const by: AuthorsBy = { topic: props.topicSlug }
     const topicTopAuthorsFetcher = await loadAuthors({ by, limit: 4, offset: 0 })
     const result = await topicTopAuthorsFetcher()
@@ -122,7 +127,7 @@ export const TopicView = (props: Props) => {
   }
   const [topicTopAuthors, { refetch: refetchTopAuthors }] = createResource(
     () => props.topicSlug,
-    loadTopicAuthors
+    getTopicTopAuthors
   )
 
   // Load Favorite and Reacted Top Month Articles
@@ -231,15 +236,13 @@ export const TopicView = (props: Props) => {
 
         <div class="wide-container">
           <div class={clsx(styles.groupControls, 'row')}>
-            <div class="col-md-12">
-              <div class={styles.filtersRow}>
-                <FeedSwitcher
-                  options={['recent', 'top', 'hot']}
-                  prefix={`/topic/${props.topicSlug}`}
-                  class={styles.feedSwitcher}
-                />
-                <FeedFiltersControl />
-              </div>
+            <div class={styles.filtersRow}>
+              <FeedSwitcher
+                options={['recent', 'top', 'hot']}
+                prefix={`/topic/${props.topicSlug}`}
+                class={styles.feedSwitcher}
+              />
+              <FeedFiltersControl />
             </div>
           </div>
         </div>

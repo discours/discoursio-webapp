@@ -242,7 +242,7 @@ export const FeedView = (props: FeedProps) => {
               <Sidebar />
             </div>
 
-            <div class="col-md-12 offset-xl-1">
+            <div style={{ width: '100%' }}>
               <div class={styles.filtersContainer}>
                 <FeedSwitcher options={['recent', 'top', 'hot']} prefix={'/feed'} />
                 <FeedFiltersControl />

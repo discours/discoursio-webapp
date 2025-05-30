@@ -51,7 +51,13 @@ export const createCacheableLoader = <T, V>(
           variables: JSON.stringify(variables)
         })
 
-        const response = await fetch(`/graphql?${searchParams}`, {
+        // Получаем базовый URL приложения из location
+        const baseUrl = `${window.location.protocol}//${window.location.host}`
+        const graphqlUrl = `${baseUrl}/graphql?${searchParams}`
+
+        console.log(`[GraphQL Cache] Requesting: ${graphqlUrl}`)
+
+        const response = await fetch(graphqlUrl, {
           signal,
           // Принимаем кешированные ответы
           cache: 'default'
@@ -59,6 +65,7 @@ export const createCacheableLoader = <T, V>(
 
         if (response.ok) {
           const result = await response.json()
+          console.log('[GraphQL Cache] Success:', result)
           // API route возвращает только data, извлекаем первый ключ
           const key = Object.keys(result || {})[0]
           return result?.[key] as T

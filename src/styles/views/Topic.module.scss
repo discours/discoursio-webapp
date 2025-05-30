@@ -33,7 +33,7 @@
       text-align: right;
     }
 
-    font-size:1.5rem;
+    font-size: 1.5rem;
   }
 
   .modeSwitcherControl {
@@ -46,32 +46,131 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4rem;
+    margin: 0 auto 5rem;
     width: 100%;
+    max-width: 1200px;
+    padding: 2rem 3rem;
+    
+    @include media-breakpoint-down(md) {
+      padding: 1.5rem 2rem;
+      margin-bottom: 4rem;
+    }
     
     @include media-breakpoint-down(sm) {
-      margin: 1rem 0 0;
+      margin: 0 1rem 3rem;
+      padding: 1.5rem;
       flex-direction: column;
-      gap: 1rem;
+      gap: 1.5rem;
     }
 
     .feedSwitcher {
       margin-top: 0;
       margin-bottom: 0;
-      min-width: 300px;
+      min-width: 320px;
       overflow: hidden;
       flex-shrink: 0;
 
+      @include media-breakpoint-down(sm) {
+        min-width: 100%;
+        order: 1;
+      }
+
       & > li {
         margin-bottom: 0;
+      }
+      
+      ul {
+        display: flex;
+        padding: 0.4rem;
+        margin: 0;
+        list-style: none;
+        
+        li {
+          flex: 1;
+          
+          a {
+            display: block;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.4rem;
+            color: #666;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            
+            &:hover {
+              color: #444;
+              border-bottom: 2px solid #151516;
+            }
+            
+            &.active,
+            &[aria-current="page"] {
+              color: #222;
+              border-bottom: 2px solid #151516;
+            }
+          }
+        }
       }
     }
 
     .dropdowns {
       display: flex;
       flex-flow: row nowrap;
-      gap: 1rem;
+      gap: 1.2rem;
       justify-content: flex-end;
+      
+      @include media-breakpoint-down(sm) {
+        width: 100%;
+        justify-content: stretch;
+        order: 2;
+        
+        & > * {
+          flex: 1;
+        }
+      }
+      
+      & > div {
+        min-width: 140px;
+        
+        button, select {
+          background: white;
+          border: 2px solid #e9ecef;
+          padding: 0.8rem 1.2rem;
+          font-size: 1.4rem;
+          font-weight: 500;
+          color: #495057;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+          
+          &:hover {
+            box-shadow: 0 2px 8px rgba(38, 56, 217, 0.1);
+          }
+          
+          &:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(38, 56, 217, 0.1);
+          }
+        }
+      }
+    }
+  }
+  
+  & > div:not(.filtersRow) {
+    margin-bottom: 3rem;
+    
+    @include media-breakpoint-down(sm) {
+      margin-bottom: 2rem;
+    }
+  }
+  
+  .articleCard {
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: white;
+    
+    &:hover {
+      transform: translateY(-4px);
     }
   }
 }

@@ -1,64 +1,120 @@
 .topicHeader {
-  font-weight: 500;
-  padding: 2.8rem var(--container-padding-x) 0;
+  padding: 4rem var(--container-padding-x) 3rem;
   text-align: center;
+  margin: 2rem auto 4rem;
+  max-width: 1000px;
+
+  @include media-breakpoint-down(md) {
+    padding: 3rem 2rem 2.5rem;
+    margin: 1rem auto 3rem;
+    border-radius: 1.5rem;
+  }
 
   h1 {
-    font-size:2rem;
+    font-size: 3.2rem;
+    font-weight: 700;
     color: #2638d9;
     text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    
+    @include media-breakpoint-down(md) {
+      font-size: 2.4rem;
+      margin-bottom: 1rem;
+    }
+    
+    @include media-breakpoint-down(sm) {
+      font-size: 2rem;
+    }
   }
 }
 
 .topicDescription {
-  font-size:1.8rem;
-  line-height: 1.4;
-  margin: 1rem 0 2rem;
+  font-size: 1.8rem;
+  line-height: 1.5;
+  color: #666;
+  margin: 0 auto 2.5rem;
+  max-width: 700px;
+  font-weight: 400;
+  
+  @include media-breakpoint-down(md) {
+    font-size: 1.6rem;
+    margin-bottom: 2rem;
+  }
+
+  p {
+    margin: 0;
+  }
 }
 
 .topicActions {
-  margin-top: 2.8rem;
-
-  .writeControl {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 40px;
-    min-width: 64px;
-    font-size: 17px;
-    padding: 8px 16px;
-    border: 1px solid #f7f7f7;
-    background: #f7f7f7;
-    color: var(--default-color);
-    font-weight: 500;
-    cursor: pointer;
-    margin: 0 1.2rem 1em;
-    white-space: nowrap;
+  margin-top: 3rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  
+  @include media-breakpoint-down(sm) {
+    margin-top: 2rem;
+    gap: 1rem;
   }
 
-  .followControl,
-  .writeControl {
-    border-radius: 0.8rem;
+  .followControl {
+    border-radius: 11px;
   }
 }
 
 .topicDetails {
-  align-items: flex-start;
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   justify-content: center;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  gap: 2rem;
+  margin-top: 2.5rem;
+  
+  @include media-breakpoint-down(sm) {
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
 }
 
 .topicDetailsItem {
   align-items: center;
   display: flex;
-  margin-right: 1rem;
+  gap: 0.8rem;
   white-space: nowrap;
+  color: #666;
+  font-weight: 500;
+  
+  @include media-breakpoint-down(sm) {
+    gap: 0.6rem;
+    font-size: 1.4rem;
+  }
 }
 
 .topicDetailsIcon {
   display: block;
+  width: 2rem;
+  height: 2rem;
+  opacity: 0.7;
+  
+  @include media-breakpoint-down(sm) {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+}
+
+// Стили для изображения темы
+.topicImage {
+  margin-top: 3rem;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  
+  img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
 }
