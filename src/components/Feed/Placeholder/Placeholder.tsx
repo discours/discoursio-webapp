@@ -58,6 +58,20 @@ const AUTHORSET = {
   ]
 }
 
+const DRAFTSSET = {
+  image: placeholderJoinImg,
+  header: 'No drafts yet',
+  text: 'Create your first draft to start writing',
+  buttonLabel: 'Create draft',
+  href: '/edit/new',
+  profileLinks: [
+    {
+      href: '/how-to-write-a-good-article',
+      label: 'How to write a good article'
+    }
+  ]
+}
+
 const data: PlaceholderData = {
   followed: {
     image: placeholderFeedImg,
@@ -100,7 +114,7 @@ const data: PlaceholderData = {
       }
     ]
   },
-  drafts: AUTHORSET
+  drafts: DRAFTSSET
 }
 
 export const Placeholder = (props: PlaceholderProps) => {
@@ -153,20 +167,12 @@ export const Placeholder = (props: PlaceholderProps) => {
           when={session()?.token}
           fallback={
             <A class={styles.button} href="?m=auth&mode=login">
-              {t(
-                session()?.token
-                  ? placeholderData()?.buttonLabelAuthor || ''
-                  : placeholderData()?.buttonLabelFeed || ''
-              )}
+              {t(placeholderData()?.buttonLabelFeed || placeholderData()?.buttonLabel || 'Sign in')}
             </A>
           }
         >
           <A class={styles.button} href={placeholderData()?.href}>
-            {t(
-              session()?.token
-                ? placeholderData()?.buttonLabelAuthor || ''
-                : placeholderData()?.buttonLabelFeed || ''
-            )}
+            {t(placeholderData()?.buttonLabelAuthor || placeholderData()?.buttonLabel || 'Start')}
             <Show when={props.mode === 'profile'}>
               <Icon name="arrow-right-2" class={styles.icon} />
             </Show>

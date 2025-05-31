@@ -29,16 +29,7 @@
   "Working offline. {{count}} drafts need sync when online.": "Working offline. {{count}} drafts need sync when online.",
   "{{count}} drafts failed to sync. Click to review.": "{{count}} drafts failed to sync. Click to review.",
   "{{count}} drafts waiting for sync. Click to review.": "{{count}} drafts waiting for sync. Click to review.",
-  "Profile settings": "Profile settings",
-  "Security": "Security",
-  "Subscriptions": "Subscriptions",
-  "Sign out": "Sign out",
-  "Attach": "Attach",
-  "Connected": "Connected",
-  "Disconnect": "Disconnect",
   "Are you sure you want to disconnect this social network?": "Are you sure you want to disconnect this social network?",
   "Social network disconnected successfully": "Social network disconnected successfully",
-  "Redirecting to {{network}} authorization": "Redirecting to {{network}} authorization",
-  "My profile": "My profile",
-  "Exit": "Exit"
+  "Redirecting to {{network}} authorization": "Redirecting to {{network}} authorization"
 }

@@ -145,15 +145,6 @@ export const ProfilePopup = (props: ProfilePopupProps) => {
               <span>{t('Bookmarks')}</span>
             </A>
           </li>
-
-          <li>
-            <A href="/inbox" class={styles.action}>
-              <div class={styles.icon}>
-                <Icon name="inbox" />
-              </div>
-              <span>{t('Inbox')}</span>
-            </A>
-          </li>
         </ul>
 
         <ul class="nodash">

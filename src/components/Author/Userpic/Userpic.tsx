@@ -52,7 +52,7 @@ export const Userpic = (props: Props) => {
       })}
       onClick={props.onClick}
     >
-      <Show when={!props.loading} fallback={<Loading />}>
+      <Show when={!props.loading} fallback={<Loading size="small" />}>
         <ConditionalWrapper
           condition={Boolean(props.hasLink)}
           wrapper={(children) => <a href={`/@${props.slug}`}>{children}</a>}

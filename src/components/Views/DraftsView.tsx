@@ -516,8 +516,9 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
     const serverVersion = draftVersions.find((d) => !('isLocalOnly' in d) || !d.isLocalOnly)
     const localVersion = draftVersions.find((d) => 'isLocalOnly' in d && d.isLocalOnly)
 
-    // Определяем, какую версию показывать
-    const activeVersion = activeVersions()[draftId] || 'server'
+    // Определяем, какую версию показывать - используем getActiveVersion для первого найденного черновика
+    const firstDraft = draftVersions[0]
+    const activeVersion = firstDraft ? getActiveVersion(firstDraft) : 'server'
     const draftToShow = activeVersion === 'local' && localVersion ? localVersion : serverVersion
 
     console.log(`[DraftsView] renderDraftById ${draftId}:`, {
@@ -526,7 +527,8 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       hasLocal: !!localVersion,
       activeVersion,
       willShow: !!draftToShow,
-      draftToShowTitle: draftToShow?.title
+      draftToShowTitle: draftToShow?.title,
+      firstDraftIsLocal: firstDraft ? 'isLocalOnly' in firstDraft && firstDraft.isLocalOnly : false
     })
 
     return draftToShow ? renderDraftCard(draftToShow) : null
