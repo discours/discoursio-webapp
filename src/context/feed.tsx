@@ -315,7 +315,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   })
 
   const [options, setOptions] = createSignal<LoadShoutsOptions>({ limit: FEED_PAGE_SIZE })
-  const updateOptions = (newOpts: Partial<LoadShoutsOptions>) =>
+  const _updateOptions = (newOpts: Partial<LoadShoutsOptions>) =>
     setOptions((prev) => ({ ...prev, ...newOpts }))
 
   // Обновляем инициализацию feedSetters
@@ -465,7 +465,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
     try {
       console.debug('[FeedProvider] Calling loadShoutsSearch API...')
-      const result = await loadShoutsSearch(text, options)()
+      const result = await loadShoutsSearch({ text, options })()
       console.debug('[FeedProvider] Search API returned:', {
         resultLength: result?.length,
         hasMore: (result || []).length >= (options.limit || FEED_PAGE_SIZE),
@@ -563,18 +563,17 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   }
 
   /**
-   * Эффект для предотвращения циклических обновлений при смене режима
+   * Эффект для автоматической загрузки данных при смене режима
    *
    * Особенности:
-   * - Использует batch для группировки обновлений
-   * - Откладывает загрузку через Promise.resolve()
+   * - Загружает данные только если их нет в кеше
+   * - Обрабатывает как публичные, так и персональные ленты
    * - Предотвращает циклы через defer: true
-   * - Очищает старые данные только после успешной загрузки новых
    */
   createEffect(
     on(
       mode, // Слушаем только изменение режима
-      (currentMode) => {
+      async (currentMode) => {
         console.log('[FeedProvider] Feed mode changed:', {
           mode: currentMode,
           client: !!client()
@@ -583,57 +582,80 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
         // Определяем тип ленты
         const isPersonalFeed = ['followed', 'discussed', 'coauthored'].includes(currentMode)
 
-        // Сначала загружаем новые данные
-        const loadPromise = Promise.resolve().then(() => {
-          if (isPersonalFeed && !client()) return
+        // Проверяем нужно ли загружать данные
+        const currentFeed = feedSetters[currentMode]?.((prev) => prev)
+        const needsLoad = !currentFeed?.shouts?.length || currentFeed.isEmpty
+
+        if (!needsLoad) {
+          console.log(`[FeedProvider] ${currentMode} feed already has data, skipping load`)
+          return
+        }
+
+        console.log(`[FeedProvider] Loading ${currentMode} feed...`)
+
+        // Загружаем данные в зависимости от типа
+        try {
+          if (isPersonalFeed && !client()) {
+            console.log('[FeedProvider] Skipping personal feed load - no auth client')
+            return
+          }
 
           switch (currentMode) {
             case 'followed':
-              return loadFollowedFeed()
+              await loadFollowedFeed()
+              break
             case 'discussed':
-              return loadDiscussedFeed()
+              await loadDiscussedFeed()
+              break
             case 'coauthored':
-              return loadCoauthoredFeed()
+              await loadCoauthoredFeed()
+              break
             case 'hot':
-              return loadHotFeed()
+              await loadHotFeed()
+              break
             case 'top':
-              return loadTopFeed()
+              await loadTopFeed()
+              break
             default:
-              return loadRecentFeed()
+              await loadRecentFeed()
+              break
           }
-        })
-
-        // Только после загрузки очищаем старые данные
-        loadPromise.then(() => {
-          batch(() => {
-            setMyRates({})
-            updateOptions({ offset: 0 })
-            // Очищаем ленты...
-          })
-        })
+        } catch (error) {
+          console.error(`[FeedProvider] Error loading ${currentMode} feed:`, error)
+        }
       },
       { defer: true }
     )
   )
 
   const feedByMode = createMemo(() => {
-    const currentMode = myFeed()
+    const currentMode = mode()
+    const currentMyFeed = myFeed()
+
+    // Приоритет личных лент если пользователь авторизован и выбрал их
+    if (currentMyFeed && session()?.token) {
+      switch (currentMyFeed) {
+        case 'followed':
+          return followedFeed()
+        case 'discussed':
+          return discussedFeed()
+        case 'coauthored':
+          return coauthoredFeed()
+        default:
+          break
+      }
+    }
+
+    // Основные публичные режимы ленты
     switch (currentMode) {
-      case 'followed':
-        return followedFeed()
-      case 'discussed':
-        return discussedFeed()
-      case 'coauthored':
-        return coauthoredFeed()
+      case 'hot':
+        return hotFeed()
+      case 'top':
+        return topFeed()
+      case 'search':
+        return searchFeed()
       default:
-        switch (mode()) {
-          case 'hot':
-            return hotFeed()
-          case 'top':
-            return topFeed()
-          default:
-            return recentFeed()
-        }
+        return recentFeed()
     }
   })
 

@@ -167,7 +167,7 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
 
     try {
       console.debug('[AuthorsProvider] Searching authors:', { text, limit, offset })
-      const result = await loadAuthorsSearch(text, limit, offset)()
+      const result = await loadAuthorsSearch({ text, limit, offset })()
       console.debug('[AuthorsProvider] Search results:', {
         count: result?.length,
         hasMore: (result || []).length >= limit

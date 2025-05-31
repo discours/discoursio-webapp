@@ -14,6 +14,32 @@ declare module '*.module.scss' {
   export default classes;
 }
 
+// Поддержка импорта изображений
+declare module '*.jpg' {
+  const src: string;
+  export default src;
+}
+
+declare module '*.jpeg' {
+  const src: string;
+  export default src;
+}
+
+declare module '*.png' {
+  const src: string;
+  export default src;
+}
+
+declare module '*.webp' {
+  const src: string;
+  export default src;
+}
+
+declare module '*.svg' {
+  const src: string;
+  export default src;
+}
+
 // Объявление i18next
 declare module 'i18next' {
   export default {

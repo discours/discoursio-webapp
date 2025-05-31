@@ -2,7 +2,16 @@
 
 ```
 discoursio-webapp/
-├── src/
+ src/
+│ ├── assets/            # ассеты
+│ │ └── images/
+│ │     ├── auth-page.jpg
+│ │     ├── discours-banner.jpg
+│ │     ├── placeholder-join.webp
+│ │     ├── placeholder-feed.webp
+│ │     ├── placeholder-experts.webp
+│ │     └── placeholder-discussions.webp
+│ │
 │ ├── intl/              # i18n переводы
 │ │ └── locales/         # Локализации
 │ │     ├── ru/          # Русский
@@ -135,8 +144,6 @@ discoursio-webapp/
 ├── public/
 │ ├── fonts/                # Шрифты
 │ ├── icons/                # Иконки
-│ ├── auth-page.jpg         # артворк для логина
-│ ├── discours-banner.jpg   # артворк для ленты
 │ ├── favicon.ico           # иконка
 │ ├── logo.svg              # логотип
 │ ├── logo.png              # логотип

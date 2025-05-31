@@ -36,7 +36,7 @@ export const FeedView = (props: FeedProps) => {
   const loc = useLocation()
   const { showModal } = useUI()
   const { session, client } = useSession()
-  const { isFeedLoading, feedByMode, myFeed } = useFeed()
+  const { isFeedLoading, feedByMode, myFeed, mode, initializeFeed } = useFeed()
 
   const shouldShowPlaceholder = createMemo(() => {
     const feedType = myFeed()
@@ -57,14 +57,27 @@ export const FeedView = (props: FeedProps) => {
 
   // Мемоизируем sortedFeed для оптимизации производительности
   const sortedFeed = createMemo(() => {
-    const currentFeed = feedByMode().shouts
-    const result = currentFeed.length ? currentFeed : props.shouts
+    const currentFeed = feedByMode()
+    const result = currentFeed.shouts?.length ? currentFeed.shouts : props.shouts || []
     console.log('[FeedView] Sorted feed computed:', {
-      currentFeedLength: currentFeed.length,
+      currentFeedLength: currentFeed.shouts?.length,
       propsShoutsLength: props.shouts?.length,
-      resultLength: result?.length
+      resultLength: result?.length,
+      currentMode: mode()
     })
     return result
+  })
+
+  // Инициализируем feed данными из props при первой загрузке
+  createEffect(() => {
+    if (props.shouts?.length && !feedByMode().shouts?.length) {
+      const currentMode = mode()
+      console.log('[FeedView] Initializing feed with props data:', {
+        mode: currentMode,
+        shoutsLength: props.shouts.length
+      })
+      initializeFeed(currentMode, props.shouts)
+    }
   })
 
   const [myRates, setMyRates] = createSignal<Record<string, ReactionKind | undefined>>({})
@@ -236,83 +249,82 @@ export const FeedView = (props: FeedProps) => {
   return (
     <Suspense fallback={<Loading />}>
       <Show when={!isLoading() && sortedFeed()} fallback={<Loading />}>
-        <div class="wide-container">
-          <div class={clsx('row')}>
-            <div class={clsx('col-md-5 col-xl-4', styles.feedNavigation)}>
-              <Sidebar />
-            </div>
-
-            <div style={{ width: '100%' }}>
-              <div class={styles.filtersContainer}>
-                <FeedSwitcher options={['recent', 'top', 'hot']} prefix={'/feed'} />
-                <FeedFiltersControl />
-              </div>
-
-              <Show when={!isFeedLoading()} fallback={<Loading />}>
-                <div class={styles.feedContent}>
-                  <Show
-                    when={!shouldShowPlaceholder()}
-                    fallback={<Placeholder type={placeholderType()} mode="feed" />}
-                  >
-                    <div class={styles.feedPage}>
-                      <Show
-                        when={!feedByMode().isEmpty}
-                        fallback={
-                          <div class={styles.noContent}>
-                            <p>{t('No publications yet')}</p>
-                          </div>
-                        }
-                      >
-                        <div class={styles.mainArticles}>
-                          <ArticlesList />
-                        </div>
-                      </Show>
-                    </div>
-                  </Show>
-                </div>
-              </Show>
-            </div>
-
-            <aside class={clsx('col-md-7 col-xl-6 offset-xl-1', styles.feedAside)}>
-              <Show when={!isFeedLoading()}>
-                <Suspense fallback={<Loading />}>
-                  <FreshestCommentsList />
-                  <UnratedArticlesList />
-                  <section class={clsx(styles.asideSection, styles.pinnedLinks)}>
-                    <h4>{t('Knowledge base')}</h4>
-                    <ul class="nodash">
-                      <li>
-                        <A href="/guide">{t('How Discours works')}</A>
-                      </li>
-                      <li>
-                        <A href="/how-to-write-a-good-article">{t('How to write a good article')}</A>
-                      </li>
-                      <li>
-                        <A href="/rules">{t('Rules of constructive discussions')}</A>
-                      </li>
-                      <li>
-                        <A href="/principles">{t('Community principles')}</A>
-                      </li>
-                    </ul>
-                  </section>
-                </Suspense>
-              </Show>
-            </aside>
+        <div class={styles.feedLayout}>
+          <div class={clsx(styles.feedSidebar)}>
+            <Sidebar />
           </div>
 
-          <Show when={shareData()}>
-            <ShareModal
-              title={shareData()?.title || ''}
-              description={shareData()?.seo || ''}
-              imageUrl={shareData()?.cover || ''}
-              shareUrl={getShareUrl({ pathname: `/${shareData()?.slug || ''}` })}
-            />
-          </Show>
+          <div class={clsx(styles.feedMain)}>
+            <div class={styles.filtersContainer}>
+              <FeedSwitcher options={['recent', 'top', 'hot']} prefix={'/feed'} />
+              <FeedFiltersControl />
+            </div>
+            <br />
 
-          <Modal variant="medium" name="inviteCoauthors">
-            <InviteMembers variant={'coauthors'} title={t('Invite experts')} />
-          </Modal>
+            <Show when={!isFeedLoading()} fallback={<Loading />}>
+              <div class={styles.feedContent}>
+                <Show
+                  when={!shouldShowPlaceholder()}
+                  fallback={<Placeholder type={placeholderType()} mode="feed" />}
+                >
+                  <div class={styles.feedPage}>
+                    <Show
+                      when={!feedByMode().isEmpty}
+                      fallback={
+                        <div class={styles.noContent}>
+                          <p>{t('No publications yet')}</p>
+                        </div>
+                      }
+                    >
+                      <div class={styles.mainArticles}>
+                        <ArticlesList />
+                      </div>
+                    </Show>
+                  </div>
+                </Show>
+              </div>
+            </Show>
+          </div>
+
+          <aside class={clsx(styles.feedAside)}>
+            <Show when={!isFeedLoading()}>
+              <Suspense fallback={<Loading />}>
+                <FreshestCommentsList />
+                <UnratedArticlesList />
+                <section class={clsx(styles.asideSection, styles.pinnedLinks)}>
+                  <h4>{t('Knowledge base')}</h4>
+                  <ul class="nodash">
+                    <li>
+                      <A href="/guide">{t('How Discours works')}</A>
+                    </li>
+                    <li>
+                      <A href="/how-to-write-a-good-article">{t('How to write a good article')}</A>
+                    </li>
+                    <li>
+                      <A href="/rules">{t('Rules of constructive discussions')}</A>
+                    </li>
+                    <li>
+                      <A href="/principles">{t('Community principles')}</A>
+                    </li>
+                  </ul>
+                </section>
+              </Suspense>
+            </Show>
+          </aside>
         </div>
+
+        <Show when={shareData()}>
+          <ShareModal
+            title={shareData()?.title || ''}
+            description={shareData()?.seo || ''}
+            imageUrl={shareData()?.cover || ''}
+            shareUrl={getShareUrl({ pathname: `/${shareData()?.slug || ''}` })}
+          />
+        </Show>
+
+        <Modal variant="medium" name="inviteCoauthors">
+          <InviteMembers variant={'coauthors'} title={t('Invite experts')} />
+        </Modal>
       </Show>
     </Suspense>
   )

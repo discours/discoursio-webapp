@@ -3,6 +3,7 @@ import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import { FeedDeduplicationContext } from '~/utils/deduplicate'
 import { paginate } from '~/utils/paginate'
 import Banner from '../Discours/Banner'
 import Hero from '../Discours/Hero'
@@ -52,85 +53,141 @@ export const HomeView = (props: HomeViewProps) => {
   const hasFeaturedShouts = createMemo(() => (props.featuredShouts || []).length > 0)
   const hasMoreShouts = createMemo(() => (props.featuredShouts || []).length >= MIN_SHOUTS_FOR_FULL_VIEW)
 
+  // Система дедупликации для предотвращения повторов публикаций
+  const deduplicatedBlocks = createMemo(() => {
+    const dedupContext = new FeedDeduplicationContext()
+
+    const featured = props.featuredShouts || []
+    const topRated = props.topRatedShouts || []
+    const topMonth = props.topMonthShouts || []
+    const topViewed = props.topViewedShouts || []
+    const topCommented = props.topCommentedShouts || []
+    const randomTopic = randomTopicFeed()?.shouts || []
+
+    // Основная лента - приоритет для первых публикаций
+    const mainFeaturedFirst = featured.slice(0, 29) // Первые 29 публикаций имеют приоритет
+    dedupContext.addUsedShouts(mainFeaturedFirst)
+
+    // Дедуплицируем дополнительные блоки
+    const deduplicatedTopRated = dedupContext.filterUnused(topRated)
+    const deduplicatedTopMonth = dedupContext.filterUnused(topMonth)
+    const deduplicatedTopViewed = dedupContext.filterUnused(topViewed.slice(0, 5))
+    const deduplicatedTopCommented = dedupContext.filterUnused(topCommented.slice(0, 3))
+    const deduplicatedRandomTopic = dedupContext.filterUnused(randomTopic)
+
+    // Добавляем использованные из дополнительных блоков
+    dedupContext.addUsedShouts(deduplicatedTopRated.slice(0, 10)) // Лимитируем слайдер
+    dedupContext.addUsedShouts(deduplicatedTopMonth.slice(0, 10)) // Лимитируем слайдер
+    dedupContext.addUsedShouts(deduplicatedTopViewed)
+    dedupContext.addUsedShouts(deduplicatedTopCommented)
+    dedupContext.addUsedShouts(deduplicatedRandomTopic.slice(0, 7)) // Лимитируем случайную тему
+
+    // Остальная лента (после первых 29)
+    const remainingFeatured = dedupContext.filterUnused(featured.slice(29))
+
+    return {
+      mainFeaturedFirst,
+      remainingFeatured,
+      topRated: deduplicatedTopRated,
+      topMonth: deduplicatedTopMonth,
+      topViewed: deduplicatedTopViewed,
+      topCommented: deduplicatedTopCommented,
+      randomTopic: deduplicatedRandomTopic
+    }
+  })
+
   return (
     <Show when={hasFeaturedShouts()} fallback={<Loading />}>
       <TopicsNav />
-      <Row5 articles={props.featuredShouts.slice(0, 5)} nodate={true} />
+      <Row5 articles={deduplicatedBlocks().mainFeaturedFirst.slice(0, 5)} nodate={true} />
       <Hero />
 
       <Show when={hasMoreShouts()}>
         <Beside
-          beside={props.featuredShouts[5]}
+          beside={deduplicatedBlocks().mainFeaturedFirst[5]}
           title={t('Top viewed')}
-          values={props.topViewedShouts.slice(0, 5)}
+          values={deduplicatedBlocks().topViewed}
           wrapper={'top-article'}
           nodate={true}
         />
-        <Row3 articles={props.featuredShouts.slice(6, 9)} nodate={true} />
+        <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(6, 9)} nodate={true} />
         <Beside
-          beside={props.featuredShouts[9]}
+          beside={deduplicatedBlocks().mainFeaturedFirst[9]}
           title={t('Top authors')}
           values={topAuthors?.() || []}
           wrapper={'author'}
           nodate={true}
         />
 
-        <Show when={props.topMonthShouts?.length}>
-          <ArticleCardSwiper title={t('Top month')} slides={props.topMonthShouts} />
+        <Show when={deduplicatedBlocks().topMonth.length > 0}>
+          <ArticleCardSwiper title={t('Top month')} slides={deduplicatedBlocks().topMonth.slice(0, 10)} />
         </Show>
 
-        <Row2 articles={props.featuredShouts.slice(10, 12)} nodate={true} />
-        <RowShort articles={props.featuredShouts.slice(12, 16)} />
-        <Row1 article={props.featuredShouts[16]} nodate={true} />
-        <Row3 articles={props.featuredShouts.slice(17, 20)} nodate={true} />
+        <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(10, 12)} nodate={true} />
+        <RowShort articles={deduplicatedBlocks().mainFeaturedFirst.slice(12, 16)} />
+        <Row1 article={deduplicatedBlocks().mainFeaturedFirst[16]} nodate={true} />
+        <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(17, 20)} nodate={true} />
 
-        <Show when={props.topCommentedShouts?.length}>
+        <Show when={deduplicatedBlocks().topCommented.length > 0}>
           <Row3
-            articles={props.topCommentedShouts.slice(0, 3)}
+            articles={deduplicatedBlocks().topCommented.slice(0, 3)}
             header={<h2>{t('Top commented')}</h2>}
             nodate={true}
           />
         </Show>
 
         <TopicShoutsGroup
-          shouts={randomTopicFeed()?.shouts || []}
+          shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
           topic={randomTopicFeed()?.topic as Topic}
         />
 
-        <Show when={props.topRatedShouts?.length}>
-          <ArticleCardSwiper title={t('Favorite')} slides={props.topRatedShouts} />
+        <Show when={deduplicatedBlocks().topRated.length > 0}>
+          <ArticleCardSwiper title={t('Favorite')} slides={deduplicatedBlocks().topRated.slice(0, 10)} />
         </Show>
 
-        <Show when={props.featuredShouts.length > SHOUTS_PER_PAGE}>
+        <Show when={deduplicatedBlocks().mainFeaturedFirst.length > SHOUTS_PER_PAGE}>
           <Beside
-            beside={props.featuredShouts[20]}
+            beside={deduplicatedBlocks().mainFeaturedFirst[20]}
             title={t('Top topics')}
             values={topTopics().slice(0, 5)}
             wrapper={'topic'}
             isTopicCompact={true}
             nodate={true}
           />
-          <Row3 articles={props.featuredShouts.slice(21, 24)} nodate={true} />
+          <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(21, 24)} nodate={true} />
           <Banner />
-          <Row2 articles={props.featuredShouts.slice(24, 26)} nodate={true} />
-          <Row3 articles={props.featuredShouts.slice(26, 29)} nodate={true} />
-          <Row2 articles={props.featuredShouts.slice(29, 31)} nodate={true} />
-          <Row3 articles={props.featuredShouts.slice(31, 34)} nodate={true} />
+          <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(24, 26)} nodate={true} />
+          <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(26, 29)} nodate={true} />
         </Show>
       </Show>
 
+      {/* Пагинированные страницы (дедуплицированные) */}
       <For each={pages()}>
-        {(page) => (
-          <>
-            <Row1 article={page[0]} nodate={true} />
-            <Row3 articles={page.slice(1, 4)} nodate={true} />
-            <Row2 articles={page.slice(4, 6)} nodate={true} />
-            <Beside values={page.slice(6, 9)} beside={page[9]} wrapper="article" nodate={true} />
-            <Row1 article={page[10]} nodate={true} />
-            <Row2 articles={page.slice(11, 13)} nodate={true} />
-            <Row3 articles={page.slice(13, 16)} nodate={true} />
-          </>
-        )}
+        {(_page, pageIndex) => {
+          // Используем оставшиеся дедуплицированные публикации для пагинации
+          const startIndex = pageIndex() * SHOUTS_PER_PAGE
+          const deduplicatedPage = deduplicatedBlocks().remainingFeatured.slice(
+            startIndex,
+            startIndex + SHOUTS_PER_PAGE
+          )
+
+          return (
+            <Show when={deduplicatedPage.length > 0}>
+              <Row1 article={deduplicatedPage[0]} nodate={true} />
+              <Row3 articles={deduplicatedPage.slice(1, 4)} nodate={true} />
+              <Row2 articles={deduplicatedPage.slice(4, 6)} nodate={true} />
+              <Beside
+                values={deduplicatedPage.slice(6, 9)}
+                beside={deduplicatedPage[9]}
+                wrapper="article"
+                nodate={true}
+              />
+              <Row1 article={deduplicatedPage[10]} nodate={true} />
+              <Row2 articles={deduplicatedPage.slice(11, 13)} nodate={true} />
+              <Row3 articles={deduplicatedPage.slice(13, 16)} nodate={true} />
+            </Show>
+          )
+        }}
       </For>
     </Show>
   )

@@ -31,14 +31,28 @@ function getPeriodTitle(period: PeriodType, t: TFunction): string {
     }[period] || t('All time')
   )
 }
+
 export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
   const { t } = useLocalize()
-  const { filterState, updateFilters, loadRecentFeed, loadHotFeed, loadTopFeed, mode } = useFeed()
+  const { filterState, updateFilters, loadRecentFeed, loadHotFeed, loadTopFeed, mode, feedByMode } =
+    useFeed()
 
   const [currentPeriod, setCurrentPeriod] = createSignal<PeriodType>(PeriodType.AllTime)
   const [currentFeaturedFilter, setCurrentFeaturedFilter] = createSignal<FeaturedFilter>('all')
   const [currentLayouts, setCurrentLayouts] = createSignal<(ExpoLayoutType | 'article')[]>([])
   const [hasChanges, setHasChanges] = createSignal(false)
+
+  // Определяем, нужно ли показывать фильтры
+  const shouldShowFilters = createMemo(() => {
+    const currentFeed = feedByMode()
+    const shoutsCount = currentFeed?.shouts?.length || 0
+    const hasMoreData = currentFeed?.hasMore || false
+
+    // Показываем фильтры только если:
+    // 1. Есть достаточно публикаций (больше 10) ИЛИ
+    // 2. Есть больше данных для загрузки (hasMore = true)
+    return shoutsCount > 10 || hasMoreData
+  })
 
   // Функция для перезагрузки фида
   const reloadFeed = () => {
@@ -187,33 +201,35 @@ export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
   }
 
   return (
-    <div class={styles.filtersContainer}>
-      <div class={styles.dropdowns}>
-        <DropDown
-          popupProps={{ horizontalAnchor: 'right' }}
-          options={getDropdownGroups()}
-          triggerCssClass={clsx(styles.periodSwitcher, {
-            [styles.active]: currentLayouts().length > 0
-          })}
-        />
-        <DropDown
-          popupProps={{ horizontalAnchor: 'right' }}
-          options={getPeriodGroup()}
-          triggerCssClass={clsx(styles.periodSwitcher, {
-            [styles.active]: currentPeriod() && currentPeriod() !== PeriodType.AllTime
-          })}
-        />
-        <Show when={hasChanges()}>
-          <Button
-            variant="secondary"
-            class={styles.reloadButton}
-            onClick={reloadFeed}
-            title={t('Apply filters')}
-            value={<Icon name="check-subscribed-black" />}
+    <Show when={shouldShowFilters()}>
+      <div class={styles.filtersContainer}>
+        <div class={styles.dropdowns}>
+          <DropDown
+            popupProps={{ horizontalAnchor: 'right' }}
+            options={getDropdownGroups()}
+            triggerCssClass={clsx(styles.periodSwitcher, {
+              [styles.active]: currentLayouts().length > 0
+            })}
           />
-        </Show>
+          <DropDown
+            popupProps={{ horizontalAnchor: 'right' }}
+            options={getPeriodGroup()}
+            triggerCssClass={clsx(styles.periodSwitcher, {
+              [styles.active]: currentPeriod() && currentPeriod() !== PeriodType.AllTime
+            })}
+          />
+          <Show when={hasChanges()}>
+            <Button
+              variant="secondary"
+              class={styles.reloadButton}
+              onClick={reloadFeed}
+              title={t('Apply filters')}
+              value={<Icon name="check-subscribed-black" />}
+            />
+          </Show>
+        </div>
       </div>
-    </div>
+    </Show>
   )
 }
 

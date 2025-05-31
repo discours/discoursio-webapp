@@ -1,19 +1,19 @@
 import { clsx } from 'clsx'
 import { For, Show, createEffect, createSignal, on } from 'solid-js'
 
-import { type Author, FollowingEntity, type Topic } from '~/graphql/schema/core.gen'
+import { AuthorBadge } from '~/components/Author/AuthorBadge'
+import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
+import { useUI } from '~/context/ui'
+import { type Author, FollowingEntity, type Topic } from '~/graphql/schema/core.gen'
 import { capitalize } from '~/utils/capitalize'
+import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
+import { Button } from '../_shared/Button'
 import { FollowingButton } from '../_shared/FollowingButton'
 import { FollowingCounters } from '../_shared/FollowingCounters/FollowingCounters'
 import { Icon } from '../_shared/Icon'
-import { AuthorBadge } from '~/components/Author/AuthorBadge'
-import { useUI } from '~/context/ui'
 import { Modal } from '../_shared/Modal'
-import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
-import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { Button } from '../_shared/Button'
 
 import styles from './Full.module.scss'
 
@@ -170,13 +170,13 @@ export const FullTopic = (props: Props) => {
           class={styles.followControl}
         />
 
-    <Button
-      variant={'bordered'}
-      size="S"
-      value={t('Write about the topic')}
-      onClick={() => {}}
-      class={clsx(styles.followControl)}
-    />
+        <Button
+          variant={'bordered'}
+          size="S"
+          value={t('Write about the topic')}
+          onClick={() => {}}
+          class={clsx(styles.followControl)}
+        />
       </div>
 
       <Show when={props.topic?.pic}>

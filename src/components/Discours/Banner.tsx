@@ -1,5 +1,6 @@
 import { clsx } from 'clsx'
 
+import discoursBannerImg from '~/assets/images/discours-banner.jpg'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
 import { Image } from '../_shared/Image'
@@ -24,7 +25,7 @@ export default () => {
             </p>
           </div>
           <div class={clsx(styles.discoursBannerImage, 'col-lg-12 offset-lg-2')}>
-            <Image src="discours-banner.jpg" alt={t('Discours')} width={600} />
+            <Image src={discoursBannerImg} alt={t('Discours')} width={600} />
           </div>
         </div>
       </div>

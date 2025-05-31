@@ -39,6 +39,7 @@ import {
   QueryGet_TopicArgs,
   QueryGet_Topics_By_CommunityArgs
 } from '~/graphql/schema/core.gen'
+import { QueryLoad_Authors_SearchArgs } from '~/graphql/schema/core.gen'
 
 // Topics API
 /**
@@ -168,9 +169,9 @@ export const useAuthorsResource = createCacheableQueryResource<Author[], QueryLo
 /**
  * Поиск авторов с кешированием
  */
-export const loadAuthorsSearch = createCacheableLoader<Author[], QueryLoad_Authors_ByArgs>(
+export const loadAuthorsSearch = createCacheableLoader<Author[], QueryLoad_Authors_SearchArgs>(
   loadAuthorsSearchQuery,
-  (options: QueryLoad_Authors_ByArgs) => options,
+  (options: QueryLoad_Authors_SearchArgs) => options,
   true // Кешируем результаты поиска авторов
 )
 

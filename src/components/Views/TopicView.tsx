@@ -1,4 +1,3 @@
-// import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import {
   For,
@@ -19,6 +18,7 @@ import { useTopics } from '~/context/topics'
 import { loadAuthors, loadShouts, loadTopicAuthors, loadTopicFollowers } from '~/graphql/api/public'
 import { Author, AuthorsBy, LoadShoutsOptions, Shout, Stat, Topic } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/lib/fromPeriod'
+import { FeedDeduplicationContext } from '~/utils/deduplicate'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { Beside } from '../Feed/Beside'
 import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
@@ -229,6 +229,45 @@ export const TopicView = (props: Props) => {
     return sorted
   })
 
+  // Система дедупликации для предотвращения повторов публикаций
+  const dedupContext = new FeedDeduplicationContext()
+
+  // Мемоизированные дедуплицированные блоки
+  const deduplicatedBlocks = createMemo(() => {
+    // Очищаем контекст при каждом пересчете
+    dedupContext.clear()
+
+    const feedData = sortedFeed() || []
+    const topViewed = topViewedShouts()
+    const reactedArticles = reactedTopMonthArticles() || []
+    const favoriteArticles = favoriteTopArticles() || []
+
+    // Основная лента - приоритет для первых статей
+    const mainFeedFirst = feedData.slice(0, 8) // Row1 + Row2 + Beside + Row2 + Row1
+    dedupContext.addUsedShouts(mainFeedFirst)
+
+    // Дедуплицируем дополнительные блоки
+    const deduplicatedReacted = dedupContext.filterUnused(reactedArticles)
+    const deduplicatedFavorite = dedupContext.filterUnused(favoriteArticles)
+    const deduplicatedTopViewed = dedupContext.filterUnused(topViewed.slice(0, 5))
+
+    // Добавляем использованные из дополнительных блоков
+    dedupContext.addUsedShouts(deduplicatedReacted.slice(0, 10)) // Лимитируем слайдер
+    dedupContext.addUsedShouts(deduplicatedFavorite.slice(0, 10)) // Лимитируем слайдер
+    dedupContext.addUsedShouts(deduplicatedTopViewed)
+
+    // Остальная лента (после первых 8)
+    const remainingFeed = dedupContext.filterUnused(feedData.slice(8))
+
+    return {
+      mainFeedFirst,
+      remainingFeed,
+      topViewed: deduplicatedTopViewed,
+      reactedArticles: deduplicatedReacted,
+      favoriteArticles: deduplicatedFavorite
+    }
+  })
+
   return (
     <div class={styles.topicPage}>
       <Suspense fallback={<Loading />}>
@@ -247,47 +286,58 @@ export const TopicView = (props: Props) => {
           </div>
         </div>
 
-        <Row1 article={(sortedFeed() || [])[0]} />
-        <Row2 articles={(sortedFeed() || []).slice(1, 3)} isEqual={true} />
-
-        {/* Bisede for adding top authors by Slug */}
+        {/* Основные блоки с приоритетными публикациями */}
+        <Row1 article={deduplicatedBlocks().mainFeedFirst[0]} />
+        <Row2 articles={deduplicatedBlocks().mainFeedFirst.slice(1, 3)} isEqual={true} />
 
         <Beside
-          beside={(sortedFeed() || [])[3]}
+          beside={deduplicatedBlocks().mainFeedFirst[3]}
           title={t('Topic is supported by')}
           values={topicTopAuthors() || []}
           wrapper={'author'}
         />
 
-        <Show when={(reactedTopMonthArticles()?.length ?? 0) > 0} keyed={true}>
-          <ArticleCardSwiper title={t('Top month')} slides={reactedTopMonthArticles() || []} />
+        {/* Дедуплицированный блок "Top month" */}
+        <Show when={deduplicatedBlocks().reactedArticles.length > 0} keyed={true}>
+          <ArticleCardSwiper
+            title={t('Top month')}
+            slides={deduplicatedBlocks().reactedArticles.slice(0, 10)}
+          />
         </Show>
 
+        {/* Дедуплицированный блок "Top viewed" */}
         <Beside
-          beside={(sortedFeed() || [])[4]}
+          beside={deduplicatedBlocks().mainFeedFirst[4]}
           title={t('Top viewed')}
-          values={topViewedShouts().slice(0, 5)}
+          values={deduplicatedBlocks().topViewed}
           wrapper={'top-article'}
         />
 
-        <Row2 articles={(sortedFeed() || []).slice(5, 7)} isEqual={true} />
-        <Row1 article={(sortedFeed() || [])[7]} />
+        <Row2 articles={deduplicatedBlocks().mainFeedFirst.slice(5, 7)} isEqual={true} />
+        <Row1 article={deduplicatedBlocks().mainFeedFirst[7]} />
 
-        <Show when={favoriteTopArticles()?.length ?? 0} keyed={true}>
-          <ArticleCardSwiper title={t('Favorite')} slides={favoriteTopArticles() || []} />
+        {/* Дедуплицированный блок "Favorite" */}
+        <Show when={deduplicatedBlocks().favoriteArticles.length > 0} keyed={true}>
+          <ArticleCardSwiper
+            title={t('Favorite')}
+            slides={deduplicatedBlocks().favoriteArticles.slice(0, 10)}
+          />
         </Show>
 
-        <Show when={(sortedFeed() || []).length > 7}>
-          <Row3 articles={(sortedFeed() || []).slice(8, 11)} />
-          <Row2 articles={(sortedFeed() || []).slice(11, 13)} />
+        {/* Оставшиеся публикации (дедуплицированные) */}
+        <Show when={deduplicatedBlocks().remainingFeed.length > 0}>
+          <Row3 articles={deduplicatedBlocks().remainingFeed.slice(0, 3)} />
+          <Row2 articles={deduplicatedBlocks().remainingFeed.slice(3, 5)} />
         </Show>
 
         <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
-          <For each={sortedFeed()}>
+          <For each={deduplicatedBlocks().remainingFeed}>
             {(_article, index) => {
               const i = index()
-              if (i % 3 === 0) {
-                const articles = sortedFeed().slice(i, i + 3)
+              // Начинаем с 5 (пропускаем уже отображенные выше)
+              const adjustedIndex = i + 5
+              if (adjustedIndex % 3 === 0) {
+                const articles = deduplicatedBlocks().remainingFeed.slice(adjustedIndex, adjustedIndex + 3)
                 return (
                   <Switch>
                     <Match when={articles.length === 1}>

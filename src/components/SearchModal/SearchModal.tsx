@@ -53,7 +53,7 @@ export const SearchModal = () => {
     setIsLoadingAuthors(true)
 
     try {
-      const authorsResult = await loadAuthorsSearch(query, FEED_PAGE_SIZE, 0)()
+      const authorsResult = await loadAuthorsSearch({ text: query, limit: FEED_PAGE_SIZE, offset: 0 })()
 
       // Only reset authors list if resetResults is true (new search)
       if (resetResults) {
@@ -213,7 +213,11 @@ export const SearchModal = () => {
     const currentQuery = inputValue().trim()
     try {
       const authorOffset = authorsResultsList().length
-      const newAuthors = await loadAuthorsSearch(currentQuery, FEED_PAGE_SIZE, authorOffset)()
+      const newAuthors = await loadAuthorsSearch({
+        text: currentQuery,
+        limit: FEED_PAGE_SIZE,
+        offset: authorOffset
+      })()
 
       if (newAuthors && newAuthors.length > 0) {
         setAuthorsResultsList([...authorsResultsList(), ...newAuthors])

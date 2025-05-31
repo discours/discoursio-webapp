@@ -9,7 +9,7 @@ import { LoadShoutsOptions, QueryLoad_Shouts_SearchArgs, SearchResult } from '~/
 
 const fetchSearchResult = async (args: QueryLoad_Shouts_SearchArgs) => {
   if (!args.text.trim()) return () => [] as SearchResult[]
-  return loadShoutsSearch(args.text, args.options as LoadShoutsOptions)
+  return loadShoutsSearch({ text: args.text, options: args.options as LoadShoutsOptions })
 }
 
 export default () => {

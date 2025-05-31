@@ -38,7 +38,7 @@ function isStaticQuery(query: string, variables?: Record<string, unknown>): bool
 
   // Находим реальные операции в запросе
   const foundOperations = staticOperations.filter((op) => query.includes(op))
-  
+
   if (!hasStaticOperation) {
     console.log(`[GraphQL Route] Rejected: No static operations found in query ${queryAlias}`)
     return false

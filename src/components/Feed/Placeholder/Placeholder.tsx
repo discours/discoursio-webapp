@@ -13,6 +13,12 @@ import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 
+import placeholderDiscussionsImg from '~/assets/images/placeholder-discussions.webp'
+import placeholderExpertsImg from '~/assets/images/placeholder-experts.webp'
+import placeholderFeedImg from '~/assets/images/placeholder-feed.webp'
+// Импорт изображений
+import placeholderJoinImg from '~/assets/images/placeholder-join.webp'
+
 import styles from './Placeholder.module.scss'
 
 type ProfileLink = {
@@ -39,7 +45,7 @@ export type PlaceholderProps = {
 }
 
 const AUTHORSET = {
-  image: 'placeholder-join.webp',
+  image: placeholderJoinImg,
   header: 'Become an author',
   text: 'Join our team of authors to start writing',
   buttonLabel: 'Create post',
@@ -54,7 +60,7 @@ const AUTHORSET = {
 
 const data: PlaceholderData = {
   followed: {
-    image: 'placeholder-feed.webp',
+    image: placeholderFeedImg,
     header: 'Create your own feed',
     text: 'Choose your favorite authors and topics to follow',
     buttonLabelAuthor: 'Popular authors',
@@ -62,14 +68,14 @@ const data: PlaceholderData = {
     href: '/author?by=followers'
   },
   coauthored: {
-    image: 'placeholder-experts.webp',
+    image: placeholderExpertsImg,
     header: 'Find collaborators',
     text: 'Find co-authors to collaborate on your next project',
     buttonLabel: 'Find co-authors',
     href: '/author?by=name'
   },
   discussed: {
-    image: 'placeholder-discussions.webp',
+    image: placeholderDiscussionsImg,
     header: 'Participate in discussions',
     text: 'Leave your comment and discuss the article with other readers',
     buttonLabelAuthor: 'Current discussions',
@@ -78,7 +84,7 @@ const data: PlaceholderData = {
   },
   author: AUTHORSET,
   comments: {
-    image: 'placeholder-discussions.webp',
+    image: placeholderDiscussionsImg,
     header: 'Join discussions',
     text: 'Leave your comment and discuss the article with other readers',
     buttonLabel: 'Go to discussions',
@@ -122,7 +128,7 @@ export const Placeholder = (props: PlaceholderProps) => {
       )}
     >
       <div class={styles.placeholderCover}>
-        <img src={`/${placeholderData()?.image}`} alt={placeholderData()?.header} />
+        <img src={placeholderData()?.image} alt={placeholderData()?.header} />
       </div>
       <div class={styles.placeholderContent}>
         <div>
