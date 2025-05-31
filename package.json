@@ -116,6 +116,7 @@
   },
   "trustedDependencies": ["@biomejs/biome", "@swc/core", "esbuild", "protobufjs"],
   "dependencies": {
+    "@vercel/og": "^0.6.8",
     "form-data": "^4.0.1",
     "idb": "^8.0.1",
     "mailgun.js": "^10.3.0"

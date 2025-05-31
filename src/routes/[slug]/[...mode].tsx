@@ -42,10 +42,15 @@ const fetchShout = async (slug: string): Promise<Shout | undefined> => {
 
 export const route: RouteDefinition = {
   load: async ({ params }) => {
+    console.log('[route.load] Loading article for slug:', params.slug)
+    const article = await fetchShout(params.slug)
+    console.log('[route.load] Fetched article:', article?.title, article?.cover)
+    console.log('[route.load] Article authors:', article?.authors?.filter(a => a).map(a => ({ name: a.name, slug: a.slug })))
+    console.log('[route.load] Article topics:', article?.topics?.filter(t => t).map(t => ({ title: t.title, slug: t.slug })))
     const data = {
-      article: await fetchShout(params.slug)
+      article
     }
-    // console.log('[route.load] data:', data)
+    console.log('[route.load] Returning data:', data)
     return data
   }
 }
@@ -69,18 +74,30 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   const loc = useLocation()
   const { t } = useLocalize()
 
+  // Debug: log what data we receive from route.load
+  console.log('[ArticlePageContent] props.data:', props.data)
+  console.log('[ArticlePageContent] params.slug:', props.params.slug)
+
   const [data] = createResource(
     () => props.params.slug,
     async (slug) => {
+      console.log('[ArticlePageContent] resource fetcher called with slug:', slug)
       if (props.data?.article) {
+        console.log('[ArticlePageContent] using SSR data:', props.data.article.title)
         return props.data.article
       }
-      return await fetchShout(slug)
+      console.log('[ArticlePageContent] fetching article via API for slug:', slug)
+      const result = await fetchShout(slug)
+      console.log('[ArticlePageContent] fetched article result:', result?.title)
+      return result
     },
     {
       initialValue: props.data?.article
     }
   )
+
+  // Debug: log the final data state
+  console.log('[ArticlePageContent] final data():', data()?.title, data()?.cover)
 
   onMount(async () => {
     if (gaIdentity && data()?.id) {
@@ -108,6 +125,8 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
     )
   )
 
+  // dufok added article in PageLayout props for OG image generation
+
   return (
     <Suspense fallback={<Loading />}>
       <Show when={data()} fallback={<FourOuFourView />}>
@@ -119,6 +138,7 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
             headerTitle={data()?.title || ''}
             slug={data()?.slug}
             cover={data()?.cover || ''}
+            article={data()}
           >
             <FullArticle article={data()!} />
           </PageLayout>

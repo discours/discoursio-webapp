@@ -34,3 +34,6 @@ edge.*
 storybook-static
 app.config.*.js
 *.log
+.prettierrc
+.github/copilot-instructions.md
+.github/history.md

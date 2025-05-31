@@ -10,6 +10,7 @@ import { Shout } from '~/graphql/schema/core.gen'
 import enKeywords from '~/intl/locales/en/keywords.json'
 import ruKeywords from '~/intl/locales/ru/keywords.json'
 import { getFileUrl } from '~/lib/getThumbUrl'
+import { generateOGImage, getArticleOGImage, getBasicOGImage } from '~/lib/ogImages'
 import { descFromBody } from '~/utils/meta'
 import { FooterView } from '../Discours/Footer'
 import { Header } from '../HeaderNav'
@@ -38,15 +39,21 @@ export const PageLayout = (props: PageLayoutProps) => {
   const loc = useLocation()
   const { t, lang } = useLocalize()
   const imageUrl = getFileUrl(props.cover ? props.cover : `${cdnUrl}/production/image/logo_image.png`)
-  const ogImage = createMemo(() =>
-    // NOTE: preview generation logic works only for one article view
-    props.article
-      ? getFileUrl(imageUrl, {
-          shout: props.article.id,
-          width: 1200
-        })
-      : imageUrl
-  )
+  
+  // OG image generation
+  const ogImage = createMemo(() => {
+
+    // For articles, use our dynamic OG image generation
+    if (props.article) {
+      const ogUrl = getArticleOGImage(props.article)
+      return ogUrl
+    }
+    
+    // For other pages, use basic OG image with page title
+    const basicUrl = getBasicOGImage(props.title)
+    return basicUrl
+  })
+  
   const description = createMemo(() => props.desc || (props.article && descFromBody(props.article.body)))
   const keywords = createMemo(() => {
     const keypath = (props.key || loc?.pathname.split('/')[0]) as keyof typeof ruKeywords
@@ -85,7 +92,7 @@ export const PageLayout = (props: PageLayoutProps) => {
         cover={imageUrl}
         isHeaderFixed={isHeaderFixed}
       />
-      <Meta name="descprition" content={description() || ''} />
+      <Meta name="description" content={description() || ''} />
       <Meta name="keywords" content={keywords()} />
       <Meta name="og:type" content="article" />
       <Meta name="og:title" content={props.article?.title || t(props.title) || ''} />
