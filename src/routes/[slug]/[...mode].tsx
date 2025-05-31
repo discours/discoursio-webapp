@@ -45,8 +45,8 @@ export const route: RouteDefinition = {
     console.log('[route.load] Loading article for slug:', params.slug)
     const article = await fetchShout(params.slug)
     console.log('[route.load] Fetched article:', article?.title, article?.cover)
-    console.log('[route.load] Article authors:', article?.authors?.filter(a => a).map(a => ({ name: a.name, slug: a.slug })))
-    console.log('[route.load] Article topics:', article?.topics?.filter(t => t).map(t => ({ title: t.title, slug: t.slug })))
+    console.log('[route.load] Article authors:', article?.authors?.filter(a => a).map(a => a ? { name: a.name, slug: a.slug } : null))
+    console.log('[route.load] Article topics:', article?.topics?.filter(t => t).map(t => t ? ({ title: t.title, slug: t.slug }) : null))
     const data = {
       article
     }
