@@ -89,3 +89,114 @@
 ## Компоненты
 - [UI Components](../src/components/) - Переиспользуемые компоненты
 - [Form Components](../src/components/AuthModal/) - Компоненты форм
+
+# Документация discoursio-webapp
+
+Техническая документация для проекта discoursio-webapp на SolidJS.
+
+## 📚 Содержание
+
+### Основная документация
+- [README.md](../README.md) - Основная информация о проекте
+- [README.en.md](../README.en.md) - Project documentation in English
+- [features.md](features.md) - Описание функциональности проекта
+
+### Техническая документация
+- [Service Worker](service-worker.md) - Offline-функциональность и кэширование
+- [Lightning CSS Integration](lightning-css-integration.md) - CSS оптимизация
+- [Solid Signals 2.0](solid-signals-20.md) - Будущее реактивности
+
+### Архитектура и интеграции
+- Система кэширования и PWA возможности
+- GraphQL с URQL клиентом
+- i18next интернационализация
+- SolidJS реактивность
+- Vite + Vinxi сборка
+
+## 🚀 Быстрый старт
+
+1. **Установка зависимостей**
+   ```bash
+   bun install
+   ```
+
+2. **Настройка окружения**
+   ```bash
+   cp .env.example .env
+   # Отредактируйте .env файл
+   ```
+
+3. **Запуск разработки**
+   ```bash
+   bun run dev
+   ```
+
+4. **Сборка для продакшена**
+   ```bash
+   bun run build
+   ```
+
+## 📱 PWA возможности
+
+Приложение поддерживает **Progressive Web App** функциональность:
+
+- **Service Worker** - автоматическое кэширование и offline-режим
+- **Responsive Design** - адаптивный дизайн для всех устройств  
+- **Push Notifications** - уведомления от сервера
+- **Background Sync** - синхронизация данных в фоне
+
+Подробнее в [Service Worker документации](service-worker.md).
+
+## 🛠 Разработка
+
+### Структура проекта
+```
+src/
+├── components/     # Компоненты UI
+├── graphql/       # GraphQL схемы и запросы
+├── routes/        # Роутинг приложения
+├── context/       # Контексты и провайдеры
+├── utils/         # Утилиты и хелперы
+└── styles/        # Глобальные стили
+
+public/
+├── sw.js          # Service Worker
+├── offline.html   # Offline страница
+└── icons/         # Иконки приложения
+```
+
+### Основные команды
+- `bun run dev` - разработка
+- `bun run build` - сборка
+- `bun run lint` - проверка кода
+- `bun run typecheck` - проверка типов
+- `bun run e2e` - E2E тесты
+
+### Полезные ресурсы
+- [SolidJS Docs](https://www.solidjs.com/docs)
+- [SolidStart Guide](https://start.solidjs.com/)
+- [URQL Documentation](https://formidable.com/open-source/urql/)
+- [Vite Guide](https://vitejs.dev/guide/)
+
+## 🔧 Настройки
+
+### Переменные окружения
+```bash
+# API настройки
+PUBLIC_GRAPHQL_ENDPOINT=...
+PUBLIC_API_URL=...
+
+# Конфигурация сборки
+NODE_ENV=development
+```
+
+### Service Worker
+Service Worker автоматически регистрируется и обеспечивает:
+- Кэширование статических ресурсов
+- Offline-функциональность
+- Push-уведомления
+- Фоновую синхронизацию
+
+## 📖 Дополнительная информация
+
+Для получения более подробной информации о конкретных аспектах проекта, обращайтесь к соответствующим разделам документации выше.

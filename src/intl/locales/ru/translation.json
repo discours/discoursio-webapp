@@ -636,5 +636,16 @@
   "Failed to complete OAuth login": "Не удалось завершить OAuth вход",
   "OAuth login failed": "Ошибка OAuth входа",
   "Successfully logged in": "Успешный вход в систему",
-  "Failed to load session": "Не удалось загрузить сессию"
+  "Failed to load session": "Не удалось загрузить сессию",
+  "Working offline. {{count}} drafts need sync when online.": "Работаем оффлайн. {{count}} черновиков ждут синхронизации.",
+  "{{count}} drafts failed to sync. Click to review.": "{{count}} черновиков не смогли синхронизироваться. Нажмите для проверки.",
+  "{{count}} drafts waiting for sync. Click to review.": "{{count}} черновиков ожидают синхронизации. Нажмите для проверки.",
+  "Attach": "Привязать",
+  "Connected": "Подключено",
+  "Disconnect": "Отвязать",
+  "Are you sure you want to disconnect this social network?": "Вы уверены, что хотите отвязать эту социальную сеть?",
+  "Social network disconnected successfully": "Социальная сеть успешно отвязана",
+  "Redirecting to {{network}} authorization": "Перенаправляем на авторизацию {{network}}",
+  "My profile": "Мой профиль",
+  "Exit": "Выйти"
 }

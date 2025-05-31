@@ -89,6 +89,7 @@ export const UIProvider = (props: { children: JSX.Element }) => {
   const [, setSearchParams] = useSearchParams<Record<string, string>>()
   const [modal, setModal] = createSignal<ModalType | null>(null)
   const [confirmMessage, setConfirmMessage] = createSignal<ConfirmMessage>({} as ConfirmMessage)
+
   // Monitor URL changes to control modal state
   createEffect(() => {
     const searchParams = new URLSearchParams(location.search)

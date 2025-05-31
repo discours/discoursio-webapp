@@ -561,22 +561,3 @@
     font-weight: 300 !important;
   }
 }
-
-.offlineIndicator {
-  display: flex;
-  align-items: center;
-  background-color: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffeeba;
-  border-radius: 4px;
-  padding: 8px 12px;
-  margin-bottom: 10px;
-  font-size: 14px;
-
-  svg {
-    width: 16px;
-    height: 16px;
-    margin-right: 8px;
-    fill: currentcolor;
-  }
-}

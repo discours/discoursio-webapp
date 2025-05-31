@@ -2,6 +2,24 @@ import { OperationResult } from '@urql/core'
 import { Accessor, JSX, batch, createContext, createSignal, onCleanup, useContext } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
+// Импортируем функции из storage.ts вместо дублирования
+import {
+  type SyncStatus,
+  checkStorageQuota,
+  getAllDraftFields,
+  getAllDraftsFromStorage,
+  getDraftField,
+  getDraftFromStorage,
+  getStorageStats,
+  getSyncStatus,
+  hasUnsyncedChanges,
+  parseJsonContent,
+  performPeriodicCleanup,
+  removeDraftFromStorage,
+  saveDraftField as saveDraftFieldStorage,
+  saveEntireDraft,
+  updateLastSync
+} from '~/components/SimpleRichEditor/lib/storage'
 import { EditorData } from '~/components/SimpleRichEditor/lib/types'
 import unpublishShoutMutation from '~/graphql/mutation/core/article-unpublish'
 import createDraftMutation from '~/graphql/mutation/core/draft-create'
@@ -27,19 +45,6 @@ import { useSession } from './session'
 import { useTopics } from './topics'
 
 export const AUTO_SAVE_DELAY = 1000
-
-const DRAFT_PREFIX = 'draft-fields-' // Префикс для хранения черновиков
-
-/**
- * Интерфейс для полного черновика в localStorage
- */
-interface DraftStorage {
-  id: string | number
-  fields: Record<string, string>
-  timestamp: number
-  lastSync?: number
-  source: 'server' | 'local'
-}
 
 /**
  * Проверяет валидность временной метки и конвертирует из UNIX timestamp при необходимости
@@ -71,325 +76,6 @@ const validateTimestamp = (timestamp: number | undefined | null): number => {
   }
 
   return ts
-}
-
-/**
- * Упрощенная версия функции для очистки контента от JSON-обертки
- * @param content Строка или объект с контентом
- * @returns Очищенный текстовый контент
- */
-const parseJsonContent = (content?: string | null): string => {
-  if (!content) return ''
-
-  // Если это строка и она уже похожа на HTML - возвращаем как есть
-  if (typeof content === 'string') {
-    const trimmed = content.trim()
-    // Если это похоже на HTML, возвращаем как есть
-    if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
-      return content
-    }
-
-    // Если это JSON, попробуем упростить, но без рекурсивных преобразований
-    try {
-      if (
-        (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-        (trimmed.startsWith('[') && trimmed.endsWith(']'))
-      ) {
-        const parsed = JSON.parse(trimmed)
-        if (parsed && typeof parsed === 'object' && 'content' in parsed) {
-          return typeof parsed.content === 'string' ? parsed.content : String(parsed.content || '')
-        }
-      }
-    } catch (_error) {
-      // Если не удалось разобрать JSON, возвращаем как есть
-    }
-  }
-
-  // В остальных случаях возвращаем как строку
-  return String(content)
-}
-
-/**
- * Формирует ключ для хранения черновика в localStorage.
- * @param draftId ID черновика.
- * @returns Ключ для localStorage.
- */
-const getDraftKey = (draftId: string | number): string => {
-  return `${DRAFT_PREFIX}${draftId}`
-}
-
-/**
- * Получает полный объект черновика из localStorage.
- * @param draftId ID черновика.
- * @returns Объект DraftStorage или null.
- */
-const getDraftFromStorage = (draftId: string | number): DraftStorage | null => {
-  if (isServer || !draftId) return null
-  try {
-    const key = getDraftKey(draftId)
-    const data = localStorage.getItem(key)
-    if (!data) return null
-    return JSON.parse(data) as DraftStorage
-  } catch (e) {
-    console.error(`[DraftsProvider] Error getting draft ${draftId} from storage:`, e)
-    return null
-  }
-}
-
-/**
- * Сохраняет полный объект черновика в localStorage.
- * @param draft Объект DraftStorage для сохранения.
- * @returns true в случае успеха, false при ошибке.
- */
-const saveDraftToStorage = (draft: DraftStorage): boolean => {
-  if (isServer || !draft?.id) return false
-  try {
-    const key = getDraftKey(draft.id)
-    localStorage.setItem(key, JSON.stringify(draft))
-    return true
-  } catch (e) {
-    console.error(`[DraftsProvider] Error saving draft ${draft.id} to storage:`, e)
-    return false
-  }
-}
-
-/**
- * Получает значение конкретного поля черновика из localStorage.
- * @param draftId ID черновика.
- * @param fieldName Имя поля.
- * @returns Значение поля (строка) или null.
- */
-const getDraftField = (draftId: string | number, fieldName: string): string | null => {
-  if (isServer || !draftId || !fieldName) return null
-  const draft = getDraftFromStorage(draftId)
-
-  // Возвращаем значение поля как есть, без преобразований
-  return draft?.fields?.[fieldName] || null
-}
-
-/**
- * Сохраняет значение конкретного поля черновика в localStorage.
- * Если черновика нет, создает его.
- * @param draftId ID черновика.
- * @param fieldName Имя поля.
- * @param fieldValue Значение поля (строка).
- * @returns true в случае успеха, false при ошибке.
- */
-const saveDraftFieldInternal = (
-  draftId: string | number,
-  fieldName: string,
-  fieldValue: string | null | undefined
-): boolean => {
-  if (isServer || !draftId || !fieldName) return false
-
-  // Приводим ID к числу для консистентности
-  const draftIdNum = Number(draftId)
-  if (Number.isNaN(draftIdNum)) {
-    console.error(`[DraftsProvider] Invalid draftId: ${draftId}`)
-    return false
-  }
-
-  try {
-    const draft = getDraftFromStorage(draftIdNum) || {
-      id: draftIdNum,
-      fields: {},
-      timestamp: Date.now(),
-      source: 'local'
-    }
-
-    const currentTimestamp = Date.now()
-    let updated = false
-
-    if (fieldValue === null || fieldValue === undefined) {
-      // Удаление поля
-      if (draft.fields[fieldName]) {
-        delete draft.fields[fieldName]
-        updated = true
-      }
-    } else {
-      // Обновление или добавление поля - сохраняем значение как есть,
-      // без дополнительной обработки
-      const valueStr = String(fieldValue)
-      if (draft.fields[fieldName] !== valueStr) {
-        draft.fields[fieldName] = valueStr
-        updated = true
-      }
-    }
-
-    if (updated) {
-      draft.timestamp = currentTimestamp // Обновляем общую временную метку черновика
-      return saveDraftToStorage(draft)
-    }
-
-    return true // Поле не изменилось, считаем успехом
-  } catch (e) {
-    console.error(`[DraftsProvider] Error saving field "${fieldName}" for draft ${draftIdNum}:`, e)
-    return false
-  }
-}
-
-/**
- * Получает все поля черновика из localStorage как объект DraftInput.
- * ВАЖНО: Этот метод возвращает только поля, хранящиеся в localStorage.
- * Он НЕ объединяет их с данными из серверного состояния.
- * @param draftId ID черновика.
- * @returns Объект DraftInput со значениями полей или null.
- */
-const getAllDraftFields = (draftId: string | number): DraftInput | null => {
-  if (isServer || !draftId) return null
-  const draftIdNum = Number(draftId)
-  if (Number.isNaN(draftIdNum)) return null
-
-  const draft = getDraftFromStorage(draftIdNum)
-  if (!draft || !draft.fields) return null
-
-  // Преобразуем в формат DraftInput без лишних преобразований
-  const fields: Partial<DraftInput> = {}
-
-  // Копируем все поля напрямую, без лишних обработок
-  for (const key in draft.fields) {
-    if (Object.hasOwnProperty.call(draft.fields, key)) {
-      // biome-ignore lint/suspicious/noExplicitAny: Используем типизацию для обхода ошибки индексации
-      ;(fields as any)[key] = draft.fields[key]
-    }
-  }
-
-  return fields as DraftInput
-}
-
-/**
- * Обновляет временную метку последней синхронизации черновика в localStorage.
- * @param draftId ID черновика.
- * @returns true в случае успеха, false при ошибке.
- */
-const updateLastSync = (draftId: string | number): boolean => {
-  if (isServer || !draftId) return false
-  try {
-    const draft = getDraftFromStorage(draftId)
-    if (!draft) {
-      console.warn(`[DraftsProvider] Draft ${draftId} not found in storage to update lastSync.`)
-      return false
-    }
-    draft.lastSync = Date.now()
-    draft.timestamp = draft.lastSync // Обновляем и общую метку
-    return saveDraftToStorage(draft)
-  } catch (e) {
-    console.error(`[DraftsProvider] Error updating lastSync for draft ${draftId}:`, e)
-    return false
-  }
-}
-
-/**
- * Проверяет, есть ли у черновика в localStorage несинхронизированные изменения.
- * Сравнивает `timestamp` и `lastSync`.
- * @param draftId ID черновика.
- * @returns true, если есть несинхронизированные изменения, иначе false.
- */
-const hasUnsyncedChanges = (draftId: string | number): boolean => {
-  if (isServer || !draftId) return false
-  const draft = getDraftFromStorage(draftId)
-  if (!draft) return false
-  return !draft.lastSync || draft.timestamp > draft.lastSync
-}
-
-/**
- * Сохраняет полный объект Draft (из GraphQL) в localStorage.
- * Перезаписывает существующие поля.
- * @param draft Объект Draft.
- * @returns true в случае успеха, false при ошибке.
- */
-const saveEntireDraft = (draft: Draft): boolean => {
-  if (isServer || !draft?.id) return false
-  try {
-    const draftId = draft.id
-    const storageDraft: DraftStorage = {
-      id: draftId,
-      fields: {},
-      timestamp: Date.now(),
-      source: 'server', // Помечаем как данные с сервера
-      lastSync: Date.now() // Считаем свежесинхронизированным
-    }
-
-    // Копируем все поля из Draft в fields, кроме вложенных объектов/массивов
-    for (const key in draft) {
-      if (Object.hasOwnProperty.call(draft, key)) {
-        const value = draft[key as keyof Draft]
-        if (key !== 'id' && key !== '__typename' && typeof value !== 'object' && value !== null) {
-          storageDraft.fields[key] = String(value)
-        } else if (key === 'topics' && Array.isArray(value)) {
-          // Сериализуем topics как JSON строку id тем
-          // Фильтруем null/undefined элементы перед маппингом
-          storageDraft.fields['topics'] = JSON.stringify(
-            value.filter((t): t is Topic => !!t).map((t) => ({ id: t.id, title: t.title, slug: t.slug }))
-          )
-        } else if (key === 'main_topic' && value && typeof value === 'object' && 'id' in value) {
-          // Явно проверяем наличие id, title, slug перед использованием
-          const mainTopic = value as Topic // Приведение типа для доступа к полям
-          if (mainTopic.id) {
-            storageDraft.fields['mainTopic'] = JSON.stringify({
-              id: mainTopic.id,
-              title: mainTopic.title || '',
-              slug: mainTopic.slug || ''
-            })
-          }
-        }
-        // Добавить обработку других специфичных полей при необходимости
-      }
-    }
-
-    // Устанавливаем source и lastSync
-    storageDraft.source = 'server'
-    storageDraft.lastSync = Date.now()
-    storageDraft.timestamp = storageDraft.lastSync // Обновляем timestamp
-
-    console.debug(`[DraftsProvider] Saving entire draft ${draftId} from server to storage.`)
-    return saveDraftToStorage(storageDraft)
-  } catch (e) {
-    console.error(`[DraftsProvider] Error saving entire draft ${draft.id} to storage:`, e)
-    return false
-  }
-}
-
-/**
- * Получает все черновики, сохраненные в localStorage.
- * @returns Массив объектов DraftStorage.
- */
-const getAllDraftsFromStorage = (): DraftStorage[] => {
-  if (isServer) return []
-  const drafts: DraftStorage[] = []
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key?.startsWith(DRAFT_PREFIX)) {
-        const draftId = key.substring(DRAFT_PREFIX.length)
-        const draft = getDraftFromStorage(draftId)
-        if (draft) {
-          drafts.push(draft)
-        }
-      }
-    }
-  } catch (e) {
-    console.error('[DraftsProvider] Error getting all drafts from storage:', e)
-  }
-  return drafts
-}
-
-/**
- * Удаляет черновик из localStorage.
- * @param draftId ID черновика.
- * @returns true в случае успеха, false при ошибке.
- */
-const removeDraftFromStorage = (draftId: string | number): boolean => {
-  if (isServer || !draftId) return false
-  try {
-    const key = getDraftKey(draftId)
-    localStorage.removeItem(key)
-    console.debug(`[DraftsProvider] Removed draft ${draftId} from storage.`)
-    return true
-  } catch (e) {
-    console.error(`[DraftsProvider] Error removing draft ${draftId} from storage:`, e)
-    return false
-  }
 }
 
 const EDITOR_KEY_REGEX = /draft-(\d+)-([a-z]+)/
@@ -434,6 +120,11 @@ type DraftsContextType = {
   validateCurrentDraft: () => Promise<boolean>
   clearValidationErrors: () => undefined
   loading: Accessor<boolean>
+  // Новые функции для работы с OfflineStatus
+  storageQuotaWarning: Accessor<boolean>
+  getDraftSyncStatus: (draftId: string | number) => SyncStatus
+  getOfflineStorageStats: () => ReturnType<typeof getStorageStats>
+  performMaintenanceTasks: () => void
 }
 
 /**
@@ -467,6 +158,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   const [validationErrors, setValidationErrors] = createSignal<Partial<Record<keyof DraftInput, string>>>(
     {}
   )
+  // Сигналы для OfflineStatus
+  const [storageQuotaWarning, setStorageQuotaWarning] = createSignal(false)
 
   // Создаем дебаунсированную функцию сохранения контента редактора в localStorage
   const debouncedSaveContent = debounce(AUTO_SAVE_DELAY, (editorId: string, content: string) => {
@@ -481,7 +174,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     const fieldType = match[2]
 
     // Сохраняем контент напрямую в localStorage
-    saveDraftFieldInternal(draftId, fieldType, content)
+    saveDraftFieldStorage(draftId, fieldType, content)
     console.log(`[DraftsProvider] Debounced save for ${editorId}`)
   })
 
@@ -792,7 +485,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
     // 2. Сохранение в localStorage
     // Важно: не делаем дополнительную обработку для HTML полей, сохраняем как есть
-    const saved = saveDraftFieldInternal(draftId, fieldName, contentValue)
+    const saved = saveDraftFieldStorage(draftId, fieldName, contentValue)
 
     if (!saved) {
       console.error(`[DraftsProvider] Failed to save field "${fieldName}" for draft ${draftId} to storage.`)
@@ -1316,7 +1009,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   const removeDraftByKeyFromStorage = (key: string): boolean => {
     if (isServer || !key) return false
     // Проверяем, начинается ли ключ с ожидаемого префикса для безопасности
-    if (!key.startsWith(DRAFT_PREFIX)) {
+    if (!key.startsWith('draft-fields-')) {
       console.warn(`[DraftsProvider] Attempted to remove item with unexpected key: ${key}`)
       return false
     }
@@ -1406,6 +1099,50 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     return undefined
   }
 
+  /**
+   * Проверяет квоту хранилища и обновляет предупреждения
+   */
+  const checkStorageQuotaWarning = () => {
+    const quota = checkStorageQuota()
+    setStorageQuotaWarning(quota.warning)
+
+    if (quota.warning) {
+      console.warn(`[DraftsProvider] Storage quota warning: ${(quota.percentage * 100).toFixed(1)}% used`)
+    }
+  }
+
+  /**
+   * Получает статус синхронизации черновика
+   * @param draftId ID черновика
+   * @returns Статус синхронизации
+   */
+  const getDraftSyncStatus = (draftId: string | number): SyncStatus => {
+    return getSyncStatus(draftId)
+  }
+
+  /**
+   * Выполняет периодическую очистку и обновление статистики
+   */
+  const performMaintenanceTasks = () => {
+    // Периодическая очистка старых черновиков
+    const deletedCount = performPeriodicCleanup()
+    if (deletedCount > 0) {
+      // Обновляем список черновиков после очистки
+      loadLocalDrafts()
+    }
+
+    // Проверяем квоту хранилища
+    checkStorageQuotaWarning()
+  }
+
+  /**
+   * Получает детальную статистику хранилища
+   * @returns Статистика offline хранилища
+   */
+  const getOfflineStorageStats = () => {
+    return getStorageStats()
+  }
+
   const value = {
     drafts,
     currentDraft,
@@ -1430,7 +1167,12 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     validationErrors,
     validateCurrentDraft,
     clearValidationErrors,
-    loading
+    loading,
+    // Новые функции для работы с OfflineStatus
+    storageQuotaWarning,
+    getDraftSyncStatus,
+    getOfflineStorageStats,
+    performMaintenanceTasks
   }
 
   return <DraftsContext.Provider value={value}>{props.children}</DraftsContext.Provider>

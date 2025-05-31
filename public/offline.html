@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Discours.io - Автономный режим</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/offline.css">
+</head>
+<body>
+  <div class="container">
+    <div class="error-icon" role="img" aria-label="Нет соединения"></div>
+    
+    <p id="description">
+      Некоторые функции могут быть недоступны в автономном режиме.
+    </p>
+
+    <div class="buttons">
+      <button onclick="checkConnection()" id="retry-btn" aria-describedby="status">
+        <span id="retry-text">Попробовать снова</span>
+      </button>
+      
+      <button onclick="goHome()" class="btn-secondary" aria-label="Перейти на главную страницу">
+        <span>На главную</span>
+      </button>
+    </div>
+
+    <div class="status offline" id="status" role="status" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="status-text">Автономный режим</span>
+    </div>
+  </div>
+
+  <script>
+    let retryAttempts = 0;
+    const maxRetryAttempts = 3;
+
+    function updateStatus() {
+      const status = document.getElementById('status');
+      const title = document.getElementById('title');
+      const statusText = document.getElementById('status-text');
+
+      if (navigator.onLine) {
+        status.className = 'status online';
+        statusText.textContent = 'Соединение восстановлено';
+        title.textContent = 'Соединение восстановлено!';
+        
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        status.className = 'status offline';
+        statusText.textContent = 'Автономный режим';
+        title.textContent = 'Нет соединения с интернетом';
+      }
+    }
+
+    function checkConnection() {
+      const button = document.getElementById('retry-btn');
+      const retryText = document.getElementById('retry-text');
+      
+      if (retryAttempts >= maxRetryAttempts) {
+        retryText.textContent = 'Слишком много попыток';
+        button.disabled = true;
+        setTimeout(() => {
+          retryText.textContent = 'Попробовать снова';
+          button.disabled = false;
+          retryAttempts = 0;
+        }, 5000);
+        return;
+      }
+
+      button.classList.add('checking');
+      retryText.textContent = 'Проверяем...';
+      button.disabled = true;
+      retryAttempts++;
+
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 5000);
+
+      Promise.race([
+        fetch('/graphql?query=query{__typename}', { 
+          method: 'GET',
+          signal: controller.signal,
+          cache: 'no-cache'
+        }),
+        fetch('/', { 
+          method: 'HEAD',
+          signal: controller.signal,
+          cache: 'no-cache'
+        })
+      ])
+      .then(response => {
+        if (response.ok) {
+          updateStatus();
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      })
+      .catch(() => {
+        button.classList.remove('checking');
+        retryText.textContent = 'Нет соединения';
+        
+        setTimeout(() => {
+          retryText.textContent = 'Попробовать снова';
+          button.disabled = false;
+          button.classList.remove('checking');
+        }, 2000);
+      });
+    }
+
+    function goHome() {
+      window.location.href = '/';
+    }
+
+    window.addEventListener('online', () => {
+      retryAttempts = 0;
+      updateStatus();
+    });
+    
+    window.addEventListener('offline', updateStatus);
+
+    // Периодическая проверка соединения
+    setInterval(() => {
+      if (!navigator.onLine) {
+        fetch('/', { method: 'HEAD', cache: 'no-cache' })
+        .then(response => {
+          if (response.ok && !navigator.onLine) {
+            window.location.reload();
+          }
+        })
+        .catch(() => {});
+      }
+    }, 15000);
+
+    // Accessibility
+    document.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.tagName === 'BUTTON') {
+        e.preventDefault();
+        e.target.click();
+      }
+    });
+
+    updateStatus();
+  </script>
+</body>
+</html> 

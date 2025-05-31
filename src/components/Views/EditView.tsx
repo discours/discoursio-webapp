@@ -2,8 +2,7 @@ import { clsx } from 'clsx'
 import { Show, createEffect, createSignal, on, onCleanup, onMount, untrack } from 'solid-js'
 import { batch } from 'solid-js'
 import { debounce } from 'throttle-debounce'
-
-import { Icon } from '~/components/_shared/Icon'
+import { Panel } from '~/components/Sidebar/Sidebar'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Modal } from '~/components/_shared/Modal'
 import { EditorSwiper } from '~/components/_shared/SolidSwiper'
@@ -82,7 +81,6 @@ export const EditView = (props: { draft?: Draft }) => {
   const [isTitleClicked, setIsTitleClicked] = createSignal(false)
   const [originalLeadContent, setOriginalLeadContent] = createSignal('')
   const [isScrolled, setIsScrolled] = createSignal(false)
-  const [networkStatus, setNetworkStatus] = createSignal(navigator.onLine)
   const [awarenessUnsubscribe, setAwarenessUnsubscribe] = createSignal<(() => void) | null>(null)
   const [baseAudioFields, setBaseAudioFields] = createSignal({
     artist: '',
@@ -150,7 +148,6 @@ export const EditView = (props: { draft?: Draft }) => {
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('online', handleNetworkStatusChange)
     window.addEventListener('offline', handleNetworkStatusChange)
-    setNetworkStatus(navigator.onLine)
 
     if (props.draft?.id) {
       setCurrentDraft(props.draft as Draft)
@@ -379,7 +376,6 @@ export const EditView = (props: { draft?: Draft }) => {
   }
 
   const handleNetworkStatusChange = () => {
-    setNetworkStatus(navigator.onLine)
     const draftId = currentDraft()?.id
 
     if (navigator.onLine && draftId) {
@@ -877,18 +873,6 @@ export const EditView = (props: { draft?: Draft }) => {
     }
   }
 
-  // Оффлайн индикатор
-  const OfflineIndicator = () => {
-    return (
-      <Show when={!networkStatus()}>
-        <div class={styles.offlineIndicator}>
-          <Icon name="alert-triangle" />
-          <span>{t('Offline mode: Changes will be saved when connection is restored')}</span>
-        </div>
-      </Show>
-    )
-  }
-
   return (
     <>
       <div
@@ -906,8 +890,6 @@ export const EditView = (props: { draft?: Draft }) => {
             >
               <Show when={currentDraft()}>
                 <div class="col-md-19 col-lg-18 col-xl-16 offset-md-5">
-                  <OfflineIndicator />
-
                   <TitleSection
                     draft={currentDraft()}
                     isTitleClicked={isTitleClicked()}
@@ -1023,6 +1005,10 @@ export const EditView = (props: { draft?: Draft }) => {
       <Modal variant="medium" name="inviteCoauthors">
         <InviteMembers variant={'coauthors'} title={t('Invite experts')} />
       </Modal>
+
+      <Show when={currentDraft()?.id}>
+        <Panel shoutId={currentDraft()?.id} />
+      </Show>
     </>
   )
 }

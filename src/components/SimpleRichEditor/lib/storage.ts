@@ -47,6 +47,38 @@ export interface ContentVersion {
  */
 const DRAFT_PREFIX = 'draft-fields-'
 const NETWORK_STATUS_KEY = 'network-status'
+const STORAGE_METADATA_KEY = 'drafts-storage-metadata'
+
+// Новые константы для улучшенной функциональности
+const STORAGE_QUOTA_WARNING_THRESHOLD = 0.8 // 80% от квоты
+const MAX_DRAFT_AGE_DAYS = 500 // Максимальный возраст черновика в днях
+const CLEANUP_INTERVAL_HOURS = 24 // Интервал очистки в часах
+const COMPRESSION_MIN_SIZE = 1024 // Минимальный размер для сжатия (1KB)
+
+/**
+ * Метаданные хранилища для мониторинга и управления
+ */
+interface StorageMetadata {
+  lastCleanup: number
+  totalDrafts: number
+  storageUsed: number
+  syncFailures: Record<string, number>
+  performanceMetrics: {
+    averageSaveTime: number
+    averageLoadTime: number
+    totalOperations: number
+  }
+}
+
+/**
+ * Статус синхронизации черновика
+ */
+export interface SyncStatus {
+  status: 'synced' | 'pending' | 'failed' | 'conflict'
+  lastAttempt?: number
+  failures: number
+  errorMessage?: string
+}
 
 /**
  * Очищает строку от JSON-обертки и извлекает чистый контент
@@ -457,12 +489,28 @@ export const getDraftFromStorage = (draftId: string | number): DraftStorage | nu
   if (!draftId) return null
   if (isServer) return null
 
+  const startTime = performance.now()
+
   try {
     const key = getDraftKey(draftId)
     const data = localStorage.getItem(key)
     if (!data) return null
 
-    return JSON.parse(data) as DraftStorage
+    const draft = JSON.parse(data) as DraftStorage
+
+    // Распаковываем сжатые поля
+    if (draft.fields) {
+      Object.keys(draft.fields).forEach((fieldName) => {
+        if (['body', 'lead'].includes(fieldName)) {
+          draft.fields[fieldName] = decompressText(draft.fields[fieldName])
+        }
+      })
+    }
+
+    const duration = performance.now() - startTime
+    updatePerformanceMetrics('load', duration)
+
+    return draft
   } catch (e) {
     console.error('[OfflineStorage] Error getting draft:', e)
     return null
@@ -470,17 +518,41 @@ export const getDraftFromStorage = (draftId: string | number): DraftStorage | nu
 }
 
 /**
- * Сохраняет полный черновик в хранилище
+ * Сохраняет полный черновик в хранилище с метриками производительности
  * @param draft Объект черновика для сохранения
  * @returns true в случае успеха
  */
 export const saveDraftToStorage = (draft: DraftStorage): boolean => {
   if (!draft?.id) return false
 
+  const startTime = performance.now()
+
   try {
     const key = getDraftKey(draft.id)
-    localStorage.setItem(key, JSON.stringify(draft))
-    console.log(`[OfflineStorage] Saved entire draft ${draft.id}`)
+
+    // Сжимаем поля если они достаточно большие
+    const compressedDraft = { ...draft }
+    if (compressedDraft.fields) {
+      Object.keys(compressedDraft.fields).forEach((fieldName) => {
+        if (['body', 'lead'].includes(fieldName)) {
+          compressedDraft.fields[fieldName] = compressText(compressedDraft.fields[fieldName])
+        }
+      })
+    }
+
+    localStorage.setItem(key, JSON.stringify(compressedDraft))
+
+    const duration = performance.now() - startTime
+    updatePerformanceMetrics('save', duration)
+
+    console.log(`[OfflineStorage] Saved entire draft ${draft.id} (${duration.toFixed(2)}ms)`)
+
+    // Периодическая очистка
+    if (Math.random() < 0.1) {
+      // 10% шанс на каждое сохранение
+      setTimeout(() => performPeriodicCleanup(), 0)
+    }
+
     return true
   } catch (e) {
     console.error('[OfflineStorage] Error saving draft:', e)
@@ -991,5 +1063,289 @@ export const removeDraftFromStorage = (draftId: string | number): boolean => {
   } catch (e) {
     console.error('[OfflineStorage] Error removing draft:', e)
     return false
+  }
+}
+
+/**
+ * Сжимает текст используя простой алгоритм RLE для повторяющихся символов
+ * @param text Текст для сжатия
+ * @returns Сжатый текст или оригинал, если сжатие неэффективно
+ */
+const compressText = (text: string): string => {
+  if (!text || text.length < COMPRESSION_MIN_SIZE) return text
+
+  try {
+    // Простое сжатие для HTML: убираем лишние пробелы и переносы
+    const compressed = text
+      .replace(/>\s+</g, '><') // Убираем пробелы между тегами
+      .replace(/\s{2,}/g, ' ') // Множественные пробелы в один
+      .trim()
+
+    return compressed.length < text.length * 0.9 ? compressed : text
+  } catch (e) {
+    console.warn('[OfflineStorage] Compression failed:', e)
+    return text
+  }
+}
+
+/**
+ * Распаковывает сжатый текст (заглушка для будущего реального сжатия)
+ * @param compressedText Сжатый текст
+ * @returns Распакованный текст
+ */
+const decompressText = (compressedText: string): string => {
+  return compressedText // Пока просто возвращаем как есть
+}
+
+/**
+ * Проверяет квоту localStorage и возвращает статистику использования
+ * @returns Информация о квоте хранилища
+ */
+export const checkStorageQuota = (): {
+  used: number
+  total: number
+  percentage: number
+  warning: boolean
+} => {
+  if (isServer) return { used: 0, total: 0, percentage: 0, warning: false }
+
+  try {
+    let used = 0
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key) {
+        const value = localStorage.getItem(key) || ''
+        used += key.length + value.length
+      }
+    }
+
+    // Примерная оценка общей квоты (обычно 5-10MB)
+    const estimatedTotal = 5 * 1024 * 1024 // 5MB
+    const percentage = used / estimatedTotal
+
+    return {
+      used,
+      total: estimatedTotal,
+      percentage,
+      warning: percentage > STORAGE_QUOTA_WARNING_THRESHOLD
+    }
+  } catch (e) {
+    console.error('[OfflineStorage] Error checking storage quota:', e)
+    return { used: 0, total: 0, percentage: 0, warning: false }
+  }
+}
+
+/**
+ * Получает метаданные хранилища
+ * @returns Объект метаданных или дефолтные значения
+ */
+const getStorageMetadata = (): StorageMetadata => {
+  if (isServer) return getDefaultMetadata()
+
+  try {
+    const data = localStorage.getItem(STORAGE_METADATA_KEY)
+    if (!data) return getDefaultMetadata()
+
+    return { ...getDefaultMetadata(), ...JSON.parse(data) }
+  } catch (e) {
+    console.error('[OfflineStorage] Error getting storage metadata:', e)
+    return getDefaultMetadata()
+  }
+}
+
+/**
+ * Сохраняет метаданные хранилища
+ * @param metadata Объект метаданных для сохранения
+ */
+const saveStorageMetadata = (metadata: StorageMetadata): void => {
+  if (isServer) return
+
+  try {
+    localStorage.setItem(STORAGE_METADATA_KEY, JSON.stringify(metadata))
+  } catch (e) {
+    console.error('[OfflineStorage] Error saving storage metadata:', e)
+  }
+}
+
+/**
+ * Возвращает дефолтные метаданные
+ * @returns Объект с дефолтными метаданными
+ */
+const getDefaultMetadata = (): StorageMetadata => ({
+  lastCleanup: Date.now(),
+  totalDrafts: 0,
+  storageUsed: 0,
+  syncFailures: {},
+  performanceMetrics: {
+    averageSaveTime: 0,
+    averageLoadTime: 0,
+    totalOperations: 0
+  }
+})
+
+/**
+ * Обновляет метрики производительности
+ * @param operation Тип операции ('save' | 'load')
+ * @param duration Время выполнения в миллисекундах
+ */
+const updatePerformanceMetrics = (operation: 'save' | 'load', duration: number): void => {
+  const metadata = getStorageMetadata()
+  const metrics = metadata.performanceMetrics
+
+  if (operation === 'save') {
+    metrics.averageSaveTime =
+      (metrics.averageSaveTime * metrics.totalOperations + duration) / (metrics.totalOperations + 1)
+  } else {
+    metrics.averageLoadTime =
+      (metrics.averageLoadTime * metrics.totalOperations + duration) / (metrics.totalOperations + 1)
+  }
+
+  metrics.totalOperations++
+  metadata.performanceMetrics = metrics
+
+  saveStorageMetadata(metadata)
+}
+
+/**
+ * Выполняет периодическую очистку старых черновиков
+ * @param forceCleanup Принудительная очистка независимо от времени
+ * @returns Количество удалённых черновиков
+ */
+export const performPeriodicCleanup = (forceCleanup = false): number => {
+  if (isServer) return 0
+
+  const metadata = getStorageMetadata()
+  const now = Date.now()
+  const timeSinceLastCleanup = now - metadata.lastCleanup
+  const cleanupInterval = CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000
+
+  if (!forceCleanup && timeSinceLastCleanup < cleanupInterval) {
+    return 0 // Ещё рано для очистки
+  }
+
+  try {
+    const allDrafts = getAllDraftsFromStorage()
+    const cutoffTime = now - MAX_DRAFT_AGE_DAYS * 24 * 60 * 60 * 1000
+    let deletedCount = 0
+
+    allDrafts.forEach((draft) => {
+      // Удаляем черновики старше MAX_DRAFT_AGE_DAYS без активности
+      if (draft.timestamp < cutoffTime && (!draft.lastSync || draft.lastSync < cutoffTime)) {
+        removeDraftFromStorage(draft.id)
+        deletedCount++
+      }
+    })
+
+    // Обновляем метаданные
+    metadata.lastCleanup = now
+    metadata.totalDrafts = allDrafts.length - deletedCount
+    metadata.storageUsed = checkStorageQuota().used
+    saveStorageMetadata(metadata)
+
+    if (deletedCount > 0) {
+      console.log(`[OfflineStorage] Cleaned up ${deletedCount} old drafts`)
+    }
+
+    return deletedCount
+  } catch (e) {
+    console.error('[OfflineStorage] Error during periodic cleanup:', e)
+    return 0
+  }
+}
+
+/**
+ * Получает статус синхронизации черновика
+ * @param draftId Идентификатор черновика
+ * @returns Статус синхронизации
+ */
+export const getSyncStatus = (draftId: string | number): SyncStatus => {
+  const draft = getDraftFromStorage(draftId)
+  if (!draft) {
+    return { status: 'failed', failures: 0, errorMessage: 'Draft not found' }
+  }
+
+  const metadata = getStorageMetadata()
+  const failures = metadata.syncFailures[String(draftId)] || 0
+
+  if (!draft.lastSync) {
+    return { status: 'pending', failures }
+  }
+
+  if (draft.timestamp > draft.lastSync) {
+    return { status: 'pending', lastAttempt: draft.lastSync, failures }
+  }
+
+  if (failures > 3) {
+    return {
+      status: 'failed',
+      lastAttempt: draft.lastSync,
+      failures,
+      errorMessage: 'Multiple sync failures'
+    }
+  }
+
+  return { status: 'synced', lastAttempt: draft.lastSync, failures }
+}
+
+/**
+ * Обновляет статус синхронизации после попытки
+ * @param draftId Идентификатор черновика
+ * @param success Успешность синхронизации
+ * @param errorMessage Сообщение об ошибке (если есть)
+ */
+export const updateSyncStatus = (
+  draftId: string | number,
+  success: boolean,
+  errorMessage?: string
+): void => {
+  const metadata = getStorageMetadata()
+  const draftIdStr = String(draftId)
+
+  if (success) {
+    // Успешная синхронизация - сбрасываем счётчик ошибок
+    delete metadata.syncFailures[draftIdStr]
+    updateLastSync(draftId)
+  } else {
+    // Неудачная синхронизация - увеличиваем счётчик
+    metadata.syncFailures[draftIdStr] = (metadata.syncFailures[draftIdStr] || 0) + 1
+  }
+
+  saveStorageMetadata(metadata)
+
+  if (!success) {
+    console.warn(`[OfflineStorage] Sync failed for draft ${draftId}: ${errorMessage}`)
+  }
+}
+
+/**
+ * Получает статистику offline хранилища
+ * @returns Детальная статистика хранилища
+ */
+export const getStorageStats = (): {
+  quota: ReturnType<typeof checkStorageQuota>
+  metadata: StorageMetadata
+  draftsCount: number
+  syncPending: number
+  syncFailed: number
+} => {
+  const quota = checkStorageQuota()
+  const metadata = getStorageMetadata()
+  const allDrafts = getAllDraftsFromStorage()
+
+  let syncPending = 0
+  let syncFailed = 0
+
+  allDrafts.forEach((draft) => {
+    const status = getSyncStatus(draft.id)
+    if (status.status === 'pending') syncPending++
+    if (status.status === 'failed') syncFailed++
+  })
+
+  return {
+    quota,
+    metadata,
+    draftsCount: allDrafts.length,
+    syncPending,
+    syncFailed
   }
 }

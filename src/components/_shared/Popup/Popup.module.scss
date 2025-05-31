@@ -131,7 +131,157 @@
 
 .profilePopup {
   @include media-breakpoint-up(sm) {
-    min-width: 22rem;
+    min-width: 24rem;
+    max-width: 26rem;
+  }
+  
+  // Убираем стандартные отступы для первого и последнего элемента
+  li:first-child .action {
+    padding-top: 6px;
+  }
+
+  li:last-child .action {
+    padding-bottom: 6px;
+  }
+}
+
+// Стили для информации о пользователе
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.userHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.userDetailsLink {
+  padding: 1em;
+  flex: 1;
+  text-decoration: none;
+  cursor: pointer;
+  
+  &:hover {
+    .userName {
+      color: var(--background-color);
+    }
+    .userSlug {
+      color: var(--background-color);
+    }
+  }
+}
+
+.userAvatar {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--background-color-light, #f5f5f5);
+  border: 1px solid var(--border-color, #e5e5e5);
+}
+
+.userDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.userName {
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: var(--default-color);
+  line-height: 1.2;
+}
+
+.userSlug {
+  font-size: 1.2rem;
+  color: var(--text-color-light, #666);
+  opacity: 0.7;
+  line-height: 1.2;
+}
+
+// Компактный статус в одну строку
+.userStatus {
+  display: flex;
+  align-items: center;
+}
+
+.statusIcon {
+  width: 1.8rem;
+  height: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 0.4rem;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: var(--color-background-light);
+  }
+
+  svg {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+}
+
+.iconOffline {
+  color: #dc2626; /* красный для оффлайн */
+}
+
+.iconWarning {
+  color: #d97706; /* оранжевый для проблем */
+}
+
+.iconInfo {
+  color: #0284c7; /* синий для ожидающих синхронизации */
+}
+
+// Разделители
+.popupDivider {
+  height: 1px;
+  background: var(--border-color, rgba(0, 0, 0, 0.08));
+  margin: 0.6rem 1.4rem;
+}
+
+// Переопределение стандартных элементов меню для ProfilePopup
+.profilePopup .action {
+  padding: 0.8rem 1.4rem;
+  gap: 1rem;
+  font-size: 1.4rem;
+  
+  .icon {
+    width: 1.8rem;
+    height: 1.8rem;
+    margin-right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    
+    svg {
+      width: 1.6rem;
+      height: 1.6rem;
+      opacity: 0.8;
+    }
+    
+    img {
+      width: 1.6rem;
+      height: 1.6rem;
+      opacity: 0.8;
+    }
+  }
+  
+  &:hover .icon {
+    svg, img {
+      opacity: 1;
+    }
   }
 }
 
@@ -146,3 +296,4 @@
 //    z-index: -1;
 //  }
 // }
+

@@ -28,6 +28,57 @@ export const ProfileSecurityView = (_props: any) => {
   const [isSubmitting, setIsSubmitting] = createSignal<boolean>()
   const [isFloatingPanelVisible, setIsFloatingPanelVisible] = createSignal(false)
 
+  // Мок-данные для привязанных соцсетей (позже заменить на реальные данные из session)
+  const [connectedSocials, setConnectedSocials] = createSignal(['google', 'telegram']) // Примет данные из API
+
+  // TODO: Реализовать реальную логику работы с OAuth провайдерами:
+  // 1. Получать список подключенных соцсетей из session.author.socialNetworks или API
+  // 2. При подключении - вызывать OAuth flow для конкретного провайдера (core.discours.io/oauth/[provider])
+  // 3. При отключении - вызывать API для удаления связи (core.discours.io/oauth/[provider]/disconnect)
+  // 4. Обновлять состояние через мутацию GraphQL или перезагрузку сессии
+  // Сейчас используются моки для демонстрации UI
+
+  const getSocialNetworkStatus = (network: string) => {
+    return connectedSocials().includes(network)
+  }
+
+  const handleSocialClick = async (network: string, isConnected: boolean) => {
+    if (isConnected) {
+      // Обработка отвязывания
+      const isConfirmed = await showConfirm({
+        confirmBody: t('Are you sure you want to disconnect this social network?'),
+        confirmButtonVariant: 'primary',
+        declineButtonVariant: 'secondary'
+      })
+
+      if (isConfirmed) {
+        // Здесь будет API вызов для отвязывания
+        setConnectedSocials((prev) => prev.filter((item) => item !== network))
+        toast.success(t('Social network disconnected successfully'))
+      }
+    } else {
+      // Обработка привязывания
+      // Здесь будет редирект на OAuth или другая логика привязки
+      console.log(`Connecting ${network}...`)
+      toast.success(t('Redirecting to {{network}} authorization', { network }))
+    }
+  }
+
+  const renderSocialButton = (network: string, iconName: string, displayName: string) => {
+    const isConnected = getSocialNetworkStatus(network)
+    return (
+      <button
+        class={clsx(styles.socialButton, { [styles.connected]: isConnected })}
+        type="button"
+        title={isConnected ? `${t('Disconnect')} ${displayName}` : `${t('Connect')} ${displayName}`}
+        onClick={() => handleSocialClick(network, isConnected)}
+      >
+        <Icon name={iconName} class={styles.icon} />
+        <span class={styles.connectText}>{isConnected ? t('Connected') : t('Attach')}</span>
+      </button>
+    )
+  }
+
   const initialState = {
     oldPassword: undefined,
     newPassword: undefined,
@@ -213,51 +264,14 @@ export const ProfileSecurityView = (_props: any) => {
                       />
                     </div>
                     <h4>{t('Social networks')}</h4>
-                    <h5>Google</h5>
-                    <div class="pretty-form__item">
-                      <p>
-                        <button class={clsx('button', 'button--light', styles.socialButton)} type="button">
-                          <Icon name="google" class={styles.icon} />
-                          {t('Connect')}
-                        </button>
-                      </p>
-                    </div>
-
-                    <h5>VK</h5>
-                    <div class="pretty-form__item">
-                      <p>
-                        <button class={clsx(styles.socialButton, 'button', 'button--light')} type="button">
-                          <Icon name="vk" class={styles.icon} />
-                          {t('Connect')}
-                        </button>
-                      </p>
-                    </div>
-
-                    <h5>Facebook</h5>
-                    <div class="pretty-form__item">
-                      <p>
-                        <button class={clsx(styles.socialButton, 'button', 'button--light')} type="button">
-                          <Icon name="facebook" class={styles.icon} />
-                          {t('Connect')}
-                        </button>
-                      </p>
-                    </div>
-
-                    <h5>Apple</h5>
-                    <div class="pretty-form__item">
-                      <p>
-                        <button
-                          class={clsx(
-                            styles.socialButton,
-                            styles.socialButtonApple,
-                            'button button--light'
-                          )}
-                          type="button"
-                        >
-                          <Icon name="apple" class={styles.icon} />
-                          {t('Connect')}
-                        </button>
-                      </p>
+                    <div class={styles.socialNetworks}>
+                      {renderSocialButton('google', 'google', 'Google')}
+                      {renderSocialButton('vk', 'vk', 'VK')}
+                      {renderSocialButton('facebook', 'facebook', 'Facebook')}
+                      {renderSocialButton('telegram', 'telegram', 'Telegram')}
+                      {renderSocialButton('twitter', 'twitter', 'X')}
+                      {renderSocialButton('github', 'github', 'GitHub')}
+                      {renderSocialButton('yandex', 'yandex', 'Yandex')}
                     </div>
                   </form>
                 </div>
