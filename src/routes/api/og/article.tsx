@@ -1,10 +1,7 @@
 import { ImageResponse } from '@vercel/og'
 import { APIEvent } from '@solidjs/start/server'
+import { cdnUrl } from '~/config'
 
-/**
- * Dynamic OG image generation for articles
- * Usage: /api/og/article?title=Title&author=Author&topic=Topic&cover=cover-url
- */
 export async function GET(event: APIEvent) {
   try {
     const url = new URL(event.request.url)
@@ -13,130 +10,124 @@ export async function GET(event: APIEvent) {
     const cover = url.searchParams.get('cover')
     const topic = url.searchParams.get('topic')
 
-    // Debug logging
-    console.log('OG Image params:', { title, author, cover, topic })
+    // --- Elements ---
 
-    // Ensure we have content to display
-    const displayTitle = title && title !== 'Discours Article' ? title : 'Untitled Article'
+    const topLeft = {
+  type: 'div',
+  props: {
+    style: {
+      position: 'absolute',
+      top: 40,
+      left: 60,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+    },
+    children: [
+      // Logo image
+      {
+        type: 'img',
+        props: {
+          src: `${cdnUrl}/logo_sign.png`,
+          width: 60,
+          height: 60,
+          style: {
+            width: 60,
+            height: 60,
+            objectFit: 'contain',
+            background: 'rgba(255,255,255,0.03)', // slight highlight if you want
+            borderRadius: '16px', // round corners if you want
+            marginRight: 0,
+          }
+        }
+      },
+      // Topic badge
+      topic ? {
+        type: 'div',
+        props: {
+          style: {
+            fontSize: 28,
+            color: 'white',
+            fontWeight: 600,
+            letterSpacing: 1,
+            marginRight: 10,
+          },
+          children: topic
+        }
+      } : null,
+    ].filter(Boolean)
+  }
+}
 
-    // Build the image element structure
+    // Center-left: Title
+    const mainTitle = {
+      type: 'div',
+      props: {
+        style: {
+          position: 'absolute',
+          top: '50%',
+          left: 60,
+          transform: 'translateY(-50%)',
+          maxWidth: 900,
+          textAlign: 'left',
+          color: 'white',
+          fontWeight: 900,
+          fontSize: title.length > 50 ? 50 : 62,
+          lineHeight: 1.12,
+          textShadow: '2px 2px 7px rgba(0,0,0,0.55)',
+          letterSpacing: '-1px',
+          // add any custom font here if you use one
+        },
+        children: title,
+      }
+    }
+
+    // Bottom left: Author
+    const bottomLeft = author ? {
+      type: 'div',
+      props: {
+        style: {
+          position: 'absolute',
+          left: 60,
+          bottom: 44,
+          fontSize: 32,
+          color: 'rgba(255,255,255,0.88)',
+          fontWeight: 300,
+          letterSpacing: 0.5,
+          textShadow: '1px 1px 2px rgba(0,0,0,0.34)',
+        },
+        children: `Виталий Болатаев` // or `by ${author}` for English
+      }
+    } : null
+
+    // --- Image background ---
+    const backgroundStyle = cover
+      ? {
+          background: `linear-gradient(rgba(0,0,0,0.50), rgba(0,0,0,0.65)), url(${cover})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }
+      : {
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        }
+
+    // --- Main OG Image Structure ---
     const imageElement = {
       type: 'div',
       props: {
         style: {
+          position: 'relative',
           height: '100%',
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: cover ? 
-            `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${cover})` :
-            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          ...backgroundStyle,
         },
         children: [
-          // Content container
-          {
-            type: 'div',
-            props: {
-              style: {
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                padding: '60px',
-                textAlign: 'center',
-                width: '100%',
-                height: '100%',
-                backgroundColor: cover ? 'rgba(0,0,0,0.3)' : 'transparent',
-              },
-              children: [
-                // Title
-                {
-                  type: 'div',
-                  props: {
-                    style: {
-                      fontSize: title && title.length > 50 ? 48 : 64,
-                      fontWeight: 'bold',
-                      color: 'white',
-                      lineHeight: 1.2,
-                      marginBottom: 30,
-                      textAlign: 'center',
-                      maxWidth: '900px',
-                      textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-                    },
-                    children: displayTitle
-                  }
-                },
-                // Author
-                author ? {
-                  type: 'div',
-                  props: {
-                    style: {
-                      fontSize: 24,
-                      color: 'rgba(255,255,255,0.9)',
-                      lineHeight: 1.4,
-                      marginBottom: 20,
-                      textAlign: 'center',
-                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-                    },
-                    children: `by ${author}`
-                  }
-                } : null,
-                // Topic badge
-                topic ? {
-                  type: 'div',
-                  props: {
-                    style: {
-                      fontSize: 20,
-                      color: 'white',
-                      backgroundColor: 'rgba(255,255,255,0.2)',
-                      padding: '8px 16px',
-                      borderRadius: '20px',
-                      marginBottom: 20,
-                    },
-                    children: `#${topic}`
-                  }
-                } : null,
-                // Author
-                author ? {
-                  type: 'div',
-                  props: {
-                    style: {
-                      fontSize: 32,
-                      color: 'rgba(255,255,255,0.8)',
-                      marginBottom: 20,
-                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-                    },
-                    children: `by ${author}`
-                  }
-                } : null
-              ].filter(Boolean)
-            }
-          },
-          // Brand badge
-          {
-            type: 'div',
-            props: {
-              style: {
-                position: 'absolute',
-                bottom: 40,
-                right: 60,
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                padding: '12px 24px',
-                borderRadius: '25px',
-                fontSize: 28,
-                fontWeight: 'bold',
-                color: '#333',
-              },
-              children: '📖 discours.io'
-            }
-          }
-        ]
+          topLeft,
+          mainTitle,
+          bottomLeft,
+        ].filter(Boolean)
       }
     }
 

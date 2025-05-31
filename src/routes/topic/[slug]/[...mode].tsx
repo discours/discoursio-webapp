@@ -114,7 +114,7 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
     >
       <Show when={!articles.loading && articles()} fallback={<Loading />}>
         <Show when={!articles.error} fallback={<div>Error: {articles.error?.message}</div>}>
-          <PageLayout key="topic" title={title()} desc={desc()} cover={cover()}>
+          <PageLayout key="topic" title={title()} desc={desc()} cover={cover()} topic={topic() as Topic}>
             <TopicView topic={topic() as Topic} shouts={articles() || []} topicSlug={props.params.slug} />
           </PageLayout>
         </Show>

@@ -67,11 +67,11 @@ export function getAuthorOGImage(
   const params = new URLSearchParams()
   
   params.append('name', author.name || 'Author')
-  // Only include bio if it's short and meaningful
-  if (author.bio && author.bio.length <= 100) {
-    params.append('bio', author.bio)
-  } else if (author.about && author.about.length <= 100) {
-    params.append('bio', author.about)
+  // Include bio/about - OG image will handle truncation if needed
+  if (author.bio && author.bio.trim()) {
+    params.append('bio', author.bio.trim())
+  } else if (author.about && author.about.trim()) {
+    params.append('bio', author.about.trim())
   }
   
   if (author.pic) {
@@ -105,14 +105,22 @@ export function getTopicOGImage(
   const params = new URLSearchParams()
   
   params.append('title', topic.title || 'Topic')
-  // Only include description if it's short
-  if (topic.body && topic.body.length <= 100) {
+  // Include description - OG image will handle truncation if needed
+  if (topic.body && topic.body.trim()) {
     const cleanDescription = topic.body
       .replace(/<[^>]*>/g, '') // Remove HTML tags
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim()
-    params.append('description', cleanDescription)
+    if (cleanDescription) {
+      params.append('description', cleanDescription)
+    }
   }
+  
+  // Add topic cover image if available
+  if (topic.pic) {
+    params.append('cover', topic.pic)
+  }
+  
   params.append('icon', getTopicIcon(topic.title || ''))
   
   if (topic.stat?.shouts) {

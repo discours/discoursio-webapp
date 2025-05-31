@@ -6,11 +6,11 @@ import { Show, createEffect, createMemo, createSignal, onMount } from 'solid-js'
 import { cdnUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
 import { getShout } from '~/graphql/api/public'
-import { Shout } from '~/graphql/schema/core.gen'
+import { Shout, Author, Topic } from '~/graphql/schema/core.gen'
 import enKeywords from '~/intl/locales/en/keywords.json'
 import ruKeywords from '~/intl/locales/ru/keywords.json'
 import { getFileUrl } from '~/lib/getThumbUrl'
-import { generateOGImage, getArticleOGImage, getBasicOGImage } from '~/lib/ogImages'
+import { generateOGImage, getArticleOGImage, getAuthorOGImage, getTopicOGImage, getBasicOGImage } from '~/lib/ogImages'
 import { descFromBody } from '~/utils/meta'
 import { FooterView } from '../Discours/Footer'
 import { Header } from '../HeaderNav'
@@ -23,6 +23,8 @@ type PageLayoutProps = {
   headerTitle?: string
   slug?: string
   article?: Shout
+  author?: Author  // Add author prop for author pages
+  topic?: Topic    // Add topic prop for topic pages
   cover?: string
   children: JSX.Element
   isHeaderFixed?: boolean
@@ -42,10 +44,21 @@ export const PageLayout = (props: PageLayoutProps) => {
   
   // OG image generation
   const ogImage = createMemo(() => {
-
     // For articles, use our dynamic OG image generation
     if (props.article) {
       const ogUrl = getArticleOGImage(props.article)
+      return ogUrl
+    }
+    
+    // For author pages, use author-specific OG image
+    if (props.author) {
+      const ogUrl = getAuthorOGImage(props.author)
+      return ogUrl
+    }
+    
+    // For topic pages, use topic-specific OG image  
+    if (props.topic) {
+      const ogUrl = getTopicOGImage(props.topic)
       return ogUrl
     }
     

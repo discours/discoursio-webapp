@@ -106,6 +106,22 @@ export async function GET(event: APIEvent) {
               },
             },
 
+            // Topic cover image (if available)
+            cover ? {
+              type: 'img',
+              props: {
+                src: cover,
+                style: {
+                  width: '120px',
+                  height: '120px',
+                  borderRadius: '12px',
+                  marginBottom: '32px',
+                  border: '3px solid rgba(255,255,255,0.3)',
+                  objectFit: 'cover',
+                }
+              }
+            } : null,
+
             // Main content
             {
               type: 'div',
