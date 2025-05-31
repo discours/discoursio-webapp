@@ -21,10 +21,19 @@ export const ProfileSubscriptions = () => {
   const [followsFilter, setFollowsFilter] = createSignal<FollowsFilter>('all')
   const [searchQuery, setSearchQuery] = createSignal('')
 
-  createEffect(() => setFlatFollows([...(follows?.authors || []), ...(follows?.topics || [])]))
+  createEffect(() => {
+    const allFollows = [...(follows?.authors || []), ...(follows?.topics || [])]
+    console.log('[ProfileSubscriptions] Updating follows:', {
+      authors: follows?.authors?.length || 0,
+      topics: follows?.topics?.length || 0,
+      total: allFollows.length
+    })
+    setFlatFollows(allFollows)
+  })
 
   createEffect(
     on([flatFollows, followsFilter], ([flat, mode]) => {
+      console.log('[ProfileSubscriptions] Filtering by mode:', mode, 'from', flat.length, 'items')
       if (mode === 'authors') {
         setFiltered(flat.filter((s) => 'name' in s))
       } else if (mode === 'topics') {
@@ -36,8 +45,29 @@ export const ProfileSubscriptions = () => {
   )
 
   createEffect(() => {
-    if (searchQuery()) {
-      setFiltered(dummyFilter(flatFollows(), searchQuery(), lang()))
+    const query = searchQuery()
+    if (query) {
+      const baseList = flatFollows()
+      const searchResults = dummyFilter(baseList, query, lang())
+      
+      const mode = followsFilter()
+      if (mode === 'authors') {
+        setFiltered(searchResults.filter((s) => 'name' in s))
+      } else if (mode === 'topics') {
+        setFiltered(searchResults.filter((s) => 'title' in s))
+      } else {
+        setFiltered(searchResults)
+      }
+    } else {
+      const flat = flatFollows()
+      const mode = followsFilter()
+      if (mode === 'authors') {
+        setFiltered(flat.filter((s) => 'name' in s))
+      } else if (mode === 'topics') {
+        setFiltered(flat.filter((s) => 'title' in s))
+      } else {
+        setFiltered(flat)
+      }
     }
   })
 
@@ -55,7 +85,14 @@ export const ProfileSubscriptions = () => {
             <div class="col-md-20 col-lg-18 col-xl-16">
               <h1>{t('My subscriptions')}</h1>
               <p class="description">{t('Here you can manage all your Discours subscriptions')}</p>
-              <Show when={flatFollows()} fallback={<Loading />}>
+              <Show when={flatFollows().length > 0} fallback={
+                <Show when={follows} fallback={<Loading />}>
+                  <div class="empty-state">
+                    <p>{t('You have no subscriptions yet')}</p>
+                    <p>{t('Subscribe to authors and topics to see them here')}</p>
+                  </div>
+                </Show>
+              }>
                 <ul class="view-switcher">
                   <li
                     class={clsx({
@@ -65,6 +102,7 @@ export const ProfileSubscriptions = () => {
                     <button type="button" onClick={() => setFollowsFilter('all')}>
                       {t('All')}
                     </button>
+                    <span class="view-switcher__counter">{flatFollows().length}</span>
                   </li>
                   <li
                     class={clsx({
@@ -74,6 +112,9 @@ export const ProfileSubscriptions = () => {
                     <button type="button" onClick={() => setFollowsFilter('authors')}>
                       {t('Authors')}
                     </button>
+                    <span class="view-switcher__counter">
+                      {flatFollows().filter((s) => 'name' in s).length}
+                    </span>
                   </li>
                   <li
                     class={clsx({
@@ -83,6 +124,9 @@ export const ProfileSubscriptions = () => {
                     <button type="button" onClick={() => setFollowsFilter('topics')}>
                       {t('Topics')}
                     </button>
+                    <span class="view-switcher__counter">
+                      {flatFollows().filter((s) => 'title' in s).length}
+                    </span>
                   </li>
                 </ul>
 
@@ -95,17 +139,23 @@ export const ProfileSubscriptions = () => {
                 </div>
 
                 <div class={clsx(stylesSettings.settingsList, styles.topicsList)}>
-                  <For each={filtered()}>
-                    {(followingItem) => (
-                      <div>
-                        {'name' in followingItem ? (
-                          <AuthorBadge minimize={true} author={followingItem as Author} />
-                        ) : (
-                          <TopicBadge minimize={true} topic={followingItem as Topic} />
-                        )}
-                      </div>
-                    )}
-                  </For>
+                  <Show when={filtered().length > 0} fallback={
+                    <div class="empty-state">
+                      <p>{searchQuery() ? t('No subscriptions found') : t('No items in this category')}</p>
+                    </div>
+                  }>
+                    <For each={filtered()}>
+                      {(followingItem) => (
+                        <div>
+                          {'name' in followingItem ? (
+                            <AuthorBadge minimize={true} author={followingItem as Author} />
+                          ) : (
+                            <TopicBadge minimize={true} topic={followingItem as Topic} />
+                          )}
+                        </div>
+                      )}
+                    </For>
+                  </Show>
                 </div>
               </Show>
             </div>

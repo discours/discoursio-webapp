@@ -5,6 +5,7 @@ import loadShoutsBookmarkedQuery from '~/graphql/query/core/articles-load-bookma
 import loadShoutsCoauthoredQuery from '~/graphql/query/core/articles-load-coauthored'
 import loadShoutsDiscussedQuery from '~/graphql/query/core/articles-load-discussed'
 import loadShoutsFeedQuery from '~/graphql/query/core/articles-load-feed'
+import loadShoutsFollowedByQuery from '~/graphql/query/core/articles-load-followed-by'
 import loadArticlesMyRatesQuery from '~/graphql/query/core/articles-myrates'
 import loadCommentsMyRatesQuery from '~/graphql/query/core/comments-myrates'
 import loadCommunitiesFollowedQuery from '~/graphql/query/core/communities-followed-by'
@@ -16,6 +17,7 @@ import {
   QueryLoad_Shouts_CoauthoredArgs,
   QueryLoad_Shouts_DiscussedArgs,
   QueryLoad_Shouts_FeedArgs,
+  QueryShoutsFollowedByUserQueryArgs,
   Reaction,
   ReactionBy,
   ReactionKind,
@@ -270,15 +272,25 @@ export const useFollowedCommunities = (
  * Прямой метод без кеширования
  * Загрузка ленты подписок
  * Используется для SSR и начальной загрузки
+ * Загружает публикации только от подписанных авторов и по подписанным темам
  */
 export const loadFollowedShouts = (
-  { options }: QueryLoad_Shouts_FeedArgs,
+  { options, slug }: { options: LoadShoutsOptions; slug: string },
   signedClient: Client | undefined
 ) => {
   return async () => {
-    if (!signedClient) return undefined
-    const resp = await signedClient.query(loadShoutsFeedQuery, { ...options }).toPromise()
-    return resp?.data?.load_shouts_feed as Shout[]
+    if (!signedClient || !slug) {
+      console.log('[loadFollowedShouts] Missing client or slug:', { hasClient: !!signedClient, slug })
+      return undefined
+    }
+    console.log('[loadFollowedShouts] Loading followed shouts for user:', slug, 'with options:', options)
+    const resp = await signedClient.query(loadShoutsFollowedByQuery, { slug, options }).toPromise()
+    const result = resp?.data?.load_shouts_followed_by as Shout[]
+    console.log('[loadFollowedShouts] Result:', { count: result?.length, hasError: !!resp?.error })
+    if (resp?.error) {
+      console.error('[loadFollowedShouts] GraphQL error:', resp.error)
+    }
+    return result
   }
 }
 

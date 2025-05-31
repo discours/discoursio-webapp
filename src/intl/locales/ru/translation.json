@@ -647,5 +647,9 @@
   "Social network disconnected successfully": "Социальная сеть успешно отвязана",
   "Redirecting to {{network}} authorization": "Перенаправляем на авторизацию {{network}}",
   "My profile": "Мой профиль",
-  "Exit": "Выйти"
+  "Exit": "Выйти",
+  "You have no subscriptions yet": "У вас пока нет подписок",
+  "Subscribe to authors and topics to see them here": "Подпишитесь на авторов и темы, чтобы увидеть их здесь",
+  "No subscriptions found": "Подписки не найдены",
+  "No items in this category": "В этой категории нет элементов"
 }

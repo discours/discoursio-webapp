@@ -1,6 +1,5 @@
 import { A } from '@solidjs/router'
 import { For, Show, Suspense, batch, createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
-import { checkStorageQuota, performPeriodicCleanup } from '~/components/SimpleRichEditor/lib/storage'
 import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'
 import { useAuthors } from '~/context/authors'
@@ -32,43 +31,6 @@ export const Sidebar = () => {
   const { topicEntities, topTopics } = useTopics()
   const [authorsList, setAuthorsList] = createSignal<Partial<Author>[]>([])
   const [topicsList, setTopicsList] = createSignal<Partial<Topic>[]>([])
-
-  // Offline статус
-  const [networkStatus, setNetworkStatus] = createSignal(navigator.onLine)
-  const [storageQuota, setStorageQuota] = createSignal(checkStorageQuota())
-  const [isOfflineExpanded, setIsOfflineExpanded] = createSignal(false)
-
-  // Обновление статуса сети
-  const handleNetworkChange = () => {
-    setNetworkStatus(navigator.onLine)
-  }
-
-  // Обновление данных хранилища
-  const updateStorageInfo = () => {
-    setStorageQuota(checkStorageQuota())
-  }
-
-  // Cleanup старых черновиков
-  const handleCleanup = () => {
-    const deletedCount = performPeriodicCleanup(true)
-    console.log(`[Sidebar] Manually cleaned up ${deletedCount} drafts`)
-    updateStorageInfo()
-  }
-
-  onMount(() => {
-    // Слушатели событий сети
-    window.addEventListener('online', handleNetworkChange)
-    window.addEventListener('offline', handleNetworkChange)
-
-    // Периодическое обновление данных
-    const updateInterval = setInterval(updateStorageInfo, 10000)
-
-    onCleanup(() => {
-      window.removeEventListener('online', handleNetworkChange)
-      window.removeEventListener('offline', handleNetworkChange)
-      clearInterval(updateInterval)
-    })
-  })
 
   // Объединенный эффект для обработки авторов и топиков
   createEffect(
@@ -230,65 +192,6 @@ export const Sidebar = () => {
         </A>
       </nav>
 
-      {/* Offline Status Section - всегда показываем */}
-      <section class={styles.offlineSection}>
-        <div
-          class={styles.sidebarItem}
-          classList={{
-            [styles.offlineAlert]: !networkStatus(),
-            [styles.storageWarning]: storageQuota().warning && networkStatus(),
-            [styles.onlineStatus]: networkStatus() && !storageQuota().warning
-          }}
-          onClick={() => setIsOfflineExpanded(!isOfflineExpanded())}
-        >
-          <div class={styles.sidebarItemName}>
-            <Icon
-              name={
-                networkStatus() ? (storageQuota().warning ? 'alert-triangle' : 'check-circle') : 'wifi-off'
-              }
-              class={styles.icon}
-            />
-            <span class={styles.sidebarItemNameLabel}>
-              {networkStatus()
-                ? storageQuota().warning
-                  ? t('Storage warning')
-                  : t('All synced')
-                : t('Offline mode')}
-            </span>
-            <Icon name={isOfflineExpanded() ? 'chevron-up' : 'chevron-down'} class={styles.expandIcon} />
-          </div>
-        </div>
-
-        <Show when={isOfflineExpanded()}>
-          <div class={styles.offlineDetails}>
-            <Show when={!networkStatus()}>
-              <p class={styles.offlineMessage}>{t('Changes will be saved when connection is restored')}</p>
-            </Show>
-
-            {/* Всегда показываем информацию о хранилище */}
-            <div class={styles.storageInfo}>
-              <div class={styles.storageBar}>
-                <div
-                  class={styles.storageProgress}
-                  style={{
-                    width: `${Math.min(storageQuota().percentage * 100, 100)}%`
-                  }}
-                />
-              </div>
-              <span class={styles.storageText}>
-                {Math.round(storageQuota().used / 1024)} KB / {Math.round(storageQuota().total / 1024)} KB (
-                {Math.round(storageQuota().percentage * 100)}%)
-              </span>
-            </div>
-
-            <button type="button" onClick={handleCleanup} class={styles.cleanupButton}>
-              <Icon name="trash-2" class={styles.icon} />
-              {t('Cleanup old drafts')}
-            </button>
-          </div>
-        </Show>
-      </section>
-
       <section>
         <hr />
         <Suspense fallback={<Loading />}>
@@ -335,7 +238,7 @@ export const Sidebar = () => {
       </section>
 
       <footer class={styles.settings}>
-        <a href="/profile/subs" class={styles.sidebarItem}>
+        <a href="/settings/subs" class={styles.sidebarItem}>
           <div class={styles.sidebarItemName}>
             <Icon name="settings" class={styles.icon} />
             <span class={styles.sidebarItemNameLabel}>{t('Feed settings')}</span>

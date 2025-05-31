@@ -45,6 +45,7 @@ export const AuthorBadge = (props: Props) => {
         const authorFollowed = Boolean(
           followingAuthors?.some((followedAuthor) => followedAuthor.id === currentAuthor?.id)
         )
+        console.log('[AuthorBadge] Follow state updated:', authorFollowed, 'for author:', currentAuthor?.name)
         setIsFollowed(authorFollowed)
       },
       {}
@@ -127,13 +128,16 @@ export const AuthorBadge = (props: Props) => {
           </Show>
         </ConditionalWrapper>
       </div>
-      <Show when={props.author.slug !== session()?.author?.slug && !props.nameOnly}>
+      <Show when={(props.author.slug !== session()?.author?.slug && !props.nameOnly) || props.minimize}>
         <div class={styles.actions}>
-          <FollowingButton
-            entity={FollowingEntity.Author}
-            slug={props.author.slug}
-            isFollowed={isFollowed()}
-          />
+          <Show when={props.author.slug !== session()?.author?.slug}>
+            <FollowingButton
+              entity={FollowingEntity.Author}
+              slug={props.author.slug}
+              isFollowed={isFollowed()}
+              minimize={props.minimize}
+            />
+          </Show>
           <Show when={props.showMessageButton}>
             <Button
               variant={props.iconButtons ? 'secondary' : 'bordered'}

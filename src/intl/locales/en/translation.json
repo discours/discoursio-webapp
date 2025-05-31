@@ -31,5 +31,9 @@
   "{{count}} drafts waiting for sync. Click to review.": "{{count}} drafts waiting for sync. Click to review.",
   "Are you sure you want to disconnect this social network?": "Are you sure you want to disconnect this social network?",
   "Social network disconnected successfully": "Social network disconnected successfully",
-  "Redirecting to {{network}} authorization": "Redirecting to {{network}} authorization"
+  "Redirecting to {{network}} authorization": "Redirecting to {{network}} authorization",
+  "You have no subscriptions yet": "You have no subscriptions yet",
+  "Subscribe to authors and topics to see them here": "Subscribe to authors and topics to see them here",
+  "No subscriptions found": "No subscriptions found",
+  "No items in this category": "No items in this category"
 }

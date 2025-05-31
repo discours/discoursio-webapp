@@ -71,42 +71,38 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
     communities: []
   })
 
-  const getToken = () => session()?.token
-
-  const [follows] = createResource(getToken, async (token) => {
-    if (!token) return null
-    const result = await client()
-      ?.query(loadAuthorFollowers, {
-        user: session()?.author?.id
-      })
-      .toPromise()
-    return result?.data || null
-  })
-
+  // Основной ресурс для загрузки подписок текущего пользователя
   const [followsResource] = createResource(
     () => session()?.author?.slug,
     async (slug) => {
       if (!(slug && client())) return null
+      console.log('[FollowingContext] Loading follows for user:', slug)
       const response = await client()?.query(loadAuthorFollowsQuery, { slug }).toPromise()
-      return response?.data?.get_author_follows || { authors: [], topics: [] }
+      const result = response?.data?.get_author_follows
+      console.log('[FollowingContext] Loaded follows:', {
+        authors: result?.authors?.length || 0,
+        topics: result?.topics?.length || 0
+      })
+      return result || { authors: [], topics: [] }
     }
   )
 
   createEffect(
     on(
-      [follows, followsResource],
-      ([followsData, resourceData]) => {
-        if (!(followsData || resourceData)) return
+      [followsResource],
+      ([resourceData]) => {
+        if (!resourceData) return
+        console.log('[FollowingContext] Updating follows state:', {
+          resourceDataAuthors: resourceData?.authors?.length || 0,
+          resourceDataTopics: resourceData?.topics?.length || 0
+        })
         batch(() => {
           setState((prev) => ({
             ...prev,
-            authors: resourceData?.authors || followsData?.authors || [],
-            topics: resourceData?.topics || followsData?.topics || [],
-            communities: followsData?.communities || []
+            authors: resourceData?.authors || [],
+            topics: resourceData?.topics || [],
+            communities: resourceData?.communities || []
           }))
-          if (followsData?.followers) {
-            setFollowers(followsData.followers)
-          }
         })
       },
       { defer: true }
@@ -141,10 +137,15 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       return
     }
     try {
+      console.log('[FollowingContext] Following:', what, slug)
       const resp = await client()?.mutation(followMutation, { what, slug }).toPromise()
       if (!resp || resp.error) return
       const result = resp?.data?.follow
       if (!result) return
+      console.log('[FollowingContext] Follow result:', {
+        authorsCount: result.authors?.length || 0,
+        topicsCount: result.topics?.length || 0
+      })
       setState((subs) => {
         if (result.authors) subs['authors'] = result.authors
         if (result.topics) subs['topics'] = result.topics
@@ -152,7 +153,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       })
       return result
     } catch (error) {
-      console.error(error)
+      console.error('[FollowingContext] Follow error:', error)
     }
   }
 
@@ -162,10 +163,15 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       return
     }
     try {
+      console.log('[FollowingContext] Unfollowing:', what, slug)
       const resp = await client()?.mutation(unfollowMutation, { what, slug }).toPromise()
       const result = resp?.data?.unfollow
       if (!result) return
       if (result.error) return
+      console.log('[FollowingContext] Unfollow result:', {
+        authorsCount: result.authors?.length || 0,
+        topicsCount: result.topics?.length || 0
+      })
       setState((subs) => {
         if (result.authors) subs['authors'] = result.authors || []
         if (result.topics) subs['topics'] = result.topics || []
@@ -173,7 +179,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       })
       return result
     } catch (error) {
-      console.error(error)
+      console.error('[FollowingContext] Unfollow error:', error)
     }
   }
 
@@ -199,49 +205,88 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
     what: FollowingEntity,
     slug: string
   ): Promise<boolean> => {
-    let hasChanged = false
-
     if (!session()?.token) {
       showModal('auth')
       return isFollowed
     }
+    
     setFollowingLoading(true)
     try {
       const result = isFollowed ? await unfollow(what, slug) : await follow(what, slug)
 
       if (result) {
-        const key = `${what.toLowerCase()}s` as keyof FollowingData
-        const currentFollows = state[key]
-        hasChanged = result[key]?.length !== currentFollows?.length
-        setState((subs) => {
-          if (result.authors) {
-            subs.authors = result.authors as Author[]
+        // Специальная обработка для ошибки "following was not found" при unfollow
+        const isUnfollowNotFound = isFollowed && result.error === "following was not found"
+        
+        if (!result.error || isUnfollowNotFound) {
+          // Обновляем состояние контекста с новыми данными с сервера
+          setState((subs) => {
+            if (result.authors) {
+              subs.authors = result.authors as Author[]
+            }
+            if (result.topics) {
+              subs.topics = result.topics as Topic[]
+            }
+            if (result.communities) {
+              subs.communities = result.communities as Community[]
+            }
+            return subs
+          })
+          
+          // Определяем новое состояние подписки на основе ответа сервера
+          let newFollowState = false
+          
+          if (isUnfollowNotFound) {
+            // Если подписка не найдена при unfollow, значит пользователь не подписан
+            newFollowState = false
+            console.log('[FollowingContext] Unfollow: following not found, treating as successful unfollow')
+          } else {
+            // Обычная логика определения состояния
+            if (what === 'AUTHOR' && result.authors) {
+              newFollowState = result.authors.some((author: Author) => author.slug === slug)
+            } else if (what === 'TOPIC' && result.topics) {
+              newFollowState = result.topics.some((topic: Topic) => topic.slug === slug)
+            } else if (what === 'COMMUNITY' && result.communities) {
+              newFollowState = result.communities.some((community: Community) => community.slug === slug)
+            }
           }
-          if (result.topics) subs.topics = result.topics as Topic[]
-          if (result.communities) subs.communities = result.communities as Community[]
-          return subs
-        })
+          
+          console.log('[FollowingContext] New follow state determined from server:', newFollowState, 'for', what, slug)
+          return newFollowState
+        } else {
+          console.error('[FollowingContext] Operation failed with error:', result.error)
+        }
       }
+      
+      // Если операция не удалась, возвращаем текущее состояние
+      return isFollowed
     } catch (error) {
-      console.error(error)
+      console.error('changeFollowing error:', error)
+      return isFollowed
+    } finally {
+      setFollowingLoading(false)
     }
-    setFollowingLoading(false)
-
-    const r = hasChanged ? isFollowed : !isFollowed
-    return r
   }
 
   const value: FollowingContextType = {
-    loading: loading,
+    loading: () => followsResource.loading,
     follows: state,
     setFollows: setState,
     followers: followers,
-    loadFollows: fetchData,
+    loadFollows: () => {
+      // Принудительно перезагружаем ресурс через мутацию состояния
+      if (followsResource.latest) {
+        setState((prev) => ({
+          ...prev,
+          authors: followsResource.latest?.authors || [],
+          topics: followsResource.latest?.topics || []
+        }))
+      }
+    },
     follow,
     unfollow,
     followingLoading,
     changeFollowing,
-    // Resourse for follows
     followsResource
   }
 

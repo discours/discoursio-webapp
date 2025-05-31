@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Show, createSignal } from 'solid-js'
+import { Show, createSignal, createEffect } from 'solid-js'
 
 import { Icon } from '../Icon'
 
@@ -14,14 +14,21 @@ type Props = {
 
 // Signed - check mark icon
 // On hover - cross icon
-// If you clicked on the cross, you unsubscribed. Then the “Subscribe” button appears
+// If you clicked on the cross, you unsubscribed. Then the "Subscribe" button appears
 
 export const CheckButton = (props: Props) => {
   const [clicked, setClicked] = createSignal(!props.checked)
+  
+  // Синхронизация с внешним состоянием
+  createEffect(() => {
+    setClicked(!props.checked)
+  })
+  
   const handleClick = () => {
     props.onClick()
-    setClicked((prev) => !prev)
+    // Убираем собственное обновление состояния, полагаемся на внешнее
   }
+  
   return (
     <button type="button" class={clsx(styles.CheckButton, props.class)} onClick={handleClick}>
       <Show

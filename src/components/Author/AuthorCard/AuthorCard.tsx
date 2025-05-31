@@ -48,7 +48,7 @@ export const AuthorCard = (props: Props) => {
   createEffect(() => {
     if (!(follows && props.author)) return
     const followed = follows?.authors?.some((authorEntity) => authorEntity.id === props.author?.id)
-    console.log('Is followed state:', followed)
+    console.log('[AuthorCard] Follow state updated:', followed, 'for author:', props.author.name)
     setIsFollowed(followed)
   })
 

@@ -228,6 +228,7 @@ type ControllersMap = {
  * @param setter - Функция обновления состояния
  * @param client - GraphQL клиент
  * @param options - Базовые опции загрузки
+ * @param userSlug - Slug пользователя (для followed ленты)
  * @param opts - Дополнительные опции (пагинация и т.д.)
  *
  * @throws {Error} При ошибке загрузки
@@ -237,19 +238,26 @@ const loadPersonalFeed = async (
   setter: Setter<FeedState>,
   client: GraphQLClient,
   options: LoadShoutsOptions,
+  userSlug?: string,
   opts?: Partial<LoadShoutsOptions>
 ) => {
   setter((prev) => ({ ...prev, isLoading: true }))
-  console.log(`[FeedProvider] Loading ${type} feed:`, { opts })
+  console.log(`[FeedProvider] Loading ${type} feed:`, { opts, userSlug })
 
   try {
-    const loaders = {
-      followed: loadFollowedShouts,
-      discussed: loadDiscussedShouts,
-      coauthored: loadCoauthoredShouts
+    let fetcher
+    
+    if (type === 'followed' && userSlug) {
+      // Для followed ленты используем специальный запрос с slug пользователя
+      fetcher = await loadFollowedShouts({ options: { ...options, ...opts }, slug: userSlug }, client)
+    } else if (type === 'discussed') {
+      fetcher = await loadDiscussedShouts({ options: { ...options, ...opts } }, client)
+    } else if (type === 'coauthored') {
+      fetcher = await loadCoauthoredShouts({ options: { ...options, ...opts } }, client)
+    } else {
+      throw new Error(`Unknown feed type: ${type} or missing userSlug for followed feed`)
     }
 
-    const fetcher = await loaders[type]({ options: { ...options, ...opts } }, client)
     const result = await fetcher()
 
     console.log(`[FeedProvider] ${type} feed loaded:`, {
@@ -449,13 +457,13 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
   // Обновляем методы загрузки персональных лент с передачей client и options
   const loadFollowedFeed = (opts?: Partial<LoadShoutsOptions>) =>
-    loadPersonalFeed('followed', setFollowedFeed, client() as GraphQLClient, options(), opts)
+    loadPersonalFeed('followed', setFollowedFeed, client() as GraphQLClient, options(), session()?.author?.slug, opts)
 
   const loadDiscussedFeed = (opts?: Partial<LoadShoutsOptions>) =>
-    loadPersonalFeed('discussed', setDiscussedFeed, client() as GraphQLClient, options(), opts)
+    loadPersonalFeed('discussed', setDiscussedFeed, client() as GraphQLClient, options(), undefined, opts)
 
   const loadCoauthoredFeed = (opts?: Partial<LoadShoutsOptions>) =>
-    loadPersonalFeed('coauthored', setCoauthoredFeed, client() as GraphQLClient, options(), opts)
+    loadPersonalFeed('coauthored', setCoauthoredFeed, client() as GraphQLClient, options(), undefined, opts)
 
   const loadFeedSearch = async (text: string, options: LoadShoutsOptions) => {
     console.debug('[FeedProvider] loadFeedSearch called with:', { text, options })

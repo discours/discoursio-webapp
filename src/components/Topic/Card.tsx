@@ -37,22 +37,27 @@ export const TopicCard = (props: TopicProps) => {
   )
   const { session, requireAuthentication } = useSession()
   const author = createMemo<Author>(() => session()?.author as Author)
-  const { follow, unfollow, follows } = useFollowing()
+  const { follows, changeFollowing } = useFollowing()
   const [isFollowed, setIsFollowed] = createSignal(false)
+  
   createEffect(
     on([() => follows, () => props.topic], ([flws, tpc]) => {
       if (flws && tpc) {
-        const followed = follows?.topics?.some((topics) => topics.id === props.topic?.id)
+        const followed = follows?.topics?.some((topic) => topic.id === props.topic?.id)
+        console.log('[TopicCard] Follow state updated:', followed, 'for topic:', props.topic.title || props.topic.slug)
         setIsFollowed(Boolean(followed))
       }
     })
   )
 
   const handleFollowClick = () => {
-    requireAuthentication(() => {
-      isFollowed()
-        ? unfollow(FollowingEntity.Topic, props.topic.slug)
-        : follow(FollowingEntity.Topic, props.topic.slug)
+    requireAuthentication(async () => {
+      try {
+        const newState = await changeFollowing(isFollowed(), FollowingEntity.Topic, props.topic.slug)
+        console.log('[TopicCard] Follow state changed to:', newState)
+      } catch (error) {
+        console.error('[TopicCard] Failed to change follow state:', error)
+      }
     }, 'follow')
   }
 
