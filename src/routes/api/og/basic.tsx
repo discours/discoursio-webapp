@@ -1,5 +1,6 @@
 import { APIEvent } from '@solidjs/start/server'
 import { ImageResponse } from '@vercel/og'
+import { cdnUrl } from '~/config'
 
 /**
  * Generate basic OG images for pages without specific content
@@ -47,17 +48,19 @@ export async function GET(event: APIEvent) {
                 height: '100%',
               },
               children: [
-                // Logo/Brand
+                // Logo image centered
                 {
-                  type: 'div',
+                  type: 'img',
                   props: {
+                    src: `${cdnUrl}/logo.png`,
+                    width: 200,
+                    height: 200,
                     style: {
-                      fontSize: '72px',
-                      fontWeight: 'bold',
-                      marginBottom: '20px',
-                      color: 'white',
-                    },
-                    children: 'DISCOURS'
+                      width: 200,
+                      height: 200,
+                      objectFit: 'contain',
+                      marginBottom: '40px',
+                    }
                   }
                 },
                 // Title
@@ -116,7 +119,7 @@ export async function GET(event: APIEvent) {
   } catch (error) {
     console.error('[OG] Basic image generation error:', error)
     
-    // Return a simple fallback image
+    // Return a simple fallback image with logo
     return new ImageResponse(
       {
         type: 'div',
@@ -128,11 +131,20 @@ export async function GET(event: APIEvent) {
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: '#667eea',
-            color: 'white',
-            fontSize: '48px',
-            fontWeight: 'bold',
           },
-          children: 'DISCOURS'
+          children: {
+            type: 'img',
+            props: {
+              src: `${cdnUrl}/logo.png`,
+              width: 150,
+              height: 150,
+              style: {
+                width: 150,
+                height: 150,
+                objectFit: 'contain',
+              }
+            }
+          }
         }
       },
       {
