@@ -7,7 +7,7 @@ import { cdnUrl } from '~/config'
  * Usage: /api/og/author?slug=author-slug
  * or: /api/og/author?name=Name&bio=Bio&avatar=avatar-url
  */
-export async function GET(event: APIEvent) {
+export function GET(event: APIEvent) {
   try {
     const url = new URL(event.request.url)
     const name = url.searchParams.get('name') || 'Author'

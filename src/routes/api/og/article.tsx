@@ -7,7 +7,7 @@ import { cdnUrl } from '~/config'
  * Usage: /api/og/article?title=Title&author=Author&cover=CoverURL&topic=Topic
  */
 
-export async function GET(event: APIEvent) {
+export function GET(event: APIEvent) {
   try {
     const url = new URL(event.request.url)
     const title = url.searchParams.get('title') || 'Discours Article'
@@ -104,7 +104,7 @@ export async function GET(event: APIEvent) {
           letterSpacing: 0.5,
           textShadow: '1px 1px 2px rgba(0,0,0,0.34)',
         },
-        children: `Виталий Болатаев` // or `by ${author}` for English
+        children: author.length > 120 ? author.substring(0, 120) + '...' : author
       }
     } : null
 

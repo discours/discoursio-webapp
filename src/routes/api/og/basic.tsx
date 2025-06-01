@@ -6,7 +6,7 @@ import { cdnUrl } from '~/config'
  * Generate basic OG images for pages without specific content
  * Simple white background with centered logo
  */
-export async function GET(event: APIEvent) {
+export function GET(event: APIEvent) {
 
   //Debug hardcoded cdn url to cdn.discours.io
   const cdnUrl = 'https://cdn.discours.io'

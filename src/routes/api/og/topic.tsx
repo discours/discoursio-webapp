@@ -6,7 +6,7 @@ import { APIEvent } from '@solidjs/start/server';
  * Usage: /api/og/topic?title=Title&description=Description&cover=CoverURL
  */
 
-export async function GET(event: APIEvent) {
+export function GET(event: APIEvent) {
   try {
     const url = new URL(event.request.url);
     const title = url.searchParams.get('title') || 'Discours Topic';
