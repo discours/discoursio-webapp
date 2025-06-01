@@ -42,7 +42,13 @@ const Chevron = (props: { class?: string }) => {
       viewBox="0 0 18 18"
       fill="none"
     >
-      <path d="M13.5 6L9 12L4.5 6H13.5Z" fill="#141414" />
+      <path
+        d="M4.5 6.75L9 11.25L13.5 6.75"
+        stroke="#141414"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
     </svg>
   )
 }
@@ -147,10 +153,6 @@ export const DropDown = (props: DropDownProps) => {
 
       if (!firstGroup?.options?.length) {
         return ''
-      }
-
-      if (firstGroup.multiple && firstGroup.selected && firstGroup.selected.length > 0) {
-        return `${firstGroup.selected.length} выбрано`
       }
 
       const selectedIndex = firstGroup.selected?.[0]

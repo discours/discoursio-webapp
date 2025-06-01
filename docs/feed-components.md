@@ -2,6 +2,29 @@
 
 ## Фильтры и сортировка
 
+### Архитектура фильтрации
+
+Система фильтрации построена на основе реактивного контекста `useFeed()`. Все изменения фильтров автоматически триггерят перезагрузку данных.
+
+#### Поток данных фильтров:
+1. **UI компоненты** (`FeedSwitcher`, `FeedFiltersControl`) обновляют состояние фильтров
+2. **Контекст feed** отслеживает изменения через `filterState.timestamp`  
+3. **Эффект перезагрузки** автоматически вызывает соответствующий `loadFeed()`
+4. **GraphQL запрос** отправляется с объединенными фильтрами
+
+```typescript
+// Пример объединения фильтров в loadFeed()
+const mergedOptions: LoadShoutsOptions = {
+  ...options(),
+  ...opts,
+  order_by: opts?.order_by ?? orderByMode(mode as FeedMode),
+  filters: {
+    ...currentFilters, // из filterState()
+    ...opts?.filters   // переданные напрямую
+  }
+}
+```
+
 ### Типы лент
 
 #### 1. Основные режимы сортировки
@@ -44,47 +67,175 @@ interface FeedFilters {
 ```typescript
 // В UI используем enum
 enum PeriodType {
-  AllTime = 'all',
-  Day = 'day',
+  AllTime = 'all_time',
+  Day = 'day', 
   Week = 'week',
   Month = 'month',
   Year = 'year'
 }
 
-// В GraphQL передаем timestamp
+// В GraphQL отправляем Unix timestamp
 interface FeedFilters {
   after?: number // Unix timestamp в секундах
 }
 
-// Преобразование периода в timestamp
-const after = period === PeriodType.AllTime 
-  ? undefined 
-  : Math.floor(getTimestampFromPeriod(period) / 1000)
+// Преобразование в utils
+const getTimestampFromPeriod = (period: PeriodType): number => {
+  const now = Date.now() / 1000
+  switch (period) {
+    case PeriodType.Day: return now - 86400
+    case PeriodType.Week: return now - 604800
+    case PeriodType.Month: return now - 2592000
+    case PeriodType.Year: return now - 31536000
+    default: return 0
+  }
+}
 ```
 
-3. **Отобранное** [FeedFiltersControl.tsx](../src/components/Feed/FeedFiltersControl.tsx#L58-L68)
+3. **Featured фильтр** [FeedFiltersControl.tsx](../src/components/Feed/FeedFiltersControl.tsx#L95-L110)
 
-Фильтр для работы с избранными материалами. Может находиться в трех состояниях:
-- `all` - показывать все материалы
-- `featured` - только избранные
-- `unfeatured` - только не избранные
+Позволяет показать только избранные материалы, только неизбранные, или все.
 
 ```typescript
-// В UI
 type FeaturedFilter = 'featured' | 'unfeatured' | 'all'
 
 // В GraphQL
 interface FeedFilters {
-  featured?: boolean
+  featured?: boolean // true/false/undefined
 }
 
-// Преобразование
-const featuredFilterHandler = (opt: Option) => {
-  const mode = opt.value as FeaturedFilter
-  updateFilters({
-    featured: mode === 'featured' ? true : mode === 'unfeatured' ? false : undefined
-  })
+// Логика преобразования
+const featuredValue = filter === 'featured' ? true 
+                    : filter === 'unfeatured' ? false 
+                    : undefined
+```
+
+### Автоматическая синхронизация
+
+#### Контекст feed [feed.tsx](../src/context/feed.tsx#L400-L470)
+
+```typescript
+// Эффект для автоматической перезагрузки при изменении фильтров
+createEffect(
+  on(
+    () => filterState().timestamp,
+    (timestamp, prevTimestamp) => {
+      if (timestamp !== prevTimestamp && prevTimestamp !== undefined) {
+        const currentMode = mode()
+        const setter = feedSetters[currentMode]
+        if (setter) {
+          setter(emptyFeed) // Очищаем текущие данные
+          
+          // Загружаем с новыми фильтрами
+          switch (currentMode) {
+            case 'hot': loadHotFeed(); break
+            case 'top': loadTopFeed(); break  
+            default: loadRecentFeed(); break
+          }
+        }
+      }
+    },
+    { defer: true }
+  )
+)
+```
+
+#### Компоненты фильтров
+
+**FeedSwitcher** - управляет сортировкой:
+```typescript
+// Обновляет options.order_by и сбрасывает offset
+updateOptions({
+  offset: 0,
+  order_by: orderByMode(value as FeedMode)
+})
+```
+
+**FeedFiltersControl** - управляет фильтрами:
+```typescript  
+// Прямо обновляет filterState через updateFilters()
+updateFilters({
+  after: period === PeriodType.AllTime ? undefined : getTimestampFromPeriod(period)
+})
+```
+
+### Совместимость
+
+#### SSR и специфические запросы
+Для специфических случаев используются разные подходы:
+
+**AuthorView** - полностью интегрирован с системой фильтров и сортировки:
+```typescript
+// Объединяет фильтр автора с пользовательскими фильтрами и опциями сортировки
+const loadAuthorShouts = async (offset = 0) => {
+  const currentFilters = filterState().filters
+  const currentOptions = options()
+  const mergedFilters = {
+    ...currentFilters,
+    author: author()!.slug  // Всегда фильтруем по автору
+  }
+  
+  return loadShouts({
+    options: {
+      ...currentOptions,  // Включает order_by из FeedSwitcher
+      filters: mergedFilters,
+      limit: FEED_PAGE_SIZE,
+      offset
+    }
+  })()
 }
+
+// Автоматическая перезагрузка при изменении фильтров или сортировки
+createEffect(on(
+  () => filterState().timestamp,
+  () => {
+    if (author() && !currentTab()) { // Только на вкладке публикаций
+      loadAuthorShouts(0).then(setSortedFeed)
+    }
+  }
+))
+
+// UI включает и FeedSwitcher и FeedFiltersControl
+<div class={styles.filtersRow}>
+  <FeedSwitcher
+    options={['recent', 'top', 'hot']}
+    prefix={`/@${props.authorSlug}`}
+    class={styles.feedSwitcher}
+  />
+  <FeedFiltersControl />
+</div>
+```
+
+**TopicView** - аналогично интегрирован с фильтрами для публикаций темы
+
+**Другие представления** - используют прямые вызовы `loadShouts()`:
+```typescript
+// Для других специфических запросов сохранен прямой вызов
+const fetcher = loadShouts({
+  options: {
+    filters: { /* специфические фильтры */ },
+    limit: FEED_PAGE_SIZE,
+    offset
+  }
+})
+```
+
+#### Кеширование  
+Публичные запросы используют кеширование через `createCacheableLoader()`, персональные ленты - через обычный GraphQL клиент.
+
+### Отладка
+
+Для отладки фильтрации включены консольные логи:
+```typescript
+console.log('[FeedProvider] Filters changed, reloading feed:', currentMode)
+console.log('[FeedProvider] Feed mode changed:', currentMode)
+```
+
+Также можно отслеживать состояние фильтров через React DevTools или в браузере:
+```javascript
+// В консоли браузера
+window.feedState = /* результат useFeed() */
+console.log(window.feedState.filterState())
 ```
 
 ### Состояние фильтров [filters.ts](../src/types/filters.ts)

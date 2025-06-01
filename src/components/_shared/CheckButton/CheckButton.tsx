@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Show, createSignal, createEffect } from 'solid-js'
+import { Show, createEffect, createSignal } from 'solid-js'
 
 import { Icon } from '../Icon'
 
@@ -18,17 +18,17 @@ type Props = {
 
 export const CheckButton = (props: Props) => {
   const [clicked, setClicked] = createSignal(!props.checked)
-  
+
   // Синхронизация с внешним состоянием
   createEffect(() => {
     setClicked(!props.checked)
   })
-  
+
   const handleClick = () => {
     props.onClick()
     // Убираем собственное обновление состояния, полагаемся на внешнее
   }
-  
+
   return (
     <button type="button" class={clsx(styles.CheckButton, props.class)} onClick={handleClick}>
       <Show

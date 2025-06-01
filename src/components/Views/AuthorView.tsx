@@ -17,6 +17,8 @@ import type { Author, Reaction, Shout, Topic } from '~/graphql/schema/core.gen'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { AuthorCard } from '../Author/AuthorCard'
 import { AuthorShoutsRating } from '../Author/AuthorShoutsRating'
+import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
+import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 import { Placeholder } from '../Feed/Placeholder'
 import { Row1 } from '../Feed/Row1'
 import { Row2 } from '../Feed/Row2'
@@ -47,7 +49,7 @@ export const AuthorView = (props: AuthorViewProps) => {
   const { t } = useLocalize()
   const loc = useLocation()
   const params = useParams()
-  const { mode: feedMode } = useFeed()
+  const { mode: feedMode, filterState, options } = useFeed()
   const [currentTab, setCurrentTab] = createSignal<string | undefined>()
 
   const { session, client } = useSession()
@@ -90,6 +92,13 @@ export const AuthorView = (props: AuthorViewProps) => {
   // derivatives
   const { commentsByAuthor, addShoutReactions } = useReactions()
   const { feedByAuthor } = useFeed()
+
+  // Проверка, является ли профиль собственным
+  const isOwnProfile = createMemo(() => {
+    const currentUser = session()?.author
+    const profileAuthor = author()
+    return currentUser && profileAuthor && currentUser.slug === profileAuthor.slug
+  })
 
   // Обновляем мемо для статистики - показываем только данные из stat автора
   const stats = createMemo<AuthorStats>(() => {
@@ -300,7 +309,7 @@ export const AuthorView = (props: AuthorViewProps) => {
   )
 
   const TabNavigator = () => (
-    <div class="col-md-16">
+    <div class={styles.tabNavigator}>
       <ul class="view-switcher">
         <li classList={{ 'view-switcher__item--selected': !currentTab() }}>
           <A href={`/@${props.authorSlug}`}>{t('Publications')}</A>
@@ -323,7 +332,74 @@ export const AuthorView = (props: AuthorViewProps) => {
     </div>
   )
 
-  // Обновленная функция loadMore
+  // Функция загрузки публикаций автора с учетом фильтров
+  const loadAuthorShouts = async (offset = 0) => {
+    if (!author()) return []
+
+    try {
+      console.log('[AuthorView] Loading author shouts with filters:', {
+        author: author()?.slug,
+        filters: filterState().filters,
+        options: options(),
+        offset
+      })
+
+      // Объединяем фильтр автора с другими фильтрами и опциями
+      const currentFilters = filterState().filters
+      const currentOptions = options()
+      const mergedFilters = {
+        ...currentFilters,
+        author: author()!.slug
+      }
+
+      const authorShoutsFetcher = loadShouts({
+        options: {
+          ...currentOptions,
+          filters: mergedFilters,
+          limit: FEED_PAGE_SIZE,
+          offset
+        }
+      })
+      const result = await authorShoutsFetcher()
+
+      if (result?.length) {
+        return result
+      }
+      return []
+    } catch (error) {
+      console.error('[AuthorView] Error loading author shouts:', error)
+      return []
+    }
+  }
+
+  // Эффект для перезагрузки публикаций автора при изменении фильтров
+  createEffect(
+    on(
+      () => filterState().timestamp,
+      (timestamp, prevTimestamp) => {
+        // Перезагружаем только если фильтры действительно изменились и автор загружен
+        if (timestamp !== prevTimestamp && prevTimestamp !== undefined && author() && !currentTab()) {
+          console.log('[AuthorView] Filters changed, reloading author feed:', author()?.slug)
+
+          // Сбрасываем текущие данные и загружаем заново
+          setSortedFeed([])
+          setLoadMoreHidden(false)
+
+          loadAuthorShouts(0).then((result) => {
+            if (result.length) {
+              setSortedFeed(result)
+              setLoadMoreHidden(result.length < FEED_PAGE_SIZE)
+            } else {
+              setLoadMoreHidden(true)
+            }
+          })
+        }
+      },
+      { defer: true }
+    )
+  )
+
+  // Обновленная функция loadMore с поддержкой фильтров
   const loadMore = async () => {
     if (!author()) return []
 
@@ -331,14 +407,7 @@ export const AuthorView = (props: AuthorViewProps) => {
     const offset = sortedFeed().length
 
     try {
-      const authorShoutsFetcher = loadShouts({
-        options: {
-          filters: { author: author()!.slug },
-          limit: FEED_PAGE_SIZE,
-          offset
-        }
-      })
-      const result = await authorShoutsFetcher()
+      const result = await loadAuthorShouts(offset)
 
       if (result?.length) {
         // Добавляем только уникальные статьи
@@ -484,14 +553,35 @@ export const AuthorView = (props: AuthorViewProps) => {
               />
             </div>
             <div class={clsx(styles.groupControls, 'row')}>
-              <TabNavigator />
-              <div class={clsx('col-md-8', styles.additionalControls)}>
-                <Show when={typeof author()?.stat?.rating === 'number'}>
-                  <div class={styles.ratingContainer}>
-                    {t('All posts rating')}
-                    <AuthorShoutsRating author={author() as Author} class={styles.ratingControl} />
-                  </div>
-                </Show>
+              <div class="col-md-24">
+                <div class={styles.controlsRow}>
+                  <TabNavigator />
+
+                  {/* Центральный блок с фильтрами - показываем только на вкладке публикаций */}
+                  <Show when={!currentTab()}>
+                    <div class={styles.filtersInline}>
+                      <FeedSwitcher
+                        options={['recent', 'top', 'hot']}
+                        prefix={`/@${props.authorSlug}`}
+                        class={styles.feedSwitcher}
+                      />
+                      <FeedFiltersControl type="author" />
+                    </div>
+                  </Show>
+
+                  {/* Пустой div для симметрии когда нет фильтров */}
+                  <Show when={currentTab()}>
+                    <div class={styles.filtersInline} />
+                  </Show>
+
+                  {/* Рейтинг справа */}
+                  <Show when={typeof author()?.stat?.rating === 'number'}>
+                    <div class={styles.ratingContainer}>
+                      {t('All posts rating')}
+                      <AuthorShoutsRating author={author() as Author} class={styles.ratingControl} />
+                    </div>
+                  </Show>
+                </div>
               </div>
             </div>
           </>
@@ -526,8 +616,8 @@ export const AuthorView = (props: AuthorViewProps) => {
         </Match>
 
         <Match when={currentTab() === 'comments'}>
-          {/* Показываем плейсхолдер только если статистика показывает 0 комментариев */}
-          <Show when={stats().comments === 0 && author()}>
+          {/* Показываем плейсхолдер только если статистика показывает 0 комментариев И это собственный профиль */}
+          <Show when={stats().comments === 0 && author() && isOwnProfile()}>
             <div class="wide-container">
               <Placeholder type={'comments'} mode="profile" />
             </div>
@@ -556,8 +646,8 @@ export const AuthorView = (props: AuthorViewProps) => {
         </Match>
 
         <Match when={!currentTab()}>
-          {/* Показываем плейсхолдер только если статистика показывает 0 публикаций */}
-          <Show when={stats().shouts === 0 && author()}>
+          {/* Показываем плейсхолдер только если статистика показывает 0 публикаций И это собственный профиль */}
+          <Show when={stats().shouts === 0 && author() && isOwnProfile()}>
             <div class="wide-container">
               <Placeholder type={'author'} mode="profile" />
             </div>
@@ -571,7 +661,14 @@ export const AuthorView = (props: AuthorViewProps) => {
                 <div class="wide-container">
                   <div class="row">
                     <div class="col-md-20 col-lg-18">
-                      <div style="text-align: center; padding: 2rem;">{t('Loading publications...')}</div>
+                      <div style="text-align: center; padding: 4rem 2rem;">
+                        <Show when={author()} fallback={<Loading />}>
+                          <div>
+                            <h3 style="margin-bottom: 1rem; color: #666;">{t('No publications found')}</h3>
+                            <p style="color: #999;">{t('Try changing filters or check back later')}</p>
+                          </div>
+                        </Show>
+                      </div>
                     </div>
                   </div>
                 </div>

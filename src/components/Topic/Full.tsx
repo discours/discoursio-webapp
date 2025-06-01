@@ -136,7 +136,12 @@ export const FullTopic = (props: Props) => {
     if (follows?.topics?.length ?? true) {
       const items = follows.topics || []
       const isFollowed = items.some((x: Topic) => x?.slug === props.topic?.slug)
-      console.log('[FullTopic] Follow state updated:', isFollowed, 'for topic:', props.topic?.title || props.topic?.slug)
+      console.log(
+        '[FullTopic] Follow state updated:',
+        isFollowed,
+        'for topic:',
+        props.topic?.title || props.topic?.slug
+      )
       setFollowed(isFollowed)
     }
   })

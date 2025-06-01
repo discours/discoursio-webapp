@@ -1,9 +1,17 @@
 .trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   white-space: nowrap;
+  gap: 0.5rem;
 }
 
 .chevron {
-  vertical-align: top;
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease-in-out;
 
   &.rotate {
     transform: rotate(180deg);
@@ -17,6 +25,14 @@
 .groupTitle {
   font-weight: 600;
   margin: 0.5rem 1rem !important;
+  
+  span {
+    font-size: 0.75em; /* Делаем текст меньше (superscript размер) */
+    color: #999; /* Серый цвет */
+    text-transform: uppercase; /* Заглавные буквы */
+    letter-spacing: 0.5px; /* Увеличиваем межбуквенный интервал */
+    font-weight: 500; /* Немного уменьшаем жирность */
+  }
 }
 
 /* Стили для иконки внутри пункта меню */
@@ -26,14 +42,16 @@
   margin-right: 8px; /* Отступ справа от иконки */
   opacity: 0.6;
   vertical-align: middle; /* Выравнивание по вертикали */
-  border: 1px solid transparent; /* Добавляем прозрачную рамку для выравнивания */
-  border-radius: 3px; /* Небольшое скругление */
-  padding: 1px; /* Небольшой отступ внутри рамки */
+  flex-shrink: 0; /* Предотвращаем сжатие иконки */
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
 
   &.active {
     opacity: 1;
-    border-color: darkgray; /* Рамка для активной иконки */
-    background: rgb(0 0 0 / 5%); /* Легкий фон для активной иконки */
   }
 }
 

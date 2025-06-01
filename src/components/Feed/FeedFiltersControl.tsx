@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { Show, createMemo, createSignal, onMount } from 'solid-js'
-import { Button } from '~/components/_shared/Button'
+import { For } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon/Icon'
 import { EXPO_LAYOUTS, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
@@ -9,7 +9,7 @@ import { PeriodType } from '~/lib/fromPeriod'
 import { ExpoLayoutType } from '~/types/nav'
 import { FeaturedFilter, FeedFilters } from '~/types/nav'
 import { capitalize } from '~/utils/capitalize'
-import { DropDown, OptionGroup } from '../_shared/DropDown/DropDown'
+import { DropDown } from '../_shared/DropDown/DropDown'
 import type { Option } from '../_shared/DropDown/DropDown'
 
 import { TFunction } from 'i18next'
@@ -32,53 +32,124 @@ function getPeriodTitle(period: PeriodType, t: TFunction): string {
   )
 }
 
-export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
+// Компонент для симметричной стрелочки вниз (используем тот же дизайн что и в DropDown)
+const ChevronDown = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <path
+      d="M4.5 6.75L9 11.25L13.5 6.75"
+      stroke="#141414"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+)
+
+// Компонент для отображения выбранных лейаутов в виде иконок
+const _LayoutFilterTrigger = (props: {
+  selectedLayouts: (ExpoLayoutType | 'article')[]
+  allLayouts: (ExpoLayoutType | 'article')[]
+  onToggle: (isOpen: boolean) => void
+}) => {
   const { t } = useLocalize()
-  const { filterState, updateFilters, loadRecentFeed, loadHotFeed, loadTopFeed, mode, feedByMode } =
-    useFeed()
+
+  // Если ничего не выбрано или выбрано все, показываем текст
+  if (props.selectedLayouts.length === 0 || props.selectedLayouts.length === props.allLayouts.length) {
+    return (
+      <div class={clsx(styles.trigger, styles.nonSelectable)}>
+        {t('All')}
+        <ChevronDown />
+      </div>
+    )
+  }
+  return (
+    <div class={clsx(styles.trigger, styles.layoutIconsTrigger, styles.nonSelectable)}>
+      <For each={props.selectedLayouts}>
+        {(layout) => (
+          <Icon name={layout === 'article' ? 'create-article' : layout} class={styles.layoutIcon} />
+        )}
+      </For>
+      <ChevronDown />
+    </div>
+  )
+}
+
+// Компонент для отображения выбранного featured фильтра
+const FeaturedFilterTrigger = (props: {
+  selectedFilter: FeaturedFilter
+  onToggle: (isOpen: boolean) => void
+}) => {
+  const { t } = useLocalize()
+
+  return (
+    <div class={clsx(styles.trigger, styles.nonSelectable)}>
+      {t(capitalize(props.selectedFilter))}
+      <ChevronDown />
+    </div>
+  )
+}
+
+// Компонент для отображения комбинации featured фильтра и лейаутов
+const CombinedFilterTrigger = (props: {
+  selectedFilter: FeaturedFilter
+  selectedLayouts: (ExpoLayoutType | 'article')[]
+  allLayouts: (ExpoLayoutType | 'article')[]
+  onToggle: (isOpen: boolean) => void
+}) => {
+  const { t } = useLocalize()
+
+  return (
+    <div class={clsx(styles.trigger, styles.layoutIconsTrigger, styles.nonSelectable)}>
+      <span class={styles.featuredText}>{t(capitalize(props.selectedFilter))}</span>
+      <div class={styles.layoutIconsGroup}>
+        <For each={props.selectedLayouts}>
+          {(layout) => (
+            <Icon name={layout === 'article' ? 'create-article' : layout} class={styles.layoutIcon} />
+          )}
+        </For>
+      </div>
+      <ChevronDown />
+    </div>
+  )
+}
+
+export const FeedFiltersControl = (props: FeedFiltersControlProps) => {
+  const { t } = useLocalize()
+  const { filterState, updateFilters, feedByMode } = useFeed()
 
   const [currentPeriod, setCurrentPeriod] = createSignal<PeriodType>(PeriodType.AllTime)
   const [currentFeaturedFilter, setCurrentFeaturedFilter] = createSignal<FeaturedFilter>('all')
   const [currentLayouts, setCurrentLayouts] = createSignal<(ExpoLayoutType | 'article')[]>([])
+
+  // Состояние для отложенного применения фильтров
+  const [pendingPeriod, setPendingPeriod] = createSignal<PeriodType>(PeriodType.AllTime)
+  const [pendingFeaturedFilter, setPendingFeaturedFilter] = createSignal<FeaturedFilter>('all')
+  const [pendingLayouts, setPendingLayouts] = createSignal<(ExpoLayoutType | 'article')[]>([])
   const [hasChanges, setHasChanges] = createSignal(false)
 
   // Определяем, нужно ли показывать фильтры
   const shouldShowFilters = createMemo(() => {
+    // Для страницы автора или если указан type/mode, всегда показываем фильтры
+    if (props.type === 'author' || props.mode === 'profile') {
+      return true
+    }
+
     const currentFeed = feedByMode()
     const shoutsCount = currentFeed?.shouts?.length || 0
     const hasMoreData = currentFeed?.hasMore || false
 
-    // Показываем фильтры только если:
-    // 1. Есть достаточно публикаций (больше 10) ИЛИ
-    // 2. Есть больше данных для загрузки (hasMore = true)
-    return shoutsCount > 10 || hasMoreData
+    // Показываем фильтры если есть достаточно публикаций или больше данных
+    return shoutsCount > 5 || hasMoreData
   })
 
-  // Функция для перезагрузки фида
-  const reloadFeed = () => {
-    const opts = {
-      filters: {
-        after: currentPeriod() ? getTimestampFromPeriod(currentPeriod()) : undefined,
-        featured:
-          currentFeaturedFilter() === 'featured'
-            ? true
-            : currentFeaturedFilter() === 'unfeatured'
-              ? false
-              : undefined,
-        layouts: currentLayouts()
-      }
-    }
-    switch (mode()) {
-      case 'hot':
-        loadHotFeed(opts)
-        break
-      case 'top':
-        loadTopFeed(opts)
-        break
-      default:
-        loadRecentFeed(opts)
-    }
-    setHasChanges(false)
+  // Проверяем есть ли изменения
+  const checkForChanges = () => {
+    const periodChanged = pendingPeriod() !== currentPeriod()
+    const featuredChanged = pendingFeaturedFilter() !== currentFeaturedFilter()
+    const layoutsChanged =
+      JSON.stringify(pendingLayouts().sort()) !== JSON.stringify(currentLayouts().sort())
+
+    setHasChanges(periodChanged || featuredChanged || layoutsChanged)
   }
 
   // Синхронизируем начальные фильтры
@@ -87,60 +158,79 @@ export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
 
     // Синхронизация featured фильтра
     if (filters.featured !== undefined) {
-      setCurrentFeaturedFilter(
+      const featured =
         filters.featured === true ? 'featured' : filters.featured === false ? 'unfeatured' : 'all'
-      )
+      setCurrentFeaturedFilter(featured)
+      setPendingFeaturedFilter(featured)
     }
 
     // Синхронизация периода
     if (filters.after !== undefined) {
       const period = Object.values(PeriodType).find((p) => getTimestampFromPeriod(p) === filters.after)
-      if (period) setCurrentPeriod(period)
+      if (period) {
+        setCurrentPeriod(period)
+        setPendingPeriod(period)
+      }
     }
 
     // Синхронизация layouts
     if (filters.layouts?.length) {
-      setCurrentLayouts(filters.layouts as (ExpoLayoutType | 'article')[])
+      const layouts = filters.layouts as (ExpoLayoutType | 'article')[]
+      setCurrentLayouts(layouts)
+      setPendingLayouts(layouts)
     }
   })
 
-  // Обработчик фильтра featured
+  // Обработчик фильтра featured (отложенное применение)
   const featuredFilterHandler = (opt: Option) => {
     if (!opt?.value) return
     const mode = opt.value as FeaturedFilter
-    setCurrentFeaturedFilter(mode)
-
-    updateFilters({
-      featured: mode === 'featured' ? true : mode === 'unfeatured' ? false : undefined
-    })
-    setHasChanges(true)
+    setPendingFeaturedFilter(mode)
+    checkForChanges()
   }
 
-  // Улучшенный обработчик layouts с поддержкой множественного выбора
+  // Улучшенный обработчик layouts с поддержкой множественного выбора (отложенное применение)
   const layoutsOptionsGroupHandler = (opt: Option) => {
     if (!opt?.value) return
 
-    const layouts = currentLayouts()
+    const layouts = pendingLayouts()
     const newLayouts = layouts.includes(opt.value as ExpoLayoutType | 'article')
       ? layouts.filter((x) => x !== opt.value)
       : [...layouts, opt.value as ExpoLayoutType | 'article']
 
-    setCurrentLayouts(newLayouts)
-    updateFilters({
-      layouts: newLayouts.length ? newLayouts : undefined
-    })
-    setHasChanges(true)
+    setPendingLayouts(newLayouts)
+    checkForChanges()
   }
 
-  // Обработчик периода
+  // Обработчик периода (отложенное применение)
   const periodHandler = (opt: Option) => {
     if (!opt?.value) return
     const period = opt.value as PeriodType
-    setCurrentPeriod(period || PeriodType.AllTime)
-    updateFilters({
-      after: period === PeriodType.AllTime ? undefined : getTimestampFromPeriod(period)
-    })
-    setHasChanges(true)
+
+    setPendingPeriod(period || PeriodType.AllTime)
+    checkForChanges()
+  }
+
+  // Применение фильтров
+  const applyFilters = () => {
+    setCurrentPeriod(pendingPeriod())
+    setCurrentFeaturedFilter(pendingFeaturedFilter())
+    setCurrentLayouts(pendingLayouts())
+
+    const filters = {
+      featured:
+        pendingFeaturedFilter() === 'featured'
+          ? true
+          : pendingFeaturedFilter() === 'unfeatured'
+            ? false
+            : undefined,
+      after: pendingPeriod() === PeriodType.AllTime ? undefined : getTimestampFromPeriod(pendingPeriod()),
+      layouts: pendingLayouts().length ? pendingLayouts() : undefined
+    }
+
+    updateFilters(filters)
+
+    setHasChanges(false)
   }
 
   // Мемоизируем создание опций с учетом типа OptionGroup
@@ -152,7 +242,8 @@ export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
 
     const layoutOptions = ['article', ...EXPO_LAYOUTS].map((o) => ({
       value: o,
-      title: t(capitalize(o))
+      title: t(capitalize(o)),
+      icon: o === 'article' ? 'create-article' : o
     })) satisfies Option[]
 
     const periodOptions = Object.values(PeriodType).map((o) => ({
@@ -167,38 +258,42 @@ export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
     }
   })
 
-  // Типизируем возвращаемые группы
-  const getDropdownGroups = (): OptionGroup[] => {
+  // Мемоизируем создание групп dropdown для правильной реактивности
+  const getDropdownGroups = createMemo(() => {
     const options = createOptionsGroup()
+    const featuredSelectedIndex = options.featured.findIndex((o) => o.value === pendingFeaturedFilter())
 
     return [
       {
         options: options.featured,
-        selected: [options.featured.findIndex((o) => o.value === currentFeaturedFilter())],
+        selected: featuredSelectedIndex >= 0 ? [featuredSelectedIndex] : [0], // Если не найден, используем первый (all)
         onChange: featuredFilterHandler
       },
       {
         title: t('Layouts'),
         options: options.layouts,
-        selected: currentLayouts()
+        selected: pendingLayouts()
           .map((l) => options.layouts.findIndex((o) => o.value === l))
           .filter((i) => i !== -1), // Фильтруем невалидные индексы
         multiple: true,
         onChange: layoutsOptionsGroupHandler
       }
     ]
-  }
+  })
 
-  const getPeriodGroup = (): OptionGroup[] => {
+  // Мемоизируем создание групп периодов для правильной реактивности
+  const getPeriodGroup = createMemo(() => {
     const options = createOptionsGroup()
+    const selectedIndex = options.periods.findIndex((o) => o.value === pendingPeriod())
+
     return [
       {
         options: options.periods,
-        selected: [options.periods.findIndex((o) => o.value === currentPeriod())],
+        selected: selectedIndex >= 0 ? [selectedIndex] : [0], // Если период не найден, используем первый (All time)
         onChange: periodHandler
       }
     ]
-  }
+  })
 
   return (
     <Show when={shouldShowFilters()}>
@@ -208,26 +303,42 @@ export const FeedFiltersControl = (_props: FeedFiltersControlProps) => {
             popupProps={{ horizontalAnchor: 'right' }}
             options={getDropdownGroups()}
             triggerCssClass={clsx(styles.periodSwitcher, {
-              [styles.active]: currentLayouts().length > 0
+              [styles.active]: pendingFeaturedFilter() !== 'all' || pendingLayouts().length > 0,
+              [styles.hasChanges]: hasChanges()
             })}
+            triggerContent={
+              // Если выбраны лейауты - всегда показываем комбинированный триггер с featured фильтром
+              pendingLayouts().length > 0 ? (
+                <CombinedFilterTrigger
+                  selectedFilter={pendingFeaturedFilter()}
+                  selectedLayouts={pendingLayouts()}
+                  allLayouts={['article', ...(EXPO_LAYOUTS as ExpoLayoutType[])]}
+                  onToggle={(_isOpen) => {}}
+                />
+              ) : (
+                <FeaturedFilterTrigger
+                  selectedFilter={pendingFeaturedFilter()}
+                  onToggle={(_isOpen) => {}}
+                />
+              )
+            }
           />
           <DropDown
             popupProps={{ horizontalAnchor: 'right' }}
             options={getPeriodGroup()}
             triggerCssClass={clsx(styles.periodSwitcher, {
-              [styles.active]: currentPeriod() && currentPeriod() !== PeriodType.AllTime
+              [styles.active]: pendingPeriod() && pendingPeriod() !== PeriodType.AllTime,
+              [styles.hasChanges]: hasChanges()
             })}
           />
-          <Show when={hasChanges()}>
-            <Button
-              variant="secondary"
-              class={styles.reloadButton}
-              onClick={reloadFeed}
-              title={t('Apply filters')}
-              value={<Icon name="check-subscribed-black" />}
-            />
-          </Show>
         </div>
+        <Show when={hasChanges()}>
+          <div class={styles.buttons}>
+            <button onClick={applyFilters} disabled={!hasChanges()} class={styles.applyButton}>
+              <Icon name="filter" style={{ width: '18px', height: '18px' }} />
+            </button>
+          </div>
+        </Show>
       </div>
     </Show>
   )
