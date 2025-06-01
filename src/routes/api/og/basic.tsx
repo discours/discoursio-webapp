@@ -1,13 +1,11 @@
 import { APIEvent } from '@solidjs/start/server'
 import { ImageResponse } from '@vercel/og'
-import { cdnUrl } from '~/config'
 
 /**
  * Generate basic OG images for pages without specific content
  * Simple white background with centered logo
  */
-export function GET(event: APIEvent) {
-
+export function GET(_event: APIEvent) {
   //Debug hardcoded cdn url to cdn.discours.io
   const cdnUrl = 'https://cdn.discours.io'
 
@@ -22,7 +20,7 @@ export function GET(event: APIEvent) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: 'white',
+            backgroundColor: 'white'
           },
           children: {
             type: 'img',
@@ -33,7 +31,7 @@ export function GET(event: APIEvent) {
               style: {
                 width: 200,
                 height: 200,
-                objectFit: 'contain',
+                objectFit: 'contain'
               }
             }
           }
@@ -41,7 +39,7 @@ export function GET(event: APIEvent) {
       },
       {
         width: 1200,
-        height: 630,
+        height: 630
       }
     )
   } catch (error) {

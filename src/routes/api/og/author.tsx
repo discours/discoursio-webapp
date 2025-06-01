@@ -1,6 +1,5 @@
-import { ImageResponse } from '@vercel/og'
 import { APIEvent } from '@solidjs/start/server'
-import { cdnUrl } from '~/config'
+import { ImageResponse } from '@vercel/og'
 
 /**
  * Dynamic OG image generation for authors
@@ -17,7 +16,6 @@ export function GET(event: APIEvent) {
     //Debug hardcoded cdn url to cdn.discours.io
     const cdnUrl = 'https://cdn.discours.io'
 
-
     // If slug is provided, we could fetch author data from GraphQL here
     // For now, we'll use the provided parameters
 
@@ -33,7 +31,7 @@ export function GET(event: APIEvent) {
           left: 60,
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 10
         },
         children: [
           // Logo image
@@ -49,10 +47,10 @@ export function GET(event: APIEvent) {
                 objectFit: 'contain',
                 background: 'rgba(255,255,255,0.03)',
                 borderRadius: '16px',
-                marginRight: 0,
+                marginRight: 0
               }
             }
-          },
+          }
         ]
       }
     }
@@ -73,41 +71,43 @@ export function GET(event: APIEvent) {
           fontSize: name.length > 20 ? 50 : 62,
           lineHeight: 1.12,
           textShadow: '2px 2px 7px rgba(0,0,0,0.55)',
-          letterSpacing: '-1px',
+          letterSpacing: '-1px'
         },
-        children: name,
+        children: name
       }
     }
 
     // Bottom left: Bio
-    const bottomLeft = bio ? {
-      type: 'div',
-      props: {
-        style: {
-          position: 'absolute',
-          left: 60,
-          bottom: 44,
-          fontSize: 28,
-          color: 'rgba(255,255,255,0.88)',
-          fontWeight: 300,
-          letterSpacing: 0.5,
-          textShadow: '1px 1px 2px rgba(0,0,0,0.34)',
-          maxWidth: 800,
-          lineHeight: 1.3,
-        },
-        children: bio.length > 120 ? bio.substring(0, 120) + '...' : bio
-      }
-    } : null
+    const bottomLeft = bio
+      ? {
+          type: 'div',
+          props: {
+            style: {
+              position: 'absolute',
+              left: 60,
+              bottom: 44,
+              fontSize: 28,
+              color: 'rgba(255,255,255,0.88)',
+              fontWeight: 300,
+              letterSpacing: 0.5,
+              textShadow: '1px 1px 2px rgba(0,0,0,0.34)',
+              maxWidth: 800,
+              lineHeight: 1.3
+            },
+            children: bio.length > 120 ? `${bio.substring(0, 120)}...` : bio
+          }
+        }
+      : null
 
     // --- Background with avatar if available ---
     const backgroundStyle = avatar
       ? {
           background: `linear-gradient(rgba(0,0,0,0.50), rgba(0,0,0,0.65)), url(${avatar})`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center'
         }
       : {
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
         }
 
     // --- Main OG Image Structure ---
@@ -120,31 +120,24 @@ export function GET(event: APIEvent) {
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          ...backgroundStyle,
+          ...backgroundStyle
         },
-        children: [
-          topLeft,
-          mainTitle,
-          bottomLeft,
-        ].filter(Boolean)
+        children: [topLeft, mainTitle, bottomLeft].filter(Boolean)
       }
     }
 
-    return new ImageResponse(
-      imageElement as any,
-      {
-        width: 1200,
-        height: 630,
-        headers: {
-          'Cache-Control': 'public, max-age=31536000, immutable',
-        },
-      },
-    )
+    return new ImageResponse(imageElement, {
+      width: 1200,
+      height: 630,
+      headers: {
+        'Cache-Control': 'public, max-age=31536000, immutable'
+      }
+    })
   } catch (e) {
     console.error('OG Image generation error:', e)
     const errorMessage = e instanceof Error ? e.message : 'Unknown error'
     return new Response(`Failed to generate the image: ${errorMessage}`, {
-      status: 500,
+      status: 500
     })
   }
 }

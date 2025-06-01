@@ -1,4 +1,4 @@
-import { Shout, Author, Topic } from '~/graphql/schema/core.gen'
+import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 
 /**
  * Generate OG image URL for different content types
@@ -12,47 +12,36 @@ export interface OGImageOptions {
   quality?: number
 }
 
-const OG_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://testing.discours.io/api/og' // production domain
-  : 'https://localhost:3000/api/og'
+const OG_BASE_URL =
+  process.env.NODE_ENV === 'production'
+    ? 'https://testing.discours.io/api/og' // production domain
+    : 'https://localhost:3000/api/og'
 
 /**
  * Generate OG image for articles
  * Usage: When sharing article links on social media
  */
-export function getArticleOGImage(
-  article: Shout, 
-  options: OGImageOptions = {}
-): string {
-  // Debug: log the article data we receive
-  console.log('getArticleOGImage received article:', {
-    title: article.title,
-    slug: article.slug,
-    cover: article.cover,
-    authors: article.authors,
-    topics: article.topics
-  })
-  
+export function getArticleOGImage(article: Shout, options: OGImageOptions = {}): string {
   const params = new URLSearchParams()
-  
+
   params.append('title', article.title || 'Discours Article')
   params.append('slug', article.slug || '')
   params.append('author', article.authors?.[0]?.name || '')
-  
+
   // Add topic if available
   if (article.topics && article.topics.length > 0 && article.topics[0]) {
     params.append('topic', article.topics[0].title || '')
   }
-  
+
   if (article.cover) {
     params.append('cover', article.cover)
   }
-  
+
   // Add numeric options as strings
   if (options.width) params.append('width', options.width.toString())
   if (options.height) params.append('height', options.height.toString())
   if (options.quality) params.append('quality', options.quality.toString())
-  
+
   return `${OG_BASE_URL}/article?${params.toString()}`
 }
 
@@ -60,37 +49,34 @@ export function getArticleOGImage(
  * Generate OG image for author profiles
  * Usage: When sharing author profile links
  */
-export function getAuthorOGImage(
-  author: Author,
-  options: OGImageOptions = {}
-): string {
+export function getAuthorOGImage(author: Author, options: OGImageOptions = {}): string {
   const params = new URLSearchParams()
-  
+
   params.append('name', author.name || 'Author')
   // Include bio/about - OG image will handle truncation if needed
-  if (author.bio && author.bio.trim()) {
+  if (author.bio?.trim()) {
     params.append('bio', author.bio.trim())
-  } else if (author.about && author.about.trim()) {
+  } else if (author.about?.trim()) {
     params.append('bio', author.about.trim())
   }
-  
+
   if (author.pic) {
     params.append('avatar', author.pic)
   }
-  
+
   if (author.stat?.shouts) {
     params.append('articlesCount', author.stat.shouts.toString())
   }
-  
+
   if (author.stat?.followers) {
     params.append('followersCount', author.stat.followers.toString())
   }
-  
+
   // Add numeric options as strings
   if (options.width) params.append('width', options.width.toString())
   if (options.height) params.append('height', options.height.toString())
   if (options.quality) params.append('quality', options.quality.toString())
-  
+
   return `${OG_BASE_URL}/author?${params.toString()}`
 }
 
@@ -98,15 +84,12 @@ export function getAuthorOGImage(
  * Generate OG image for topics
  * Usage: When sharing topic pages
  */
-export function getTopicOGImage(
-  topic: Topic,
-  options: OGImageOptions = {}
-): string {
+export function getTopicOGImage(topic: Topic, options: OGImageOptions = {}): string {
   const params = new URLSearchParams()
-  
+
   params.append('title', topic.title || 'Topic')
   // Include description - OG image will handle truncation if needed
-  if (topic.body && topic.body.trim()) {
+  if (topic.body?.trim()) {
     const cleanDescription = topic.body
       .replace(/<[^>]*>/g, '') // Remove HTML tags
       .replace(/\s+/g, ' ') // Normalize whitespace
@@ -115,23 +98,21 @@ export function getTopicOGImage(
       params.append('description', cleanDescription)
     }
   }
-  
+
   // Add topic cover image if available
   if (topic.pic) {
     params.append('cover', topic.pic)
   }
-  
-  params.append('icon', getTopicIcon(topic.title || ''))
-  
+
   if (topic.stat?.shouts) {
     params.append('articlesCount', topic.stat.shouts.toString())
   }
-  
+
   // Add numeric options as strings
   if (options.width) params.append('width', options.width.toString())
   if (options.height) params.append('height', options.height.toString())
   if (options.quality) params.append('quality', options.quality.toString())
-  
+
   return `${OG_BASE_URL}/topic?${params.toString()}`
 }
 
@@ -142,75 +123,6 @@ export function getTopicOGImage(
  */
 export function getBasicOGImage(): string {
   return `${OG_BASE_URL}/basic`
-}
-
-/**
- * Map topic titles to appropriate emojis/icons
- * This creates more engaging visual representations
- */
-function getTopicIcon(topicTitle: string): string {
-  const iconMap: Record<string, string> = {
-    // Science & Technology
-    'наука': '🔬',
-    'science': '🔬',
-    'технологии': '💻',
-    'technology': '💻',
-    'ai': '🤖',
-    'искусственный интеллект': '🤖',
-    
-    // Arts & Culture
-    'искусство': '🎨',
-    'art': '🎨',
-    'культура': '🎭',
-    'culture': '🎭',
-    'музыка': '🎵',
-    'music': '🎵',
-    'кино': '🎬',
-    'cinema': '🎬',
-    'литература': '📚',
-    'literature': '📚',
-    
-    // Politics & Society
-    'политика': '🏛️',
-    'politics': '🏛️',
-    'общество': '👥',
-    'society': '👥',
-    'экономика': '📈',
-    'economics': '📈',
-    
-    // Philosophy & Ideas
-    'философия': '🤔',
-    'philosophy': '🤔',
-    'психология': '🧠',
-    'psychology': '🧠',
-    'образование': '🎓',
-    'education': '🎓',
-    
-    // Nature & Environment
-    'экология': '🌱',
-    'ecology': '🌱',
-    'природа': '🌿',
-    'nature': '🌿',
-    
-    // Default fallback
-    'default': '📚'
-  }
-  
-  const lowerTitle = topicTitle.toLowerCase()
-  
-  // Try to find exact match first
-  if (iconMap[lowerTitle]) {
-    return iconMap[lowerTitle]
-  }
-  
-  // Try to find partial match
-  for (const [key, icon] of Object.entries(iconMap)) {
-    if (lowerTitle.includes(key) || key.includes(lowerTitle)) {
-      return icon
-    }
-  }
-  
-  return iconMap.default
 }
 
 /**
@@ -225,22 +137,22 @@ export function generateOGImage(
   if (typeof content === 'object' && 'title' in content && 'body' in content) {
     return getArticleOGImage(content as Shout, options)
   }
-  
+
   // Author
   if (typeof content === 'object' && 'name' in content) {
     return getAuthorOGImage(content as Author, options)
   }
-  
+
   // Topic
   if (typeof content === 'object' && 'title' in content && !('body' in content)) {
     return getTopicOGImage(content as Topic, options)
   }
-  
+
   // Basic string title
   if (typeof content === 'string') {
     return getBasicOGImage()
   }
-  
+
   // Fallback
   return getBasicOGImage()
 }

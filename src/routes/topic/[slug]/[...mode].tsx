@@ -22,20 +22,20 @@ const fetchTopicShouts = async (slug: string, offset?: number) => {
 export const route = {
   load: async ({ params, location: { query } }: RouteSectionProps<{ articles: Shout[]; topic: Topic }>) => {
     const offset: number = Number.parseInt(query.offset as string, 10)
-    
+
     try {
       // Load articles
       const articles = await fetchTopicShouts(params.slug, offset)
-      
+
       // Load topic
       const topic = await loadTopicBySlug(params.slug)()
-      
+
       return {
         articles,
         topic
       }
     } catch (error) {
-      console.error('Error in topic route loader:', error);
+      console.error('Error in topic route loader:', error)
       return {
         articles: [],
         topic: null
@@ -61,14 +61,14 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
 
   // Use preloaded topic data immediately, fallback to context
   const [currentTopic, setCurrentTopic] = createSignal<Topic | undefined>()
-  
+
   // Define route data accessor FIRST
   const routeData = () => props.data
-  
+
   // Initialize topic data from route loader
   createEffect(() => {
     const data = routeData()
-    
+
     if (data?.topic) {
       setCurrentTopic(data.topic)
       setTitle(`${t('Discours')} :: ${data.topic.title}`)
@@ -82,7 +82,7 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   })
 
   // current topic's shouts - get initial data from route
-  
+
   const [articles] = createResource(
     () => props.params.slug,
     async (slug) => {
@@ -123,9 +123,9 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
           addTopics(ttt)
           setTopicsAdded(true)
           const tpc = ttt.find((x) => x.slug === props.params.slug)
-          
+
           if (!tpc) return
-          
+
           // Update current topic if not already set from preloaded data
           if (!currentTopic()) {
             setCurrentTopic(tpc)
@@ -165,13 +165,20 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
         </PageLayout>
       }
     >
-      <Show 
-        when={!articles.loading && articles()} 
-        fallback={<Loading />}
-      >
+      <Show when={!articles.loading && articles()} fallback={<Loading />}>
         <Show when={!articles.error} fallback={<div>Error: {articles.error?.message}</div>}>
-          <PageLayout key="topic" title={title()} desc={desc()} cover={cover()} topic={currentTopic() as Topic}>
-            <TopicView topic={currentTopic() as Topic} shouts={articles() || []} topicSlug={props.params.slug} />
+          <PageLayout
+            key="topic"
+            title={title()}
+            desc={desc()}
+            cover={cover()}
+            topic={currentTopic() as Topic}
+          >
+            <TopicView
+              topic={currentTopic() as Topic}
+              shouts={articles() || []}
+              topicSlug={props.params.slug}
+            />
           </PageLayout>
         </Show>
       </Show>

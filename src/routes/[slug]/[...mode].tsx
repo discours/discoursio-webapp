@@ -42,14 +42,13 @@ const fetchShout = async (slug: string): Promise<Shout | undefined> => {
 
 export const route: RouteDefinition = {
   load: async ({ params }) => {
-    
     // If this is a topic route (starts with !), preload topics data
     let topics: Topic[] | undefined
     if (params.slug.startsWith('!')) {
       const topicsLoader = loadTopics()
       topics = await topicsLoader()
     }
-    
+
     const article = await fetchShout(params.slug)
     const data = {
       article,
