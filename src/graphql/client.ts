@@ -55,7 +55,7 @@ export const createCacheableLoader = <T, V>(
         const baseUrl = `${window.location.protocol}//${window.location.host}`
         const graphqlUrl = `${baseUrl}/graphql?${searchParams}`
 
-        console.log(`[GraphQL Cache] Requesting: ${graphqlUrl}`)
+        console.log(`[GraphQL Cache] Requesting ${queryString} with variables ${JSON.stringify(variables)}`)
 
         const response = await fetch(graphqlUrl, {
           signal,

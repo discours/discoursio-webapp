@@ -17,6 +17,7 @@ import { Modal } from '../_shared/Modal'
 import { Newsletter } from '../_shared/Newsletter'
 import { HeaderControls } from './HeaderControls'
 import { TopicsNav } from './TopicsNav'
+import { Feedback } from '../Discours/Feedback'
 
 import stylesFeedSwitcher from '../Feed/FeedSwitcher/FeedSwitcher.module.scss'
 import styles from './Header.module.scss'
@@ -160,6 +161,10 @@ export const Header = (props: Props) => {
 
       <Modal variant="wide" name="search">
         <SearchModal />
+      </Modal>
+
+      <Modal variant="wide" name="feedback">
+        <Feedback />
       </Modal>
 
       <div class={clsx(styles.mainHeaderInner, 'wide-container')}>

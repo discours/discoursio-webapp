@@ -4,6 +4,7 @@ import { For, Show, createEffect, createMemo, createSignal, on } from 'solid-js'
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { Loading } from '~/components/_shared/Loading'
 import { SearchField } from '~/components/_shared/SearchField'
+import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import type { Author } from '~/graphql/schema/core.gen'
 import { authorLetterReduce } from '~/intl/translate'
@@ -15,12 +16,12 @@ const AUTHORS_PAGE_LAYOUTS = ['shouts', 'followers', 'name']
 
 type TabNavigatorProps = {
   setLayout: (layout: string) => void
+  setSearchQuery: (query: string) => void
 }
 
-export const TabNavigator = ({ setLayout }: TabNavigatorProps) => {
+export const TabNavigator = ({ setLayout, setSearchQuery }: TabNavigatorProps) => {
   const { t } = useLocalize()
   const [searchParams] = useSearchParams<{ by?: string }>()
-  const [_searchQuery, setSearchQuery] = createSignal('')
 
   const layouts = [...AUTHORS_PAGE_LAYOUTS]
 
@@ -72,10 +73,12 @@ export const ABC = {
 
 export const AllAuthorsView = (props: Props) => {
   const { lang } = useLocalize()
+  const { authorsEntities } = useAuthors()
   const alphabet = createMemo(() => ABC[lang()] || ABC['ru'])
   const [searchParams] = useSearchParams<{ by?: string }>()
   const [authors, setAuthors] = createSignal<Author[]>([])
   const [layout, setLayout] = createSignal(searchParams.by || 'shouts')
+  const [searchQuery, setSearchQuery] = createSignal('')
 
   // Watch for changes in the URL and update the layout state
   createEffect(() => {
@@ -109,11 +112,33 @@ export const AllAuthorsView = (props: Props) => {
     )
   )
 
+  // Функция для получения автора со статистикой из контекста
+  const getAuthorWithStat = (author: Author): Author => {
+    const contextAuthor = authorsEntities()[author.slug]
+    // Если в контексте есть автор со статистикой, используем его
+    if (contextAuthor && contextAuthor.stat) {
+      return contextAuthor
+    }
+    // Иначе возвращаем исходного автора
+    return author
+  }
+
   // Memo to store authors grouped by the first letter and sorted by the alphabet
   const byLetterFiltered = createMemo<{ [letter: string]: Author[] }>(() => {
     if (!authors()) return {}
+
+    // Применяем поиск только на вкладке 'name'
+    const filteredAuthors =
+      layout() === 'name' && searchQuery().trim()
+        ? authors().filter(
+            (author) =>
+              author.name?.toLowerCase().includes(searchQuery().toLowerCase()) ||
+              author.slug?.toLowerCase().includes(searchQuery().toLowerCase())
+          )
+        : authors()
+
     const groupedAuthors =
-      authors()?.reduce(
+      filteredAuthors?.reduce(
         (acc, author: Author) => authorLetterReduce(acc, author, lang()),
         {} as { [letter: string]: Author[] }
       ) || {}
@@ -169,16 +194,25 @@ export const AllAuthorsView = (props: Props) => {
                   <div class="col-lg-20">
                     <div class="row">
                       <For each={byLetterFiltered()[letter]}>
-                        {(author) => (
-                          <div class={clsx(styles.topic, 'topic col-sm-12 col-md-8')}>
-                            <div class="topic-title">
-                              <A href={`/@${author.slug}`}>{author.name}</A>
-                              <Show when={author.stat?.shouts || 0}>
-                                <span class={styles.articlesCounter}>{author.stat?.shouts || 0}</span>
-                              </Show>
+                        {(author) => {
+                          const authorWithStat = getAuthorWithStat(author)
+                          return (
+                            <div class={clsx(styles.topic, 'topic col-sm-12 col-md-8')}>
+                              <div class="topic-title">
+                                <A href={`/@${author.slug}`}>{author.name}</A>
+                                <Show
+                                  when={
+                                    authorWithStat.stat?.shouts && (authorWithStat.stat?.shouts || 0) > 0
+                                  }
+                                >
+                                  <span class={styles.articlesCounter}>
+                                    {authorWithStat.stat?.shouts || 0}
+                                  </span>
+                                </Show>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )
+                        }}
                       </For>
                     </div>
                   </div>
@@ -214,7 +248,7 @@ export const AllAuthorsView = (props: Props) => {
   return (
     <>
       <Show when={props.isLoaded} fallback={<Loading />}>
-        <TabNavigator setLayout={setLayout} />
+        <TabNavigator setLayout={setLayout} setSearchQuery={setSearchQuery} />
         <div class="offset-md-5">
           <Show when={layout() === 'name'}>
             <AbcNavigator />
