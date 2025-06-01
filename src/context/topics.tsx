@@ -1,7 +1,5 @@
-import { deleteDB, openDB } from 'idb'
 import { Accessor, Component, JSX, createContext, createEffect, createResource, useContext } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { isServer } from 'solid-js/web'
 import { loadTopics, loadTopicsByCommunity } from '~/graphql/api/public'
 import { QueryGet_Topics_By_CommunityArgs, Topic } from '~/graphql/schema/core.gen'
 import { byTopicStatDesc } from '../utils/sort'
@@ -42,116 +40,7 @@ export function useTopics() {
   return useContext(TopicsContext)
 }
 
-// Константы для кеширования
-const DB_NAME = 'discoursio-store'
-const OLD_DB_NAME = 'discoursio-storage' // Имя старой БД для удаления
-const DB_VERSION = 1
-const STORE_NAME = 'topics'
-const CACHE_LIFETIME = 24 * 60 * 60 * 1000 // 24 часа
-const FORCE_UPDATE_KEY = 'topics_force_update'
-
-/**
- * Инициализирует базу данных, удаляя старые версии при необходимости
- */
-const setupIndexedDB = async () => {
-  if (isServer) return null
-
-  try {
-    // Попытка удалить старую базу данных, если она существует
-    try {
-      await deleteDB(OLD_DB_NAME)
-      console.log('Старая база данных удалена:', OLD_DB_NAME)
-    } catch (_err) {
-      // Игнорируем ошибки при удалении
-    }
-
-    // Проверяем необходимость принудительного обновления
-    const needsForceUpdate = !localStorage.getItem(FORCE_UPDATE_KEY)
-    if (needsForceUpdate) {
-      // Удаляем текущую базу и создаем новую для очистки всех старых данных
-      try {
-        await deleteDB(DB_NAME)
-        console.log('База данных очищена для принудительного обновления')
-        localStorage.setItem(FORCE_UPDATE_KEY, Date.now().toString())
-      } catch (err) {
-        console.error('Не удалось очистить базу данных:', err)
-      }
-    }
-
-    return await openDB<{ topics: Topic[]; timestamp: number }>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME)
-        }
-      }
-    })
-  } catch (e) {
-    console.error('Failed to open IndexedDB:', e)
-    return null
-  }
-}
-
 export type TopicSort = 'shouts' | 'followers' | 'authors' | 'title'
-
-/**
- * Загружает топики из кеша
- * @returns Массив топиков и флаг необходимости обновления
- */
-async function loadFromCache(): Promise<{ topics: Topic[] | null; needsUpdate: boolean }> {
-  if (isServer) return { topics: null, needsUpdate: true }
-
-  const db = await setupIndexedDB()
-  if (!db) return { topics: null, needsUpdate: true }
-
-  try {
-    const tx = db.transaction(STORE_NAME, 'readonly')
-    const store = tx.objectStore(STORE_NAME)
-    const [cached, timestamp] = await Promise.all([
-      store.get('data') as Promise<Topic[] | undefined>,
-      store.get('timestamp') as Promise<number | undefined>
-    ])
-
-    // Проверяем время жизни кеша и валидность данных
-    const isCacheExpired = !timestamp || Date.now() - timestamp > CACHE_LIFETIME
-    const isValidCache = cached && Array.isArray(cached) && cached.length > 0
-
-    if (!isValidCache) {
-      console.log('Кеш топиков невалиден, требуется обновление')
-      return { topics: null, needsUpdate: true }
-    }
-
-    // Возвращаем кеш даже если он устарел (stale-while-revalidate)
-    return {
-      topics: isValidCache ? cached : null,
-      needsUpdate: isCacheExpired || !isValidCache
-    }
-  } catch (error) {
-    console.error('Ошибка при чтении кеша:', error)
-    return { topics: null, needsUpdate: true }
-  }
-}
-
-/**
- * Сохраняет топики в кеш
- * @param topics Массив топиков для сохранения
- */
-async function saveToCache(topics: Topic[]): Promise<void> {
-  if (isServer) return
-
-  const db = await setupIndexedDB()
-  if (!db) return
-
-  try {
-    const tx = db.transaction(STORE_NAME, 'readwrite')
-    await Promise.all([
-      tx.objectStore(STORE_NAME).put(topics, 'data'),
-      tx.objectStore(STORE_NAME).put(Date.now(), 'timestamp')
-    ])
-    console.log(`Сохранено ${topics.length} топиков в кеше`)
-  } catch (error) {
-    console.error('Ошибка при сохранении кеша:', error)
-  }
-}
 
 /**
  * Загружает топики с обновлением статистики из сообщества
@@ -200,25 +89,7 @@ async function loadTopicsWithStats(): Promise<Topic[]> {
   }
 }
 
-/**
- * Очищает кеш топиков
- */
-async function clearCache(): Promise<void> {
-  if (isServer) return
-
-  try {
-    const db = await setupIndexedDB()
-    if (!db) return
-
-    const tx = db.transaction(STORE_NAME, 'readwrite')
-    await tx.objectStore(STORE_NAME).clear()
-    console.log('Кеш топиков очищен')
-  } catch (error) {
-    console.error('Ошибка при очистке кеша:', error)
-  }
-}
-
-// Явно указываем возвращаемый тип
+// Простая реализация провайдера без IndexedDB
 export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
   const [state, setState] = createStore({
     entities: {} as Record<string, Topic>,
@@ -239,85 +110,16 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     async ({ sortBy }) => {
       try {
         setState('loading', true)
-
-        // Загружаем данные из кеша и определяем нужно ли обновление
-        const { topics: cached, needsUpdate } = await loadFromCache()
-
-        let result: Topic[] = []
-
-        // Используем stale-while-revalidate стратегию
-        if (cached?.length) {
-          // Если есть кеш, используем его немедленно
-          result = cached
-
-          // Если требуется обновление, делаем его асинхронно
-          if (needsUpdate) {
-            loadTopicsWithStats()
-              .then((newData) => {
-                if (newData?.length) {
-                  saveToCache(newData)
-
-                  // Обновляем состояние без перерендера
-                  setState((prev) => {
-                    const newEntities = { ...prev.entities }
-                    newData.forEach((t) => {
-                      if (t?.slug) newEntities[t.slug] = t
-                    })
-
-                    // Обновляем отдельные списки по типам сортировки
-                    const allTopics = Object.values(newEntities)
-
-                    // Топики с авторами
-                    const topicsByAuthors = allTopics
-                      .filter((topic) => topic.stat?.authors && topic.stat.authors > 0)
-                      .sort(byTopicStatDesc('authors'))
-
-                    // Топики с публикациями
-                    const topicsByShouts = allTopics
-                      .filter((topic) => topic.stat?.shouts && topic.stat.shouts > 0)
-                      .sort(byTopicStatDesc('shouts'))
-
-                    // Все топики, отсортированные по заголовку
-                    const topicsByTitle = [...allTopics].sort((a, b) =>
-                      (a.title || '').localeCompare(b.title || '')
-                    )
-
-                    // Применяем сортировку к текущему выбранному типу
-                    const sorted = allTopics.sort(byTopicStatDesc(prev.sortBy))
-
-                    return {
-                      ...prev,
-                      entities: newEntities,
-                      sorted,
-                      byAuthors: topicsByAuthors,
-                      byShouts: topicsByShouts,
-                      byTitle: topicsByTitle
-                    }
-                  })
-                }
-              })
-              .catch((e) => {
-                console.error('Background update failed:', e)
-              })
-          }
-        } else {
-          // Если кеша нет, загружаем новые данные блокирующе
-          const newData = await loadTopicsWithStats()
-
-          if (newData?.length) {
-            await saveToCache(newData)
-            result = newData
-          }
-        }
-
+        
+        // Простая загрузка данных без кеширования
+        const result = await loadTopicsWithStats()
+        
         // Применяем сортировку к результату
         return result.sort(byTopicStatDesc(sortBy))
       } catch (error) {
         console.error('Failed to load topics:', error)
         setState('error', error as Error)
-        // В случае ошибки возвращаем кеш если есть
-        const { topics: cached } = await loadFromCache()
-        return cached || []
+        return []
       } finally {
         setState('loading', false)
       }
@@ -360,31 +162,27 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     const newTopics = topics()
     if (!newTopics?.length) return
 
-    setState((prev) => {
+    setState((prev: any) => {
       // Создаем новый объект entities один раз
       const newEntities = { ...prev.entities }
 
       // Заполняем его без spread
-      newTopics.forEach((t) => {
+      newTopics.forEach((t: Topic) => {
         if (t?.slug) newEntities[t.slug] = t
       })
 
-      // Получаем все топики
-      const allTopics = Object.values(newEntities)
+      // Получаем все топики с правильной типизацией
+      const allTopics = Object.values(newEntities) as Topic[]
 
-      // Обновляем отдельные списки по типам сортировки
       // Топики с авторами
       const topicsByAuthors = allTopics
-        .filter((topic) => topic.stat?.authors && topic.stat.authors > 0)
+        .filter((topic: Topic) => topic.stat?.authors && topic.stat.authors > 0)
         .sort(byTopicStatDesc('authors'))
 
       // Топики с публикациями
       const topicsByShouts = allTopics
-        .filter((topic) => topic.stat?.shouts && topic.stat.shouts > 0)
+        .filter((topic: Topic) => topic.stat?.shouts && topic.stat.shouts > 0)
         .sort(byTopicStatDesc('shouts'))
-
-      // Все топики, отсортированные по заголовку
-      const topicsByTitle = [...allTopics].sort((a, b) => (a.title || '').localeCompare(b.title || ''))
 
       // Применяем сортировку к текущему выбранному типу
       const sorted = allTopics.sort(byTopicStatDesc(prev.sortBy))
@@ -398,7 +196,6 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
         sorted,
         byAuthors: topicsByAuthors,
         byShouts: topicsByShouts,
-        byTitle: topicsByTitle,
         random,
         loading: false
       }
@@ -410,17 +207,17 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     const newTopics = communityTopics()
     if (!newTopics?.length) return
 
-    setState((prev) => {
+    setState((prev: any) => {
       // Создаем новый объект entities
       const newEntities = { ...prev.entities }
 
       // Добавляем новые топики или обновляем существующие
-      newTopics.forEach((t) => {
+      newTopics.forEach((t: Topic) => {
         if (t?.slug) newEntities[t.slug] = t
       })
 
-      // Получаем все топики
-      const allTopics = Object.values(newEntities)
+      // Получаем все топики с правильной типизацией
+      const allTopics = Object.values(newEntities) as Topic[]
 
       // Обновляем отдельные списки по типам сортировки в зависимости от текущей сортировки
       let byAuthors = [...prev.byAuthors]
@@ -428,10 +225,10 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
 
       // Обновляем только тот список, который соответствует текущей сортировке
       if (prev.sortBy === 'authors') {
-        const newAuthors = newTopics.filter((topic) => topic.stat?.authors && topic.stat.authors > 0)
+        const newAuthors = newTopics.filter((topic: Topic) => topic.stat?.authors && topic.stat.authors > 0)
         byAuthors = [...byAuthors, ...newAuthors].sort(byTopicStatDesc('authors'))
       } else if (prev.sortBy === 'shouts') {
-        const newShouts = newTopics.filter((topic) => topic.stat?.shouts && topic.stat.shouts > 0)
+        const newShouts = newTopics.filter((topic: Topic) => topic.stat?.shouts && topic.stat.shouts > 0)
         byShouts = [...byShouts, ...newShouts].sort(byTopicStatDesc('shouts'))
       }
 
@@ -479,10 +276,7 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
         }
       }),
     loadTopics: async () => {
-      // Очищаем кеш перед принудительным обновлением
-      await clearCache()
-
-      // Принудительно обновляем данные (всегда)
+      // Принудительно обновляем данные
       const result = await refetch()
       return result || []
     },
