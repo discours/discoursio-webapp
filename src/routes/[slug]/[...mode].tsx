@@ -16,7 +16,7 @@ import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { Loading } from '~/components/_shared/Loading'
 import { gaIdentity } from '~/config'
 import { useLocalize } from '~/context/localize'
-import { getShout } from '~/graphql/api/public'
+import { getShout, loadTopics } from '~/graphql/api/public'
 import type { Author, Reaction, Shout, Topic } from '~/graphql/schema/core.gen'
 import { initGA, loadGAScript } from '~/utils/ga'
 import { descFromBody, keywordsFromTopics } from '~/utils/meta'
@@ -43,12 +43,23 @@ const fetchShout = async (slug: string): Promise<Shout | undefined> => {
 export const route: RouteDefinition = {
   load: async ({ params }) => {
     console.log('[route.load] Loading article for slug:', params.slug)
+    
+    // If this is a topic route (starts with !), preload topics data
+    let topics: Topic[] | undefined
+    if (params.slug.startsWith('!')) {
+      console.log('[route.load] Detected topic route, preloading topics')
+      const topicsLoader = loadTopics()
+      topics = await topicsLoader()
+      console.log('[route.load] Preloaded topics count:', topics?.length)
+    }
+    
     const article = await fetchShout(params.slug)
     console.log('[route.load] Fetched article:', article?.title, article?.cover)
     console.log('[route.load] Article authors:', article?.authors?.filter(a => a).map(a => a ? { name: a.name, slug: a.slug } : null))
     console.log('[route.load] Article topics:', article?.topics?.filter(t => t).map(t => t ? ({ title: t.title, slug: t.slug }) : null))
     const data = {
-      article
+      article,
+      topics
     }
     console.log('[route.load] Returning data:', data)
     return data
@@ -60,6 +71,7 @@ export type ArticlePageProps = {
   comments?: Reaction[]
   votes?: Reaction[]
   author?: Author
+  topics?: Topic[]
 }
 
 export type SlugPageProps = {
@@ -67,7 +79,7 @@ export type SlugPageProps = {
   comments?: Reaction[]
   votes?: Reaction[]
   author?: Author
-  topics: Topic[]
+  topics?: Topic[]
 }
 
 function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
@@ -179,6 +191,10 @@ export default function ArticlePage(props: RouteSectionProps<SlugPageProps>) {
             params: {
               ...props.params,
               slug: currentSlug().slice(1)
+            },
+            data: {
+              ...props.data,
+              topics: props.data?.topics || []
             }
           } as RouteSectionProps<TopicPageProps>)}
         />

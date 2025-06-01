@@ -37,6 +37,14 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   const { addTopics, sortedTopics } = useTopics()
   const [loadingError, setLoadingError] = createSignal(false)
 
+  // Initialize topics from preloaded data if available
+  createEffect(() => {
+    if (props.data?.topics && props.data.topics.length > 0) {
+      console.log('[TopicPage] Using preloaded topics:', props.data.topics.length)
+      addTopics(props.data.topics)
+    }
+  })
+
   // current topic's shouts
   const [articles] = createResource(
     () => props.params.slug,
