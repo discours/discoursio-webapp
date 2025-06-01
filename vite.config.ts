@@ -64,11 +64,16 @@ export default defineConfig({
     rollupOptions: {
       output: {
         sourcemapExcludeSources: true
+      },
+      external: (id) => {
+        // Keep WASM files external for proper Edge runtime handling
+        if (id.includes('.wasm')) return true
+        return false
       }
     }
   },
   ssr: {
-    noExternal: ['@urql/core', '@solidjs/meta', '@solidjs/router'],
+    noExternal: ['@urql/core', '@solidjs/meta', '@solidjs/router', '@vercel/og'],
     target: 'node',
     optimizeDeps: {
       include: ['@urql/core']
