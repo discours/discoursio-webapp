@@ -17,7 +17,6 @@ import {
   QueryLoad_Shouts_CoauthoredArgs,
   QueryLoad_Shouts_DiscussedArgs,
   QueryLoad_Shouts_FeedArgs,
-  QueryShoutsFollowedByUserQueryArgs,
   Reaction,
   ReactionBy,
   ReactionKind,

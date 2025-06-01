@@ -31,7 +31,15 @@
 .ratingContainer {
   font-size:1.5rem;
   display: inline-flex;
-  vertical-align: top;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  white-space: nowrap;
+  min-height: 4.8rem;
+  
+  @include media-breakpoint-down(md) {
+    justify-content: center;
+  }
 }
 
 .ratingControl {
@@ -42,13 +50,200 @@
 }
 
 .additionalControls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  
   @include media-breakpoint-up(md) {
-    display: block;
-    text-align: right;
+    display: flex;
   }
 
-  display: none;
+  @include media-breakpoint-down(md) {
+    display: none;
+  }
+
   white-space: nowrap;
+  
+  // Стили для строки с фильтрами  
+  .filtersRow {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0; // Убираем отступы так как они уже есть в родительском контейнере
+    padding: 0;
+    width: auto;
+    max-width: none;
+    
+    .feedSwitcher {
+      margin: 0;
+      min-width: auto;
+      
+      ul {
+        padding: 0;
+        margin: 0;
+        
+        li {
+          a {
+            padding: 0.6rem 1rem;
+            font-size: 1.3rem;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Новые стили для горизонтального размещения табов и фильтров
+.controlsRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  width: 100%;
+  gap: 2rem;
+  min-height: 4.8rem; // Увеличиваем для лучшей симметрии
+  padding: 0 0.5rem; // Небольшие отступы для визуального баланса
+  
+  @include media-breakpoint-down(md) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0;
+  }
+  
+  > * {
+    min-height: 4rem;
+    display: flex;
+    align-items: center;
+  }
+  
+  // Левая колонка - табы
+  > *:first-child {
+    justify-self: start;
+  }
+  
+  // Центральная колонка - фильтры
+  > *:nth-child(2) {
+    justify-self: center;
+  }
+  
+  // Правая колонка - рейтинг
+  > *:last-child {
+    justify-self: end;
+  }
+}
+
+.filtersInline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 4.8rem;
+  
+  @include media-breakpoint-down(md) {
+    justify-content: stretch;
+    flex-wrap: wrap;
+  }
+  
+  .feedSwitcher {
+    margin: 0;
+    min-width: auto;
+    
+    ul {
+      padding: 0;
+      margin: 0;
+      display: flex;
+      
+      li {
+        a {
+          padding: 0.8rem 1.2rem;
+          font-size: 1.4rem;
+        }
+      }
+    }
+  }
+  
+  // Стили для FeedFiltersControl внутри filtersInline
+  .filtersContainer {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 1rem;
+    min-height: 4.8rem;
+    
+    .dropdowns {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      height: 4rem;
+      
+      > * {
+        height: 4rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid #e9ecef;
+        border-radius: 0.8rem;
+        cursor: pointer;
+        transition: all 0.15s ease-in-out;
+        min-width: 120px;
+        
+        &:hover {
+          background: rgba(0, 0, 0, 0.04);
+          border-color: #ddd;
+        }
+      }
+      
+      .periodSwitcher {
+        font-family: Muller, Arial, Helvetica, sans-serif;
+        font-size: 1.4rem;
+        font-weight: 500;
+        color: #666;
+        padding: 0 1rem;
+        
+        &:hover {
+          color: #333;
+        }
+        
+        &.active {
+          color: #000000;
+          font-weight: 600;
+        }
+        
+        // Индикатор изменений
+        &.hasChanges {
+          border-color: #2638d9;
+          box-shadow: 0 0 0 1px rgba(38, 56, 217, 0.3);
+        }
+      }
+    }
+    
+    // Стили для кнопок применения/сброса фильтров
+    .buttons {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      margin-left: 1rem;
+      
+      .applyButton {
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+        
+        &:not([disabled]) {
+          opacity: 1;
+        }
+      }
+      
+      .resetButton {
+        opacity: 0.6;
+        
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+  }
 }
 
 .loadingWrapper {
@@ -119,4 +314,173 @@
   align-items: center;
   gap: 1rem;
   margin-top: 0.5rem;
+}
+
+.filtersRow {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin: 0 auto 4rem;
+  width: 100%;
+  max-width: 1200px;
+  padding: 2rem 3rem;
+  gap: 2rem;
+  
+  @include media-breakpoint-down(md) {
+    padding: 1.5rem 2rem;
+    margin-bottom: 3rem;
+  }
+  
+  @include media-breakpoint-down(sm) {
+    margin: 0 1rem 2.5rem;
+    padding: 1.5rem;
+    flex-direction: column;
+    gap: 1.5rem;
+    justify-content: center;
+  }
+
+  .feedSwitcher {
+    margin-top: 0;
+    margin-bottom: 0;
+    min-width: 320px;
+    overflow: hidden;
+    flex-shrink: 0;
+
+    @include media-breakpoint-down(sm) {
+      min-width: 100%;
+      order: 1;
+    }
+
+    & > li {
+      margin-bottom: 0;
+    }
+    
+    ul {
+      display: flex;
+      padding: 0.4rem;
+      margin: 0;
+      list-style: none;
+      
+      li {
+        flex: 1;
+        
+        a {
+          display: block;
+          padding: 1rem 1.5rem;
+          text-align: center;
+          font-weight: 600;
+          font-size: 1.4rem;
+          color: #666;
+          text-decoration: none;
+          transition: all 0.2s ease;
+          
+          &:hover {
+            color: #444;
+            border-bottom: 2px solid #151516;
+          }
+          
+          &.active,
+          &[aria-current="page"] {
+            color: #222;
+            border-bottom: 2px solid #151516;
+          }
+        }
+      }
+    }
+  }
+
+  .dropdowns {
+    display: flex;
+    flex-flow: row nowrap;
+    gap: 1.2rem;
+    justify-content: flex-start;
+    
+    @include media-breakpoint-down(sm) {
+      width: 100%;
+      justify-content: stretch;
+      order: 2;
+      
+      & > * {
+        flex: 1;
+      }
+    }
+    
+    & > div {
+      min-width: 140px;
+      
+      button, select {
+        background: white;
+        border: 2px solid #e9ecef;
+        padding: 0.8rem 1.2rem;
+        font-size: 1.4rem;
+        font-weight: 500;
+        color: #495057;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        
+        &:hover {
+          box-shadow: 0 2px 8px rgba(38, 56, 217, 0.1);
+        }
+        
+        &:focus {
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(38, 56, 217, 0.1);
+        }
+      }
+    }
+  }
+}
+
+// Стили для навигации по табам  
+.tabNavigator {
+  display: flex;
+  align-items: center;
+  min-height: 4.8rem;
+  
+  .view-switcher {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    
+    &__item {
+      display: flex;
+      align-items: center;
+      
+      a {
+        padding: 1rem 1.2rem;
+        font-size: 1.4rem;
+        font-weight: 500;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border-bottom: 2px solid transparent;
+        
+        &:hover {
+          color: #444;
+        }
+        
+        &.active,
+        &[aria-current="page"] {
+          color: #222;
+          border-bottom-color: #151516;
+        }
+      }
+      
+      &--selected a {
+        color: #222;
+        border-bottom-color: #151516;
+      }
+    }
+    
+    &__counter {
+      margin-left: 0.5rem;
+      font-size: 1.2rem;
+      color: #999;
+      background: #f5f5f5;
+      padding: 0.2rem 0.6rem;
+      border-radius: 1rem;
+    }
+  }
 }

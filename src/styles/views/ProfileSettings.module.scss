@@ -355,24 +355,40 @@ h5 {
 
 .formActions {
   background: var(--background-color);
-  position: sticky;
+  position: fixed;
   z-index: 12;
   bottom: 0;
-  border-top: 2px solid var(--black-100);
-  margin-bottom: -40px;
+  left: 0;
+  right: 0;
+  border-top: 2px solid var(--black-200);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
 
   .content {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-direction: row;
-    padding: 1rem 0;
+    padding: 1.6rem 0;
     gap: 1rem;
+
+    // Кнопка "Сохранить" должна быть более заметной
+    :global(.button--primary) {
+      padding: 1rem 2rem !important;
+      font-weight: 600;
+      font-size: 1.5rem;
+      box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+      
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+      }
+    }
   }
 
   .cancel {
     color: #d00820;
-    padding: 0.8rem 0 !important;
+    padding: 1rem 1.6rem !important;
+    font-weight: 500;
   }
 
   .cancelLabel {
