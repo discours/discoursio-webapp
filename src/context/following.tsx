@@ -61,8 +61,8 @@ export interface FollowingData {
 
 export const FollowingProvider: Component<{ children: JSX.Element }> = (props) => {
   const { session, client } = useSession()
-  const [loading, setLoading] = createSignal(false)
   const [followers, setFollowers] = createSignal<Author[]>([])
+  const [followingLoading, setFollowingLoading] = createSignal<boolean>(false)
   const { showModal } = useUI()
 
   const [state, setState] = createStore<FollowingData>({
@@ -110,7 +110,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
   )
 
   const fetchData = async () => {
-    setLoading(true)
+    setFollowingLoading(true)
     try {
       if (session()?.token) {
         const result = await client()
@@ -127,7 +127,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
     } catch (error) {
       console.error('[context.following] cannot get subs', error)
     } finally {
-      setLoading(false)
+      setFollowingLoading(false)
     }
   }
 
@@ -199,7 +199,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       }
     )
   )
-  const [followingLoading, setFollowingLoading] = createSignal<boolean>(false)
+
   const changeFollowing = async (
     isFollowed: boolean,
     what: FollowingEntity,
@@ -209,15 +209,15 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       showModal('auth')
       return isFollowed
     }
-    
+
     setFollowingLoading(true)
     try {
       const result = isFollowed ? await unfollow(what, slug) : await follow(what, slug)
 
       if (result) {
         // Специальная обработка для ошибки "following was not found" при unfollow
-        const isUnfollowNotFound = isFollowed && result.error === "following was not found"
-        
+        const isUnfollowNotFound = isFollowed && result.error === 'following was not found'
+
         if (!result.error || isUnfollowNotFound) {
           // Обновляем состояние контекста с новыми данными с сервера
           setState((subs) => {
@@ -232,32 +232,47 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
             }
             return subs
           })
-          
+
           // Определяем новое состояние подписки на основе ответа сервера
           let newFollowState = false
-          
+
           if (isUnfollowNotFound) {
             // Если подписка не найдена при unfollow, значит пользователь не подписан
             newFollowState = false
             console.log('[FollowingContext] Unfollow: following not found, treating as successful unfollow')
           } else {
-            // Обычная логика определения состояния
+            // biome-ignore lint/style/useCollapsedElseIf: ok
             if (what === 'AUTHOR' && result.authors) {
               newFollowState = result.authors.some((author: Author) => author.slug === slug)
             } else if (what === 'TOPIC' && result.topics) {
               newFollowState = result.topics.some((topic: Topic) => topic.slug === slug)
             } else if (what === 'COMMUNITY' && result.communities) {
-              newFollowState = result.communities.some((community: Community) => community.slug === slug)
+              if (result.communities?.length) {
+                // Обычная логика определения состояния
+                newFollowState = result.communities.some((community: Community) => community.slug === slug)
+              } else {
+                // Если нет подписок, то состояние = false
+                newFollowState = false
+                console.log(
+                  '[FollowingContext] Unfollow: following not found, treating as successful unfollow'
+                )
+              }
             }
           }
-          
-          console.log('[FollowingContext] New follow state determined from server:', newFollowState, 'for', what, slug)
+
+          console.log(
+            '[FollowingContext] New follow state determined from server:',
+            newFollowState,
+            'for',
+            what,
+            slug
+          )
           return newFollowState
         } else {
           console.error('[FollowingContext] Operation failed with error:', result.error)
         }
       }
-      
+
       // Если операция не удалась, возвращаем текущее состояние
       return isFollowed
     } catch (error) {

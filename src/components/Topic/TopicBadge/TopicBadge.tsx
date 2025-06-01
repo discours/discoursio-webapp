@@ -28,7 +28,12 @@ export const TopicBadge = (props: Props) => {
     on([() => follows, () => props.topic], ([flws, tpc]) => {
       if (flws && tpc) {
         const followed = follows?.topics?.some((topic) => topic.id === props.topic?.id)
-        console.log('[TopicBadge] Follow state updated:', followed, 'for topic:', props.topic.title || props.topic.slug)
+        console.log(
+          '[TopicBadge] Follow state updated:',
+          followed,
+          'for topic:',
+          props.topic.title || props.topic.slug
+        )
         setIsFollowed(followed)
       }
     })

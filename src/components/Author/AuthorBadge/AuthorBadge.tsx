@@ -45,7 +45,12 @@ export const AuthorBadge = (props: Props) => {
         const authorFollowed = Boolean(
           followingAuthors?.some((followedAuthor) => followedAuthor.id === currentAuthor?.id)
         )
-        console.log('[AuthorBadge] Follow state updated:', authorFollowed, 'for author:', currentAuthor?.name)
+        console.log(
+          '[AuthorBadge] Follow state updated:',
+          authorFollowed,
+          'for author:',
+          currentAuthor?.name
+        )
         setIsFollowed(authorFollowed)
       },
       {}

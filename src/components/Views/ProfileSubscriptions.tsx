@@ -49,7 +49,7 @@ export const ProfileSubscriptions = () => {
     if (query) {
       const baseList = flatFollows()
       const searchResults = dummyFilter(baseList, query, lang())
-      
+
       const mode = followsFilter()
       if (mode === 'authors') {
         setFiltered(searchResults.filter((s) => 'name' in s))
@@ -85,14 +85,17 @@ export const ProfileSubscriptions = () => {
             <div class="col-md-20 col-lg-18 col-xl-16">
               <h1>{t('My subscriptions')}</h1>
               <p class="description">{t('Here you can manage all your Discours subscriptions')}</p>
-              <Show when={flatFollows().length > 0} fallback={
-                <Show when={follows} fallback={<Loading />}>
-                  <div class="empty-state">
-                    <p>{t('You have no subscriptions yet')}</p>
-                    <p>{t('Subscribe to authors and topics to see them here')}</p>
-                  </div>
-                </Show>
-              }>
+              <Show
+                when={flatFollows().length > 0}
+                fallback={
+                  <Show when={follows} fallback={<Loading />}>
+                    <div class="empty-state">
+                      <p>{t('You have no subscriptions yet')}</p>
+                      <p>{t('Subscribe to authors and topics to see them here')}</p>
+                    </div>
+                  </Show>
+                }
+              >
                 <ul class="view-switcher">
                   <li
                     class={clsx({
@@ -139,11 +142,16 @@ export const ProfileSubscriptions = () => {
                 </div>
 
                 <div class={clsx(stylesSettings.settingsList, styles.topicsList)}>
-                  <Show when={filtered().length > 0} fallback={
-                    <div class="empty-state">
-                      <p>{searchQuery() ? t('No subscriptions found') : t('No items in this category')}</p>
-                    </div>
-                  }>
+                  <Show
+                    when={filtered().length > 0}
+                    fallback={
+                      <div class="empty-state">
+                        <p>
+                          {searchQuery() ? t('No subscriptions found') : t('No items in this category')}
+                        </p>
+                      </div>
+                    }
+                  >
                     <For each={filtered()}>
                       {(followingItem) => (
                         <div>

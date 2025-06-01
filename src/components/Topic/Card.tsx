@@ -39,12 +39,17 @@ export const TopicCard = (props: TopicProps) => {
   const author = createMemo<Author>(() => session()?.author as Author)
   const { follows, changeFollowing } = useFollowing()
   const [isFollowed, setIsFollowed] = createSignal(false)
-  
+
   createEffect(
     on([() => follows, () => props.topic], ([flws, tpc]) => {
       if (flws && tpc) {
         const followed = follows?.topics?.some((topic) => topic.id === props.topic?.id)
-        console.log('[TopicCard] Follow state updated:', followed, 'for topic:', props.topic.title || props.topic.slug)
+        console.log(
+          '[TopicCard] Follow state updated:',
+          followed,
+          'for topic:',
+          props.topic.title || props.topic.slug
+        )
         setIsFollowed(Boolean(followed))
       }
     })
