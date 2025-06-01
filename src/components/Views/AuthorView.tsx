@@ -67,15 +67,9 @@ export const AuthorView = (props: AuthorViewProps) => {
   const [commented, setCommented] = createSignal<Reaction[]>(props.comments || [])
   const [followersLoaded, setFollowersLoaded] = createSignal(false)
   const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
-  const [isLoading, setIsLoading] = createSignal(false)
 
   // Немедленно инициализируем sortedFeed с пропсами
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
-
-  // Ключ для принудительного пересоздания LoadMoreWrapper при изменении фильтров/сортировки
-  const loadMoreKey = createMemo(() => {
-    return `${author()?.slug || 'unknown'}-${filterState().timestamp}-${options().order_by || 'default'}`
-  })
 
   // Инициализируем loadMoreHidden сразу на основе начальных данных
   // Важно: onMount гарантирует, что публикации отображаются сразу при загрузке страницы
@@ -84,7 +78,6 @@ export const AuthorView = (props: AuthorViewProps) => {
     console.log('[AuthorView] onMount - initial shouts:', initialShouts.length)
     if (initialShouts.length > 0) {
       setSortedFeed(initialShouts)
-      setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
       console.log('[AuthorView] Set initial feed:', initialShouts.length, 'items')
     }
 
@@ -440,7 +433,6 @@ export const AuthorView = (props: AuthorViewProps) => {
   const loadMoreAuthorShouts = async () => {
     if (!author()) return
 
-    setIsLoading(true)
     saveScrollPosition()
     const offset = sortedFeed().length
 
@@ -466,8 +458,6 @@ export const AuthorView = (props: AuthorViewProps) => {
       return result as LoadMoreItems
     } catch (error) {
       console.error('[AuthorView] Error loading more shouts:', error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -703,7 +693,7 @@ export const AuthorView = (props: AuthorViewProps) => {
               <LoadMoreWrapper
                 loadFunction={loadMoreAuthorShouts}
                 pageSize={FEED_PAGE_SIZE}
-                useScrollTrigger={false}
+                hidden={loadMoreHidden()}
               >
                 <For each={sortedFeed()}>
                   {(_article, index) => {

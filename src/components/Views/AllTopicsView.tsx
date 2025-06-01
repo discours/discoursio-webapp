@@ -87,7 +87,7 @@ export const AllTopicsView = (props: Props) => {
   const getTopicWithStat = (topic: Topic): Topic => {
     const contextTopic = topicEntities()[topic.slug]
     // Если в контексте есть топик со статистикой, используем его
-    if (contextTopic && contextTopic.stat) {
+    if (contextTopic?.stat) {
       return contextTopic
     }
     // Иначе возвращаем исходный топик

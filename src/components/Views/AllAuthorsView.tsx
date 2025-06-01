@@ -116,7 +116,7 @@ export const AllAuthorsView = (props: Props) => {
   const getAuthorWithStat = (author: Author): Author => {
     const contextAuthor = authorsEntities()[author.slug]
     // Если в контексте есть автор со статистикой, используем его
-    if (contextAuthor && contextAuthor.stat) {
+    if (contextAuthor?.stat) {
       return contextAuthor
     }
     // Иначе возвращаем исходного автора

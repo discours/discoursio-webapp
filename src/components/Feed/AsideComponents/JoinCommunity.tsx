@@ -30,11 +30,11 @@ export const JoinCommunity = (props: JoinCommunityProps) => {
         <div class={styles.joinBackground}>
           <div class={styles.peopleIllustration}>
             {/* CSS изображение группы людей */}
-            <div class={styles.person1}></div>
-            <div class={styles.person2}></div>
-            <div class={styles.person3}></div>
-            <div class={styles.person4}></div>
-            <div class={styles.person5}></div>
+            <div class={styles.person1} />
+            <div class={styles.person2} />
+            <div class={styles.person3} />
+            <div class={styles.person4} />
+            <div class={styles.person5} />
           </div>
         </div>
 

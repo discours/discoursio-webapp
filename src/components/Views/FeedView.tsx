@@ -238,9 +238,9 @@ export const FeedView = (props: FeedProps) => {
             aria-label={t('Toggle menu')}
           >
             <span class={styles.hamburger}>
-              <span></span>
-              <span></span>
-              <span></span>
+              <span />
+              <span />
+              <span />
             </span>
           </button>
 

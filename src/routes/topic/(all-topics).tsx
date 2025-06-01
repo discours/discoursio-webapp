@@ -38,14 +38,14 @@ const fetchTopicsWithPagination = async (sortBy: string, offset = 0, limit = TOP
       console.log('[fetchTopicsWithPagination] No results from community API, falling back to topics-all')
       const fallbackLoader = loadTopics()
       const fallbackTopics = await fallbackLoader()
-      const sortedTopics = (fallbackTopics || []).sort(byTopicStatDesc(sortBy as any))
+      const sortedTopics = (fallbackTopics || []).sort(byTopicStatDesc(sortBy))
       const sliced = sortedTopics.slice(offset, offset + limit)
       console.log(`[fetchTopicsWithPagination] Fallback returned ${sliced.length} topics`)
       return sliced
     }
 
     // Сортируем результат по указанному критерию
-    const sortedResult = (result || []).sort(byTopicStatDesc(sortBy as any))
+    const sortedResult = (result || []).sort(byTopicStatDesc(sortBy))
     console.log(`[fetchTopicsWithPagination] Sorted result: ${sortedResult.length} topics`)
     return sortedResult
   } catch (error) {
