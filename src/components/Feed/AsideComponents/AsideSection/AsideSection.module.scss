@@ -1,0 +1,244 @@
+.asideSection {
+  background: var(--white-500);
+  border-radius: var(--comment-radius-lg);
+  padding: var(--spacing-l);
+  margin-bottom: var(--spacing-l);
+  transition: all 0.2s ease;
+  
+  @include media-breakpoint-up(lg) {
+    padding: calc(var(--spacing-l) * 1.5);
+    margin-bottom: calc(var(--spacing-l) * 1.5);
+  }
+
+  &:hover {
+    box-shadow: var(--comment-shadow-sm);
+  }
+
+  // Убираем отступы для первого и последнего элемента
+  > *:first-child {
+    margin-top: 0;
+  }
+
+  > *:last-child {
+    margin-bottom: 0;
+  }
+  
+  // Вариант card - для специальных карточек
+  &.cardVariant {
+    background: none;
+    padding: 0;
+    
+    &:hover {
+      box-shadow: none;
+    }
+  }
+  
+  // Вариант minimal - минимальная стилизация
+  &.minimalVariant {
+    background: none;
+    border-radius: 0;
+    padding: var(--spacing-m) 0;
+    
+    &:hover {
+      box-shadow: none;
+    }
+  }
+  
+  // Модификатор для убирания отступов
+  &.noPadding {
+    padding: 0;
+  }
+  
+  // Модификатор для убирания фона
+  &.noBackground {
+    background: none;
+    
+    &:hover {
+      box-shadow: none;
+    }
+  }
+}
+
+.asideSectionHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-l);
+  
+  // Базовые стили для кликабельных заголовков теперь берутся из Button.tsx
+  &.collapsible {
+    cursor: pointer;
+    // Убираем собственные стили, используем стили Button.tsx
+    border: none !important; // переопределяем возможные border из button
+    text-align: left !important; // выравнивание влево для заголовков
+    width: 100% !important; // полная ширина
+    background: transparent !important; // прозрачный фон по умолчанию
+    justify-content: flex-start !important; // выравнивание содержимого влево
+    
+    // Hover эффекты для разных вариантов
+    &:hover {
+      background: var(--black-50) !important;
+    }
+  }
+  
+  // Заголовок для card варианта
+  &.cardHeader {
+    margin-bottom: var(--spacing-m);
+    
+    &.collapsible {
+      margin: 0 0 var(--spacing-m) 0;
+      border-radius: var(--comment-radius-lg) !important;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+      }
+    }
+  }
+  
+  // Заголовок для minimal варианта
+  &.minimalHeader {
+    margin-bottom: var(--spacing-s);
+    
+    &.collapsible {
+      margin: 0 0 var(--spacing-s) 0;
+      border-radius: 0 !important;
+      border-bottom: 1px solid var(--black-100) !important;
+      
+      &:hover {
+        background: var(--black-25) !important;
+      }
+    }
+  }
+}
+
+.headerIcon {
+  width: 2rem;
+  height: 2rem;
+  margin-right: var(--spacing-s);
+  color: var(--black-300);
+  flex-shrink: 0; // предотвращаем сжатие иконки
+  
+  .cardHeader & {
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  .minimalHeader & {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+}
+
+.asideSectionTitle {
+  font-family: Muller, Arial, Helvetica, sans-serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--black-500);
+  flex: 1;
+  text-align: left; // выравнивание влево
+  
+  .cardHeader & {
+    color: white;
+    font-weight: 700;
+  }
+  
+  .minimalHeader & {
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--black-400);
+  }
+}
+
+.expandIcon {
+  width: 1.6rem;
+  height: 1.6rem;
+  color: var(--black-300);
+  transition: transform 0.2s ease;
+  margin-left: var(--spacing-s);
+  flex-shrink: 0; // предотвращаем сжатие иконки
+  
+  &.rotated {
+    transform: rotate(180deg);
+  }
+  
+  .cardHeader & {
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  .minimalHeader & {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+}
+
+.asideSectionContent {
+  transition: all 0.3s ease;
+  overflow: hidden;
+  
+  &.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-top: calc(var(--spacing-l) * -1);
+  }
+  
+  // Контент для card варианта
+  &.cardContent {
+    &.collapsed {
+      margin-top: calc(var(--spacing-m) * -1);
+    }
+  }
+  
+  // Контент для minimal варианта
+  &.minimalContent {
+    &.collapsed {
+      margin-top: calc(var(--spacing-s) * -1);
+    }
+  }
+  
+  // Стили для списков
+  ul, ol {
+    padding-left: 0;
+    list-style: none;
+    margin: 0;
+
+    li {
+      margin-bottom: var(--spacing-m);
+      padding: var(--spacing-xs) 0;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  // Стили для ссылок - используем стили похожие на Button inline
+  a {
+    font-family: Muller, Arial, Helvetica, sans-serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--black-500);
+    text-decoration: none;
+    transition: color 0.2s ease;
+    
+    &:hover {
+      color: var(--blue-500);
+      text-decoration: underline;
+    }
+  }
+
+  // Стили для текста
+  p {
+    font-family: Muller, Arial, Helvetica, sans-serif;
+    font-size: 1.4rem;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--black-400);
+    margin-bottom: var(--spacing-m);
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+} 

@@ -379,3 +379,124 @@ createEffect(on(currentPeriod, (period) => {
 
 ### Дополнительные материалы
 - [Фильтры комментариев](./comments-filter.md) - специфика фильтрации комментариев
+
+## FeedCustomization Component Upgrade
+
+### Overview
+
+The `FeedCustomization` component has been upgraded with improved styling, animations, and a new illustration variant featuring an archer theme (bow, arrow, target).
+
+### Variants
+
+The component now supports two display variants:
+
+#### 1. Illustration Variant (Default)
+- Features animated CSS illustrations (bow, arrow, target)
+- Gradient background with subtle animations
+- Enhanced visual feedback with hover effects
+- Better responsive design
+
+```tsx
+<FeedCustomization
+  variant="illustration"
+  title=""
+  description={t('Subscribe to your favorite topics, authors and communities')}
+/>
+```
+
+#### 2. Image Variant (Legacy)
+- Uses background image
+- Maintains existing functionality
+- Fallback for older implementations
+
+```tsx
+<FeedCustomization
+  variant="image"
+  title={t('Create your feed')}
+  description={t('Subscribe to interesting topics and authors')}
+/>
+```
+
+### New Features
+
+1. **Advanced CSS Animations**: Floating arrows, pulsing bow, rotating target
+2. **Improved Responsiveness**: Better layout for mobile and desktop
+3. **Enhanced Hover Effects**: Smooth transitions and visual feedback
+4. **Better Typography**: Improved text shadows and readability
+
+### Styling Enhancements
+
+- Added `@keyframes` animations for all interactive elements
+- Improved gradient backgrounds with animation
+- Enhanced button styling with shimmer effects
+- Better mobile responsiveness with media queries
+
+## AsideSection Component Improvements
+
+### New Props
+
+The `AsideSection` component has been enhanced with additional configuration options:
+
+```tsx
+interface AsideSectionProps {
+  title?: string
+  children: JSX.Element
+  class?: string
+  collapsible?: boolean
+  defaultExpanded?: boolean
+  icon?: string
+  variant?: 'default' | 'card' | 'minimal'  // NEW
+  noPadding?: boolean                       // NEW
+  noBackground?: boolean                    // NEW
+}
+```
+
+### Variants
+
+#### 1. Default Variant
+- Standard aside section with background and padding
+- Hover effects and shadows
+
+#### 2. Card Variant
+- Transparent background
+- Designed for special card components
+- No default padding or background styling
+
+```tsx
+<AsideSection variant="card" noPadding>
+  <CustomCard />
+</AsideSection>
+```
+
+#### 3. Minimal Variant
+- Minimal styling for simple content
+- Reduced spacing and simplified headers
+
+```tsx
+<AsideSection variant="minimal" title="Simple Section">
+  <SimpleContent />
+</AsideSection>
+```
+
+### Usage in FeedView
+
+The FeedView now uses the improved components:
+
+```tsx
+<FeedCustomization
+  title={''}
+  description={t('Subscribe to your favorite topics, authors and communities')}
+  variant="illustration"
+/>
+```
+
+### Translation Keys Added
+
+- `"Hit the target"` - Heading for illustration variant
+- `"Fine-tune your feed to get exactly the content you want to read"` - Description text
+
+### Performance Optimizations
+
+1. **CSS Animations**: Hardware-accelerated transforms
+2. **Efficient Styling**: Reduced CSS specificity and improved organization
+3. **Better Caching**: Improved component memoization

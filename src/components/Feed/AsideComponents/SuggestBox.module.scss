@@ -1,0 +1,112 @@
+.socialSection {
+  border-left: 3px solid var(--blue-100);
+}
+
+.socialContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-l);
+}
+
+.linksList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+.socialLink {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-m);
+  padding: var(--spacing-m);
+  text-decoration: none;
+  border-radius: var(--comment-radius-md);
+  transition: all 0.2s ease;
+  background: var(--black-25);
+  border: 1px solid var(--black-100);
+  
+  &:hover {
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: var(--comment-shadow-sm);
+    background: var(--white-500);
+    border-color: var(--link-color, var(--blue-200));
+    
+    .iconWrapper {
+      background: var(--link-color, var(--blue-500));
+      
+      .socialIcon {
+        filter: brightness(0) invert(1);
+      }
+    }
+    
+    .linkTitle {
+      color: var(--link-color, var(--blue-500));
+    }
+  }
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--black-100);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.socialIcon {
+  width: 2rem;
+  height: 2rem;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.linkTitle {
+  font-family: Muller, Arial, Helvetica, sans-serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--black-500);
+  transition: color 0.2s ease;
+  flex: 1;
+  margin-top: 2px; // Выравнивание с иконкой
+}
+
+.contactAction {
+  margin-top: var(--spacing-s);
+  padding-top: var(--spacing-m);
+  border-top: 1px solid var(--black-100);
+  text-align: center;
+}
+
+.contactButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--black-600);
+  color: white;
+  text-decoration: none;
+  font-family: Muller, Arial, Helvetica, sans-serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  padding: var(--spacing-m) var(--spacing-l);
+  border-radius: 50px;
+  transition: all 0.2s ease;
+  text-align: center;
+  min-width: 160px;
+  
+  &:hover {
+    background: var(--black-700);
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+} 

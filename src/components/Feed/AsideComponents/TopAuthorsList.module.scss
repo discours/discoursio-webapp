@@ -1,0 +1,87 @@
+.authorsSection {
+  border-left: 3px solid var(--green-100);
+}
+
+.authorsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+.authorItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-s);
+  border-radius: var(--comment-radius-md);
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: var(--black-25);
+    transform: translateY(-1px);
+  }
+}
+
+.authorRank {
+  font-family: Muller, Arial, Helvetica, sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--black-300);
+  min-width: 2rem;
+  text-align: center;
+  
+  // Цветные номера для топ-3
+  .authorItem:nth-child(1) & {
+    color: var(--yellow-500); // Золото
+  }
+  
+  .authorItem:nth-child(2) & {
+    color: var(--black-400); // Серебро  
+  }
+  
+  .authorItem:nth-child(3) & {
+    color: var(--orange-500); // Бронза
+  }
+}
+
+.authorLink {
+  flex: 1;
+  min-width: 0; // Для правильного overflow
+}
+
+.viewAll {
+  margin-top: var(--spacing-s);
+  padding-top: var(--spacing-m);
+  border-top: 1px solid var(--black-100);
+}
+
+.viewAllLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: Muller, Arial, Helvetica, sans-serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--green-500);
+  text-decoration: none;
+  padding: var(--spacing-s) var(--spacing-m);
+  border-radius: var(--comment-radius-md);
+  transition: all 0.2s ease;
+  background: var(--green-25);
+  
+  &:hover {
+    background: var(--green-50);
+    text-decoration: none;
+    transform: translateY(-1px);
+    
+    .viewAllIcon {
+      transform: translateX(2px);
+    }
+  }
+}
+
+.viewAllIcon {
+  width: 1.6rem;
+  height: 1.6rem;
+  transition: transform 0.2s ease;
+} 

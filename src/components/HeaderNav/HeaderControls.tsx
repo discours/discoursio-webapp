@@ -1,6 +1,6 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, Suspense, createEffect, createMemo } from 'solid-js'
+import { Show, Suspense, createMemo } from 'solid-js'
 
 import { useConnect } from '~/context/connect'
 import { useDrafts } from '~/context/drafts'
@@ -399,17 +399,6 @@ export const HeaderControls = (props: Props) => {
   const loc = useLocation()
 
   const isEditingMode = createMemo(() => loc.pathname.startsWith('/edit/') && !loc.pathname.endsWith('new'))
-
-  // Диагностика сессии
-  createEffect(() => {
-    const currentSession = session()
-    console.log('[HeaderControls] Session debug:', {
-      session: currentSession,
-      token: currentSession?.token,
-      author: currentSession?.author,
-      isValidating: isSessionValidating()
-    })
-  })
 
   // Правильная логика определения авторизации: есть сессия с токеном И автором
   const isAuthorized = createMemo(

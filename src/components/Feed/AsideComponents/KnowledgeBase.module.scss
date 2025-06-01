@@ -1,0 +1,113 @@
+.knowledgeSection {
+  border-left: 3px solid var(--purple-100);
+}
+
+.knowledgeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.knowledgeItem {
+  &:before {
+    content: '☞';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: var(--black-300);
+    transition: all 0.2s ease;
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.knowledgeLink {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  font-family: Muller, Arial, Helvetica, sans-serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--black-500);
+  text-decoration: none;
+  padding: var(--spacing-s) var(--spacing-m);
+  border-radius: var(--comment-radius-md);
+  transition: all 0.2s ease;
+  position: relative;
+
+  a, a:hover, a:focus, a:active, a:visited {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-s);
+    font-family: Muller, Arial, Helvetica, sans-serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--black-500);
+    text-decoration: none;
+    padding: var(--spacing-s) var(--spacing-m);
+    border-radius: var(--comment-radius-md);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  
+  &:hover {
+    background: var(--purple-25);
+    color: var(--purple-600);
+    text-decoration: none;
+    
+    .knowledgeIcon {
+      color: var(--purple-500);
+      transform: scale(1.1);
+    }
+    
+    .externalIcon {
+      opacity: 1;
+      transform: translateX(2px);
+    }
+  }
+  
+  &:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--purple-500);
+    border-radius: 0 2px 2px 0;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  &:hover:before {
+    opacity: 1;
+  }
+}
+
+.knowledgeIcon {
+  width: 1.8rem;
+  height: 1.8rem;
+  color: var(--black-300);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.knowledgeTitle {
+  flex: 1;
+  min-width: 0; // Для правильного overflow
+}
+
+.externalIcon {
+  width: 1.4rem;
+  height: 1.4rem;
+  color: var(--black-300);
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+} 

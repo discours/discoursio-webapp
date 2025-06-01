@@ -1,5 +1,5 @@
 import { A } from '@solidjs/router'
-import { For, Show, Suspense, batch, createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
+import { For, Suspense, batch, createEffect, createSignal, on } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'
 import { useAuthors } from '~/context/authors'
@@ -143,7 +143,7 @@ export const Sidebar = () => {
           }}
           classList={{ [styles.selected]: !myFeed() }}
         >
-          <div class={styles.sidebarItemName}>
+          <div class={styles.sidebarItemName} data-tooltip={t('All')}>
             <Icon name="feed-all" class={styles.icon} />
             <span class={styles.sidebarItemNameLabel}>{t('All')}</span>
           </div>
@@ -157,7 +157,7 @@ export const Sidebar = () => {
           }}
           classList={{ [styles.selected]: myFeed() === 'followed' }}
         >
-          <div class={styles.sidebarItemName}>
+          <div class={styles.sidebarItemName} data-tooltip={t('My feed')}>
             <Icon name="feed-my" class={styles.icon} />
             <span class={styles.sidebarItemNameLabel}>{t('My feed')}</span>
           </div>
@@ -171,7 +171,7 @@ export const Sidebar = () => {
           }}
           classList={{ [styles.selected]: myFeed() === 'coauthored' }}
         >
-          <div class={styles.sidebarItemName}>
+          <div class={styles.sidebarItemName} data-tooltip={t('Participation')}>
             <Icon name="feed-collaborate" class={styles.icon} />
             <span class={styles.sidebarItemNameLabel}>{t('Participation')}</span>
           </div>
@@ -185,7 +185,7 @@ export const Sidebar = () => {
           }}
           classList={{ [styles.selected]: myFeed() === 'discussed' }}
         >
-          <div class={styles.sidebarItemName}>
+          <div class={styles.sidebarItemName} data-tooltip={t('Discussions')}>
             <Icon name="feed-discussion" class={styles.icon} />
             <span class={styles.sidebarItemNameLabel}>{t('Discussions')}</span>
           </div>
@@ -239,7 +239,7 @@ export const Sidebar = () => {
 
       <footer class={styles.settings}>
         <a href="/settings/subs" class={styles.sidebarItem}>
-          <div class={styles.sidebarItemName}>
+          <div class={styles.sidebarItemName} data-tooltip={t('Feed settings')}>
             <Icon name="settings" class={styles.icon} />
             <span class={styles.sidebarItemNameLabel}>{t('Feed settings')}</span>
           </div>

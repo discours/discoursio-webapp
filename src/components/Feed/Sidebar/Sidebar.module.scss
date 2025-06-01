@@ -15,26 +15,106 @@
   overflow: auto;
   top: 120px;
 
+  // Адаптивные стили для сжатого режима
+  @include media-breakpoint-down(lg) {
+    // Скрываем элементы управления в сжатом режиме
+    .settings {
+      display: none;
+    }
+    
+    // Скрываем разделители
+    hr {
+      display: none;
+    }
+    
+    // Прячем подписки в сжатом режиме
+    .subscriptions {
+      display: none;
+    }
+  }
+
   .sidebarItemName {
     background: transparent;
     align-items: center;
     display: flex;
     position: relative;
     transition: background-color 0.2s;
+    padding: 0.8rem;
+    border-radius: 0.8rem;
+    
+    @include media-breakpoint-down(lg) {
+      justify-content: center;
+      padding: 1rem 0.5rem;
+      
+      // Tooltip для сжатого режима
+      &:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--black-500);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.4rem;
+        font-size: 1.2rem;
+        white-space: nowrap;
+        z-index: 1000;
+        margin-left: 0.8rem;
+      }
+      
+      // Стрелка tooltip
+      &:hover::before {
+        content: '';
+        position: absolute;
+        left: calc(100% + 0.4rem);
+        top: 50%;
+        transform: translateY(-50%);
+        border: 0.4rem solid transparent;
+        border-right-color: var(--black-500);
+        z-index: 1001;
+      }
+    }
   }
 
   .sidebarItemNameLabel {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    
+    @include media-breakpoint-down(lg) {
+      display: none;
+    }
+    
+    @include media-breakpoint-down(md) {
+      display: block; // Возвращаем на мобильных
+    }
   }
 
   .userpic {
     margin-right: 1.2rem;
+    
+    @include media-breakpoint-down(lg) {
+      margin-right: 0;
+    }
+    
+    @include media-breakpoint-down(md) {
+      margin-right: 1.2rem; // Возвращаем на мобильных
+    }
   }
 
   .selected {
     font-weight: 700;
+    
+    @include media-breakpoint-down(lg) {
+      .sidebarItemName {
+        background: var(--blue-500);
+        
+        .icon {
+          filter: invert(1);
+        }
+      }
+    }
   }
 
   .counter {
@@ -50,6 +130,14 @@
     margin-left: 0.5em;
     padding: 0.25em 0.5em 0.15em;
     transition: background-color 0.2s;
+    
+    @include media-breakpoint-down(lg) {
+      display: none; // Скрываем счетчики в сжатом режиме
+    }
+    
+    @include media-breakpoint-down(md) {
+      display: inline-flex; // Возвращаем на мобильных
+    }
   }
 
   .unread {
@@ -120,6 +208,19 @@
     min-width: 2.4rem;
     text-align: center;
     vertical-align: middle;
+    transition: all 0.2s ease;
+
+    @include media-breakpoint-down(lg) {
+      margin-right: 0;
+      height: 2rem;
+      min-width: 2rem;
+    }
+    
+    @include media-breakpoint-down(md) {
+      height: 2.4rem;
+      min-width: 2.4rem;
+      margin-right: 0.8rem; // Возвращаем на мобильных
+    }
 
     img {
       height: 100%;
