@@ -10,12 +10,13 @@ import { cdnUrl } from '~/config'
 export async function GET(event: APIEvent) {
   try {
     const url = new URL(event.request.url)
-    const slug = url.searchParams.get('slug')
     const name = url.searchParams.get('name') || 'Author'
     const bio = url.searchParams.get('bio')
     const avatar = url.searchParams.get('avatar')
-    const articlesCount = url.searchParams.get('articlesCount')
-    const followersCount = url.searchParams.get('followersCount')
+
+    //Debug hardcoded cdn url to cdn.discours.io
+    const cdnUrl = 'https://cdn.discours.io'
+
 
     // If slug is provided, we could fetch author data from GraphQL here
     // For now, we'll use the provided parameters

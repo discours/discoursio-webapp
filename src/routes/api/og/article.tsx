@@ -15,6 +15,9 @@ export async function GET(event: APIEvent) {
     const cover = url.searchParams.get('cover')
     const topic = url.searchParams.get('topic')
 
+    //Debug hardcoded cdn url to cdn.discours.io
+    const cdnUrl = 'https://cdn.discours.io'
+
     // --- Elements ---
 
     const topLeft = {

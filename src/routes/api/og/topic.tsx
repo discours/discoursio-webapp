@@ -1,301 +1,140 @@
 import { ImageResponse } from '@vercel/og';
 import { APIEvent } from '@solidjs/start/server';
 
+/**
+ * Generate OG images for topics with dynamic content
+ * Usage: /api/og/topic?title=Title&description=Description&cover=CoverURL
+ */
+
 export async function GET(event: APIEvent) {
   try {
     const url = new URL(event.request.url);
-    const title = url.searchParams.get('title') || 'Topic Discussion';
-    const description = url.searchParams.get('description') || 'Join the conversation about this topic';
-    const participantCount = url.searchParams.get('participants') || '0';
-    const articleCount = url.searchParams.get('articles') || '0';
+    const title = url.searchParams.get('title') || 'Discours Topic';
+    const description = url.searchParams.get('description') || 'Join the conversation';
     const cover = url.searchParams.get('cover');
 
-    return new ImageResponse(
-      {
-        type: 'div',
-        props: {
-          style: {
-            height: '100%',
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#0f172a',
-            backgroundImage: 'linear-gradient(45deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
-            position: 'relative',
-          },
-          children: [
-            // Background pattern
-            {
-              type: 'div',
-              props: {
-                style: {
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  opacity: 0.1,
-                  backgroundImage: 'radial-gradient(circle at 25% 25%, #ffffff 2px, transparent 2px), radial-gradient(circle at 75% 75%, #ffffff 2px, transparent 2px)',
-                  backgroundSize: '50px 50px',
-                },
-              },
-            },
-            
-            // Logo/Brand area
-            {
-              type: 'div',
-              props: {
-                style: {
-                  position: 'absolute',
-                  top: '40px',
-                  left: '40px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                },
-                children: [
-                  {
-                    type: 'div',
-                    props: {
-                      style: {
-                        width: '40px',
-                        height: '40px',
-                        backgroundColor: '#3b82f6',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '20px',
-                        fontWeight: 'bold',
-                        color: 'white',
-                      },
-                      children: 'D',
-                    },
-                  },
-                  {
-                    type: 'div',
-                    props: {
-                      style: {
-                        fontSize: '24px',
-                        fontWeight: 'bold',
-                        color: 'white',
-                      },
-                      children: 'Discoursio',
-                    },
-                  },
-                ],
-              },
-            },
+    // Debug hardcoded cdn url to cdn.discours.io
+    const cdnUrl = 'https://cdn.discours.io';
 
-            // Topic badge
-            {
-              type: 'div',
-              props: {
-                style: {
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  padding: '8px 20px',
-                  borderRadius: '20px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  marginBottom: '24px',
-                },
-                children: 'TOPIC',
-              },
-            },
+    // --- Elements ---
 
-            // Topic cover image (if available)
-            cover ? {
-              type: 'img',
-              props: {
-                src: cover,
-                style: {
-                  width: '120px',
-                  height: '120px',
-                  borderRadius: '12px',
-                  marginBottom: '32px',
-                  border: '3px solid rgba(255,255,255,0.3)',
-                  objectFit: 'cover',
-                }
-              }
-            } : null,
-
-            // Main content
-            {
-              type: 'div',
-              props: {
-                style: {
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  textAlign: 'center',
-                  maxWidth: '800px',
-                  padding: '0 40px',
-                },
-                children: [
-                  {
-                    type: 'h1',
-                    props: {
-                      style: {
-                        fontSize: '64px',
-                        fontWeight: 'bold',
-                        color: 'white',
-                        margin: '0 0 24px 0',
-                        lineHeight: '1.1',
-                        textAlign: 'center',
-                      },
-                      children: title,
-                    },
-                  },
-                  {
-                    type: 'p',
-                    props: {
-                      style: {
-                        fontSize: '24px',
-                        color: '#94a3b8',
-                        margin: '0 0 32px 0',
-                        lineHeight: '1.4',
-                        textAlign: 'center',
-                      },
-                      children: description,
-                    },
-                  },
-                ],
-              },
-            },
-
-            // Stats section
-            {
-              type: 'div',
-              props: {
-                style: {
-                  display: 'flex',
-                  gap: '40px',
-                  marginTop: '40px',
-                },
-                children: [
-                  {
-                    type: 'div',
-                    props: {
-                      style: {
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        padding: '20px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        borderRadius: '12px',
-                        backdropFilter: 'blur(10px)',
-                      },
-                      children: [
-                        {
-                          type: 'div',
-                          props: {
-                            style: {
-                              fontSize: '32px',
-                              fontWeight: 'bold',
-                              color: '#3b82f6',
-                              marginBottom: '8px',
-                            },
-                            children: articleCount,
-                          },
-                        },
-                        {
-                          type: 'div',
-                          props: {
-                            style: {
-                              fontSize: '16px',
-                              color: '#94a3b8',
-                            },
-                            children: 'Articles',
-                          },
-                        },
-                      ],
-                    },
-                  },
-                  {
-                    type: 'div',
-                    props: {
-                      style: {
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        padding: '20px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        borderRadius: '12px',
-                        backdropFilter: 'blur(10px)',
-                      },
-                      children: [
-                        {
-                          type: 'div',
-                          props: {
-                            style: {
-                              fontSize: '32px',
-                              fontWeight: 'bold',
-                              color: '#10b981',
-                              marginBottom: '8px',
-                            },
-                            children: participantCount,
-                          },
-                        },
-                        {
-                          type: 'div',
-                          props: {
-                            style: {
-                              fontSize: '16px',
-                              color: '#94a3b8',
-                            },
-                            children: 'Participants',
-                          },
-                        },
-                      ],
-                    },
-                  },
-                ],
-              },
-            },
-
-            // Cover image (if provided)
-            cover ? {
-              type: 'div',
-              props: {
-                style: {
-                  position: 'absolute',
-                  top: '40px',
-                  right: '40px',
-                  width: '120px',
-                  height: '120px',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  border: '3px solid rgba(255, 255, 255, 0.2)',
-                },
-                children: {
-                  type: 'img',
-                  props: {
-                    src: cover,
-                    style: {
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                    },
-                  },
-                },
-              },
-            } : null,
-          ].filter(Boolean),
+    const topLeft = {
+      type: 'div',
+      props: {
+        style: {
+          position: 'absolute',
+          top: 40,
+          left: 60,
+          display: 'flex',
+          alignItems: 'center',
         },
-      },
+        children: [
+          // Logo image
+          {
+            type: 'img',
+            props: {
+              src: `${cdnUrl}/logo.png`,
+              width: 60,
+              height: 60,
+              style: {
+                width: 60,
+                height: 60,
+                objectFit: 'contain',
+                borderRadius: '16px',
+              }
+            }
+          },
+        ]
+      }
+    };
+
+    // Center: Title
+    const mainTitle = {
+      type: 'div',
+      props: {
+        style: {
+          position: 'absolute',
+          top: '50%',
+          left: 60,
+          transform: 'translateY(-50%)',
+          maxWidth: 900,
+          textAlign: 'left',
+          color: cover ? 'white' : '#1f2937',
+          fontWeight: 900,
+          fontSize: title.length > 50 ? 50 : 62,
+          lineHeight: 1.12,
+          textShadow: cover ? '2px 2px 7px rgba(0,0,0,0.55)' : 'none',
+          letterSpacing: '-1px',
+        },
+        children: title,
+      }
+    };
+
+    // Bottom left: Description
+    const bottomLeft = description ? {
+      type: 'div',
+      props: {
+        style: {
+          position: 'absolute',
+          left: 60,
+          bottom: 44,
+          fontSize: 32,
+          color: cover ? 'rgba(255,255,255,0.88)' : 'rgba(31,41,55,0.7)',
+          fontWeight: 300,
+          letterSpacing: 0.5,
+          textShadow: cover ? '1px 1px 2px rgba(0,0,0,0.34)' : 'none',
+          maxWidth: 900,
+        },
+        children: description
+      }
+    } : null;
+
+    // --- Background ---
+    const backgroundStyle = cover
+      ? {
+          background: `linear-gradient(rgba(0,0,0,0.50), rgba(0,0,0,0.65)), url(${cover})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }
+      : {
+          background: 'white',
+        };
+
+    // --- Main OG Image Structure ---
+    const imageElement = {
+      type: 'div',
+      props: {
+        style: {
+          position: 'relative',
+          height: '100%',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          ...backgroundStyle,
+        },
+        children: [
+          topLeft,
+          mainTitle,
+          bottomLeft,
+        ].filter(Boolean)
+      }
+    };
+
+    return new ImageResponse(
+      imageElement as any,
       {
         width: 1200,
         height: 630,
         headers: {
           'Cache-Control': 'public, max-age=31536000, immutable',
         },
-      }
+      },
     );
   } catch (error) {
     console.error('Error generating topic OG image:', error);
-    return new Response('Failed to generate image', { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(`Failed to generate the image: ${errorMessage}`, {
+      status: 500,
+    });
   }
 }
