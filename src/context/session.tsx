@@ -18,7 +18,9 @@ import toast from 'solid-toast'
 import { useLocalize } from '~/context/localize'
 import { type ModalSource } from '~/context/ui'
 import { graphqlClientCreate } from '~/graphql/client'
+import CancelEmailChangeMutation from '~/graphql/mutation/core/auth-cancel-email-change'
 import ConfirmEmailMutation from '~/graphql/mutation/core/auth-confirm-email'
+import ConfirmEmailChangeMutation from '~/graphql/mutation/core/auth-confirm-email-change'
 import GetSessionMutation from '~/graphql/mutation/core/auth-get-session'
 import LoginMutation from '~/graphql/mutation/core/auth-login'
 import LogoutMutation from '~/graphql/mutation/core/auth-logout'
@@ -28,6 +30,7 @@ import ResendVerifyEmailMutation from '~/graphql/mutation/core/auth-resend-verif
 import ResetPasswordMutation from '~/graphql/mutation/core/auth-reset-password'
 import SignupMutation from '~/graphql/mutation/core/auth-signup'
 import UpdateProfileMutation from '~/graphql/mutation/core/auth-update-profile'
+import UpdateSecurityMutation from '~/graphql/mutation/core/auth-update-security'
 import IsEmailUsedQuery from '~/graphql/query/core/auth-is-email-used'
 import { Author } from '~/graphql/schema/core.gen'
 import { coreApiUrl } from '../config'
@@ -80,7 +83,6 @@ export interface UpdateProfileInput {
   slug?: string
   old_password?: string
   new_password?: string
-  confirm_new_password?: string
 }
 
 /**
@@ -152,6 +154,10 @@ type SessionContextType = {
   oauth: (provider: string) => void
   /** Проверка авторизации */
   isAuthenticated: () => boolean
+  /** Подтверждение смены email */
+  confirmEmailChange: (token: string) => Promise<boolean>
+  /** Отмена смены email */
+  cancelEmailChange: () => Promise<boolean>
 }
 
 /**
@@ -241,6 +247,7 @@ export const SessionProvider = (props: {
             id: author.id,
             slug: author.slug,
             name: author.name,
+            email: author.email,
             pic: author.pic,
             bio: author.bio,
             links: author.links
@@ -558,6 +565,7 @@ export const SessionProvider = (props: {
             id: author.id,
             slug: author.slug,
             name: author.name,
+            email: author.email,
             pic: author.pic,
             bio: author.bio,
             links: author.links
@@ -604,6 +612,7 @@ export const SessionProvider = (props: {
             id: author.id,
             slug: author.slug,
             name: author.name,
+            email: author.email,
             pic: author.pic,
             bio: author.bio,
             links: author.links
@@ -649,7 +658,8 @@ export const SessionProvider = (props: {
   }
 
   /**
-   * Обновление профиля
+   * Обновление профиля пользователя
+   * Поддерживает смену всех полей профиля, включая email и пароль
    */
   const updateProfile = async (params: UpdateProfileInput): Promise<boolean> => {
     try {
@@ -659,8 +669,50 @@ export const SessionProvider = (props: {
         return false
       }
 
+      console.info('[updateProfile] Updating profile with params:', {
+        hasEmail: !!params.email,
+        hasOldPassword: !!params.old_password,
+        hasNewPassword: !!params.new_password
+      })
+
       const authClient = graphqlClientCreate(coreApiUrl, currentSession.token)
-      const result = await authClient
+
+      // Для смены пароля или email используем специальную мутацию безопасности
+      if (
+        params.old_password ||
+        params.new_password ||
+        (params.email && params.email !== currentSession.author.email)
+      ) {
+        const securityUpdateResult = await authClient
+          .mutation(UpdateSecurityMutation, {
+            email: params.email,
+            old_password: params.old_password,
+            new_password: params.new_password
+          })
+          .toPromise()
+
+        if (securityUpdateResult.error) {
+          console.error('[updateProfile] Security update error:', securityUpdateResult.error)
+          throw new Error(securityUpdateResult.error.message)
+        }
+
+        if (securityUpdateResult.data?.updateSecurity?.error) {
+          console.error(
+            '[updateProfile] Security update failed:',
+            securityUpdateResult.data.updateSecurity.error
+          )
+          throw new Error(securityUpdateResult.data.updateSecurity.error)
+        }
+
+        // Если обновление безопасности прошло успешно, перезагружаем сессию
+        if (securityUpdateResult.data?.updateSecurity?.success) {
+          await loadSession()
+          return true
+        }
+      }
+
+      // Для обычных полей профиля используем стандартную мутацию
+      const profileUpdateResult = await authClient
         .mutation(UpdateProfileMutation, {
           profile: {
             name: params.name,
@@ -673,13 +725,18 @@ export const SessionProvider = (props: {
         })
         .toPromise()
 
-      if (!result.data?.update_author?.error) {
+      if (profileUpdateResult.error) {
+        console.error('[updateProfile] Profile update error:', profileUpdateResult.error)
+        throw new Error(profileUpdateResult.error.message)
+      }
+
+      if (!profileUpdateResult.data?.update_author?.error) {
         // Перезагружаем данные сессии
         await loadSession()
         return true
       }
 
-      setAuthError(result.data?.update_author?.error || 'Profile update failed')
+      setAuthError(profileUpdateResult.data?.update_author?.error || 'Profile update failed')
       return false
     } catch (error) {
       console.error('[updateProfile] Error:', error)
@@ -725,6 +782,7 @@ export const SessionProvider = (props: {
             id: author.id,
             slug: author.slug,
             name: author.name,
+            email: author.email,
             pic: author.pic,
             bio: author.bio,
             links: author.links
@@ -844,6 +902,7 @@ export const SessionProvider = (props: {
               id: author.id,
               slug: author.slug,
               name: author.name,
+              email: author.email,
               pic: author.pic,
               bio: author.bio,
               links: author.links
@@ -986,6 +1045,78 @@ export const SessionProvider = (props: {
     return result === 'registered'
   }
 
+  /**
+   * Подтверждение смены email адреса
+   */
+  const confirmEmailChange = async (token: string): Promise<boolean> => {
+    try {
+      console.info('[confirmEmailChange] Confirming email change with token')
+      const currentSession = untrack(() => session())
+      if (!currentSession?.token) {
+        setAuthError('Not authenticated')
+        return false
+      }
+
+      const authClient = graphqlClientCreate(coreApiUrl, currentSession.token)
+      const result = await authClient.mutation(ConfirmEmailChangeMutation, { token }).toPromise()
+
+      if (result.error) {
+        console.error('[confirmEmailChange] GraphQL error:', result.error)
+        setAuthError(result.error.message || 'Email change confirmation failed')
+        return false
+      }
+
+      if (result.data?.confirmEmailChange?.success) {
+        // Перезагружаем сессию для получения обновленного email
+        await loadSession()
+        return true
+      }
+
+      setAuthError(result.data?.confirmEmailChange?.error || 'Email change confirmation failed')
+      return false
+    } catch (error) {
+      console.error('[confirmEmailChange] Error:', error)
+      setAuthError(error instanceof Error ? error.message : 'Email change confirmation failed')
+      return false
+    }
+  }
+
+  /**
+   * Отмена смены email адреса
+   */
+  const cancelEmailChange = async (): Promise<boolean> => {
+    try {
+      console.info('[cancelEmailChange] Canceling email change')
+      const currentSession = untrack(() => session())
+      if (!currentSession?.token) {
+        setAuthError('Not authenticated')
+        return false
+      }
+
+      const authClient = graphqlClientCreate(coreApiUrl, currentSession.token)
+      const result = await authClient.mutation(CancelEmailChangeMutation, {}).toPromise()
+
+      if (result.error) {
+        console.error('[cancelEmailChange] GraphQL error:', result.error)
+        setAuthError(result.error.message || 'Email change cancellation failed')
+        return false
+      }
+
+      if (result.data?.cancelEmailChange?.success) {
+        // Перезагружаем сессию для получения актуального состояния
+        await loadSession()
+        return true
+      }
+
+      setAuthError(result.data?.cancelEmailChange?.error || 'Email change cancellation failed')
+      return false
+    } catch (error) {
+      console.error('[cancelEmailChange] Error:', error)
+      setAuthError(error instanceof Error ? error.message : 'Email change cancellation failed')
+      return false
+    }
+  }
+
   const contextValue: SessionContextType = {
     session,
     isSessionLoaded,
@@ -1006,7 +1137,9 @@ export const SessionProvider = (props: {
     changePassword,
     isRegistered,
     oauth,
-    isAuthenticated
+    isAuthenticated,
+    confirmEmailChange,
+    cancelEmailChange
   }
 
   return <SessionContext.Provider value={contextValue}>{props.children}</SessionContext.Provider>
