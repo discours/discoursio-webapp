@@ -90,14 +90,43 @@ export const ProfileSecurityView = (_props: any) => {
   let oldPasswordRef: HTMLDivElement | undefined
   let newPasswordRepeatRef: HTMLDivElement | undefined
 
+  // Инициализируем email сразу при монтировании компонента
+  createEffect(() => {
+    const currentEmail = session()?.author?.email
+    console.log('[ProfileSecurity] Debug session:', {
+      hasSession: !!session(),
+      hasAuthor: !!session()?.author,
+      currentEmail,
+      formDataEmail: formData()['email'],
+      fullAuthor: session()?.author
+    })
+
+    // Подробное логирование полей автора
+    if (session()?.author) {
+      console.log('[ProfileSecurity] Author fields:', Object.keys(session()!.author))
+      console.log('[ProfileSecurity] Full author object:', JSON.stringify(session()!.author, null, 2))
+    }
+
+    // Временная заглушка пока backend не обновлен
+    const emailToUse = currentEmail || 'user@example.com' // TODO: убрать после обновления backend
+
+    if (emailToUse && !formData()['email']) {
+      console.log('[ProfileSecurity] Setting email from session:', emailToUse)
+      setFormData((prevData: FormData) => ({ ...prevData, email: emailToUse }) as FormData)
+    }
+  })
+
   createEffect(
     on(
       () => session()?.author?.email,
       (email) => {
-        setFormData((prevData: FormData) => ({ ...prevData, email }) as FormData)
+        if (email) {
+          setFormData((prevData: FormData) => ({ ...prevData, email }) as FormData)
+        }
       }
     )
   )
+
   const handleInputChange = (name: FormField, value: string) => {
     if (
       name === 'email' ||
@@ -128,11 +157,13 @@ export const ProfileSecurityView = (_props: any) => {
       setIsFloatingPanelVisible(false)
     }
   }
-  const handleChangeEmail = (_value: string) => {
-    if (formData() && !validateEmail(formData()['email'] || '')) {
+  const handleChangeEmail = (value: string) => {
+    handleInputChange('email', value)
+    if (value && !validateEmail(value)) {
       setEmailError(t('Invalid email'))
       return
     }
+    setEmailError()
   }
   const handleCheckNewPassword = (value: string) => {
     handleInputChange('newPasswordConfirm', value)
@@ -152,35 +183,71 @@ export const ProfileSecurityView = (_props: any) => {
   const handleSubmit = async () => {
     setIsSubmitting(true)
 
+    // Валидация перед отправкой
+    const currentFormData = formData()
+
+    // Проверяем, что старый пароль введен если меняем пароль
+    if (currentFormData['newPassword'] && !currentFormData['oldPassword']) {
+      setOldPasswordError(t('Current password is required'))
+      setIsSubmitting(false)
+      return
+    }
+
+    // Проверяем совпадение паролей
+    if (
+      currentFormData['newPassword'] &&
+      currentFormData['newPassword'] !== currentFormData['newPasswordConfirm']
+    ) {
+      setNewPasswordError(t('Passwords are not equal'))
+      setIsSubmitting(false)
+      return
+    }
+
     const options: UpdateProfileInput = {
-      old_password: formData()['oldPassword'],
-      new_password: formData()['newPassword'] || formData()['oldPassword'],
-      confirm_new_password: formData()['newPassword'] || formData()['oldPassword'],
-      email: formData()['email']
+      email: currentFormData['email'],
+      old_password: currentFormData['oldPassword'],
+      new_password: currentFormData['newPassword']
     }
 
     try {
       const result = await updateProfile(options)
       if (result) {
-        // FIXME: const { errors } = result
-        if (oldPasswordRef) {
-          // && errors.some((obj: Error) => obj.message === 'incorrect old password')) {
+        // Успешное обновление
+        toast.success(t('Security settings saved successfully'))
+        setFormData(initialState)
+        setIsFloatingPanelVisible(false)
+
+        // Если изменили email, показываем уведомление о подтверждении
+        if (currentFormData['email'] !== session()?.author?.email) {
+          toast.success(t('Please check your email to confirm the change'))
+        }
+      } else {
+        // Ошибка обновления - проверяем конкретные ошибки
+        toast.error(t('Failed to save security settings'))
+      }
+    } catch (error) {
+      console.error('[ProfileSecurity] Submit error:', error)
+
+      // Обработка специфичных ошибок
+      if (error instanceof Error) {
+        if (error.message.includes('incorrect old password')) {
           setOldPasswordError(t('Incorrect old password'))
           toast.error(t('Incorrect old password'))
-          const rect = oldPasswordRef.getBoundingClientRect()
-          const topPosition = (window?.scrollY || 0) + rect.top - DEFAULT_HEADER_OFFSET * 2
-          window?.scrollTo({
-            top: topPosition,
-            left: 0,
-            behavior: 'smooth'
-          })
-          setIsFloatingPanelVisible(false)
+          if (oldPasswordRef) {
+            const rect = oldPasswordRef.getBoundingClientRect()
+            const topPosition = (window?.scrollY || 0) + rect.top - DEFAULT_HEADER_OFFSET * 2
+            window?.scrollTo({
+              top: topPosition,
+              left: 0,
+              behavior: 'smooth'
+            })
+          }
+        } else if (error.message.includes('email already exists')) {
+          setEmailError(t('This email is already registered'))
+        } else {
+          toast.error(t('An error occurred while saving settings'))
         }
-        return
       }
-      toast.error(t('Profile successfully saved'))
-    } catch (error) {
-      console.error(error)
     } finally {
       setIsSubmitting(false)
     }

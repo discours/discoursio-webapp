@@ -1,20 +1,19 @@
 import { gql } from '@urql/core'
 
 export default gql`
-  mutation RefreshToken {
-    refreshToken {
-      token
+  mutation ConfirmEmailChange($token: String!) {
+    confirmEmailChange(token: $token) {
+      success
+      error
       author {
         id
-        slug
         name
+        slug
         email
         pic
         bio
         links
       }
-      success
-      error
     }
   }
 `

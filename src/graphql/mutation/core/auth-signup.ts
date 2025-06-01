@@ -8,6 +8,7 @@ export default gql`
             id
             slug
             name
+            email
             pic
             bio
             links
