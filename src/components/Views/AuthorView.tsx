@@ -67,9 +67,15 @@ export const AuthorView = (props: AuthorViewProps) => {
   const [commented, setCommented] = createSignal<Reaction[]>(props.comments || [])
   const [followersLoaded, setFollowersLoaded] = createSignal(false)
   const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
+  const [isLoading, setIsLoading] = createSignal(false)
 
   // Немедленно инициализируем sortedFeed с пропсами
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
+
+  // Ключ для принудительного пересоздания LoadMoreWrapper при изменении фильтров/сортировки
+  const loadMoreKey = createMemo(() => {
+    return `${author()?.slug || 'unknown'}-${filterState().timestamp}-${options().order_by || 'default'}`
+  })
 
   // Инициализируем loadMoreHidden сразу на основе начальных данных
   // Важно: onMount гарантирует, что публикации отображаются сразу при загрузке страницы
@@ -332,7 +338,7 @@ export const AuthorView = (props: AuthorViewProps) => {
     </div>
   )
 
-  // Функция загрузки публикаций автора с учетом фильтров
+  // Функция загрузки публикаций автора с учетом фильтров (для LoadMoreWrapper)
   const loadAuthorShouts = async (offset = 0) => {
     if (!author()) return []
 
@@ -399,10 +405,42 @@ export const AuthorView = (props: AuthorViewProps) => {
     )
   )
 
-  // Обновленная функция loadMore с поддержкой фильтров
-  const loadMore = async () => {
-    if (!author()) return []
+  // Дополнительный эффект для перезагрузки при изменении сортировки (order_by)
+  createEffect(
+    on(
+      () => options().order_by,
+      (orderBy, prevOrderBy) => {
+        // Перезагружаем только если сортировка действительно изменилась и автор загружен
+        if (orderBy !== prevOrderBy && prevOrderBy !== undefined && author() && !currentTab()) {
+          console.log('[AuthorView] Sorting changed, reloading author feed:', {
+            author: author()?.slug,
+            orderBy,
+            prevOrderBy
+          })
 
+          // Сбрасываем текущие данные и загружаем заново
+          setSortedFeed([])
+          setLoadMoreHidden(false)
+
+          loadAuthorShouts(0).then((result) => {
+            if (result.length) {
+              setSortedFeed(result)
+              setLoadMoreHidden(result.length < FEED_PAGE_SIZE)
+            } else {
+              setLoadMoreHidden(true)
+            }
+          })
+        }
+      },
+      { defer: true }
+    )
+  )
+
+  // Обновленная функция loadMore с поддержкой фильтров (БЕЗ LoadMoreWrapper)
+  const loadMoreAuthorShouts = async () => {
+    if (!author()) return
+
+    setIsLoading(true)
     saveScrollPosition()
     const offset = sortedFeed().length
 
@@ -415,35 +453,23 @@ export const AuthorView = (props: AuthorViewProps) => {
         const newShouts = result.filter((shout: Shout) => !currentSlugs.has(shout.slug))
 
         if (newShouts.length) {
-          setSortedFeed((prev) => {
-            const updatedFeed = [...prev, ...newShouts]
-            return updatedFeed
-          })
+          setSortedFeed((prev) => [...prev, ...newShouts])
           setLoadMoreHidden(newShouts.length < FEED_PAGE_SIZE)
         } else {
           setLoadMoreHidden(true)
         }
+      } else {
+        setLoadMoreHidden(true)
       }
 
       restoreScrollPosition()
       return result as LoadMoreItems
     } catch (error) {
       console.error('[AuthorView] Error loading more shouts:', error)
-      return []
+    } finally {
+      setIsLoading(false)
     }
   }
-
-  // Add an effect to update loadMoreHidden when author stats change:
-  createEffect(
-    on(
-      () => stats().shouts,
-      (totalShouts) => {
-        if (totalShouts > 0) {
-          setLoadMoreHidden(sortedFeed().length >= totalShouts)
-        }
-      }
-    )
-  )
 
   const [loadMoreCommentsHidden, setLoadMoreCommentsHidden] = createSignal(
     Boolean(author()?.stat && author()?.stat?.comments === 0)
@@ -674,7 +700,11 @@ export const AuthorView = (props: AuthorViewProps) => {
                 </div>
               }
             >
-              <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
+              <LoadMoreWrapper 
+                loadFunction={loadMoreAuthorShouts}
+                pageSize={FEED_PAGE_SIZE}
+                useScrollTrigger={false}
+              >
                 <For each={sortedFeed()}>
                   {(_article, index) => {
                     const i = index()

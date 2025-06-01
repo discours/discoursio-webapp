@@ -301,6 +301,14 @@ export const FeedFiltersControl = (props: FeedFiltersControlProps) => {
         <div class={styles.dropdowns}>
           <DropDown
             popupProps={{ horizontalAnchor: 'right' }}
+            options={getPeriodGroup()}
+            triggerCssClass={clsx(styles.periodSwitcher, {
+              [styles.active]: pendingPeriod() && pendingPeriod() !== PeriodType.AllTime,
+              [styles.hasChanges]: hasChanges()
+            })}
+          />
+          <DropDown
+            popupProps={{ horizontalAnchor: 'right' }}
             options={getDropdownGroups()}
             triggerCssClass={clsx(styles.periodSwitcher, {
               [styles.active]: pendingFeaturedFilter() !== 'all' || pendingLayouts().length > 0,
@@ -322,14 +330,6 @@ export const FeedFiltersControl = (props: FeedFiltersControlProps) => {
                 />
               )
             }
-          />
-          <DropDown
-            popupProps={{ horizontalAnchor: 'right' }}
-            options={getPeriodGroup()}
-            triggerCssClass={clsx(styles.periodSwitcher, {
-              [styles.active]: pendingPeriod() && pendingPeriod() !== PeriodType.AllTime,
-              [styles.hasChanges]: hasChanges()
-            })}
           />
         </div>
         <Show when={hasChanges()}>

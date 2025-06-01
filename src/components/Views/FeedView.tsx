@@ -1,6 +1,16 @@
 import { A, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show, Suspense, createEffect, createMemo, createSignal, on } from 'solid-js'
+import {
+  CommentsList,
+  FeedCustomization,
+  JoinCommunity,
+  KnowledgeBase,
+  NewsletterSubscription,
+  SuggestBox,
+  TopAuthorsList
+} from '~/components/Feed/AsideComponents'
+import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
 import { ShareModal } from '~/components/_shared/ShareModal'
@@ -15,7 +25,6 @@ import { Reaction } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { getShareUrl } from '../Article/SharePopup'
 import { AuthorLink } from '../Author/AuthorLink'
-import { CommentDate } from '../Comments/CommentDate'
 import { ArticleCard } from '../Feed/ArticleCard'
 import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
 import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
@@ -37,6 +46,9 @@ export const FeedView = (props: FeedProps) => {
   const { showModal } = useUI()
   const { session, client } = useSession()
   const { isFeedLoading, feedByMode, myFeed, mode, initializeFeed } = useFeed()
+
+  // Добавляем состояние для мобильного меню
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = createSignal(false)
 
   const shouldShowPlaceholder = createMemo(() => {
     const feedType = myFeed()
@@ -134,30 +146,13 @@ export const FeedView = (props: FeedProps) => {
   // Компонент для комментариев
   const FreshestCommentsList = () => {
     return (
-      <Show when={props.recentComments?.length > 0}>
-        <section class={styles.asideSection}>
-          <h4>{t('Comments')}</h4>
-          <For each={props.recentComments || []}>
-            {(comment) => {
-              const suffix = comment.id ? `?commentId=${comment.id}` : ''
-              return (
-                <div class={styles.comment} id={`comment-${comment.id}`}>
-                  <div class={clsx('text-truncate', styles.commentBody)}>
-                    <A href={`/${comment.shout.slug}${suffix}`} innerHTML={comment.body || ''} />
-                  </div>
-                  <div class={styles.commentDetails}>
-                    <AuthorLink author={comment.created_by as Author} size={'XS'} />
-                    <CommentDate comment={comment} isShort={true} isLastInRow={true} />
-                  </div>
-                  <div class={clsx('text-truncate', styles.commentArticleTitle)}>
-                    <A href={`/${comment.shout.slug}`}>{comment.shout.title}</A>
-                  </div>
-                </div>
-              )
-            }}
-          </For>
-        </section>
-      </Show>
+      <CommentsList
+        comments={props.recentComments || []}
+        title={t('Recent comments')}
+        maxItems={5}
+        showArticleTitle={true}
+        collapsible={false}
+      />
     )
   }
 
@@ -180,19 +175,12 @@ export const FeedView = (props: FeedProps) => {
   const ArticlesList = () => {
     const { topAuthors } = useAuthors()
 
-    const TopAuthorsList = () => (
-      <section class={styles.asideSection}>
-        <h4>{t('Top authors')}</h4>
-        <For each={topAuthors() || []}>{(author) => <AuthorLink author={author} size={'XS'} />}</For>
-      </section>
-    )
-
     return (
       <>
         <For each={sortedFeed()}>
           {(article, index) => (
             <>
-              {index() === 5 && <TopAuthorsList />}
+              {index() === 5 && <TopAuthorsList authors={topAuthors() || []} />}
               <ArticleCard
                 article={article}
                 settings={{ isFeedMode: true }}
@@ -212,36 +200,37 @@ export const FeedView = (props: FeedProps) => {
   const UnratedArticlesList = () => {
     return (
       <Show when={props.unratedShouts?.length > 0}>
-        <section class={styles.asideSection}>
-          <h4>{t('Be the first to rate')}</h4>
-          <For each={props.unratedShouts || []}>
-            {(article) => (
-              <div
-                class={clsx(styles.comment, styles.unratedArticle)}
-                style={{
-                  'background-image': `url(${getFileUrl(article.cover || '', { width: 40 })})`
-                }}
-              >
-                <Show when={article.main_topic}>
-                  <A href={`/topic/${article.main_topic?.slug}`} class={styles.commentTopic}>
-                    {article.main_topic?.title?.toUpperCase()}
-                  </A>
-                </Show>
-
-                <div class={clsx('text-truncate', styles.commentBody)}>
-                  <A href={`/${article.slug}`}>{article.title}</A>
-                  <Show when={article.subtitle || article.lead}>
-                    <p class={styles.commentText}>{article.subtitle || article.lead}</p>
+        <AsideSection title={t('Be the first to rate')} icon="star" class={styles.unratedSection}>
+          <div class={styles.unratedList}>
+            <For each={props.unratedShouts || []}>
+              {(article) => (
+                <div
+                  class={clsx(styles.comment, styles.unratedArticle)}
+                  style={{
+                    'background-image': `url(${getFileUrl(article.cover || '', { width: 40 })})`
+                  }}
+                >
+                  <Show when={article.main_topic}>
+                    <A href={`/topic/${article.main_topic?.slug}`} class={styles.commentTopic}>
+                      {article.main_topic?.title?.toUpperCase()}
+                    </A>
                   </Show>
-                </div>
 
-                <div class={styles.commentDetails}>
-                  <AuthorLink author={article.created_by as Author} size={'XS'} />
+                  <div class={clsx('text-truncate', styles.commentBody)}>
+                    <A href={`/${article.slug}`}>{article.title}</A>
+                    <Show when={article.subtitle || article.lead}>
+                      <p class={styles.commentText}>{article.subtitle || article.lead}</p>
+                    </Show>
+                  </div>
+
+                  <div class={styles.commentDetails}>
+                    <AuthorLink author={article.created_by as Author} size={'XS'} />
+                  </div>
                 </div>
-              </div>
-            )}
-          </For>
-        </section>
+              )}
+            </For>
+          </div>
+        </AsideSection>
       </Show>
     )
   }
@@ -250,16 +239,50 @@ export const FeedView = (props: FeedProps) => {
     <Suspense fallback={<Loading />}>
       <Show when={!isLoading() && sortedFeed()} fallback={<Loading />}>
         <div class={styles.feedLayout}>
-          <div class={clsx(styles.feedSidebar)}>
-            <Sidebar />
+          {/* Мобильная кнопка меню */}
+          <button
+            class={styles.mobileMenuToggle}
+            onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen())}
+            aria-label={t('Toggle menu')}
+          >
+            <span class={styles.hamburger}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </button>
+
+          {/* Улучшенный мобильный sidebar с анимациями */}
+          <div
+            class={clsx(styles.feedSidebar, {
+              [styles.mobileOpen]: isMobileSidebarOpen(),
+              [styles.withTransition]: true
+            })}
+          >
+            <div class={styles.sidebarContent}>
+              <Sidebar />
+            </div>
           </div>
 
+          {/* Улучшенный оверлей для закрытия sidebar на мобильных */}
+          <div
+            class={clsx(styles.mobileOverlay, {
+              [styles.visible]: isMobileSidebarOpen(),
+              [styles.animated]: true
+            })}
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+
+          {/* Оптимизированная основная область с Grid Layout */}
           <div class={clsx(styles.feedMain)}>
-            <div class={styles.filtersContainer}>
-              <FeedSwitcher options={['recent', 'top', 'hot']} prefix={'/feed'} />
-              <FeedFiltersControl />
+            <div class="wide-container">
+              <div class={clsx(styles.groupControls, 'row')}>
+                <div class={styles.filtersRow}>
+                  <FeedSwitcher options={['recent', 'top', 'hot']} prefix={'/feed'} />
+                  <FeedFiltersControl />
+                </div>
+              </div>
             </div>
-            <br />
 
             <Show when={!isFeedLoading()} fallback={<Loading />}>
               <div class={styles.feedContent}>
@@ -286,28 +309,45 @@ export const FeedView = (props: FeedProps) => {
             </Show>
           </div>
 
+          {/* Улучшенная aside область с унифицированными секциями */}
           <aside class={clsx(styles.feedAside)}>
             <Show when={!isFeedLoading()}>
               <Suspense fallback={<Loading />}>
-                <FreshestCommentsList />
-                <UnratedArticlesList />
-                <section class={clsx(styles.asideSection, styles.pinnedLinks)}>
-                  <h4>{t('Knowledge base')}</h4>
-                  <ul class="nodash">
-                    <li>
-                      <A href="/guide">{t('How Discours works')}</A>
-                    </li>
-                    <li>
-                      <A href="/how-to-write-a-good-article">{t('How to write a good article')}</A>
-                    </li>
-                    <li>
-                      <A href="/rules">{t('Rules of constructive discussions')}</A>
-                    </li>
-                    <li>
-                      <A href="/principles">{t('Community principles')}</A>
-                    </li>
-                  </ul>
-                </section>
+                <div class={styles.asideContent}>
+                  <FreshestCommentsList />
+                  <UnratedArticlesList />
+                  <TopAuthorsList
+                    authors={useAuthors().topAuthors() || []}
+                    maxItems={5}
+                    showViewAll={true}
+                  />
+                  <KnowledgeBase />
+                  {/* <Show when={!session()?.token}>
+                    <JoinCommunity
+                      title={''}
+                      description={t(
+                        'Connect and discuss which articles will come out in the journal, edit, perform as an expert or become an author'
+                      )}
+                    />
+                  </Show>
+                  <NewsletterSubscription
+                    title={''}
+                    description={t(
+                      'Subscribe to the newsletter of the best publications to receive a digest of the main materials'
+                    )}
+                  />
+                  <Show when={session()?.token}>
+                    <FeedCustomization
+                      title={''}
+                      description={t(
+                        'Subscribe to your favorite topics, authors and communities — instantly learn about new publications and discussions'
+                      )}
+                      variant="illustration"
+                    />
+                  </Show>
+                  */}
+                  <SuggestBox title={t('Have an idea?')} />
+                </div>
               </Suspense>
             </Show>
           </aside>

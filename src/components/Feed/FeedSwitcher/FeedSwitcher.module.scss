@@ -12,6 +12,7 @@
   height: 4rem;
   align-items: center;
   justify-content: stretch;
+  min-width: max-content;
 
   @include media-breakpoint-down(md) {
     width: 100%;

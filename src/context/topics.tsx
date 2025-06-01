@@ -43,78 +43,64 @@ export function useTopics() {
 export type TopicSort = 'shouts' | 'followers' | 'authors' | 'title'
 
 /**
- * Загружает топики с обновлением статистики из сообщества
- * @returns Промис с массивом топиков с обновленной статистикой
+ * Оптимизированная загрузка топиков - используем только один источник данных
+ * @returns Промис с массивом топиков
  */
-async function loadTopicsWithStats(): Promise<Topic[]> {
+async function loadTopicsOptimized(): Promise<Topic[]> {
   try {
-    // Загрузка основных топиков через старое API
-    const topicsLoader = loadTopics()
-    const mainTopics = (await topicsLoader()) || []
-
-    // Загрузка топиков с актуальной статистикой из сообщества
+    // Используем только один источник данных - новое API с актуальной статистикой
     const options: QueryGet_Topics_By_CommunityArgs = {
       community_id: 1,
-      limit: 100, // загружаем максимальное количество для обновления статистики
+      limit: 200, // загружаем больше данных за один раз
       offset: 0
     }
 
-    const topicsWithStatsLoader = loadTopicsByCommunity(options)
-    const topicsWithStats = (await topicsWithStatsLoader()) || []
+    const topicsLoader = loadTopicsByCommunity(options)
+    const topics = (await topicsLoader()) || []
 
-    // Создаем мапу топиков со статистикой по слагам
-    const statsMap: Record<string, Topic> = {}
-    topicsWithStats.forEach((topic) => {
-      if (topic?.slug) {
-        statsMap[topic.slug] = topic
-      }
-    })
-
-    // Обновляем статистику в основных топиках
-    const updatedTopics = mainTopics.map((topic) => {
-      if (topic?.slug && statsMap[topic.slug]) {
-        return {
-          ...topic,
-          stat: statsMap[topic.slug].stat
-        }
-      }
-      return topic
-    })
-
-    return updatedTopics
+    return topics
   } catch (error) {
-    console.error('Failed to load topics with stats:', error)
-    // Возвращаем пустой массив в случае ошибки
-    return []
+    console.error('Failed to load topics:', error)
+    // В случае ошибки пробуем старое API
+    try {
+      const fallbackLoader = loadTopics()
+      return (await fallbackLoader()) || []
+    } catch (fallbackError) {
+      console.error('Fallback topics loading failed:', fallbackError)
+      return []
+    }
   }
 }
 
-// Простая реализация провайдера без IndexedDB
+// Оптимизированная реализация провайдера
 export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
   const [state, setState] = createStore({
     entities: {} as Record<string, Topic>,
     sorted: [] as Topic[],
     sortBy: 'shouts' as TopicSort,
     random: undefined as Topic | undefined,
-    loading: true,
+    loading: false, // начинаем с false - загрузка будет только при необходимости
     error: undefined as Error | undefined,
     offset: 0,
     limit: TOPICS_PER_PAGE,
     hasMore: true,
     byAuthors: [] as Topic[],
-    byShouts: [] as Topic[]
+    byShouts: [] as Topic[],
+    initialized: false // флаг инициализации
   })
 
-  const [topics, { refetch }] = createResource<Topic[], { sortBy: TopicSort }>(
-    () => ({ sortBy: state.sortBy }),
+  // Ленивая инициализация - загружаем данные только при первом запросе
+  const [topics, { refetch }] = createResource<Topic[], { sortBy: TopicSort; force?: boolean }>(
+    () => (state.initialized ? { sortBy: state.sortBy } : null), // возвращаем null пока не инициализирован
     async ({ sortBy }) => {
       try {
         setState('loading', true)
-        
-        // Простая загрузка данных без кеширования
-        const result = await loadTopicsWithStats()
-        
-        // Применяем сортировку к результату
+
+        // Упрощенная загрузка данных
+        const result = await loadTopicsOptimized()
+
+        // Применяем сортировку к результату только один раз
+        setState('initialized', true)
         return result.sort(byTopicStatDesc(sortBy))
       } catch (error) {
         console.error('Failed to load topics:', error)
@@ -131,7 +117,7 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     Topic[],
     { offset: number; limit: number }
   >(
-    () => ({ offset: state.offset, limit: state.limit }),
+    () => (state.offset > 0 ? { offset: state.offset, limit: state.limit } : null),
     async ({ offset, limit }) => {
       try {
         setState('loading', true)
@@ -145,7 +131,7 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
         const topicsLoader = loadTopicsByCommunity(options)
         const newData = await topicsLoader()
 
-        setState('hasMore', newData?.length >= limit)
+        setState('hasMore', (newData?.length || 0) >= limit)
         return newData || []
       } catch (error) {
         console.error('Failed to load community topics:', error)
@@ -158,86 +144,84 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     { initialValue: [] }
   )
 
+  // Оптимизированный эффект для обработки основных топиков
   createEffect(() => {
     const newTopics = topics()
     if (!newTopics?.length) return
 
-    setState((prev: any) => {
-      // Создаем новый объект entities один раз
-      const newEntities = { ...prev.entities }
+    setState((prev) => {
+      // Создаем entities один раз
+      const entities: Record<string, Topic> = {}
 
-      // Заполняем его без spread
-      newTopics.forEach((t: Topic) => {
-        if (t?.slug) newEntities[t.slug] = t
+      // Заполняем entities без лишних операций
+      newTopics.forEach((topic) => {
+        if (topic?.slug) {
+          entities[topic.slug] = topic
+        }
       })
 
-      // Получаем все топики с правильной типизацией
-      const allTopics = Object.values(newEntities) as Topic[]
+      // Предварительно фильтруем топики для разных сортировок
+      const topicsWithAuthors: Topic[] = []
+      const topicsWithShouts: Topic[] = []
 
-      // Топики с авторами
-      const topicsByAuthors = allTopics
-        .filter((topic: Topic) => topic.stat?.authors && topic.stat.authors > 0)
-        .sort(byTopicStatDesc('authors'))
+      newTopics.forEach((topic) => {
+        if (topic.stat?.authors && topic.stat.authors > 0) {
+          topicsWithAuthors.push(topic)
+        }
+        if (topic.stat?.shouts && topic.stat.shouts > 0) {
+          topicsWithShouts.push(topic)
+        }
+      })
 
-      // Топики с публикациями
-      const topicsByShouts = allTopics
-        .filter((topic: Topic) => topic.stat?.shouts && topic.stat.shouts > 0)
-        .sort(byTopicStatDesc('shouts'))
-
-      // Применяем сортировку к текущему выбранному типу
-      const sorted = allTopics.sort(byTopicStatDesc(prev.sortBy))
-
-      // Восстанавливаем random
-      const random = prev.random || sorted[0]
+      // Сортируем только один раз для каждого типа
+      const byAuthors = topicsWithAuthors.sort(byTopicStatDesc('authors'))
+      const byShouts = topicsWithShouts.sort(byTopicStatDesc('shouts'))
 
       return {
         ...prev,
-        entities: newEntities,
-        sorted,
-        byAuthors: topicsByAuthors,
-        byShouts: topicsByShouts,
-        random,
+        entities,
+        sorted: newTopics, // уже отсортировано в ресурсе
+        byAuthors,
+        byShouts,
+        random: prev.random || newTopics[0],
         loading: false
       }
     })
   })
 
-  // Отдельный эффект для обработки топиков из сообщества для пагинации
+  // Оптимизированный эффект для пагинации
   createEffect(() => {
     const newTopics = communityTopics()
     if (!newTopics?.length) return
 
-    setState((prev: any) => {
-      // Создаем новый объект entities
-      const newEntities = { ...prev.entities }
-
-      // Добавляем новые топики или обновляем существующие
-      newTopics.forEach((t: Topic) => {
-        if (t?.slug) newEntities[t.slug] = t
+    setState((prev) => {
+      // Обновляем entities
+      const entities = { ...prev.entities }
+      newTopics.forEach((topic) => {
+        if (topic?.slug) {
+          entities[topic.slug] = topic
+        }
       })
 
-      // Получаем все топики с правильной типизацией
-      const allTopics = Object.values(newEntities) as Topic[]
+      // Обновляем только нужный список в зависимости от текущей сортировки
+      let byAuthors = prev.byAuthors
+      let byShouts = prev.byShouts
 
-      // Обновляем отдельные списки по типам сортировки в зависимости от текущей сортировки
-      let byAuthors = [...prev.byAuthors]
-      let byShouts = [...prev.byShouts]
-
-      // Обновляем только тот список, который соответствует текущей сортировке
       if (prev.sortBy === 'authors') {
-        const newAuthors = newTopics.filter((topic: Topic) => topic.stat?.authors && topic.stat.authors > 0)
-        byAuthors = [...byAuthors, ...newAuthors].sort(byTopicStatDesc('authors'))
+        const newAuthorsTopics = newTopics.filter((t) => t.stat?.authors && t.stat.authors > 0)
+        byAuthors = [...prev.byAuthors, ...newAuthorsTopics].sort(byTopicStatDesc('authors'))
       } else if (prev.sortBy === 'shouts') {
-        const newShouts = newTopics.filter((topic: Topic) => topic.stat?.shouts && topic.stat.shouts > 0)
-        byShouts = [...byShouts, ...newShouts].sort(byTopicStatDesc('shouts'))
+        const newShoutsTopics = newTopics.filter((t) => t.stat?.shouts && t.stat.shouts > 0)
+        byShouts = [...prev.byShouts, ...newShoutsTopics].sort(byTopicStatDesc('shouts'))
       }
 
-      // Применяем сортировку к полному списку топиков
+      // Обновляем основной отсортированный список
+      const allTopics = Object.values(entities) as Topic[]
       const sorted = allTopics.sort(byTopicStatDesc(prev.sortBy))
 
       return {
         ...prev,
-        entities: newEntities,
+        entities,
         sorted,
         byAuthors,
         byShouts,
@@ -258,25 +242,22 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     setTopicsSort: (sortBy) => {
       setState('sortBy', sortBy as TopicSort)
       setState('offset', 0)
+      setState('initialized', true) // инициализируем при первом вызове
       refetch()
     },
     addTopics: (newTopics) =>
       setState((prev) => {
-        // Создаем новый объект entities один раз
-        const newEntities = { ...prev.entities }
-
-        // Заполняем его без spread
-        newTopics.forEach((t) => {
-          if (t?.slug) newEntities[t.slug] = t
+        // Простое обновление entities
+        const entities = { ...prev.entities }
+        newTopics.forEach((topic) => {
+          if (topic?.slug) {
+            entities[topic.slug] = topic
+          }
         })
-
-        return {
-          ...prev,
-          entities: newEntities
-        }
+        return { ...prev, entities }
       }),
     loadTopics: async () => {
-      // Принудительно обновляем данные
+      setState('initialized', true) // инициализируем при первом вызове
       const result = await refetch()
       return result || []
     },
@@ -284,7 +265,6 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
       if (!state.hasMore || state.loading) return []
 
       setState('offset', state.offset + state.limit)
-
       const result = await refetchCommunityTopics()
       return result || []
     }

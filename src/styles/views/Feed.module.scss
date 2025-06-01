@@ -1,3 +1,5 @@
+// Используем CSS custom properties из _theme.scss для единообразия дизайн-системы
+
 .feed {
   padding-top: 7.2rem;
 
@@ -22,7 +24,7 @@
   .noContent {
     text-align: center;
     padding: 2rem;
-    color: var(--text-secondary);
+    color: var(--black-300);
   }
 }
 
@@ -72,11 +74,11 @@
 }
 
 .feedAside {
-  flex: 0 0 300px;
-  min-width: 300px;
-  margin-top: -1.1em;
-
-  @include media-breakpoint-down(md) {
+  grid-area: aside;
+  width: 300px;
+  
+  @include media-breakpoint-down(xl) {
+    /* Исчезает на планшетах и меньше */
     display: none;
   }
 
@@ -88,7 +90,7 @@
     letter-spacing: -1%;
     margin-bottom: 1.2rem;
     margin-top: 0;
-    color: #141414;
+    color: var(--black-500);
     
     @include media-breakpoint-up(lg) {
       font-size: 1.6rem;
@@ -103,7 +105,7 @@
     line-height: 1.25;
     letter-spacing: -1%;
     margin-bottom: 0.8rem;
-    color: #141414;
+    color: var(--black-500);
     
     @include media-breakpoint-up(lg) {
       font-size: 1.4rem;
@@ -118,7 +120,7 @@
     font-weight: 400;
     line-height: 1.25;
     letter-spacing: -1%;
-    color: #141414;
+    color: var(--black-500);
     margin-bottom: 0.8rem;
     
     @include media-breakpoint-up(lg) {
@@ -134,11 +136,11 @@
     font-weight: 500;
     line-height: 1.25;
     letter-spacing: -1%;
-    color: #141414;
+    color: var(--black-500);
     text-decoration: none;
     
     &:hover {
-      color: #2638d9;
+      color: var(--blue-500);
       text-decoration: underline;
     }
     
@@ -155,7 +157,7 @@
     line-height: 1.33;
     letter-spacing: 8%;
     text-transform: uppercase;
-    color: #9FA1A7;
+    color: var(--black-300);
     margin-bottom: 1.2rem;
     margin-top: 0;
   }
@@ -205,7 +207,7 @@
   letter-spacing: -1%;
   margin-bottom: 1.6rem;
   margin-top: 0;
-  color: #141414;
+  color: var(--black-500);
 
   @include media-breakpoint-up(lg) {
     font-size: 1.6rem;
@@ -293,7 +295,7 @@
   white-space: nowrap;
 
   &:hover {
-    background: #2638d9;
+    background: var(--blue-500);
   }
 
   a:link {
@@ -415,21 +417,26 @@
   align-items: center;
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
-  gap: 2rem;
+  justify-content: flex-start;
+  gap: 1rem;
   width: 100%;
+  flex-wrap: nowrap;
+  overflow: visible;
+  position: relative;
 
   @include media-breakpoint-down(md) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1.5rem;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.8rem;
     min-height: auto;
+    flex-wrap: wrap;
   }
 
   // Принудительное выравнивание всех дочерних элементов
   > * {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
     
     @include media-breakpoint-down(md) {
       height: auto;
@@ -473,16 +480,20 @@
     align-items: center;
     gap: 1rem;
     flex-wrap: nowrap;
-    flex: 0 0 auto;
-    justify-content: flex-end;
+    flex: 1;
+    max-width: calc(100% - 5rem);
+    justify-content: flex-start;
     height: 4rem;
+    padding-right: 5rem;
     
     @include media-breakpoint-down(md) {
-      justify-content: stretch;
+      justify-content: flex-start;
       gap: 0.8rem;
       flex: 1;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       height: auto;
+      max-width: calc(100% - 4rem);
+      padding-right: 4rem;
     }
     
     // Принудительное выравнивание всех элементов в dropdowns
@@ -490,9 +501,10 @@
       height: 4rem;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       background: rgba(255, 255, 255, 0.5);
       border-radius: 0.8rem;
+      border: none;
       cursor: pointer;
       transition: all 0.15s ease-in-out;
       
@@ -507,19 +519,21 @@
     
     .periodSwitcher {
       flex: 0 0 auto;
-      min-width: 120px;
+      min-width: 140px;
       font-family: Muller, Arial, Helvetica, sans-serif;
       font-size: 1.4rem;
       font-weight: 500;
       line-height: 1.25;
       letter-spacing: -0.5%;
       color: #666;
-      padding: 0 1rem;
+      padding: 0 1.2rem;
+      border: none;
       
       @include media-breakpoint-down(md) {
         flex: 1;
         min-width: 0;
         font-size: 1.3rem;
+        padding: 0 1rem;
       }
       
       &:hover {
@@ -529,6 +543,164 @@
       &.active {
         color: #000000;
         font-weight: 600;
+      }
+      
+      // Индикатор изменений
+      &.hasChanges {
+        font-weight: 200;
+        box-shadow: none;
+      }
+    }
+
+    // Стили для кнопок применения фильтров
+    .buttons {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      flex-shrink: 0;
+      z-index: 10;
+      
+      @include media-breakpoint-down(md) {
+        position: static;
+        transform: none;
+        margin-left: auto;
+        width: auto;
+        justify-content: flex-end;
+        order: 999;
+      }
+      
+      .applyButton {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 4rem;
+        height: 4rem;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #e9ecef;
+        border-radius: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        opacity: 0;
+        animation: slideInFromRight 0.3s ease-in-out forwards;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        
+        @include media-breakpoint-down(md) {
+          width: 3.6rem;
+          height: 3.6rem;
+        }
+        
+        // Стили для иконки внутри кнопки
+        svg, img {
+          width: 18px !important;
+          height: 18px !important;
+          opacity: 0.7;
+          transition: opacity 0.2s ease;
+          
+          path {
+            stroke: #666 !important;
+            fill: transparent !important;
+          }
+        }
+        
+        &:not([disabled]) {
+          &:hover {
+            background: rgba(255, 255, 255, 1);
+            border-color: #2638d9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(38, 56, 217, 0.2);
+            
+            svg, img {
+              opacity: 1;
+              
+              path {
+                stroke: #2638d9 !important;
+              }
+            }
+          }
+        }
+        
+        &[disabled] {
+          opacity: 0.5;
+          cursor: not-allowed;
+          background: #f5f5f5;
+          border-color: #ddd;
+        }
+      }
+    }
+
+    // Стили для кастомного триггера с иконками лейаутов
+    .layoutIconsTrigger {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0 0.8rem 0 1rem;
+      
+      .layoutIcon {
+        width: 1.6rem;
+        height: 1.6rem;
+        opacity: 0.7;
+        
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+      }
+      
+      svg {
+        margin-left: 0.4rem;
+        flex-shrink: 0;
+      }
+      
+      // Стили для комбинированного триггера
+      .featuredText {
+        font-size: 1.4rem;
+        font-weight: 500;
+        margin-right: 0.6rem;
+        white-space: nowrap;
+      }
+      
+      .layoutIconsGroup {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+    }
+
+    // Общие стили для всех кастомных триггеров
+    .trigger {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.5rem;
+      padding: 0 1.2rem;
+      white-space: nowrap;
+      font-family: Muller, Arial, Helvetica, sans-serif;
+      font-size: 1.4rem;
+      font-weight: 500;
+      line-height: 1.25;
+      letter-spacing: -0.5%;
+      color: #666;
+      min-width: 140px;
+      
+      &:hover {
+        color: #333;
+      }
+      
+      &.active {
+        color: #000000;
+        font-weight: 600;
+      }
+      
+      // Стилизация SVG стрелочки
+      svg {
+        flex-shrink: 0;
+        margin-left: 0;
       }
     }
 
@@ -587,6 +759,18 @@
   }
 }
 
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -600,64 +784,456 @@
 }
 
 .feedLayout {
-  display: flex;
-  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 280px) minmax(0, 800px) minmax(0, 300px);
+  grid-template-areas: "sidebar main aside";
+  gap: var(--spacing-l, 2rem);
   min-height: 100vh;
-  gap: 2rem;
-  padding: 0 2rem;
-  max-width: none;
+  position: relative;
+  justify-content: center;
+  max-width: 1380px;
+  margin: 0 auto;
+
+  @include media-breakpoint-down(xl) {
+    grid-template-columns: minmax(0, 280px) 1fr;
+    grid-template-areas: "sidebar main";
+    max-width: 1080px;
+  }
+
+  @include media-breakpoint-down(lg) {
+    grid-template-columns: 60px 1fr;
+    gap: var(--spacing-m);
+    max-width: 860px;
+  }
 
   @include media-breakpoint-down(md) {
-    flex-direction: column;
-    padding: 0 1rem;
-    gap: 1rem;
+    grid-template-columns: 1fr;
+    grid-template-areas: "main";
+    gap: 0;
+    max-width: 100%;
+    padding: 0 var(--spacing-m);
   }
 }
 
 .feedSidebar {
-  flex: 0 0 280px;
-  min-width: 280px;
+  grid-area: sidebar;
+  width: 280px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  @include media-breakpoint-down(lg) {
+    /* Сужаем до иконок */
+    width: 60px;
+    overflow: hidden;
+    
+    /* Скрываем текст, оставляем только иконки */
+    .sidebarItemNameLabel {
+      display: none;
+    }
+    
+    /* Центрируем иконки */
+    .sidebarItemName {
+      justify-content: center;
+      padding: 0;
+    }
+    
+    .icon {
+      margin-right: 0;
+    }
+  }
 
   @include media-breakpoint-down(md) {
-    flex: none;
-    min-width: auto;
-    order: 2;
     position: fixed;
     top: 0;
     left: 0;
-    width: 280px;
     height: 100vh;
-    background: var(--bg-color, #fff);
+    width: 320px;
+    background: var(--white-500);
+    box-shadow: var(--comment-shadow-lg);
     z-index: 1000;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
-    overflow-y: auto;
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    
-    &.visible {
-      transform: translateX(0);
+    overflow-y: auto;
+
+    /* Возвращаем полный вид на мобильных */
+    .sidebarItemNameLabel {
+      display: block;
     }
     
-    // Оверлей для затемнения фона
-    &::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 280px;
-      width: calc(100vw - 280px);
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: -1;
+    .sidebarItemName {
+      justify-content: flex-start;
+      padding: initial;
+    }
+    
+    .icon {
+      margin-right: 0.8rem;
+    }
+
+    &.withTransition {
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    &.mobileOpen {
+      transform: translateX(0);
+    }
+  }
+}
+
+.sidebarContent {
+  @include media-breakpoint-down(md) {
+    padding: var(--spacing-l);
+    position: relative;
+    height: 100%;
+  }
+}
+
+.mobileMenuToggle {
+  display: none;
+  position: fixed;
+  top: var(--spacing-m);
+  left: var(--spacing-m);
+  z-index: 1001;
+  background: var(--white-500);
+  border: var(--border-width) solid var(--black-100);
+  border-radius: var(--comment-radius-md);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: var(--comment-shadow-md);
+  transition: all 0.2s ease;
+
+  @include media-breakpoint-down(md) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &:hover {
+    box-shadow: var(--comment-shadow-lg);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.hamburger {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  span {
+    width: 18px;
+    height: 2px;
+    background: var(--black-500);
+    border-radius: 1px;
+    transition: all 0.2s ease;
+  }
+}
+
+.mobileOverlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+
+  @include media-breakpoint-down(md) {
+    display: block;
+
+    &.animated {
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    &.visible {
+      opacity: 1;
+      visibility: visible;
     }
   }
 }
 
 .feedMain {
-  flex: 1;
-  max-width: none;
+  grid-area: main;
   min-width: 0;
+  padding: var(--spacing-l) 0;
 
   @include media-breakpoint-down(md) {
-    order: 1;
+    padding: var(--spacing-m);
   }
+
+  // Улучшенные стили для контейнера
+  .wide-container {
+    max-width: 100%;
+    padding: 0;
+
+    @include media-breakpoint-up(lg) {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+  }
+}
+
+.feedContent {
+  display: grid;
+  gap: var(--spacing-l);
+
+  @include media-breakpoint-down(md) {
+    gap: var(--spacing-m);
+  }
+}
+
+.mainArticles {
+  display: grid;
+  gap: var(--spacing-l);
+
+  @include media-breakpoint-down(md) {
+    gap: var(--spacing-m);
+  }
+}
+
+.feedAside {
+  grid-area: aside;
+  width: 300px;
+  
+  @include media-breakpoint-down(xl) {
+    /* Исчезает на планшетах и меньше */
+    display: none;
+  }
+}
+
+.asideContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-l);
+}
+
+.asideSection {
+  padding: var(--spacing-l);
+  background: var(--white-500);
+  border-radius: var(--comment-radius-lg);
+
+  @include media-breakpoint-up(lg) {
+    padding: calc(var(--spacing-l) * 1.5);
+  }
+
+  // Убираем отступы для первого и последнего элемента
+  > *:first-child {
+    margin-top: 0;
+  }
+
+  > *:last-child {
+    margin-bottom: 0;
+  }
+
+  // Стили для заголовков секций
+  h4 {
+    font-family: Muller, Arial, Helvetica, sans-serif;
+    font-size: 1.6rem;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin-bottom: var(--spacing-l);
+    margin-top: 0;
+    color: var(--black-500);
+  }
+
+  // Стили для списков в aside
+  ul, ol {
+    padding-left: 0;
+    list-style: none;
+    margin: 0;
+
+    li {
+      margin-bottom: var(--spacing-m);
+      padding: var(--spacing-xs) 0;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  // Стили для ссылок
+  a {
+    font-family: Muller, Arial, Helvetica, sans-serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--black-500);
+    text-decoration: none;
+    transition: color 0.2s ease;
+    
+    &:hover {
+      color: var(--blue-500);
+      text-decoration: underline;
+    }
+  }
+}
+
+.asideSectionDivider {
+  display: none;
+}
+
+// Добавляем стили для общих контролов
+.groupControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: calc(var(--spacing-l) * 2);
+  margin-top: 0;
+  
+  @include media-breakpoint-down(sm) {
+    flex-direction: column;
+    gap: var(--spacing-l);
+  }
+}
+
+.filtersRow {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin: 0 auto calc(var(--spacing-l) * 2);
+  width: 100%;
+  max-width: 1200px;
+  padding: var(--spacing-l) calc(var(--spacing-l) * 1.5);
+  gap: var(--spacing-l);
+  
+  @include media-breakpoint-down(md) {
+    padding: var(--spacing-l) var(--spacing-m);
+    margin-bottom: var(--spacing-l);
+    gap: var(--spacing-l);
+  }
+  
+  @include media-breakpoint-down(sm) {
+    margin: 0 0 var(--spacing-l);
+    padding: var(--spacing-m);
+    flex-direction: column;
+    gap: var(--spacing-m);
+    justify-content: center;
+    background: var(--white-500);
+    border-radius: var(--comment-radius-lg);
+    box-shadow: var(--comment-shadow-sm);
+  }
+
+  // Стили для FeedSwitcher
+  .feedSwitcher {
+    margin-top: 0;
+    margin-bottom: 0;
+    min-width: 320px;
+    overflow: hidden;
+    flex-shrink: 0;
+
+    @include media-breakpoint-down(sm) {
+      min-width: 100%;
+      order: 1;
+    }
+
+    & > li {
+      margin-bottom: 0;
+    }
+    
+    ul {
+      display: flex;
+      padding: 0.4rem;
+      margin: 0;
+      list-style: none;
+      background: var(--black-50);
+      border-radius: var(--comment-radius-md);
+      
+      li {
+        flex: 1;
+        
+        a {
+          display: block;
+          padding: var(--spacing-m) var(--spacing-l);
+          text-align: center;
+          font-weight: 600;
+          font-size: 1.4rem;
+          color: var(--black-300);
+          text-decoration: none;
+          transition: all 0.2s ease;
+          border-radius: var(--border-radius);
+          
+          @include media-breakpoint-down(sm) {
+            padding: 0.8rem var(--spacing-m);
+            font-size: 1.3rem;
+          }
+          
+          &:hover {
+            color: var(--black-400);
+            background: rgba(255, 255, 255, 0.8);
+          }
+          
+          &.active,
+          &[aria-current="page"] {
+            color: var(--black-500);
+            background: var(--white-500);
+            box-shadow: var(--comment-shadow-sm);
+          }
+        }
+      }
+    }
+  }
+
+  // Стили для dropdown фильтров
+  .dropdowns {
+    display: flex;
+    flex-flow: row nowrap;
+    gap: var(--spacing-m);
+    justify-content: flex-start;
+    
+    @include media-breakpoint-down(sm) {
+      width: 100%;
+      justify-content: stretch;
+      order: 2;
+      
+      & > * {
+        flex: 1;
+      }
+    }
+    
+    & > div {
+      min-width: 140px;
+      
+      button, select {
+        background: var(--white-500);
+        border: 2px solid var(--black-100);
+        border-radius: var(--comment-radius-md);
+        padding: 0.8rem var(--spacing-m);
+        font-size: 1.4rem;
+        font-weight: 500;
+        color: var(--black-400);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        
+        &:hover {
+          box-shadow: 0 2px 8px rgba(38, 56, 217, 0.1);
+          border-color: var(--blue-500);
+        }
+        
+        &:focus {
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(38, 56, 217, 0.1);
+          border-color: var(--blue-500);
+        }
+      }
+    }
+  }
+}
+
+// Стили для новых aside компонентов
+.unratedSection {
+  border-left: 3px solid var(--orange-100);
+}
+
+.unratedList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
 }

@@ -21,6 +21,7 @@ import { Author, AuthorsBy, LoadShoutsOptions, Shout, Stat, Topic } from '~/grap
 import { getUnixtime } from '~/lib/fromPeriod'
 import { FeedDeduplicationContext } from '~/utils/deduplicate'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
+import { AuthorCard } from '../Author/AuthorCard'
 import { Beside } from '../Feed/Beside'
 import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
 import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
@@ -31,7 +32,6 @@ import { FullTopic } from '../Topic/Full'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
 import { Loading } from '../_shared/Loading'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
-import { AuthorCard } from '../Author/AuthorCard'
 
 import styles from '~/styles/views/Topic.module.scss'
 
@@ -52,6 +52,8 @@ type TopicStats = {
   followers?: number
 }
 
+type TopicTab = 'shouts' | 'authors' | 'about'
+
 export const TopicView = (props: Props) => {
   const { t } = useLocalize()
   const loc = useLocation()
@@ -60,7 +62,7 @@ export const TopicView = (props: Props) => {
   const { topicEntities } = useTopics()
 
   // Состояние для управления табами
-  const [currentTab, setCurrentTab] = createSignal<string | undefined>()
+  const [currentTab, setCurrentTab] = createSignal<TopicTab | undefined>()
 
   // 1. Обновим сигналы и добавим эффект для начальных данных
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
@@ -72,15 +74,17 @@ export const TopicView = (props: Props) => {
   const [loadMoreAuthorsHidden, setLoadMoreAuthorsHidden] = createSignal(false)
 
   // Эффект для обновления топика из контекста, но только если он еще не установлен или изменился
-  createEffect(on(topicEntities, (ttt: Record<string, Topic>) => {
-    const contextTopic = ttt[props.topicSlug]
-    const currentTopic = topic()
-    
-    // Обновляем только если топик из контекста более актуальный (имеет статистику)
-    if (contextTopic && (!currentTopic || !currentTopic.stat || contextTopic.stat)) {
-      setTopic(contextTopic)
-    }
-  }))
+  createEffect(
+    on(topicEntities, (ttt: Record<string, Topic>) => {
+      const contextTopic = ttt[props.topicSlug]
+      const currentTopic = topic()
+
+      // Обновляем только если топик из контекста более актуальный (имеет статистику)
+      if (contextTopic && (!currentTopic || !currentTopic.stat || contextTopic.stat)) {
+        setTopic(contextTopic)
+      }
+    })
+  )
 
   // Мемо для статистики топика
   const stats = createMemo<TopicStats>(() => {
@@ -396,9 +400,7 @@ export const TopicView = (props: Props) => {
           </Show>
         </li>
         <li classList={{ 'view-switcher__item--selected': currentTab() === 'about' }}>
-          <A href={`/topic/${props.topicSlug}/about`}>
-            {t('About')}
-          </A>
+          <A href={`/topic/${props.topicSlug}/about`}>{t('About')}</A>
         </li>
       </ul>
     </div>
@@ -431,7 +433,7 @@ export const TopicView = (props: Props) => {
           // Сбрасываем данные авторов для нового топика
           setTopicAuthorsList([])
           setLoadMoreAuthorsHidden(false)
-          
+
           // Обновляем топик из пропсов
           if (newTopic) {
             setTopic(newTopic)
@@ -516,29 +518,17 @@ export const TopicView = (props: Props) => {
             <div class="col-md-24">
               <div class={styles.controlsRow}>
                 <TabNavigator />
+              </div>
 
-                {/* Центральный блок с фильтрами - показываем только на вкладке публикаций */}
-                <Show when={!currentTab()}>
-                  <div class={styles.filtersInline}>
-                    <FeedSwitcher
-                      options={['recent', 'top', 'hot']}
-                      prefix={`/topic/${props.topicSlug}`}
-                      class={styles.feedSwitcher}
-                    />
-                    <FeedFiltersControl />
-                  </div>
-                </Show>
-
-                {/* Пустой div для симметрии когда нет фильтров */}
-                <Show when={currentTab()}>
-                  <div class={styles.filtersInline} />
-                </Show>
-
-                {/* Статистика справа */}
-                <Show when={stats().followers !== undefined}>
-                  <div class={styles.ratingContainer}>
-                    {t('Followers')}: {stats().followers}
-                  </div>
+              {/* Центральный блок с фильтрами - показываем только на вкладке публикаций */}
+              <div class={styles.filtersInline}>
+                <Show when={currentTab() === 'shouts'}>
+                  <FeedSwitcher
+                    options={['recent', 'top', 'hot']}
+                    prefix={`/topic/${props.topicSlug}`}
+                    class={styles.feedSwitcher}
+                  />
+                  <FeedFiltersControl />
                 </Show>
               </div>
             </div>
@@ -580,23 +570,20 @@ export const TopicView = (props: Props) => {
                   </div>
                 }
               >
-                <LoadMoreWrapper 
-                  loadFunction={loadMoreAuthors} 
-                  pageSize={AUTHORS_PER_PAGE} 
+                <LoadMoreWrapper
+                  loadFunction={loadMoreAuthors}
+                  pageSize={AUTHORS_PER_PAGE}
                   hidden={loadMoreAuthorsHidden()}
                 >
                   <div class="wide-container">
                     <div class="row">
                       <div class="col-md-20 col-lg-18">
-                        <div class="authors-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; padding: 2rem 0;">
+                        <div
+                          class="authors-grid"
+                          style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; padding: 2rem 0;"
+                        >
                           <For each={topicAuthorsList()}>
-                            {(author) => (
-                              <AuthorCard
-                                author={author}
-                                followers={[]}
-                                flatFollows={[]}
-                              />
-                            )}
+                            {(author) => <AuthorCard author={author} followers={[]} flatFollows={[]} />}
                           </For>
                         </div>
                       </div>
@@ -619,7 +606,9 @@ export const TopicView = (props: Props) => {
                         <div style="text-align: center; padding: 4rem 2rem;">
                           <Show when={topic()?.slug} fallback={<Loading />}>
                             <div>
-                              <h3 style="margin-bottom: 1rem; color: #666;">{t('No publications found')}</h3>
+                              <h3 style="margin-bottom: 1rem; color: #666;">
+                                {t('No publications found')}
+                              </h3>
                               <p style="color: #999;">{t('Try changing filters or check back later')}</p>
                             </div>
                           </Show>
@@ -633,7 +622,7 @@ export const TopicView = (props: Props) => {
                 <Show when={deduplicatedBlocks().mainFeedFirst[0]}>
                   <Row1 article={deduplicatedBlocks().mainFeedFirst[0]} />
                 </Show>
-                
+
                 <Show when={deduplicatedBlocks().mainFeedFirst.slice(1, 3).length > 0}>
                   <Row2 articles={deduplicatedBlocks().mainFeedFirst.slice(1, 3)} isEqual={true} />
                 </Show>
@@ -668,7 +657,7 @@ export const TopicView = (props: Props) => {
                 <Show when={deduplicatedBlocks().mainFeedFirst.slice(5, 7).length > 0}>
                   <Row2 articles={deduplicatedBlocks().mainFeedFirst.slice(5, 7)} isEqual={true} />
                 </Show>
-                
+
                 <Show when={deduplicatedBlocks().mainFeedFirst[7]}>
                   <Row1 article={deduplicatedBlocks().mainFeedFirst[7]} />
                 </Show>
@@ -687,14 +676,21 @@ export const TopicView = (props: Props) => {
                   <Row2 articles={deduplicatedBlocks().remainingFeed.slice(3, 5)} />
                 </Show>
 
-                <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
+                <LoadMoreWrapper
+                  loadFunction={loadMore}
+                  pageSize={FEED_PAGE_SIZE}
+                  hidden={loadMoreHidden()}
+                >
                   <For each={deduplicatedBlocks().remainingFeed}>
                     {(_article, index) => {
                       const i = index()
                       // Начинаем с 5 (пропускаем уже отображенные выше)
                       const adjustedIndex = i + 5
                       if (adjustedIndex % 3 === 0) {
-                        const articles = deduplicatedBlocks().remainingFeed.slice(adjustedIndex, adjustedIndex + 3)
+                        const articles = deduplicatedBlocks().remainingFeed.slice(
+                          adjustedIndex,
+                          adjustedIndex + 3
+                        )
                         return (
                           <Switch>
                             <Match when={articles.length === 1}>

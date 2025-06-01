@@ -10,6 +10,7 @@ import {
   createMemo,
   createSignal,
   on,
+  onCleanup,
   useContext
 } from 'solid-js'
 import { loadCoauthoredShouts, loadDiscussedShouts, loadFollowedShouts } from '~/graphql/api/private'
@@ -245,8 +246,8 @@ const loadPersonalFeed = async (
   console.log(`[FeedProvider] Loading ${type} feed:`, { opts, userSlug })
 
   try {
-    let fetcher
-    
+    let fetcher: (() => Promise<Shout[] | undefined>) | undefined
+
     if (type === 'followed' && userSlug) {
       // Для followed ленты используем специальный запрос с slug пользователя
       fetcher = await loadFollowedShouts({ options: { ...options, ...opts }, slug: userSlug }, client)
@@ -258,7 +259,7 @@ const loadPersonalFeed = async (
       throw new Error(`Unknown feed type: ${type} or missing userSlug for followed feed`)
     }
 
-    const result = await fetcher()
+    const result = await fetcher!()
 
     console.log(`[FeedProvider] ${type} feed loaded:`, {
       count: result?.length,
@@ -392,59 +393,70 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   }
 
   /**
-   * Загрузка ленты с обработкой ошибок и состояний
+   * Функция загрузки с учетом фильтров и опций
    *
-   * Особенности:
-   * - Отмена предыдущих запросов
-   * - Обработка ошибок
-   * - Управление состоянием загрузки
-   * - Поддержка пагинации
-   *
-   * @param name - Тип ленты для загрузки
+   * @param mode - Тип ленты для загрузки
    * @param opts - Опции загрузки (limit, offset и т.д.)
    */
-  const loadFeed = async (name: FeedMode, opts?: Partial<LoadShoutsOptions>) => {
-    controllers[name]?.abort()
-    controllers[name] = new AbortController()
-
-    const setter = feedSetters[name]
+  const loadFeed = async (mode: keyof FeedSettersMap, opts?: Partial<LoadShoutsOptions>) => {
+    setIsFeedLoading(true)
+    const setter = feedSetters[mode]
     if (!setter) return
 
-    setter((prev: FeedState) => ({
-      ...prev,
-      isLoading: true,
-      error: undefined
-    }))
+    // Отменяем предыдущий запрос для этого режима
+    if (controllers[mode]) {
+      controllers[mode]?.abort()
+    }
+
+    // Создаем новый AbortController для этого запроса
+    const abortController = new AbortController()
+    controllers[mode] = abortController
 
     try {
-      const result = await loadShouts({
-        options: {
-          ...options(),
-          ...opts,
-          order_by: orderByMode(name)
+      // Объединяем фильтры из filterState с переданными опциями
+      const currentFilters = filterState().filters as FeedFilters
+      const mergedOptions: LoadShoutsOptions = {
+        ...options(),
+        ...opts,
+        // Устанавливаем правильную сортировку для режима
+        order_by: opts?.order_by ?? orderByMode(mode as FeedMode),
+        filters: {
+          ...currentFilters,
+          ...opts?.filters
         }
-      })(controllers[name]?.signal)
+      }
 
-      setter({
-        shouts: result || [],
-        isLoading: false,
-        hasMore: (result?.length || 0) >= (opts?.limit || FEED_PAGE_SIZE),
-        isEmpty: !result?.length,
-        error: undefined
-      })
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'AbortError') return
-      setter((prev: FeedState) => ({
-        ...prev,
-        isLoading: false,
-        error: error as Error
-      }))
+      const fetcher = loadShouts({ options: mergedOptions })
+      const shouts = await fetcher()
+
+      // Проверяем, не был ли запрос отменен
+      if (abortController.signal.aborted) {
+        return
+      }
+
+      if (shouts?.length) {
+        updateFeed(mode, shouts as ShoutWithStats[], {
+          offset: opts?.offset ?? undefined,
+          limit: opts?.limit ?? undefined
+        })
+      }
+    } catch (error) {
+      // Игнорируем ошибки отмены
+      if (abortController.signal.aborted) {
+        return
+      }
+
+      console.error(`[FeedProvider] Failed to load ${mode} feed:`, error)
+      setter((prev) => ({ ...prev, isLoading: false, error: error as Error }))
     } finally {
-      controllers[name] = null
+      // Очищаем controller только если запрос не был отменен
+      if (!abortController.signal.aborted) {
+        controllers[mode] = null
+        setIsFeedLoading(false)
+      }
     }
   }
 
-  // Изменение специализированных методов загрузки для передачи опций и загрузчиков
   const loadRecentFeed = (opts?: Partial<LoadShoutsOptions>) => loadFeed('recent', opts)
   const loadHotFeed = (opts?: Partial<LoadShoutsOptions>) => loadFeed('hot', opts)
   const loadTopFeed = (opts?: Partial<LoadShoutsOptions>) => loadFeed('top', opts)
@@ -457,7 +469,14 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
   // Обновляем методы загрузки персональных лент с передачей client и options
   const loadFollowedFeed = (opts?: Partial<LoadShoutsOptions>) =>
-    loadPersonalFeed('followed', setFollowedFeed, client() as GraphQLClient, options(), session()?.author?.slug, opts)
+    loadPersonalFeed(
+      'followed',
+      setFollowedFeed,
+      client() as GraphQLClient,
+      options(),
+      session()?.author?.slug,
+      opts
+    )
 
   const loadDiscussedFeed = (opts?: Partial<LoadShoutsOptions>) =>
     loadPersonalFeed('discussed', setDiscussedFeed, client() as GraphQLClient, options(), undefined, opts)
@@ -571,21 +590,50 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   }
 
   /**
-   * Эффект для автоматической загрузки данных при смене режима
-   *
-   * Особенности:
-   * - Загружает данные только если их нет в кеше
-   * - Обрабатывает как публичные, так и персональные ленты
-   * - Предотвращает циклы через defer: true
+   * Эффект для автоматической перезагрузки данных при изменении фильтров
+   * Перезагружает текущий режим ленты при обновлении фильтров
    */
   createEffect(
     on(
-      mode, // Слушаем только изменение режима
+      () => filterState().timestamp,
+      (timestamp, prevTimestamp) => {
+        // Перезагружаем только если фильтры действительно изменились
+        if (timestamp !== prevTimestamp && prevTimestamp !== undefined) {
+          const currentMode = mode()
+          console.log('[FeedProvider] Filters changed, reloading feed:', currentMode)
+
+          // Сбрасываем текущий фид и загружаем с новыми фильтрами
+          const setter = feedSetters[currentMode]
+          if (setter) {
+            setter(emptyFeed)
+
+            switch (currentMode) {
+              case 'hot':
+                loadHotFeed()
+                break
+              case 'top':
+                loadTopFeed()
+                break
+              default:
+                loadRecentFeed()
+                break
+            }
+          }
+        }
+      },
+      { defer: true }
+    )
+  )
+
+  /**
+   * Эффект для автоматической загрузки данных при смене режима
+   * Загружает данные только если их нет в кеше
+   */
+  createEffect(
+    on(
+      mode,
       async (currentMode) => {
-        console.log('[FeedProvider] Feed mode changed:', {
-          mode: currentMode,
-          client: !!client()
-        })
+        console.log('[FeedProvider] Feed mode changed:', currentMode)
 
         // Определяем тип ленты
         const isPersonalFeed = ['followed', 'discussed', 'coauthored'].includes(currentMode)
@@ -721,6 +769,16 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
       }
     )
   )
+
+  // Cleanup для отмены всех pending запросов при размонтировании
+  onCleanup(() => {
+    // Отменяем все активные запросы при размонтировании
+    Object.values(controllers).forEach((controller) => {
+      if (controller) {
+        controller.abort()
+      }
+    })
+  })
 
   return (
     <FeedContext.Provider

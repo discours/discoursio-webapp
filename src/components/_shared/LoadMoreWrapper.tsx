@@ -93,10 +93,9 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
         console.log('[LoadMoreWrapper] Items updated:', currentItems.length)
         setOffset(currentItems.length)
 
-        // Если получили меньше элементов, чем размер страницы, скрываем загрузчик
-        if (currentItems.length % props.pageSize !== 0 && currentItems.length > 0) {
-          setIsLoadMoreButtonVisible(false)
-        }
+        // НЕ скрываем загрузчик только на основе кратности размеру страницы
+        // Это может привести к преждевременному скрытию кнопки
+        // Логика скрытия находится в функции loadItems на основе реального ответа API
       }
     })
   )
@@ -111,7 +110,7 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
       return
     }
 
-    // console.log('[LoadMoreWrapper] Loading items from offset:', offset(), 'componentId:', componentId())
+    console.log('[LoadMoreWrapper] Loading items from offset:', offset(), 'componentId:', componentId())
     // Устанавливаем флаг загрузки вне отслеживания реактивности
     untrack(() => setIsLoading(true))
     saveScrollPosition()
@@ -143,8 +142,10 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
 
           console.log('[LoadMoreWrapper] Unique new items:', uniqueNewItems.length)
 
-          // Скрываем кнопку загрузки, если получили меньше элементов, чем размер страницы
-          if (uniqueNewItems.length < props.pageSize) {
+          // Скрываем кнопку загрузки ТОЛЬКО если получили меньше элементов, чем размер страницы
+          // Это означает, что мы достигли конца данных
+          if (newItems.length < props.pageSize) {
+            console.log('[LoadMoreWrapper] Reached end of data, hiding button')
             setIsLoadMoreButtonVisible(false)
           }
 
@@ -198,11 +199,11 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
   onMount(() => {
     // Проверяем локальное состояние и sessionStorage
     if (untrack(() => initialLoadDone()) || checkInitialLoadDone()) {
-      //console.log('[LoadMoreWrapper] Initial load already done, skipping for', componentId())
+      console.log('[LoadMoreWrapper] Initial load already done, skipping for', componentId())
       return
     }
 
-    //console.log('[LoadMoreWrapper] Mounted, initial load for', componentId())
+    console.log('[LoadMoreWrapper] Mounted, initial load for', componentId())
     loadItems()
 
     if (props.useScrollTrigger) {
