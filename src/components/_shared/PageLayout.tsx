@@ -62,8 +62,8 @@ export const PageLayout = (props: PageLayoutProps) => {
       return ogUrl
     }
     
-    // For other pages, use basic OG image with page title
-    const basicUrl = getBasicOGImage(props.title)
+    // For other pages, use basic OG image
+    const basicUrl = getBasicOGImage()
     return basicUrl
   })
   

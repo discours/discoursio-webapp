@@ -2,6 +2,11 @@ import { ImageResponse } from '@vercel/og'
 import { APIEvent } from '@solidjs/start/server'
 import { cdnUrl } from '~/config'
 
+/**
+ * Generate OG images for articles with dynamic content
+ * Usage: /api/og/article?title=Title&author=Author&cover=CoverURL&topic=Topic
+ */
+
 export async function GET(event: APIEvent) {
   try {
     const url = new URL(event.request.url)
@@ -13,49 +18,49 @@ export async function GET(event: APIEvent) {
     // --- Elements ---
 
     const topLeft = {
-  type: 'div',
-  props: {
-    style: {
-      position: 'absolute',
-      top: 40,
-      left: 60,
-      display: 'flex',
-      alignItems: 'center',
-      gap: 10,
-    },
-    children: [
-      // Logo image
-      {
-        type: 'img',
-        props: {
-          src: `${cdnUrl}/logo_sign.png`,
-          width: 60,
-          height: 60,
-          style: {
-            width: 60,
-            height: 60,
-            objectFit: 'contain',
-            background: 'rgba(255,255,255,0.03)', // slight highlight if you want
-            borderRadius: '16px', // round corners if you want
-            marginRight: 0,
-          }
-        }
-      },
-      // Topic badge
-      topic ? {
-        type: 'div',
-        props: {
-          style: {
-            fontSize: 28,
-            color: 'white',
-            fontWeight: 600,
-            letterSpacing: 1,
-            marginRight: 10,
+      type: 'div',
+      props: {
+        style: {
+          position: 'absolute',
+          top: 40,
+          left: 60,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        },
+        children: [
+          // Logo image
+          {
+            type: 'img',
+            props: {
+              src: `${cdnUrl}/logo_sign.png`,
+              width: 60,
+              height: 60,
+              style: {
+                width: 60,
+                height: 60,
+                objectFit: 'contain',
+                background: 'rgba(255,255,255,0.03)', // slight highlight if you want
+                borderRadius: '16px', // round corners if you want
+                marginRight: 0,
+              }
+            }
           },
-          children: topic
-        }
-      } : null,
-    ].filter(Boolean)
+          // Topic badge
+          topic ? {
+            type: 'div',
+            props: {
+              style: {
+                fontSize: 28,
+                color: 'white',
+                fontWeight: 600,
+                letterSpacing: 1,
+                marginRight: 10,
+              },
+              children: topic
+            }
+          } : null,
+        ].filter(Boolean)
   }
 }
 

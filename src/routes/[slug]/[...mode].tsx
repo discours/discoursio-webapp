@@ -42,26 +42,19 @@ const fetchShout = async (slug: string): Promise<Shout | undefined> => {
 
 export const route: RouteDefinition = {
   load: async ({ params }) => {
-    console.log('[route.load] Loading article for slug:', params.slug)
     
     // If this is a topic route (starts with !), preload topics data
     let topics: Topic[] | undefined
     if (params.slug.startsWith('!')) {
-      console.log('[route.load] Detected topic route, preloading topics')
       const topicsLoader = loadTopics()
       topics = await topicsLoader()
-      console.log('[route.load] Preloaded topics count:', topics?.length)
     }
     
     const article = await fetchShout(params.slug)
-    console.log('[route.load] Fetched article:', article?.title, article?.cover)
-    console.log('[route.load] Article authors:', article?.authors?.filter(a => a).map(a => a ? { name: a.name, slug: a.slug } : null))
-    console.log('[route.load] Article topics:', article?.topics?.filter(t => t).map(t => t ? ({ title: t.title, slug: t.slug }) : null))
     const data = {
       article,
       topics
     }
-    console.log('[route.load] Returning data:', data)
     return data
   }
 }
@@ -86,30 +79,19 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   const loc = useLocation()
   const { t } = useLocalize()
 
-  // Debug: log what data we receive from route.load
-  console.log('[ArticlePageContent] props.data:', props.data)
-  console.log('[ArticlePageContent] params.slug:', props.params.slug)
-
   const [data] = createResource(
     () => props.params.slug,
     async (slug) => {
-      console.log('[ArticlePageContent] resource fetcher called with slug:', slug)
       if (props.data?.article) {
-        console.log('[ArticlePageContent] using SSR data:', props.data.article.title)
         return props.data.article
       }
-      console.log('[ArticlePageContent] fetching article via API for slug:', slug)
       const result = await fetchShout(slug)
-      console.log('[ArticlePageContent] fetched article result:', result?.title)
       return result
     },
     {
       initialValue: props.data?.article
     }
   )
-
-  // Debug: log the final data state
-  console.log('[ArticlePageContent] final data():', data()?.title, data()?.cover)
 
   onMount(async () => {
     if (gaIdentity && data()?.id) {

@@ -138,29 +138,10 @@ export function getTopicOGImage(
 /**
  * Generate basic OG image for general pages
  * Usage: For pages without specific content (home, about, etc.)
+ * Returns simple white background with centered logo
  */
-export function getBasicOGImage(
-  title: string,
-  options: { author?: string; topic?: string } & OGImageOptions = {}
-): string {
-  const params = new URLSearchParams()
-  
-  params.append('title', title)
-  
-  if (options.author) {
-    params.append('author', options.author)
-  }
-  
-  if (options.topic) {
-    params.append('topic', options.topic)
-  }
-  
-  // Add numeric options as strings
-  if (options.width) params.append('width', options.width.toString())
-  if (options.height) params.append('height', options.height.toString())
-  if (options.quality) params.append('quality', options.quality.toString())
-  
-  return `${OG_BASE_URL}/basic?${params.toString()}`
+export function getBasicOGImage(): string {
+  return `${OG_BASE_URL}/basic`
 }
 
 /**
@@ -257,9 +238,9 @@ export function generateOGImage(
   
   // Basic string title
   if (typeof content === 'string') {
-    return getBasicOGImage(content, options)
+    return getBasicOGImage()
   }
   
   // Fallback
-  return getBasicOGImage('Discours', options)
+  return getBasicOGImage()
 }
