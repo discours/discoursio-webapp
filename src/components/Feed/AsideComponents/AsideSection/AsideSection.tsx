@@ -1,7 +1,7 @@
 import { clsx } from 'clsx'
 import { JSX, Show, createSignal } from 'solid-js'
-import { Icon } from '~/components/_shared/Icon'
 import buttonStyles from '~/components/_shared/Button/Button.module.scss'
+import { Icon } from '~/components/_shared/Icon'
 import styles from './AsideSection.module.scss'
 
 export interface AsideSectionProps {
@@ -22,17 +22,17 @@ export interface AsideSectionProps {
 
 /**
  * AsideSection - универсальный компонент для боковых секций с возможностью сворачивания
- * 
+ *
  * @example
  * // Базовое использование
  * <AsideSection title="Настройка ленты">
  *   <p>Контент секции</p>
  * </AsideSection>
- * 
+ *
  * @example
  * // Сворачиваемая секция с кнопочными стилями
- * <AsideSection 
- *   title="Сообщество" 
+ * <AsideSection
+ *   title="Сообщество"
  *   collapsible={true}
  *   buttonVariant="primary"
  *   buttonSize="M"
@@ -40,11 +40,11 @@ export interface AsideSectionProps {
  * >
  *   <p>Присоединяйтесь к нашему сообществу</p>
  * </AsideSection>
- * 
+ *
  * @example
  * // Различные варианты дизайна
- * <AsideSection 
- *   title="Рассылка" 
+ * <AsideSection
+ *   title="Рассылка"
  *   variant="minimal"
  *   collapsible={true}
  *   buttonVariant="outline"

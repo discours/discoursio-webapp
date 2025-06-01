@@ -1,11 +1,10 @@
-import { A } from '@solidjs/router'
 import { For } from 'solid-js'
 import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
+import { Button } from '~/components/_shared/Button'
+import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
 import styles from './SuggestBox.module.scss'
-import { Icon } from '~/components/_shared/Icon'
-import { Button } from '~/components/_shared/Button'
 
 export interface IdeaVariant {
   title: string
@@ -61,10 +60,11 @@ export const SuggestBox = (props: SuggestBoxProps) => {
       <div class={styles.socialContent}>
         <div class={styles.linksList}>
           <For each={links()}>
-            {(link) => (<>
-              <span class={styles.linkTitle}>{t(link.title)}</span>
-              <Icon name={link.icon} class={styles.socialIcon} />
-            </>
+            {(link) => (
+              <>
+                <span class={styles.linkTitle}>{t(link.title)}</span>
+                <Icon name={link.icon} class={styles.socialIcon} />
+              </>
             )}
           </For>
         </div>

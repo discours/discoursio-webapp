@@ -700,7 +700,7 @@ export const AuthorView = (props: AuthorViewProps) => {
                 </div>
               }
             >
-              <LoadMoreWrapper 
+              <LoadMoreWrapper
                 loadFunction={loadMoreAuthorShouts}
                 pageSize={FEED_PAGE_SIZE}
                 useScrollTrigger={false}

@@ -1,15 +1,7 @@
 import { A, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show, Suspense, createEffect, createMemo, createSignal, on } from 'solid-js'
-import {
-  CommentsList,
-  FeedCustomization,
-  JoinCommunity,
-  KnowledgeBase,
-  NewsletterSubscription,
-  SuggestBox,
-  TopAuthorsList
-} from '~/components/Feed/AsideComponents'
+import { CommentsList, KnowledgeBase, SuggestBox, TopAuthorsList } from '~/components/Feed/AsideComponents'
 import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'

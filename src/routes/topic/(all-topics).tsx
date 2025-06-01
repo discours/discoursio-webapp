@@ -17,20 +17,22 @@ const TOPICS_PER_PAGE = 50
 // Function to fetch topics with pagination using get_topics_by_community
 const fetchTopicsWithPagination = async (sortBy: string, offset = 0, limit = TOPICS_PER_PAGE) => {
   try {
-    console.log(`[fetchTopicsWithPagination] Requesting ${sortBy} topics, offset: ${offset}, limit: ${limit}`)
-    
+    console.log(
+      `[fetchTopicsWithPagination] Requesting ${sortBy} topics, offset: ${offset}, limit: ${limit}`
+    )
+
     const options: QueryGet_Topics_By_CommunityArgs = {
       community_id: 1,
       limit,
       offset
     }
-    
+
     // Используем get_topics_by_community для пагинации
     const resp = await defaultClient.query(loadTopicsByCommunityQuery, options).toPromise()
     const result = resp?.data?.get_topics_by_community as Topic[]
-    
+
     console.log(`[fetchTopicsWithPagination] API returned ${result?.length || 0} topics for ${sortBy}`)
-    
+
     // Если нет результатов с первого запроса, используем fallback
     if (!result?.length && offset === 0) {
       console.log('[fetchTopicsWithPagination] No results from community API, falling back to topics-all')
@@ -76,7 +78,7 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
   // Специальная загрузка для вкладки 'title' - все топики сразу без пагинации
   createEffect(() => {
     const layout = props.location.query.by || 'shouts'
-    
+
     if (layout === 'title' && titleTopics().length === 0) {
       const loadTitleTopics = async () => {
         setIsLoading(true)
@@ -100,7 +102,7 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
       console.log('[LoadMoreAuthors] Loading from offset:', offset)
       const result = await fetchTopicsWithPagination('authors', offset, TOPICS_PER_PAGE)
       console.log('[LoadMoreAuthors] Received:', result.length, 'items')
-      
+
       if (result && result.length > 0) {
         // Добавляем топики в контекст для статистики
         addTopics(result)
@@ -108,10 +110,10 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
         if (offset === 0) {
           setAuthorsTopics(result)
         } else {
-          setAuthorsTopics(prev => [...prev, ...result])
+          setAuthorsTopics((prev) => [...prev, ...result])
         }
       }
-      
+
       return result || []
     } catch (error) {
       console.error('Error loading more topics by authors:', error)
@@ -125,7 +127,7 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
       console.log('[LoadMoreShouts] Loading from offset:', offset)
       const result = await fetchTopicsWithPagination('shouts', offset, TOPICS_PER_PAGE)
       console.log('[LoadMoreShouts] Received:', result.length, 'items')
-      
+
       if (result && result.length > 0) {
         // Добавляем топики в контекст для статистики
         addTopics(result)
@@ -133,10 +135,10 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
         if (offset === 0) {
           setShoutsTopics(result)
         } else {
-          setShoutsTopics(prev => [...prev, ...result])
+          setShoutsTopics((prev) => [...prev, ...result])
         }
       }
-      
+
       return result || []
     } catch (error) {
       console.error('Error loading more topics by shouts:', error)
@@ -153,37 +155,20 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
       desc="All topics of the editorial community"
     >
       <Show when={currentLayout() === 'authors'}>
-        <LoadMoreWrapper
-          loadFunction={loadMoreAuthors}
-          pageSize={TOPICS_PER_PAGE}
-          useScrollTrigger={false}
-        >
-          <AllTopicsView
-            isLoaded={true}
-            topics={authorsTopics()}
-          />
+        <LoadMoreWrapper loadFunction={loadMoreAuthors} pageSize={TOPICS_PER_PAGE} useScrollTrigger={false}>
+          <AllTopicsView isLoaded={true} topics={authorsTopics()} />
         </LoadMoreWrapper>
       </Show>
 
       <Show when={currentLayout() === 'shouts'}>
-        <LoadMoreWrapper
-          loadFunction={loadMoreShouts}
-          pageSize={TOPICS_PER_PAGE}
-          useScrollTrigger={false}
-        >
-          <AllTopicsView
-            isLoaded={true}
-            topics={shoutsTopics()}
-          />
+        <LoadMoreWrapper loadFunction={loadMoreShouts} pageSize={TOPICS_PER_PAGE} useScrollTrigger={false}>
+          <AllTopicsView isLoaded={true} topics={shoutsTopics()} />
         </LoadMoreWrapper>
       </Show>
 
       <Show when={currentLayout() === 'title'}>
         <Show when={!isLoading()} fallback={<Loading />}>
-          <AllTopicsView
-            isLoaded={!isLoading()}
-            topics={titleTopics()}
-          />
+          <AllTopicsView isLoaded={!isLoading()} topics={titleTopics()} />
         </Show>
       </Show>
     </PageLayout>

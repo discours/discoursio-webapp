@@ -19,7 +19,7 @@ export const FeedCustomization = (props: FeedCustomizationProps) => {
 
   return (
     <AsideSection
-      collapsible={props.collapsible} 
+      collapsible={props.collapsible}
       buttonVariant="secondary"
       buttonSize="M"
       class={styles.customizeSection}

@@ -35,7 +35,7 @@ export const NewsletterSubscription = (props: NewsletterSubscriptionProps) => {
 
   return (
     <AsideSection
-      collapsible={props.collapsible} 
+      collapsible={props.collapsible}
       buttonVariant="outline"
       buttonSize="M"
       icon="mail"

@@ -19,7 +19,7 @@ export const JoinCommunity = (props: JoinCommunityProps) => {
 
   return (
     <AsideSection
-      collapsible={props.collapsible} 
+      collapsible={props.collapsible}
       buttonVariant="primary"
       buttonSize="M"
       icon="users"
