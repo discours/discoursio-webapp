@@ -48,12 +48,6 @@ export default defineConfig({
     // Configure WASM handling for @vercel/og
     experimental: {
       wasm: true
-    },
-    rollupConfig: {
-      external: ['@vercel/og/dist/yoga.wasm'],
-      output: {
-        inlineDynamicImports: false
-      }
     }
   },
   ssr: true,

@@ -64,11 +64,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         sourcemapExcludeSources: true
-      },
-      external: (id) => {
-        // Keep WASM files external for proper Edge runtime handling
-        if (id.includes('.wasm')) return true
-        return false
       }
     }
   },
