@@ -19,6 +19,7 @@ import getAuthorsByTopicQuery from '~/graphql/query/core/topic-authors'
 import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
 import loadTopicsQuery from '~/graphql/query/core/topics-all'
 import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community'
+import topicBySlugQuery from '~/graphql/query/core/topic-by-slug'
 import {
   QueryLoad_Comments_BranchArgs,
   QueryLoad_Shouts_ByArgs,
@@ -376,4 +377,41 @@ export const getAuthor = (options: QueryGet_AuthorArgs) => {
     () => options,
     true // Включаем кеширование
   )(options)
+}
+
+/**
+ * Кешируемый метод для загрузки топика по slug
+ * Использует браузерное кеширование для публичных топиков
+ * Подходит для SSR и клиентских запросов
+ *
+ * @example
+ * ```ts
+ * // В route.load (SSR):
+ * const topicLoader = loadTopicBySlug('javascript')
+ * const topic = await topicLoader()
+ *
+ * // В компоненте (клиент):
+ * const topic = await loadTopicBySlug('javascript')()
+ * ```
+ */
+export const loadTopicBySlug = (slug: string) => {
+  return createCacheableLoader<Topic, QueryGet_TopicArgs>(
+    topicBySlugQuery,
+    (args: QueryGet_TopicArgs) => args,
+    true // Включаем кеширование для топиков
+  )({ slug })
+}
+
+/**
+ * Реактивный ресурс для загрузки топика по slug с кешированием
+ * Оптимизирован для публичных топиков
+ */
+export const useTopicBySlug = (slug: string) => {
+  return createCacheableQueryResource<Topic, QueryGet_TopicArgs>(
+    topicBySlugQuery,
+    () => ({ slug }),
+    true, // Включаем кеширование
+    defaultClient,
+    true // withAbort
+  )({ slug })
 }
