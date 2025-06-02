@@ -41,7 +41,9 @@ export const PublishSettings = () => {
     unpublishShout,
     validationErrors,
     validateCurrentDraft,
-    clearValidationErrors
+    clearValidationErrors,
+    updateDraft,
+    syncDraft
   } = useDrafts()
   const { showModal } = useUI()
   const { loadTopics } = useTopics()
@@ -232,6 +234,94 @@ export const PublishSettings = () => {
     }
   }
 
+  const handleSaveDraft = async () => {
+    const draft = currentDraft()
+    if (!draft?.id) return
+
+    setIsLoading(true)
+
+    try {
+      const draftInput: DraftInput = {
+        id: draft.id,
+        layout: draft.layout || 'article',
+        title: draft.title || '',
+        subtitle: draft.subtitle || '',
+        lead: draft.lead || '',
+        body: draft.body || '',
+        slug: draft.slug || '',
+        cover: draft.cover || '',
+        cover_caption: draft.cover_caption || '',
+        seo: draft.seo || '',
+        topic_ids: Array.isArray(draft.topics)
+          ? draft.topics
+              .filter((topic): topic is Topic => Boolean(topic?.id))
+              .map((topic) => topic.id)
+          : [],
+        main_topic_id: draft.mainTopic?.id || undefined,
+        author_ids: draft.authors?.map((a) => a?.id).filter((id): id is number => !!id) || []
+      }
+
+      const result = await updateDraft(draftInput)
+      
+      if (result?.data?.update_draft?.draft) {
+        toast.success(t('Draft saved successfully'))
+      } else if (result?.error) {
+        toast.error(t(result.error.message || 'Error saving draft'))
+      } else {
+        toast.error(t('Error saving draft'))
+      }
+    } catch (error) {
+      console.error('[PublishSettings] Error saving draft:', error)
+      toast.error(error instanceof Error ? error.message : t('Unknown error occurred'))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    const draft = currentDraft()
+    if (!draft?.id) return
+
+    setIsLoading(true)
+
+    try {
+      // Перезагружаем черновик с сервера, игнорируя локальные изменения
+      await syncDraft(draft.id)
+      
+      // Очищаем локальное хранилище для этого черновика
+      const draftStorageKeys = [
+        `draft-${draft.id}-title`,
+        `draft-${draft.id}-subtitle`, 
+        `draft-${draft.id}-lead`,
+        `draft-${draft.id}-body`,
+        `draft-${draft.id}-slug`,
+        `draft-${draft.id}-cover`,
+        `draft-${draft.id}-cover_caption`,
+        `draft-${draft.id}-seo`,
+        `draft-${draft.id}-topic_ids`,
+        `draft-${draft.id}-main_topic_id`
+      ]
+
+      draftStorageKeys.forEach(key => {
+        try {
+          localStorage.removeItem(key)
+        } catch (error) {
+          console.warn(`[PublishSettings] Could not remove storage key ${key}:`, error)
+        }
+      })
+
+      toast.success(t('Changes reset successfully'))
+      
+      // Перенаправляем на страницу редактирования для обновления UI
+      navigate(`/edit/${draft.id}`)
+    } catch (error) {
+      console.error('[PublishSettings] Error resetting changes:', error)
+      toast.error(error instanceof Error ? error.message : t('Unknown error occurred'))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const [editingTitle, setEditingTitle] = createSignal(false)
   const [editingSubtitle, setEditingSubtitle] = createSignal(false)
   const [editingTeaser, setEditingTeaser] = createSignal(false)
@@ -393,6 +483,21 @@ export const PublishSettings = () => {
           <div class="row">
             <div class="col-md-19 col-lg-18 col-xl-16 offset-md-5">
               <div class={styles.content}>
+                <div class={styles.draftActions}>
+                  <Button
+                    variant="secondary"
+                    onClick={handleCancel}
+                    value={isLoading() ? t('Cancelling...') : t('Cancel')}
+                    disabled={isLoading()}
+                  />
+                  <Button
+                    variant="primary"
+                    onClick={handleSaveDraft}
+                    value={isLoading() ? t('Saving...') : t('Save draft')}
+                    disabled={isLoading()}
+                  />
+                </div>
+
                 <Show
                   when={!isPublished()}
                   fallback={

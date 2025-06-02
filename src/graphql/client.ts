@@ -55,7 +55,7 @@ export const createCacheableLoader = <T, V>(
         const baseUrl = `${window.location.protocol}//${window.location.host}`
         const graphqlUrl = `${baseUrl}/graphql?${searchParams}`
 
-        console.log(`[GraphQL Cache] Requesting ${queryString} with variables ${JSON.stringify(variables)}`)
+        // console.log(`[GraphQL Cache] Requesting ${queryString} with variables ${JSON.stringify(variables)}`)
 
         const response = await fetch(graphqlUrl, {
           signal,
@@ -149,6 +149,8 @@ export const createCacheableQueryResource = <T, V>(
  * @returns Настроенный GraphQL клиент
  */
 export const graphqlClientCreate = (url: string, token = '', timeout = 15000): Client => {
+  console.log('[GraphQL Client] Создание клиента:', { url, hasToken: !!token, timeout })
+  
   const exchanges = [fetchExchange, cacheExchange]
   const options: ClientOptions = {
     url,
@@ -158,26 +160,34 @@ export const graphqlClientCreate = (url: string, token = '', timeout = 15000): C
 
       // Устанавливаем таймаут для запроса
       setTimeout(() => {
+        //  console.warn('[GraphQL Client] Таймаут запроса через', timeout, 'мс')
         controller.abort()
       }, timeout)
+      
+      const headers = {
+        'content-type': 'application/json',
+        accept: 'application/graphql-response+json, application/graphql+json, application/json',
+        ...(token
+          ? {
+              authorization: token
+            }
+          : {})
+      }
+      
+      console.log('[GraphQL Client] Заголовки запроса:', { ...headers, authorization: token ? '[СКРЫТ]' : undefined })
+      
       return {
         signal: controller.signal,
-        headers: {
-          'content-type': 'application/json',
-          accept: 'application/graphql-response+json, application/graphql+json, application/json',
-          ...(token
-            ? {
-                authorization: token
-              }
-            : {})
-        },
+        headers,
         credentials: 'include',
         mode: 'cors'
       }
     }
   }
 
-  return createClient(options)
+  const client = createClient(options)
+  console.log('[GraphQL Client] Клиент создан успешно')
+  return client
 }
 
 export const defaultClient: Client = graphqlClientCreate(coreApiUrl, '')

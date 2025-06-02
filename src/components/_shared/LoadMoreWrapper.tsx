@@ -110,7 +110,6 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
       return
     }
 
-    console.log('[LoadMoreWrapper] Loading items from offset:', offset(), 'componentId:', componentId())
     // Устанавливаем флаг загрузки вне отслеживания реактивности
     untrack(() => setIsLoading(true))
     saveScrollPosition()
@@ -203,7 +202,6 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
       return
     }
 
-    console.log('[LoadMoreWrapper] Mounted, initial load for', componentId())
     loadItems()
 
     if (props.useScrollTrigger) {

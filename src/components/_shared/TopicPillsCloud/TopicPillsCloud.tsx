@@ -197,32 +197,41 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
     e.stopPropagation()
 
     // Проверяем валидность темы
-    if (!topic || !topic.id) {
-      console.error('[TopicPillsCloud] Попытка переключить невалидную тему:', topic)
+    if (!topic) {
+      console.error('[TopicPillsCloud] Попытка переключить пустую тему')
       return
     }
 
-    // Получаем текущий Set выбранных ID и проверяем наличие темы
-    const currentIds = selectedTopicIds()
-    const isSelected = currentIds.has(Number(topic.id))
-    console.log('[TopicPillsCloud] Текущие выбранные ID:', Array.from(currentIds))
-    console.log('[TopicPillsCloud] Тема уже выбрана?', isSelected, 'ID:', topic.id)
-
-    let newSelectedTopics: Topic[]
-
-    if (isSelected) {
-      // Удаляем тему
-      newSelectedTopics = localSelectedTopics().filter((t) => Number(t.id) !== Number(topic.id))
-    } else {
-      // Добавляем тему
-      newSelectedTopics = [...localSelectedTopics(), topic]
+    if (!topic.id && topic.id !== 0) {
+      console.error('[TopicPillsCloud] Попытка переключить тему без ID:', topic)
+      return
     }
 
-    // Мгновенно обновляем UI через контекст и локальное состояние
+    // Преобразуем ID в число для корректного сравнения
+    const topicId = Number(topic.id)
+    if (isNaN(topicId)) {
+      console.error('[TopicPillsCloud] ID темы не является числом:', topic.id)
+      return
+    }
+
+    // Теперь тема валидна, можно переключать
+    const currentSelected = localSelectedTopics()
+    const isSelected = currentSelected.some(t => Number(t.id) === topicId)
+
+    let newSelectedTopics: Topic[]
+    if (isSelected) {
+      newSelectedTopics = currentSelected.filter(t => Number(t.id) !== topicId)
+    } else {
+      newSelectedTopics = [...currentSelected, topic]
+    }
+
+    // Мгновенно обновляем UI через контекст черновика
     const draft = currentDraft()
     if (draft) {
       draft.topics = newSelectedTopics
     }
+
+    // Обновляем локальное состояние для selectedIds
     setSelectedIds(new Set(newSelectedTopics.map((t) => Number(t.id))))
 
     // Отправляем обновление на сервер через дебаунс
@@ -231,23 +240,24 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
     // Проверка на необходимость обновления главной темы
     if (newSelectedTopics.length === 1 && !isSelected) {
       // Если это первая тема, делаем её главной
-      console.log('[TopicPillsCloud] Автоматическая установка главной темы:', topic.id)
+      console.log('[TopicPillsCloud] Автоматическая установка главной темы:', topicId)
       if (draft) {
         draft.mainTopic = topic
       }
-      debouncedMainTopicChange(String(topic.id))
+      debouncedMainTopicChange(String(topicId))
     } else if (
       isSelected &&
       mainTopic() &&
-      Number(topic.id) === Number(mainTopic()!.id) &&
+      Number(mainTopic()!.id) === topicId &&
       newSelectedTopics.length > 0
     ) {
       // Если удалили главную тему, но есть другие - назначаем первую из оставшихся главной
-      console.log('[TopicPillsCloud] Смена главной темы после удаления:', newSelectedTopics[0].id)
+      const newMainTopicId = Number(newSelectedTopics[0].id)
+      console.log('[TopicPillsCloud] Смена главной темы после удаления:', newMainTopicId)
       if (draft) {
         draft.mainTopic = newSelectedTopics[0]
       }
-      debouncedMainTopicChange(String(newSelectedTopics[0].id))
+      debouncedMainTopicChange(String(newMainTopicId))
     }
   }
 

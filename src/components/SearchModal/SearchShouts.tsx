@@ -1,9 +1,10 @@
 import { For, Show } from 'solid-js'
-import styles from './../Styles/SearchModal.module.scss'
+
 import { SearchShoutsProps } from './types'
 import { getSearchCoincidences } from './utils'
+import { ArticleCard } from '../Feed/ArticleCard'
 
-import { ArticleCard } from '../../Feed/ArticleCard'
+import styles from './SearchModal.module.scss'
 
 export const SearchShouts = (props: SearchShoutsProps) => {
   const prepareSearchResults = (list: typeof props.shoutsList) =>

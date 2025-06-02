@@ -802,10 +802,10 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     }
 
     const response = await currentClient.mutation(createDraftMutation, { draft_input: draft })
-    console.log('[drafts] create response:', JSON.stringify(response, null, 2))
+    // console.log('[drafts] create response:', JSON.stringify(response, null, 2))
     if (response?.data?.create_draft?.draft) {
       const newDraft = response.data.create_draft.draft
-      console.log('[drafts] setting drafts with new draft:', newDraft)
+      // console.log('[drafts] setting drafts with new draft:', newDraft)
       setDrafts([...drafts(), newDraft])
     }
     return response as OperationResult<CreateDraftMutationMutation>

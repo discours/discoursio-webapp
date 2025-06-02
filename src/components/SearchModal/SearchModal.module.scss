@@ -1,0 +1,183 @@
+@mixin search-filter-control {
+  font-size:1.4rem;
+  height: 4rem;
+  padding: 0 2rem;
+  background: rgb(64 64 64 / 50%);
+  border-radius: 10rem;
+  color: #fff;
+  font-weight: 500;
+  white-space: nowrap;
+
+  &:hover {
+    background: #404040;
+  }
+
+  &:active {
+    color: rgb(255 255 255 / 40%);
+  }
+}
+
+.searchContainer {
+  position: relative;
+}
+
+.searchInput {
+  font-size:4.8rem;
+  width: 100%;
+  padding: 0 0 0.5rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid var(--default-color-invert);
+  color: var(--default-color-invert);
+  font-weight: bold;
+  outline: none;
+
+  &::placeholder {
+    color: rgb(from var(--default-color-invert) r g b / 32%);
+  }
+
+  &:not(:placeholder-shown) + .searchButton img {
+    filter: invert(1);
+  }
+
+  &::selection {
+    color: var(--color-primary);
+  }
+}
+
+.searchButton {
+  position: absolute;
+  right: 0;
+  top: 2rem;
+  width: 3.2rem;
+  height: 3.2rem;
+
+  & img {
+    filter: invert(0.4);
+  }
+}
+
+.searchDescription {
+  font-size:1.6rem;
+  margin-bottom: 44px;
+  color: rgb(255 255 255 / 64%);
+}
+
+.searchNavButton {
+  cursor: pointer;
+  color: #fff;
+  text-decoration: none;
+  padding: 4px 8px;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.searchNavButtonSelected {
+  border-bottom: 2px solid #fff;
+  padding-bottom: 6px;
+}
+
+.searchAuthorsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.searchAllBlock {
+  margin: 2.5rem 0;
+  padding: 2rem 0;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+
+.searchAllBlockTitle {
+  font-size: 2rem;
+  margin: 0 0 2rem;
+  color: #fff;
+}
+
+.searchAllBlockGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  
+  @media (width <= 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.topicsList {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 9.6rem !important;
+}
+
+.topTopic {
+  @include search-filter-control;
+}
+
+.filterSwitcher {
+  margin: 0 0 6.4rem !important;
+  padding: 0 !important;
+
+  button {
+    color: #fff !important;
+  }
+
+  :global(.view-switcher__item--selected) {
+    button {
+      border-bottom-color: #fff !important;
+
+      &:hover {
+        background: none !important;
+      }
+    }
+  }
+}
+
+.filterResults {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 6.4rem 0;
+}
+
+.filterResultsControl {
+  @include search-filter-control;
+}
+
+.searchLoader {
+  width: 28px;
+  height: 28px;
+  border: 5px solid #fff;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  animation: rotation 1s linear infinite;
+}
+
+.searchResults {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}

@@ -14,8 +14,6 @@
     @include media-breakpoint-down(lg) {
       padding: 0 math.div($container-padding-x, 2);
     }
-
-    background: var(--background-color);
   }
 }
 

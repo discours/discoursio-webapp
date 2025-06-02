@@ -2,14 +2,14 @@ import clsx from 'clsx'
 import { For } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 
-import styles from './../Styles/SearchModal.module.scss'
+import styles from './SearchModal.module.scss'
 
 export const SearchNav = (props: { view: string; setView: (view: string) => void }) => {
   const { t } = useLocalize()
   const SEARCH_VIEWS = ['all', 'articles', 'topics', 'authors']
 
   return (
-    <div class="wide-container">
+    <div class={clsx(styles.wrapper, 'wide-container')}>
       <ul class={clsx('view-switcher')}>
         <For each={SEARCH_VIEWS}>
           {(viewKey) => (

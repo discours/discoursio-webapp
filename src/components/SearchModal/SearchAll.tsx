@@ -1,12 +1,13 @@
 import { For, Show } from 'solid-js'
+
 import { useLocalize } from '~/context/localize'
-import styles from './../Styles/SearchModal.module.scss'
 import { SearchAllProps } from './types'
 import { getSearchCoincidences } from './utils'
-
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { ArticleCard } from '~/components/Feed/ArticleCard'
 import { TopicBadge } from '~/components/Topic/TopicBadge/TopicBadge'
+
+import styles from './SearchModal.module.scss'
 
 export const SearchAll = (props: SearchAllProps) => {
   const { t } = useLocalize()

@@ -75,6 +75,10 @@ export const LoginForm = () => {
   }
   const handleSubmit = async (event: Event) => {
     event.preventDefault()
+    
+    console.log('[LoginForm] Начало процесса авторизации')
+    console.log('[LoginForm] Email:', email())
+    console.log('[LoginForm] Password length:', password().length)
 
     await preSendValidate(email(), 'email')
     await preSendValidate(password(), 'password')
@@ -83,17 +87,23 @@ export const LoginForm = () => {
     setSubmitError()
 
     if (Object.keys(validationErrors()).length > 0) {
+      console.warn('[LoginForm] Ошибки валидации:', validationErrors())
       authFormRef
         .querySelector<HTMLInputElement>(`input[name="${Object.keys(validationErrors())[0]}"]`)
         ?.focus()
       return
     }
 
+    console.log('[LoginForm] Валидация прошла успешно, отправляем запрос')
     setIsSubmitting(true)
 
     try {
+      console.log('[LoginForm] Вызываем signIn...')
       const success = await signIn({ email: email(), password: password() })
+      console.log('[LoginForm] Результат signIn:', success)
+      
       if (!success) {
+        console.warn('[LoginForm] Авторизация не удалась, authError:', authError())
         switch (authError()) {
           case 'user has not signed up email & password':
           case 'bad user credentials': {
@@ -122,11 +132,13 @@ export const LoginForm = () => {
               </div>
             )
         }
+      } else {
+        console.log('[LoginForm] Авторизация успешна')
+        hideModal()
+        toast.success(t('Welcome!'))
       }
-      hideModal()
-      toast.success(t('Welcome!'))
     } catch (error) {
-      console.error(error)
+      console.error('[LoginForm] Ошибка в handleSubmit:', error)
       setSubmitError(authError())
     } finally {
       setIsSubmitting(false)

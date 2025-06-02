@@ -1,7 +1,9 @@
 import { For, Show } from 'solid-js'
+
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
-import styles from './../Styles/SearchModal.module.scss'
 import { SearchAuthorsProps } from './types'
+
+import styles from './SearchModal.module.scss'
 
 export const SearchAuthors = (props: SearchAuthorsProps) => {
   return (

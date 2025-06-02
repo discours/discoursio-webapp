@@ -208,6 +208,12 @@
       gap: 1rem;
     }
 
+    .draftActions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    
     .cancel {
       margin-right: auto;
     }

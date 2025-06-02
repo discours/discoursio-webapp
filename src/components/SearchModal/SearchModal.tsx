@@ -1,5 +1,6 @@
 import { Show, createEffect, createResource, createSignal, onCleanup, onMount } from 'solid-js'
 import { debounce } from 'throttle-debounce'
+
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import modalStyles from '~/components/_shared/Modal/Modal.module.scss'
@@ -10,14 +11,13 @@ import { loadAuthorsSearch } from '~/graphql/api/public'
 import type { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 import { dummyFilter } from '~/intl/dummyFilter'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
+import { SearchAll } from './SearchAll'
+import { SearchAuthors } from './SearchAuthors'
+import { SearchNav } from './SearchNav'
+import { SearchShouts } from './SearchShouts'
+import { SearchTopics } from './SearchTopic'
 
-import { SearchAll } from './Views/SearchAll'
-import { SearchAuthors } from './Views/SearchAuthors'
-import { SearchNav } from './Views/SearchNav'
-import { SearchShouts } from './Views/SearchShouts'
-import { SearchTopics } from './Views/SearchTopic'
-
-import styles from './Styles/SearchModal.module.scss'
+import styles from './SearchModal.module.scss'
 
 export const SearchModal = () => {
   const { t, lang } = useLocalize()

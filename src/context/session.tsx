@@ -36,6 +36,44 @@ import { Author } from '~/graphql/schema/core.gen'
 import { coreApiUrl } from '../config'
 
 /**
+ * Тестирование подключения к API для отладки
+ */
+const testApiConnection = async () => {
+  try {
+    console.log('[API Test] Тестируем подключение к API')
+    console.log('[API Test] CoreApiUrl:', coreApiUrl)
+    console.log('[API Test] Current location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
+    
+    // Простой fetch запрос для проверки доступности
+    const response = await fetch(coreApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: '{ __typename }'
+      })
+    })
+    
+    console.log('[API Test] Response status:', response.status)
+    console.log('[API Test] Response ok:', response.ok)
+    console.log('[API Test] Response statusText:', response.statusText)
+    
+    if (!response.ok) {
+      console.error('[API Test] API недоступен:', response.statusText)
+      return false
+    }
+    
+    const result = await response.json()
+    console.log('[API Test] API доступен, ответ:', result)
+    return true
+  } catch (error) {
+    console.error('[API Test] Ошибка подключения к API:', error)
+    return false
+  }
+}
+
+/**
  * Ключ для хранения токена авторизации в localStorage
  */
 export const AUTH_TOKEN_KEY = 'auth-token'
@@ -225,23 +263,35 @@ export const SessionProvider = (props: {
   // Изолированная функция загрузки сессии (принцип изоляции из solid-effects.md)
   const loadSessionData = async (token: string): Promise<AuthPayload | undefined> => {
     try {
+      console.log('[loadSessionData] Загрузка данных сессии с токеном длиной:', token.length)
+      
       const client = graphqlClientCreate(coreApiUrl, token)
+      console.log('[loadSessionData] Клиент создан, отправляем GetSession мутацию')
+      
       const result = await client.mutation(GetSessionMutation, {}).toPromise()
+      console.log('[loadSessionData] Получен результат GetSession:', result)
 
       if (result.error) {
         console.error('[loadSessionData] GraphQL error:', result.error)
+        console.error('[loadSessionData] Error details:', result.error.networkError || result.error.graphQLErrors)
         return undefined
       }
 
       if (result.data?.getSession) {
         const { author, token: newToken } = result.data.getSession
+        console.log('[loadSessionData] Данные сессии получены:', { 
+          authorId: author.id, 
+          authorName: author.name,
+          hasNewToken: !!newToken 
+        })
 
         // Обновляем токен в localStorage если изменился И не пустой
         if (newToken && newToken !== token && !isServer) {
+          console.log('[loadSessionData] Обновляем токен в localStorage')
           localStorage.setItem(AUTH_TOKEN_KEY, newToken)
         }
 
-        return {
+        const sessionData = {
           token: newToken || token, // Используем newToken если есть, иначе исходный token
           author: {
             id: author.id,
@@ -253,35 +303,53 @@ export const SessionProvider = (props: {
             links: author.links
           }
         }
+        
+        console.log('[loadSessionData] Возвращаем данные сессии:', sessionData)
+        return sessionData
       }
 
+      console.warn('[loadSessionData] Данные сессии отсутствуют в ответе')
       return undefined
     } catch (error) {
-      console.error('[loadSessionData] Error:', error)
+      console.error('[loadSessionData] Исключение при загрузке данных сессии:', error)
+      console.error('[loadSessionData] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
       return undefined
     }
   }
 
   // Функция для безопасного обновления сессии (принцип batch из solid-effects.md)
   const updateSession = (sessionData: AuthPayload | undefined, clearValidatingFlag = true) => {
+    console.log('[updateSession] Обновление сессии:', { hasSessionData: !!sessionData, clearValidatingFlag })
+    if (sessionData) {
+      console.log('[updateSession] Данные сессии:', { 
+        authorId: sessionData.author.id, 
+        authorName: sessionData.author.name,
+        tokenLength: sessionData.token.length 
+      })
+    }
+    
     batch(() => {
       if (sessionData) {
+        console.log('[updateSession] Устанавливаем токен и автора')
         setSessionToken(sessionData.token)
         setSessionAuthor(sessionData.author)
         setAuthError('')
 
         // Обновляем клиент если токен изменился
         if (sessionData.token !== lastClientToken()) {
+          console.log('[updateSession] Токен изменился, обновляем клиент')
           initializeClient(sessionData.token)
         }
 
         // Вызываем callback внутри untrack чтобы избежать циклических зависимостей
         untrack(() => {
+          console.log('[updateSession] Вызываем callback с данными сессии')
           props.onStateChangeCallback(sessionData)
         })
 
         setupSessionTimer()
       } else {
+        console.log('[updateSession] Очищаем сессию')
         // Очищаем сессию
         setSessionToken(undefined)
         setSessionAuthor(undefined)
@@ -292,15 +360,18 @@ export const SessionProvider = (props: {
 
         // Вызываем callback для очистки
         untrack(() => {
+          console.log('[updateSession] Вызываем callback для очистки')
           props.onStateChangeCallback(null)
         })
       }
 
       // Сбрасываем флаг валидации только если указано
       if (clearValidatingFlag) {
+        console.log('[updateSession] Сбрасываем флаг валидации')
         setIsSessionValidating(false)
       }
       setIsSessionLoaded(true)
+      console.log('[updateSession] Сессия обновлена')
     })
   }
 
@@ -538,23 +609,47 @@ export const SessionProvider = (props: {
    */
   const signIn = async (params: LoginInput): Promise<boolean> => {
     try {
+      console.log('[signIn] Начало авторизации')
+      console.log('[signIn] Параметры:', { email: params.email, passwordLength: params.password.length })
+      console.log('[signIn] CoreApiUrl:', coreApiUrl)
+      
+      // Тестируем подключение к API
+      if (!isServer) {
+        const apiAvailable = await testApiConnection()
+        if (!apiAvailable) {
+          console.error('[signIn] API недоступен, авторизация невозможна')
+          setAuthError('API server is not available')
+          return false
+        }
+      }
+      
       const authClient = graphqlClientCreate(coreApiUrl)
+      console.log('[signIn] GraphQL клиент создан')
 
+      console.log('[signIn] Отправляем мутацию Login...')
       const result = await authClient
         .mutation(LoginMutation, { email: params.email, password: params.password })
         .toPromise()
 
+      console.log('[signIn] Получен результат:', result)
+
       if (result.error) {
         console.error('[signIn] GraphQL error:', result.error)
+        console.error('[signIn] Error details:', result.error.networkError || result.error.graphQLErrors)
         setAuthError(result.error.message || 'Sign in failed')
         return false
       }
 
+      console.log('[signIn] Проверяем result.data?.login:', result.data?.login)
+
       if (result.data?.login?.success) {
+        console.log('[signIn] Авторизация успешна на сервере')
         const { author, token } = result.data.login
+        console.log('[signIn] Получены данные:', { authorId: author.id, tokenLength: token.length })
 
         // Сохраняем токен в localStorage
         if (!isServer) {
+          console.log('[signIn] Сохраняем токен в localStorage')
           localStorage.setItem(AUTH_TOKEN_KEY, token)
         }
 
@@ -572,14 +667,18 @@ export const SessionProvider = (props: {
           }
         }
 
+        console.log('[signIn] Обновляем сессию с данными:', sessionData)
         updateSession(sessionData)
+        console.log('[signIn] Авторизация завершена успешно')
         return true
       }
 
+      console.warn('[signIn] Авторизация не удалась. Ошибка от сервера:', result.data?.login?.error)
       setAuthError(result.data?.login?.error || 'Sign in failed')
       return false
     } catch (error) {
-      console.error('[signIn] Error:', error)
+      console.error('[signIn] Исключение в процессе авторизации:', error)
+      console.error('[signIn] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
       setAuthError(error instanceof Error ? error.message : 'Sign in failed')
       return false
     }

@@ -10,13 +10,19 @@
   &.primary {
     background: var(--background-color);
     color: var(--default-color);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
 
     &:hover {
-      color: #ccc;
+      background: var(--default-color);
+      color: var(--background-color);
+      border-color: var(--default-color);
     }
 
     &:active {
-      color: #9fa1a7;
+      background: var(--default-color);
+      color: var(--background-color);
+      opacity: 0.8;
     }
   }
 

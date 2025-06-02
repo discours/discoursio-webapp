@@ -98,6 +98,26 @@
   --toast-box-shadow: var(--comment-shadow-lg);
   --toast-icon-size: 20px;
   --toast-animation-duration: 0.5s;
+
+  // TopicPillsCloud переменные
+  --color-primary: #2638d9;
+  --color-primary-dark: #1e2cad;
+  --color-primary-muted: rgb(38 56 217 / 50%);
+  --color-on-primary: #fff;
+  --color-on-primary-muted: rgb(255 255 255 / 80%);
+  --topic-background: rgb(38 56 217 / 5%);
+  --topic-background-hover: rgb(38 56 217 / 10%);
+  --topic-background-disabled: rgb(38 56 217 / 3%);
+  --topic-shadow: rgb(38 56 217 / 15%);
+  --primary-shadow: rgb(38 56 217 / 30%);
+  --button-hover-overlay: rgb(255 255 255 / 20%);
+  --accent-color: #ffeb3b;
+  --icon-glow: rgb(255 255 255 / 90%);
+  --text-color-secondary: #888;
+  --input-background-color: #f9f9f9;
+  --border-color: #e0e0e0;
+  --shadow-color: rgb(0 0 0 / 15%);
+  --shadow-color-hover: rgb(0 0 0 / 20%);
 }
 
 [data-theme='dark'] {
@@ -117,12 +137,32 @@
   --shadow-color-medium: rgb(255 255 255 / 10%);
 
   // names from figma
-  --black-50: #080807;
-  --black-100: #161611;
+  --black-50: #2a2a2a;
+  --black-100: #3a3a3a;
   --black-300: #696969;
   --black-400: #969696;
   --black-500: #ebebeb;
   --white-500: #000;
+
+  // TopicPillsCloud переменные для темной темы
+  --color-primary: #4361ee;
+  --color-primary-dark: #3c54d9;
+  --color-primary-muted: rgb(67 97 238 / 70%);
+  --color-on-primary: #000;
+  --color-on-primary-muted: rgb(0 0 0 / 80%);
+  --topic-background: rgb(67 97 238 / 15%);
+  --topic-background-hover: rgb(67 97 238 / 25%);
+  --topic-background-disabled: rgb(67 97 238 / 8%);
+  --topic-shadow: rgb(67 97 238 / 25%);
+  --primary-shadow: rgb(67 97 238 / 40%);
+  --button-hover-overlay: rgb(0 0 0 / 20%);
+  --accent-color: #ffd700;
+  --icon-glow: rgb(0 0 0 / 90%);
+  --text-color-secondary: #aaa;
+  --input-background-color: #2a2a2a;
+  --border-color: #404040;
+  --shadow-color: rgb(255 255 255 / 15%);
+  --shadow-color-hover: rgb(255 255 255 / 20%);
 
   // Toast variables для темной темы
   --toast-background: var(--background-color);
