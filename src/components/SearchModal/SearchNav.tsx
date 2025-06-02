@@ -2,11 +2,12 @@ import clsx from 'clsx'
 import { For } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 
+import { capitalize } from '~/utils/capitalize'
 import styles from './SearchModal.module.scss'
 
 export const SearchNav = (props: { view: string; setView: (view: string) => void }) => {
   const { t } = useLocalize()
-  const SEARCH_VIEWS = ['all', 'articles', 'topics', 'authors']
+  const SEARCH_VIEWS = ['all', 'posts', 'topics', 'authors']
 
   return (
     <div class={clsx(styles.wrapper, 'wide-container')}>
@@ -21,15 +22,7 @@ export const SearchNav = (props: { view: string; setView: (view: string) => void
                 )}
                 onClick={() => props.setView(viewKey)}
               >
-                {viewKey === 'all'
-                  ? t('All')
-                  : viewKey === 'articles'
-                    ? t('Articles')
-                    : viewKey === 'topics'
-                      ? t('Topics')
-                      : viewKey === 'authors'
-                        ? t('Authors')
-                        : viewKey}
+                {t(capitalize(viewKey))}
               </span>
             </li>
           )}

@@ -397,7 +397,7 @@ export const SearchModal = () => {
             />
           </Show>
 
-          <Show when={currentView() === 'articles'}>
+          <Show when={currentView() === 'posts'}>
             <SearchShouts
               searchValue={inputValue()}
               isLoading={isLoading()}
