@@ -16,10 +16,10 @@ import loadAuthorsSearchQuery from '~/graphql/query/core/authors-load-search'
 import loadCommentsBranchQuery from '~/graphql/query/core/comments-load-branch'
 import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
 import getAuthorsByTopicQuery from '~/graphql/query/core/topic-authors'
+import topicBySlugQuery from '~/graphql/query/core/topic-by-slug'
 import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
 import loadTopicsQuery from '~/graphql/query/core/topics-all'
 import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community'
-import topicBySlugQuery from '~/graphql/query/core/topic-by-slug'
 import {
   QueryLoad_Comments_BranchArgs,
   QueryLoad_Shouts_ByArgs,
