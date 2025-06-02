@@ -253,16 +253,14 @@ export const PublishSettings = () => {
         cover_caption: draft.cover_caption || '',
         seo: draft.seo || '',
         topic_ids: Array.isArray(draft.topics)
-          ? draft.topics
-              .filter((topic): topic is Topic => Boolean(topic?.id))
-              .map((topic) => topic.id)
+          ? draft.topics.filter((topic): topic is Topic => Boolean(topic?.id)).map((topic) => topic.id)
           : [],
         main_topic_id: draft.mainTopic?.id || undefined,
         author_ids: draft.authors?.map((a) => a?.id).filter((id): id is number => !!id) || []
       }
 
       const result = await updateDraft(draftInput)
-      
+
       if (result?.data?.update_draft?.draft) {
         toast.success(t('Draft saved successfully'))
       } else if (result?.error) {
@@ -287,11 +285,11 @@ export const PublishSettings = () => {
     try {
       // Перезагружаем черновик с сервера, игнорируя локальные изменения
       await syncDraft(draft.id)
-      
+
       // Очищаем локальное хранилище для этого черновика
       const draftStorageKeys = [
         `draft-${draft.id}-title`,
-        `draft-${draft.id}-subtitle`, 
+        `draft-${draft.id}-subtitle`,
         `draft-${draft.id}-lead`,
         `draft-${draft.id}-body`,
         `draft-${draft.id}-slug`,
@@ -302,7 +300,7 @@ export const PublishSettings = () => {
         `draft-${draft.id}-main_topic_id`
       ]
 
-      draftStorageKeys.forEach(key => {
+      draftStorageKeys.forEach((key) => {
         try {
           localStorage.removeItem(key)
         } catch (error) {
@@ -311,7 +309,7 @@ export const PublishSettings = () => {
       })
 
       toast.success(t('Changes reset successfully'))
-      
+
       // Перенаправляем на страницу редактирования для обновления UI
       navigate(`/edit/${draft.id}`)
     } catch (error) {

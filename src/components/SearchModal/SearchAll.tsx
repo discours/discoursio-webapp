@@ -1,11 +1,11 @@
 import { For, Show } from 'solid-js'
 
-import { useLocalize } from '~/context/localize'
-import { SearchAllProps } from './types'
-import { getSearchCoincidences } from './utils'
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { ArticleCard } from '~/components/Feed/ArticleCard'
 import { TopicBadge } from '~/components/Topic/TopicBadge/TopicBadge'
+import { useLocalize } from '~/context/localize'
+import { SearchAllProps } from './types'
+import { getSearchCoincidences } from './utils'
 
 import styles from './SearchModal.module.scss'
 

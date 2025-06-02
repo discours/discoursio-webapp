@@ -1,8 +1,8 @@
 import { For, Show } from 'solid-js'
 
+import { ArticleCard } from '../Feed/ArticleCard'
 import { SearchShoutsProps } from './types'
 import { getSearchCoincidences } from './utils'
-import { ArticleCard } from '../Feed/ArticleCard'
 
 import styles from './SearchModal.module.scss'
 

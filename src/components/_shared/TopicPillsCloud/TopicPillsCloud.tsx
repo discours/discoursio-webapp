@@ -209,18 +209,18 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
 
     // Преобразуем ID в число для корректного сравнения
     const topicId = Number(topic.id)
-    if (isNaN(topicId)) {
+    if (Number.isNaN(topicId)) {
       console.error('[TopicPillsCloud] ID темы не является числом:', topic.id)
       return
     }
 
     // Теперь тема валидна, можно переключать
     const currentSelected = localSelectedTopics()
-    const isSelected = currentSelected.some(t => Number(t.id) === topicId)
+    const isSelected = currentSelected.some((t) => Number(t.id) === topicId)
 
     let newSelectedTopics: Topic[]
     if (isSelected) {
-      newSelectedTopics = currentSelected.filter(t => Number(t.id) !== topicId)
+      newSelectedTopics = currentSelected.filter((t) => Number(t.id) !== topicId)
     } else {
       newSelectedTopics = [...currentSelected, topic]
     }

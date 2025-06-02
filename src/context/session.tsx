@@ -42,28 +42,31 @@ const testApiConnection = async () => {
   try {
     console.log('[API Test] Тестируем подключение к API')
     console.log('[API Test] CoreApiUrl:', coreApiUrl)
-    console.log('[API Test] Current location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
-    
+    console.log(
+      '[API Test] Current location:',
+      typeof window !== 'undefined' ? window.location.href : 'SSR'
+    )
+
     // Простой fetch запрос для проверки доступности
     const response = await fetch(coreApiUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         query: '{ __typename }'
       })
     })
-    
+
     console.log('[API Test] Response status:', response.status)
     console.log('[API Test] Response ok:', response.ok)
     console.log('[API Test] Response statusText:', response.statusText)
-    
+
     if (!response.ok) {
       console.error('[API Test] API недоступен:', response.statusText)
       return false
     }
-    
+
     const result = await response.json()
     console.log('[API Test] API доступен, ответ:', result)
     return true
@@ -264,25 +267,28 @@ export const SessionProvider = (props: {
   const loadSessionData = async (token: string): Promise<AuthPayload | undefined> => {
     try {
       console.log('[loadSessionData] Загрузка данных сессии с токеном длиной:', token.length)
-      
+
       const client = graphqlClientCreate(coreApiUrl, token)
       console.log('[loadSessionData] Клиент создан, отправляем GetSession мутацию')
-      
+
       const result = await client.mutation(GetSessionMutation, {}).toPromise()
       console.log('[loadSessionData] Получен результат GetSession:', result)
 
       if (result.error) {
         console.error('[loadSessionData] GraphQL error:', result.error)
-        console.error('[loadSessionData] Error details:', result.error.networkError || result.error.graphQLErrors)
+        console.error(
+          '[loadSessionData] Error details:',
+          result.error.networkError || result.error.graphQLErrors
+        )
         return undefined
       }
 
       if (result.data?.getSession) {
         const { author, token: newToken } = result.data.getSession
-        console.log('[loadSessionData] Данные сессии получены:', { 
-          authorId: author.id, 
+        console.log('[loadSessionData] Данные сессии получены:', {
+          authorId: author.id,
           authorName: author.name,
-          hasNewToken: !!newToken 
+          hasNewToken: !!newToken
         })
 
         // Обновляем токен в localStorage если изменился И не пустой
@@ -303,7 +309,7 @@ export const SessionProvider = (props: {
             links: author.links
           }
         }
-        
+
         console.log('[loadSessionData] Возвращаем данные сессии:', sessionData)
         return sessionData
       }
@@ -312,22 +318,28 @@ export const SessionProvider = (props: {
       return undefined
     } catch (error) {
       console.error('[loadSessionData] Исключение при загрузке данных сессии:', error)
-      console.error('[loadSessionData] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+      console.error(
+        '[loadSessionData] Error stack:',
+        error instanceof Error ? error.stack : 'No stack trace'
+      )
       return undefined
     }
   }
 
   // Функция для безопасного обновления сессии (принцип batch из solid-effects.md)
   const updateSession = (sessionData: AuthPayload | undefined, clearValidatingFlag = true) => {
-    console.log('[updateSession] Обновление сессии:', { hasSessionData: !!sessionData, clearValidatingFlag })
+    console.log('[updateSession] Обновление сессии:', {
+      hasSessionData: !!sessionData,
+      clearValidatingFlag
+    })
     if (sessionData) {
-      console.log('[updateSession] Данные сессии:', { 
-        authorId: sessionData.author.id, 
+      console.log('[updateSession] Данные сессии:', {
+        authorId: sessionData.author.id,
         authorName: sessionData.author.name,
-        tokenLength: sessionData.token.length 
+        tokenLength: sessionData.token.length
       })
     }
-    
+
     batch(() => {
       if (sessionData) {
         console.log('[updateSession] Устанавливаем токен и автора')
@@ -612,7 +624,7 @@ export const SessionProvider = (props: {
       console.log('[signIn] Начало авторизации')
       console.log('[signIn] Параметры:', { email: params.email, passwordLength: params.password.length })
       console.log('[signIn] CoreApiUrl:', coreApiUrl)
-      
+
       // Тестируем подключение к API
       if (!isServer) {
         const apiAvailable = await testApiConnection()
@@ -622,7 +634,7 @@ export const SessionProvider = (props: {
           return false
         }
       }
-      
+
       const authClient = graphqlClientCreate(coreApiUrl)
       console.log('[signIn] GraphQL клиент создан')
 

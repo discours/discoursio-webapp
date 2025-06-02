@@ -150,7 +150,7 @@ export const createCacheableQueryResource = <T, V>(
  */
 export const graphqlClientCreate = (url: string, token = '', timeout = 15000): Client => {
   console.log('[GraphQL Client] Создание клиента:', { url, hasToken: !!token, timeout })
-  
+
   const exchanges = [fetchExchange, cacheExchange]
   const options: ClientOptions = {
     url,
@@ -163,7 +163,7 @@ export const graphqlClientCreate = (url: string, token = '', timeout = 15000): C
         //  console.warn('[GraphQL Client] Таймаут запроса через', timeout, 'мс')
         controller.abort()
       }, timeout)
-      
+
       const headers = {
         'content-type': 'application/json',
         accept: 'application/graphql-response+json, application/graphql+json, application/json',
@@ -173,9 +173,12 @@ export const graphqlClientCreate = (url: string, token = '', timeout = 15000): C
             }
           : {})
       }
-      
-      console.log('[GraphQL Client] Заголовки запроса:', { ...headers, authorization: token ? '[СКРЫТ]' : undefined })
-      
+
+      console.log('[GraphQL Client] Заголовки запроса:', {
+        ...headers,
+        authorization: token ? '[СКРЫТ]' : undefined
+      })
+
       return {
         signal: controller.signal,
         headers,

@@ -75,7 +75,7 @@ export const LoginForm = () => {
   }
   const handleSubmit = async (event: Event) => {
     event.preventDefault()
-    
+
     console.log('[LoginForm] Начало процесса авторизации')
     console.log('[LoginForm] Email:', email())
     console.log('[LoginForm] Password length:', password().length)
@@ -101,8 +101,12 @@ export const LoginForm = () => {
       console.log('[LoginForm] Вызываем signIn...')
       const success = await signIn({ email: email(), password: password() })
       console.log('[LoginForm] Результат signIn:', success)
-      
-      if (!success) {
+
+      if (success) {
+        console.log('[LoginForm] Авторизация успешна')
+        hideModal()
+        toast.success(t('Welcome!'))
+      } else {
         console.warn('[LoginForm] Авторизация не удалась, authError:', authError())
         switch (authError()) {
           case 'user has not signed up email & password':
@@ -132,10 +136,6 @@ export const LoginForm = () => {
               </div>
             )
         }
-      } else {
-        console.log('[LoginForm] Авторизация успешна')
-        hideModal()
-        toast.success(t('Welcome!'))
       }
     } catch (error) {
       console.error('[LoginForm] Ошибка в handleSubmit:', error)
