@@ -294,6 +294,7 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
                 slug={author()?.slug}
                 desc={desc()}
                 cover={cover()}
+                author={author() as Author}
               >
                 <ReactionsProvider>
                   <AuthorView

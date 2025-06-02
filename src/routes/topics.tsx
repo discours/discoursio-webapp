@@ -1,3 +1,3 @@
-import TopicsPage from '~/routes/topic/(all-topics)'
+import TopicsPage from '~/routes/topic/index'
 
 export default TopicsPage

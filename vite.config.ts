@@ -115,8 +115,11 @@ export default defineConfig({
     }
   },
   ssr: {
-    noExternal: ['@urql/core', '@solidjs/meta', '@solidjs/router'],
-    target: 'node'
+    noExternal: ['@urql/core', '@solidjs/meta', '@solidjs/router', '@vercel/og'],
+    target: 'node',
+    optimizeDeps: {
+      include: ['@urql/core']
+    }
   },
   optimizeDeps: {
     include: ['@urql/core', 'buffer']

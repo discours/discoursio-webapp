@@ -6,10 +6,11 @@ import { Show, createEffect, createMemo, createSignal, onMount } from 'solid-js'
 import { cdnUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
 import { getShout } from '~/graphql/api/public'
-import { Shout } from '~/graphql/schema/core.gen'
+import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 import enKeywords from '~/intl/locales/en/keywords.json'
 import ruKeywords from '~/intl/locales/ru/keywords.json'
 import { getFileUrl } from '~/lib/getThumbUrl'
+import { getArticleOGImage, getAuthorOGImage, getBasicOGImage, getTopicOGImage } from '~/lib/ogImages'
 import { descFromBody } from '~/utils/meta'
 import { FooterView } from '../Discours/Footer'
 import { Header } from '../HeaderNav'
@@ -22,6 +23,8 @@ type PageLayoutProps = {
   headerTitle?: string
   slug?: string
   article?: Shout
+  author?: Author // Add author prop for author pages
+  topic?: Topic // Add topic prop for topic pages
   cover?: string
   children: JSX.Element
   isHeaderFixed?: boolean
@@ -38,15 +41,32 @@ export const PageLayout = (props: PageLayoutProps) => {
   const loc = useLocation()
   const { t, lang } = useLocalize()
   const imageUrl = getFileUrl(props.cover ? props.cover : `${cdnUrl}/production/image/logo_image.png`)
-  const ogImage = createMemo(() =>
-    // NOTE: preview generation logic works only for one article view
-    props.article
-      ? getFileUrl(imageUrl, {
-          shout: props.article.id,
-          width: 1200
-        })
-      : imageUrl
-  )
+
+  // OG image generation
+  const ogImage = createMemo(() => {
+    // For articles, use our dynamic OG image generation
+    if (props.article) {
+      const ogUrl = getArticleOGImage(props.article)
+      return ogUrl
+    }
+
+    // For author pages, use author-specific OG image
+    if (props.author) {
+      const ogUrl = getAuthorOGImage(props.author)
+      return ogUrl
+    }
+
+    // For topic pages, use topic-specific OG image
+    if (props.topic) {
+      const ogUrl = getTopicOGImage(props.topic)
+      return ogUrl
+    }
+
+    // For other pages, use basic OG image
+    const basicUrl = getBasicOGImage()
+    return basicUrl
+  })
+
   const description = createMemo(() => props.desc || (props.article && descFromBody(props.article.body)))
   const keywords = createMemo(() => {
     const keypath = (props.key || loc?.pathname.split('/')[0]) as keyof typeof ruKeywords
@@ -85,7 +105,7 @@ export const PageLayout = (props: PageLayoutProps) => {
         cover={imageUrl}
         isHeaderFixed={isHeaderFixed}
       />
-      <Meta name="descprition" content={description() || ''} />
+      <Meta name="description" content={description() || ''} />
       <Meta name="keywords" content={keywords()} />
       <Meta name="og:type" content="article" />
       <Meta name="og:title" content={props.article?.title || t(props.title) || ''} />

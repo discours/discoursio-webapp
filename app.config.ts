@@ -43,7 +43,12 @@ function checkSSL(): { key: string; cert: string } | undefined {
 
 export default defineConfig({
   nitro: {
-    timing: true
+    timing: true,
+    compatibilityDate: '2024-11-29',
+    // Configure WASM handling for @vercel/og
+    experimental: {
+      wasm: true
+    }
   },
   ssr: true,
   server: {
