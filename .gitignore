@@ -37,3 +37,4 @@ app.config.*.js
 .prettierrc
 .github/copilot-instructions.md
 .github/history.md
+bun.lock

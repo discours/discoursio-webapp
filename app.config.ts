@@ -48,6 +48,20 @@ export default defineConfig({
     // Configure WASM handling for @vercel/og
     experimental: {
       wasm: true
+    },
+    rollupConfig: {
+      external: ['@vercel/og/dist/yoga.wasm'],
+      output: {
+        inlineDynamicImports: false
+      }
+    },
+    // Configure routes for Edge runtime
+    routeRules: {
+      '/api/og/**': { 
+        prerender: false,
+        // Use Edge runtime for OG image generation to avoid Node.js polyfills
+        runtime: 'edge'
+      }
     }
   },
   ssr: true,
