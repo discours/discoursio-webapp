@@ -16,7 +16,7 @@ src/graphql/schema/*.gen.ts
 stats.html
 *.scss.d.ts
 pnpm-lock.yaml
-bun.lockb
+bun.lock
 .jj
 /test-results/
 /playwright-report/
@@ -37,5 +37,4 @@ app.config.*.js
 .prettierrc
 .github/copilot-instructions.md
 .github/history.md
-bun.lock
 /SV-DEV/*
