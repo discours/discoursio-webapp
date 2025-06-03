@@ -5,6 +5,7 @@ import { replaceSelection } from '../lib/empty'
 import { CommandType } from '../lib/types'
 import { ToolbarControl } from './SimpleToolbar'
 
+import { useLocalize } from '~/context/localize'
 import styles from './PlusMenu.module.scss'
 /**
  * Обработчик действий из PlusMenu
@@ -337,6 +338,7 @@ export const PlusMenu: Component<{
 
   // Telegraph использует ограниченный набор элементов меню
   const telegraphMenuItems = ['link', 'image', 'video']
+  const { t } = useLocalize()
 
   return (
     <div
@@ -361,7 +363,8 @@ export const PlusMenu: Component<{
 
       <Show when={shouldShowPlaceholder()}>
         <div class={styles.placeholder} onClick={handlePlaceholderClick}>
-          Напишите что-нибудь или нажмите +
+          {t('Write something or click')}
+          {' +'}
         </div>
       </Show>
 

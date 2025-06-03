@@ -63,7 +63,7 @@ export const ProfilePopup = (props: ProfilePopupProps) => {
       return {
         show: true,
         icon: 'wifi-off',
-        tooltip: t('Working offline. {{count}} drafts need sync when online.', {
+        tooltip: t('Working offline. Some drafts need sync when online.', {
           count: stats.draftsCount
         }),
         className: styles.iconOffline
@@ -75,7 +75,9 @@ export const ProfilePopup = (props: ProfilePopupProps) => {
       return {
         show: true,
         icon: 'sync-problem',
-        tooltip: t('{{count}} drafts failed to sync. Click to review.', { count: stats.syncFailed }),
+        tooltip: stats.syncFailed
+          ? t('some drafts failed to sync. Click to review.', { count: stats.syncFailed || 0 })
+          : '',
         className: styles.iconWarning
       }
     }
@@ -85,7 +87,7 @@ export const ProfilePopup = (props: ProfilePopupProps) => {
       return {
         show: true,
         icon: 'cloud-upload',
-        tooltip: t('{{count}} drafts waiting for sync. Click to review.', { count: stats.syncPending }),
+        tooltip: t('some drafts waiting for sync. Click to review.', { count: stats.syncPending }),
         className: styles.iconInfo
       }
     }
