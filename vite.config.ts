@@ -29,8 +29,11 @@ const polyfillOptions = {
   protocolImports: true,
   // Exclude polyfills for OG image generation routes to avoid Edge runtime conflicts
   excludeModule: (module: string) => {
-    // Don't polyfill Node.js modules in OG API routes
-    return module.includes('/api/og/')
+    // Only exclude Node.js modules in specific OG API routes
+    return module.includes('/api/og/') && 
+           (module.includes('stream-browserify') || 
+            module.includes('node:stream') || 
+            module.includes('node:fs'))
   }
 } as PolyfillOptions
 
@@ -68,8 +71,8 @@ export default defineConfig({
     },
     rollupOptions: {
       external: (id) => {
-        // Keep WASM files external for proper Edge runtime handling
-        if (id.includes('.wasm')) return true
+        // Only make specific WASM files external to avoid affecting CSS processing
+        if (id.includes('@vercel/og/dist/yoga.wasm')) return true
         return false
       },
       output: {
