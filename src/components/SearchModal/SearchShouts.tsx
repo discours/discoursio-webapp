@@ -1,12 +1,15 @@
 import { For, Show } from 'solid-js'
 
 import { ArticleCard } from '../Feed/ArticleCard'
+import { useUI } from '~/context/ui'
 import { SearchShoutsProps } from './types'
 import { getSearchCoincidences } from './utils'
 
 import styles from './SearchModal.module.scss'
 
 export const SearchShouts = (props: SearchShoutsProps) => {
+  const { hideModal } = useUI()
+
   const prepareSearchResults = (list: typeof props.shoutsList) =>
     list.map((article) => ({
       ...article,
@@ -24,11 +27,15 @@ export const SearchShouts = (props: SearchShoutsProps) => {
         : ''
     }))
 
+  const handleArticleClick = () => {
+    hideModal()
+  }
+
   return (
     <div class={styles.searchResults}>
       <For each={prepareSearchResults(props.shoutsList)}>
         {(article) => (
-          <div>
+          <div onClick={handleArticleClick}>
             <ArticleCard
               article={article}
               settings={{

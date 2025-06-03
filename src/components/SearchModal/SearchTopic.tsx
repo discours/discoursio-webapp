@@ -1,6 +1,7 @@
 import { For, Show } from 'solid-js'
 import { TopicBadge } from '~/components/Topic/TopicBadge/TopicBadge'
 import type { Topic } from '~/graphql/schema/core.gen'
+import { useUI } from '~/context/ui'
 
 import styles from './SearchModal.module.scss'
 
@@ -14,10 +15,16 @@ interface SearchTopicsProps {
 }
 
 export const SearchTopics = (props: SearchTopicsProps) => {
+  const { hideModal } = useUI()
+
+  const handleTopicClick = () => {
+    hideModal()
+  }
+
   return (
     <>
       <Show when={props.topicsList.length > 0}>
-        <div class={styles.searchResults}>
+        <div class={styles.searchResults} onClick={handleTopicClick}>
           <For each={props.topicsList}>{(topic) => <TopicBadge topic={topic} showStat={true} />}</For>
         </div>
 

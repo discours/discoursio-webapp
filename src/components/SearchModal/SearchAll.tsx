@@ -4,6 +4,7 @@ import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { ArticleCard } from '~/components/Feed/ArticleCard'
 import { TopicBadge } from '~/components/Topic/TopicBadge/TopicBadge'
 import { useLocalize } from '~/context/localize'
+import { useUI } from '~/context/ui'
 import { SearchAllProps } from './types'
 import { getSearchCoincidences } from './utils'
 
@@ -11,6 +12,7 @@ import styles from './SearchModal.module.scss'
 
 export const SearchAll = (props: SearchAllProps) => {
   const { t } = useLocalize()
+  const { hideModal } = useUI()
 
   const prepareSearchResults = (list: typeof props.shoutsList) =>
     list.map((article) => ({
@@ -29,12 +31,16 @@ export const SearchAll = (props: SearchAllProps) => {
         : ''
     }))
 
+  const handleArticleClick = () => {
+    hideModal()
+  }
+
   return (
     <div class={styles.searchResults}>
       {/* First 5 shouts */}
       <For each={prepareSearchResults(props.shoutsList.slice(0, 5))}>
         {(article) => (
-          <div>
+          <div onClick={handleArticleClick}>
             <ArticleCard
               article={article}
               settings={{

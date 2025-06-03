@@ -1,18 +1,25 @@
 import { For, Show } from 'solid-js'
 
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
+import { useUI } from '~/context/ui'
 import { SearchAuthorsProps } from './types'
 
 import styles from './SearchModal.module.scss'
 
 export const SearchAuthors = (props: SearchAuthorsProps) => {
+  const { hideModal } = useUI()
+
+  const handleAuthorClick = () => {
+    hideModal()
+  }
+
   return (
     <div class={styles.searchResults}>
       <Show when={props.authorsList.length > 0}>
         <div class={styles.searchAuthorsColumn}>
           <For each={props.authorsList}>
             {(author) => (
-              <div>
+              <div onClick={handleAuthorClick}>
                 <AuthorBadge author={author} showMessageButton={false} />
               </div>
             )}
