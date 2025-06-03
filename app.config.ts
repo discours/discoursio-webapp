@@ -49,22 +49,16 @@ export default defineConfig({
     experimental: {
       wasm: true
     },
-    rollupConfig: {
-      external: [
-        // Keep this specific to WASM files only to avoid affecting CSS processing
-        '@vercel/og/dist/yoga.wasm',
-        '@vercel/og/dist/resvg.wasm'
-      ],
-      output: {
-        inlineDynamicImports: false
-      }
-    },
-    // Configure routes for Edge runtime
+    // Force Edge runtime for OG image generation routes
     routeRules: {
       '/api/og/**': { 
         prerender: false,
-        // Use Edge runtime for OG image generation to avoid Node.js polyfills
-        runtime: 'edge'
+        runtime: 'edge'  // Key fix: Force Edge runtime for OG routes
+      }
+    },
+    rollupConfig: {
+      output: {
+        inlineDynamicImports: false
       }
     }
   },
@@ -72,9 +66,17 @@ export default defineConfig({
   server: {
     preset,
     port: 3000,
-    https: checkSSL(),
-    streaming: false
+    https: checkSSL()
   },
   devOverlay: isDev,
-  vite: viteConfig
+  vite: viteConfig,
+  edge: isVercel,
+  experimental: {
+    streaming: false,
+    islands: false,
+    hydration: true,
+    router: {
+      ssr: true
+    }
+  }
 } as SolidStartInlineConfig)
