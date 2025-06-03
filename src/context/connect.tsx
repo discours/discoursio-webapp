@@ -8,7 +8,10 @@ import { Chat, Message } from '~/graphql/schema/chat.gen'
 import { sseUrl } from '../config'
 import { useSession } from './session'
 
-const RECONNECT_TIMES = 2
+// Увеличиваем количество попыток переподключения
+const RECONNECT_TIMES = 5
+// Максимальная задержка переподключения в мс
+const MAX_RECONNECT_DELAY = 30000
 
 export interface SSEMessage {
   id: string
@@ -19,139 +22,185 @@ export interface SSEMessage {
   seen?: boolean
 }
 
-export type MessageHandler = (m: SSEMessage) => void
+export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'error'
 
-export interface ConnectContextType {
-  addHandler: (handler: MessageHandler) => void
-  connected: boolean
-  reconnect: () => void
+export type ConnectContextType = {
+  addHandler: (handler: (data: SSEMessage) => void) => () => void
+  getStatus: () => ConnectionStatus
 }
 
-const noop = () => undefined
-
 const ConnectContext = createContext<ConnectContextType>({
-  addHandler: noop,
-  connected: false,
-  reconnect: noop
+  addHandler: () => () => {},
+  getStatus: () => 'disconnected' as ConnectionStatus
 })
 
 export const ConnectProvider = (props: { children: JSX.Element }) => {
-  const [messageHandlers, setHandlers] = createSignal<MessageHandler[]>([])
-  const [connected, setConnected] = createSignal(false)
   const { session } = useSession()
-  const [retried, setRetried] = createSignal<number>(0)
-  const [eventSource, setEventSource] = createSignal<EventSource | null>(null)
+  const [status, setStatus] = createSignal<ConnectionStatus>('disconnected')
+  const [handlers, setHandlers] = createSignal<Array<(data: SSEMessage) => void>>([])
+  // Хранит ID обработанных сообщений для дедупликации
+  const [processedMessageIds] = createSignal<Set<string>>(new Set())
+  
+  let eventSource: EventSource | null = null
+  let reconnectAttempt = 0
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
-  const addHandler = (handler: MessageHandler) => {
-    setHandlers((hhh) => [...hhh, handler])
-  }
+  // Расчет задержки переподключения с экспоненциальным увеличением
+  const calculateReconnectDelay = () => {
+    const baseDelay = 1000; // 1 секунда
+    const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
+    console.debug(`[context.connect] Reconnect delay: ${delay}ms (attempt ${reconnectAttempt + 1}/${RECONNECT_TIMES})`);
+    return delay;
+  };
 
-  const initConnection = async (token: string) => {
-    if (!sseUrl) return
-    if (!token) return
+  const initConnection = (token: string | undefined) => {
+    if (!token) {
+      console.warn('[context.connect] No token provided, connection aborted')
+      return
+    }
+
+    closeConnection()
 
     try {
-      if (eventSource()) {
-        eventSource()?.close()
+      setStatus('connecting')
+      
+      // Создаем заголовки
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache'
+      }
+      
+      // Опции подключения
+      const options = {
+        withCredentials: true, // Разрешаем передачу cookies
+        headers
       }
 
-      console.info('[context.connect] init SSE connection')
+      eventSource = new EventSource(sseUrl, options)
 
-      const newEventSource = new EventSource(sseUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: token
-        },
-        retry: 3000
-      })
-
-      setEventSource(newEventSource)
-
-      newEventSource.onopen = (ev) => {
-        console.log('[context.connect] SSE connection opened', ev)
-        setConnected(true)
-        setRetried(0)
-      }
-
-      newEventSource.onmessage = (event: MessageEvent) => {
-        const m: SSEMessage = JSON.parse(event.data || '{}')
-        console.debug('[context.connect] Received message:', m)
-        messageHandlers().forEach((handler) => handler(m))
-      }
-
-      newEventSource.onerror = (error) => {
-        console.error('[context.connect] SSE connection error:', error)
-        setConnected(false)
-        if (retried() < RECONNECT_TIMES) {
-          setRetried((r) => r + 1)
-        } else {
-          newEventSource.close()
-          console.warn('[context.connect] Max reconnection attempts reached')
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data) as SSEMessage
+          
+          // Проверяем на дубликаты
+          if (data.id && processedMessageIds().has(data.id)) {
+            console.debug(`[context.connect] Skipping duplicate message: ${data.id}`)
+            return
+          }
+          
+          // Добавляем ID в список обработанных
+          if (data.id) {
+            processedMessageIds().add(data.id)
+            
+            // Ограничиваем размер кэша ID до 1000 элементов
+            if (processedMessageIds().size > 1000) {
+              const iterator = processedMessageIds().values()
+              processedMessageIds().delete(iterator.next()?.value || '')
+            }
+          }
+          
+          console.debug(`[context.connect] Received event: ${data.entity}:${data.action}`, data)
+          
+          // Вызываем все обработчики
+          handlers().forEach((handler) => handler(data))
+        } catch (e) {
+          console.error('[context.connect] Error parsing event data', e, event.data)
         }
       }
+
+      eventSource.onopen = () => {
+        console.info('[context.connect] SSE connection opened')
+        setStatus('connected')
+        reconnectAttempt = 0
+      }
+
+      eventSource.onerror = (e) => {
+        console.error('[context.connect] SSE connection error', e)
+        handleConnectionError()
+      }
     } catch (error) {
-      console.error('[context.connect] SSE init failed:', error)
+      console.error('[context.connect] Failed to establish SSE connection', error)
+      handleConnectionError()
     }
   }
 
-  const reconnectFn = () => {
-    const token = session()?.token
-    if (token) {
-      console.log('[context.connect] Manual reconnection triggered')
-      setRetried(0)
-      initConnection(token)
+  const handleConnectionError = () => {
+    setStatus('error')
+    closeConnection()
+    
+    // Пытаемся переподключиться с увеличивающейся задержкой
+    if (reconnectAttempt < RECONNECT_TIMES) {
+      reconnectAttempt++
+      const delay = calculateReconnectDelay()
+      
+      console.info(`[context.connect] Reconnecting in ${delay}ms (attempt ${reconnectAttempt}/${RECONNECT_TIMES})`)
+      
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer)
+      }
+      
+      reconnectTimer = setTimeout(() => {
+        console.info('[context.connect] Attempting to reconnect...')
+        const currentToken = session()?.token
+        if (currentToken) {
+          initConnection(currentToken)
+        }
+      }, delay)
     } else {
-      console.warn('[context.connect] Cannot reconnect - no token available')
+      console.error(`[context.connect] Maximum reconnect attempts (${RECONNECT_TIMES}) reached, giving up`)
     }
   }
+
+  const closeConnection = () => {
+    if (eventSource) {
+      eventSource.close()
+      eventSource = null
+    }
+    
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+    
+    setStatus('disconnected')
+  }
+
+  const addHandler = (handler: (data: SSEMessage) => void) => {
+    setHandlers((prev) => [...prev, handler])
+    return () => {
+      setHandlers((prev) => prev.filter((h) => h !== handler))
+    }
+  }
+
+  const getStatus = () => status()
 
   createEffect(
     on(
-      () => session()?.token,
-      (tkn) => {
-        if (!tkn) {
-          if (eventSource()) {
-            eventSource()?.close()
-            setEventSource(null)
-          }
-          setConnected(false)
-          return
+      session,
+      (s) => {
+        if (s?.token) {
+          initConnection(s.token)
+        } else {
+          closeConnection()
         }
-
-        if (!connected() && retried() <= RECONNECT_TIMES) {
-          initConnection(tkn)
-        }
-      }
+      },
+      { defer: false }
     )
   )
 
   onCleanup(() => {
-    if (eventSource()) {
-      eventSource()?.close()
-    }
+    closeConnection()
   })
 
-  const value: ConnectContextType = {
+  const value = {
     addHandler,
-    connected: connected(),
-    reconnect: reconnectFn
+    getStatus
   }
 
   return <ConnectContext.Provider value={value}>{props.children}</ConnectContext.Provider>
 }
 
 export const useConnect = () => {
-  const context = useContext(ConnectContext)
-
-  // Обеспечиваем, что reconnect всегда будет функцией
-  if (!context.reconnect || typeof context.reconnect !== 'function') {
-    console.warn('[useConnect] reconnect is not a function, providing fallback')
-    return {
-      ...context,
-      reconnect: () => console.warn('[useConnect] Using fallback reconnect function')
-    }
-  }
-
-  return context
+  return useContext(ConnectContext)
 }
