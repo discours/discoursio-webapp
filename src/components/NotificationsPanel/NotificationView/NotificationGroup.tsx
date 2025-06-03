@@ -38,35 +38,39 @@ const getTitle = (title: string) => {
 }
 
 // Генерация текста уведомления в зависимости от типа уведомления
-const getNotificationText = (n: Group, t: (key: string, params?: any) => string) => {
+const getNotificationText = (
+  n: Group,
+  t: (key: string, params?: Record<string, number | string>) => string
+) => {
   // Для уведомлений от presence сервиса
   if (n.entity && n.action) {
     switch (n.entity) {
       case PresenceEntityType.Reaction:
-        return n.action === PresenceActionType.Create 
-          ? t('New reaction to your content') 
-          : t('Reaction updated');
-        
+        return n.action === PresenceActionType.Create
+          ? t('New reaction to your content')
+          : t('Reaction updated')
+
       case PresenceEntityType.Message:
-        return t('New message');
-        
+        return t('New message')
+
       case PresenceEntityType.Shout:
-        return n.action === PresenceActionType.Create 
-          ? t('New publication') 
-          : t('Publication updated');
-        
+        return n.action === PresenceActionType.Create ? t('New publication') : t('Publication updated')
+
       case PresenceEntityType.Global:
-        return t('System notification');
-        
+        return t('System notification')
+
       case PresenceEntityType.Personal:
-        return t('Personal notification');
+        return t('Personal notification')
+
+      default:
+        return t('Common notification')
     }
   }
-  
+
   // Для стандартных уведомлений о комментариях
-  return n.thread?.includes(':') 
+  return n.thread?.includes(':')
     ? t('Some new replies to your comment', { commentsCount: n.reactions?.length || 0 })
-    : t('Some new comments to your publication', { commentsCount: n.reactions?.length || 0 });
+    : t('Some new comments to your publication', { commentsCount: n.reactions?.length || 0 })
 }
 
 export const NotificationGroup = (props: NotificationGroupProps) => {
@@ -74,15 +78,15 @@ export const NotificationGroup = (props: NotificationGroupProps) => {
   const navigate = useNavigate()
   const [, changeSearchParams] = useSearchParams()
   const { hideNotificationsPanel, markSeenThread } = useNotifications()
-  
+
   const handleClick = (n: Group) => {
     props.onClick()
-    
+
     // Маркируем уведомление как прочитанное
     if (n.thread) {
       markSeenThread(n.thread)
     }
-    
+
     // Определяем, куда перейти в зависимости от типа уведомления
     if (n.entity === PresenceEntityType.Message) {
       // Для сообщений переходим в inbox
@@ -90,7 +94,7 @@ export const NotificationGroup = (props: NotificationGroupProps) => {
     } else if (n.shout?.slug) {
       // Для публикаций и комментариев переходим на страницу публикации
       navigate(`/${n.shout.slug}`)
-      
+
       // Если это комментарий, добавляем параметр commentId
       if (n.thread?.includes('::')) {
         const [, commentId] = n.thread.split('::')
@@ -122,11 +126,12 @@ export const NotificationGroup = (props: NotificationGroupProps) => {
                     {getTitle(n.shout?.title || '')}
                   </A>{' '}
                 </Show>
-                
+
                 {getNotificationText(n, t)}
-                
+
                 <Show when={n.authors?.[0]}>
-                  {' '}{t('from')}{' '}
+                  {' '}
+                  {t('from')}{' '}
                   <A href={`/@${n.authors?.[0]?.slug || ''}`} onClick={handleLinkClick}>
                     {n.authors?.[0]?.name || ''}
                   </A>

@@ -1,7 +1,7 @@
 import { For, Show } from 'solid-js'
 import { TopicBadge } from '~/components/Topic/TopicBadge/TopicBadge'
-import type { Topic } from '~/graphql/schema/core.gen'
 import { useUI } from '~/context/ui'
+import type { Topic } from '~/graphql/schema/core.gen'
 
 import styles from './SearchModal.module.scss'
 

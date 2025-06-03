@@ -40,18 +40,20 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   const [handlers, setHandlers] = createSignal<Array<(data: SSEMessage) => void>>([])
   // Хранит ID обработанных сообщений для дедупликации
   const [processedMessageIds] = createSignal<Set<string>>(new Set())
-  
+
   let eventSource: EventSource | null = null
   let reconnectAttempt = 0
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
   // Расчет задержки переподключения с экспоненциальным увеличением
   const calculateReconnectDelay = () => {
-    const baseDelay = 1000; // 1 секунда
-    const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
-    console.debug(`[context.connect] Reconnect delay: ${delay}ms (attempt ${reconnectAttempt + 1}/${RECONNECT_TIMES})`);
-    return delay;
-  };
+    const baseDelay = 1000 // 1 секунда
+    const delay = Math.min(baseDelay * 2 ** reconnectAttempt, MAX_RECONNECT_DELAY)
+    console.debug(
+      `[context.connect] Reconnect delay: ${delay}ms (attempt ${reconnectAttempt + 1}/${RECONNECT_TIMES})`
+    )
+    return delay
+  }
 
   const initConnection = (token: string | undefined) => {
     if (!token) {
@@ -63,14 +65,14 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
     try {
       setStatus('connecting')
-      
+
       // Создаем заголовки
       const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'text/event-stream',
+        Authorization: `Bearer ${token}`,
+        Accept: 'text/event-stream',
         'Cache-Control': 'no-cache'
       }
-      
+
       // Опции подключения
       const options = {
         withCredentials: true, // Разрешаем передачу cookies
@@ -82,26 +84,26 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data) as SSEMessage
-          
+
           // Проверяем на дубликаты
           if (data.id && processedMessageIds().has(data.id)) {
             console.debug(`[context.connect] Skipping duplicate message: ${data.id}`)
             return
           }
-          
+
           // Добавляем ID в список обработанных
           if (data.id) {
             processedMessageIds().add(data.id)
-            
+
             // Ограничиваем размер кэша ID до 1000 элементов
             if (processedMessageIds().size > 1000) {
               const iterator = processedMessageIds().values()
               processedMessageIds().delete(iterator.next()?.value || '')
             }
           }
-          
+
           console.debug(`[context.connect] Received event: ${data.entity}:${data.action}`, data)
-          
+
           // Вызываем все обработчики
           handlers().forEach((handler) => handler(data))
         } catch (e) {
@@ -128,18 +130,20 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   const handleConnectionError = () => {
     setStatus('error')
     closeConnection()
-    
+
     // Пытаемся переподключиться с увеличивающейся задержкой
     if (reconnectAttempt < RECONNECT_TIMES) {
       reconnectAttempt++
       const delay = calculateReconnectDelay()
-      
-      console.info(`[context.connect] Reconnecting in ${delay}ms (attempt ${reconnectAttempt}/${RECONNECT_TIMES})`)
-      
+
+      console.info(
+        `[context.connect] Reconnecting in ${delay}ms (attempt ${reconnectAttempt}/${RECONNECT_TIMES})`
+      )
+
       if (reconnectTimer) {
         clearTimeout(reconnectTimer)
       }
-      
+
       reconnectTimer = setTimeout(() => {
         console.info('[context.connect] Attempting to reconnect...')
         const currentToken = session()?.token
@@ -157,12 +161,12 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
       eventSource.close()
       eventSource = null
     }
-    
+
     if (reconnectTimer) {
       clearTimeout(reconnectTimer)
       reconnectTimer = null
     }
-    
+
     setStatus('disconnected')
   }
 

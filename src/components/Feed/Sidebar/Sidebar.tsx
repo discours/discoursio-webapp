@@ -31,6 +31,7 @@ export const Sidebar = () => {
   const { topicEntities, topTopics } = useTopics()
   const [authorsList, setAuthorsList] = createSignal<Partial<Author>[]>([])
   const [topicsList, setTopicsList] = createSignal<Partial<Topic>[]>([])
+  const [showSubscriptions, setShowSubscriptions] = createSignal(true)
 
   // Объединенный эффект для обработки авторов и топиков
   createEffect(
@@ -132,6 +133,8 @@ export const Sidebar = () => {
     })
   }
 
+  const toggleSubscriptions = () => setShowSubscriptions(!showSubscriptions())
+
   return (
     <div class={styles.sidebar}>
       <nav class={styles.feedFilters}>
@@ -192,10 +195,22 @@ export const Sidebar = () => {
         </A>
       </nav>
 
+      <hr />
+
+      {/* Подписки (объединенные авторы и темы) */}
       <section>
-        <hr />
+        {(authorsList().length > 0 || topicsList().length > 0) && (
+          <h4
+            class={`${styles.sectionHeader} ${showSubscriptions() ? styles.opened : ''}`}
+            onClick={toggleSubscriptions}
+          >
+            {t('Subscriptions')}
+            <Icon name="arrow-down" class={styles.icon} />
+          </h4>
+        )}
         <Suspense fallback={<Loading />}>
-          <ul class={styles.subscriptions}>
+          <ul class={`${styles.subscriptions} ${showSubscriptions() ? '' : styles.hidden}`}>
+            {/* Авторы */}
             <For each={authorsList() as Partial<Author & { key: string; isUnread: boolean }>[]}>
               {(author) => (
                 <li id={author.key}>
@@ -217,6 +232,8 @@ export const Sidebar = () => {
                 </li>
               )}
             </For>
+
+            {/* Темы */}
             <For each={topicsList() as Partial<Topic & { key: string; isUnread: boolean }>[]}>
               {(topic) => (
                 <li id={topic.key}>

@@ -14,6 +14,23 @@
   max-height: calc(100vh - 120px);
   overflow: auto;
   top: 120px;
+  
+  // Улучшаем прокрутку
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
 
   // Адаптивные стили для сжатого режима
   @include media-breakpoint-down(lg) {
@@ -31,6 +48,12 @@
     .subscriptions {
       display: none;
     }
+    
+    // Специальное отображение выделенного элемента в сжатом режиме
+    .selected .icon {
+      opacity: 1;
+      transform: scale(1.1);
+    }
   }
 
   .sidebarItemName {
@@ -38,15 +61,18 @@
     align-items: center;
     display: flex;
     position: relative;
-    transition: background-color 0.2s;
-    padding: 0.8rem;
-    border-radius: 0.8rem;
+    transition: all 0.2s ease;
+    padding: 0.5rem 0.6rem;
+    border-radius: 0.6rem;
+    
+    &:hover {
+      transform: translateX(2px);
+    }
     
     @include media-breakpoint-down(lg) {
       justify-content: center;
-      padding: 1rem 0.5rem;
+      padding: 0.8rem 0.4rem;
       
-      // Tooltip для сжатого режима
       &:hover::after {
         content: attr(data-tooltip);
         position: absolute;
@@ -55,22 +81,21 @@
         transform: translateY(-50%);
         background: var(--black-500);
         color: white;
-        padding: 0.5rem 1rem;
+        padding: 0.4rem 0.8rem;
         border-radius: 0.4rem;
-        font-size: 1.2rem;
         white-space: nowrap;
         z-index: 1000;
-        margin-left: 0.8rem;
+        margin-left: 0.6rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       }
       
-      // Стрелка tooltip
       &:hover::before {
         content: '';
         position: absolute;
-        left: calc(100% + 0.4rem);
+        left: calc(100% + 0.3rem);
         top: 50%;
         transform: translateY(-50%);
-        border: 0.4rem solid transparent;
+        border: 0.3rem solid transparent;
         border-right-color: var(--black-500);
         z-index: 1001;
       }
@@ -81,62 +106,68 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    
+    font-size: 1.2rem;
+
     @include media-breakpoint-down(lg) {
       display: none;
     }
     
     @include media-breakpoint-down(md) {
-      display: block; // Возвращаем на мобильных
+      display: block;
     }
   }
 
   .userpic {
-    margin-right: 1.2rem;
+    margin-right: 0.8rem;
+    transition: transform 0.2s ease;
     
     @include media-breakpoint-down(lg) {
       margin-right: 0;
     }
     
     @include media-breakpoint-down(md) {
-      margin-right: 1.2rem; // Возвращаем на мобильных
+      margin-right: 0.8rem;
     }
   }
 
   .selected {
     font-weight: 700;
     
-    @include media-breakpoint-down(lg) {
-      .sidebarItemName {
-        background: var(--blue-500);
-        
-        .icon {
-          filter: invert(1);
-        }
+    .sidebarItemName {
+      background-color: transparent;
+      color: inherit;
+      
+      .sidebarItemNameLabel {
+        font-weight: 700;
+      }
+      
+      + .counter {
+        background-color: rgba(0, 0, 0, 0.08);
+        color: inherit;
       }
     }
   }
 
   .counter {
-    font-size:1.2rem;
+    font-size: 0.95rem;
     align-items: center;
     align-self: flex-start;
     background: #f6f6f6;
-    border-radius: 0.8rem;
+    border-radius: 0.6rem;
     display: inline-flex;
-    font-weight: bold;
+    font-weight: 600;
     justify-content: center;
-    min-width: 2em;
-    margin-left: 0.5em;
-    padding: 0.25em 0.5em 0.15em;
+    min-width: 1.8em;
+    margin-left: 0.4em;
+    padding: 0.15em 0.4em 0.1em;
     transition: background-color 0.2s;
     
     @include media-breakpoint-down(lg) {
-      display: none; // Скрываем счетчики в сжатом режиме
+      display: none;
     }
     
     @include media-breakpoint-down(md) {
-      display: inline-flex; // Возвращаем на мобильных
+      display: inline-flex;
     }
   }
 
@@ -148,16 +179,37 @@
       border-radius: 100%;
       content: '';
       display: inline-block;
-      height: 0.5em;
+      height: 0.4em;
       left: 100%;
-      margin-left: 0.3em;
+      margin-left: 0.2em;
       position: absolute;
-      top: 0.5em;
-      width: 0.5em;
+      top: 0.4em;
+      width: 0.4em;
+      animation: pulse 2s infinite;
+    }
+  }
+  
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(38, 56, 217, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 4px rgba(38, 56, 217, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(38, 56, 217, 0);
     }
   }
 
   .settings {
+    display: flex;
+    justify-content: space-between;
+    margin: 1.5em 0;
+
+    a {
+      border: none;
+    }
+    
     @include media-breakpoint-down(md) {
       margin: 0;
       position: absolute;
@@ -166,14 +218,6 @@
 
     @include media-breakpoint-down(sm) {
       right: 2px;
-    }
-
-    display: flex;
-    justify-content: space-between;
-    margin: 2em 0;
-
-    a {
-      border: none;
     }
   }
 
@@ -189,13 +233,20 @@
     }
 
     &:hover {
-      .sidebarItemName,
-      .counter {
+      .sidebarItemName {
         background: var(--background-color-invert);
+      }
+
+      .counter {
+        background: rgba(38, 56, 217, 0.1);
       }
 
       img {
         filter: invert(1);
+      }
+      
+      .userpic {
+        transform: scale(1.05);
       }
     }
   }
@@ -203,23 +254,23 @@
   .icon {
     display: inline-block;
     line-height: 1;
-    height: 2.4rem;
-    margin-right: 0.8rem;
-    min-width: 2.4rem;
+    height: 2rem;
+    margin-right: 0.6rem;
+    min-width: 2rem;
     text-align: center;
     vertical-align: middle;
     transition: all 0.2s ease;
 
     @include media-breakpoint-down(lg) {
       margin-right: 0;
-      height: 2rem;
-      min-width: 2rem;
+      height: 1.8rem;
+      min-width: 1.8rem;
     }
     
     @include media-breakpoint-down(md) {
-      height: 2.4rem;
-      min-width: 2.4rem;
-      margin-right: 0.8rem; // Возвращаем на мобильных
+      height: 2rem;
+      min-width: 2rem;
+      margin-right: 0.6rem;
     }
 
     img {
@@ -231,24 +282,26 @@
   }
 
   h4 {
-    font-size:1.2rem;
-    font-weight: bold;
+    font-size: 1rem;
+    font-weight: 600;
     color: #9fa1a7;
     cursor: pointer;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     position: relative;
+    margin-top: 0.8rem;
+    margin-bottom: 0.3rem;
 
     .icon {
       margin: 0;
-      min-width: 1.8rem;
+      min-width: 1.6rem;
       position: absolute;
-      right: 1.7rem;
+      right: 1.4rem;
       top: 50%;
       transform: translateY(-50%) rotate(180deg);
       transform-origin: center;
       transition: transform 0.3s;
-      width: 1.8rem;
+      width: 1.6rem;
     }
 
     &.opened {
@@ -262,6 +315,16 @@
   .hidden {
     display: none;
   }
+  
+  li {
+    margin-bottom: 0.15rem;
+  }
+  
+  hr {
+    margin: 0.6rem 0;
+    opacity: 0.4;
+    border-color: #e0e0e0;
+  }
 }
 
 .feedFilters,
@@ -271,7 +334,7 @@
     overflow: auto;
 
     li {
-      margin-right: 3rem !important;
+      margin-right: 2.5rem !important;
 
       &:last-child {
         margin-right: 0 !important;
@@ -290,19 +353,64 @@
 }
 
 .feedFilters {
-  @include media-breakpoint-down(md) {
-    margin-bottom: 0 !important;
-  }
-
+  margin-bottom: 0.3rem;
+  
   .sidebarItemName {
     align-items: center;
+    padding: 0.45rem 0.5rem;
+    margin-bottom: 0.1rem;
+    
+    &:hover {
+      transform: translateX(2px);
+    }
+  }
+  
+  a {
+    margin-bottom: 0.1rem;
+    display: block;
+    
+    &.selected .sidebarItemName {
+      position: relative;
+    }
+  }
+  
+  @include media-breakpoint-down(md) {
+    margin-bottom: 0 !important;
   }
 }
 
 .subscriptions {
+  transition: opacity 0.2s ease;
+  opacity: 1;
+  padding-left: 0.3rem;
+
+  &.hidden {
+    height: 0;
+    opacity: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  li {
+    margin-bottom: 0.15rem;
+    
+    &:last-child {
+      margin-bottom: 0.5rem;
+    }
+    
+    a {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+  }
+  
   .icon {
     text-align: center;
-
+    height: 1.8rem;
+    min-width: 1.8rem;
+    
     img {
       display: inline-block;
       vertical-align: middle;
@@ -311,174 +419,33 @@
 }
 
 .sectionHeader {
-  padding: 0.5rem 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #9fa1a7;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0.4rem;
+  margin: 0.4rem 0 0.2rem;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
 
   .icon {
-    width: 6px;
-    height: 6px;
-    margin-left: auto;
+    width: 1rem;
+    height: 1rem;
+    min-width: 1rem;
+    margin-right: 0;
+    opacity: 0.6;
     transition: transform 0.2s ease;
+    transform: rotate(0);
   }
 
   &.opened .icon {
     transform: rotate(180deg);
-  }
-}
-
-// Offline Status Section
-.offlineSection {
-  margin: 1rem 0;
-  
-  .sidebarItem {
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    padding: 0.5rem;
-    
-    &.offlineAlert {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      
-      .sidebarItemNameLabel {
-        color: #dc2626;
-        font-weight: 600;
-      }
-      
-      .icon {
-        color: #dc2626;
-      }
-    }
-    
-    &.storageWarning {
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      
-      .sidebarItemNameLabel {
-        color: #d97706;
-        font-weight: 600;
-      }
-      
-      .icon {
-        color: #d97706;
-      }
-    }
-    
-    &.onlineStatus {
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      
-      .sidebarItemNameLabel {
-        color: #059669;
-        font-weight: 500;
-      }
-      
-      .icon {
-        color: #059669;
-      }
-    }
-    
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-  }
-  
-  .expandIcon {
-    margin-left: auto;
-    width: 1.6rem;
-    height: 1.6rem;
-    transition: transform 0.2s ease;
-  }
-}
-
-.offlineDetails {
-  margin-top: 0.5rem;
-  padding: 1rem;
-  background: var(--bg-light, #f9f9f9);
-  border-radius: 6px;
-  border: 1px solid var(--border-color, #e9e9ee);
-}
-
-.offlineMessage {
-  margin: 0 0 1rem 0;
-  font-size: 0.875rem;
-  color: var(--text-color-light, #666);
-  line-height: 1.4;
-}
-
-.storageInfo {
-  margin-bottom: 1rem;
-}
-
-.storageBar {
-  width: 100%;
-  height: 6px;
-  background: var(--border-color, #e9e9ee);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-}
-
-.storageProgress {
-  height: 100%;
-  background: linear-gradient(90deg, #10b981 0%, #f59e0b 80%, #ef4444 100%);
-  transition: width 0.3s ease;
-  border-radius: 3px;
-}
-
-.storageText {
-  font-size: 0.75rem;
-  color: var(--text-color-light, #666);
-}
-
-.cleanupButton {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  background: var(--bg-color, #fff);
-  border: 1px solid var(--border-color, #e9e9ee);
-  border-radius: 6px;
-  color: var(--text-color, #333);
-  font-size: 0.875rem;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: var(--primary-color, #2638d9);
-    color: white;
-    border-color: var(--primary-color, #2638d9);
-    transform: translateY(-1px);
-  }
-
-  &:focus {
-    outline: 2px solid var(--primary-color, #2638d9);
-    outline-offset: 2px;
-  }
-
-  .icon {
-    width: 1.4rem;
-    height: 1.4rem;
-    margin-right: 0;
-  }
-}
-
-// Темная тема
-@media (prefers-color-scheme: dark) {
-  .offlineDetails {
-    background: var(--bg-darker, #111);
-    border-color: var(--border-dark, #333);
-  }
-  
-  .cleanupButton {
-    background: var(--bg-dark, #1a1a1a);
-    border-color: var(--border-dark, #333);
-    color: var(--text-color-dark, #fff);
-
-    &:hover {
-      background: var(--primary-color, #2638d9);
-    }
   }
 }

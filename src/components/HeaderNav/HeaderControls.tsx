@@ -25,22 +25,24 @@ type Props = {
 
 // Компонент индикатора подключения
 const ConnectionIndicator = () => {
-  const { connected, reconnect } = useConnect()
+  const connectContext = useConnect()
+  const isConnected = () => connectContext.getStatus() === 'connected'
   const { t } = useLocalize()
 
   const handleClick = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
 
-    if (!connected) {
-      console.log('[ConnectionIndicator] Triggering reconnect')
-      reconnect()
+    if (!isConnected()) {
+      console.log('[ConnectionIndicator] Connection status:', connectContext.getStatus())
+      // Отмечаем, что reconnect больше недоступен
+      console.warn('[ConnectionIndicator] Manual reconnect is no longer available')
     }
   }
 
   // Подготовка контента для Popover
   const popoverContent = () => {
-    if (connected) {
+    if (isConnected()) {
       return (
         <div>
           <div>{t('Connected to server')}</div>
@@ -51,7 +53,9 @@ const ConnectionIndicator = () => {
       return (
         <div>
           <div>{t('Disconnected from server')}</div>
-          <div class={styles.popoverSubtext}>{t('Click to reconnect')}</div>
+          <div
+            class={styles.popoverSubtext}
+          >{`${t('Connection status')}: ${t(connectContext.getStatus())}`}</div>
           <div class={styles.popoverSubtext}>{t('Changes saved locally')}</div>
         </div>
       )
@@ -64,8 +68,8 @@ const ConnectionIndicator = () => {
         <div
           ref={ref}
           class={clsx(styles.connectionIndicator, {
-            [styles.connected]: connected,
-            [styles.disconnected]: !connected
+            [styles.connected]: isConnected(),
+            [styles.disconnected]: !isConnected()
           })}
           onClick={handleClick}
         >

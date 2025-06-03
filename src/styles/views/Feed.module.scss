@@ -785,19 +785,20 @@
 
 .feedLayout {
   display: grid;
-  grid-template-columns: minmax(0, 280px) minmax(0, 800px) minmax(0, 300px);
+  grid-template-columns: 240px 1fr 300px;
   grid-template-areas: "sidebar main aside";
-  gap: var(--spacing-l, 2rem);
-  min-height: 100vh;
-  position: relative;
-  justify-content: center;
-  max-width: 1380px;
+  gap: var(--spacing-l);
   margin: 0 auto;
+  max-width: 1280px;
 
-  @include media-breakpoint-down(xl) {
-    grid-template-columns: minmax(0, 280px) 1fr;
-    grid-template-areas: "sidebar main";
-    max-width: 1080px;
+  @include media-breakpoint-up(xl) {
+    grid-template-columns: 240px 1fr 300px;
+    max-width: 1280px;
+  }
+
+  @include media-breakpoint-up(lg) {
+    grid-template-columns: 240px 1fr 300px;
+    max-width: 1280px;
   }
 
   @include media-breakpoint-down(lg) {
@@ -817,7 +818,7 @@
 
 .feedSidebar {
   grid-area: sidebar;
-  width: 280px;
+  width: 240px;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   @include media-breakpoint-down(lg) {
@@ -961,15 +962,18 @@
   grid-area: main;
   min-width: 0;
   padding: var(--spacing-l) 0;
+  margin: 0 auto;  // Центрируем содержимое
+  width: 100%;     // Занимаем всю доступную ширину
 
   @include media-breakpoint-down(md) {
-    padding: var(--spacing-m);
+    padding: var(--spacing-m) 0;  // Уменьшаем отступы для мобильных
   }
 
   // Улучшенные стили для контейнера
   .wide-container {
     max-width: 100%;
     padding: 0;
+    margin: 0 auto;
 
     @include media-breakpoint-up(lg) {
       max-width: 100%;
@@ -981,6 +985,7 @@
 .feedContent {
   display: grid;
   gap: var(--spacing-l);
+  max-width: 100%;  // Максимальная ширина
 
   @include media-breakpoint-down(md) {
     gap: var(--spacing-m);
@@ -1107,6 +1112,7 @@
     padding: var(--spacing-l) var(--spacing-m);
     margin-bottom: var(--spacing-l);
     gap: var(--spacing-l);
+    max-width: 100%;
   }
   
   @include media-breakpoint-down(sm) {
@@ -1118,6 +1124,7 @@
     background: var(--white-500);
     border-radius: var(--comment-radius-lg);
     box-shadow: var(--comment-shadow-sm);
+    width: 100%;
   }
 
   // Стили для FeedSwitcher

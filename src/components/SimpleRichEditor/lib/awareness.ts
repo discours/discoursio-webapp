@@ -11,8 +11,11 @@ import { createSignal, onCleanup, onMount } from 'solid-js'
 import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate } from 'y-protocols/awareness.js'
 import { Doc, applyUpdate, encodeStateAsUpdate } from 'yjs'
 import { sseUrl } from '~/config'
-import { MessageHandler, SSEMessage, useConnect } from '~/context/connect'
+import { SSEMessage, useConnect } from '~/context/connect'
 import { useSession } from '~/context/session'
+
+// Определение типа обработчика сообщений, так как он больше не экспортируется из connect.tsx
+type MessageHandler = (data: SSEMessage) => void
 
 const BATCH_TIMEOUT = 500 // ms
 const AWARENESS_UPDATE_INTERVAL = 2000 // ms для дебаунсинга awareness обновлений

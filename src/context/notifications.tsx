@@ -46,7 +46,7 @@ interface SSEPayload {
   author?: Author
   authors?: Author[]
   shout?: Shout
-  [key: string]: any
+  [key: string]: Author | Author[] | Shout | string | number | boolean | undefined
 }
 
 type NotificationsContextType = {
@@ -120,7 +120,7 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
   const loadedNotificationsCount = createMemo(() => Object.keys(notificationEntities).length)
   const [after, setAfter] = makePersisted(createSignal<number>(now), { name: 'notifier_timestamp' })
 
-  // Создание нового уведомления из SSE сообщения 
+  // Создание нового уведомления из SSE сообщения
   const createNotificationFromSSE = (data: SSEMessage): NotificationGroup | null => {
     try {
       // Проверяем наличие необходимых данных
@@ -131,13 +131,13 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
 
       // Создаем уникальный идентификатор для треда уведомления
       const threadId = `${data.entity}::${data.id}::${data.action}`
-      
+
       // Получаем текущее время
       const timestamp = data.created_at || Math.floor(Date.now() / 1000)
-      
+
       // Приводим payload к типизированному интерфейсу
       const payload = data.payload as SSEPayload
-      
+
       // Подготавливаем payload в зависимости от типа сущности
       const notificationPayload = {
         authors: [] as Author[],
@@ -151,7 +151,7 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
 
       // Заполняем данные в зависимости от типа сущности
       switch (data.entity) {
-        case PresenceEntityType.Reaction:
+        case PresenceEntityType.Reaction: {
           // Обработка уведомлений о реакциях
           if (payload.author) {
             notificationPayload.authors = [payload.author]
@@ -160,23 +160,23 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
             notificationPayload.shout = payload.shout
           }
           break
-          
-        case PresenceEntityType.Message:
+        }
+        case PresenceEntityType.Message: {
           // Обработка уведомлений о сообщениях
           if (payload.author) {
             notificationPayload.authors = [payload.author]
           }
           break
-          
-        case PresenceEntityType.Shout:
+        }
+        case PresenceEntityType.Shout: {
           // Обработка уведомлений о публикациях
           if (payload.authors) {
             notificationPayload.authors = payload.authors
           }
           notificationPayload.shout = payload as unknown as Shout
           break
-          
-        default:
+        }
+        default: {
           // Для других типов просто пытаемся извлечь авторов
           if (payload.author) {
             notificationPayload.authors = [payload.author]
@@ -184,6 +184,7 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
             notificationPayload.authors = payload.authors
           }
           break
+        }
       }
 
       // Возвращаем сформированное уведомление
@@ -197,15 +198,15 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
   // Добавление уведомления в список
   const addNotification = (notification: NotificationGroup) => {
     if (!notification || !notification.thread) return
-    
+
     // Увеличиваем счетчики
-    setTotalNotificationsCount(count => count + 1)
-    setUnreadNotificationsCount(count => count + 1)
-    
+    setTotalNotificationsCount((count) => count + 1)
+    setUnreadNotificationsCount((count) => count + 1)
+
     // Добавляем уведомление в хранилище
-    setNotificationEntities(prev => ({ 
-      ...prev, 
-      [notification.thread]: notification 
+    setNotificationEntities((prev) => ({
+      ...prev,
+      [notification.thread]: notification
     }))
   }
 
@@ -213,13 +214,13 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
   const handlePresenceMessage = (data: SSEMessage) => {
     // Проверяем наличие токена сессии
     if (!session()?.token) return
-    
+
     console.info('[context.notifications] SSE event received:', data)
-    
+
     try {
       // Обрабатываем разные типы сущностей и действий
       switch (data.entity) {
-        case PresenceEntityType.Reaction:
+        case PresenceEntityType.Reaction: {
           // Обработка реакций на комментарии, шауты и т.д.
           console.info('[context.notifications] Reaction event', data)
           if (data.action === PresenceActionType.Create) {
@@ -236,8 +237,8 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
             })
           }
           break
-          
-        case PresenceEntityType.Message:
+        }
+        case PresenceEntityType.Message: {
           // Обработка личных сообщений
           console.info('[context.notifications] Message event', data)
           if (data.action === PresenceActionType.Create) {
@@ -248,8 +249,9 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
             }
           }
           break
-          
-        case PresenceEntityType.Shout:
+        }
+
+        case PresenceEntityType.Shout: {
           // Обработка публикаций
           console.info('[context.notifications] Shout event', data)
           if (data.action === PresenceActionType.Create) {
@@ -260,9 +262,9 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
             }
           }
           break
-          
+        }
         case PresenceEntityType.Global:
-        case PresenceEntityType.Personal:
+        case PresenceEntityType.Personal: {
           // Глобальные и персональные уведомления
           console.info(`[context.notifications] ${data.entity} event`, data)
           // Создаем уведомление
@@ -271,8 +273,8 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
             addNotification(notification)
           }
           break
-          
-        default:
+        }
+        default: {
           // Для других типов просто загружаем уведомления с сервера
           console.debug('[context.notifications] Unhandled event type:', data.entity)
           if (data.action === PresenceActionType.Create) {
@@ -282,11 +284,16 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
             })
           }
           break
+        }
       }
-      
+
       // Показываем панель уведомлений для новых уведомлений, если это важное событие
-      if (data.action === PresenceActionType.Create && 
-          [PresenceEntityType.Message, PresenceEntityType.Personal].includes(data.entity as PresenceEntityType)) {
+      if (
+        data.action === PresenceActionType.Create &&
+        [PresenceEntityType.Message, PresenceEntityType.Personal].includes(
+          data.entity as PresenceEntityType
+        )
+      ) {
         showNotificationsPanel()
       }
     } catch (error) {
@@ -297,10 +304,10 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
   onMount(() => {
     // Добавляем обработчик SSE сообщений
     addHandler(handlePresenceMessage)
-    
+
     // Получаем начальные уведомления
     setAfter(now)
-    
+
     // Если соединение уже установлено, загружаем уведомления
     if (session()?.token && getStatus() === 'connected') {
       loadNotificationsGrouped({
