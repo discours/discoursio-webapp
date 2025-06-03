@@ -52,7 +52,8 @@ export default defineConfig({
     rollupConfig: {
       external: [
         // Keep this specific to WASM files only to avoid affecting CSS processing
-        '@vercel/og/dist/yoga.wasm'
+        '@vercel/og/dist/yoga.wasm',
+        '@vercel/og/dist/resvg.wasm'
       ],
       output: {
         inlineDynamicImports: false
