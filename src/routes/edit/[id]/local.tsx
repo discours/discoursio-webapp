@@ -37,8 +37,8 @@ export default function EditLocalPage(props: RouteSectionProps) {
       // Ищем локальный черновик по id
       const draft = drafts().find(
         (d: ExtendedDraft) =>
-          // Проверяем либо по localId, либо по id с флагом isLocalOnly
-          d.localId === draftId || (d.id === Number(draftId) && d.isLocalOnly === true)
+          // Проверяем либо по local_id, либо по id без draft_id (это локальный черновик)
+          d.local_id === draftId || (d.id === Number(draftId) && !d.draft_id)
       )
 
       if (draft) {

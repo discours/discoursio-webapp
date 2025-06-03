@@ -6,7 +6,6 @@ import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import type { Topic } from '~/graphql/schema/core.gen'
-import { getRandomItemsFromArray } from '~/utils/random'
 
 import styles from './TopicPillsCloud.module.scss'
 
@@ -29,12 +28,11 @@ type TopicPillsCloudProps = {
 
 export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
   const { t } = useLocalize()
-  const { sortedTopics, topicsByShouts, isLoading: topicsLoading } = useTopics()
+  const { sortedTopics, isLoading: topicsLoading } = useTopics()
   const { currentDraft, updateDraftField } = useDrafts()
   const [searchTerm, setSearchTerm] = createSignal('')
   const [isLoading, setIsLoading] = createSignal(false)
-  const [popularTopics, setPopularTopics] = createSignal<Topic[]>([])
-  const [additionalTopics, setAdditionalTopics] = createSignal<Topic[]>([])
+  const [availableTopics, setAvailableTopics] = createSignal<Topic[]>([])
   const [selectedIds, setSelectedIds] = createSignal<Set<number>>(new Set())
 
   // Мемоизируем выбранные темы из черновика
@@ -52,7 +50,11 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
     const draft = currentDraft()
     if (!draft || draft.id !== props.draftId) return null
 
-    return draft.mainTopic || null
+    // Используем первую тему в массиве как главную
+    if (Array.isArray(draft.topics) && draft.topics.length > 0) {
+      return draft.topics[0] || null
+    }
+    return null
   })
 
   // Обновляем selectedIds при изменении тем в черновике
@@ -82,72 +84,24 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
       topics.length > 0 &&
       (!currentMainTopic || !topics.some((t) => Number(t.id) === Number(currentMainTopic.id)))
     ) {
-      const newMainTopicId = String(topics[0].id)
+      console.log('[TopicPillsCloud] Устанавливаем первую тему как главную:', topics[0].id)
 
-      // Проверяем, что значение действительно изменилось
-      if (Number(currentMainTopic?.id) !== Number(newMainTopicId)) {
-        console.log('[TopicPillsCloud] Устанавливаем первую тему как главную:', newMainTopicId)
-
-        // Мгновенно обновляем UI
-        const draft = currentDraft()
-        if (draft) {
-          draft.mainTopic = topics[0]
-        }
-
-        // Отправляем обновление на сервер через дебаунс
-        debouncedMainTopicChange(newMainTopicId)
-      }
+      // Отправляем обновление на сервер через дебаунс
+      debouncedTopicChange(topics)
     }
   })
 
-  // Загружаем популярные и дополнительные темы при монтировании
+  // Загружаем темы при монтировании
   createEffect(
-    on([sortedTopics, topicsByShouts], ([allTopics, shoutTopics]) => {
+    on([sortedTopics], ([allTopics]) => {
       if (!allTopics || !Array.isArray(allTopics) || allTopics.length === 0) {
         setIsLoading(topicsLoading())
         return
       }
 
-      // Проверяем структуру shoutTopics
-      if (shoutTopics && typeof shoutTopics === 'object' && !Array.isArray(shoutTopics)) {
-        // Если это хеш, преобразуем его в массив тем
-        const topicsArray = Object.values(shoutTopics)
-          .flat()
-          .filter((topic): topic is Topic => Boolean(topic && typeof topic === 'object' && 'id' in topic))
-
-        if (topicsArray.length > 0) {
-          console.log('[TopicPillsCloud] Использую темы из хеша shoutTopics:', topicsArray.length)
-          // Берем 20 самых популярных тем
-          const popular = topicsArray.slice(0, 20)
-          setPopularTopics(popular)
-
-          // Сохраняем оставшиеся темы для случая, когда все популярные будут выбраны
-          const remainingTopics = allTopics.filter((topic) => !popular.some((p) => p.id === topic.id))
-          // Берем случайные 30 тем из оставшихся
-          const random = getRandomItemsFromArray(remainingTopics, 30)
-          setAdditionalTopics(random)
-        }
-      } else {
-        // Иначе используем все доступные темы
-        console.log('[TopicPillsCloud] Использую все доступные темы:', allTopics.length)
-        // Сортируем по количеству публикаций
-        const sortedByPublications = [...allTopics].sort((a, b) => {
-          const aShouts = a?.stat?.shouts || 0
-          const bShouts = b?.stat?.shouts || 0
-          return bShouts - aShouts
-        })
-
-        // Берем 20 самых популярных тем
-        const popular = sortedByPublications.slice(0, 20)
-        setPopularTopics(popular)
-
-        // Остальные сохраняем как дополнительные
-        const remaining = sortedByPublications.slice(20)
-        // Берем случайные 30 тем из оставшихся
-        const random = getRandomItemsFromArray(remaining, 30)
-        setAdditionalTopics(random)
-      }
-
+      // Используем все доступные темы (как в AllTopicsView на вкладке title)
+      console.log('[TopicPillsCloud] Загружено тем:', allTopics.length)
+      setAvailableTopics(allTopics)
       setIsLoading(false)
     })
   )
@@ -164,16 +118,6 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
     }
   })
 
-  const debouncedMainTopicChange = debounce(10, (topicId: string) => {
-    try {
-      console.log('[TopicPillsCloud] Отправляем обновление main_topic_id на сервер:', topicId)
-      updateDraftField(props.draftId, 'main_topic_id', topicId, false)
-    } catch (error) {
-      console.error('[TopicPillsCloud] Ошибка при обновлении главной темы:', error)
-      toast.error(t('Error updating main topic'))
-    }
-  })
-
   const handleMainTopicClick = (topic: Topic, e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -181,14 +125,25 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
     // Блокируем действие на уже выбранной главной теме
     if (isMainTopic(topic)) return
 
-    // Мгновенно обновляем UI через контекст
+    // Получаем текущие темы и перемещаем выбранную тему на первое место
     const draft = currentDraft()
+    if (!draft) return
+
+    const topics = localSelectedTopics()
+    const topicIndex = topics.findIndex((t) => Number(t.id) === Number(topic.id))
+
+    if (topicIndex === -1) return // Тема не найдена в списке
+
+    // Создаем новый массив с выбранной темой на первом месте
+    const newTopics = [topics[topicIndex], ...topics.slice(0, topicIndex), ...topics.slice(topicIndex + 1)]
+
+    // Мгновенно обновляем UI
     if (draft) {
-      draft.mainTopic = topic
+      draft.topics = newTopics
     }
 
-    // Отправляем обновление на сервер через дебаунс
-    debouncedMainTopicChange(String(topic.id))
+    // Отправляем обновление на сервер через debouncedTopicChange
+    debouncedTopicChange(newTopics)
     toast.success(t('Main topic changed'), { duration: 1500 })
   }
 
@@ -239,25 +194,11 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
 
     // Проверка на необходимость обновления главной темы
     if (newSelectedTopics.length === 1 && !isSelected) {
-      // Если это первая тема, делаем её главной
-      console.log('[TopicPillsCloud] Автоматическая установка главной темы:', topicId)
-      if (draft) {
-        draft.mainTopic = topic
-      }
-      debouncedMainTopicChange(String(topicId))
-    } else if (
-      isSelected &&
-      mainTopic() &&
-      Number(mainTopic()!.id) === topicId &&
-      newSelectedTopics.length > 0
-    ) {
-      // Если удалили главную тему, но есть другие - назначаем первую из оставшихся главной
-      const newMainTopicId = Number(newSelectedTopics[0].id)
-      console.log('[TopicPillsCloud] Смена главной темы после удаления:', newMainTopicId)
-      if (draft) {
-        draft.mainTopic = newSelectedTopics[0]
-      }
-      debouncedMainTopicChange(String(newMainTopicId))
+      // Если это первая тема, она автоматически становится главной
+      console.log('[TopicPillsCloud] Добавлена первая тема:', topicId)
+    } else if (isSelected && isMainTopic(topic) && newSelectedTopics.length > 0) {
+      // Если удаляем главную тему, первый элемент из оставшихся становится главным
+      console.log('[TopicPillsCloud] Выбираем новую главную тему после удаления текущей')
     }
   }
 
@@ -268,56 +209,22 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
 
   /**
    * Возвращает отфильтрованный список тем для отображения
-   * Если все популярные темы выбраны, добавляет случайные темы из дополнительного списка
+   * Фильтрует темы по поисковому запросу и исключает уже выбранные
    */
   const filteredTopics = createMemo(() => {
     const search = searchTerm().toLowerCase().trim()
     const selectedIds = selectedTopicIds()
 
-    // Определяем основной список тем для фильтрации
-    let topicsToFilter: Topic[] = []
-
-    if (search) {
-      // При поиске используем все доступные темы
-      topicsToFilter = sortedTopics()
-    } else {
-      // В обычном режиме показываем популярные темы
-      topicsToFilter = popularTopics()
-
-      // Проверяем, все ли популярные темы уже выбраны
-      const allPopularSelected = popularTopics().every((topic) => selectedIds.has(Number(topic.id)))
-
-      // Если все популярные темы выбраны, добавляем случайные темы из дополнительного списка
-      if (allPopularSelected && popularTopics().length > 0) {
-        console.log('[TopicPillsCloud] Все популярные темы уже выбраны, добавляем дополнительные темы')
-
-        // Добавляем дополнительные темы в список для отображения
-        const additional = additionalTopics().filter((topic) => !selectedIds.has(Number(topic.id)))
-
-        if (additional.length > 0) {
-          topicsToFilter = additional
-        } else {
-          // Если и в дополнительном списке не осталось тем, попробуем взять случайные из всех оставшихся
-          console.log('[TopicPillsCloud] В дополнительном списке не осталось тем, ищем случайные из всех')
-
-          const allAvailableTopics = sortedTopics().filter((topic) => !selectedIds.has(Number(topic.id)))
-
-          if (allAvailableTopics.length > 0) {
-            // Берем случайные 20 тем из всех доступных
-            const randomTopics = getRandomItemsFromArray(allAvailableTopics, 20)
-            topicsToFilter = randomTopics
-          }
-        }
-      }
-    }
+    // Используем все доступные темы
+    const allTopics = availableTopics()
 
     // Проверяем, что у нас есть темы для отображения
-    if (!Array.isArray(topicsToFilter) || topicsToFilter.length === 0) {
+    if (!Array.isArray(allTopics) || allTopics.length === 0) {
       return []
     }
 
-    // Фильтруем темы, исключая уже выбранные
-    return topicsToFilter.filter((topic: Topic) => {
+    // Фильтруем темы по поисковому запросу и исключаем уже выбранные
+    return allTopics.filter((topic: Topic) => {
       // Пропускаем темы без названия
       if (!topic?.title) return false
 
@@ -330,14 +237,9 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
   })
 
   const isMainTopic = (topic: Topic) => {
-    const currentMainTopic = mainTopic()
-    if (!currentMainTopic || !topic) return false
-
-    // Явно приводим к числовому типу для корректного сравнения
-    const mainTopicId = Number(currentMainTopic.id)
-    const topicId = Number(topic.id)
-
-    return mainTopicId === topicId
+    // Проверяем, является ли тема первой в массиве тем
+    const topics = localSelectedTopics()
+    return topics.length > 0 && Number(topics[0]?.id) === Number(topic.id)
   }
 
   return (

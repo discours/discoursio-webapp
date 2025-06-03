@@ -51,8 +51,8 @@ export const DraftCard = (props: Props) => {
   const getEditUrl = () => {
     if (props.draft.id) {
       return `/edit/${props.draft.id}`
-    } else if (props.draft.localId) {
-      return `/edit/${props.draft.localId}/local`
+    } else if (props.draft.local_id) {
+      return `/edit/${props.draft.local_id}/local`
     }
     return '#'
   }
@@ -155,7 +155,7 @@ export const DraftCard = (props: Props) => {
       declineButtonVariant: 'primary'
     })
     if (isConfirmed) {
-      console.log('[DraftCard] Вызываем обработчик удаления:', props.draft.id || props.draft.localId)
+      console.log('[DraftCard] Вызываем обработчик удаления:', props.draft.id || props.draft.local_id)
       props.onDelete()
       toast.success(t('Draft successfully deleted'))
     }
@@ -170,15 +170,15 @@ export const DraftCard = (props: Props) => {
     e.preventDefault()
     e.stopPropagation()
 
-    if (props.draft.publication?.published_at && props.draft.slug) {
+    if (props.draft.published_at && props.draft.slug) {
       // Переходим на страницу опубликованной версии
       navigate(`/${props.draft.slug}`)
       return
     }
 
     // Переходим на страницу превью черновика
-    if (props.draft.isLocalOnly && props.draft.localId) {
-      navigate(`/edit/${props.draft.localId}/preview`)
+    if (!props.draft.draft_id && props.draft.local_id) {
+      navigate(`/edit/${props.draft.local_id}/preview`)
     } else if (props.draft.id) {
       navigate(`/edit/${props.draft.id}/preview`)
     } else {
@@ -207,9 +207,7 @@ export const DraftCard = (props: Props) => {
    * Определяет, является ли черновик локальной версией
    */
   const isLocalVersion = () => {
-    return (
-      props.activeVersion === 'local' || ('isLocalOnly' in props.draft && props.draft.isLocalOnly === true)
-    )
+    return !props.draft.draft_id || props.activeVersion === 'local'
   }
 
   /**
@@ -481,15 +479,10 @@ export const DraftCard = (props: Props) => {
               <span
                 onClick={handlePublishLinkClick}
                 class={clsx(styles.actionItem, styles.publish)}
-                title={props.draft.isLocalOnly ? t('Save draft') : t('Publish')}
+                title={props.draft.draft_id ? t('Publish') : t('Save draft')}
               >
-                <Icon
-                  name={props.draft.isLocalOnly ? 'cloud-upload' : 'publish'}
-                  class={styles.actionIcon}
-                />
-                <span class={styles.actionText}>
-                  {t(props.draft.isLocalOnly ? 'Save draft' : 'Publish')}
-                </span>
+                <Icon name={props.draft.draft_id ? 'publish' : 'cloud-upload'} class={styles.actionIcon} />
+                <span class={styles.actionText}>{t(props.draft.draft_id ? 'Publish' : 'Save draft')}</span>
               </span>
             }
           >

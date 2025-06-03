@@ -157,8 +157,8 @@ export const PublishSettings = () => {
 
   const handleBackClick = () => {
     const draft = currentDraft()
-    if (draft?.isLocalOnly && draft?.localId) {
-      navigate(`/edit/${draft.localId}/local`)
+    if (!draft?.draft_id && draft?.local_id) {
+      navigate(`/edit/${draft.local_id}/local`)
     } else if (draft?.id) {
       navigate(`/edit/${draft.id}`)
     } else {
@@ -255,7 +255,10 @@ export const PublishSettings = () => {
         topic_ids: Array.isArray(draft.topics)
           ? draft.topics.filter((topic): topic is Topic => Boolean(topic?.id)).map((topic) => topic.id)
           : [],
-        main_topic_id: draft.mainTopic?.id || undefined,
+        main_topic_id:
+          Array.isArray(draft.topics) && draft.topics.length > 0 && draft.topics[0]
+            ? draft.topics[0].id
+            : undefined,
         author_ids: draft.authors?.map((a) => a?.id).filter((id): id is number => !!id) || []
       }
 
@@ -416,8 +419,8 @@ export const PublishSettings = () => {
                   </div>
                 </Show>
                 <div class={styles.text}>
-                  <Show when={draft()?.mainTopic}>
-                    <div class={styles.mainTopic}>{draft()?.mainTopic?.title || ''}</div>
+                  <Show when={draft()?.topics?.length}>
+                    <div class={styles.mainTopic}>{draft()?.topics?.[0]?.title || ''}</div>
                   </Show>
                   <Show
                     when={editingTitle()}

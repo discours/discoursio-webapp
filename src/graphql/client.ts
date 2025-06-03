@@ -183,7 +183,7 @@ export const graphqlClientCreate = (url: string, token = '', timeout = 15000): C
   }
 
   const client = createClient(options)
-  console.log('[GraphQL Client] Клиент создан успешно')
+  console.log('[GraphQL Client] Клиент создан успешно', url)
   return client
 }
 

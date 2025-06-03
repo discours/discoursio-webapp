@@ -19,6 +19,8 @@ interface ExtendedDraft extends Draft {
   published_at?: number | null // Временная метка публикации
   mainTopic?: Topic | null    // Главная тема статьи
   authors: Draft['authors']   // Авторы черновика
+  localVersionId?: number
+  serverVersionId?: number
 }
 ```
 

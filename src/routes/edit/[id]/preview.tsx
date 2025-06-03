@@ -54,7 +54,7 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
         // Ищем черновик по ID
         let draft = drafts().find((d: ExtendedDraft) =>
           isLocalDraft
-            ? d.localId === realDraftId || (d.isLocalOnly && d.id === Number(realDraftId))
+            ? d.local_id === realDraftId || (!d.draft_id && d.id === Number(realDraftId))
             : d.id === Number(realDraftId)
         )
 
@@ -65,7 +65,7 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
 
           try {
             // Синхронизируем черновик для получения последних изменений, но только для нелокальных черновиков
-            if (draft.id && !draft.isLocalOnly) {
+            if (draft.id && draft.draft_id) {
               console.log(`[DraftPreviewPage] Syncing draft ${draft.id}`)
               const syncedDraft = await syncDraft(draft.id)
 

@@ -1,6 +1,7 @@
 import { clsx } from 'clsx'
 import { Show, createEffect, createSignal, on, onCleanup, onMount, untrack } from 'solid-js'
 import { batch } from 'solid-js'
+import toast from 'solid-toast'
 import { debounce } from 'throttle-debounce'
 import { Panel } from '~/components/Sidebar/Sidebar'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
@@ -22,6 +23,9 @@ import { AudioUploader } from '../Upload/AudioUploader'
 import { VideoUploader } from '../Upload/VideoUploader'
 
 import styles from '~/styles/views/EditView.module.scss'
+
+// Импортируем функцию для сохранения поля черновика
+import { saveDraftField as saveDraftFieldToStorage } from '~/components/SimpleRichEditor/lib/storage'
 
 export const EMPTY_TOPIC: Topic = {
   id: -1,
@@ -67,7 +71,8 @@ export const EditView = (props: { draft?: Draft }) => {
     syncDraft,
     validationErrors,
     validateCurrentDraft,
-    clearValidationErrors
+    clearValidationErrors,
+    updateDraft
   } = useDrafts()
 
   // Базовые сигналы
@@ -150,7 +155,7 @@ export const EditView = (props: { draft?: Draft }) => {
     window.addEventListener('offline', handleNetworkStatusChange)
 
     if (props.draft?.id) {
-      setCurrentDraft(props.draft as Draft)
+      setCurrentDraft(props.draft as ExtendedDraft)
       await syncDraft(props.draft.id)
 
       const draft = currentDraft()
@@ -873,6 +878,143 @@ export const EditView = (props: { draft?: Draft }) => {
     }
   }
 
+  // Добавляем функцию для сохранения черновика
+  const handleSaveDraft = async () => {
+    if (!currentDraft()?.id) {
+      toast.error(t('No draft to save'))
+      return
+    }
+
+    console.log(`[EditView] Сохраняем черновик #${currentDraft()?.id} на сервер`)
+    setIsSaving(true)
+
+    try {
+      // Получаем текущий черновик
+      const draft = currentDraft()
+      if (!draft) {
+        throw new Error('No current draft available')
+      }
+
+      // Создаем объект для обновления с текущими данными
+      const draftInput: DraftInput = {
+        id: draft.id,
+        layout: draft.layout || 'article',
+        title: draft.title || '',
+        subtitle: draft.subtitle || '',
+        lead: draft.lead || '',
+        body: draft.body || '',
+        slug: draft.slug || '',
+        cover: draft.cover || '',
+        cover_caption: draft.cover_caption || '',
+        topic_ids: Array.isArray(draft.topics)
+          ? draft.topics.filter((topic): topic is Topic => Boolean(topic?.id)).map((topic) => topic.id)
+          : [],
+        main_topic_id:
+          draft.topics && draft.topics.length > 0 && draft.topics[0] ? draft.topics[0].id : null,
+        seo: draft.seo || '',
+        author_ids: draft.authors?.map((a) => a?.id).filter((id): id is number => !!id) || []
+      }
+
+      // Логируем данные, которые будем сохранять
+      console.log(`[EditView] Данные для сохранения черновика #${draft.id}:`, {
+        title:
+          draftInput.title?.substring(0, 30) +
+          (draftInput.title && draftInput.title.length > 30 ? '...' : ''),
+        bodyLength: draftInput.body?.length || 0,
+        leadLength: draftInput.lead?.length || 0,
+        topicsCount: draftInput.topic_ids?.length || 0
+      })
+
+      // Проверяем, есть ли данные awareness для этого черновика
+      if (typeof window !== 'undefined' && 'AWARENESS_PROVIDER' in window) {
+        console.log('[EditView] Получаем данные из AwarenessProvider для синхронизации')
+
+        try {
+          // @ts-ignore - Обращаемся к глобальной переменной, которая может быть доступна
+          const awarenessProvider = window.AWARENESS_PROVIDER as unknown
+
+          // Только если провайдер имеет нужный метод
+          // biome-ignore lint/suspicious/noExplicitAny: ok
+          if (awarenessProvider && typeof (awarenessProvider as any).getLocalState === 'function') {
+            // biome-ignore lint/suspicious/noExplicitAny: ok
+            const awarenessState = (awarenessProvider as any).getLocalState()
+
+            if (awarenessState?.draftContent?.draftId === draft.id && awarenessState.draftContent.fields) {
+              console.log(
+                '[EditView] Найдены данные в Awareness для черновика:',
+                Object.keys(awarenessState.draftContent.fields)
+              )
+
+              // Обновляем поля из awareness
+              Object.entries(awarenessState.draftContent.fields).forEach(([fieldName, fieldData]) => {
+                // Проверяем что fieldData - это объект с полем content
+                if (
+                  fieldName in draftInput &&
+                  fieldData &&
+                  typeof fieldData === 'object' &&
+                  'content' in fieldData &&
+                  typeof fieldData.content === 'string'
+                ) {
+                  console.log(
+                    `[EditView] Обновляем поле ${fieldName} из awareness (${fieldData.content.length} символов)`
+                  )
+                  // @ts-ignore - мы проверили что поле существует выше
+                  draftInput[fieldName] = fieldData.content
+                }
+              })
+            }
+          }
+        } catch (awarenessError) {
+          console.error('[EditView] Ошибка при получении данных из AwarenessProvider:', awarenessError)
+          // Продолжаем сохранять даже при ошибке с awareness
+        }
+      }
+
+      // Сохраняем на сервер
+      const result = await updateDraft(draftInput)
+      if (!result) {
+        throw new Error('Failed to update draft - no result returned')
+      }
+
+      // Обрабатываем результат
+      if (result.data?.update_draft?.draft) {
+        toast.success(t('Draft saved successfully'))
+        console.log('[EditView] Черновик успешно сохранен на сервер')
+
+        // Сохраняем метку времени синхронизации в localStorage
+        if (draft.id) {
+          try {
+            // Используем saveDraftFieldToStorage для сохранения метки синхронизации
+            const syncTimestamp = Date.now()
+            saveDraftFieldToStorage(draft.id, '_lastSync', syncTimestamp.toString())
+            console.log(`[EditView] Сохранена метка синхронизации: ${syncTimestamp}`)
+          } catch (storageError) {
+            console.error('[EditView] Ошибка при сохранении метки синхронизации:', storageError)
+          }
+        }
+
+        // Обновляем текущий черновик в контексте
+        setCurrentDraft(result.data.update_draft.draft as ExtendedDraft)
+      } else {
+        let errorMessage = 'Server error'
+        if (result.data?.update_draft?.error) {
+          errorMessage = result.data.update_draft.error
+        } else if (result.error?.message) {
+          errorMessage = result.error.message
+        }
+        toast.error(`${t('Error saving draft')}: ${errorMessage}`)
+      }
+    } catch (error) {
+      console.error('[EditView] Ошибка при сохранении черновика:', error)
+      toast.error(`${t('Error saving draft')}: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Добавляем состояние для отслеживания процесса сохранения
+  const [isSaving, setIsSaving] = createSignal(false)
+
   return (
     <>
       <div
@@ -1009,6 +1151,13 @@ export const EditView = (props: { draft?: Draft }) => {
       <Show when={currentDraft()?.id}>
         <Panel shoutId={currentDraft()?.id} />
       </Show>
+
+      {/* Добавляем панель с кнопкой сохранения */}
+      <div class={styles.floatingButtonsPanel}>
+        <button class={styles.saveButton} onClick={handleSaveDraft} disabled={isSaving()}>
+          {isSaving() ? t('Saving...') : t('Save draft')}
+        </button>
+      </div>
     </>
   )
 }
