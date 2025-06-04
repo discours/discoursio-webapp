@@ -55,7 +55,7 @@ export const PageLayout = (props: PageLayoutProps) => {
     if (props.article?.body) return descFromBody(props.article.body)
     if (props.author?.bio) return props.author.bio
     if (props.topic?.body) return descFromBody(props.topic.body)
-    return t('Discours — open editorial community')
+    return t('Discours – an open magazine about culture, science and society')
   })
 
   const keywords = createMemo(() => {

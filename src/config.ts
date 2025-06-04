@@ -7,9 +7,7 @@ export const baseUrl =
   (import.meta.env.VERCEL_PROJECT_PRODUCTION_URL
     ? `https://${import.meta.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : null) ||
-  (import.meta.env.VERCEL_URL
-    ? `https://${import.meta.env.VERCEL_URL}`
-    : null) ||
+  (import.meta.env.VERCEL_URL ? `https://${import.meta.env.VERCEL_URL}` : null) ||
   import.meta.env.PUBLIC_BASE_URL ||
   'https://testing3.discours.io'
 
