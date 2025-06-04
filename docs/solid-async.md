@@ -380,24 +380,7 @@ createEffect(async () => {
 // ✅ Стало - автоматическая отмена устаревших запросов
 const [topics] = createResource(loadTopics)
 ```
-
-### 5. Управление кешированием
-+ > См: [Resource Storage Options](https://www.solidjs.com/docs/latest/api#createstorage)
-+ > Пример из нашего кода: [topics.tsx](../src/context/topics.tsx)
-
-```typescript
-// ❌ Было - ручное управление IndexedDB кешем
-const cached = await db.get(STORE_NAME, 'data')
-if (cached) return cached
-
-// ✅ Стало - встроенное кеширование
-const [topics] = createResource(loadTopics, {
-  storage: sessionStorage,
-  ssrLoadFrom: 'initial'
-})
-```
-
-### 6. Возможность перезагрузки
+### 5. Возможность перезагрузки
 + > См: [Resource Refetching](https://www.solidjs.com/docs/latest/api#createresource)
 + > Пример из нашего кода: [FeedProvider.tsx](../src/context/feed.tsx)
 

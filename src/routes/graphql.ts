@@ -75,7 +75,7 @@ function isStaticQuery(query: string, variables?: Record<string, unknown>): bool
  * @returns Cache-Control заголовок
  */
 function getCacheControl(query: string): string {
-  // Топики редко меняются - долгое кеширование (также сохраняются в IndexedDB)
+  // Топики редко меняются - долгое кеширование
   if (
     query.includes('get_topics') ||
     query.includes('get_topic_authors') ||

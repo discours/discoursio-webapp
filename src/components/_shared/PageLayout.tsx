@@ -2,8 +2,9 @@ import { Meta, Title } from '@solidjs/meta'
 import { useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
 import type { JSX } from 'solid-js'
-import { Show, createMemo, createSignal, onMount } from 'solid-js'
+import { Show, createMemo } from 'solid-js'
 import { cdnUrl } from '~/config'
+import { baseUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 import enKeywords from '~/intl/locales/en/keywords.json'
@@ -63,11 +64,8 @@ export const PageLayout = (props: PageLayoutProps) => {
   })
 
   // Формируем полный URL текущей страницы для og:url
-  const [baseUrl, setBaseUrl] = createSignal('')
-  const [pageUrl, setPageUrl] = createSignal('')
-  onMount(() => {
-    setBaseUrl(window?.location.origin || 'https://testing3.discours.io')
-    setPageUrl(`${baseUrl()}${loc.pathname}`)
+  const pageUrl = createMemo(() => {
+    return `${baseUrl}${loc.pathname}`
   })
 
   // OG image generation с абсолютными URL
@@ -84,7 +82,7 @@ export const PageLayout = (props: PageLayoutProps) => {
       relativePath = OG_BASIC_URL
     }
     // Убедимся, что URL абсолютный для Open Graph
-    return relativePath.startsWith('http') ? relativePath : `${baseUrl()}${relativePath}`
+    return relativePath.startsWith('http') ? relativePath : `${baseUrl}${relativePath}`
   })
 
   // Название для og:title
@@ -114,7 +112,7 @@ export const PageLayout = (props: PageLayoutProps) => {
       <Meta property="og:site_name" content={t('Discours')} />
       <Meta property="og:description" content={description() || ''} />
       <Meta property="og:url" content={pageUrl()} />
-      <Meta property="og:image" content={ogImage() || ''} />
+      <Meta property="og:image" content={ogImage()} />
       <Meta property="og:image:width" content="1200" />
       <Meta property="og:image:height" content="630" />
       <Meta property="og:locale" content={lang()} />
@@ -124,7 +122,7 @@ export const PageLayout = (props: PageLayoutProps) => {
       <Meta name="twitter:site" content="@discoursio" />
       <Meta name="twitter:title" content={ogTitle() || ''} />
       <Meta name="twitter:description" content={description() || ''} />
-      <Meta name="twitter:image" content={ogImage() || ''} />
+      <Meta name="twitter:image" content={ogImage()} />
 
       <main
         class={clsx('main-content', {
