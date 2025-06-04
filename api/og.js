@@ -14,6 +14,7 @@ export default async (req, _res) => {
     const { url } = req
     const { pathname } = new URL(url)
     const pathSegments = pathname.split('/')
+    // Получаем тип из последнего сегмента пути: /api/og/article -> article
     const type = pathSegments.length > 2 ? pathSegments[pathSegments.length - 1] : 'basic'
 
     // Извлекаем параметры запроса
@@ -28,55 +29,64 @@ export default async (req, _res) => {
       }
     }
 
-    // Формируем изображение в зависимости от типа запроса
+    // Общие параметры для всех типов
+    const title = params.title || ''
+    const description = params.description || ''
+    const cover = params.cover || ''
+    const isDark = type !== 'basic' && (cover || type === 'article')
+
+    // Формируем контент в зависимости от типа
+    let content
+    let topRight = null
+
     switch (type) {
       case 'article':
-        return new ImageResponse(
-          createOGImage({
-            title: params.title || 'Discours Article',
-            description: params.author,
-            cover: params.cover,
-            topRight: params.topic ? createTopicBadge(params.topic) : null,
-            theme: 'dark'
-          }),
-          responseData
-        )
+        topRight = params.topic ? createTopicBadge(params.topic) : null
+        content = { title, description: params.author, cover }
+        break
+      
       case 'author':
-        return new ImageResponse(
-          createOGImage({
-            title: params.name || params.title || 'Author Profile',
-            description: params.bio || params.description,
-            cover: params.avatar || params.cover,
-            topRight: createStatsBar([
-              params.articlesCount ? { text: `${params.articlesCount} статей` } : null,
-              params.followersCount ? { text: `${params.followersCount} подписчиков` } : null
-            ]),
-            theme: 'dark'
-          }),
-          responseData
-        )
+        // Формируем статистику для автора
+        const stats = [
+          params.articlesCount && { text: `${params.articlesCount} статей` },
+          params.followersCount && { text: `${params.followersCount} подписчиков` }
+        ].filter(Boolean)
+
+        topRight = stats.length ? createStatsBar(stats) : null
+        content = { 
+          title: params.name || title, 
+          description: params.bio || description, 
+          cover: params.avatar || cover 
+        }
+        break
+      
       case 'topic':
-        return new ImageResponse(
-          createOGImage({
-            title: params.title || 'Topic',
-            description: params.description,
-            cover: params.cover,
-            topRight: params.articlesCount
-              ? {
-                  type: 'div',
-                  props: {
-                    style: { fontSize: 24 },
-                    children: `${params.articlesCount} статей`
-                  }
-                }
-              : null,
-            theme: params.cover ? 'dark' : 'light'
-          }),
-          responseData
-        )
+        topRight = params.articlesCount ? {
+          type: 'div',
+          props: {
+            style: { fontSize: 24 },
+            children: `${params.articlesCount} статей`
+          }
+        } : null
+        content = { title, description, cover }
+        break
+      
       default:
+        // Базовый OG
         return new ImageResponse(createBasicOGImage(), responseData)
     }
+
+    // Создаем OG изображение с общей структурой
+    return new ImageResponse(
+      createOGImage({
+        title: content.title, 
+        description: content.description, 
+        cover: content.cover,
+        topRight, 
+        theme: cover ? 'dark' : isDark ? 'dark' : 'light'
+      }),
+      responseData
+    )
   } catch (error) {
     console.error('Error generating OG image:', error)
     return new Response(`Failed to generate image: ${error.message}`, {
@@ -96,7 +106,7 @@ function createOGImage({
   theme = 'light' // light или dark
 }) {
   // Определяем стили на основе темы и наличия обложки
-  const isDark = theme === 'dark' || cover
+  const isDark = theme === 'dark'
 
   // Фон изображения
   const backgroundStyle = cover
@@ -261,7 +271,7 @@ function createTopicBadge(text) {
       style: {
         position: 'absolute',
         top: 40,
-        left: 135, // Логотип 60px шириной + 15px отступ
+        left: 135,
         padding: '4px 12px',
         background: 'rgba(255, 255, 255, 0.25)',
         color: 'white',
@@ -279,7 +289,7 @@ function createTopicBadge(text) {
  * Создает панель статистики для правого верхнего угла
  */
 function createStatsBar(items) {
-  if (!items || items.filter(Boolean).length === 0) return null
+  if (!items || items.length === 0) return null
 
   return {
     type: 'div',
@@ -292,7 +302,7 @@ function createStatsBar(items) {
         gap: 20,
         color: 'rgba(255,255,255,0.8)'
       },
-      children: items.filter(Boolean).map((item) => ({
+      children: items.map((item) => ({
         type: 'div',
         props: {
           style: { fontSize: 24 },
