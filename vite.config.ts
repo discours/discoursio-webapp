@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 // biome-ignore lint/correctness/noNodejsModules: build
 import { fileURLToPath } from 'node:url'
 import { config } from 'dotenv'
-import { CSSOptions, defineConfig } from 'vite'
+import { CSSOptions, Plugin, defineConfig } from 'vite'
 import { PolyfillOptions, nodePolyfills } from 'vite-plugin-node-polyfills'
 import sassDts from 'vite-plugin-sass-dts'
 
@@ -30,50 +30,58 @@ const polyfillOptions = {
 } as PolyfillOptions
 
 // Conditional polyfills - disable for Edge runtime files and @vercel/og
-const conditionalNodePolyfills = () => {
+const conditionalNodePolyfills = (): Plugin => {
+  // Создаем базовый плагин заранее
+  const basePolyfillPlugin = nodePolyfills(polyfillOptions)
+
   return {
     name: 'conditional-node-polyfills',
     resolveId(id: string, importer?: string) {
       // Complete exclusion: Skip ALL polyfills for anything related to @vercel/og, OG routes, or WASM
-      const shouldSkipPolyfills = (
+      const shouldSkipPolyfills =
         // Skip if the ID itself is related to @vercel/og or WASM
         id.includes('@vercel/og') ||
         id.includes('.wasm') ||
         id.includes('path-browserify') ||
         id.includes('stream-browserify') ||
         // Skip if the importer is related to @vercel/og, OG routes, or WASM
-        (importer && (
-          importer.includes('/api/og/') ||
-          importer.includes('@vercel/og') ||
-          importer.includes('.wasm') ||
-          importer.includes('index.edge.js')
-        ))
-      )
-      
+        (importer &&
+          (importer.includes('/api/og/') ||
+            importer.includes('@vercel/og') ||
+            importer.includes('.wasm') ||
+            importer.includes('index.edge.js')))
+
       if (shouldSkipPolyfills) {
         return null
       }
-      
-      // For all other cases, apply normal polyfills
-      const basePlugin = nodePolyfills(polyfillOptions)
-      return basePlugin.resolveId?.(id, importer)
+
+      // Делегируем обработку базовому плагину только если его не нужно пропустить
+      if (basePolyfillPlugin.resolveId && typeof basePolyfillPlugin.resolveId === 'function') {
+        // @ts-ignore - Обходим проблему типизации
+        return basePolyfillPlugin.resolveId(id, importer)
+      }
+
+      return null
     },
     load(id: string) {
       // Skip polyfill loading for @vercel/og related modules
-      const shouldSkipPolyfills = (
+      const shouldSkipPolyfills =
         id.includes('@vercel/og') ||
         id.includes('.wasm') ||
         id.includes('path-browserify') ||
         id.includes('stream-browserify')
-      )
-      
+
       if (shouldSkipPolyfills) {
         return null
       }
-      
-      // For all other cases, apply normal polyfills
-      const basePlugin = nodePolyfills(polyfillOptions)
-      return basePlugin.load?.(id)
+
+      // Делегируем обработку базовому плагину
+      if (basePolyfillPlugin.load && typeof basePolyfillPlugin.load === 'function') {
+        // @ts-ignore - Обходим проблему типизации
+        return basePolyfillPlugin.load(id)
+      }
+
+      return null
     }
   }
 }
@@ -124,12 +132,12 @@ export default defineConfig({
     } as CSSOptions['preprocessorOptions']
   },
   plugins: [
-    conditionalNodePolyfills(), 
+    conditionalNodePolyfills(),
     sassDts(),
     // Force Edge runtime version of @vercel/og
     {
       name: 'force-vercel-og-edge',
-      resolveId(id, importer) {
+      resolveId(id, _) {
         // Force Edge version of @vercel/og in all environments
         if (id === '@vercel/og') {
           return '@vercel/og/dist/index.edge.js'
@@ -151,7 +159,7 @@ export default defineConfig({
         // For WASM modules, provide the actual WASM buffer
         if (id.includes('@vercel/og/dist/') && id.includes('.wasm?module')) {
           const wasmFileName = id.split('/').pop()?.replace('?module', '') || ''
-          
+
           // Return a module that loads the WASM file as buffer
           return `
             import { readFileSync } from 'fs';

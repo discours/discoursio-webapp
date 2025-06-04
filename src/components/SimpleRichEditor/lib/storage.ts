@@ -1045,20 +1045,38 @@ export const removeDraftFromStorage = (draftId: string | number): boolean => {
   try {
     const key = getDraftKey(draftId)
     localStorage.removeItem(key)
+    console.log(`[OfflineStorage] Удаляем основной ключ черновика: ${key}`)
 
     // Также удаляем все связанные с этим черновиком ключи
-    // Удаление всех возможных полей редактора для этого черновика
+    const keysToRemove: string[] = []
+
+    // Собираем все ключи для удаления
     for (let i = 0; i < localStorage.length; i++) {
       const currentKey = localStorage.key(i)
+      if (!currentKey) continue
+
+      // Проверяем различные варианты префиксов для черновика
       if (
-        currentKey &&
-        (currentKey.includes(`draft-${draftId}-`) || currentKey.includes(`yjs-content-${draftId}-`))
+        currentKey.includes(`draft-${draftId}-`) ||
+        currentKey.includes(`draft-fields-${draftId}`) ||
+        currentKey.includes(`yjs-content-${draftId}-`) ||
+        currentKey.includes(`draft-${draftId}.`) ||
+        currentKey === `draft-${draftId}`
       ) {
-        localStorage.removeItem(currentKey)
+        keysToRemove.push(currentKey)
       }
     }
 
-    console.log(`[OfflineStorage] Removed draft ${draftId} from storage`)
+    // Удаляем все найденные ключи
+    console.log(`[OfflineStorage] Найдено ${keysToRemove.length} связанных ключей для удаления`)
+    keysToRemove.forEach((k) => {
+      console.log(`[OfflineStorage] Удаляем связанный ключ: ${k}`)
+      localStorage.removeItem(k)
+    })
+
+    console.log(
+      `[OfflineStorage] Removed draft ${draftId} from storage with ${keysToRemove.length} related keys`
+    )
     return true
   } catch (e) {
     console.error('[OfflineStorage] Error removing draft:', e)

@@ -655,14 +655,35 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
    * @returns true если удаление успешно.
    */
   const removeLocalDraft = (draftId: number): boolean => {
-    // Удаляем из состояния, если он там есть (хотя не должен быть, если он isLocalOnly)
-    setDrafts((prev) => prev.filter((d) => !(!d.draft_id && d.id === draftId)))
+    console.log(`[DraftsProvider] Начинаем удаление локального черновика #${draftId}`)
+
+    // Для отладки: найдем черновик перед удалением
+    const draftToRemove = drafts().find((d) => !d.draft_id && d.id === draftId)
+    if (draftToRemove) {
+      console.log(`[DraftsProvider] Найден черновик для удаления: ${draftToRemove.title}`)
+    } else {
+      console.warn(`[DraftsProvider] Черновик #${draftId} не найден в текущем состоянии`)
+    }
+
+    // Удаляем из состояния, если он там есть
+    setDrafts((prev) => {
+      const newDrafts = prev.filter((d) => !(!d.draft_id && d.id === draftId))
+      console.log(`[DraftsProvider] Удалено ${prev.length - newDrafts.length} черновиков из состояния`)
+      return newDrafts
+    })
+
+    // Сбрасываем текущий черновик, если это он
     const cur = currentDraft()
-    if (!cur?.draft_id && cur?.id === draftId) {
+    if (cur && !cur.draft_id && cur.id === draftId) {
+      console.log(`[DraftsProvider] Сбрасываем текущий черновик, так как он удаляется: ${draftId}`)
       setCurrentDraft(undefined)
     }
+
     // Удаляем из localStorage
-    return removeDraftFromStorage(draftId) // Используем новую внутреннюю функцию
+    const result = removeDraftFromStorage(draftId)
+    console.log(`[DraftsProvider] Результат удаления из localStorage: ${result ? 'успешно' : 'ошибка'}`)
+
+    return result
   }
 
   /**

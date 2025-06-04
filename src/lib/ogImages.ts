@@ -1,5 +1,5 @@
+import { coreApiUrl } from '~/config'
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
-import { authorizerRedirectUrl } from '~/config'
 
 /**
  * Generate OG image URL for different content types
@@ -16,7 +16,7 @@ export interface OGImageOptions {
 // Use the same base domain as configured in config.ts
 const OG_BASE_URL =
   process.env.NODE_ENV === 'production'
-    ? `${new URL(authorizerRedirectUrl).origin}/api/og` // Use configured domain from config
+    ? `${new URL(coreApiUrl).origin}/api/og` // Use configured domain from config
     : 'https://localhost:3000/api/og'
 
 /**
