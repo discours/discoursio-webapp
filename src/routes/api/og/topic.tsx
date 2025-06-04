@@ -1,5 +1,6 @@
 import { APIEvent } from '@solidjs/start/server'
 import { ImageResponse } from '@vercel/og'
+import { cdnUrl } from '~/config'
 
 /**
  * Generate OG images for topics with dynamic content
@@ -9,13 +10,10 @@ import { ImageResponse } from '@vercel/og'
 export function GET(event: APIEvent) {
   try {
     const url = new URL(event.request.url)
-    const title = url.searchParams.get('title') || 'Discours Topic'
-    const description = url.searchParams.get('description') || 'Join the conversation'
+    const title = url.searchParams.get('title') || ''
+    const description = url.searchParams.get('description') || ''
     const cover = url.searchParams.get('cover')
-
-    // Debug hardcoded cdn url to cdn.discours.io
-    const cdnUrl = 'https://cdn.discours.io'
-
+    const articlesCount = url.searchParams.get('articlesCount')
     // --- Elements ---
 
     const topLeft = {
@@ -47,6 +45,23 @@ export function GET(event: APIEvent) {
         ]
       }
     }
+
+    // Top Right: Articles count
+    const topRight = articlesCount
+      ? {
+          type: 'div',
+          props: {
+            style: {
+              position: 'absolute',
+              top: 40,
+              right: 60,
+              display: 'flex',
+              color: cover ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'
+            },
+            children: `${articlesCount} статей`
+          }
+        }
+      : null
 
     // Center: Title
     const mainTitle = {
@@ -114,7 +129,7 @@ export function GET(event: APIEvent) {
           flexDirection: 'column',
           ...backgroundStyle
         },
-        children: [topLeft, mainTitle, bottomLeft].filter(Boolean)
+        children: [topLeft, topRight, mainTitle, bottomLeft].filter(Boolean)
       }
     }
 

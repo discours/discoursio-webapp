@@ -1,27 +1,24 @@
 import { APIEvent } from '@solidjs/start/server'
 import { ImageResponse } from '@vercel/og'
+import { cdnUrl } from '~/config'
 
 /**
- * Dynamic OG image generation for authors
- * Usage: /api/og/author?slug=author-slug
- * or: /api/og/author?name=Name&bio=Bio&avatar=avatar-url
+ * Generate OG images for author profiles with dynamic content
+ * Usage: /api/og/author?name=AuthorName&bio=AuthorBio&avatar=AvatarURL
  */
+
 export function GET(event: APIEvent) {
   try {
     const url = new URL(event.request.url)
-    const name = url.searchParams.get('name') || 'Author'
-    const bio = url.searchParams.get('bio')
+    const name = url.searchParams.get('name') || 'Author Profile'
+    const bio = url.searchParams.get('bio') || ''
     const avatar = url.searchParams.get('avatar')
-
-    //Debug hardcoded cdn url to cdn.discours.io
-    const cdnUrl = 'https://cdn.discours.io'
-
-    // If slug is provided, we could fetch author data from GraphQL here
-    // For now, we'll use the provided parameters
+    const articlesCount = url.searchParams.get('articlesCount')
+    const followersCount = url.searchParams.get('followersCount')
 
     // --- Elements ---
 
-    // Top left: Logo
+    // Top Left: Logo
     const topLeft = {
       type: 'div',
       props: {
@@ -30,24 +27,21 @@ export function GET(event: APIEvent) {
           top: 40,
           left: 60,
           display: 'flex',
-          alignItems: 'center',
-          gap: 10
+          alignItems: 'center'
         },
         children: [
           // Logo image
           {
             type: 'img',
             props: {
-              src: `${cdnUrl}/logo_sign.png`,
+              src: `${cdnUrl}/logo.png`,
               width: 60,
               height: 60,
               style: {
                 width: 60,
                 height: 60,
                 objectFit: 'contain',
-                background: 'rgba(255,255,255,0.03)',
-                borderRadius: '16px',
-                marginRight: 0
+                borderRadius: '16px'
               }
             }
           }
@@ -55,7 +49,45 @@ export function GET(event: APIEvent) {
       }
     }
 
-    // Center-left: Author name as title
+    // Top Right: Stats
+    const topRight =
+      articlesCount || followersCount
+        ? {
+            type: 'div',
+            props: {
+              style: {
+                position: 'absolute',
+                top: 40,
+                right: 60,
+                display: 'flex',
+                gap: 20,
+                color: 'rgba(255,255,255,0.8)'
+              },
+              children: [
+                articlesCount
+                  ? {
+                      type: 'div',
+                      props: {
+                        style: { fontSize: 24 },
+                        children: `${articlesCount} статей`
+                      }
+                    }
+                  : null,
+                followersCount
+                  ? {
+                      type: 'div',
+                      props: {
+                        style: { fontSize: 24 },
+                        children: `${followersCount} подписчиков`
+                      }
+                    }
+                  : null
+              ].filter(Boolean)
+            }
+          }
+        : null
+
+    // Center-left: Author Name
     const mainTitle = {
       type: 'div',
       props: {
@@ -68,7 +100,7 @@ export function GET(event: APIEvent) {
           textAlign: 'left',
           color: 'white',
           fontWeight: 900,
-          fontSize: name.length > 20 ? 50 : 62,
+          fontSize: name.length > 30 ? 50 : 62,
           lineHeight: 1.12,
           textShadow: '2px 2px 7px rgba(0,0,0,0.55)',
           letterSpacing: '-1px'
@@ -122,7 +154,7 @@ export function GET(event: APIEvent) {
           flexDirection: 'column',
           ...backgroundStyle
         },
-        children: [topLeft, mainTitle, bottomLeft].filter(Boolean)
+        children: [topLeft, topRight, mainTitle, bottomLeft].filter(Boolean)
       }
     }
 
@@ -133,9 +165,9 @@ export function GET(event: APIEvent) {
         'Cache-Control': 'public, max-age=31536000, immutable'
       }
     })
-  } catch (e) {
-    console.error('OG Image generation error:', e)
-    const errorMessage = e instanceof Error ? e.message : 'Unknown error'
+  } catch (error) {
+    console.error('OG Image generation error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return new Response(`Failed to generate the image: ${errorMessage}`, {
       status: 500
     })

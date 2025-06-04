@@ -1,24 +1,22 @@
 import { APIEvent } from '@solidjs/start/server'
 import { ImageResponse } from '@vercel/og'
+import { cdnUrl } from '~/config'
 
 /**
  * Generate OG images for articles with dynamic content
- * Usage: /api/og/article?title=Title&author=Author&cover=CoverURL&topic=Topic
+ * Usage: /api/og/article?title=Title&author=Author&topic=Topic&cover=CoverURL
  */
 
 export function GET(event: APIEvent) {
   try {
     const url = new URL(event.request.url)
     const title = url.searchParams.get('title') || 'Discours Article'
-    const author = url.searchParams.get('author')
+    const author = url.searchParams.get('author') || ''
+    const topic = url.searchParams.get('topic') || ''
     const cover = url.searchParams.get('cover')
-    const topic = url.searchParams.get('topic')
-
-    //Debug hardcoded cdn url to cdn.discours.io
-    const cdnUrl = 'https://cdn.discours.io'
-
     // --- Elements ---
 
+    // Top Left: Logo with Topic Badge
     const topLeft = {
       type: 'div',
       props: {
@@ -27,38 +25,38 @@ export function GET(event: APIEvent) {
           top: 40,
           left: 60,
           display: 'flex',
-          alignItems: 'center',
-          gap: 10
+          alignItems: 'center'
         },
         children: [
           // Logo image
           {
             type: 'img',
             props: {
-              src: `${cdnUrl}/logo_sign.png`,
+              src: `${cdnUrl}/logo.png`,
               width: 60,
               height: 60,
               style: {
                 width: 60,
                 height: 60,
                 objectFit: 'contain',
-                background: 'rgba(255,255,255,0.03)', // slight highlight if you want
-                borderRadius: '16px', // round corners if you want
-                marginRight: 0
+                borderRadius: '16px'
               }
             }
           },
-          // Topic badge
+          // Topic badge if available
           topic
             ? {
                 type: 'div',
                 props: {
                   style: {
-                    fontSize: 28,
+                    marginLeft: 15,
+                    padding: '4px 12px',
+                    background: 'rgba(255, 255, 255, 0.25)',
                     color: 'white',
-                    fontWeight: 600,
-                    letterSpacing: 1,
-                    marginRight: 10
+                    borderRadius: 30,
+                    fontSize: 24,
+                    backdropFilter: 'blur(4px)',
+                    textShadow: '1px 1px 2px rgba(0,0,0,0.2)'
                   },
                   children: topic
                 }
@@ -145,9 +143,9 @@ export function GET(event: APIEvent) {
         'Cache-Control': 'public, max-age=31536000, immutable'
       }
     })
-  } catch (e) {
-    console.error('OG Image generation error:', e)
-    const errorMessage = e instanceof Error ? e.message : 'Unknown error'
+  } catch (error) {
+    console.error('Error generating article OG image:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return new Response(`Failed to generate the image: ${errorMessage}`, {
       status: 500
     })

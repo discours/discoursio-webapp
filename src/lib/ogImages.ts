@@ -21,15 +21,18 @@ export const OG_BASIC_URL = '/api/og/basic'
 export function getArticleOGImage(article: Shout, options: OGImageOptions = {}): string {
   const params = new URLSearchParams()
 
-  params.append('title', article.title || 'Discours Article')
-  params.append('slug', article.slug || '')
-  params.append('author', article.authors?.[0]?.name || '')
+  params.append('title', article.title)
+  params.append('slug', article.slug)
+  if (article.authors?.[0]?.name) {
+    params.append('author', article.authors[0].name)
+  }
 
   // Add topic if available
   if (article.topics && article.topics.length > 0 && article.topics[0]) {
     params.append('topic', article.topics[0].title || '')
   }
 
+  // Add cover if available
   if (article.cover) {
     params.append('cover', article.cover)
   }
