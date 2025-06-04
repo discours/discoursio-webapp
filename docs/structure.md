@@ -147,6 +147,7 @@ discoursio-webapp/
 │ ├── favicon.ico           # иконка
 │ ├── logo.svg              # логотип
 │ ├── logo.png              # логотип
+│ ├── logo_sign.png         # логотип
 │ ├── robots.txt            # правила для роботов
 │ └── sw.js                 # Service Worker кеширование
 │ ...

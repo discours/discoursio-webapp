@@ -1,6 +1,7 @@
 import { APIEvent } from '@solidjs/start/server'
 import { ImageResponse } from '@vercel/og'
 import { cdnUrl } from '~/config'
+import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH } from '~/lib/openGraph'
 
 /**
  * Generate OG images for topics with dynamic content
@@ -134,8 +135,8 @@ export function GET(event: APIEvent) {
     }
 
     return new ImageResponse(imageElement, {
-      width: 1200,
-      height: 630,
+      width: OG_IMAGE_WIDTH,
+      height: OG_IMAGE_HEIGHT,
       headers: {
         'Cache-Control': 'public, max-age=31536000, immutable'
       }

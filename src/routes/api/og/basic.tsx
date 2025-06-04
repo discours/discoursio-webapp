@@ -1,14 +1,13 @@
 import { APIEvent } from '@solidjs/start/server'
 import { ImageResponse } from '@vercel/og'
+import { cdnUrl } from '~/config'
+import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH } from '~/lib/openGraph'
 
 /**
  * Generate basic OG images for pages without specific content
  * Simple white background with centered logo
  */
 export function GET(_event: APIEvent) {
-  //Debug hardcoded cdn url to cdn.discours.io
-  const cdnUrl = 'https://files.dscrs.site'
-
   try {
     return new ImageResponse(
       {
@@ -38,8 +37,11 @@ export function GET(_event: APIEvent) {
         }
       },
       {
-        width: 1200,
-        height: 630
+        width: OG_IMAGE_WIDTH,
+        height: OG_IMAGE_HEIGHT,
+        headers: {
+          'Cache-Control': 'public, max-age=31536000, immutable'
+        }
       }
     )
   } catch (error) {
