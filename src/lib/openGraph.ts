@@ -12,7 +12,7 @@ import { descFromBody } from '~/utils/meta'
 export const OG_IMAGE_WIDTH = 1200
 export const OG_IMAGE_HEIGHT = 630
 export const OG_SITE_NAME = 'Discours'
-export const OG_BASIC_URL = '/api/og/basic'
+export const OG_BASE_URL = '/api/og'
 export const OG_TWITTER_SITE = '@discoursio'
 export const OG_DEFAULT_DESCRIPTION = 'Discours – an open magazine about culture, science and society'
 export const OG_LOGO_PATH = '/logo_sign.png'
@@ -120,7 +120,7 @@ export function generateOGMetadata(
   const title = getOGTitle(data, options.defaultTitle || '')
   const description = getOGDescription(data, options.defaultDescription || OG_DEFAULT_DESCRIPTION)
   const url = getFullPageUrl(options.pathname || '')
-  const imageRelativePath = data ? generateRelativeImagePath(data) : OG_BASIC_URL
+  const imageRelativePath = data ? generateRelativeImagePath(data) : OG_BASE_URL
   const image = getFullImageUrl(imageRelativePath)
 
   return {
@@ -160,7 +160,7 @@ export function generateRelativeImagePath(
     return getTopicOGImagePath(content as Topic, options)
   }
 
-  return OG_BASIC_URL
+  return OG_BASE_URL
 }
 
 /**
@@ -190,7 +190,7 @@ export function getArticleOGImagePath(article: Shout, options: OGImageOptions = 
   if (options.height) params.append('height', options.height.toString())
   if (options.quality) params.append('quality', options.quality.toString())
 
-  return `/api/og/article?${params.toString()}`
+  return `${OG_BASE_URL}/article?${params.toString()}`
 }
 
 /**
@@ -224,7 +224,7 @@ export function getAuthorOGImagePath(author: Author, options: OGImageOptions = {
   if (options.height) params.append('height', options.height.toString())
   if (options.quality) params.append('quality', options.quality.toString())
 
-  return `/api/og/author?${params.toString()}`
+  return `${OG_BASE_URL}/author?${params.toString()}`
 }
 
 /**
@@ -259,5 +259,5 @@ export function getTopicOGImagePath(topic: Topic, options: OGImageOptions = {}):
   if (options.height) params.append('height', options.height.toString())
   if (options.quality) params.append('quality', options.quality.toString())
 
-  return `/api/og/topic?${params.toString()}`
+  return `${OG_BASE_URL}/topic?${params.toString()}`
 }
