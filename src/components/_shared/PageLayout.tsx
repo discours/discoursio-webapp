@@ -92,6 +92,11 @@ export const PageLayout = (props: PageLayoutProps) => {
     if (props.topic) return props.topic.title
     return t(props.title)
   })
+
+  const logoUrl = createMemo(() => {
+    return `${baseUrl}/logo.png`
+  })
+
   return (
     <>
       <Title>{props.article?.title || t(props.title)}</Title>
@@ -116,6 +121,7 @@ export const PageLayout = (props: PageLayoutProps) => {
       <Meta property="og:image:width" content="1200" />
       <Meta property="og:image:height" content="630" />
       <Meta property="og:locale" content={lang()} />
+      <Meta property="og:logo" content={logoUrl()} />
 
       {/* Twitter Card теги */}
       <Meta name="twitter:card" content="summary_large_image" />
