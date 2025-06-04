@@ -7,7 +7,7 @@ import { ImageResponse } from '@vercel/og'
  */
 export function GET(_event: APIEvent) {
   //Debug hardcoded cdn url to cdn.discours.io
-  const cdnUrl = 'https://cdn.discours.io'
+  const cdnUrl = 'https://files.dscrs.site'
 
   try {
     return new ImageResponse(
