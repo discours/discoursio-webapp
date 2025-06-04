@@ -16,7 +16,7 @@ import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { Loading } from '~/components/_shared/Loading'
 import { gaIdentity } from '~/config'
 import { useLocalize } from '~/context/localize'
-import { getShout } from '~/graphql/api/public'
+import { getShout, loadTopics } from '~/graphql/api/public'
 import type { Author, Reaction, Shout, Topic } from '~/graphql/schema/core.gen'
 import { initGA, loadGAScript } from '~/utils/ga'
 import { descFromBody, keywordsFromTopics } from '~/utils/meta'
@@ -42,10 +42,18 @@ const fetchShout = async (slug: string): Promise<Shout | undefined> => {
 
 export const route: RouteDefinition = {
   load: async ({ params }) => {
-    const data = {
-      article: await fetchShout(params.slug)
+    // If this is a topic route (starts with !), preload topics data
+    let topics: Topic[] | undefined
+    if (params.slug.startsWith('!')) {
+      const topicsLoader = loadTopics()
+      topics = await topicsLoader()
     }
-    // console.log('[route.load] data:', data)
+
+    const article = await fetchShout(params.slug)
+    const data = {
+      article,
+      topics
+    }
     return data
   }
 }
@@ -55,6 +63,7 @@ export type ArticlePageProps = {
   comments?: Reaction[]
   votes?: Reaction[]
   author?: Author
+  topics?: Topic[]
 }
 
 export type SlugPageProps = {
@@ -62,7 +71,7 @@ export type SlugPageProps = {
   comments?: Reaction[]
   votes?: Reaction[]
   author?: Author
-  topics: Topic[]
+  topics?: Topic[]
 }
 
 function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
@@ -75,7 +84,8 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
       if (props.data?.article) {
         return props.data.article
       }
-      return await fetchShout(slug)
+      const result = await fetchShout(slug)
+      return result
     },
     {
       initialValue: props.data?.article
@@ -108,6 +118,8 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
     )
   )
 
+  // dufok added article in PageLayout props for OG image generation
+
   return (
     <Suspense fallback={<Loading />}>
       <Show when={data()} fallback={<FourOuFourView />}>
@@ -119,6 +131,7 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
             headerTitle={data()?.title || ''}
             slug={data()?.slug}
             cover={data()?.cover || ''}
+            article={data()}
           >
             <FullArticle article={data()!} />
           </PageLayout>
@@ -159,6 +172,10 @@ export default function ArticlePage(props: RouteSectionProps<SlugPageProps>) {
             params: {
               ...props.params,
               slug: currentSlug().slice(1)
+            },
+            data: {
+              ...props.data,
+              topics: props.data?.topics || []
             }
           } as RouteSectionProps<TopicPageProps>)}
         />

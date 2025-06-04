@@ -10,6 +10,7 @@ import loadAuthorsAllQuery from '~/graphql/query/core/authors-all'
 import loadAuthorsByQuery from '~/graphql/query/core/authors-load-by'
 import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
 import getAuthorsByTopicQuery from '~/graphql/query/core/topic-authors'
+import topicBySlugQuery from '~/graphql/query/core/topic-by-slug'
 import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
 import loadTopicsQuery from '~/graphql/query/core/topics-all'
 import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community'
@@ -47,6 +48,17 @@ export const loadTopicsByCommunity = (options: QueryGet_Topics_By_CommunityArgs)
   return async () => {
     const resp = await defaultClient.query(loadTopicsByCommunityQuery, options).toPromise()
     return resp?.data?.get_topics_by_community as Topic[]
+  }
+}
+
+/**
+ * Load a single topic by its slug
+ * Used for SSR and individual topic pages
+ */
+export const loadTopicBySlug = (slug: string) => {
+  return async () => {
+    const resp = await defaultClient.query(topicBySlugQuery, { slug }).toPromise()
+    return resp?.data?.get_topic as Topic
   }
 }
 

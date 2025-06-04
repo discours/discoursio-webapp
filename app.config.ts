@@ -44,15 +44,39 @@ function checkSSL(): { key: string; cert: string } | undefined {
 export default defineConfig({
   nitro: {
     timing: true,
-    compatibilityDate: '2024-11-29'
+    compatibilityDate: '2024-11-29',
+    // Configure WASM handling for @vercel/og
+    experimental: {
+      wasm: true
+    },
+    // Force Edge runtime for OG image generation routes
+    routeRules: {
+      '/api/og/**': { 
+        prerender: false,
+        runtime: 'edge'  // Key fix: Force Edge runtime for OG routes
+      }
+    },
+    rollupConfig: {
+      output: {
+        inlineDynamicImports: false
+      }
+    }
   },
   ssr: true,
   server: {
     preset,
     port: 3000,
-    https: checkSSL(),
-    streaming: false
+    https: checkSSL()
   },
   devOverlay: isDev,
-  vite: viteConfig
+  vite: viteConfig,
+  edge: isVercel,
+  experimental: {
+    streaming: false,
+    islands: false,
+    hydration: true,
+    router: {
+      ssr: true
+    }
+  }
 } as SolidStartInlineConfig)
