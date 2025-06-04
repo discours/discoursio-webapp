@@ -16,7 +16,7 @@ src/graphql/schema/*.gen.ts
 stats.html
 *.scss.d.ts
 pnpm-lock.yaml
-bun.lockb
+bun.lock
 .jj
 /test-results/
 /playwright-report/
@@ -41,3 +41,4 @@ DEBUG.log
 .prettierrc
 venv
 .cursor
+/SV-DEV/*

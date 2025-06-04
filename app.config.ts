@@ -48,6 +48,18 @@ export default defineConfig({
     // Configure WASM handling for @vercel/og
     experimental: {
       wasm: true
+    },
+    // Force Edge runtime for OG image generation routes
+    routeRules: {
+      '/api/og/**': { 
+        prerender: false,
+        runtime: 'edge'  // Key fix: Force Edge runtime for OG routes
+      }
+    },
+    rollupConfig: {
+      output: {
+        inlineDynamicImports: false
+      }
     }
   },
   ssr: true,

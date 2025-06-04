@@ -29,13 +29,68 @@ const polyfillOptions = {
   protocolImports: true
 } as PolyfillOptions
 
+// Conditional polyfills - disable for Edge runtime files and @vercel/og
+const conditionalNodePolyfills = () => {
+  return {
+    name: 'conditional-node-polyfills',
+    resolveId(id: string, importer?: string) {
+      // Complete exclusion: Skip ALL polyfills for anything related to @vercel/og, OG routes, or WASM
+      const shouldSkipPolyfills = (
+        // Skip if the ID itself is related to @vercel/og or WASM
+        id.includes('@vercel/og') ||
+        id.includes('.wasm') ||
+        id.includes('path-browserify') ||
+        id.includes('stream-browserify') ||
+        // Skip if the importer is related to @vercel/og, OG routes, or WASM
+        (importer && (
+          importer.includes('/api/og/') ||
+          importer.includes('@vercel/og') ||
+          importer.includes('.wasm') ||
+          importer.includes('index.edge.js')
+        ))
+      )
+      
+      if (shouldSkipPolyfills) {
+        return null
+      }
+      
+      // For all other cases, apply normal polyfills
+      const basePlugin = nodePolyfills(polyfillOptions)
+      return basePlugin.resolveId?.(id, importer)
+    },
+    load(id: string) {
+      // Skip polyfill loading for @vercel/og related modules
+      const shouldSkipPolyfills = (
+        id.includes('@vercel/og') ||
+        id.includes('.wasm') ||
+        id.includes('path-browserify') ||
+        id.includes('stream-browserify')
+      )
+      
+      if (shouldSkipPolyfills) {
+        return null
+      }
+      
+      // For all other cases, apply normal polyfills
+      const basePlugin = nodePolyfills(polyfillOptions)
+      return basePlugin.load?.(id)
+    }
+  }
+}
+
+// Determine if we're running on Vercel (Edge) or local (Node.js SSR)
+const isVercel = Boolean(process.env.VERCEL)
+
 export default defineConfig({
+  assetsInclude: ['**/*.wasm'], // Include WASM files as assets
   resolve: {
     alias: {
       '~': fileURLToPath(new URL('./src', import.meta.url)),
       '@': resolve('./public'),
       '/icons': resolve('./public/icons'),
-      '/fonts': resolve('./public/fonts')
+      '/fonts': resolve('./public/fonts'),
+      // Only force Edge runtime version of @vercel/og on Vercel
+      ...(isVercel ? { '@vercel/og': resolve('./node_modules/@vercel/og/dist/index.edge.js') } : {})
     }
   },
   envPrefix: 'PUBLIC_',
@@ -68,7 +123,51 @@ export default defineConfig({
       }
     } as CSSOptions['preprocessorOptions']
   },
-  plugins: [nodePolyfills(polyfillOptions), sassDts()],
+  plugins: [
+    conditionalNodePolyfills(), 
+    sassDts(),
+    // Force Edge runtime version of @vercel/og
+    {
+      name: 'force-vercel-og-edge',
+      resolveId(id, importer) {
+        // Force Edge version of @vercel/og in all environments
+        if (id === '@vercel/og') {
+          return '@vercel/og/dist/index.edge.js'
+        }
+        return null
+      }
+    },
+    // Handle WASM modules for @vercel/og in Edge runtime
+    {
+      name: 'edge-wasm-handler',
+      resolveId(id) {
+        // Handle WASM module imports for @vercel/og
+        if (id.includes('@vercel/og/dist/') && id.includes('.wasm?module')) {
+          return id // Keep the ID for custom handling
+        }
+        return null
+      },
+      load(id) {
+        // For WASM modules, provide the actual WASM buffer
+        if (id.includes('@vercel/og/dist/') && id.includes('.wasm?module')) {
+          const wasmFileName = id.split('/').pop()?.replace('?module', '') || ''
+          
+          // Return a module that loads the WASM file as buffer
+          return `
+            import { readFileSync } from 'fs';
+            import { resolve } from 'path';
+            
+            // Load WASM file as buffer for WebAssembly.instantiate()
+            const wasmPath = resolve('./node_modules/@vercel/og/dist/${wasmFileName}');
+            const wasmBuffer = readFileSync(wasmPath);
+            
+            export default wasmBuffer;
+          `
+        }
+        return null
+      }
+    }
+  ],
   build: {
     target: 'esnext',
     sourcemap: isDev,
@@ -115,7 +214,8 @@ export default defineConfig({
     }
   },
   ssr: {
-    noExternal: ['@urql/core', '@solidjs/meta', '@solidjs/router', '@vercel/og'],
+    external: ['@vercel/og'],
+    noExternal: ['@urql/core', '@solidjs/meta', '@solidjs/router'],
     target: 'node',
     optimizeDeps: {
       include: ['@urql/core']

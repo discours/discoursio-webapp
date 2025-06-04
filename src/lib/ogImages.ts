@@ -1,4 +1,5 @@
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import { authorizerRedirectUrl } from '~/config'
 
 /**
  * Generate OG image URL for different content types
@@ -12,9 +13,10 @@ export interface OGImageOptions {
   quality?: number
 }
 
+// Use the same base domain as configured in config.ts
 const OG_BASE_URL =
   process.env.NODE_ENV === 'production'
-    ? 'https://testing.discours.io/api/og' // production domain
+    ? `${new URL(authorizerRedirectUrl).origin}/api/og` // Use configured domain from config
     : 'https://localhost:3000/api/og'
 
 /**
