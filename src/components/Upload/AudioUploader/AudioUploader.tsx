@@ -1,3 +1,5 @@
+// biome-ignore lint/correctness/noNodejsModules: polyfill
+import { Buffer } from 'node:buffer'
 import { UploadFile } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
 import { Show } from 'solid-js'
@@ -9,6 +11,7 @@ import { useSession } from '~/context/session'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { composeMediaItems } from '~/lib/composeMediaItems'
 import { handleFileUpload } from '~/lib/handleFileUpload'
+
 import styles from './AudioUploader.module.scss'
 
 if (!isServer && window) window.Buffer = Buffer

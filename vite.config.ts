@@ -22,18 +22,33 @@ export const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
 console.log(`[vite.config] ${isDev ? 'dev' : 'prod'} mode`)
 
 const polyfillOptions = {
-  include: ['path', 'stream', 'util'],
+  include: ['path', 'stream', 'util', 'buffer'],
   exclude: ['http'],
   globals: { Buffer: true },
   overrides: { fs: 'memfs' },
   protocolImports: true
 } as PolyfillOptions
 
-// Conditional polyfills - disable for Edge runtime files and @vercel/og
-const conditionalNodePolyfills = (): Plugin => {
-  // Создаем базовый плагин заранее
-  const basePolyfillPlugin = nodePolyfills(polyfillOptions)
+// Более простой подход к предоставлению Buffer как глобальной переменной
+const bufferGlobalPlugin = (): Plugin => {
+  return {
+    name: 'buffer-global-plugin',
+    enforce: 'pre',
+    config() {
+      return {
+        define: {
+          // Обеспечиваем доступность Buffer в клиентском коде
+          'global.Buffer': ['Buffer'],
+          // Необходимая дополнительная переменная для совместимости
+          'process.env.NODE_DEBUG': 'undefined'
+        }
+      }
+    }
+  }
+}
 
+// Conditional polyfills - disable for Edge runtime files and @vercel/og
+const conditionalNodePolyfills = () => {
   return {
     name: 'conditional-node-polyfills',
     resolveId(id: string, importer?: string) {
@@ -42,8 +57,6 @@ const conditionalNodePolyfills = (): Plugin => {
         // Skip if the ID itself is related to @vercel/og or WASM
         id.includes('@vercel/og') ||
         id.includes('.wasm') ||
-        id.includes('path-browserify') ||
-        id.includes('stream-browserify') ||
         // Skip if the importer is related to @vercel/og, OG routes, or WASM
         (importer &&
           (importer.includes('/api/og/') ||
@@ -55,33 +68,25 @@ const conditionalNodePolyfills = (): Plugin => {
         return null
       }
 
-      // Делегируем обработку базовому плагину только если его не нужно пропустить
-      if (basePolyfillPlugin.resolveId && typeof basePolyfillPlugin.resolveId === 'function') {
-        // @ts-ignore - Обходим проблему типизации
-        return basePolyfillPlugin.resolveId(id, importer)
-      }
-
-      return null
+      // Для всех остальных случаев применяем полифиллы
+      // Создаем новый экземпляр плагина для каждого вызова, как было в оригинальном коде
+      const basePlugin = nodePolyfills(polyfillOptions)
+      // @ts-ignore: объект BasePlugin не имеет прямого вызова как функция
+      return basePlugin.resolveId?.(id, importer)
     },
     load(id: string) {
       // Skip polyfill loading for @vercel/og related modules
-      const shouldSkipPolyfills =
-        id.includes('@vercel/og') ||
-        id.includes('.wasm') ||
-        id.includes('path-browserify') ||
-        id.includes('stream-browserify')
+      const shouldSkipPolyfills = id.includes('@vercel/og') || id.includes('.wasm')
 
       if (shouldSkipPolyfills) {
         return null
       }
 
-      // Делегируем обработку базовому плагину
-      if (basePolyfillPlugin.load && typeof basePolyfillPlugin.load === 'function') {
-        // @ts-ignore - Обходим проблему типизации
-        return basePolyfillPlugin.load(id)
-      }
-
-      return null
+      // Для всех остальных случаев применяем полифиллы
+      // Создаем новый экземпляр плагина для каждого вызова, как было в оригинальном коде
+      const basePlugin = nodePolyfills(polyfillOptions)
+      // @ts-ignore: объект BasePlugin не имеет прямого вызова как функция
+      return basePlugin.load?.(id)
     }
   }
 }
@@ -100,6 +105,13 @@ export default defineConfig({
       // Only force Edge runtime version of @vercel/og on Vercel
       ...(isVercel ? { '@vercel/og': resolve('./node_modules/@vercel/og/dist/index.edge.js') } : {})
     }
+  },
+  define: {
+    // Глобальные переменные для всего проекта
+    'globalThis.Buffer': 'Buffer',
+    'window.Buffer': 'Buffer',
+    global: 'globalThis',
+    'process.env.NODE_DEBUG': 'undefined'
   },
   envPrefix: 'PUBLIC_',
   css: {
@@ -132,7 +144,9 @@ export default defineConfig({
     } as CSSOptions['preprocessorOptions']
   },
   plugins: [
-    conditionalNodePolyfills(),
+    nodePolyfills(polyfillOptions), // Основной полифилл, который должен работать для всего кода
+    bufferGlobalPlugin(), // Плагин для обеспечения глобального Buffer
+    conditionalNodePolyfills(), // Условный полифилл для особых случаев
     sassDts(),
     // Force Edge runtime version of @vercel/og
     {
