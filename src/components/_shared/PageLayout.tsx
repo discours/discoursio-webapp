@@ -10,7 +10,7 @@ import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 import enKeywords from '~/intl/locales/en/keywords.json'
 import ruKeywords from '~/intl/locales/ru/keywords.json'
 import { getFileUrl } from '~/lib/getThumbUrl'
-import { getArticleOGImage, getAuthorOGImage, getBasicOGImage, getTopicOGImage } from '~/lib/ogImages'
+import { OG_BASIC_URL, getArticleOGImage, getAuthorOGImage, getTopicOGImage } from '~/lib/ogImages'
 import { descFromBody } from '~/utils/meta'
 import { FooterView } from '../Discours/Footer'
 import { Header } from '../HeaderNav'
@@ -44,16 +44,10 @@ export const PageLayout = (props: PageLayoutProps) => {
 
   // OG image generation
   const ogImage = createMemo(() => {
-    // For articles, use our dynamic OG image generation
-    if (props.article) {
-      const ogUrl = getArticleOGImage(props.article)
-      return ogUrl
-    }
+    if (props.article) return getArticleOGImage(props.article)
 
-    // For author pages, use author-specific OG image
     if (props.author) {
-      const ogUrl = getAuthorOGImage(props.author)
-      return ogUrl
+      return getAuthorOGImage(props.author)
     }
 
     // For topic pages, use topic-specific OG image
@@ -61,16 +55,20 @@ export const PageLayout = (props: PageLayoutProps) => {
       const ogUrl = getTopicOGImage(props.topic)
       return ogUrl
     }
-
-    // For other pages, use basic OG image
-    const basicUrl = getBasicOGImage()
-    return basicUrl
+    return OG_BASIC_URL
   })
 
   const description = createMemo(() => props.desc || (props.article && descFromBody(props.article.body)))
   const keywords = createMemo(() => {
     const keypath = (props.key || loc?.pathname.split('/')[0]) as keyof typeof ruKeywords
     return props.keywords || lang() === 'ru' ? ruKeywords[keypath] : enKeywords[keypath]
+  })
+
+  // Формируем полный URL текущей страницы для og:url
+  const pageUrl = createMemo(() => {
+    const baseUrl = 'https://testing3.discours.io'
+    const path = loc.pathname || '/'
+    return `${baseUrl}${path}`
   })
 
   onMount(() => {
@@ -107,12 +105,15 @@ export const PageLayout = (props: PageLayoutProps) => {
       />
       <Meta name="description" content={description() || ''} />
       <Meta name="keywords" content={keywords()} />
-      <Meta name="og:type" content="article" />
-      <Meta name="og:title" content={props.article?.title || t(props.title) || ''} />
-      <Meta name="og:image" content={ogImage() || ''} />
-      <Meta name="twitter:image" content={ogImage() || ''} />
-      <Meta name="og:description" content={description() || ''} />
+      <Meta property="og:type" content="article" />
+      <Meta property="og:title" content={props.article?.title || t(props.title) || ''} />
+      <Meta property="og:image" content={ogImage() || ''} />
+      <Meta property="og:url" content={pageUrl()} />
+      <Meta property="og:description" content={description() || ''} />
+      <Meta property="og:logo" content={'/logo.png'} />
+      <Meta property="og:locale" content={lang()} />
       <Meta name="twitter:card" content="summary_large_image" />
+      <Meta name="twitter:image" content={ogImage() || ''} />
       <Meta name="twitter:title" content={props.article?.title || t(props.title) || ''} />
       <Meta name="twitter:description" content={description() || ''} />
       <main

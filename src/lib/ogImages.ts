@@ -1,4 +1,3 @@
-import { coreApiUrl } from '~/config'
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 
 /**
@@ -13,11 +12,7 @@ export interface OGImageOptions {
   quality?: number
 }
 
-// Use the same base domain as configured in config.ts
-const OG_BASE_URL =
-  process.env.NODE_ENV === 'production'
-    ? `${new URL(coreApiUrl).origin}/api/og` // Use configured domain from config
-    : 'https://localhost:3000/api/og'
+export const OG_BASIC_URL = '/api/og/basic'
 
 /**
  * Generate OG image for articles
@@ -44,7 +39,7 @@ export function getArticleOGImage(article: Shout, options: OGImageOptions = {}):
   if (options.height) params.append('height', options.height.toString())
   if (options.quality) params.append('quality', options.quality.toString())
 
-  return `${OG_BASE_URL}/article?${params.toString()}`
+  return `/api/og/article?${params.toString()}`
 }
 
 /**
@@ -79,7 +74,7 @@ export function getAuthorOGImage(author: Author, options: OGImageOptions = {}): 
   if (options.height) params.append('height', options.height.toString())
   if (options.quality) params.append('quality', options.quality.toString())
 
-  return `${OG_BASE_URL}/author?${params.toString()}`
+  return `/api/og/author?${params.toString()}`
 }
 
 /**
@@ -115,16 +110,7 @@ export function getTopicOGImage(topic: Topic, options: OGImageOptions = {}): str
   if (options.height) params.append('height', options.height.toString())
   if (options.quality) params.append('quality', options.quality.toString())
 
-  return `${OG_BASE_URL}/topic?${params.toString()}`
-}
-
-/**
- * Generate basic OG image for general pages
- * Usage: For pages without specific content (home, about, etc.)
- * Returns simple white background with centered logo
- */
-export function getBasicOGImage(): string {
-  return `${OG_BASE_URL}/basic`
+  return `/api/og/topic?${params.toString()}`
 }
 
 /**
@@ -150,11 +136,5 @@ export function generateOGImage(
     return getTopicOGImage(content as Topic, options)
   }
 
-  // Basic string title
-  if (typeof content === 'string') {
-    return getBasicOGImage()
-  }
-
-  // Fallback
-  return getBasicOGImage()
+  return '/api/og/basic'
 }
