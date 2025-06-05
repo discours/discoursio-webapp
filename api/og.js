@@ -6,19 +6,30 @@ const OG_IMAGE_HEIGHT = 630
 
 /**
  * Обработчик для генерации OG изображений
- * Поддерживает пути: /api/og/article, /api/og/author, /api/og/topic и /api/og (базовый)
+ * Поддерживает пути: /api/og, /api/og/article, /api/og/author, /api/og/topic
  */
 export default async (req, _res) => {
   try {
     // Определяем тип запроса по URL
     const { url } = req
-    const { pathname } = new URL(url)
+    const { pathname, searchParams } = new URL(url)
     const pathSegments = pathname.split('/')
-    // Получаем тип из последнего сегмента пути: /api/og/article -> article
-    const type = pathSegments.length > 2 ? pathSegments[pathSegments.length - 1] : 'basic'
 
-    // Извлекаем параметры запроса
-    const params = req.query
+    // Получаем тип из последнего сегмента пути: /api/og/article -> article
+    // Если путь просто /api/og, используем 'basic'
+    let type = 'basic'
+    if (pathSegments.length > 2) {
+      const lastSegment = pathSegments[pathSegments.length - 1]
+      if (lastSegment && lastSegment !== 'og') {
+        type = lastSegment
+      }
+    }
+
+    // Объединяем параметры из URL и query
+    const params = { ...Object.fromEntries(searchParams), ...req.query }
+
+    // Логируем запрос для отладки
+    console.log(`[OG] Generating image for type: ${type}, params:`, params)
 
     // Общие параметры ответа
     const responseData = {
@@ -40,12 +51,12 @@ export default async (req, _res) => {
     let topRight = null
 
     switch (type) {
-      case 'article':
+      case 'article': {
         topRight = params.topic ? createTopicBadge(params.topic) : null
         content = { title, description: params.author, cover }
         break
-      
-      case 'author':
+      }
+      case 'author': {
         // Формируем статистику для автора
         const stats = [
           params.articlesCount && { text: `${params.articlesCount} статей` },
@@ -53,36 +64,39 @@ export default async (req, _res) => {
         ].filter(Boolean)
 
         topRight = stats.length ? createStatsBar(stats) : null
-        content = { 
-          title: params.name || title, 
-          description: params.bio || description, 
-          cover: params.avatar || cover 
+        content = {
+          title: params.name || title,
+          description: params.bio || description,
+          cover: params.avatar || cover
         }
         break
-      
-      case 'topic':
-        topRight = params.articlesCount ? {
-          type: 'div',
-          props: {
-            style: { fontSize: 24 },
-            children: `${params.articlesCount} статей`
-          }
-        } : null
+      }
+      case 'topic': {
+        topRight = params.articlesCount
+          ? {
+              type: 'div',
+              props: {
+                style: { fontSize: 24 },
+                children: `${params.articlesCount} статей`
+              }
+            }
+          : null
         content = { title, description, cover }
         break
-      
-      default:
+      }
+      default: {
         // Базовый OG
         return new ImageResponse(createBasicOGImage(), responseData)
+      }
     }
 
     // Создаем OG изображение с общей структурой
     return new ImageResponse(
       createOGImage({
-        title: content.title, 
-        description: content.description, 
+        title: content.title,
+        description: content.description,
         cover: content.cover,
-        topRight, 
+        topRight,
         theme: cover ? 'dark' : isDark ? 'dark' : 'light'
       }),
       responseData

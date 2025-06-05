@@ -51,6 +51,10 @@ export default defineConfig({
     },
     // Force Edge runtime for OG image generation routes
     routeRules: {
+      '/api/og': {
+        prerender: false,
+        runtime: 'edge'
+      },
       '/api/og/**': {
         prerender: false,
         runtime: 'edge' // Key fix: Force Edge runtime for OG routes

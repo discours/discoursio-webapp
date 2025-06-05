@@ -122,10 +122,12 @@ export function generateOGMetadata(
   const url = getFullPageUrl(options.pathname || '')
   const imageRelativePath = data ? generateRelativeImagePath(data) : OG_BASE_URL
   const image = getFullImageUrl(imageRelativePath)
+  const logo = getLogoUrl()
 
+  // Убедимся, что все обязательные поля заполнены
   return {
-    title,
-    description,
+    title: title || 'Discours',
+    description: description || OG_DEFAULT_DESCRIPTION,
     type,
     url,
     image,
@@ -134,7 +136,7 @@ export function generateOGMetadata(
     imageWidth: OG_IMAGE_WIDTH,
     imageHeight: OG_IMAGE_HEIGHT,
     twitterCard: 'summary_large_image',
-    logo: getLogoUrl()
+    logo
   }
 }
 

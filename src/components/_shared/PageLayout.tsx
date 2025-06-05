@@ -58,8 +58,8 @@ export const PageLayout = (props: PageLayoutProps) => {
     return generateOGMetadata(content(), {
       pathname: loc.pathname,
       defaultTitle: t(props.title),
-      locale: lang(),
-      defaultDescription: props.desc
+      defaultDescription: props.desc,
+      locale: lang()
     })
   })
 
@@ -80,7 +80,7 @@ export const PageLayout = (props: PageLayoutProps) => {
       <Meta name="description" content={description()} />
       <Meta name="keywords" content={keywords()} />
 
-      {/* Open Graph теги */}
+      {/* Open Graph теги - все обязательные и дополнительные теги */}
       <Meta property="og:type" content={ogMetadata().type} />
       <Meta property="og:title" content={ogMetadata().title} />
       <Meta property="og:site_name" content={ogMetadata().siteName} />
