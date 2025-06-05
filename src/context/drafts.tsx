@@ -668,7 +668,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     // Удаляем из состояния, если он там есть
     setDrafts((prev) => {
       const newDrafts = prev.filter((d) => !(!d.draft_id && d.id === draftId))
-      console.log(`[DraftsProvider] Удалено ${prev.length - newDrafts.length} черновиков из состояния`)
+      console.log(`[DraftsProvider] Удален черновик #${draftId}`)
       return newDrafts
     })
 
