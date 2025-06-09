@@ -67,11 +67,17 @@ export const PageLayout = (props: PageLayoutProps) => {
   const description = createMemo(() => ogMetadata().description)
 
   // Гарантируем, что все важные мета-теги имеют значения по умолчанию
-  const guaranteedTitle = createMemo(() => ogMetadata().title || props.article?.title || t(props.title) || 'Discours')
-  const guaranteedDescription = createMemo(() => description() || props.desc || 'Discours – an open magazine about culture, science and society')
+  const guaranteedTitle = createMemo(
+    () => ogMetadata().title || props.article?.title || t(props.title) || 'Discours'
+  )
+  const guaranteedDescription = createMemo(
+    () => description() || props.desc || 'Discours – an open magazine about culture, science and society'
+  )
   const guaranteedType = createMemo(() => ogMetadata().type || 'website')
   const guaranteedUrl = createMemo(() => ogMetadata().url || `https://testing3.discours.io${loc.pathname}`)
-  const guaranteedImage = createMemo(() => ogMetadata().image || 'https://files.dscrs.site/production/image/logo_image.png')
+  const guaranteedImage = createMemo(
+    () => ogMetadata().image || 'https://files.dscrs.site/production/image/logo_image.png'
+  )
   const guaranteedLogo = createMemo(() => ogMetadata().logo || 'https://files.dscrs.site/logo_sign.png')
 
   return (
