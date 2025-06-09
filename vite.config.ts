@@ -2,8 +2,6 @@
 import { existsSync } from 'node:fs'
 // biome-ignore lint/correctness/noNodejsModules: build
 import { resolve } from 'node:path'
-// biome-ignore lint/correctness/noNodejsModules: build
-import { fileURLToPath } from 'node:url'
 import { config } from 'dotenv'
 import { CSSOptions, defineConfig } from 'vite'
 import { PolyfillOptions, nodePolyfills } from 'vite-plugin-node-polyfills'
@@ -30,10 +28,9 @@ const polyfillOptions = {
 } as PolyfillOptions
 
 export default defineConfig({
-  assetsInclude: ['**/*.wasm'], // Include WASM files as assets
   resolve: {
     alias: {
-      '~': fileURLToPath(new URL('./src', import.meta.url)),
+      '~': resolve('./src'),
       '@': resolve('./public')
     }
   },
@@ -114,7 +111,6 @@ export default defineConfig({
     }
   },
   ssr: {
-    external: ['@vercel/og'],
     noExternal: ['@urql/core', '@solidjs/meta', '@solidjs/router'],
     target: 'node',
     optimizeDeps: {
