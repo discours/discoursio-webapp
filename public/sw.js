@@ -259,8 +259,18 @@ self.addEventListener('fetch', (event) => {
       }
 
       // Статические ресурсы (CSS, JS, шрифты, изображения)
-      if (STATIC_ASSETS_REGEX.test(url.pathname) || url.href.startsWith(CDN_URL)) {
+      if (STATIC_ASSETS_REGEX.test(url.pathname)) {
         return await cacheFirstStrategy(request, CACHES.static, CACHE_TTL.static)
+      }
+
+      // Отдельная обработка для CDN изображений - всегда проверять сеть сначала
+      if (url.href.startsWith(CDN_URL)) {
+        // Пропускаем кеширование, если в URL есть параметр версии
+        if (url.search.includes('v=') || url.search.includes('reload=')) {
+          log('info', `Bypassing cache for versioned CDN resource: ${url.href}`)
+          return await fetch(request)
+        }
+        return await networkFirstStrategy(request, CACHES.dynamic, CACHE_TTL.dynamic)
       }
 
       // API запросы (feedback, newsletter)

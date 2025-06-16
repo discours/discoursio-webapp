@@ -12,9 +12,18 @@ export const getFileUrl = (
     filepath = `${filepath}_${options.width}`
   }
   const basename = filepath.split('/').pop()
+
+  // Добавляем параметр версии или shout к URL
+  const hasQuery = extension?.includes('?')
+  const versionParam = `v=${Date.now()}`
+
   if (options.shout) {
-    extension = `${extension}?s=${options.shout}`
+    extension = hasQuery ? `${extension}&s=${options.shout}` : `${extension}?s=${options.shout}`
+  } else if (typeof window !== 'undefined') {
+    // Добавляем версию только в браузере для предотвращения кеширования
+    extension = hasQuery ? `${extension}&${versionParam}` : `${extension}?${versionParam}`
   }
+
   const result = `${cdnUrl}/${basename}.${extension}`
   // console.debug(`${src} -> ${result}`)
   const cdnDomain = new URL(cdnUrl).hostname
