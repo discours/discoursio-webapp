@@ -272,8 +272,30 @@ export const ArticleCard = (props: ArticleCardProps) => {
                   </A>
                 </div>
               </Show>
-              <div class={styles.shoutCardCover}>
-                <Image src={props.article.cover || ''} alt={title} width={600} loading="lazy" />
+              <div
+                class={clsx(styles.shoutCardCover, {
+                  [styles.loading]: isCoverImageLoading()
+                })}
+              >
+                <Show
+                  when={props.article.cover && !isCoverImageLoadError()}
+                  fallback={<CoverImage class={styles.placeholderCoverImage} />}
+                >
+                  <Image 
+                    src={props.article.cover || ''} 
+                    alt={title} 
+                    width={600} 
+                    loading="lazy"
+                    onError={() => {
+                      setIsCoverImageLoadError(true)
+                      setIsCoverImageLoading(false)
+                    }}
+                    onLoad={() => {
+                      setIsCoverImageLoading(false)
+                      setIsCoverImageLoadError(false)
+                    }}
+                  />
+                </Show>
               </div>
             </div>
           </Show>
