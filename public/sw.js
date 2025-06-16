@@ -263,14 +263,49 @@ self.addEventListener('fetch', (event) => {
         return await cacheFirstStrategy(request, CACHES.static, CACHE_TTL.static)
       }
 
-      // Отдельная обработка для CDN изображений - всегда проверять сеть сначала
+      // Отдельная обработка для CDN изображений
       if (url.href.startsWith(CDN_URL)) {
-        // Пропускаем кеширование, если в URL есть параметр версии
-        if (url.search.includes('v=') || url.search.includes('reload=')) {
+        // Проверяем наличие параметров для обхода кеша
+        const hasCacheBuster =
+          url.search.includes('v=') ||
+          url.search.includes('_k=') ||
+          url.search.includes('force_refresh=') ||
+          url.search.includes('nocache=') ||
+          url.search.includes('reload=')
+
+        if (hasCacheBuster) {
           log('info', `Bypassing cache for versioned CDN resource: ${url.href}`)
-          return await fetch(request)
+
+          // Полностью пропускаем кеширование и идем напрямую в сеть
+          try {
+            const networkResponse = await fetch(request, {
+              cache: 'no-store',
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                Pragma: 'no-cache'
+              }
+            })
+
+            if (networkResponse.ok) {
+              log('info', `Successfully fetched resource from network: ${url.href}`)
+              return networkResponse
+            } else {
+              log('warn', `Failed to fetch from network (status ${networkResponse.status}): ${url.href}`)
+              // Если не удалось получить из сети, пробуем из кеша как запасной вариант
+              const cachedResponse = await caches.match(request)
+              return cachedResponse || networkResponse
+            }
+          } catch (error) {
+            log('error', `Error fetching resource: ${url.href}`, error)
+            // В случае ошибки сети пробуем из кеша
+            const cachedResponse = await caches.match(request)
+            return cachedResponse || new Response('Resource not available', { status: 503 })
+          }
         }
-        return await networkFirstStrategy(request, CACHES.dynamic, CACHE_TTL.dynamic)
+
+        // Для обычных запросов используем стратегию "сеть первая, затем кеш"
+        // с коротким TTL для быстрого обновления
+        return await networkFirstStrategy(request, CACHES.dynamic, 60 * 1000) // 1 минута TTL
       }
 
       // API запросы (feedback, newsletter)

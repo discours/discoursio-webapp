@@ -2,27 +2,115 @@
   "headers": [
     {
       "source": "/(.*)\\.(?:jpg|jpeg|gif|png|svg|webp|ico)$",
+      "has": [
+        {
+          "type": "query",
+          "key": "v|_k|force_refresh|nocache|reload"
+        }
+      ],
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800"
+          "value": "no-cache, no-store, must-revalidate, max-age=0"
         },
         {
           "key": "Pragma",
           "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        },
+        {
+          "key": "Vary",
+          "value": "*"
+        },
+        {
+          "key": "Surrogate-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Clear-Site-Data",
+          "value": "\"cache\""
         }
       ]
     },
     {
       "source": "/files.dscrs.site/(.*)",
+      "has": [
+        {
+          "type": "query",
+          "key": "v|_k|force_refresh|nocache|reload"
+        }
+      ],
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800"
+          "value": "no-cache, no-store, must-revalidate, max-age=0"
         },
         {
           "key": "Pragma",
           "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        },
+        {
+          "key": "Vary",
+          "value": "*"
+        },
+        {
+          "key": "Surrogate-Control",
+          "value": "no-store"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(?:jpg|jpeg|gif|png|svg|webp|ico)$",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=60, stale-while-revalidate=30"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept, Accept-Encoding"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/(feed|articles)(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=60, stale-while-revalidate=30"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
         }
       ]
     }
@@ -30,7 +118,20 @@
   "images": {
     "sizes": [256, 384, 640, 750, 828, 1080, 1200, 1920],
     "domains": ["files.dscrs.site", "images.discours.io", "assets.discours.io", "cdn.discours.io"],
-    "minimumCacheTTL": 86400,
-    "formats": ["image/webp"]
-  }
+    "minimumCacheTTL": 0,
+    "formats": ["image/webp"],
+    "dangerouslyAllowSVG": true,
+    "contentSecurityPolicy": "default-src 'self'; script-src 'none'; sandbox;"
+  },
+  "build": {
+    "env": {
+      "VERCEL_FORCE_NO_CACHE": "1"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/purge-cache",
+      "schedule": "0 */6 * * *"
+    }
+  ]
 }
