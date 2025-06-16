@@ -1,5 +1,8 @@
 import { cdnUrl } from '~/config'
 
+// Версия кеша для принудительного обновления всех изображений
+const CACHE_VERSION = '1.0.0'
+
 /**
  * Функция для получения URL изображения с параметрами для предотвращения кеширования
  * @param src - исходный URL изображения
@@ -33,7 +36,7 @@ export const getCachedImageUrl = (
 
   // Добавляем параметры запроса
   const params = new URLSearchParams()
-  params.append('v', Date.now().toString())
+  params.append('v', CACHE_VERSION)
 
   if (options.shout) {
     params.append('s', options.shout.toString())

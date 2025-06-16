@@ -11,8 +11,9 @@ type Props = JSX.ImgHTMLAttributes<HTMLImageElement> & {
 }
 
 export const Image = (props: Props) => {
-  const [local, others] = splitProps(props, ['src', 'alt'])
+  const [local, others] = splitProps(props, ['src', 'alt', 'onError', 'onLoad'])
   const [retries, setRetries] = createSignal(0)
+  const [hasError, setHasError] = createSignal(false)
 
   // Используем кешированный URL изображения
   const imageUrl = () => {
@@ -37,7 +38,7 @@ export const Image = (props: Props) => {
   const handleImageError = (e: Event) => {
     const img = e.target as HTMLImageElement
 
-    if (retries() < 2) {
+    if (retries() < 1 && !hasError()) {
       setRetries((prev) => prev + 1)
       console.warn(`[Image] Ошибка загрузки изображения (попытка ${retries() + 1}): ${img.src}`)
 
@@ -45,14 +46,27 @@ export const Image = (props: Props) => {
       const separator = img.src.includes('?') ? '&' : '?'
       const newSrc = `${img.src}${separator}retry=${Date.now()}`
 
-      setTimeout(
-        () => {
-          img.src = newSrc
-        },
-        500 * (retries() + 1)
-      )
+      setTimeout(() => {
+        img.src = newSrc
+      }, 500)
     } else {
       console.error(`[Image] Не удалось загрузить изображение после ${retries() + 1} попыток: ${img.src}`)
+      setHasError(true)
+
+      // Вызываем callback родительского компонента
+      if (typeof local.onError === 'function') {
+        local.onError(e as ErrorEvent & { currentTarget: HTMLImageElement; target: Element })
+      }
+    }
+  }
+
+  // Обработчик успешной загрузки
+  const handleImageLoad = (e: Event) => {
+    setHasError(false)
+    setRetries(0)
+
+    if (typeof local.onLoad === 'function') {
+      local.onLoad(e as Event & { currentTarget: HTMLImageElement; target: Element })
     }
   }
 
@@ -70,6 +84,7 @@ export const Image = (props: Props) => {
         alt={local.alt || ''}
         srcSet={imageSrcSet()}
         onError={handleImageError}
+        onLoad={handleImageLoad}
         loading="eager"
         fetchpriority="high"
         decoding="async"
