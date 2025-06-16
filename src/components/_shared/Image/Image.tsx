@@ -84,7 +84,8 @@ export const Image = (props: Props) => {
         loading="lazy"
         style={{
           opacity: loaded() ? 1 : 0.5,
-          transition: 'opacity 0.3s ease',
+          // Объединяем transitions: opacity для загрузки + transform для hover-анимаций
+          transition: 'opacity 0.3s ease, transform 0.3s ease-out',
           ...(typeof others.style === 'object' ? others.style : {})
         }}
       />

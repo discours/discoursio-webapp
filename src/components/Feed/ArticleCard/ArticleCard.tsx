@@ -281,10 +281,10 @@ export const ArticleCard = (props: ArticleCardProps) => {
                   when={props.article.cover && !isCoverImageLoadError()}
                   fallback={<CoverImage class={styles.placeholderCoverImage} />}
                 >
-                  <Image 
-                    src={props.article.cover || ''} 
-                    alt={title} 
-                    width={600} 
+                  <Image
+                    src={props.article.cover || ''}
+                    alt={title}
+                    width={600}
                     loading="lazy"
                     onError={() => {
                       setIsCoverImageLoadError(true)

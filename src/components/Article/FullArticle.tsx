@@ -549,12 +549,6 @@ export const FullArticle = (props: Props) => {
                       width={1200}
                       alt={props.article.cover_caption || ''}
                       src={props.article.cover || ''}
-                      onError={(e) => {
-                        console.warn('Cover image failed to load:', props.article.cover)
-                      }}
-                      onLoad={() => {
-                        console.log('Cover image loaded successfully:', props.article.cover)
-                      }}
                     />
                     <figcaption innerHTML={props.article.cover_caption || ''} />
                   </figure>
