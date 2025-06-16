@@ -1,0 +1,57 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)\\.(?:jpg|jpeg|gif|png|svg|webp|ico)$",
+      "has": [
+        {
+          "type": "query",
+          "key": "v|retry"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(jpg|jpeg|png|gif|webp|svg|avif)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "images": {
+    "sizes": [256, 384, 640, 750, 828, 1080, 1200, 1920],
+    "domains": ["files.dscrs.site", "images.discours.io", "assets.discours.io", "cdn.discours.io"],
+    "minimumCacheTTL": 0,
+    "formats": ["image/webp"],
+    "dangerouslyAllowSVG": true,
+    "contentSecurityPolicy": "default-src 'self'; script-src 'none'; sandbox;"
+  },
+  "crons": [
+    {
+      "path": "/api/purge-cache",
+      "schedule": "0 4 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/files.dscrs.site/:path*",
+      "destination": "https://files.dscrs.site/:path*"
+    }
+  ]
+}

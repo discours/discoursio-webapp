@@ -5,6 +5,7 @@ import { Component, type JSX, Suspense } from 'solid-js'
 
 import { sessionStateChanged } from '~/context/session'
 import { Loading } from './components/_shared/Loading'
+import { OfflineStatus } from './components/_shared/OfflineStatus'
 import { AuthorsProvider } from './context/authors'
 import { DraftsProvider } from './context/drafts'
 import { FeaturedFeedProvider } from './context/featured'
@@ -21,6 +22,7 @@ import '~/styles/toast.scss'
 export const Providers: Component<{ children?: JSX.Element }> = (props) => {
   return (
     <LocalizeProvider>
+      <OfflineStatus />
       <SessionProvider onStateChangeCallback={sessionStateChanged}>
         <UIProvider>
           <TopicsProvider>
