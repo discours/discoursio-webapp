@@ -67,7 +67,7 @@
       ]
     },
     {
-      "source": "/(.*)\\.(?:jpg|jpeg|gif|png|svg|webp|ico)$",
+      "source": "/(.*)\\.(jpg|jpeg|png|gif|webp|svg|avif)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -131,7 +131,13 @@
   "crons": [
     {
       "path": "/api/purge-cache",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 4 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/files.dscrs.site/:path*",
+      "destination": "https://files.dscrs.site/:path*"
     }
   ]
 }

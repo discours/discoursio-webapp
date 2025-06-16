@@ -1,7 +1,13 @@
 /**
- * API-эндпоинт для периодической очистки кеша
- * Запускается по расписанию через cron в vercel.json
+ * API для очистки кеша Vercel CDN
+ *
+ * Поддерживает два режима:
+ * 1. Запуск по cron (автоматически)
+ * 2. Ручной запуск с авторизацией по токену
+ *
+ * Документация: https://vercel.com/docs/infrastructure/data-cache/manage-data-cache
  */
+
 export default async function handler(req, res) {
   try {
     // Проверка метода запроса
@@ -28,17 +34,50 @@ export default async function handler(req, res) {
       }
     }
 
-    // Логика очистки кеша
-    // В реальном сценарии здесь должен быть вызов API Vercel для очистки кеша
-    // https://vercel.com/docs/rest-api#endpoints/deployments/clear-cache-of-deployment
-
     console.log('[purge-cache] Starting cache purge process')
 
-    // Имитация очистки кеша
+    // Получаем токен для API Vercel из переменных окружения
+    const vercelToken = process.env.VERCEL_TOKEN
+    const teamId = process.env.VERCEL_TEAM_ID
+    const projectId = process.env.VERCEL_PROJECT_ID
+
+    if (!vercelToken || !projectId) {
+      return res.status(500).json({
+        error: 'Missing required environment variables (VERCEL_TOKEN, VERCEL_PROJECT_ID)'
+      })
+    }
+
+    // Формируем URL для API Vercel
+    let apiUrl = `https://api.vercel.com/v9/projects/${projectId}/cache`
+    if (teamId) {
+      apiUrl += `?teamId=${teamId}`
+    }
+
+    // Отправляем запрос на очистку кеша
+    const response = await fetch(apiUrl, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${vercelToken}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('[purge-cache] Error from Vercel API:', errorData)
+      return res.status(response.status).json({
+        error: 'Failed to purge cache',
+        details: errorData
+      })
+    }
+
+    const data = await response.json()
+
     const results = {
       purged: true,
       timestamp: new Date().toISOString(),
-      source: isCronRequest ? 'cron' : 'manual'
+      source: isCronRequest ? 'cron' : 'manual',
+      vercelResponse: data
     }
 
     console.log(`[purge-cache] Cache purge completed: ${JSON.stringify(results)}`)

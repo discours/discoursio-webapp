@@ -18,7 +18,9 @@
     // Задержка между попытками (в мс)
     retryDelay: 500,
     // Включить отладку
-    debug: true
+    debug: true,
+    // API для очистки кеша
+    cacheApi: '/api/purge-cache'
   }
 
   // Функция логирования с возможностью отключения
@@ -160,6 +162,54 @@
         })
       })
     }
+
+    // Отправляем сообщение в Service Worker для очистки кеша изображений
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CLEAR_IMAGES_CACHE'
+      })
+    }
+  }
+
+  // Функция для очистки кеша Vercel CDN
+  async function clearVercelCache() {
+    try {
+      log('info', 'Запрос на очистку кеша Vercel CDN...')
+
+      const response = await fetch(CONFIG.cacheApi, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        log('info', 'Кеш Vercel CDN успешно очищен:', data)
+        return data
+      } else {
+        log('error', 'Ошибка очистки кеша Vercel CDN:', response.status)
+        return null
+      }
+    } catch (error) {
+      log('error', 'Ошибка при запросе очистки кеша:', error)
+      return null
+    }
+  }
+
+  // Функция для полной очистки кеша (браузер + CDN)
+  async function clearAllCache() {
+    // Очищаем локальный кеш браузера
+    clearImageCache()
+
+    // Очищаем кеш Vercel CDN
+    await clearVercelCache()
+
+    // Обновляем изображения на странице
+    setTimeout(refreshAllImages, CONFIG.initialDelay)
+
+    return true
   }
 
   // Функция инициализации
@@ -202,9 +252,10 @@
 
     // Экспортируем API для ручного обновления
     window.ImageRefresh = {
-      refresh: refreshAllImages,
+      refreshAll: refreshAllImages,
       refreshImage: refreshImage,
-      clearCache: clearImageCache
+      clearCache: clearImageCache,
+      clearAllCache: clearAllCache
     }
 
     log('info', 'Скрипт обновления изображений инициализирован')
