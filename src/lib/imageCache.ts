@@ -1,7 +1,16 @@
-import { cdnUrl } from '~/config'
+// Базовая версия кеша
+const BASE_CACHE_VERSION = '1.0.0'
 
-// Версия кеша для принудительного обновления всех изображений
-const CACHE_VERSION = '1.0.0'
+/**
+ * Получает версию кеша с timestamp для обхода агрессивного кеширования
+ */
+const getCacheVersion = () => {
+  // Проверяем, что мы не на сервере
+  if (typeof window === 'undefined') {
+    return BASE_CACHE_VERSION
+  }
+  return `${BASE_CACHE_VERSION}-${Date.now()}`
+}
 
 /**
  * Функция для получения URL изображения с параметрами для предотвращения кеширования
@@ -15,34 +24,31 @@ export const getCachedImageUrl = (
 ): string => {
   if (!src) return ''
 
-  // Генерируем базовый URL
-  const parts = src.split('.')
-  const extension = parts.pop() || ''
-  let filepath = parts.join('.')
-  if (options.width) {
-    filepath = `${filepath}_${options.width}`
-  }
-  const basename = filepath.split('/').pop() || ''
+  // Для внешних URL добавляем параметры кеширования
+  if (src.startsWith('http')) {
+    const url = new URL(src)
 
-  // Формируем URL с путем к CDN
-  const cdnDomain = new URL(cdnUrl).hostname
-  let result = `${cdnUrl}/${basename}.${extension}`
+    // Добавляем параметры запроса для обхода кеша
+    url.searchParams.set('v', getCacheVersion())
 
-  // Заменяем устаревшие домены на текущий CDN домен
-  result = result
-    .replace('images.discours.io', cdnDomain)
-    .replace('assets.discours.io', cdnDomain)
-    .replace('cdn.discours.io', cdnDomain)
+    // Добавляем timestamp только в браузере
+    if (typeof window !== 'undefined') {
+      url.searchParams.set('t', Date.now().toString())
+    }
 
-  // Добавляем параметры запроса
-  const params = new URLSearchParams()
-  params.append('v', CACHE_VERSION)
+    if (options.shout) {
+      url.searchParams.set('s', options.shout.toString())
+    }
 
-  if (options.shout) {
-    params.append('s', options.shout.toString())
+    if (options.width) {
+      url.searchParams.set('w', options.width.toString())
+    }
+
+    return url.toString()
   }
 
-  return `${result}?${params.toString()}`
+  // Для локальных ресурсов возвращаем как есть
+  return src
 }
 
 /**

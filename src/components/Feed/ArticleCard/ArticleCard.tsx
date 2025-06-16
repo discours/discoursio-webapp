@@ -166,7 +166,10 @@ export const ArticleCard = (props: ArticleCardProps) => {
                   setIsCoverImageLoadError(true)
                   setIsCoverImageLoading(false)
                 }}
-                onLoad={() => setIsCoverImageLoading(false)}
+                onLoad={() => {
+                  setIsCoverImageLoading(false)
+                  setIsCoverImageLoadError(false)
+                }}
               />
             </Show>
           </div>

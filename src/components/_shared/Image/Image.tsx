@@ -13,7 +13,7 @@ type Props = JSX.ImgHTMLAttributes<HTMLImageElement> & {
 export const Image = (props: Props) => {
   const [local, others] = splitProps(props, ['src', 'alt', 'onError', 'onLoad'])
   const [retries, setRetries] = createSignal(0)
-  const [hasError, setHasError] = createSignal(false)
+  const [loaded, setLoaded] = createSignal(false)
 
   // Используем кешированный URL изображения
   const imageUrl = () => {
@@ -28,68 +28,65 @@ export const Image = (props: Props) => {
     return local.src
   }
 
-  // Получаем srcSet для адаптивных изображений
+  // Генерируем srcSet для адаптивных изображений
   const imageSrcSet = () => {
-    if (!local.src || !local.src.startsWith('http')) return ''
+    if (!local.src || !local.src.startsWith('http') || !others.width) return undefined
+    // Исправляем вызов функции - передаем width как число
     return getCachedImageSrcSet(local.src, others.width)
   }
 
-  // Обработчик ошибок загрузки изображений
+  // Обработка ошибок загрузки изображения
   const handleImageError = (e: Event) => {
-    const img = e.target as HTMLImageElement
+    const currentRetries = retries()
 
-    if (retries() < 1 && !hasError()) {
-      setRetries((prev) => prev + 1)
-      console.warn(`[Image] Ошибка загрузки изображения (попытка ${retries() + 1}): ${img.src}`)
+    if (currentRetries < 1) {
+      // Повторная попытка
+      setRetries(currentRetries + 1)
+      setLoaded(false) // Сбрасываем состояние загрузки
 
-      // Добавляем параметр для повторной попытки
-      const separator = img.src.includes('?') ? '&' : '?'
-      const newSrc = `${img.src}${separator}retry=${Date.now()}`
-
-      setTimeout(() => {
-        img.src = newSrc
-      }, 500)
+      // Добавляем параметр retry к URL
+      const img = e.target as HTMLImageElement
+      const url = new URL(img.src)
+      url.searchParams.set('retry', String(currentRetries + 1))
+      img.src = url.toString()
     } else {
-      console.error(`[Image] Не удалось загрузить изображение после ${retries() + 1} попыток: ${img.src}`)
-      setHasError(true)
-
-      // Вызываем callback родительского компонента
-      if (typeof local.onError === 'function') {
-        local.onError(e as ErrorEvent & { currentTarget: HTMLImageElement; target: Element })
+      // Вызов callback родительского компонента
+      setLoaded(false)
+      const errorHandler = local.onError
+      if (typeof errorHandler === 'function') {
+        errorHandler(e as ErrorEvent & { currentTarget: HTMLImageElement; target: Element })
       }
     }
   }
 
-  // Обработчик успешной загрузки
+  // Обработка успешной загрузки
   const handleImageLoad = (e: Event) => {
-    setHasError(false)
-    setRetries(0)
-
-    if (typeof local.onLoad === 'function') {
-      local.onLoad(e as Event & { currentTarget: HTMLImageElement; target: Element })
+    setLoaded(true) // Триггерим перерисовку
+    const loadHandler = local.onLoad
+    if (typeof loadHandler === 'function') {
+      loadHandler(e as Event & { currentTarget: HTMLImageElement; target: Element })
     }
   }
 
+  // Preload критических изображений
+  const preloadUrl = imageUrl()
+
   return (
     <>
-      <Link
-        rel="preload"
-        as="image"
-        imagesrcset={imageSrcSet()}
-        href={imageUrl()}
-        crossorigin="anonymous"
-      />
+      {preloadUrl && <Link rel="preload" as="image" href={preloadUrl} />}
       <img
+        {...others}
         src={imageUrl()}
-        alt={local.alt || ''}
         srcSet={imageSrcSet()}
+        alt={local.alt}
         onError={handleImageError}
         onLoad={handleImageLoad}
-        loading="eager"
-        fetchpriority="high"
-        decoding="async"
-        crossorigin="anonymous"
-        {...others}
+        loading="lazy"
+        style={{
+          opacity: loaded() ? 1 : 0.5,
+          transition: 'opacity 0.3s ease',
+          ...(typeof others.style === 'object' ? others.style : {})
+        }}
       />
     </>
   )

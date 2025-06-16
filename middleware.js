@@ -17,10 +17,15 @@ export default function middleware(request) {
       }
     })
 
-    // Если есть параметр версии или retry - обходим кеш
-    if (url.searchParams.has('v') || url.searchParams.has('retry')) {
+    // Если есть параметры кеширования - принудительно обходим кеш
+    const hasCacheParams =
+      url.searchParams.has('v') || url.searchParams.has('t') || url.searchParams.has('retry')
+
+    if (hasCacheParams) {
       response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
       response.headers.set('CDN-Cache-Control', 'no-cache')
+      response.headers.set('Pragma', 'no-cache')
+      response.headers.set('Expires', '0')
     }
 
     return response

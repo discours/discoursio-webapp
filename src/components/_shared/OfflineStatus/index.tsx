@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onCleanup, onMount } from 'solid-js'
+import { isServer } from 'solid-js/web'
 
 export const OfflineStatus = () => {
   const [isOnline, setIsOnline] = createSignal(typeof navigator !== 'undefined' ? navigator.onLine : true)
@@ -15,15 +16,21 @@ export const OfflineStatus = () => {
   }
 
   onMount(() => {
-    // Добавляем слушатели событий
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
+    // Проверяем, что мы не на сервере
+    if (!isServer && typeof window !== 'undefined') {
+      // Добавляем слушатели событий
+      window.addEventListener('online', handleOnline)
+      window.addEventListener('offline', handleOffline)
+    }
   })
 
   onCleanup(() => {
-    // Удаляем слушатели событий
-    window.removeEventListener('online', handleOnline)
-    window.removeEventListener('offline', handleOffline)
+    // Проверяем, что мы не на сервере
+    if (!isServer && typeof window !== 'undefined') {
+      // Удаляем слушатели событий
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
   })
 
   // Эффект для отображения уведомления о статусе сети
