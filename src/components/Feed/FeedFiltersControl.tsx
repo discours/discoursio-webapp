@@ -15,11 +15,6 @@ import type { Option } from '../_shared/DropDown/DropDown'
 import { TFunction } from 'i18next'
 import styles from '~/styles/views/Feed.module.scss'
 
-type FeedFiltersControlProps = {
-  type?: string
-  mode?: string
-}
-
 function getPeriodTitle(period: PeriodType, t: TFunction): string {
   return (
     {
@@ -113,9 +108,9 @@ const CombinedFilterTrigger = (props: {
   )
 }
 
-export const FeedFiltersControl = (props: FeedFiltersControlProps) => {
+export const FeedFiltersControl = () => {
   const { t } = useLocalize()
-  const { filterState, updateFilters, feedByMode } = useFeed()
+  const { filterState, updateFilters } = useFeed()
 
   const [currentPeriod, setCurrentPeriod] = createSignal<PeriodType>(PeriodType.AllTime)
   const [currentFeaturedFilter, setCurrentFeaturedFilter] = createSignal<FeaturedFilter>('all')
@@ -126,21 +121,6 @@ export const FeedFiltersControl = (props: FeedFiltersControlProps) => {
   const [pendingFeaturedFilter, setPendingFeaturedFilter] = createSignal<FeaturedFilter>('all')
   const [pendingLayouts, setPendingLayouts] = createSignal<(ExpoLayoutType | 'article')[]>([])
   const [hasChanges, setHasChanges] = createSignal(false)
-
-  // Определяем, нужно ли показывать фильтры
-  const shouldShowFilters = createMemo(() => {
-    // Для страницы автора или если указан type/mode, всегда показываем фильтры
-    if (props.type === 'author' || props.mode === 'profile') {
-      return true
-    }
-
-    const currentFeed = feedByMode()
-    const shoutsCount = currentFeed?.shouts?.length || 0
-    const hasMoreData = currentFeed?.hasMore || false
-
-    // Показываем фильтры если есть достаточно публикаций или больше данных
-    return shoutsCount > 5 || hasMoreData
-  })
 
   // Проверяем есть ли изменения
   const checkForChanges = () => {
@@ -296,51 +276,46 @@ export const FeedFiltersControl = (props: FeedFiltersControlProps) => {
   })
 
   return (
-    <Show when={shouldShowFilters()}>
-      <div class={styles.filtersContainer}>
-        <div class={styles.dropdowns}>
-          <DropDown
-            popupProps={{ horizontalAnchor: 'right' }}
-            options={getPeriodGroup()}
-            triggerCssClass={clsx(styles.periodSwitcher, {
-              [styles.active]: pendingPeriod() && pendingPeriod() !== PeriodType.AllTime,
-              [styles.hasChanges]: hasChanges()
-            })}
-          />
-          <DropDown
-            popupProps={{ horizontalAnchor: 'right' }}
-            options={getDropdownGroups()}
-            triggerCssClass={clsx(styles.periodSwitcher, {
-              [styles.active]: pendingFeaturedFilter() !== 'all' || pendingLayouts().length > 0,
-              [styles.hasChanges]: hasChanges()
-            })}
-            triggerContent={
-              // Если выбраны лейауты - всегда показываем комбинированный триггер с featured фильтром
-              pendingLayouts().length > 0 ? (
-                <CombinedFilterTrigger
-                  selectedFilter={pendingFeaturedFilter()}
-                  selectedLayouts={pendingLayouts()}
-                  allLayouts={['article', ...(EXPO_LAYOUTS as ExpoLayoutType[])]}
-                  onToggle={(_isOpen) => {}}
-                />
-              ) : (
-                <FeaturedFilterTrigger
-                  selectedFilter={pendingFeaturedFilter()}
-                  onToggle={(_isOpen) => {}}
-                />
-              )
-            }
-          />
-        </div>
-        <Show when={hasChanges()}>
-          <div class={styles.buttons}>
-            <button onClick={applyFilters} disabled={!hasChanges()} class={styles.applyButton}>
-              <Icon name="filter" style={{ width: '18px', height: '18px' }} />
-            </button>
-          </div>
-        </Show>
+    <div class={styles.filtersContainer}>
+      <div class={styles.dropdowns}>
+        <DropDown
+          popupProps={{ horizontalAnchor: 'right' }}
+          options={getPeriodGroup()}
+          triggerCssClass={clsx(styles.periodSwitcher, {
+            [styles.active]: pendingPeriod() && pendingPeriod() !== PeriodType.AllTime,
+            [styles.hasChanges]: hasChanges()
+          })}
+        />
+        <DropDown
+          popupProps={{ horizontalAnchor: 'right' }}
+          options={getDropdownGroups()}
+          triggerCssClass={clsx(styles.periodSwitcher, {
+            [styles.active]: pendingFeaturedFilter() !== 'all' || pendingLayouts().length > 0,
+            [styles.hasChanges]: hasChanges()
+          })}
+          triggerContent={
+            // Если выбраны лейауты - всегда показываем комбинированный триггер с featured фильтром
+            pendingLayouts().length > 0 ? (
+              <CombinedFilterTrigger
+                selectedFilter={pendingFeaturedFilter()}
+                selectedLayouts={pendingLayouts()}
+                allLayouts={['article', ...(EXPO_LAYOUTS as ExpoLayoutType[])]}
+                onToggle={(_isOpen) => {}}
+              />
+            ) : (
+              <FeaturedFilterTrigger selectedFilter={pendingFeaturedFilter()} onToggle={(_isOpen) => {}} />
+            )
+          }
+        />
       </div>
-    </Show>
+      <Show when={hasChanges()}>
+        <div class={styles.buttons}>
+          <button onClick={applyFilters} disabled={!hasChanges()} class={styles.applyButton}>
+            <Icon name="filter" style={{ width: '18px', height: '18px' }} />
+          </button>
+        </div>
+      </Show>
+    </div>
   )
 }
 

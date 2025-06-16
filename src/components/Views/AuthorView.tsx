@@ -581,7 +581,7 @@ export const AuthorView = (props: AuthorViewProps) => {
                         prefix={`/@${props.authorSlug}`}
                         class={styles.feedSwitcher}
                       />
-                      <FeedFiltersControl type="author" />
+                      <FeedFiltersControl />
                     </div>
                   </Show>
 
