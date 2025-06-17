@@ -1,11 +1,26 @@
 {
   "headers": [
     {
-      "source": "/(.*)\\.(?:jpg|jpeg|gif|png|svg|webp|ico)$",
+      "source": "/:path*\\.(jpg|jpeg|gif|png|svg|webp|ico)",
       "has": [
         {
           "type": "query",
-          "key": "v|retry"
+          "key": "v"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/:path*\\.(jpg|jpeg|gif|png|svg|webp|ico)",
+      "has": [
+        {
+          "type": "query",
+          "key": "retry"
         }
       ],
       "headers": [
