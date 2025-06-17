@@ -17,11 +17,10 @@ export default function middleware(request) {
       }
     })
 
-    // Если есть параметры кеширования - принудительно обходим кеш
-    const hasCacheParams =
-      url.searchParams.has('v') || url.searchParams.has('t') || url.searchParams.has('retry')
+    // Если есть параметры версии или retry - обходим кеш
+    const hasCacheBypassParams = url.searchParams.has('v') || url.searchParams.has('retry')
 
-    if (hasCacheParams) {
+    if (hasCacheBypassParams) {
       response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
       response.headers.set('CDN-Cache-Control', 'no-cache')
       response.headers.set('Pragma', 'no-cache')

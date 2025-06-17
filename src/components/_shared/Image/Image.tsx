@@ -31,8 +31,12 @@ export const Image = (props: Props) => {
   // Генерируем srcSet для адаптивных изображений
   const imageSrcSet = () => {
     if (!local.src || !local.src.startsWith('http') || !others.width) return undefined
-    // Исправляем вызов функции - передаем width как число
-    return getCachedImageSrcSet(local.src, others.width)
+
+    // Генерируем массив ширин на основе переданной ширины
+    const baseWidth = others.width
+    const widths = [baseWidth, baseWidth * 1.5, baseWidth * 2].map((w) => Math.round(w))
+
+    return getCachedImageSrcSet(local.src, widths)
   }
 
   // Обработка ошибок загрузки изображения

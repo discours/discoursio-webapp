@@ -87,12 +87,7 @@
     "dangerouslyAllowSVG": true,
     "contentSecurityPolicy": "default-src 'self'; script-src 'none'; sandbox;"
   },
-  "crons": [
-    {
-      "path": "/api/purge-cache",
-      "schedule": "0 4 * * *"
-    }
-  ],
+
   "rewrites": [
     {
       "source": "/files.dscrs.site/:path*",
