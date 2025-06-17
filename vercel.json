@@ -1,24 +1,20 @@
 {
   "headers": [
     {
+      "source": "/:path*\\.svg",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
       "source": "/:path*\\.(jpg|jpeg|png|gif|webp|avif|ico)",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=3600, stale-while-revalidate=86400"
-        }
-      ]
-    },
-    {
-      "source": "/:path*\\.svg",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600, stale-while-revalidate=86400"
-        },
-        {
-          "key": "Content-Type",
-          "value": "image/svg+xml"
         }
       ]
     },

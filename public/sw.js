@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
 // Версия Service Worker - изменяйте при обновлении логики
-const VERSION = '1.0.2'
+const VERSION = '1.0.3'
 
 // Конфигурация кеширования
 const CONFIG = {
@@ -104,8 +104,8 @@ self.addEventListener('fetch', (event) => {
   // Пропускаем запросы к API и другие не-GET запросы
   if (url.pathname.includes('/api/') || event.request.method !== 'GET') return
 
-  // Обработка запросов к CDN и изображениям
-  if (isCdnUrl(url.href) || url.pathname.match(CONFIG.imageExtensions)) {
+  // Обработка запросов только к CDN изображениям
+  if (isCdnUrl(url.href)) {
     event.respondWith(handleImageRequest(event.request))
   }
 })
@@ -114,11 +114,9 @@ self.addEventListener('fetch', (event) => {
 async function handleImageRequest(request) {
   const url = new URL(request.url)
 
-  // Проверяем наличие параметров для обхода кеша
+  // Проверяем наличие параметров для обхода кеша (только те, что реально используются)
   const hasCacheBuster =
     url.search.includes('v=') ||
-    url.search.includes('_k=') ||
-    url.search.includes('force_refresh=') ||
     url.search.includes('nocache=') ||
     url.search.includes('reload=')
 
