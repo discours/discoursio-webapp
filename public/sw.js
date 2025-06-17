@@ -10,7 +10,7 @@ const CONFIG = {
   // URLs CDN для изображений
   cdnUrls: [
     'https://files.dscrs.site',
-    'https://cdn.dscrs.site', 
+    'https://cdn.dscrs.site',
     'https://cdn.discours.io',
     'https://images.discours.io',
     'https://assets.discours.io'
@@ -29,7 +29,7 @@ const CACHES = {
 }
 
 // Функция проверки CDN URL
-const isCdnUrl = (url) => CONFIG.cdnUrls.some(cdnUrl => url.startsWith(cdnUrl))
+const isCdnUrl = (url) => CONFIG.cdnUrls.some((cdnUrl) => url.startsWith(cdnUrl))
 
 // Функция логирования с возможностью отключения
 function log(level, ...args) {
@@ -116,9 +116,7 @@ async function handleImageRequest(request) {
 
   // Проверяем наличие параметров для обхода кеша (только те, что реально используются)
   const hasCacheBuster =
-    url.search.includes('v=') ||
-    url.search.includes('nocache=') ||
-    url.search.includes('reload=')
+    url.search.includes('v=') || url.search.includes('nocache=') || url.search.includes('reload=')
 
   if (hasCacheBuster) {
     log('info', `Bypassing cache for versioned CDN resource: ${url.href}`)
