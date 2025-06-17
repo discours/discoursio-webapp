@@ -1,7 +1,29 @@
 {
   "headers": [
     {
-      "source": "/:path*\\.(jpg|jpeg|gif|png|svg|webp|ico)",
+      "source": "/:path*\\.(jpg|jpeg|png|gif|webp|avif|ico)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/:path*\\.svg",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        },
+        {
+          "key": "Content-Type",
+          "value": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "source": "/:path*\\.(jpg|jpeg|gif|png|webp|ico)",
       "has": [
         {
           "type": "query",
@@ -16,7 +38,7 @@
       ]
     },
     {
-      "source": "/:path*\\.(jpg|jpeg|gif|png|svg|webp|ico)",
+      "source": "/:path*\\.(jpg|jpeg|gif|png|webp|ico)",
       "has": [
         {
           "type": "query",
@@ -27,15 +49,6 @@
         {
           "key": "Cache-Control",
           "value": "no-cache, no-store, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/(.*)\\.(jpg|jpeg|png|gif|webp|svg|avif)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600, stale-while-revalidate=86400"
         }
       ]
     },
