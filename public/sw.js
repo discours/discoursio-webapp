@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
 // Версия Service Worker - изменяйте при обновлении логики
-const VERSION = '1.0.4'
+const VERSION = '1.0.5'
 
 // Конфигурация кеширования
 const CONFIG = {
@@ -52,14 +52,20 @@ async function cacheFirstStrategy(request, cacheName) {
 
     if (networkResponse.ok) {
       // Кешируем успешный ответ
-      const cache = await caches.open(cacheName)
-      cache.put(request, networkResponse.clone())
+      try {
+        const cache = await caches.open(cacheName)
+        cache.put(request, networkResponse.clone())
+      } catch (cacheError) {
+        log('warn', `Failed to cache response for ${request.url}`, cacheError)
+        // Продолжаем работу даже если кеширование не удалось
+      }
     }
 
     return networkResponse
   } catch (error) {
     log('error', `Cache first strategy failed for ${request.url}`, error)
-    return new Response('Network error occurred', { status: 503 })
+    // Не блокируем запрос - пропускаем его дальше
+    throw error
   }
 }
 
@@ -80,7 +86,13 @@ self.addEventListener('fetch', (event) => {
 
   // Обработка запросов только к CDN изображениям
   if (isCdnUrl(url.href)) {
-    event.respondWith(handleImageRequest(event.request))
+    event.respondWith(
+      handleImageRequest(event.request).catch((error) => {
+        log('error', `Image request failed, falling back to network: ${url.href}`, error)
+        // Fallback на обычный fetch если Service Worker не смог обработать
+        return fetch(event.request)
+      })
+    )
   }
 })
 
@@ -93,12 +105,30 @@ async function handleImageRequest(request) {
 
   if (hasCacheBuster) {
     log('info', `Bypassing cache for versioned CDN resource: ${url.href}`)
-    // Простой fetch без кеширования
-    return fetch(request, { cache: 'no-store' })
+    try {
+      // Простой fetch без кеширования
+      const response = await fetch(request, { cache: 'no-store' })
+      if (response.ok) {
+        return response
+      }
+      // Если не удалось, пробуем обычный fetch
+      log('warn', `Cache bypass failed, trying normal fetch for: ${url.href}`)
+      return fetch(request)
+    } catch (error) {
+      log('error', `Failed to fetch versioned resource: ${url.href}`, error)
+      // Fallback на обычный fetch
+      return fetch(request)
+    }
   }
 
   // Для обычных запросов - простая стратегия "кеш, затем сеть"
-  return await cacheFirstStrategy(request, CACHES.images)
+  try {
+    return await cacheFirstStrategy(request, CACHES.images)
+  } catch (error) {
+    log('error', `Cache strategy failed for: ${url.href}`, error)
+    // Fallback на обычный fetch
+    return fetch(request)
+  }
 }
 
 // Обработчик события установки Service Worker
