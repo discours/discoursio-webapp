@@ -36,7 +36,24 @@
   ],
   "images": {
     "sizes": [256, 384, 640, 750, 828, 1080, 1200, 1920],
-    "domains": ["files.dscrs.site", "images.discours.io", "assets.discours.io", "cdn.discours.io"],
+    "remotePatterns": [
+      {
+        "protocol": "https",
+        "hostname": "files.dscrs.site"
+      },
+      {
+        "protocol": "https",
+        "hostname": "images.discours.io"
+      },
+      {
+        "protocol": "https",
+        "hostname": "assets.discours.io"
+      },
+      {
+        "protocol": "https",
+        "hostname": "cdn.discours.io"
+      }
+    ],
     "minimumCacheTTL": 60,
     "formats": ["image/webp"],
     "dangerouslyAllowSVG": true,
