@@ -38,61 +38,32 @@ function log(level, ...args) {
   }
 }
 
-// Стратегия "сеть первая, затем кеш" с TTL
-async function networkFirstStrategy(request, cacheName, ttl = 3600 * 1000) {
-  const url = new URL(request.url)
-  const cacheKey = new Request(url.toString(), request)
-
+// Стратегия "кеш первая, затем сеть"
+async function cacheFirstStrategy(request, cacheName) {
   try {
-    // Пробуем получить из сети
-    const networkResponse = await fetch(request)
-
-    if (networkResponse.ok) {
-      // Если успешно, кешируем результат
-      const clonedResponse = networkResponse.clone()
-      const cache = await caches.open(cacheName)
-
-      // Добавляем метаданные о времени кеширования
-      const responseToCache = new Response(clonedResponse.body, {
-        headers: new Headers(clonedResponse.headers),
-        status: clonedResponse.status,
-        statusText: clonedResponse.statusText
-      })
-      responseToCache.headers.set('sw-fetched-on', Date.now().toString())
-      responseToCache.headers.set('sw-ttl', ttl.toString())
-
-      cache.put(cacheKey, responseToCache)
-      return networkResponse
-    }
-
-    // Если сеть не вернула успешный ответ, пробуем из кеша
-    const cachedResponse = await caches.match(cacheKey)
+    // Сначала проверяем кеш
+    const cachedResponse = await caches.match(request)
     if (cachedResponse) {
       return cachedResponse
     }
 
-    // Если нет в кеше, возвращаем ошибку сети
-    return networkResponse
-  } catch (error) {
-    // При ошибке сети пробуем из кеша
-    const cachedResponse = await caches.match(cacheKey)
+    // Если нет в кеше, запрашиваем из сети
+    const networkResponse = await fetch(request)
 
-    if (cachedResponse) {
-      // Проверяем TTL кешированного ответа
-      const fetchedOn = Number.parseInt(cachedResponse.headers.get('sw-fetched-on') || '0')
-      const ttlValue = Number.parseInt(cachedResponse.headers.get('sw-ttl') || '0')
-
-      if (fetchedOn + ttlValue > Date.now() || ttlValue === 0) {
-        // Кеш еще действителен
-        return cachedResponse
-      }
+    if (networkResponse.ok) {
+      // Кешируем успешный ответ
+      const cache = await caches.open(cacheName)
+      cache.put(request, networkResponse.clone())
     }
 
-    // Если нет действительного кеша, возвращаем ошибку
-    log('error', `Network error and no valid cache for ${url.href}`, error)
+    return networkResponse
+  } catch (error) {
+    log('error', `Cache first strategy failed for ${request.url}`, error)
     return new Response('Network error occurred', { status: 503 })
   }
 }
+
+// Убрана неиспользуемая функция networkFirstStrategy
 
 // Обработчик fetch событий
 self.addEventListener('fetch', (event) => {
@@ -117,43 +88,17 @@ self.addEventListener('fetch', (event) => {
 async function handleImageRequest(request) {
   const url = new URL(request.url)
 
-  // Проверяем наличие параметров для обхода кеша (только те, что реально используются)
-  const hasCacheBuster =
-    url.search.includes('v=') || url.search.includes('nocache=') || url.search.includes('reload=')
+  // Проверяем наличие параметров для обхода кеша
+  const hasCacheBuster = url.search.includes('v=') || url.search.includes('retry=')
 
   if (hasCacheBuster) {
     log('info', `Bypassing cache for versioned CDN resource: ${url.href}`)
-
-    // Полностью пропускаем кеширование и идем напрямую в сеть
-    try {
-      const networkResponse = await fetch(request, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache'
-        }
-      })
-
-      if (networkResponse.ok) {
-        log('info', `Successfully fetched resource from network: ${url.href}`)
-        return networkResponse
-      } else {
-        log('warn', `Failed to fetch from network (status ${networkResponse.status}): ${url.href}`)
-        // Если не удалось получить из сети, пробуем из кеша как запасной вариант
-        const cachedResponse = await caches.match(request)
-        return cachedResponse || networkResponse
-      }
-    } catch (error) {
-      log('error', `Error fetching resource: ${url.href}`, error)
-      // В случае ошибки сети пробуем из кеша
-      const cachedResponse = await caches.match(request)
-      return cachedResponse || new Response('Resource not available', { status: 503 })
-    }
+    // Простой fetch без кеширования
+    return fetch(request, { cache: 'no-store' })
   }
 
-  // Для обычных запросов используем стратегию "сеть первая, затем кеш"
-  // с коротким TTL для быстрого обновления
-  return await networkFirstStrategy(request, CACHES.images, 60 * 1000) // 1 минута TTL
+  // Для обычных запросов - простая стратегия "кеш, затем сеть"
+  return await cacheFirstStrategy(request, CACHES.images)
 }
 
 // Обработчик события установки Service Worker

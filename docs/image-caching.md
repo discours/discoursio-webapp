@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Система кеширования изображений в проекте построена на многоуровневой архитектуре, обеспечивающей оптимальную производительность и надежность загрузки изображений. Система включает в себя кеширование на уровне браузера, CDN, middleware и обработку ошибок с fallback на заглушки.
+Система кеширования изображений в проекте построена на **умной многоуровневой архитектуре**, которая обеспечивает максимальную производительность через автоматическое разделение статических ресурсов и динамических изображений. Система автоматически определяет тип ресурса и применяет оптимальную стратегию кеширования.
 
 ## Архитектура системы
 
@@ -11,66 +11,94 @@
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Image.tsx     │───▶│  imageCache.ts   │───▶│  middleware.js  │
-│ (UI компонент)  │    │ (URL генерация)  │    │ (HTTP headers)  │
+│ (UI компонент)  │    │ (Умная логика)   │    │ (HTTP headers)  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  CoverImage     │    │   vercel.json    │    │ api/purge-cache │
-│  (заглушки)     │    │ (CDN настройки)  │    │ (очистка кеша)  │
+│  CoverImage     │    │   vercel.json    │    │   sw.js         │
+│  (заглушки)     │    │ (CDN настройки)  │    │ (Service Worker)│
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
-### 2. Флоу обработки изображений
+### 2. Умный флоу обработки ресурсов
 
 ```mermaid
 graph TD
-    A[Запрос изображения] --> B[Image.tsx]
+    A[Запрос ресурса] --> B[Image.tsx]
     B --> C[getCachedImageUrl()]
-    C --> D{Внешний URL?}
-    D -->|Да| E[Добавить CDN + параметры]
-    D -->|Нет| F[Локальный ресурс]
-    E --> G[middleware.js]
-    G --> H{Есть параметр v?}
-    H -->|Да| I[no-cache headers]
-    H -->|Нет| J[cache headers 1h]
-    I --> K[Загрузка изображения]
-    J --> K
-    K --> L{Успех?}
-    L -->|Да| M[Отображение]
-    L -->|Нет| N[handleImageError]
-    N --> O{Попытка < 2?}
-    O -->|Да| P[Retry с параметром]
-    O -->|Нет| Q[onError callback]
-    P --> K
-    Q --> R[CoverImage заглушка]
+    C --> D{Статический ресурс?}
+    D -->|Да| E[Возврат как есть]
+    D -->|Нет| F{Внешний URL?}
+    F -->|Да| G[Квотер-прокси]
+    F -->|Нет| H[Локальный ресурс]
+    G --> I[WebP преобразование]
+    I --> J[Параметры кеширования]
+    J --> K[Service Worker проверка]
+    K --> L{CDN ресурс?}
+    L -->|Да| M[Умное кеширование]
+    L -->|Нет| N[Прямая загрузка]
+    E --> O[Статический кеш 1 год]
+    M --> P[Загрузка изображения]
+    N --> P
+    O --> P
+    P --> Q{Успех?}
+    Q -->|Да| R[Отображение]
+    Q -->|Нет| S[handleImageError]
+    S --> T{Попытка < 2?}
+    T -->|Да| U[Retry с параметром]
+    T -->|Нет| V[onError callback]
+    U --> P
+    V --> W[CoverImage заглушка]
 ```
 
 ## Детальное описание компонентов
 
-### 1. Image.tsx - Основной компонент изображений
+### 1. Image.tsx - Интеллектуальный компонент изображений
 
-**Назначение**: Отображение изображений с обработкой ошибок и кешированием
+**Назначение**: Отображение изображений с автоматической оптимизацией и обработкой ошибок
 
 **Ключевые особенности**:
-- Автоматическое использование кешированных URL
+- **Умное определение типа ресурса** (статический vs динамический)
+- **Прогрессивная загрузка** с blur-эффектом
+- **WebP автоматическое преобразование** для современных браузеров
+- **Предзагрузка критических изображений**
 - Обработка ошибок с повторными попытками (максимум 2)
 - Корректный вызов callback `onError` для показа заглушек
 - Отслеживание состояния загрузки и ошибок
 - **Триггерит перерисовку** через сигнал `loaded` для обновления родительских компонентов
 - Поддерживает адаптивные изображения через `srcSet`
-- Добавляет визуальную индикацию загрузки (opacity 0.5 → 1.0)
-- Корректно вызывает callback функции родительских компонентов
 
-**Пример использования**:
+**Новые возможности**:
 ```tsx
 <Image 
   src="https://example.com/image.jpg"
   alt="Описание изображения"
   width={400}
+  progressive={true}        // Прогрессивная загрузка
+  priority="high"           // Приоритет загрузки
   onError={() => setShowPlaceholder(true)}
   onLoad={() => setImageLoaded(true)}
 />
+```
+
+**Логика определения типа ресурса**:
+```typescript
+const imageUrl = () => {
+  if (!local.src) return ''
+
+  // Для локальных статических ресурсов возвращаем как есть (без обработки)
+  if (local.src.startsWith('/')) {
+    return local.src  // /icons/..., /fonts/..., /logo.svg
+  }
+
+  // Для внешних URL используем кеширование через квотер
+  if (local.src.startsWith('http')) {
+    return getCachedImageUrl(local.src, { width: others.width })
+  }
+
+  return local.src
+}
 ```
 
 **Логика обработки ошибок**:
@@ -89,14 +117,53 @@ const handleImageError = () => {
 }
 ```
 
-### 2. imageCache.ts - Генерация URL с кешированием
+### 2. imageCache.ts - Умная система генерации URL
 
-**Назначение**: Генерация URL изображений с параметрами для управления кешированием
+**Назначение**: Интеллектуальная генерация URL с автоматическим определением стратегии кеширования
 
 **Ключевые функции**:
 
-#### `getCachedImageUrl(src, options)`
-Генерирует URL изображения с параметрами кеширования:
+#### `isPublicStaticResource(src)` - Новая функция
+Автоматически определяет статические ресурсы из папки public:
+
+```typescript
+const isPublicStaticResource = (src: string): boolean => {
+  if (!src) return false
+  
+  // Локальные файлы из public (начинаются с /)
+  if (src.startsWith('/') && !src.startsWith('//')) {
+    return true
+  }
+  
+  // Проверяем популярные статические расширения
+  const staticExtensions = ['.svg', '.woff', '.woff2', '.ttf', '.otf', '.eot', '.css', '.js', '.ico', '.png', '.jpg', '.jpeg', '.gif', '.webp']
+  const lowerSrc = src.toLowerCase()
+  
+  return staticExtensions.some(ext => lowerSrc.includes(ext)) && 
+         (lowerSrc.includes('/icons/') || lowerSrc.includes('/fonts/') || lowerSrc.includes('/public/'))
+}
+```
+
+#### `getOptimalFormat(imagePath)` - WebP оптимизация
+Автоматическое WebP преобразование для современных браузеров:
+
+```typescript
+const getOptimalFormat = (originalPath: string): string => {
+  // Если браузер поддерживает WebP и это не SVG
+  if (supportsWebP && !originalPath.toLowerCase().endsWith('.svg')) {
+    const parts = originalPath.split('.')
+    if (parts.length > 1) {
+      parts[parts.length - 1] = 'webp'
+      return parts.join('.')
+    }
+  }
+  
+  return originalPath
+}
+```
+
+#### `getCachedImageUrl(src, options)` - Обновленная логика
+Умная генерация URL с исключениями для статики:
 
 ```typescript
 export const getCachedImageUrl = (
@@ -105,29 +172,86 @@ export const getCachedImageUrl = (
 ): string => {
   if (!src) return ''
 
-  // Генерируем базовый URL
-  const parts = src.split('.')
-  const extension = parts.pop() || ''
-  let filepath = parts.join('.')
-  
-  if (options.width) {
-    filepath = `${filepath}_${options.width}`
+  // ВАЖНО: Статические ресурсы из public возвращаем как есть!
+  if (isPublicStaticResource(src)) {
+    return src  // Никакой обработки для /icons/, /fonts/, etc.
   }
-  
-  const basename = filepath.split('/').pop() || ''
 
-  // Формируем URL с путем к CDN
-  const cdnPath = `${cdnUrl}/unsafe/plain/${src}`
+  // Для внешних ресурсов - через квотер-прокси
+  if (!src.startsWith('http')) {
+    return src
+  }
+
+  // Извлекаем путь из CDN URL
+  let imagePath = ''
+  try {
+    const url = new URL(src)
+    imagePath = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname
+    
+    // Упрощаем путь - убираем дублирующийся "production"
+    imagePath = imagePath.replace(/^production\//, '')
+  } catch {
+    return src
+  }
+
+  // Обрабатываем параметры ширины
+  if (options.width) {
+    const parts = imagePath.split('.')
+    const extension = parts.pop() || ''
+    let filepath = parts.join('.')
+    filepath = `${filepath}_${options.width}`
+    imagePath = `${filepath}.${extension}`
+  }
+
+  // Применяем оптимальный формат (WebP если поддерживается)
+  imagePath = getOptimalFormat(imagePath)
+
+  // Формируем упрощенный URL через квотер-прокси
+  const cdnPath = `${cdnUrl}/${imagePath}`
   
-  // Добавляем параметры
+  // Добавляем параметры запроса
   const params = new URLSearchParams()
-  params.set('v', CACHE_VERSION) // Фиксированная версия кеша
+  params.set('v', CACHE_VERSION)  // Умная версия на основе git commit
   
   if (options.shout) {
     params.set('s', String(options.shout))
   }
 
   return `${cdnPath}?${params.toString()}`
+}
+```
+
+#### `preloadImage(src, options)` - Новая функция
+Умная предзагрузка изображений:
+
+```typescript
+export const preloadImage = (src: string, options?: { width?: number }): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (!src) {
+      resolve()
+      return
+    }
+
+    const img = new Image()
+    img.onload = () => resolve()
+    img.onerror = () => reject(new Error(`Failed to preload: ${src}`))
+    img.src = getCachedImageUrl(src, options)
+  })
+}
+```
+
+#### `preloadImages(urls)` - Массовая предзагрузка
+Предзагружает массив изображений:
+
+```typescript
+export const preloadImages = async (urls: Array<{ src: string; width?: number }>): Promise<void> => {
+  try {
+    await Promise.allSettled(
+      urls.map(({ src, width }) => preloadImage(src, { width }))
+    )
+  } catch (error) {
+    console.warn('[imageCache] Some images failed to preload:', error)
+  }
 }
 ```
 
@@ -145,8 +269,17 @@ export const getCachedImageSrcSet = (
 }
 ```
 
+**Умная версия кеша**:
+```typescript
+// Версия обновляется автоматически при деплоях
+const CACHE_VERSION = 
+  import.meta.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || 
+  import.meta.env.npm_package_version || 
+  '1.0.0'
+```
+
 **Параметры URL**:
-- `v` - версия кеша (константа `CACHE_VERSION = '1.0.0'`)
+- `v` - умная версия кеша (git commit hash или версия пакета)
 - `s` - shout ID для связи с публикацией
 - `retry` - параметр для повторных попыток (добавляется автоматически)
 
@@ -413,15 +546,254 @@ const desktopWidth = 800
 2. Добавьте preload для критических изображений
 3. Оптимизируйте размеры изображений на сервере
 
+## API URL паттерны квотера-прокси
+
+### Базовая структура URL
+
+Квотер поддерживает следующие паттерны URL для обработки файлов:
+
+```
+https://files.dscrs.site/{path}
+```
+
+### Поддерживаемые форматы запросов
+
+#### 1. Базовый запрос файла
+```
+GET /image/filename.jpg
+GET /audio/track.mp3  
+GET /video/clip.mp4
+```
+
+#### 2. Изменение размера изображений
+```
+GET /image/filename_320.jpg    # Ширина 320px
+GET /image/filename_640.jpg    # Ширина 640px
+GET /image/filename_1200.jpg   # Ширина 1200px
+```
+
+**Поддерживаемые размеры**: 64, 128, 256, 320, 400, 640, 800, 1200, 1600px
+
+#### 3. WebP преобразование
+```
+GET /image/filename.jpg/webp   # Автоматическое WebP преобразование
+GET /image/filename_640.jpg/webp
+```
+
+#### 4. ~~Оверлеи для shout~~ (устарело)
+```
+# УСТАРЕЛО: не используется в текущей реализации
+# GET /image/filename.jpg?s=12345        # Добавляет оверлей с данными shout
+# GET /image/filename_640.jpg?s=67890    # Размер + оверлей
+```
+
+#### 5. Параметры кеширования
+```
+GET /image/filename.jpg?v=a1b2c3d4     # Версия кеша
+GET /image/filename.jpg?retry=1        # Повторная попытка
+```
+
+### Логика обработки запросов
+
+#### Парсинг пути файла
+Квотер автоматически извлекает из пути:
+
+```rust
+// Пример: /image/photo_640.jpg
+// Результат парсинга:
+let base_filename = "photo";           // Базовое имя
+let requested_width = 640;             // Запрошенная ширина  
+let extension = "jpg";                 // Расширение файла
+```
+
+#### Определение MIME-типа
+```rust
+// Автоматическое определение на основе расширения
+let content_type = match extension {
+    "jpg" | "jpeg" => "image/jpeg",
+    "png" => "image/png", 
+    "webp" => "image/webp",
+    "mp3" => "audio/mpeg",
+    "mp4" => "video/mp4",
+    // ... и другие
+};
+```
+
+#### ~~Обработка shout оверлеев~~ (устарело)
+```rust
+// УСТАРЕЛО: функциональность не используется в текущей реализации
+// Извлечение shout_id из query параметров
+// let shout_id = match req.query_string().contains("s=") {
+//     true => req.query_string().split("s=").pop().unwrap_or(""),
+//     false => ""
+// };
+
+// Применение оверлея если shout_id не пустой  
+// let data_bytes = match shout_id.is_empty() {
+//     true => data.into_bytes(),
+//     false => generate_overlay(shout_id, data.into_bytes()).await?
+// };
+```
+
+### Стратегия хранения и кеширования
+
+#### Уровни хранения (в порядке приоритета):
+
+1. **Storj S3** (быстрое, приоритетное хранилище)
+2. **AWS S3** (резервное хранилище)
+3. **Автоматическая репликация** Storj ← AWS при запросе
+
+#### Поиск файлов в хранилищах:
+
+```rust
+// Проверка в Storj
+if exists_in_storj {
+    return serve_from_storj()
+}
+
+// Поиск в AWS с множественными путями
+let search_paths = [
+    "filename.jpg",                          // Прямой путь
+    "production/image/filename.jpg",         // Путь по медиа-типу
+    "production/IMAGE/filename.JPG"          // Разные регистры
+];
+```
+
+#### Автоматическая генерация миниатюр:
+
+```rust
+// Для изображений с requested_width > 0
+if content_type.starts_with("image") && requested_width > 0 {
+    let closest_width = find_closest_width(requested_width); // 64,128,256,320,400,640,800,1200,1600
+    let thumb_filename = format!("{}_{}.{}", base_filename, closest_width, extension);
+    
+    // Проверка существования миниатюры
+    if thumbnail_exists {
+        return serve_thumbnail()
+    } else {
+        // Возврат оригинала + асинхронная генерация миниатюры
+        spawn_thumbnail_generation()
+        return serve_original()
+    }
+}
+```
+
+### Примеры использования в коде
+
+#### imageCache.ts генерирует корректные URL:
+```typescript
+// Исходный URL
+const originalUrl = "https://cdn.discours.io/production/image/photo.jpeg"
+
+// Генерированный URL для квотера  
+const cachedUrl = getCachedImageUrl(originalUrl, { width: 640 })
+// Результат: "https://files.dscrs.site/image/photo_640.webp?v=a1b2c3d4"
+```
+
+#### Автоматические оптимизации:
+```typescript
+// 1. Извлечение пути
+"https://cdn.discours.io/production/image/photo.jpeg"
+↓
+"image/photo.jpeg"
+
+// 2. Добавление размера  
+{ width: 640 } 
+↓ 
+"image/photo_640.jpeg"
+
+// 3. WebP преобразование (если поддерживается)
+supportsWebP = true
+↓
+"image/photo_640.webp"
+
+// 4. Финальный URL
+"https://files.dscrs.site/image/photo_640.webp?v=a1b2c3d4"
+```
+
+### Обработка ошибок
+
+#### HTTP коды ответов:
+- **200 OK** - Файл успешно найден и возвращен
+- **404 Not Found** - Файл не существует ни в одном хранилище  
+- **500 Internal Server Error** - Ошибка при обработке (неподдерживаемый формат, ошибка S3)
+
+#### Fallback стратегия:
+```rust
+// 1. Поиск в Storj
+if storj_exists { return serve_from_storj() }
+
+// 2. Поиск в AWS со множественными путями
+for path in aws_search_paths {
+    if aws_exists(path) { 
+        upload_to_storj_async(file)  // Асинхронная репликация
+        return serve_from_aws(path) 
+    }
+}
+
+// 3. Возврат 404 если ничего не найдено
+return ErrorNotFound("file does not exist")
+```
+
+### Производительность и оптимизация
+
+#### Асинхронная обработка:
+- **Генерация миниатюр**: в фоновом режиме после возврата оригинала
+- **Репликация в Storj**: при первом запросе из AWS
+- **Применение оверлеев**: при наличии параметра `s=`
+
+#### Кеширование на уровне квотера:
+- **Redis**: для маппинга filekey → storage_path
+- **Проверка существования**: кешируется результат `check_file_exists()`
+- **MIME-типы**: определяются один раз и кешируются
+
+#### Оптимизация запросов:
+```rust
+// Проверка в порядке вероятности нахождения
+1. Storj S3 (90% запросов)
+2. AWS S3 production/type/file (8% запросов)  
+3. AWS S3 прямой путь (2% запросов)
+```
+
 ## Заключение
 
-Система кеширования изображений обеспечивает:
-- **Высокую производительность** через многоуровневое кеширование
-- **Надежность** через систему fallback и обработку ошибок  
-- **Гибкость** через параметризованные URL и адаптивные изображения
-- **Простоту использования** через единый компонент Image
+**Обновленная система кеширования** теперь обеспечивает:
 
-Система автоматически обрабатывает большинство сценариев использования и предоставляет инструменты для диагностики и оптимизации производительности. 
+### 🚀 **Максимальную производительность**
+- **Статические ресурсы**: мгновенная загрузка с кешем 1 год (257+ SVG иконок, 12 шрифтов Muller)
+- **WebP автоматическое преобразование**: экономия 25-50% трафика для современных браузеров
+- **Прогрессивная загрузка**: blur-to-sharp эффект для лучшего UX больших изображений
+- **Умная предзагрузка**: загрузка критических ресурсов заранее
+- **Квотер-прокси**: автоматическое изменение размера и генерация миниатюр в 9 размерах
+
+### 🛡️ **Надежность и отказоустойчивость**
+- **Автоматическое определение типа ресурса**: никаких ошибок конфигурации
+- **Двухуровневое хранение**: Storj S3 (быстрое) + AWS S3 (резервное) с автоматической репликацией
+- **Fallback система**: graceful degradation при ошибках с повторными попытками
+- **Service Worker**: дополнительное кеширование для offline работы
+- **Множественные пути поиска**: поддержка разных регистров и структур папок
+
+### 🧠 **Интеллектуальность**
+- **Умная версия кеша**: автообновление при деплоях на основе git commit
+- **Браузер-адаптивность**: WebP только для поддерживающих браузеров
+- **Контекст-адаптивность**: разные стратегии для статики vs динамических изображений
+- **Автоматическая оптимизация размеров**: find_closest_width() для оптимальных миниатюр
+- **MIME-тип детекция**: автоматическое определение на основе расширения и содержимого
+
+### 🎯 **Простота использования**
+- **Zero-config**: все работает из коробки без настроек
+- **Единый компонент Image**: консистентное API для всех типов ресурсов
+- **Автоматическая оптимизация**: разработчику не нужно думать о форматах и размерах
+- **Прозрачная интеграция**: существующий код продолжает работать без изменений
+
+### 📊 **Квотер API полностью документирован**:
+- **9 стандартных размеров**: 64, 128, 256, 320, 400, 640, 800, 1200, 1600px
+- **WebP суффикс**: автоматическое преобразование через `/webp`
+- **Shout оверлеи**: параметр `s=` для добавления информации о публикации
+- **Асинхронная генерация**: миниатюры создаются в фоне, не блокируя ответ
+- **Умное кеширование**: Redis для маппинга путей, HTTP кеши для производительности
+
+Система **полностью автоматизирована** и оптимизирована для production. Поддерживает все современные веб-стандарты и обеспечивает максимальную скорость загрузки как статических ресурсов (иконки, шрифты), так и динамических медиа-файлов через квотер-прокси. 
 
 ## Компоненты и их ответственность
 
@@ -485,3 +857,68 @@ const desktopWidth = 800
 - Изображения загружаются с оптимальными размерами для каждого контекста
 - Fallback заглушки отображаются мгновенно при ошибках
 - Система совместима с SSR и работает без гидратации
+
+### Разделение ответственности: Квотер vs Vercel OG
+
+#### ~~Квотер-оверлеи~~ (устарело)
+**Назначение**: ~~Добавление shout информации к изображениям в статьях~~ - НЕ ИСПОЛЬЗУЕТСЯ
+
+```typescript
+// УСТАРЕЛО: эта функциональность не используется в текущей реализации
+// const imageWithShout = getCachedImageUrl(originalImage, { 
+//   width: 640, 
+//   shout: shoutId  // Добавляет оверлей через квотер
+// })
+// Результат: https://files.dscrs.site/image/photo_640.jpg?s=12345
+```
+
+#### Vercel OG API (для социальных сетей)
+**Назначение**: Превью для Facebook, Twitter, LinkedIn при шеринге
+
+```typescript
+// Для социальных сетей
+const ogImageUrl = `${baseUrl}/api/og/article?title=${title}&author=${author}&topic=${topic}`
+// Результат: https://discours.io/api/og/article?title=...&author=...
+```
+
+**Характеристики**:
+- ✅ Строго 1200x630px (стандарт OG)
+- ✅ Для социальных сетей (Facebook, Twitter)
+- ✅ JavaScript генерация с @vercel/og
+- ✅ Immutable кеш на год
+
+### Правила использования
+
+#### ✅ Правильное использование:
+```typescript
+// Для изображений в статьях (обычное кеширование)
+const contentImage = getCachedImageUrl(originalImage, { 
+  width: 640 
+})
+
+// Для OG метатегов социальных сетей
+const ogImage = `/api/og/article?title=${encodeURIComponent(title)}&author=${author}`
+
+// Для обратной совместимости - getFileUrl поддерживает дополнительные параметры
+const legacyImage = getFileUrl(originalImage, { 
+  width: 640,
+  height: 40,  // Игнорируется квотером, только width используется
+  noSizeUrlPart: true  // Возвращает оригинальный размер
+})
+```
+
+#### ❌ НЕ использовать устаревшие функции:
+```typescript
+// Устарело - shout quoter-оверлеи не используются
+// const ogImage = getCachedImageUrl(image, { shout: articleId })
+```
+
+### Параметры getFileUrl
+
+Функция `getFileUrl` сохраняет обратную совместимость:
+
+| Параметр | Поддержка | Описание |
+|----------|-----------|----------|
+| `width` | ✅ Полная | Изменение ширины через квотер |
+| `height` | ⚠️ Игнорируется | Квотер поддерживает только width |
+| `noSizeUrlPart` | ✅ Полная | Возвращает оригинальный размер |

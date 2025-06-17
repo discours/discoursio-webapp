@@ -1,12 +1,41 @@
 import { ImageResponse } from '@vercel/og'
 
-const baseUrl = 'https://files.dscrs.site'
+// Используем квотер только для динамических изображений, статика напрямую
+const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://discours.io'
+const staticUrl = 'https://files.dscrs.site' // Только для динамических изображений
 const OG_IMAGE_WIDTH = 1200
 const OG_IMAGE_HEIGHT = 630
+const IMAGE_PATH_REGEX = /^image\//
+const CDN_PATH_REGEX = /\/production\/(.+)$/
 
 /**
- * Обработчик для генерации OG изображений
+ * Обрабатывает cover изображения для OG - через квотер с правильным размером
+ */
+function getCoverForOG(cover) {
+  if (!cover) return cover
+
+  // Если уже обработано квотером - возвращаем как есть
+  if (cover.includes('files.dscrs.site')) return cover
+
+  // Извлекаем path из CDN URL
+  let imagePath = cover
+  if (cover.includes('cdn.discours.io')) {
+    const pathMatch = cover.match(CDN_PATH_REGEX)
+    if (pathMatch) {
+      imagePath = pathMatch[1]
+    }
+  }
+
+  // Возвращаем через квотер с оптимальным размером для OG
+  return `${staticUrl}/image/${imagePath.replace(IMAGE_PATH_REGEX, '')}_1200.jpg`
+}
+
+/**
+ * Обработчик для генерации OG изображений социальных сетей
+ * НЕ смешивается с квотер-оверлеями (те используются для shout в контенте)
+ *
  * Поддерживает пути: /api/og, /api/og/article, /api/og/author, /api/og/topic
+ * Размер: строго 1200x630px для Facebook/Twitter/LinkedIn
  */
 export default async (req, _res) => {
   try {
@@ -31,12 +60,14 @@ export default async (req, _res) => {
     // Логируем запрос для отладки
     console.log(`[OG] Generating image for type: ${type}, params:`, params)
 
-    // Общие параметры ответа
+    // Общие параметры ответа с правильными заголовками для OG
     const responseData = {
       width: OG_IMAGE_WIDTH,
       height: OG_IMAGE_HEIGHT,
       headers: {
-        'Cache-Control': 'public, max-age=31536000, immutable'
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'CDN-Cache-Control': 'public, max-age=31536000'
       }
     }
 
@@ -122,10 +153,10 @@ function createOGImage({
   // Определяем стили на основе темы и наличия обложки
   const isDark = theme === 'dark'
 
-  // Фон изображения
+  // Фон изображения - обложки через квотер для правильного размера OG
   const backgroundStyle = cover
     ? {
-        background: `linear-gradient(rgba(0,0,0,0.50), rgba(0,0,0,0.65)), url(${cover})`,
+        background: `linear-gradient(rgba(0,0,0,0.50), rgba(0,0,0,0.65)), url(${getCoverForOG(cover)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center'
       }

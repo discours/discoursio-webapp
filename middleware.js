@@ -8,29 +8,30 @@ const IMAGES_EXTENSIONS = /\.(png|jpg|jpeg|gif|svg|webp|ico|bmp|tiff|tif|heic|he
 export default function middleware(request) {
   const url = new URL(request.url)
 
-  // Обрабатываем только изображения
-  if (url.pathname.match(IMAGES_EXTENSIONS)) {
-    const response = new Response(null, {
+  // Статические ресурсы из public отдаем быстро с долгим кешем
+  if (
+    url.pathname.startsWith('/icons/') ||
+    url.pathname.startsWith('/fonts/') ||
+    url.pathname.startsWith('/')
+  ) {
+    return new Response(null, {
       headers: {
-        'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
-        'CDN-Cache-Control': 'public, max-age=31536000'
+        'Cache-Control': 'public, max-age=31536000, immutable' // 1 год для статических ресурсов
       }
     })
-
-    // Если есть параметры версии или retry - обходим кеш
-    const hasCacheBypassParams = url.searchParams.has('v') || url.searchParams.has('retry')
-
-    if (hasCacheBypassParams) {
-      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
-      response.headers.set('CDN-Cache-Control', 'no-cache')
-      response.headers.set('Pragma', 'no-cache')
-      response.headers.set('Expires', '0')
-    }
-
-    return response
   }
 
-  // Для остальных запросов возвращаем null (продолжаем обработку)
+  // Обрабатываем только внешние изображения
+  if (url.pathname.match(IMAGES_EXTENSIONS) && url.hostname !== 'localhost') {
+    // Простые заголовки кеширования - квотер сам управляет кешем
+    const headers =
+      url.searchParams.has('v') || url.searchParams.has('retry')
+        ? { 'Cache-Control': 'no-cache' }
+        : { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400' }
+
+    return new Response(null, { headers })
+  }
+
   return null
 }
 
