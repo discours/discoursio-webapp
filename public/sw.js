@@ -1,14 +1,20 @@
 /// <reference lib="webworker" />
 
 // Версия Service Worker - изменяйте при обновлении логики
-const VERSION = '1.0.1'
+const VERSION = '1.0.2'
 
 // Конфигурация кеширования
 const CONFIG = {
   // Имя кеша для динамических ресурсов
   cacheName: 'discoursio-dynamic-cache-v1',
-  // URL CDN для изображений
-  cdnUrl: 'https://files.dscrs.site',
+  // URLs CDN для изображений
+  cdnUrls: [
+    'https://files.dscrs.site',
+    'https://cdn.dscrs.site', 
+    'https://cdn.discours.io',
+    'https://images.discours.io',
+    'https://assets.discours.io'
+  ],
   // Расширения файлов изображений
   imageExtensions: /\.(png|jpg|jpeg|gif|svg|webp|ico|bmp|tiff|tif|heic|heif|avif)$/i,
   // Включить отладку
@@ -22,8 +28,8 @@ const CACHES = {
   images: 'discoursio-images-cache-v1'
 }
 
-// CDN URL для изображений
-const CDN_URL = CONFIG.cdnUrl
+// Функция проверки CDN URL
+const isCdnUrl = (url) => CONFIG.cdnUrls.some(cdnUrl => url.startsWith(cdnUrl))
 
 // Функция логирования с возможностью отключения
 function log(level, ...args) {
@@ -99,7 +105,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.includes('/api/') || event.request.method !== 'GET') return
 
   // Обработка запросов к CDN и изображениям
-  if (url.href.startsWith(CDN_URL) || url.pathname.match(CONFIG.imageExtensions)) {
+  if (isCdnUrl(url.href) || url.pathname.match(CONFIG.imageExtensions)) {
     event.respondWith(handleImageRequest(event.request))
   }
 })

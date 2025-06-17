@@ -80,6 +80,10 @@
       {
         "protocol": "https",
         "hostname": "cdn.discours.io"
+      },
+      {
+        "protocol": "https",
+        "hostname": "cdn.dscrs.site"
       }
     ],
     "minimumCacheTTL": 60,
@@ -97,6 +101,14 @@
     {
       "source": "/files.dscrs.site/:path*",
       "destination": "https://files.dscrs.site/:path*"
+    },
+    {
+      "source": "/cdn.dscrs.site/:path*",
+      "destination": "https://cdn.dscrs.site/:path*"
+    },
+    {
+      "source": "/cdn.discours.io/:path*",
+      "destination": "https://cdn.discours.io/:path*"
     }
   ]
 }
