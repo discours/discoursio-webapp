@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
 // Версия Service Worker - изменяйте при обновлении логики
-const VERSION = '1.0.3'
+const VERSION = '1.0.4'
 
 // Конфигурация кеширования
 const CONFIG = {
@@ -103,6 +103,9 @@ self.addEventListener('fetch', (event) => {
 
   // Пропускаем запросы к API и другие не-GET запросы
   if (url.pathname.includes('/api/') || event.request.method !== 'GET') return
+
+  // Пропускаем локальные файлы (same-origin запросы)
+  if (url.origin === self.location.origin) return
 
   // Обработка запросов только к CDN изображениям
   if (isCdnUrl(url.href)) {
