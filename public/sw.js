@@ -152,36 +152,37 @@ function handleSSEError() {
   }
 }
 
-// Безопасная обработка кеширования без блокировки основных запросов
+// Безопасная обработка кеширования - ТОЛЬКО фоновое кеширование
 async function cacheStaticResource(request) {
-  if (!isFunctional) return null
-
+  // Максимально безопасная функция кеширования
   try {
-    // Проверяем что это действительно статический ресурс
-    if (!request || !request.url || !request.url.match(STATIC_RESOURCE_REGEX)) {
+    // Проверяем базовые условия
+    if (!isFunctional || !request || !request.url) {
       return null
     }
 
-    const cache = await caches.open(CLIENT_NAME)
-    const response = await fetch(request.clone())
+    // Проверяем что это действительно статический ресурс
+    if (!request.url.match(STATIC_RESOURCE_REGEX)) {
+      return null
+    }
 
+    // Делаем независимый fetch (не блокируем оригинальный запрос)
+    const response = await fetch(request)
+
+    // Кешируем только успешные ответы
     if (response?.ok && response?.status >= 200 && response?.status < 300) {
-      // Кешируем только успешные ответы, тихо игнорируем ошибки
       try {
+        const cache = await caches.open(CLIENT_NAME)
         await cache.put(request, response.clone())
-        // Убираем логирование для уменьшения шума
       } catch (_cacheError) {
         // Тихо игнорируем ошибки кеширования
       }
-      return response
     }
 
     return response
   } catch (_error) {
-    // Убираем логирование ошибок кеширования для уменьшения шума
-
-    // Fallback на обычный fetch при ошибках кеширования
-    return fetch(request)
+    // Тихо игнорируем ВСЕ ошибки кеширования
+    return null
   }
 }
 
@@ -222,42 +223,39 @@ async function broadcastToClients(message) {
 
 // === SERVICE WORKER ОБРАБОТЧИКИ СОБЫТИЙ ===
 
-// Обработка fetch запросов
+// Обработка fetch запросов - ПОЛНОСТЬЮ ПАССИВНЫЙ РЕЖИМ
 self.addEventListener('fetch', (event) => {
+  // ВАЖНО: НЕ вызываем event.respondWith() - пропускаем ВСЕ запросы к сети
+
   if (!checkFunctionality()) {
-    log('warn', 'Service Worker: fetch обработчик пропущен - не функционален')
-    return
+    return // Пропускаем всё если не функциональны
   }
 
   try {
     const url = new URL(event.request.url)
 
-    // Для статических ресурсов - ТОЛЬКО кешируем параллельно, НИКОГДА не блокируем
+    // Только для статических ресурсов запускаем фоновое кеширование
+    // НО НИКОГДА НЕ БЛОКИРУЕМ основной запрос
     if (url.pathname.match(STATIC_RESOURCE_REGEX)) {
-      // Запускаем кеширование в фоне, но НЕ блокируем основной запрос
+      // Запускаем кеширование в фоне асинхронно
       Promise.resolve().then(async () => {
         try {
-          await cacheStaticResource(event.request)
+          await cacheStaticResource(event.request.clone())
         } catch (_err) {
           // Тихо игнорируем ошибки фонового кеширования
         }
       })
-      return // Основной запрос идет через сеть без задержек
+      // НЕ вызываем event.respondWith() - запрос идет через сеть
     }
 
-    // Для GraphQL запросов - только логируем, НЕ вмешиваемся
-    if (url.pathname.includes('/graphql')) {
-      // Убираем логирование для уменьшения шума
-      return // Полностью пропускаем к сети
-    }
-
-    // Для всех остальных запросов - полностью пропускаем
-    return
+    // Для всех остальных запросов - НИЧЕГО НЕ ДЕЛАЕМ
+    // Запрос автоматически идет через сеть
   } catch (error) {
     log('error', 'Service Worker: ошибка fetch обработчика:', error)
     // КРИТИЧНО: НИКОГДА не блокируем запрос даже при ошибке
-    return
   }
+
+  // НЕ вызываем event.respondWith() - все запросы проходят через сеть
 })
 
 // Обработка сообщений от клиентов с максимальной защитой

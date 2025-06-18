@@ -730,15 +730,23 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
   // Автоматическая регистрация Service Worker и отправка токена
   onMount(() => {
-    // Проверяем поддержку и регистрируем с защитой от ошибок
+    // ВРЕМЕННО: принудительно отменяем регистрацию всех Service Worker
+    // для предотвращения блокировки запросов
     if (isSupported()) {
-      register().catch((error) => {
-        console.warn('[Connect] Service Worker registration failed, continuing without it:', error)
-        // Не блокируем работу приложения даже если SW не зарегистрировался
+      unregister().catch((error) => {
+        console.warn('[Connect] Failed to unregister existing Service Workers:', error)
       })
-    } else {
-      console.info('[Connect] Service Worker not supported, running without it')
     }
+
+    // Закомментировано: автоматическая регистрация отключена
+    // if (isSupported()) {
+    //   register().catch((error) => {
+    //     console.warn('[Connect] Service Worker registration failed, continuing without it:', error)
+    //     // Не блокируем работу приложения даже если SW не зарегистрировался
+    //   })
+    // } else {
+    //   console.info('[Connect] Service Worker not supported, running without it')
+    // }
   })
 
   // Отправляем токен SSE-клиенту в Service Worker при изменении сессии
