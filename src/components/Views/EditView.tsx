@@ -898,48 +898,31 @@ export const EditView = (props: { draft?: Draft }) => {
         topicsCount: draftInput.topic_ids?.length || 0
       })
 
-      // Проверяем, есть ли данные awareness для этого черновика
-      if (typeof window !== 'undefined' && 'AWARENESS_PROVIDER' in window) {
-        console.log('[EditView] Получаем данные из AwarenessProvider для синхронизации')
+      // Получаем актуальные данные из Connect context если соединение активно
+      const connectContext = useConnect()
+      if (connectContext.getStatus() === 'connected') {
+        console.log('[EditView] Получаем данные из ConnectProvider для синхронизации')
 
         try {
-          // @ts-ignore - Обращаемся к глобальной переменной, которая может быть доступна
-          const awarenessProvider = window.AWARENESS_PROVIDER as unknown
+          const draftFields = connectContext.getDraftContent(draft.id)
 
-          // Только если провайдер имеет нужный метод
-          // biome-ignore lint/suspicious/noExplicitAny: ok
-          if (awarenessProvider && typeof (awarenessProvider as any).getLocalState === 'function') {
-            // biome-ignore lint/suspicious/noExplicitAny: ok
-            const awarenessState = (awarenessProvider as any).getLocalState()
+          if (draftFields && Object.keys(draftFields).length > 0) {
+            console.log('[EditView] Найдены данные в Connect для черновика:', Object.keys(draftFields))
 
-            if (awarenessState?.draftContent?.draftId === draft.id && awarenessState.draftContent.fields) {
-              console.log(
-                '[EditView] Найдены данные в Awareness для черновика:',
-                Object.keys(awarenessState.draftContent.fields)
-              )
-
-              // Обновляем поля из awareness
-              Object.entries(awarenessState.draftContent.fields).forEach(([fieldName, fieldData]) => {
-                // Проверяем что fieldData - это объект с полем content
-                if (
-                  fieldName in draftInput &&
-                  fieldData &&
-                  typeof fieldData === 'object' &&
-                  'content' in fieldData &&
-                  typeof fieldData.content === 'string'
-                ) {
-                  console.log(
-                    `[EditView] Обновляем поле ${fieldName} из awareness (${fieldData.content.length} символов)`
-                  )
-                  // @ts-ignore - мы проверили что поле существует выше
-                  draftInput[fieldName] = fieldData.content
-                }
-              })
-            }
+            // Обновляем поля из connect context
+            Object.entries(draftFields).forEach(([fieldName, fieldData]) => {
+              if (fieldName in draftInput && fieldData?.content) {
+                console.log(
+                  `[EditView] Обновляем поле ${fieldName} из connect (${fieldData.content.length} символов)`
+                )
+                // @ts-ignore - мы проверили что поле существует выше
+                draftInput[fieldName] = fieldData.content
+              }
+            })
           }
-        } catch (awarenessError) {
-          console.error('[EditView] Ошибка при получении данных из AwarenessProvider:', awarenessError)
-          // Продолжаем сохранять даже при ошибке с awareness
+        } catch (connectError) {
+          console.error('[EditView] Ошибка при получении данных из ConnectProvider:', connectError)
+          // Продолжаем сохранять даже при ошибке с connect
         }
       }
 

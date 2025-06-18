@@ -7,6 +7,7 @@ import { sessionStateChanged } from '~/context/session'
 import { Loading } from './components/_shared/Loading'
 import { OfflineStatus } from './components/_shared/OfflineStatus'
 import { AuthorsProvider } from './context/authors'
+import { ConnectProvider } from './context/connect'
 import { DraftsProvider } from './context/drafts'
 import { FeaturedFeedProvider } from './context/featured'
 import { FeedProvider } from './context/feed'
@@ -24,23 +25,25 @@ export const Providers: Component<{ children?: JSX.Element }> = (props) => {
     <LocalizeProvider>
       <OfflineStatus />
       <SessionProvider onStateChangeCallback={sessionStateChanged}>
-        <UIProvider>
-          <TopicsProvider>
-            <AuthorsProvider>
-              <FeedProvider>
-                <DraftsProvider>
-                  <FeaturedFeedProvider>
-                    <FollowingProvider>
-                      <MetaProvider>
-                        <Suspense fallback={<Loading />}>{props.children}</Suspense>
-                      </MetaProvider>
-                    </FollowingProvider>
-                  </FeaturedFeedProvider>
-                </DraftsProvider>
-              </FeedProvider>
-            </AuthorsProvider>
-          </TopicsProvider>
-        </UIProvider>
+        <ConnectProvider>
+          <UIProvider>
+            <TopicsProvider>
+              <AuthorsProvider>
+                <FeedProvider>
+                  <DraftsProvider>
+                    <FeaturedFeedProvider>
+                      <FollowingProvider>
+                        <MetaProvider>
+                          <Suspense fallback={<Loading />}>{props.children}</Suspense>
+                        </MetaProvider>
+                      </FollowingProvider>
+                    </FeaturedFeedProvider>
+                  </DraftsProvider>
+                </FeedProvider>
+              </AuthorsProvider>
+            </TopicsProvider>
+          </UIProvider>
+        </ConnectProvider>
       </SessionProvider>
     </LocalizeProvider>
   )
