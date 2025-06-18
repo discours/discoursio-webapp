@@ -1,37 +1,5 @@
 import { cdnUrl } from '~/config'
 
-// Умная версия кеша - обновляется только при деплоях
-const CACHE_VERSION =
-  import.meta.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) || import.meta.env.npm_package_version || '1.0.0'
-
-// Проверка поддержки WebP браузером
-const supportsWebP = (() => {
-  if (typeof window === 'undefined') return false
-
-  try {
-    const canvas = document.createElement('canvas')
-    canvas.width = canvas.height = 1
-    return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0
-  } catch {
-    return false
-  }
-})()
-
-/**
- * Определяет оптимальный формат изображения для браузера
- * @param originalPath - исходный путь к файлу
- * @returns путь с оптимальным форматом
- */
-const webpExtRegex = /\.(jpe?g|png|gif)$/i
-const getOptimalFormat = (originalPath: string): string => {
-  // Если браузер поддерживает WebP и это не SVG
-  if (supportsWebP && !originalPath.toLowerCase().endsWith('.svg')) {
-    // Заменяем расширение на .webp
-    return originalPath.replace(webpExtRegex, '.webp')
-  }
-  return originalPath
-}
-
 /**
  * Проверяет является ли URL статическим ресурсом из public папки
  * @param src - URL для проверки
@@ -71,10 +39,10 @@ const isPublicStaticResource = (src: string): boolean => {
 }
 
 /**
- * Генерирует URL изображения с параметрами кеширования для квотера-прокси
+ * Генерирует URL изображения через квотер-прокси
  * @param src - исходный URL изображения
  * @param options - параметры для формирования URL
- * @returns URL изображения с учетом CDN и параметров
+ * @returns URL изображения через квотер
  */
 export const getCachedImageUrl = (src: string, options: { width?: number } = {}): string => {
   if (!src) return ''
@@ -102,41 +70,35 @@ export const getCachedImageUrl = (src: string, options: { width?: number } = {})
       imagePath = imagePath.slice(1)
     }
 
-    // Упрощаем путь - убираем дублирующийся "production/"
-    if (imagePath.startsWith('production/')) {
+    // Убираем устаревшие префиксы путей
+    if (imagePath.startsWith('unsafe/production/')) {
+      imagePath = imagePath.slice('unsafe/production/'.length)
+    } else if (imagePath.startsWith('production/')) {
       imagePath = imagePath.slice('production/'.length)
+    } else if (imagePath.startsWith('unsafe/')) {
+      imagePath = imagePath.slice('unsafe/'.length)
     }
   } catch (error) {
-    console.error(`[imageCache] ${error}`, src)
+    console.error(`[imageCache] Error parsing URL: ${error}`, src)
     return src
   }
 
-  // Обрабатываем параметры ширины
+  // Обрабатываем параметры ширины - quoter поддерживает добавление размера к имени файла
   if (options.width) {
     const parts = imagePath.split('.')
     const extension = parts.pop() || ''
     let filepath = parts.join('.')
+
+    // Добавляем размер к имени файла (quoter поддерживает filename_640.jpg)
     filepath = `${filepath}_${options.width}`
     imagePath = `${filepath}.${extension}`
   }
 
-  // Применяем оптимальный формат (WebP если поддерживается)
-  imagePath = getOptimalFormat(imagePath)
+  // Формируем URL через квотер-прокси
+  // Quoter НЕ меняет расширение файла и НЕ обрабатывает параметры версии
+  const finalUrl = `${cdnUrl}/${imagePath}`
 
-  // Формируем упрощенный URL через квотер-прокси
-  // Теперь без "unsafe" и без дублирования "production"
-  const cdnPath = `${cdnUrl}/${imagePath}`
-
-  // Добавляем параметры запроса
-  const params = new URLSearchParams()
-  params.set('v', CACHE_VERSION)
-
-  // УСТАРЕЛО: shout оверлеи больше не используются
-  // if (options.shout) {
-  //   params.set('s', String(options.shout))
-  // }
-
-  return `${cdnPath}?${params.toString()}`
+  return finalUrl
 }
 
 /**
@@ -181,3 +143,6 @@ export const preloadImages = async (urls: Array<{ src: string; width?: number }>
     console.warn('[imageCache] Some images failed to preload:', error)
   }
 }
+
+// Устаревшая функция для обратной совместимости
+export const getFileUrl = getCachedImageUrl

@@ -1,17 +1,18 @@
 /// <reference lib="webworker" />
 
 // Service Worker для Discours.io с SSE интеграцией
-// Версия: 1.0.11 - Максимальная безопасность и отказоустойчивость
+// Версия: 1.0.12 - Тихое кеширование без избыточного логирования
 
-const VERSION = '1.0.11'
-const CLIENT_NAME = 'discours-cache-v1'
+const VERSION = '1.0.12'
+const CLIENT_NAME = `discours-presence-client-v${VERSION}`
+const SSE_URL = 'https://connect.discours.io'
 
 // Флаг для отключения функциональности при критических ошибках
 let isFunctional = true
 
 // Конфигурация SSE
 const SSE_CONFIG = {
-  url: 'https://discours.io/api/graphql/sse',
+  url: SSE_URL,
   reconnectDelay: 1000,
   maxReconnectAttempts: 5,
   heartbeatInterval: 30000
@@ -68,29 +69,22 @@ async function cacheStaticResource(request) {
     const response = await fetch(request.clone())
 
     if (response?.ok && response?.status >= 200 && response?.status < 300) {
-      // Кешируем только успешные ответы
-      await cache.put(request, response.clone())
-      log('debug', 'Cached static resource:', request.url)
+      // Кешируем только успешные ответы, тихо игнорируем ошибки
+      try {
+        await cache.put(request, response.clone())
+        // Убираем логирование для уменьшения шума
+      } catch (_cacheError) {
+        // Тихо игнорируем ошибки кеширования
+      }
       return response
     }
 
     return response
-  } catch (error) {
-    log('warn', 'Cache operation failed, falling back to network:', error)
+  } catch (_error) {
+    // Убираем логирование ошибок кеширования для уменьшения шума
 
-    try {
-      // Fallback к кешу если сеть недоступна
-      const cache = await caches.open(CLIENT_NAME)
-      const cachedResponse = await cache.match(request)
-      if (cachedResponse) {
-        log('debug', 'Serving from cache after network failure:', request.url)
-        return cachedResponse
-      }
-    } catch (cacheError) {
-      log('warn', 'Cache fallback also failed:', cacheError)
-    }
-
-    return null
+    // Fallback на обычный fetch при ошибках кеширования
+    return fetch(request)
   }
 }
 
@@ -204,7 +198,7 @@ async function broadcastToClients(message) {
     const clients = await self.clients.matchAll({ includeUncontrolled: true })
 
     if (!clients || clients.length === 0) {
-      log('debug', 'No clients to broadcast to')
+      // Тихо выходим если нет клиентов
       return
     }
 
@@ -245,8 +239,8 @@ self.addEventListener('fetch', (event) => {
       Promise.resolve().then(async () => {
         try {
           await cacheStaticResource(event.request)
-        } catch (err) {
-          log('warn', 'Background caching failed:', err)
+        } catch (_err) {
+          // Тихо игнорируем ошибки фонового кеширования
         }
       })
       return // Основной запрос идет через сеть без задержек
@@ -254,7 +248,7 @@ self.addEventListener('fetch', (event) => {
 
     // Для GraphQL запросов - только логируем, НЕ вмешиваемся
     if (url.pathname.includes('/graphql')) {
-      log('debug', 'GraphQL request detected:', url.pathname)
+      // Убираем логирование для уменьшения шума
       return // Полностью пропускаем к сети
     }
 
@@ -458,7 +452,7 @@ async function syncMessages() {
 
     log('info', 'Messages sync completed')
   } catch (error) {
-    log('error', 'Failed to sync messages:', error)
+    log('error', 'Sync messages error:', error)
   }
 }
 

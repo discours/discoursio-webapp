@@ -271,10 +271,10 @@ export const handleFileUpload = async (
         originalFilename = pathParts[pathParts.length - 1]
 
         // Получаем путь до папки с изображением без имени файла
-        const directoryPath = pathParts.slice(0, -1).join('/')
+        const _directoryPath = pathParts.slice(0, -1).join('/')
 
-        // Формируем URL, убедившись что нет дублирования слешей и undefined
-        url = `${cdnUrl}/unsafe/production${directoryPath ? `/${directoryPath}` : ''}`
+        // Формируем URL - quoter сам обрабатывает пути
+        url = locationUrl.toString().replace(locationUrl.hostname, new URL(cdnUrl).hostname)
       } else {
         // Если это относительный путь
         const lastSlashIndex = location.lastIndexOf('/')
@@ -282,16 +282,11 @@ export const handleFileUpload = async (
         if (lastSlashIndex === -1) {
           // Если нет слеша, то это только имя файла
           originalFilename = location
-          url = `${cdnUrl}/unsafe/production`
+          url = `${cdnUrl}/${location}`
         } else {
-          // Если есть слеш, разделяем путь и имя файла
-          const directoryPath = location.slice(0, lastSlashIndex).trim()
-          originalFilename = location.slice(lastSlashIndex + 1)
-
-          // Формируем URL, проверяя наличие пути
-          url = directoryPath
-            ? `${cdnUrl}/unsafe/production/${directoryPath}`
-            : `${cdnUrl}/unsafe/production`
+          // Если есть слеш, разделяем на папку и файл
+          originalFilename = location.substring(lastSlashIndex + 1)
+          url = `${cdnUrl}/${location}`
         }
       }
 

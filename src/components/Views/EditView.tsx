@@ -378,13 +378,14 @@ export const EditView = (props: { draft?: Draft }) => {
 
   const handleNetworkStatusChange = () => {
     const draftId = currentDraft()?.id
+    const { getStatus } = useConnect() // Вызываем useConnect на верхнем уровне функции
 
     if (navigator.onLine && draftId) {
       // Синхронизация с сервером при восстановлении соединения
       syncDraft(draftId)
         .then(() => {
           const draft = currentDraft()
-          if (draft && useConnect().getStatus() !== 'connected') {
+          if (draft && getStatus() !== 'connected') {
             // Переинициализируем awareness с задержкой для стабильности
             setTimeout(() => {
               try {
