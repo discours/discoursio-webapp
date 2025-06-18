@@ -1,190 +1,381 @@
 /// <reference lib="webworker" />
 
-// Версия Service Worker - изменяйте при обновлении логики
-const VERSION = '1.0.5'
+// Service Worker для Discours.io с SSE интеграцией
+// Версия: 1.0.10 - Максимальная безопасность и функциональность
 
-// Конфигурация кеширования
-const CONFIG = {
-  // Имя кеша для динамических ресурсов
-  cacheName: 'discoursio-dynamic-cache-v1',
-  // URLs CDN для изображений
-  cdnUrls: [
-    'https://files.dscrs.site',
-    'https://cdn.dscrs.site',
-    'https://cdn.discours.io',
-    'https://images.discours.io',
-    'https://assets.discours.io'
-  ],
-  // Расширения файлов изображений
-  imageExtensions: /\.(png|jpg|jpeg|gif|svg|webp|ico|bmp|tiff|tif|heic|heif|avif)$/i,
-  // Включить отладку
-  debug: true
+const VERSION = '1.0.10'
+const CLIENT_NAME = 'discours-cache-v1'
+
+// Конфигурация SSE
+const SSE_CONFIG = {
+  url: 'https://discours.io/api/graphql/sse',
+  reconnectDelay: 1000,
+  maxReconnectAttempts: 5,
+  heartbeatInterval: 30000
 }
 
-// Имена кешей
-const CACHES = {
-  static: 'discoursio-static-cache-v1',
-  dynamic: 'discoursio-dynamic-cache-v1',
-  images: 'discoursio-images-cache-v1'
-}
+// Регулярное выражение для статических ресурсов
+const STATIC_RESOURCE_REGEX = /\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2)$/
 
-// Функция проверки CDN URL
-const isCdnUrl = (url) => CONFIG.cdnUrls.some((cdnUrl) => url.startsWith(cdnUrl))
-
-// Функция логирования с возможностью отключения
+// Безопасное логирование
 function log(level, ...args) {
-  if (CONFIG.debug || level === 'error') {
-    console[level]('[ServiceWorker]', ...args)
-  }
-}
-
-// Стратегия "кеш первая, затем сеть"
-async function cacheFirstStrategy(request, cacheName) {
   try {
-    // Сначала проверяем кеш
-    const cachedResponse = await caches.match(request)
-    if (cachedResponse) {
-      return cachedResponse
-    }
-
-    // Если нет в кеше, запрашиваем из сети
-    const networkResponse = await fetch(request)
-
-    if (networkResponse.ok) {
-      // Кешируем успешный ответ
-      try {
-        const cache = await caches.open(cacheName)
-        cache.put(request, networkResponse.clone())
-      } catch (cacheError) {
-        log('warn', `Failed to cache response for ${request.url}`, cacheError)
-        // Продолжаем работу даже если кеширование не удалось
-      }
-    }
-
-    return networkResponse
-  } catch (error) {
-    log('error', `Cache first strategy failed for ${request.url}`, error)
-    // Не блокируем запрос - пропускаем его дальше
-    throw error
+    console[level]('[SW-SSE-Safe]', ...args)
+  } catch (_e) {
+    // Игнорируем ошибки логирования
   }
 }
 
-// Убрана неиспользуемая функция networkFirstStrategy
+// Переменные состояния
+let sseConnection = null
+let reconnectAttempts = 0
+let isOnline = true
+let currentToken = null
 
-// Обработчик fetch событий
-self.addEventListener('fetch', (event) => {
-  // Пропускаем запросы без URL
-  if (!event.request.url) return
+// Безопасная обработка fetch без блокировки
+async function cacheStaticResource(request) {
+  try {
+    // Для статических ресурсов - кешируем ответ БЕЗ блокировки
+    if (request.url.match(STATIC_RESOURCE_REGEX)) {
+      // НЕ используем event.respondWith - просто кешируем параллельно
+      cacheStaticResource(request).catch((err) => log('warn', 'Failed to cache static resource:', err))
+      return // Пропускаем запрос к сети
+    }
 
-  const url = new URL(event.request.url)
+    const cache = await caches.open(CLIENT_NAME)
+    const response = await fetch(request)
 
-  // Пропускаем запросы к API и другие не-GET запросы
-  if (url.pathname.includes('/api/') || event.request.method !== 'GET') return
+    if (response.ok) {
+      cache.put(request, response.clone()).catch((err) => log('warn', 'Failed to cache response:', err))
+    }
 
-  // Пропускаем локальные файлы (same-origin запросы)
-  if (url.origin === self.location.origin) return
+    return response
+  } catch (error) {
+    log('warn', 'Cache operation failed:', error)
+    // Возвращаем из кеша если есть
+    const cache = await caches.open(CLIENT_NAME)
+    return await cache.match(request)
+  }
+}
 
-  // Обработка запросов только к CDN изображениям
-  if (isCdnUrl(url.href)) {
-    event.respondWith(
-      handleImageRequest(event.request).catch((error) => {
-        log('error', `Image request failed, falling back to network: ${url.href}`, error)
-        // Fallback на обычный fetch если Service Worker не смог обработать
-        return fetch(event.request)
+// Установка SSE соединения
+function establishSSEConnection(token) {
+  if (!token) {
+    log('warn', 'No token provided for SSE connection')
+    return
+  }
+
+  try {
+    if (sseConnection) {
+      sseConnection.close()
+    }
+
+    const url = `${SSE_CONFIG.url}?token=${encodeURIComponent(token)}`
+    sseConnection = new EventSource(url, { withCredentials: true })
+
+    sseConnection.onopen = () => {
+      log('info', 'SSE connection established')
+      reconnectAttempts = 0
+      broadcastToClients({
+        type: 'SSE_CONNECTED',
+        timestamp: Date.now()
       })
-    )
-  }
-})
-
-// Специальная обработка запросов изображений
-async function handleImageRequest(request) {
-  const url = new URL(request.url)
-
-  // Проверяем наличие параметров для обхода кеша
-  const hasCacheBuster = url.search.includes('v=') || url.search.includes('retry=')
-
-  if (hasCacheBuster) {
-    log('info', `Bypassing cache for versioned CDN resource: ${url.href}`)
-    try {
-      // Простой fetch без кеширования
-      const response = await fetch(request, { cache: 'no-store' })
-      if (response.ok) {
-        return response
-      }
-      // Если не удалось, пробуем обычный fetch
-      log('warn', `Cache bypass failed, trying normal fetch for: ${url.href}`)
-      return fetch(request)
-    } catch (error) {
-      log('error', `Failed to fetch versioned resource: ${url.href}`, error)
-      // Fallback на обычный fetch
-      return fetch(request)
     }
-  }
 
-  // Для обычных запросов - простая стратегия "кеш, затем сеть"
-  try {
-    return await cacheFirstStrategy(request, CACHES.images)
+    sseConnection.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        log('info', 'SSE message received:', data.entity, data.action)
+
+        // Пересылаем сообщение всем клиентам
+        broadcastToClients({
+          type: 'SSE_MESSAGE',
+          data: data,
+          timestamp: Date.now()
+        })
+      } catch (error) {
+        log('error', 'Failed to parse SSE message:', error)
+      }
+    }
+
+    sseConnection.onerror = (error) => {
+      log('error', 'SSE connection error:', error)
+      handleSSEError()
+    }
+
+    sseConnection.onclose = () => {
+      log('info', 'SSE connection closed')
+      handleSSEError()
+    }
   } catch (error) {
-    log('error', `Cache strategy failed for: ${url.href}`, error)
-    // Fallback на обычный fetch
-    return fetch(request)
+    log('error', 'Failed to establish SSE connection:', error)
+    handleSSEError()
   }
 }
 
-// Обработчик события установки Service Worker
-self.addEventListener('install', (_event) => {
-  log('info', `Service Worker v${VERSION} installing...`)
+// Обработка ошибок SSE с переподключением
+function handleSSEError() {
+  if (sseConnection) {
+    sseConnection.close()
+    sseConnection = null
+  }
 
-  // Немедленно активируем Service Worker без ожидания закрытия вкладок
-  self.skipWaiting()
-})
+  // Exponential backoff для переподключения
+  if (reconnectAttempts < SSE_CONFIG.maxReconnectAttempts && isOnline) {
+    reconnectAttempts++
+    const delay = Math.min(SSE_CONFIG.reconnectDelay * 2 ** (reconnectAttempts - 1), 30000)
 
-// Обработчик события активации Service Worker
-self.addEventListener('activate', (event) => {
-  log('info', `Service Worker v${VERSION} activated`)
+    log('info', `Reconnecting in ${delay}ms (attempt ${reconnectAttempts})`)
 
-  // Очистка старых кешей при активации
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          // Удаляем устаревшие кеши
-          if (cacheName.startsWith('discoursio-') && !Object.values(CACHES).includes(cacheName)) {
-            log('info', `Deleting old cache: ${cacheName}`)
-            return caches.delete(cacheName)
-          }
-          return Promise.resolve()
-        })
+    setTimeout(() => {
+      if (currentToken && isOnline) {
+        establishSSEConnection(currentToken)
+      }
+    }, delay)
+  } else {
+    log('warn', 'Max reconnection attempts reached or offline')
+  }
+}
+
+// Отправка сообщений всем клиентам
+async function broadcastToClients(message) {
+  try {
+    const clients = await self.clients.matchAll({ includeUncontrolled: true })
+
+    for (const client of clients) {
+      try {
+        client.postMessage(message)
+      } catch (error) {
+        log('warn', 'Failed to send message to client:', error)
+      }
+    }
+  } catch (error) {
+    log('error', 'Failed to broadcast to clients:', error)
+  }
+}
+
+// Обработка сетевых запросов (НЕ блокируем)
+self.addEventListener('fetch', (event) => {
+  try {
+    const url = new URL(event.request.url)
+
+    // Для статических ресурсов - кешируем ответ БЕЗ блокировки
+    if (url.pathname.match(STATIC_RESOURCE_REGEX)) {
+      // НЕ используем event.respondWith - просто кешируем параллельно
+      cacheStaticResource(event.request).catch((err) =>
+        log('warn', 'Failed to cache static resource:', err)
       )
-    })
-  )
+      return // Пропускаем запрос к сети
+    }
 
-  // Захватываем контроль над всеми клиентами без перезагрузки
-  self.clients.claim()
+    // Для GraphQL запросов - НЕ блокируем, только логируем
+    if (url.pathname.includes('/graphql')) {
+      log('debug', 'GraphQL request detected:', url.pathname)
+      return // Пропускаем к сети без вмешательства
+    }
+
+    // Для всех остальных запросов - пропускаем без изменений
+    return
+  } catch (error) {
+    log('error', 'Fetch event error:', error)
+    // НЕ блокируем запрос даже при ошибке
+    return
+  }
 })
 
-// Обработчик сообщений от клиентов
+// Обработка сообщений от клиентов
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'CLEAR_IMAGES_CACHE') {
-    event.waitUntil(
-      caches.open(CACHES.images).then((cache) => {
-        return cache.keys().then((requests) => {
-          return Promise.all(
-            requests.map((request) => {
-              return cache.delete(request)
-            })
-          ).then(() => {
-            log('info', 'Images cache cleared')
-            // Отправляем ответ клиенту
-            if (event?.source?.postMessage) {
-              event.source.postMessage({
-                type: 'CACHE_CLEARED',
-                timestamp: Date.now()
-              })
+  try {
+    const { type, data } = event.data || {}
+
+    switch (type) {
+      case 'SET_TOKEN': {
+        currentToken = data?.token
+        if (currentToken) {
+          log('info', 'Token received, establishing SSE connection')
+          establishSSEConnection(currentToken)
+        }
+        break
+      }
+
+      case 'REQUEST_BACKGROUND_SYNC': {
+        if (self.registration?.sync) {
+          self.registration.sync
+            .register(data.tag)
+            .catch((err) => log('warn', 'Failed to register background sync:', err))
+        }
+        break
+      }
+
+      // Добавляем функции из minimal версии
+      case 'PING': {
+        if (event.source?.postMessage) {
+          event.source.postMessage({ type: 'PONG', timestamp: Date.now() })
+        }
+        break
+      }
+
+      case 'GET_VERSION': {
+        if (event.source?.postMessage) {
+          event.source.postMessage({ type: 'VERSION', version: VERSION })
+        }
+        break
+      }
+
+      case 'CLEAR_CACHE': {
+        caches
+          .delete(CLIENT_NAME)
+          .then(() => {
+            log('info', 'Cache cleared by request')
+            if (event.source?.postMessage) {
+              event.source.postMessage({ type: 'CACHE_CLEARED', timestamp: Date.now() })
             }
           })
-        })
-      })
-    )
+          .catch((error) => {
+            log('error', 'Failed to clear cache:', error)
+            if (event.source?.postMessage) {
+              event.source.postMessage({ type: 'CACHE_CLEAR_FAILED', error: error.message })
+            }
+          })
+        break
+      }
+
+      default: {
+        log('warn', 'Unknown message type:', type)
+      }
+    }
+  } catch (error) {
+    log('error', 'Message handling error:', error)
   }
 })
+
+// Обработка фоновой синхронизации
+self.addEventListener('sync', (event) => {
+  try {
+    log('info', 'Background sync triggered:', event.tag)
+
+    switch (event.tag) {
+      case 'draft-sync': {
+        event.waitUntil(syncDrafts())
+        break
+      }
+      case 'message-sync': {
+        event.waitUntil(syncMessages())
+        break
+      }
+      default: {
+        log('warn', 'Unknown sync tag:', event.tag)
+      }
+    }
+  } catch (error) {
+    log('error', 'Sync event error:', error)
+  }
+})
+
+// Синхронизация черновиков
+async function syncDrafts() {
+  try {
+    log('info', 'Syncing drafts...')
+
+    // Здесь можно добавить логику синхронизации черновиков
+    // Например, отправка сохраненных в IndexedDB черновиков на сервер
+
+    broadcastToClients({
+      type: 'DRAFTS_SYNCED',
+      timestamp: Date.now()
+    })
+  } catch (error) {
+    log('error', 'Failed to sync drafts:', error)
+  }
+}
+
+// Синхронизация сообщений
+async function syncMessages() {
+  try {
+    log('info', 'Syncing messages...')
+
+    // Здесь можно добавить логику синхронизации сообщений
+
+    broadcastToClients({
+      type: 'MESSAGES_SYNCED',
+      timestamp: Date.now()
+    })
+  } catch (error) {
+    log('error', 'Failed to sync messages:', error)
+  }
+}
+
+// Отслеживание состояния сети
+self.addEventListener('online', () => {
+  isOnline = true
+  log('info', 'Network is online')
+
+  // Переподключаем SSE если есть токен
+  if (currentToken && !sseConnection) {
+    reconnectAttempts = 0 // Сбрасываем счетчик при восстановлении сети
+    establishSSEConnection(currentToken)
+  }
+})
+
+self.addEventListener('offline', () => {
+  isOnline = false
+  log('info', 'Network is offline')
+
+  if (sseConnection) {
+    sseConnection.close()
+    sseConnection = null
+  }
+})
+
+// Безопасная установка
+self.addEventListener('install', (_event) => {
+  try {
+    log('info', `Service Worker v${VERSION} installing...`)
+    self.skipWaiting() // Немедленная активация
+  } catch (error) {
+    log('error', 'Install error:', error)
+  }
+})
+
+// Безопасная активация
+self.addEventListener('activate', (event) => {
+  try {
+    log('info', `Service Worker v${VERSION} activated`)
+
+    // Очищаем старые кеши
+    event.waitUntil(
+      caches
+        .keys()
+        .then((cacheNames) => {
+          return Promise.all(
+            cacheNames.map((cacheName) => {
+              if (cacheName !== CLIENT_NAME) {
+                log('info', 'Deleting old cache:', cacheName)
+                return caches.delete(cacheName)
+              }
+            })
+          )
+        })
+        .catch((error) => {
+          log('error', 'Failed to clean old caches:', error)
+        })
+    )
+
+    // Берем управление всеми клиентами
+    event.waitUntil(self.clients.claim())
+  } catch (error) {
+    log('error', 'Activation error:', error)
+  }
+})
+
+// Безопасная обработка ошибок
+self.addEventListener('error', (event) => {
+  log('error', 'Service Worker error:', event.error)
+})
+
+self.addEventListener('unhandledrejection', (event) => {
+  log('error', 'Unhandled promise rejection in SW:', event.reason)
+  event.preventDefault()
+})
+
+log('info', `Service Worker v${VERSION} script loaded`)

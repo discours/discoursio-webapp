@@ -1,4 +1,4 @@
-import { AwarenessProvider } from './awareness'
+import { useConnect } from '~/context/connect'
 import { Position } from './types'
 
 /**
@@ -86,7 +86,7 @@ export const trackSelectionAndCursor = ({
   isEmptyContent: (content: string) => boolean
   toolbarMode: string
   editorId?: string
-  awarenessProvider?: AwarenessProvider
+  awarenessProvider?: ReturnType<typeof useConnect>
 }): void => {
   if (isServer) return
 
@@ -164,12 +164,9 @@ export const trackSelectionAndCursor = ({
             try {
               // Обновляем позицию курсора в awareness
               // При этом проверяем состояние подключения провайдера
-              if (
-                typeof awarenessProvider.getConnectionState === 'function' &&
-                awarenessProvider.getConnectionState() === 'connected'
-              ) {
+              if (awarenessProvider.getStatus() === 'connected') {
                 // Только если соединение активно - обновляем позицию
-                awarenessProvider.setCursorPosition(anchorOffset, headOffset)
+                awarenessProvider.setCursorPosition(editorId, anchorOffset, headOffset)
               }
             } catch (e) {
               console.warn('[trackSelectionAndCursor] Error saving cursor position in awareness:', e)
@@ -223,12 +220,9 @@ export const trackSelectionAndCursor = ({
       if (editorId && awarenessProvider) {
         try {
           // Проверяем состояние подключения провайдера
-          if (
-            typeof awarenessProvider.getConnectionState === 'function' &&
-            awarenessProvider.getConnectionState() === 'connected'
-          ) {
+          if (awarenessProvider.getStatus() === 'connected') {
             // При пустом редакторе позиция курсора в начале
-            awarenessProvider.setCursorPosition(0, 0)
+            awarenessProvider.setCursorPosition(editorId, 0, 0)
           }
         } catch (e) {
           console.warn('[trackSelectionAndCursor] Error saving empty cursor position in awareness:', e)

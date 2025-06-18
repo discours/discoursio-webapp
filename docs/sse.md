@@ -1,380 +1,279 @@
+# SSE (Server-Sent Events) Architecture
 
-# Система уведомлений и SSE-соединения в Discours.io
+## Обзор
 
-## 1. Обзор системы
+Система SSE в Discours.io построена на **единой централизованной архитектуре** с использованием Service Worker как основной точки соединения. Вся функциональность объединена в единый модуль `src/context/connect.tsx`.
 
-Система уведомлений Discours.io построена на основе SSE (Server-Sent Events) соединения, обеспечивающего реактивный пользовательский опыт. Система предоставляет два ключевых функциональных блока:
+## Ключевые компоненты
 
-- **Уведомления** - отображение и управление оповещениями о различных событиях
-- **Presence** - информирование о присутствии пользователей и их действиях в реальном времени
+### 1. Service Worker (`public/sw.js`)
+- **Единственная точка SSE соединения** с сервером
+- Управление фоновой синхронизацией и офлайн режимом
+- Кеширование и обработка событий в фоне
+- Работает даже при закрытых вкладках
 
-## 2. Архитектура
+### 2. Connect Context (`src/context/connect.tsx`)
+- **Унифицированный контекст** для всей SSE функциональности
+- Прокси для Service Worker сообщений
+- YJS Awareness для совместного редактирования
+- Background Sync управление
+- Единая точка входа для всех SSE операций
 
-### 2.1. Компоненты системы
+## Архитектура потока данных
 
-- **SSE-соединение** (`connect.tsx`) - базовый уровень для подключения к серверу событий
-- **Контекст уведомлений** (`notifications.tsx`) - обработка и хранение уведомлений
-- **Компоненты отображения** (`NotificationsPanel`, `NotificationGroup`) - визуализация
-- **Awareness провайдер** (`awareness.ts`) - отслеживание присутствия в редакторе
-
-### 2.2. Поток данных
-
-```
-Сервер ─────► SSE-соединение ─────► Контекст уведомлений ─────► Компоненты отображения
-                  │                        │
-                  ▼                        │
-         Awareness провайдер ◄─────────────┘
-```
-
-## 3. SSE-соединение (connect.tsx)
-
-### 3.1. Основные возможности
-
-- Установка и поддержание SSE-соединения с сервером
-- Авторизация через JWT-токен
-- Механизм переподключения с экспоненциальной задержкой (exponential backoff)
-- Дедупликация сообщений
-- Обработка и маршрутизация событий
-
-### 3.2. Ключевые параметры
-
-```typescript
-// Максимальное количество попыток переподключения
-const RECONNECT_TIMES = 5
-// Максимальная задержка между попытками в мс
-const MAX_RECONNECT_DELAY = 30000
+```mermaid
+graph TD
+    A[Сервер SSE] --> B[Service Worker]
+    B --> C[connect.tsx]
+    C --> D[SolidJS компоненты]
+    
+    B --> E[Background Sync]
+    B --> F[Cache Management]
+    
+    C --> G[YJS Awareness]
+    C --> H[Draft Sync]
+    
+    D --> I[useConnect hook]
+    D --> J[useEditorAwareness hook]
 ```
 
-### 3.3. API контекста
+## Основные возможности
 
-```typescript
-type ConnectContextType = {
-  // Добавление обработчика сообщений, возвращает функцию для отписки
-  addHandler: (handler: (data: SSEMessage) => void) => () => void
-  // Получение текущего статуса соединения
-  getStatus: () => ConnectionStatus // 'connected' | 'connecting' | 'disconnected' | 'error'
-}
-```
-
-### 3.4. Формат сообщений
-
+### SSE Сообщения
 ```typescript
 interface SSEMessage {
-  id: string                     // Уникальный ID сообщения
-  entity: string                 // Тип сущности (follower, shout, reaction...)
-  action: string                 // Тип действия (create, delete, update...)
-  payload: Author | Shout | ...  // Полезная нагрузка, зависит от типа сущности
-  created_at?: number            // Время создания (unixtime x1000)
-  seen?: boolean                 // Флаг просмотра
+  id: string
+  entity: string // follower | shout | reaction | draft | message | cursor
+  action: string // create | delete | update | join | follow | seen
+  payload: Author | Shout | Topic | Reaction | Chat | Message
+  created_at?: number
+  seen?: boolean
 }
 ```
 
-## 4. Система уведомлений (notifications.tsx)
-
-### 4.1. Типы сущностей
-
+### Service Worker Управление
 ```typescript
-enum PresenceEntityType {
-  Global = 'global',     // Глобальные оповещения
-  Personal = 'personal', // Персональные оповещения
-  Topic = 'topic',       // События тем
-  Shout = 'shout',       // События публикаций
-  Reaction = 'reaction', // Реакции на контент
-  Chat = 'chat',         // События чатов
-  Message = 'message',   // Личные сообщения
-  Editor = 'editor',     // События редактора
-  Cursor = 'cursor',     // Движения курсора
-  Draft = 'draft',       // События черновиков
-  Proposal = 'proposal'  // Предложения
+const { 
+  register, 
+  unregister, 
+  ping, 
+  clearCache,
+  isRegistered,
+  isConnected,
+  error,
+  version 
+} = useConnect()
+```
+
+### Awareness для совместного редактирования
+```typescript
+const {
+  connectionState,
+  updateCursorPosition,
+  updateEditorContent,
+  getLatestContent,
+  getActiveUsers
+} = useEditorAwareness(editorId, draftId, fieldType)
+```
+
+## Использование
+
+### Базовое подключение
+```tsx
+import { ConnectProvider, useConnect } from '~/context/connect'
+
+// В корневом компоненте
+<ConnectProvider>
+  <App />
+</ConnectProvider>
+
+// В компоненте
+const MyComponent = () => {
+  const { addHandler, getStatus } = useConnect()
+  
+  useEffect(() => {
+    const unsubscribe = addHandler((message) => {
+      console.log('SSE сообщение:', message)
+    })
+    
+    return unsubscribe
+  }, [])
+  
+  return <div>Status: {getStatus()}</div>
 }
 ```
 
-### 4.2. Типы действий
-
-```typescript
-enum PresenceActionType {
-  Create = 'create', // Создание сущности
-  Update = 'update', // Обновление сущности
-  Delete = 'delete', // Удаление сущности
-  Join = 'join',     // Присоединение к сущности
-  Left = 'left',     // Покидание сущности
-  Seen = 'seen'      // Просмотр сущности
-}
-```
-
-### 4.3. API контекста уведомлений
-
-```typescript
-type NotificationsContextType = {
-  // Хранилище уведомлений по ID треда
-  notificationEntities: Record<string, NotificationGroup>
-  // Количество непрочитанных уведомлений
-  unreadNotificationsCount: Accessor<number>
-  // Временная метка последнего просмотра
-  after: Accessor<number | null>
-  // Отсортированные уведомления
-  sortedNotifications: Accessor<NotificationGroup[]>
-  // Количество загруженных уведомлений
-  loadedNotificationsCount: Accessor<number>
-  // Общее количество уведомлений
-  totalNotificationsCount: Accessor<number>
-  // Показать панель уведомлений
-  showNotificationsPanel: () => void
-  // Скрыть панель уведомлений
-  hideNotificationsPanel: () => void
-  // Отметить уведомление как прочитанное
-  markSeen: (notification_id: number) => Promise<void>
-  // Отметить тред как прочитанный
-  markSeenThread: (threadId: string) => Promise<void>
-  // Отметить все уведомления как прочитанные
-  markSeenAll: () => Promise<void>
-  // Загрузить группы уведомлений
-  loadNotificationsGrouped: (options: QueryLoad_NotificationsArgs) => Promise<NotificationGroup[]>
-}
-```
-
-### 4.4. Создание уведомлений из SSE
-
-```typescript
-// Генерация уникального ID треда
-const threadId = `${data.entity}::${data.id}::${data.action}`
-
-// Создание уведомления
-const notificationPayload = {
-  authors: [] as Author[],
-  shout: null as Shout | null,
-  entity: data.entity,
-  action: data.action,
-  thread: threadId,
-  updated_at: timestamp,
-  seen: false
-}
-```
-
-### 4.5. Обработка разных типов уведомлений
-
-- **Reaction** - уведомления о реакциях на контент
-- **Message** - уведомления о личных сообщениях
-- **Shout** - уведомления о публикациях
-- **Global/Personal** - системные и персональные уведомления
-- **Другие типы** - обработка по умолчанию
-
-## 5. Компоненты отображения уведомлений
-
-### 5.1. NotificationsPanel
-
-Панель уведомлений отображает все уведомления, сгруппированные по времени:
-- **Сегодня** - уведомления за текущий день
-- **Вчера** - уведомления за предыдущий день
-- **Ранее** - более старые уведомления
-
-Основные функции:
-- Показ/скрытие панели
-- Подгрузка уведомлений при скролле
-- Отметка всех уведомлений как прочитанных
-
-### 5.2. NotificationGroup
-
-Компонент для отображения группы уведомлений с одинаковым `thread`. Поддерживает:
-- Различные форматы времени (ago, time, date)
-- Специальное отображение для разных типов уведомлений
-- Навигацию к соответствующему контенту
-- Визуальное отличие прочитанных/непрочитанных уведомлений
-
-## 6. Awareness система (awareness.ts)
-
-### 6.1. Назначение
-
-Awareness - это механизм для отслеживания присутствия и активности пользователей в совместном редакторе:
-- Синхронизация позиций курсора
-- Информирование о пользователях, редактирующих документ
-- Отслеживание изменений полей черновика
-
-### 6.2. Структура данных
-
-```typescript
-type EditorState = {
-  // Информация о пользователе
-  user: {
-    id: string | number
-    name: string
-    color: string
-    tabId: string
+### Совместное редактирование
+```tsx
+const Editor = ({ draftId }: { draftId: number }) => {
+  const editorId = `draft-${draftId}`
+  const {
+    updateEditorContent,
+    updateCursorPosition,
+    getActiveUsers,
+    connectionState
+  } = useEditorAwareness(editorId, draftId, 'body')
+  
+  const handleContentChange = (content: string) => {
+    updateEditorContent(content, content.trim() === '')
   }
-  // Идентификатор редактора
-  editorId: string
-  // Временная метка обновления
-  timestamp: number
-  // Содержимое черновика
-  draftContent?: DraftContent
-  // Позиция курсора
-  cursor?: {
-    anchor: number
-    head: number
+  
+  const handleCursorChange = (anchor: number, head: number) => {
+    updateCursorPosition(anchor, head)
   }
-}
-```
-
-### 6.3. Механизм синхронизации
-
-1. **Онлайн режим** - данные передаются через SSE-соединение
-2. **Оффлайн режим** - данные сохраняются в localStorage
-3. **Восстановление** - при восстановлении соединения происходит синхронизация
-
-### 6.4. API Awareness
-
-```typescript
-// Инициализация
-provider.connect(editorId, draftId)
-
-// Установка информации о пользователе
-provider.setUserInfo(editorId, userInfo)
-
-// Обновление позиции курсора
-provider.setCursorPosition(anchor, head)
-
-// Обновление содержимого поля
-provider.updateDraftField(draftId, fieldName, content, isEmpty)
-
-// Получение присутствующих пользователей
-provider.getConnectedUsers()
-```
-
-## 7. Интеграция с другими системами
-
-### 7.1. Интеграция с системой авторизации
-
-SSE-соединение автоматически устанавливается при наличии активной сессии:
-
-```typescript
-createEffect(
-  on(
-    session,
-    (s) => {
-      if (s?.token) {
-        initConnection(s.token)
-      } else {
-        closeConnection()
-      }
-    },
-    { defer: false }
+  
+  return (
+    <div>
+      <div>Подключенные пользователи: {getActiveUsers().length}</div>
+      <div>Статус: {connectionState()}</div>
+      {/* Редактор */}
+    </div>
   )
+}
+```
+
+### Обработка уведомлений
+```tsx
+const NotificationHandler = () => {
+  const { addHandler } = useConnect()
+  
+  useEffect(() => {
+    return addHandler((message) => {
+      switch (message.entity) {
+        case 'reaction':
+          if (message.action === 'create') {
+            showNotification('Новая реакция!')
+          }
+          break
+        case 'message':
+          if (message.action === 'create') {
+            showNotification('Новое сообщение!')
+          }
+          break
+      }
+    })
+  }, [])
+  
+  return null
+}
+```
+
+## Service Worker SSE Integration
+
+### Автоматическая регистрация
+Service Worker автоматически регистрируется при инициализации `ConnectProvider`:
+
+```typescript
+onMount(() => {
+  if (isSupported()) {
+    register().catch(error => {
+      console.error('[Connect] Автоматическая регистрация неудачна:', error)
+    })
+  }
+})
+```
+
+### Передача токена авторизации
+```typescript
+// Автоматическая передача токена при изменении сессии
+createEffect(
+  on(session, (s) => {
+    if (s?.token && serviceWorker) {
+      setToken(s.token)
+    }
+  })
 )
 ```
 
-### 7.2. Интеграция с черновиками
-
-Awareness система интегрируется с черновиками для совместного редактирования:
-
+### Фоновая синхронизация
 ```typescript
-// В контексте черновиков
-const { provider } = useEditorAwareness(editorId, draftId)
-// Обновление поля черновика
-provider.updateDraftField(draftId, 'body', content, isEmpty)
+const { requestBackgroundSync } = useConnect()
+
+// При отсутствии соединения
+if (connectionStatus !== 'connected') {
+  requestBackgroundSync('draft-sync')
+}
 ```
 
-## 8. Обработка ошибок и восстановление
+## Состояния соединения
 
-### 8.1. Стратегии переподключения
+- **`disconnected`** - Service Worker не зарегистрирован
+- **`connecting`** - Service Worker зарегистрирован, но SSE не подключен
+- **`connected`** - SSE активно и работает
+- **`error`** - Ошибка соединения или регистрации
 
-1. **Exponential backoff** - увеличение задержки между попытками
-2. **Ограничение попыток** - максимальное количество попыток
-3. **Сброс счетчика** - при успешном подключении
-
-```typescript
-const calculateReconnectDelay = () => {
-  const baseDelay = 1000; // 1 секунда
-  const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
-  return delay;
-};
-```
-
-### 8.2. Оффлайн режим
-
-При отсутствии сетевого соединения:
-1. Данные сохраняются локально
-2. Система продолжает функционировать в ограниченном режиме
-3. При восстановлении соединения происходит синхронизация
-
-## 9. Примеры использования
-
-### 9.1. Подписка на уведомления
+## Обработка ошибок
 
 ```typescript
-// В компоненте
-const { sortedNotifications, markSeenThread } = useNotifications()
+const { error, getStatus } = useConnect()
 
-// Отображение уведомлений
-<For each={sortedNotifications()}>
-  {(notification) => (
-    <NotificationItem
-      notification={notification}
-      onRead={() => markSeenThread(notification.thread)}
-    />
-  )}
-</For>
+if (error()) {
+  console.error('Ошибка SSE:', error())
+}
+
+if (getStatus() === 'error') {
+  // Показать пользователю уведомление об ошибке
+}
 ```
 
-### 9.2. Использование Awareness
+## Офлайн поддержка
 
+Service Worker автоматически:
+- Кеширует критические ресурсы
+- Сохраняет черновики в localStorage
+- Запрашивает фоновую синхронизацию при восстановлении соединения
+- Восстанавливает данные из локального хранилища
+
+## Миграция с старой архитектуры
+
+### Было (несколько контекстов):
 ```typescript
-// В редакторе
-const { 
-  updateCursorPosition, 
-  updateEditorContent,
-  getActiveUsers, 
-  cursors 
-} = useEditorAwareness(editorId, draftId)
-
-// Обновление позиции курсора
-onSelectionChange((selection) => {
-  updateCursorPosition(selection.anchor, selection.head)
-})
-
-// Обновление содержимого
-onChange((content) => {
-  updateEditorContent(content)
-})
-
-// Показ активных пользователей
-<For each={getActiveUsers()}>
-  {(user) => <ActiveUserBadge user={user} />}
-</For>
-
-// Отображение курсоров других пользователей
-<For each={cursors()}>
-  {([clientId, cursor]) => (
-    <RemoteCursor
-      position={cursor.head}
-      color={cursor.user.color}
-      name={cursor.user.name}
-    />
-  )}
-</For>
+// Старый подход
+import { useServiceWorker } from '~/context/worker'
+import { useSSE } from '~/context/connect' 
+import { useAwareness } from '~/components/SimpleRichEditor/lib/awareness'
 ```
 
-## 10. Рекомендации по расширению
+### Стало (единый контекст):
+```typescript
+// Новый подход
+import { useConnect, useEditorAwareness } from '~/context/connect'
+```
 
-### 10.1. Добавление новых типов уведомлений
+## Производительность
 
-1. Добавить новый тип в `PresenceEntityType`
-2. Расширить обработчик в `handlePresenceMessage`
-3. Добавить отображение в `NotificationGroup`
+### Преимущества централизованной архитектуры:
+- **Одно SSE соединение** вместо множественных
+- **Устранение дублирования** сообщений и обработчиков
+- **Лучшая надежность** через Service Worker
+- **Экономия ресурсов** браузера
+- **Фоновая работа** даже при закрытых вкладках
 
-### 10.2. Расширение функционала Awareness
+### Оптимизации:
+- Кеширование сообщений в памяти
+- Дебаунсинг обновлений черновиков
+- Ленивая инициализация Awareness провайдеров
+- Автоматическая очистка неиспользуемых ресурсов
 
-1. Создать новый тип состояния в `EditorState`
-2. Добавить методы в `AwarenessProvider`
-3. Расширить API хука `useEditorAwareness`
+## Отладка
 
-### 10.3. Оптимизация производительности
+### Логирование
+Все операции логируются с префиксом `[Connect]`:
+```typescript
+console.log('[Connect] SSE подключен через Service Worker')
+console.log('[Connect] Токен отправлен в Service Worker')
+console.log('[Connect] Запрос фоновой синхронизации: draft-sync')
+```
 
-- Использовать виртуализацию для больших списков уведомлений
-- Реализовать пагинацию для загрузки старых уведомлений
-- Оптимизировать обновление состояний через `batch`
+### DevTools
+- **Application → Service Workers** - статус Service Worker
+- **Network → EventStream** - SSE соединения
+- **Application → Local Storage** - сохраненные черновики
+- **Console** - логи операций
 
-## 11. Ограничения и известные проблемы
+## Безопасность
 
-1. Максимальное количество уведомлений в кэше дедупликации - 1000
-2. Ограниченное количество попыток переподключения - 5
-3. Необходимость правильного закрытия соединения при размонтировании компонентов
+- Токены передаются только через защищенные каналы Service Worker
+- Автоматическая очистка токенов при разлогинивании
+- Валидация всех входящих SSE сообщений
+- Изоляция данных между пользователями

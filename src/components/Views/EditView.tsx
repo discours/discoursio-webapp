@@ -7,16 +7,16 @@ import { Panel } from '~/components/Sidebar/Sidebar'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Modal } from '~/components/_shared/Modal'
 import { EditorSwiper } from '~/components/_shared/SolidSwiper'
-import { useConnect } from '~/context/connect'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import type { Draft, DraftInput, MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
+import { type SSEMessage, useConnect } from '../../context/connect'
 import { AudioProfile } from '../Draft/DraftAudio'
 import { SubtitleComponent, TitleSection } from '../Draft/DraftEditorHead'
 import { LeadComponent } from '../Draft/DraftEditorLead'
 import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
-import { destroyProvider, getProvider } from '../SimpleRichEditor/lib/awareness'
+
 import { isEmptyContent } from '../SimpleRichEditor/lib/empty'
 import { CommandType, EditorData } from '../SimpleRichEditor/lib/types'
 import { AudioUploader } from '../Upload/AudioUploader'
@@ -224,11 +224,7 @@ export const EditView = (props: { draft?: Draft }) => {
         unsubscribeFn()
       }
 
-      const draft = currentDraft()
-      if (draft) {
-        const editorId = `draft-${draft.id}`
-        destroyProvider(editorId)
-      }
+      // Provider cleanup removed with awareness system simplification
     } catch (error) {
       console.error('[EditView] Error during awareness cleanup:', error)
     }
@@ -388,7 +384,7 @@ export const EditView = (props: { draft?: Draft }) => {
       syncDraft(draftId)
         .then(() => {
           const draft = currentDraft()
-          if (draft && getProvider().getConnectionState() !== 'connected') {
+          if (draft && useConnect().getStatus() !== 'connected') {
             // Переинициализируем awareness с задержкой для стабильности
             setTimeout(() => {
               try {
@@ -736,43 +732,20 @@ export const EditView = (props: { draft?: Draft }) => {
         setAwarenessUnsubscribe(null)
       }
 
-      const awarenessProvider = getProvider()
-      const { addHandler } = useConnect()
+      const connectContext = useConnect()
       const editorId = `draft-${draft.id}`
 
-      // Проверяем соединение перед подключением
-      if (awarenessProvider.getConnectionState() === 'disconnected') {
-        // Используем существующие методы
-        try {
-          destroyProvider(editorId)
-        } catch (e) {
-          console.log('[EditView] No provider to destroy', e)
-        }
-      }
+      // Подключаем редактор к awareness
+      connectContext.connectEditor(editorId, draft.id)
 
-      awarenessProvider['addHandler'] = addHandler
-
-      // Устанавливаем обработчик изменения состояния соединения
-      awarenessProvider.onConnectionStateChanged((state) => {
-        console.log(`[EditView] Awareness connection state changed: ${state}`)
-        if (state === 'disconnected' && navigator.onLine) {
-          // Если соединение разорвано, но интернет есть - пытаемся переподключиться
-          setTimeout(() => {
-            try {
-              console.log('[EditView] Attempting to reconnect to awareness')
-              awarenessProvider.connect(editorId)
-            } catch (reconnectError) {
-              console.error('[EditView] Failed to reconnect to awareness:', reconnectError)
-            }
-          }, 2000)
+      // Устанавливаем обработчик SSE сообщений
+      const unsubscribe = connectContext.addHandler((message: SSEMessage) => {
+        // Обрабатываем только сообщения, связанные с черновиками
+        if (message.entity === 'draft' && message.payload) {
+          handleAwarenessUpdates({ added: [], updated: [1], removed: [] })
         }
       })
 
-      // Подключаемся к провайдеру
-      awarenessProvider.connect(editorId)
-
-      // Устанавливаем обработчик изменений и сохраняем функцию отписки
-      const unsubscribe = awarenessProvider.onAwarenessChange(handleAwarenessUpdates)
       setAwarenessUnsubscribe(() => unsubscribe)
     } catch (error) {
       console.error('[EditView] Failed to connect to awareness:', error)
@@ -793,12 +766,12 @@ export const EditView = (props: { draft?: Draft }) => {
     const draftId = currentDraft()?.id
     if (!draftId) return
 
-    const awarenessProvider = getProvider()
-    if (awarenessProvider.getConnectionState() !== 'connected') return
+    const connectContext = useConnect()
+    if (connectContext.getStatus() !== 'connected') return
 
     try {
       untrack(() => {
-        const draftFields = awarenessProvider.getDraftContent(draftId)
+        const draftFields = connectContext.getDraftContent(draftId)
 
         if (!draftFields || Object.keys(draftFields).length === 0) {
           return
