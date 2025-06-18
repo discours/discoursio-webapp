@@ -705,10 +705,14 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
   // Автоматическая регистрация Service Worker и отправка токена
   onMount(() => {
+    // Проверяем поддержку и регистрируем с защитой от ошибок
     if (isSupported()) {
       register().catch((error) => {
-        console.error('[Connect] Автоматическая регистрация неудачна:', error)
+        console.warn('[Connect] Service Worker registration failed, continuing without it:', error)
+        // Не блокируем работу приложения даже если SW не зарегистрировался
       })
+    } else {
+      console.info('[Connect] Service Worker not supported, running without it')
     }
   })
 
