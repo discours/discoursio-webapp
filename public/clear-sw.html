@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Очистка Service Worker - Discours.io</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .danger { background: #dc3545; }
+        .danger:hover { background: #c82333; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .actions {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Очистка Service Worker</h1>
+        
+        <div class="info">
+            <strong>Назначение:</strong> Эта страница поможет полностью удалить все Service Worker регистрации, 
+            которые могут блокировать работу сайта.
+        </div>
+
+        <div class="actions">
+            <button onclick="checkStatus()">🔍 Проверить статус</button>
+            <button onclick="unregisterAll()" class="danger">🗑️ Удалить все SW</button>
+            <button onclick="clearAllCaches()" class="danger">🧹 Очистить весь кеш</button>
+            <button onclick="fullCleanup()" class="danger">💥 Полная очистка</button>
+            <button onclick="reloadPage()">🔄 Перезагрузить</button>
+        </div>
+
+        <div id="status"></div>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        let logElement = document.getElementById('log');
+        let statusElement = document.getElementById('status');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `status ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logElement.appendChild(logEntry);
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function clearLog() {
+            logElement.innerHTML = '';
+        }
+
+        async function checkStatus() {
+            clearLog();
+            log('Проверяем статус Service Worker...', 'info');
+
+            if (!('serviceWorker' in navigator)) {
+                log('❌ Service Worker не поддерживается в этом браузере', 'error');
+                return;
+            }
+
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                log(`📊 Найдено ${registrations.length} активных регистраций SW`, 'info');
+
+                if (registrations.length === 0) {
+                    log('✅ Service Worker регистрации отсутствуют', 'success');
+                } else {
+                    registrations.forEach((reg, index) => {
+                        log(`📍 SW #${index + 1}: ${reg.scope}`, 'warning');
+                        if (reg.active) log(`  └ Состояние: ${reg.active.state}`, 'info');
+                        if (reg.waiting) log(`  └ Ожидает: ${reg.waiting.state}`, 'info');
+                        if (reg.installing) log(`  └ Устанавливается: ${reg.installing.state}`, 'info');
+                    });
+                }
+
+                // Проверяем кеши
+                const cacheNames = await caches.keys();
+                log(`💾 Найдено ${cacheNames.length} кешей: ${cacheNames.join(', ')}`, 'info');
+
+            } catch (error) {
+                log(`❌ Ошибка проверки: ${error.message}`, 'error');
+            }
+        }
+
+        async function unregisterAll() {
+            clearLog();
+            log('🗑️ Начинаем удаление всех Service Worker...', 'warning');
+
+            if (!('serviceWorker' in navigator)) {
+                log('❌ Service Worker не поддерживается', 'error');
+                return;
+            }
+
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                log(`📊 Найдено ${registrations.length} регистраций для удаления`, 'info');
+
+                if (registrations.length === 0) {
+                    log('✅ Нет активных Service Worker для удаления', 'success');
+                    return;
+                }
+
+                for (let i = 0; i < registrations.length; i++) {
+                    const reg = registrations[i];
+                    log(`🗑️ Удаляем SW #${i + 1}: ${reg.scope}`, 'warning');
+                    
+                    try {
+                        const result = await reg.unregister();
+                        if (result) {
+                            log(`✅ SW #${i + 1} успешно удален`, 'success');
+                        } else {
+                            log(`⚠️ SW #${i + 1} не удален (возможно уже неактивен)`, 'warning');
+                        }
+                    } catch (error) {
+                        log(`❌ Ошибка удаления SW #${i + 1}: ${error.message}`, 'error');
+                    }
+                }
+
+                log('🎉 Удаление Service Worker завершено', 'success');
+                
+                // Проверяем результат
+                setTimeout(checkStatus, 1000);
+
+            } catch (error) {
+                log(`❌ Критическая ошибка: ${error.message}`, 'error');
+            }
+        }
+
+        async function clearAllCaches() {
+            clearLog();
+            log('🧹 Начинаем очистку всех кешей...', 'warning');
+
+            try {
+                const cacheNames = await caches.keys();
+                log(`💾 Найдено ${cacheNames.length} кешей для очистки`, 'info');
+
+                if (cacheNames.length === 0) {
+                    log('✅ Кеши отсутствуют', 'success');
+                    return;
+                }
+
+                for (const cacheName of cacheNames) {
+                    log(`🗑️ Удаляем кеш: ${cacheName}`, 'warning');
+                    try {
+                        await caches.delete(cacheName);
+                        log(`✅ Кеш ${cacheName} удален`, 'success');
+                    } catch (error) {
+                        log(`❌ Ошибка удаления кеша ${cacheName}: ${error.message}`, 'error');
+                    }
+                }
+
+                log('🎉 Очистка кешей завершена', 'success');
+
+            } catch (error) {
+                log(`❌ Ошибка очистки кешей: ${error.message}`, 'error');
+            }
+        }
+
+        async function fullCleanup() {
+            clearLog();
+            log('💥 Начинаем полную очистку...', 'warning');
+
+            // 1. Удаляем Service Worker
+            await unregisterAll();
+            
+            // Небольшая пауза
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // 2. Очищаем кеши
+            await clearAllCaches();
+            
+            // 3. Очищаем localStorage
+            try {
+                log('🧹 Очищаем localStorage...', 'warning');
+                const keys = Object.keys(localStorage);
+                const swKeys = keys.filter(key => 
+                    key.includes('sw-') || 
+                    key.includes('service-worker') || 
+                    key.includes('discours-presence')
+                );
+                
+                if (swKeys.length > 0) {
+                    swKeys.forEach(key => {
+                        localStorage.removeItem(key);
+                        log(`🗑️ Удален ключ localStorage: ${key}`, 'info');
+                    });
+                    log(`✅ Очищено ${swKeys.length} ключей localStorage`, 'success');
+                } else {
+                    log('✅ Связанные с SW ключи localStorage не найдены', 'success');
+                }
+            } catch (error) {
+                log(`❌ Ошибка очистки localStorage: ${error.message}`, 'error');
+            }
+
+            // 4. Очищаем sessionStorage
+            try {
+                log('🧹 Очищаем sessionStorage...', 'warning');
+                sessionStorage.clear();
+                log('✅ sessionStorage очищен', 'success');
+            } catch (error) {
+                log(`❌ Ошибка очистки sessionStorage: ${error.message}`, 'error');
+            }
+
+            log('🎉 Полная очистка завершена! Рекомендуется перезагрузить страницу.', 'success');
+        }
+
+        function reloadPage() {
+            log('🔄 Перезагружаем страницу...', 'info');
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        }
+
+        // Автоматическая проверка при загрузке
+        window.addEventListener('load', () => {
+            log('🚀 Страница загружена, проверяем статус...', 'info');
+            setTimeout(checkStatus, 500);
+        });
+    </script>
+</body>
+</html> 

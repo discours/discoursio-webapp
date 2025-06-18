@@ -20,6 +20,9 @@ import { Doc } from 'yjs'
 import { Chat, Message } from '~/graphql/schema/chat.gen'
 import { useSession } from './session'
 
+// Импортируем extended-eventsource для надежного SSE соединения
+import { EventSource as ExtendedEventSource } from 'extended-eventsource'
+
 /**
  * Интерфейс SSE сообщения
  */
@@ -62,35 +65,16 @@ export type EditorState = {
   }
 }
 
-// Типы для Service Worker сообщений
-interface ServiceWorkerMessage {
-  type: string
-  data?: unknown
-  messageId?: string
-  timestamp?: number
-  version?: string
-  error?: string
-}
-
 // Унифицированный контекст
 export type ConnectContextType = {
   // SSE функциональность
   addHandler: (handler: (data: SSEMessage) => void) => () => void
   getStatus: () => ConnectionStatus
-
-  // Service Worker управление
-  isRegistered: () => boolean
-  isConnected: () => boolean
-  isSupported: () => boolean
+  connect: () => Promise<void>
+  disconnect: () => void
+  reconnect: () => Promise<void>
   error: () => string | null
-  version: () => string | null
-  register: () => Promise<void>
-  unregister: () => Promise<void>
-  ping: () => Promise<boolean>
-  clearCache: () => Promise<void>
-  requestBackgroundSync: (tag: string) => void
-  lastPong: () => number | null
-  lastSSEMessage: () => SSEMessage | null
+  lastMessage: () => SSEMessage | null
 
   // Awareness функциональность
   setUserInfo: (editorId: string, user: Partial<EditorState['user']>) => void
@@ -118,306 +102,148 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   // SSE состояние
   const [status, setStatus] = createSignal<ConnectionStatus>('disconnected')
   const [handlers, setHandlers] = createSignal<Array<(data: SSEMessage) => void>>([])
-
-  // Service Worker состояние
-  const [isRegistered, setIsRegistered] = createSignal(false)
-  const [isConnected, setIsConnected] = createSignal(false)
   const [error, setError] = createSignal<string | null>(null)
-  const [version, setVersion] = createSignal<string | null>(null)
-  const [lastPong, setLastPong] = createSignal<number | null>(null)
-  const [lastSSEMessage, setLastSSEMessage] = createSignal<SSEMessage | null>(null)
+  const [lastMessage, setLastMessage] = createSignal<SSEMessage | null>(null)
 
   // Awareness состояние
   const [awarenessProviders] = createSignal<Map<string, { doc: Doc; awareness: Awareness }>>(new Map())
   const [draftFieldCache] = createSignal<Map<string, string>>(new Map())
 
-  let serviceWorker: ServiceWorker | null = null
-  const messageHandlers = new Map<string, (data: ServiceWorkerMessage) => void>()
+  // SSE соединение
+  let sseConnection: ExtendedEventSource | null = null
+  let reconnectAttempts = 0
+  const maxReconnectAttempts = 5
+  const baseReconnectDelay = 1000
 
-  // Проверяем поддержку Service Worker
-  const isSupported = () => typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+  // === SSE ФУНКЦИОНАЛЬНОСТЬ ===
 
-  // Безопасная отправка сообщений в Service Worker
-  const sendMessage = (type: string, data?: unknown): Promise<ServiceWorkerMessage> => {
-    return new Promise((resolve, reject) => {
-      if (!serviceWorker) {
-        reject(new Error('Service Worker не зарегистрирован'))
-        return
-      }
-
-      try {
-        const messageId = Date.now().toString()
-        console.log(`[Connect] Отправляем сообщение ${type} с ID ${messageId}`)
-
-        const timeoutId = setTimeout(() => {
-          console.warn(`[Connect] Таймаут для сообщения ${type} (ID: ${messageId})`)
-          messageHandlers.delete(messageId)
-          reject(new Error(`Timeout: Service Worker не ответил на ${type}`))
-        }, 10000) // Увеличиваем таймаут до 10 секунд
-
-        messageHandlers.set(messageId, (response) => {
-          console.log(`[Connect] Получен ответ на ${type} (ID: ${messageId}):`, response)
-          clearTimeout(timeoutId)
-          messageHandlers.delete(messageId)
-          resolve(response)
-        })
-
-        serviceWorker.postMessage({ type, data, messageId })
-      } catch (error) {
-        console.error(`[Connect] Ошибка отправки сообщения ${type}:`, error)
-        reject(error instanceof Error ? error : new Error(String(error)))
-      }
-    })
-  }
-
-  // Обработка сообщений от Service Worker
-  const handleMessage = (event: MessageEvent) => {
-    try {
-      const { type, data, messageId } = event.data || {}
-
-      // Обрабатываем ответы на запросы
-      if (messageId && messageHandlers.has(messageId)) {
-        const handler = messageHandlers.get(messageId)
-        if (handler) {
-          handler(event.data)
-          return
-        }
-      }
-
-      // Обрабатываем события
-      switch (type) {
-        case 'PONG':
-          setLastPong(data?.timestamp || Date.now())
-          break
-
-        case 'VERSION':
-          setVersion(data?.version || null)
-          break
-
-        case 'SSE_CONNECTED': {
-          setIsConnected(true)
-          setError(null)
-          setStatus('connected')
-          console.log('[Connect] SSE-клиент подключен через Service Worker')
-          break
-        }
-
-        case 'SSE_MESSAGE': {
-          setLastSSEMessage(data as SSEMessage)
-          console.log('[Connect] SSE событие от встроенного клиента:', data)
-
-          // Вызываем все обработчики SSE сообщений
-          handlers().forEach((handler) => handler(data as SSEMessage))
-          break
-        }
-
-        case 'REQUEST_TOKEN': {
-          // SSE-клиент в Service Worker запрашивает токен
-          console.log('[Connect] SSE-клиент запрашивает токен')
-          const currentToken = session()?.token
-          if (currentToken) {
-            setToken(currentToken)
-          }
-          break
-        }
-
-        case 'CACHE_CLEARED':
-          console.log('[Connect] Кеш очищен')
-          break
-
-        case 'CACHE_CLEAR_FAILED': {
-          console.error('[Connect] Ошибка очистки кеша:', data?.error)
-          setError(`Ошибка очистки кеша: ${data?.error}`)
-          break
-        }
-
-        default:
-          console.log('[Connect] Неизвестное сообщение:', type, data)
-      }
-    } catch (error) {
-      console.error('[Connect] Ошибка обработки сообщения:', error)
-      setError(`Ошибка обработки сообщения: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  }
-
-  // Регистрация Service Worker
-  const register = async (): Promise<void> => {
-    if (!isSupported()) {
-      throw new Error('Service Worker не поддерживается')
+  const connect = async (): Promise<void> => {
+    const token = session()?.token
+    if (!token) {
+      throw new Error('Токен не найден для SSE соединения')
     }
 
     try {
       setError(null)
+      setStatus('connecting')
 
-      const registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/',
-        updateViaCache: 'none'
-      })
-
-      console.log('[Connect] Service Worker зарегистрирован:', registration.scope)
-
-      // Получаем активный Service Worker
-      serviceWorker = registration.active || registration.waiting || registration.installing
-
-      if (serviceWorker) {
-        setIsRegistered(true)
-
-        // Слушаем сообщения
-        navigator.serviceWorker.addEventListener('message', handleMessage)
-
-        // Проверяем версию
-        try {
-          // Ждем немного, чтобы Service Worker полностью активировался
-          await new Promise((resolve) => setTimeout(resolve, 100))
-
-          // Проверяем состояние Service Worker
-          if (serviceWorker.state === 'activated' || serviceWorker.state === 'activating') {
-            console.log('[Connect] Service Worker готов, запрашиваем версию')
-            const versionResponse = await sendMessage('GET_VERSION')
-            setVersion(versionResponse.version || null)
-          } else {
-            console.warn('[Connect] Service Worker не активен, состояние:', serviceWorker.state)
-            // Попробуем получить версию позже
-            setTimeout(async () => {
-              try {
-                const versionResponse = await sendMessage('GET_VERSION')
-                setVersion(versionResponse.version || null)
-              } catch (error) {
-                console.warn('[Connect] Отложенный запрос версии не удался:', error)
-              }
-            }, 1000)
-          }
-        } catch (error) {
-          console.warn('[Connect] Не удалось получить версию:', error)
-        }
-
-        // Отправляем токен если есть
-        const currentToken = session()?.token
-        if (currentToken) {
-          setToken(currentToken)
-        }
+      // Закрываем существующее соединение если есть
+      if (sseConnection) {
+        sseConnection.close()
+        sseConnection = null
       }
 
-      // Слушаем обновления
-      registration.addEventListener('updatefound', () => {
-        console.log('[Connect] Найдено обновление Service Worker')
-        const newWorker = registration.installing
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'activated') {
-              console.log('[Connect] Новый Service Worker активирован')
-              serviceWorker = newWorker
+      console.log('[Connect] Устанавливаем прямое SSE соединение...')
+
+      const url = `https://connect.discours.io?token=${encodeURIComponent(token)}`
+
+      sseConnection = new ExtendedEventSource(url)
+
+      sseConnection.onopen = () => {
+        console.log('[Connect] SSE соединение установлено')
+        setStatus('connected')
+        setError(null)
+        reconnectAttempts = 0
+      }
+
+      sseConnection.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          console.log('[Connect] Получено SSE сообщение:', data)
+
+          setLastMessage(data)
+
+          // Вызываем все обработчики
+          handlers().forEach((handler) => {
+            try {
+              handler(data)
+            } catch (handlerError) {
+              console.error('[Connect] Ошибка в обработчике SSE сообщения:', handlerError)
             }
           })
-        }
-      })
-    } catch (error) {
-      console.error('[Connect] Ошибка регистрации:', error)
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      setError(`Ошибка регистрации: ${errorMessage}`)
-      setStatus('error')
-      throw error instanceof Error ? error : new Error(String(error))
-    }
-  }
-
-  // Отмена регистрации
-  const unregister = async (): Promise<void> => {
-    if (!isSupported()) {
-      return
-    }
-
-    try {
-      const registrations = await navigator.serviceWorker.getRegistrations()
-
-      for (const registration of registrations) {
-        if (registration.scope.includes('/')) {
-          await registration.unregister()
-          console.log('[Connect] Регистрация Service Worker отменена')
+        } catch (parseError) {
+          console.error('[Connect] Ошибка парсинга SSE сообщения:', parseError)
         }
       }
 
-      setIsRegistered(false)
-      setIsConnected(false)
-      setStatus('disconnected')
-      setVersion(null)
-      serviceWorker = null
+      sseConnection.onerror = (event: Event) => {
+        console.error('[Connect] Ошибка SSE соединения:', event)
+        setStatus('error')
+        setError('Ошибка SSE соединения')
 
-      // Убираем слушатель
-      navigator.serviceWorker.removeEventListener('message', handleMessage)
-    } catch (error) {
-      console.error('[Connect] Ошибка отмены регистрации:', error)
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      setError(`Ошибка отмены регистрации: ${errorMessage}`)
-      throw error instanceof Error ? error : new Error(String(error))
-    }
-  }
+        // Автоматическое переподключение
+        handleReconnect()
+      }
 
-  // Ping Service Worker
-  const ping = async (): Promise<boolean> => {
-    try {
-      const response = await sendMessage('PING')
-      return response.type === 'PONG'
-    } catch (error) {
-      console.error('[Connect] Ping неудачен:', error)
-      return false
-    }
-  }
+      sseConnection.addEventListener('close', () => {
+        console.log('[Connect] SSE соединение закрыто')
+        setStatus('disconnected')
 
-  // Очистка кеша
-  const clearCache = async (): Promise<void> => {
-    try {
-      await sendMessage('CLEAR_CACHE')
-      console.log('[Connect] Запрос на очистку кеша отправлен')
-    } catch (error) {
-      console.error('[Connect] Ошибка очистки кеша:', error)
-      throw error instanceof Error ? error : new Error(String(error))
-    }
-  }
-
-  // Установка токена для SSE-клиента в Service Worker
-  const setToken = (token: string): void => {
-    if (!serviceWorker) {
-      console.warn('[Connect] Service Worker не зарегистрирован, токен для SSE-клиента не установлен')
-      return
-    }
-
-    try {
-      serviceWorker.postMessage({
-        type: 'SET_TOKEN',
-        data: { token }
+        // Переподключение если не было явного отключения
+        if (reconnectAttempts < maxReconnectAttempts) {
+          handleReconnect()
+        }
       })
-      console.log('[Connect] Токен отправлен SSE-клиенту в Service Worker')
-    } catch (error) {
-      console.error('[Connect] Ошибка отправки токена SSE-клиенту:', error)
+    } catch (connectError) {
+      console.error('[Connect] Ошибка подключения SSE:', connectError)
+      setStatus('error')
       setError(
-        `Ошибка отправки токена SSE-клиенту: ${error instanceof Error ? error.message : String(error)}`
+        `Ошибка подключения: ${connectError instanceof Error ? connectError.message : String(connectError)}`
       )
+      throw connectError instanceof Error ? connectError : new Error(String(connectError))
     }
   }
 
-  // Запрос фоновой синхронизации
-  const requestBackgroundSync = (tag: string): void => {
-    if (!serviceWorker) {
-      console.warn('[Connect] Service Worker не зарегистрирован, синхронизация недоступна')
+  const disconnect = () => {
+    console.log('[Connect] Отключаем SSE соединение')
+
+    if (sseConnection) {
+      sseConnection.close()
+      sseConnection = null
+    }
+
+    setStatus('disconnected')
+    setError(null)
+    reconnectAttempts = maxReconnectAttempts // Предотвращаем автоматическое переподключение
+  }
+
+  const reconnect = async (): Promise<void> => {
+    console.log('[Connect] Переподключение SSE...')
+    disconnect()
+
+    // Небольшая задержка перед переподключением
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    reconnectAttempts = 0
+    await connect()
+  }
+
+  const handleReconnect = () => {
+    if (reconnectAttempts >= maxReconnectAttempts) {
+      console.error('[Connect] Достигнут лимит попыток переподключения')
+      setStatus('error')
+      setError('Не удалось восстановить соединение')
       return
     }
 
-    try {
-      serviceWorker.postMessage({
-        type: 'REQUEST_BACKGROUND_SYNC',
-        data: { tag }
-      })
-      console.log('[Connect] Запрос фоновой синхронизации:', tag)
-    } catch (error) {
-      console.error('[Connect] Ошибка запроса синхронизации:', error)
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      setError(`Ошибка запроса синхронизации: ${errorMessage}`)
-    }
+    const delay = Math.min(baseReconnectDelay * 2 ** reconnectAttempts, 30000)
+    reconnectAttempts++
+
+    console.log(
+      `[Connect] Переподключение через ${delay}ms (попытка ${reconnectAttempts}/${maxReconnectAttempts})`
+    )
+
+    setTimeout(() => {
+      if (session()?.token && reconnectAttempts <= maxReconnectAttempts) {
+        connect().catch((error) => {
+          console.error('[Connect] Ошибка автоматического переподключения:', error)
+        })
+      }
+    }, delay)
   }
 
   // === AWARENESS ФУНКЦИОНАЛЬНОСТЬ ===
 
-  // Получить или создать Awareness провайдер для редактора
   const getAwarenessProvider = (editorId: string) => {
     const providers = awarenessProviders()
 
@@ -430,59 +256,43 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
     return providers.get(editorId)!
   }
 
-  // Установка информации о пользователе
   const setUserInfo = (editorId: string, user: Partial<EditorState['user']>) => {
-    const { awareness } = getAwarenessProvider(editorId)
-    const currentState = (awareness.getLocalState() as EditorState | undefined) || {
-      user: {},
-      editorId,
-      timestamp: Date.now()
-    }
-
-    awareness.setLocalState({
-      ...currentState,
-      user: {
-        ...currentState.user,
-        ...user
-      },
-      editorId,
-      timestamp: Date.now()
-    } as EditorState)
-  }
-
-  // Установка позиции курсора
-  const setCursorPosition = (editorId: string, anchor: number, head: number) => {
-    const { awareness } = getAwarenessProvider(editorId)
-    const currentState = awareness.getLocalState() as EditorState | undefined
-    if (!currentState) return
-
-    const newState = {
-      ...currentState,
-      cursor: { anchor, head },
-      timestamp: Date.now()
-    } as EditorState
-
-    awareness.setLocalState(newState)
-
-    // Сохраняем в localStorage
     try {
-      if (typeof window !== 'undefined') {
-        const storageKey = `yjs-cursor-${editorId}`
-        const cursorData = {
-          anchor,
-          head,
-          timestamp: Date.now(),
-          userId: currentState.user?.id,
-          editorId
-        }
-        localStorage.setItem(storageKey, JSON.stringify(cursorData))
+      const provider = getAwarenessProvider(editorId)
+      const currentState = (provider.awareness.getLocalState() as EditorState) || {}
+
+      const newState: EditorState = {
+        ...currentState,
+        user: { ...currentState.user, ...user } as EditorState['user'],
+        editorId,
+        timestamp: Date.now()
       }
-    } catch (e) {
-      console.warn('[Connect] Failed to save cursor position to localStorage:', e)
+
+      provider.awareness.setLocalState(newState)
+      console.log(`[Connect] Обновлена информация о пользователе для редактора ${editorId}`)
+    } catch (error) {
+      console.error('[Connect] Ошибка обновления информации о пользователе:', error)
     }
   }
 
-  // Обновление поля черновика
+  const setCursorPosition = (editorId: string, anchor: number, head: number) => {
+    try {
+      const provider = getAwarenessProvider(editorId)
+      const currentState = (provider.awareness.getLocalState() as EditorState) || {}
+
+      const newState: EditorState = {
+        ...currentState,
+        cursor: { anchor, head },
+        timestamp: Date.now()
+      }
+
+      provider.awareness.setLocalState(newState)
+      console.log(`[Connect] Обновлена позиция курсора для редактора ${editorId}: ${anchor}-${head}`)
+    } catch (error) {
+      console.error('[Connect] Ошибка обновления позиции курсора:', error)
+    }
+  }
+
   const updateDraftField = (
     editorId: string,
     draftId: number,
@@ -490,234 +300,194 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
     content: string,
     isEmpty?: boolean
   ) => {
-    const cacheKey = `${draftId}:${fieldName}`
-    const cache = draftFieldCache()
-    const previousContent = cache.get(cacheKey)
+    try {
+      const provider = getAwarenessProvider(editorId)
+      const currentState = (provider.awareness.getLocalState() as EditorState) || {}
 
-    // Если содержимое не изменилось, не выполняем обновление
-    if (previousContent === content) {
-      console.debug(`[Connect] Content for ${cacheKey} hasn't changed, skipping update`)
-      return
-    }
+      const draftContent = currentState.draftContent || { draftId, fields: {} }
 
-    // Обновляем кэш
-    cache.set(cacheKey, content)
-
-    // Сохраняем в localStorage
-    saveToLocalStorage(draftId, fieldName, content, isEmpty ?? false)
-
-    const { awareness } = getAwarenessProvider(editorId)
-    const currentState = awareness.getLocalState() as EditorState | undefined
-
-    const newState: EditorState = {
-      timestamp: Date.now(),
-      editorId,
-      user: currentState?.user || {
-        id: '',
-        name: '',
-        color: '',
-        tabId: ''
-      },
-      cursor: currentState?.cursor,
-      draftContent: {
-        draftId,
-        fields: {
-          [fieldName]: {
-            content,
-            isEmpty,
-            lastUpdate: Date.now()
-          } as DraftField
-        }
+      // Обновляем поле
+      draftContent.fields[fieldName] = {
+        content,
+        isEmpty: isEmpty || false,
+        lastUpdate: Date.now()
       }
-    }
 
-    awareness.setLocalState(newState)
+      const newState: EditorState = {
+        ...currentState,
+        draftContent,
+        timestamp: Date.now()
+      }
 
-    // Если нет соединения, запрашиваем фоновую синхронизацию
-    if (status() !== 'connected') {
-      console.info(`[Connect] Not connected, requesting background sync for draft ${draftId}`)
-      requestBackgroundSync('draft-sync')
+      provider.awareness.setLocalState(newState)
+
+      // Сохраняем в localStorage для офлайн режима
+      saveToLocalStorage(draftId, fieldName, content, isEmpty || false)
+
+      console.log(`[Connect] Обновлено поле ${fieldName} черновика ${draftId} (${content.length} символов)`)
+    } catch (error) {
+      console.error('[Connect] Ошибка обновления поля черновика:', error)
     }
   }
 
-  // Сохранение в localStorage
   const saveToLocalStorage = (
     draftId: string | number,
     fieldName: string,
     content: string,
     isEmpty: boolean
   ) => {
-    if (typeof window === 'undefined') return
-
     try {
-      const storageKey = `yjs-content-${draftId}-${fieldName}`
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          content,
-          isEmpty,
-          lastUpdate: Date.now(),
-          draftId,
-          fieldName
-        })
-      )
-    } catch (e) {
-      console.warn('[Connect] Failed to save content to localStorage:', e)
-    }
-  }
-
-  // Получение подключенных пользователей
-  const getConnectedUsers = (editorId: string) => {
-    const { awareness } = getAwarenessProvider(editorId)
-    const states = awareness.getStates()
-    const users: Array<{
-      clientId: number
-      user: EditorState['user']
-      timestamp: number
-    }> = []
-
-    states.forEach((state, clientId) => {
-      const editorState = state as EditorState
-      if (editorState.user && editorState.editorId === editorId) {
-        users.push({
-          clientId,
-          user: editorState.user,
-          timestamp: editorState.timestamp
-        })
+      const key = `draft-${draftId}-${fieldName}`
+      const data = {
+        content,
+        isEmpty,
+        timestamp: Date.now()
       }
-    })
-
-    return users
+      localStorage.setItem(key, JSON.stringify(data))
+      console.log(`[Connect] Сохранено в localStorage: ${key}`)
+    } catch (error) {
+      console.error('[Connect] Ошибка сохранения в localStorage:', error)
+    }
   }
 
-  // Получение содержимого черновика
-  const getDraftContent = (draftId: string | number) => {
-    if (status() !== 'connected') {
-      console.info(`[Connect] Not connected, skipping getDraftContent for ${draftId}`)
-      return {}
-    }
+  const getConnectedUsers = (editorId: string) => {
+    try {
+      const provider = getAwarenessProvider(editorId)
+      const states = provider.awareness.getStates()
 
-    const allFields: Record<string, DraftField> = {}
-    const providers = awarenessProviders()
+      const users: Array<{ clientId: number; user: EditorState['user']; timestamp: number }> = []
 
-    providers.forEach(({ awareness }) => {
-      const states = awareness.getStates()
-      states.forEach((state) => {
+      states.forEach((state, clientId) => {
         const editorState = state as EditorState
-        if (editorState.draftContent && editorState.draftContent.draftId === draftId) {
-          const fields = editorState.draftContent.fields
-
-          Object.entries(fields).forEach(([fieldName, fieldData]) => {
-            const existingField = allFields[fieldName]
-            if (!existingField || existingField.lastUpdate < fieldData.lastUpdate) {
-              allFields[fieldName] = fieldData
-            }
+        if (editorState?.user && editorState.editorId === editorId) {
+          users.push({
+            clientId,
+            user: editorState.user,
+            timestamp: editorState.timestamp || Date.now()
           })
         }
       })
-    })
 
-    return allFields
-  }
-
-  // Подключение редактора
-  const connectEditor = (editorId: string, draftId?: string | number) => {
-    console.log(`[Connect] Connecting editor ${editorId}`)
-
-    // Инициализируем провайдер
-    getAwarenessProvider(editorId)
-
-    // Восстанавливаем данные из localStorage если есть
-    if (draftId) {
-      syncFromLocalStorage(editorId, draftId)
+      return users
+    } catch (error) {
+      console.error('[Connect] Ошибка получения подключенных пользователей:', error)
+      return []
     }
   }
 
-  // Отключение редактора
-  const disconnectEditor = (editorId: string) => {
-    console.log(`[Connect] Disconnecting editor ${editorId}`)
-
-    const providers = awarenessProviders()
-    const provider = providers.get(editorId)
-
-    if (provider) {
-      // Очищаем состояние awareness
-      try {
-        const currentState = provider.awareness.getLocalState() as EditorState | undefined
-        if (currentState) {
-          provider.awareness.setLocalState(null)
-        }
-      } catch (e) {
-        console.error('[Connect] Error cleaning up awareness:', e)
-      }
-
-      providers.delete(editorId)
-    }
-  }
-
-  // Восстановление из localStorage
-  const syncFromLocalStorage = (editorId: string, draftId: string | number) => {
-    if (typeof window === 'undefined' || !draftId) return
-
+  const getDraftContent = (draftId: string | number) => {
     try {
-      const prefix = `yjs-content-${draftId}-`
-      const keys = Object.keys(localStorage).filter((key) => key.startsWith(prefix))
+      const cache = draftFieldCache()
+      const cacheKey = String(draftId)
 
-      if (keys.length === 0) {
-        console.info(`[Connect] No local content found for draft ${draftId}`)
-        return
+      if (cache.has(cacheKey)) {
+        return JSON.parse(cache.get(cacheKey)!)
       }
 
+      // Пытаемся найти в awareness провайдерах
+      const providers = awarenessProviders()
+      for (const provider of providers.values()) {
+        const states = provider.awareness.getStates()
+        for (const state of states.values()) {
+          const editorState = state as EditorState
+          if (editorState?.draftContent?.draftId === draftId) {
+            return editorState.draftContent.fields
+          }
+        }
+      }
+
+      return {}
+    } catch (error) {
+      console.error('[Connect] Ошибка получения содержимого черновика:', error)
+      return {}
+    }
+  }
+
+  const connectEditor = (editorId: string, draftId?: string | number) => {
+    try {
+      console.log(`[Connect] Подключаем редактор ${editorId} к черновику ${draftId}`)
+
+      const _provider = getAwarenessProvider(editorId)
+
+      // Синхронизируем с localStorage если есть draftId
+      if (draftId) {
+        syncFromLocalStorage(editorId, draftId)
+      }
+
+      console.log(`[Connect] Редактор ${editorId} подключен`)
+    } catch (error) {
+      console.error('[Connect] Ошибка подключения редактора:', error)
+    }
+  }
+
+  const disconnectEditor = (editorId: string) => {
+    try {
+      console.log(`[Connect] Отключаем редактор ${editorId}`)
+
+      const providers = awarenessProviders()
+      const provider = providers.get(editorId)
+
+      if (provider) {
+        provider.awareness.destroy()
+        provider.doc.destroy()
+        providers.delete(editorId)
+      }
+
+      console.log(`[Connect] Редактор ${editorId} отключен`)
+    } catch (error) {
+      console.error('[Connect] Ошибка отключения редактора:', error)
+    }
+  }
+
+  const syncFromLocalStorage = (editorId: string, draftId: string | number) => {
+    try {
+      const provider = getAwarenessProvider(editorId)
+      const fieldNames = ['title', 'subtitle', 'lead', 'body', 'media']
       const fieldsData: Record<string, DraftField> = {}
 
-      keys.forEach((key) => {
-        try {
-          const savedData = JSON.parse(localStorage.getItem(key) || '')
-          const fieldName = key.substring(prefix.length)
+      fieldNames.forEach((fieldName) => {
+        const key = `draft-${draftId}-${fieldName}`
+        const stored = localStorage.getItem(key)
 
-          fieldsData[fieldName] = {
-            content: savedData.content,
-            isEmpty: savedData.isEmpty,
-            lastUpdate: savedData.lastUpdate
+        if (stored) {
+          try {
+            const data = JSON.parse(stored)
+            fieldsData[fieldName] = {
+              content: data.content || '',
+              isEmpty: data.isEmpty || false,
+              lastUpdate: data.timestamp || Date.now()
+            }
+          } catch (parseError) {
+            console.warn(`[Connect] Не удалось распарсить данные из localStorage для ${key}:`, parseError)
           }
-        } catch (e) {
-          console.warn(`[Connect] Error parsing localStorage data for key ${key}:`, e)
         }
       })
 
       if (Object.keys(fieldsData).length > 0) {
-        const { awareness } = getAwarenessProvider(editorId)
-        const currentState = awareness.getLocalState() as EditorState | undefined
+        const currentState = (provider.awareness.getLocalState() as EditorState) || {}
 
         const newState: EditorState = {
-          timestamp: Date.now(),
+          ...currentState,
           editorId,
-          user: currentState?.user || {
-            id: '',
-            name: '',
-            color: '',
-            tabId: ''
-          },
-          cursor: currentState?.cursor,
+          timestamp: Date.now(),
           draftContent: {
             draftId,
             fields: fieldsData
           }
         }
 
-        awareness.setLocalState(newState)
+        provider.awareness.setLocalState(newState)
         console.info(
-          `[Connect] Restored ${Object.keys(fieldsData).length} fields from localStorage for draft ${draftId}`
+          `[Connect] Восстановлено ${Object.keys(fieldsData).length} полей из localStorage для черновика ${draftId}`
         )
       }
     } catch (e) {
-      console.warn('[Connect] Error syncing from localStorage:', e)
+      console.warn('[Connect] Ошибка синхронизации из localStorage:', e)
     }
   }
 
   // === ОБРАБОТЧИКИ СОБЫТИЙ ===
 
-  // Добавление обработчика SSE сообщений
   const addHandler = (handler: (data: SSEMessage) => void) => {
     setHandlers((prev) => [...prev, handler])
 
@@ -728,53 +498,61 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
   const getStatus = () => status()
 
-  // Автоматическая регистрация Service Worker и отправка токена
+  // Автоматическое подключение при наличии токена
   onMount(() => {
-    // ВРЕМЕННО: принудительно отменяем регистрацию всех Service Worker
-    // для предотвращения блокировки запросов
-    if (isSupported()) {
-      unregister().catch((error) => {
-        console.warn('[Connect] Failed to unregister existing Service Workers:', error)
-      })
-    }
-
-    // Закомментировано: автоматическая регистрация отключена
-    // if (isSupported()) {
-    //   register().catch((error) => {
-    //     console.warn('[Connect] Service Worker registration failed, continuing without it:', error)
-    //     // Не блокируем работу приложения даже если SW не зарегистрировался
-    //   })
-    // } else {
-    //   console.info('[Connect] Service Worker not supported, running without it')
-    // }
+    console.log('[Connect] Инициализация ConnectProvider с прямым SSE')
   })
 
-  // Отправляем токен SSE-клиенту в Service Worker при изменении сессии
+  // Подключаемся при изменении токена
   createEffect(
     on(
-      session,
-      (s) => {
-        if (s?.token && serviceWorker) {
-          setToken(s.token)
-          console.info('[Connect] Токен отправлен SSE-клиенту в Service Worker')
+      () => session()?.token,
+      (token) => {
+        if (token) {
+          console.log('[Connect] Токен получен, подключаемся к SSE')
+          connect().catch((error) => {
+            console.error('[Connect] Ошибка автоматического подключения:', error)
+          })
+        } else {
+          console.log('[Connect] Токен отсутствует, отключаемся от SSE')
+          disconnect()
         }
       },
       { defer: false }
     )
   )
 
-  // Обновляем статус соединения
-  createEffect(() => {
-    if (isConnected()) {
-      setStatus('connected')
-    } else if (isRegistered()) {
-      setStatus('connecting')
-    } else {
+  // Переподключение при восстановлении сети
+  onMount(() => {
+    const handleOnline = () => {
+      console.log('[Connect] Сеть восстановлена, переподключаемся')
+      if (session()?.token) {
+        reconnect().catch((error) => {
+          console.error('[Connect] Ошибка переподключения при восстановлении сети:', error)
+        })
+      }
+    }
+
+    const handleOffline = () => {
+      console.log('[Connect] Сеть отключена')
       setStatus('disconnected')
     }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    onCleanup(() => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    })
   })
 
   onCleanup(() => {
+    console.log('[Connect] Очистка ConnectProvider')
+
+    // Отключаем SSE
+    disconnect()
+
     // Очищаем все awareness провайдеры
     const providers = awarenessProviders()
     providers.forEach((_, editorId) => {
@@ -786,20 +564,11 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
     // SSE
     addHandler,
     getStatus,
-
-    // Service Worker
-    isRegistered,
-    isConnected,
-    isSupported,
+    connect,
+    disconnect,
+    reconnect,
     error,
-    version,
-    register,
-    unregister,
-    ping,
-    clearCache,
-    requestBackgroundSync,
-    lastPong,
-    lastSSEMessage,
+    lastMessage,
 
     // Awareness
     setUserInfo,

@@ -378,7 +378,7 @@ export const EditView = (props: { draft?: Draft }) => {
 
   const handleNetworkStatusChange = () => {
     const draftId = currentDraft()?.id
-    const { getStatus } = useConnect() // Вызываем useConnect на верхнем уровне функции
+    const { getStatus, reconnect } = useConnect() // Вызываем useConnect на верхнем уровне функции
 
     if (navigator.onLine && draftId) {
       // Синхронизация с сервером при восстановлении соединения
@@ -386,14 +386,10 @@ export const EditView = (props: { draft?: Draft }) => {
         .then(() => {
           const draft = currentDraft()
           if (draft && getStatus() !== 'connected') {
-            // Переинициализируем awareness с задержкой для стабильности
-            setTimeout(() => {
-              try {
-                initializeAwareness(draft)
-              } catch (error) {
-                console.error('[EditView] Failed to re-initialize awareness after network change:', error)
-              }
-            }, 1000)
+            // Переподключаемся к SSE
+            reconnect().catch((error) => {
+              console.error('[EditView] Failed to reconnect SSE after network change:', error)
+            })
           }
         })
         .catch((error) => {
@@ -723,7 +719,7 @@ export const EditView = (props: { draft?: Draft }) => {
     })
   }
 
-  // Работа с Awareness - упрощено, чтобы исключить конфликты
+  // Работа с Awareness - упрощено, использует новый SSE API
   const initializeAwareness = (draft: Draft) => {
     try {
       // Отписываемся от предыдущего провайдера, если он был
@@ -741,6 +737,7 @@ export const EditView = (props: { draft?: Draft }) => {
 
       // Устанавливаем обработчик SSE сообщений
       const unsubscribe = connectContext.addHandler((message: SSEMessage) => {
+        console.log('[EditView] Получено SSE сообщение:', message)
         // Обрабатываем только сообщения, связанные с черновиками
         if (message.entity === 'draft' && message.payload) {
           handleAwarenessUpdates({ added: [], updated: [1], removed: [] })
@@ -748,6 +745,14 @@ export const EditView = (props: { draft?: Draft }) => {
       })
 
       setAwarenessUnsubscribe(() => unsubscribe)
+
+      // Проверяем статус соединения
+      if (connectContext.getStatus() !== 'connected') {
+        console.log('[EditView] SSE не подключен, пытаемся подключиться')
+        connectContext.connect().catch((error) => {
+          console.error('[EditView] Ошибка подключения SSE:', error)
+        })
+      }
     } catch (error) {
       console.error('[EditView] Failed to connect to awareness:', error)
     }
