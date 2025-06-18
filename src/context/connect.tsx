@@ -147,12 +147,16 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
       try {
         const messageId = Date.now().toString()
+        console.log(`[Connect] Отправляем сообщение ${type} с ID ${messageId}`)
+
         const timeoutId = setTimeout(() => {
+          console.warn(`[Connect] Таймаут для сообщения ${type} (ID: ${messageId})`)
           messageHandlers.delete(messageId)
-          reject(new Error('Timeout: Service Worker не ответил'))
-        }, 5000)
+          reject(new Error(`Timeout: Service Worker не ответил на ${type}`))
+        }, 10000) // Увеличиваем таймаут до 10 секунд
 
         messageHandlers.set(messageId, (response) => {
+          console.log(`[Connect] Получен ответ на ${type} (ID: ${messageId}):`, response)
           clearTimeout(timeoutId)
           messageHandlers.delete(messageId)
           resolve(response)
@@ -160,6 +164,7 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
         serviceWorker.postMessage({ type, data, messageId })
       } catch (error) {
+        console.error(`[Connect] Ошибка отправки сообщения ${type}:`, error)
         reject(error instanceof Error ? error : new Error(String(error)))
       }
     })
@@ -193,13 +198,13 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
           setIsConnected(true)
           setError(null)
           setStatus('connected')
-          console.log('[Connect] SSE подключен через Service Worker')
+          console.log('[Connect] SSE-клиент подключен через Service Worker')
           break
         }
 
         case 'SSE_MESSAGE': {
           setLastSSEMessage(data as SSEMessage)
-          console.log('[Connect] SSE сообщение:', data)
+          console.log('[Connect] SSE событие от встроенного клиента:', data)
 
           // Вызываем все обработчики SSE сообщений
           handlers().forEach((handler) => handler(data as SSEMessage))
@@ -207,8 +212,8 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
         }
 
         case 'REQUEST_TOKEN': {
-          // Service Worker запрашивает токен для SSE
-          console.log('[Connect] Service Worker запрашивает токен')
+          // SSE-клиент в Service Worker запрашивает токен
+          console.log('[Connect] SSE-клиент запрашивает токен')
           const currentToken = session()?.token
           if (currentToken) {
             setToken(currentToken)
@@ -262,8 +267,26 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
         // Проверяем версию
         try {
-          const versionResponse = await sendMessage('GET_VERSION')
-          setVersion(versionResponse.version || null)
+          // Ждем немного, чтобы Service Worker полностью активировался
+          await new Promise((resolve) => setTimeout(resolve, 100))
+
+          // Проверяем состояние Service Worker
+          if (serviceWorker.state === 'activated' || serviceWorker.state === 'activating') {
+            console.log('[Connect] Service Worker готов, запрашиваем версию')
+            const versionResponse = await sendMessage('GET_VERSION')
+            setVersion(versionResponse.version || null)
+          } else {
+            console.warn('[Connect] Service Worker не активен, состояние:', serviceWorker.state)
+            // Попробуем получить версию позже
+            setTimeout(async () => {
+              try {
+                const versionResponse = await sendMessage('GET_VERSION')
+                setVersion(versionResponse.version || null)
+              } catch (error) {
+                console.warn('[Connect] Отложенный запрос версии не удался:', error)
+              }
+            }, 1000)
+          }
         } catch (error) {
           console.warn('[Connect] Не удалось получить версию:', error)
         }
@@ -351,10 +374,10 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
     }
   }
 
-  // Установка токена для SSE
+  // Установка токена для SSE-клиента в Service Worker
   const setToken = (token: string): void => {
     if (!serviceWorker) {
-      console.warn('[Connect] Service Worker не зарегистрирован, токен не установлен')
+      console.warn('[Connect] Service Worker не зарегистрирован, токен для SSE-клиента не установлен')
       return
     }
 
@@ -363,10 +386,12 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
         type: 'SET_TOKEN',
         data: { token }
       })
-      console.log('[Connect] Токен отправлен в Service Worker')
+      console.log('[Connect] Токен отправлен SSE-клиенту в Service Worker')
     } catch (error) {
-      console.error('[Connect] Ошибка отправки токена:', error)
-      setError(`Ошибка отправки токена: ${error instanceof Error ? error.message : String(error)}`)
+      console.error('[Connect] Ошибка отправки токена SSE-клиенту:', error)
+      setError(
+        `Ошибка отправки токена SSE-клиенту: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
   }
 
@@ -716,14 +741,14 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
     }
   })
 
-  // Отправляем токен в Service Worker при изменении сессии
+  // Отправляем токен SSE-клиенту в Service Worker при изменении сессии
   createEffect(
     on(
       session,
       (s) => {
         if (s?.token && serviceWorker) {
           setToken(s.token)
-          console.info('[Connect] Token sent to Service Worker')
+          console.info('[Connect] Токен отправлен SSE-клиенту в Service Worker')
         }
       },
       { defer: false }

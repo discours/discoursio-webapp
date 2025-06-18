@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-// Service Worker для Discours.io с SSE интеграцией
+// Service Worker для Discours.io с интегрированным SSE-клиентом
 // Версия: 1.0.12 - Тихое кеширование без избыточного логирования
 
 const VERSION = '1.0.12'
@@ -10,7 +10,7 @@ const SSE_URL = 'https://connect.discours.io'
 // Флаг для отключения функциональности при критических ошибках
 let isFunctional = true
 
-// Конфигурация SSE
+// Конфигурация для встроенного SSE-клиента
 const SSE_CONFIG = {
   url: SSE_URL,
   reconnectDelay: 1000,
@@ -25,7 +25,7 @@ const STATIC_RESOURCE_REGEX = /\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2)$/
 function log(level, ...args) {
   try {
     if (console && typeof console[level] === 'function') {
-      console[level]('[SW-SSE-Safe]', ...args)
+      console[level]('[SW]', ...args)
     }
   } catch (_e) {
     // Полностью игнорируем любые ошибки логирования
@@ -49,11 +49,108 @@ function checkFunctionality() {
   }
 }
 
-// Переменные состояния
+// === SSE-КЛИЕНТ (встроенный в Service Worker) ===
+
+// Состояние встроенного SSE-клиента
 let sseConnection = null
+let currentToken = null
 let reconnectAttempts = 0
 let isOnline = true
-let currentToken = null
+
+// Установка SSE соединения через встроенный клиент
+function establishSSEConnection(token) {
+  if (!isFunctional || !isOnline) {
+    log('warn', 'SSE-клиент: пропускаем подключение - SW не функционален или офлайн')
+    return
+  }
+
+  if (sseConnection) {
+    log('info', 'SSE-клиент: закрываем существующее соединение')
+    try {
+      sseConnection.close()
+    } catch (e) {
+      log('warn', 'SSE-клиент: ошибка закрытия соединения:', e)
+    }
+  }
+
+  try {
+    const url = `${SSE_CONFIG.url}?token=${encodeURIComponent(token)}`
+    log('info', 'SSE-клиент: подключаемся к', SSE_CONFIG.url)
+
+    sseConnection = new EventSource(url)
+    currentToken = token
+
+    sseConnection.onopen = () => {
+      log('info', 'SSE-клиент: соединение установлено')
+      reconnectAttempts = 0
+
+      // Уведомляем клиентов о подключении
+      broadcastToClients({
+        type: 'SSE_CONNECTED',
+        timestamp: Date.now()
+      }).catch((error) => log('error', 'SSE-клиент: ошибка уведомления о подключении:', error))
+    }
+
+    sseConnection.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        log('debug', 'SSE-клиент: получено сообщение:', data)
+
+        // Транслируем SSE сообщение всем клиентам
+        broadcastToClients({
+          type: 'SSE_MESSAGE',
+          data: data,
+          timestamp: Date.now()
+        }).catch((error) => log('error', 'SSE-клиент: ошибка трансляции сообщения:', error))
+      } catch (error) {
+        log('error', 'SSE-клиент: ошибка парсинга сообщения:', error)
+      }
+    }
+
+    sseConnection.onerror = (error) => {
+      log('error', 'SSE-клиент: ошибка соединения:', error)
+      handleSSEError()
+    }
+  } catch (error) {
+    log('error', 'SSE-клиент: критическая ошибка подключения:', error)
+    handleSSEError()
+  }
+}
+
+// Обработка ошибок SSE-клиента
+function handleSSEError() {
+  if (sseConnection) {
+    try {
+      sseConnection.close()
+    } catch (e) {
+      log('warn', 'SSE-клиент: ошибка закрытия при обработке ошибки:', e)
+    }
+    sseConnection = null
+  }
+
+  // Переподключение с экспоненциальной задержкой
+  if (reconnectAttempts < SSE_CONFIG.maxReconnectAttempts && currentToken && isOnline && isFunctional) {
+    const delay = Math.min(SSE_CONFIG.reconnectDelay * 2 ** reconnectAttempts, 30000)
+    reconnectAttempts++
+
+    log('info', `SSE-клиент: переподключение через ${delay}ms (попытка ${reconnectAttempts})`)
+
+    setTimeout(() => {
+      if (currentToken && isOnline && isFunctional) {
+        establishSSEConnection(currentToken)
+      }
+    }, delay)
+  } else {
+    log('error', 'SSE-клиент: достигнут лимит попыток переподключения или нет условий для подключения')
+
+    // Уведомляем клиентов об ошибке
+    broadcastToClients({
+      type: 'SSE_ERROR',
+      error: 'Не удалось подключиться к SSE',
+      timestamp: Date.now()
+    }).catch((error) => log('error', 'SSE-клиент: ошибка уведомления об ошибке:', error))
+  }
+}
 
 // Безопасная обработка кеширования без блокировки основных запросов
 async function cacheStaticResource(request) {
@@ -88,149 +185,51 @@ async function cacheStaticResource(request) {
   }
 }
 
-// Установка SSE соединения с максимальной защитой от ошибок
-function establishSSEConnection(token) {
-  if (!isFunctional || !token) {
-    log('warn', 'SSE connection skipped - not functional or no token')
+// === SERVICE WORKER ОСНОВНЫЕ ФУНКЦИИ ===
+
+// Отправка сообщений всем клиентам с защитой от ошибок
+async function broadcastToClients(message) {
+  if (!isFunctional) {
+    log('warn', 'Service Worker: трансляция пропущена - не функционален')
     return
   }
 
   try {
-    // Закрываем существующее соединение
-    if (sseConnection) {
-      try {
-        sseConnection.close()
-      } catch (e) {
-        log('warn', 'Error closing existing SSE connection:', e)
-      }
-      sseConnection = null
-    }
-
-    const url = `${SSE_CONFIG.url}?token=${encodeURIComponent(token)}`
-    sseConnection = new EventSource(url, { withCredentials: true })
-
-    sseConnection.onopen = () => {
-      log('info', 'SSE connection established')
-      reconnectAttempts = 0
-      broadcastToClients({
-        type: 'SSE_CONNECTED',
-        timestamp: Date.now()
-      }).catch((e) => log('warn', 'Failed to broadcast SSE_CONNECTED:', e))
-    }
-
-    sseConnection.onmessage = (event) => {
-      try {
-        if (!event || !event.data) return
-
-        const data = JSON.parse(event.data)
-        log('debug', 'SSE message received:', data.entity, data.action)
-
-        // Пересылаем сообщение всем клиентам
-        broadcastToClients({
-          type: 'SSE_MESSAGE',
-          data: data,
-          timestamp: Date.now()
-        }).catch((e) => log('warn', 'Failed to broadcast SSE_MESSAGE:', e))
-      } catch (error) {
-        log('warn', 'Failed to parse SSE message:', error)
-      }
-    }
-
-    sseConnection.onerror = (error) => {
-      log('warn', 'SSE connection error:', error)
-      handleSSEError()
-    }
-
-    sseConnection.onclose = () => {
-      log('info', 'SSE connection closed')
-      handleSSEError()
-    }
-  } catch (error) {
-    log('error', 'Failed to establish SSE connection:', error)
-    handleSSEError()
-  }
-}
-
-// Обработка ошибок SSE с переподключением и защитой от бесконечных циклов
-function handleSSEError() {
-  try {
-    if (sseConnection) {
-      try {
-        sseConnection.close()
-      } catch (e) {
-        log('warn', 'Error closing SSE connection:', e)
-      }
-      sseConnection = null
-    }
-
-    // Exponential backoff для переподключения с максимальными ограничениями
-    if (reconnectAttempts < SSE_CONFIG.maxReconnectAttempts && isOnline && isFunctional) {
-      reconnectAttempts++
-      const delay = Math.min(SSE_CONFIG.reconnectDelay * 2 ** (reconnectAttempts - 1), 30000)
-
-      log(
-        'info',
-        `Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${SSE_CONFIG.maxReconnectAttempts})`
-      )
-
-      setTimeout(() => {
-        try {
-          if (currentToken && isOnline && isFunctional) {
-            establishSSEConnection(currentToken)
-          }
-        } catch (e) {
-          log('error', 'Error during reconnection attempt:', e)
-        }
-      }, delay)
-    } else {
-      log('warn', 'Max reconnection attempts reached, offline, or not functional')
-    }
-  } catch (error) {
-    log('error', 'Error in handleSSEError:', error)
-  }
-}
-
-// Отправка сообщений всем клиентам с защитой от ошибок
-async function broadcastToClients(message) {
-  if (!isFunctional) return
-
-  try {
-    const clients = await self.clients.matchAll({ includeUncontrolled: true })
+    const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' })
 
     if (!clients || clients.length === 0) {
-      // Тихо выходим если нет клиентов
+      log('debug', 'Service Worker: нет активных клиентов для трансляции')
       return
     }
 
-    const promises = clients.map(async (client) => {
+    const promises = clients.map((client) => {
       try {
         if (client && typeof client.postMessage === 'function') {
-          client.postMessage(message)
+          return client.postMessage(message)
         }
       } catch (error) {
-        log('warn', 'Failed to send message to client:', error)
+        log('warn', 'Service Worker: ошибка отправки сообщения клиенту:', error)
       }
+      return Promise.resolve()
     })
 
     await Promise.allSettled(promises)
+    log('debug', `Service Worker: сообщение отправлено ${clients.length} клиентам`)
   } catch (error) {
-    log('error', 'Failed to broadcast to clients:', error)
+    log('error', 'Service Worker: критическая ошибка трансляции:', error)
   }
 }
 
-// Обработка сетевых запросов (НИКОГДА не блокируем)
+// === SERVICE WORKER ОБРАБОТЧИКИ СОБЫТИЙ ===
+
+// Обработка fetch запросов
 self.addEventListener('fetch', (event) => {
-  // Проверяем функциональность в самом начале
   if (!checkFunctionality()) {
-    return // Пропускаем все обработки если не функциональны
+    log('warn', 'Service Worker: fetch обработчик пропущен - не функционален')
+    return
   }
 
   try {
-    // Дополнительная проверка на валидность запроса
-    if (!event || !event.request || !event.request.url) {
-      return
-    }
-
     const url = new URL(event.request.url)
 
     // Для статических ресурсов - ТОЛЬКО кешируем параллельно, НИКОГДА не блокируем
@@ -255,7 +254,7 @@ self.addEventListener('fetch', (event) => {
     // Для всех остальных запросов - полностью пропускаем
     return
   } catch (error) {
-    log('error', 'Fetch event error:', error)
+    log('error', 'Service Worker: ошибка fetch обработчика:', error)
     // КРИТИЧНО: НИКОГДА не блокируем запрос даже при ошибке
     return
   }
@@ -264,13 +263,13 @@ self.addEventListener('fetch', (event) => {
 // Обработка сообщений от клиентов с максимальной защитой
 self.addEventListener('message', (event) => {
   if (!checkFunctionality()) {
-    log('warn', 'Message handler skipped - not functional')
+    log('warn', 'Service Worker: обработчик сообщений пропущен - не функционален')
     return
   }
 
   try {
     if (!event || !event.data) {
-      log('warn', 'Invalid message event received')
+      log('warn', 'Service Worker: получено невалидное сообщение')
       return
     }
 
@@ -281,13 +280,13 @@ self.addEventListener('message', (event) => {
         try {
           currentToken = data?.token
           if (currentToken && typeof currentToken === 'string') {
-            log('info', 'Token received, establishing SSE connection')
+            log('info', 'Service Worker: получен токен, запускаем SSE-клиент')
             establishSSEConnection(currentToken)
           } else {
-            log('warn', 'Invalid token received')
+            log('warn', 'Service Worker: получен невалидный токен')
           }
         } catch (error) {
-          log('error', 'Error handling SET_TOKEN:', error)
+          log('error', 'Service Worker: ошибка обработки SET_TOKEN:', error)
         }
         break
       }
@@ -307,11 +306,20 @@ self.addEventListener('message', (event) => {
 
       case 'PING': {
         try {
+          const response = {
+            type: 'PONG',
+            timestamp: Date.now(),
+            messageId: data?.messageId // Сохраняем ID для отслеживания
+          }
+
+          // Пытаемся отправить через event.source
           if (event.source?.postMessage) {
-            event.source.postMessage({
-              type: 'PONG',
-              timestamp: Date.now(),
-              messageId: data?.messageId // Сохраняем ID для отслеживания
+            event.source.postMessage(response)
+          } else {
+            // Fallback: отправляем всем клиентам
+            log('warn', 'event.source недоступен для PING, отправляем всем клиентам')
+            broadcastToClients(response).catch((error) => {
+              log('error', 'Failed to broadcast PONG:', error)
             })
           }
         } catch (error) {
@@ -322,11 +330,20 @@ self.addEventListener('message', (event) => {
 
       case 'GET_VERSION': {
         try {
+          const response = {
+            type: 'VERSION',
+            version: VERSION,
+            messageId: data?.messageId
+          }
+
+          // Пытаемся отправить через event.source
           if (event.source?.postMessage) {
-            event.source.postMessage({
-              type: 'VERSION',
-              version: VERSION,
-              messageId: data?.messageId
+            event.source.postMessage(response)
+          } else {
+            // Fallback: отправляем всем клиентам
+            log('warn', 'event.source недоступен, отправляем версию всем клиентам')
+            broadcastToClients(response).catch((error) => {
+              log('error', 'Failed to broadcast version:', error)
             })
           }
         } catch (error) {
