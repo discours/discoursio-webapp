@@ -108,7 +108,7 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   const [awarenessProviders] = createSignal<Map<string, { doc: Doc; awareness: Awareness }>>(new Map())
 
   // SSE соединение
-  let sseConnection: EventSource | null = null
+  let sseConnection: { close: () => void } | null = null
   let reconnectAttempts = 0
   const maxReconnectAttempts = 5
   const baseReconnectDelay = 1000
@@ -134,44 +134,106 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
       console.log('[Connect] Устанавливаем SSE соединение...')
 
-      const url = `https://connect.discours.io?token=${encodeURIComponent(token)}`
-      sseConnection = new EventSource(url)
-
-      sseConnection.onopen = () => {
-        console.log('[Connect] SSE соединение установлено')
-        setStatus('connected')
-        setError(null)
-        reconnectAttempts = 0
-      }
-
-      sseConnection.onmessage = (event: MessageEvent) => {
-        try {
-          const data = JSON.parse(event.data)
-          console.log('[Connect] Получено SSE сообщение:', data)
-
-          setLastMessage(data)
-
-          // Вызываем все обработчики
-          handlers().forEach((handler) => {
-            try {
-              handler(data)
-            } catch (handlerError) {
-              console.error('[Connect] Ошибка в обработчике SSE сообщения:', handlerError)
-            }
-          })
-        } catch (parseError) {
-          console.error('[Connect] Ошибка парсинга SSE сообщения:', parseError)
+      // Используем fetch API для SSE с заголовком Authorization
+      const response = await fetch(
+        import.meta.env.PUBLIC_REALTIME_EVENTS || 'https://connect.discours.io',
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'text/event-stream',
+            'Cache-Control': 'no-cache'
+          }
         }
+      )
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
-      sseConnection.onerror = (event: Event) => {
-        console.error('[Connect] Ошибка SSE соединения:', event)
-        setStatus('error')
-        setError('Ошибка SSE соединения')
-
-        // Автоматическое переподключение
-        handleReconnect()
+      if (!response.body) {
+        throw new Error('Response body не доступно')
       }
+
+      console.log('[Connect] SSE соединение установлено')
+      setStatus('connected')
+      setError(null)
+      reconnectAttempts = 0
+
+      // Создаем reader для потока данных
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      // Функция для обработки SSE данных
+      const processSSEData = () => {
+        reader
+          .read()
+          .then(({ done, value }) => {
+            if (done) {
+              console.log('[Connect] SSE поток завершен')
+              setStatus('disconnected')
+              handleReconnect()
+              return
+            }
+
+            buffer += decoder.decode(value, { stream: true })
+
+            // Обрабатываем complete SSE события (разделенные двойными переводами строк)
+            const events = buffer.split('\n\n')
+            buffer = events.pop() || '' // Сохраняем неполное событие в буфере
+
+            events.forEach((eventData) => {
+              if (eventData.trim()) {
+                try {
+                  // Парсим SSE формат: data: {json}
+                  const lines = eventData.trim().split('\n')
+                  const dataLine = lines.find((line) => line.startsWith('data: '))
+
+                  if (dataLine) {
+                    const jsonData = dataLine.substring(6) // Убираем "data: "
+                    if (jsonData.trim() !== '' && jsonData !== '[DONE]') {
+                      const data = JSON.parse(jsonData)
+                      console.log('[Connect] Получено SSE сообщение:', data)
+
+                      setLastMessage(data)
+
+                      // Вызываем все обработчики
+                      handlers().forEach((handler) => {
+                        try {
+                          handler(data)
+                        } catch (handlerError) {
+                          console.error('[Connect] Ошибка в обработчике SSE сообщения:', handlerError)
+                        }
+                      })
+                    }
+                  }
+                } catch (parseError) {
+                  console.error('[Connect] Ошибка парсинга SSE сообщения:', parseError, 'Data:', eventData)
+                }
+              }
+            })
+
+            // Продолжаем чтение
+            processSSEData()
+          })
+          .catch((readError) => {
+            console.error('[Connect] Ошибка чтения SSE потока:', readError)
+            setStatus('error')
+            setError('Ошибка чтения SSE потока')
+            handleReconnect()
+          })
+      }
+
+      // Запускаем обработку потока
+      processSSEData()
+
+      // Сохраняем абстракцию для совместимости с существующим кодом
+      sseConnection = {
+        close: () => {
+          reader.cancel().catch(console.error)
+        }
+      } as EventSource
     } catch (connectError) {
       console.error('[Connect] Ошибка подключения SSE:', connectError)
       setStatus('error')
