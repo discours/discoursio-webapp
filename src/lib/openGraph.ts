@@ -183,7 +183,7 @@ export function getArticleOGImagePath(article: Shout, options: OGImageOptions = 
   }
 
   // Добавляем обложку если доступна
-  if (article.cover) {
+  if (article?.cover) {
     params.append('cover', article.cover)
   }
 

@@ -76,7 +76,7 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
   const isHeaderFixed = props.isHeaderFixed === undefined ? true : props.isHeaderFixed // FIXME: выглядит как костылек
   const loc = useLocation()
   const { t, lang } = useLocalize()
-  const imageUrl = getFileUrl(props.cover ? props.cover : `${cdnUrl}/production/image/logo_image.png`)
+  const imageUrl = getFileUrl(props.cover || `${cdnUrl}/production/image/logo_image.png`)
 
   const keywords = createMemo(() => {
     const keypath = (props.key || loc?.pathname.split('/')[0]) as keyof typeof ruKeywords

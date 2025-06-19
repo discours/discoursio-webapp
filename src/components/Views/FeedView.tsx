@@ -199,7 +199,7 @@ export const FeedView = (props: FeedProps) => {
                 <div
                   class={clsx(styles.comment, styles.unratedArticle)}
                   style={{
-                    'background-image': `url(${getFileUrl(article.cover || '', { width: 40 })})`
+                    'background-image': `url(${getFileUrl(article?.cover || '', { width: 40 })})`
                   }}
                 >
                   <Show when={article.main_topic}>

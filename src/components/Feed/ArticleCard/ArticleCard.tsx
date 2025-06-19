@@ -140,7 +140,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
         [styles.shoutCardCompact]: props.settings?.isCompact,
         [styles.shoutCardSingle]: props.settings?.isSingle,
         [styles.shoutCardBeside]: props.settings?.isBeside,
-        [styles.shoutCardNoImage]: !props.article.cover,
+        [styles.shoutCardNoImage]: !props.article || !props.article.cover,
         [aspectRatio()]: props.withAspectRatio
       })}
     >
@@ -151,15 +151,15 @@ export const ArticleCard = (props: ArticleCardProps) => {
           <div
             data-testid="article-card-cover"
             class={clsx(styles.shoutCardCover, {
-              [styles.loading]: props.article.cover && isCoverImageLoading()
+              [styles.loading]: props.article?.cover && isCoverImageLoading()
             })}
           >
             <Show
-              when={props.article.cover && !isCoverImageLoadError()}
+              when={props.article?.cover && !isCoverImageLoadError()}
               fallback={<CoverImage class={styles.placeholderCoverImage} />}
             >
               <Image
-                src={props.article.cover || ''}
+                src={props.article?.cover || ''}
                 alt={title}
                 width={desktopCoverImageWidths[props.desktopCoverSize || 'M']}
                 onError={() => {
@@ -257,7 +257,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
         <section class={styles.shoutCardDescription}>{props.article.seo || ''}</section>
 
         <Show when={props.settings?.isFeedMode}>
-          <Show when={!props.settings?.noimage && props.article.cover}>
+          <Show when={!props.settings?.noimage && props.article && props.article.cover}>
             <div class={styles.shoutCardCoverContainer}>
               <Show
                 when={
@@ -278,11 +278,11 @@ export const ArticleCard = (props: ArticleCardProps) => {
                 })}
               >
                 <Show
-                  when={props.article.cover && !isCoverImageLoadError()}
+                  when={props.article?.cover && !isCoverImageLoadError()}
                   fallback={<CoverImage class={styles.placeholderCoverImage} />}
                 >
                   <Image
-                    src={props.article.cover || ''}
+                    src={props.article?.cover || ''}
                     alt={title}
                     width={600}
                     loading="lazy"

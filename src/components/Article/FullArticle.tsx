@@ -539,7 +539,7 @@ export const FullArticle = (props: Props) => {
                 </div>
                 <Show
                   when={
-                    props.article.cover &&
+                    props.article?.cover &&
                     props.article.layout !== 'video' &&
                     props.article.layout !== 'image'
                   }
@@ -547,10 +547,10 @@ export const FullArticle = (props: Props) => {
                   <figure class={styles.figureAlignColumn}>
                     <Image
                       width={1200}
-                      alt={props.article.cover_caption || ''}
-                      src={props.article.cover || ''}
+                      alt={props.article?.cover_caption || ''}
+                      src={props.article?.cover || ''}
                     />
-                    <figcaption innerHTML={props.article.cover_caption || ''} />
+                    <figcaption innerHTML={props.article?.cover_caption || ''} />
                   </figure>
                 </Show>
               </div>
@@ -563,7 +563,7 @@ export const FullArticle = (props: Props) => {
             <Show when={props.article.layout === 'audio'}>
               <AudioHeader
                 title={props.article.title || ''}
-                cover={props.article.cover || ''}
+                cover={props.article?.cover || ''}
                 artistData={media()?.[0]}
                 topic={props.article.main_topic as Topic}
               />
@@ -630,7 +630,7 @@ export const FullArticle = (props: Props) => {
       <ShareModal
         title={props.article.title}
         description={props.article.seo || ''}
-        imageUrl={props.article.cover || ''}
+        imageUrl={props.article?.cover || ''}
         shareUrl={shareUrl()}
       />
 

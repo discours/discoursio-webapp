@@ -415,7 +415,7 @@ export const DraftCard = (props: Props) => {
           </div>
         </div>
 
-        <Show when={props.draft.cover}>
+        <Show when={props.draft?.cover}>
           <div class={styles.coverOverlay} style={{ 'background-image': `url(${props.draft.cover})` }} />
         </Show>
 
