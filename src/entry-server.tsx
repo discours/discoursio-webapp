@@ -3,32 +3,68 @@ import { StartServer, createHandler } from '@solidjs/start/server'
 import { ErrorBoundary, Suspense } from 'solid-js'
 import { Loading } from './components/_shared/Loading'
 
+// biome-ignore lint/suspicious/noExplicitAny: ok
+const ServerErrorFallback = (err: any) => {
+  console.error('[Server] Error during SSR:', err)
+  console.error('[Server] Stack trace:', err?.stack)
+
+  // В production возвращаем минимальный HTML
+  if (process.env.NODE_ENV === 'production') {
+    return (
+      <div style={{ padding: '20px', 'text-align': 'center' }}>
+        <h1>Загрузка...</h1>
+        <p>Пожалуйста, подождите</p>
+      </div>
+    )
+  }
+
+  // В dev режиме показываем детали
+  return (
+    <div style={{ padding: '20px', background: '#fee', color: '#c00' }}>
+      <h1>Server Error</h1>
+      <pre style={{ 'white-space': 'pre-wrap' }}>{err?.toString()}</pre>
+    </div>
+  )
+}
+
 export default createHandler(() => {
+  console.log('[Server] createHandler called, NODE_ENV:', process.env.NODE_ENV)
+
   return (
     <StartServer
-      document={({ assets, children, scripts }) => (
-        <html lang="en">
-          <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
-            <link rel="icon" href="/favicon.ico" />
-            {assets}
-          </head>
-          <body>
-            <div id="app">
-              <ErrorBoundary
-                fallback={(err) => {
-                  console.error('Server Error:', err)
-                  return <Loading />
-                }}
-              >
-                <Suspense fallback={<Loading />}>{children}</Suspense>
-              </ErrorBoundary>
-            </div>
-            {scripts}
-          </body>
-        </html>
-      )}
+      document={({ assets, children, scripts }) => {
+        console.log('[Server] Document render called')
+
+        return (
+          <html lang="ru">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <meta name="description" content="Дискурс - медиа для думающих" />
+              <link rel="icon" href="/favicon.ico" />
+              <script
+                innerHTML={`
+                console.log('[Client] Document loaded at:', new Date().toISOString());
+                console.log('[Client] Environment:', {
+                  NODE_ENV: '${process.env.NODE_ENV}',
+                  VERCEL: '${process.env.VERCEL}',
+                  url: window.location.href
+                });
+              `}
+              />
+              {assets}
+            </head>
+            <body>
+              <div id="app">
+                <ErrorBoundary fallback={ServerErrorFallback}>
+                  <Suspense fallback={<Loading />}>{children}</Suspense>
+                </ErrorBoundary>
+              </div>
+              {scripts}
+            </body>
+          </html>
+        )
+      }}
     />
   )
 })

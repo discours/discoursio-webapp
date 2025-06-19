@@ -9,10 +9,10 @@ import viteConfig, { isDev } from './vite.config'
 
 const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)
 
-const isVercel = Boolean(process.env.VERCEL)
+const isVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV)
 const isNetlify = Boolean(process.env.NETLIFY)
 const preset = isNetlify ? 'netlify' : isVercel ? 'vercel' : 'node'
-console.info(`[app.config] solid-start preset {> ${preset} <}`)
+console.info(`[app.config] solid-start preset {> ${preset} <} (VERCEL: ${isVercel})`)
 
 // certs for local development
 const __filename = fileURLToPath(import.meta.url)
@@ -58,12 +58,27 @@ export default defineConfig({
       '/api/og/**': {
         prerender: false,
         runtime: 'edge' // Key fix: Force Edge runtime for OG routes
+      },
+      // Добавим правила для главной страницы
+      '/': {
+        prerender: false,
+        ssr: true
+      },
+      '/api/health': {
+        prerender: false,
+        runtime: 'nodejs'
       }
     },
     rollupConfig: {
       output: {
         inlineDynamicImports: false
       }
+    },
+    // Vercel specific settings
+    vercel: {
+      runtime: 'nodejs20.x',
+      regions: ['iad1'],
+      memory: 1024
     }
   },
   ssr: true,
