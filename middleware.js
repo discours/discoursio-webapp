@@ -3,6 +3,7 @@
  * Документация: https://vercel.com/docs/functions/edge-middleware
  */
 
+// Статические ресурсы из public отдаем быстро с долгим кешем
 const IMAGES_EXTENSIONS = /\.(png|jpg|jpeg|gif|svg|webp|ico|bmp|tiff|tif|heic|heif|avif)$/i
 
 // Middleware для обработки запросов и отладки на Vercel
@@ -13,56 +14,41 @@ export default function middleware(request) {
 
   // Логируем только в production на Vercel для отладки
   if (isProduction && isVercel) {
-    console.log(`[Middleware] ${request.method} ${url.pathname}`, {
+    console.log(`[Middleware] ${request.method} ${url.pathname}${url.search}`, {
       userAgent: request.headers.get('user-agent'),
       referer: request.headers.get('referer'),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      host: request.headers.get('host')
     })
   }
-
-  // Добавляем заголовки безопасности и отладки
-  const response = new Response(null, {
-    headers: {
-      'X-Frame-Options': 'DENY',
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin',
-      'X-Debug-Timestamp': Date.now().toString(),
-      'X-Environment': isProduction ? 'production' : 'development',
-      'X-Platform': isVercel ? 'vercel' : 'other'
-    }
-  })
 
   // Проверяем критичные пути
   const criticalPaths = ['/', '/api/graphql', '/api/og']
-  if (criticalPaths.some((path) => url.pathname.startsWith(path))) {
+  const isCriticalPath = criticalPaths.some((path) => url.pathname.startsWith(path))
+
+  if (isCriticalPath) {
     console.log(`[Middleware] Critical path accessed: ${url.pathname}`)
+
+    // Дополнительная диагностика для главной страницы
+    if (url.pathname === '/' && isVercel) {
+      console.log('[Middleware] Root path request details:', {
+        method: request.method,
+        userAgent: request.headers.get('user-agent'),
+        url: request.url
+      })
+    }
   }
 
-  // Статические ресурсы из public отдаем быстро с долгим кешем
-  if (
-    url.pathname.startsWith('/icons/') ||
-    url.pathname.startsWith('/fonts/') ||
-    url.pathname.startsWith('/')
-  ) {
-    return new Response(null, {
-      headers: {
-        'Cache-Control': 'public, max-age=31536000, immutable' // 1 год для статических ресурсов
-      }
-    })
+  if (IMAGES_EXTENSIONS.test(url.pathname)) {
+    console.log(`[Middleware] Static image request: ${url.pathname}`)
+    return null // Пропускаем статические изображения
   }
 
-  // Обрабатываем только внешние изображения
-  if (url.pathname.match(IMAGES_EXTENSIONS) && url.hostname !== 'localhost') {
-    // Простые заголовки кеширования - квотер сам управляет кешем
-    const headers =
-      url.searchParams.has('v') || url.searchParams.has('retry')
-        ? { 'Cache-Control': 'no-cache' }
-        : { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400' }
+  // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: не возвращаем Response для обычных запросов!
+  // Middleware должен возвращать null чтобы запрос продолжился к приложению
+  console.log(`[Middleware] Passing through to app: ${url.pathname}`)
 
-    return new Response(null, { headers })
-  }
-
-  return response
+  return null // Позволяем запросу продолжиться к SolidStart приложению
 }
 
 // Конфигурация для применения middleware

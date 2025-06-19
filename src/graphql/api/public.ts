@@ -415,3 +415,5 @@ export const useTopicBySlug = (slug: string) => {
     true // withAbort
   )({ slug })
 }
+
+// Проверяю содержимое для понимания как обойти кеш

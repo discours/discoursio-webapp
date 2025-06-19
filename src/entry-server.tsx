@@ -29,11 +29,18 @@ const ServerErrorFallback = (err: any) => {
 
 export default createHandler(() => {
   console.log('[Server] createHandler called, NODE_ENV:', process.env.NODE_ENV)
+  console.log('[Server] VERCEL env:', process.env.VERCEL)
+  console.log(
+    '[Server] Available env vars:',
+    Object.keys(process.env).filter((k) => k.startsWith('PUBLIC_'))
+  )
 
   return (
     <StartServer
       document={({ assets, children, scripts }) => {
         console.log('[Server] Document render called')
+        console.log('[Server] Assets count:', Array.isArray(assets) ? assets.length : 'not array')
+        console.log('[Server] Scripts available:', !!scripts)
 
         return (
           <html lang="ru">
@@ -50,6 +57,18 @@ export default createHandler(() => {
                   VERCEL: '${process.env.VERCEL}',
                   url: window.location.href
                 });
+                
+                // Проверяем загрузку React/SolidJS
+                console.log('[Client] SolidJS available:', typeof window.solid !== 'undefined');
+                
+                // Ловим ошибки
+                window.addEventListener('error', function(e) {
+                  console.error('[Client] Runtime error:', e.error);
+                });
+                
+                window.addEventListener('unhandledrejection', function(e) {
+                  console.error('[Client] Unhandled promise rejection:', e.reason);
+                });
               `}
               />
               {assets}
@@ -60,6 +79,12 @@ export default createHandler(() => {
                   <Suspense fallback={<Loading />}>{children}</Suspense>
                 </ErrorBoundary>
               </div>
+              <script
+                innerHTML={`
+                console.log('[Client] Body loaded, app div:', document.getElementById('app'));
+                console.log('[Client] App div innerHTML length:', document.getElementById('app')?.innerHTML?.length || 0);
+              `}
+              />
               {scripts}
             </body>
           </html>
