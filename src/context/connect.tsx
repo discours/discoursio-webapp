@@ -10,13 +10,19 @@
  * Это единственная точка входа для всей SSE функциональности приложения.
  */
 
-import { type JSX, createContext, createEffect, createSignal, on, onCleanup, onMount, useContext } from 'solid-js'
-import { batch, untrack } from 'solid-js'
-import { useSession } from '~/context/session'
+import {
+  type JSX,
+  createContext,
+  createEffect,
+  createSignal,
+  on,
+  onCleanup,
+  onMount,
+  useContext
+} from 'solid-js'
 import { Awareness } from 'y-protocols/awareness.js'
 import { Doc } from 'yjs'
-
-import { Chat, Message } from '~/graphql/schema/chat.gen'
+import { useSession } from '~/context/session'
 
 // === ТИПЫ ===
 
@@ -24,6 +30,7 @@ export interface SSEMessage {
   id: string
   entity: string // follower | shout | reaction | draft | message | cursor
   action: string // create | delete | update | join | follow | seen
+  // biome-ignore lint/suspicious/noExplicitAny: ok
   payload: any
   created_at?: number // unixtime x1000
   seen?: boolean
@@ -141,9 +148,9 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
         try {
           const data = JSON.parse(event.data)
           console.log('[Connect] Получено SSE сообщение:', data)
-          
+
           setLastMessage(data)
-          
+
           // Вызываем все обработчики
           handlers().forEach((handler) => {
             try {
@@ -161,27 +168,28 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
         console.error('[Connect] Ошибка SSE соединения:', event)
         setStatus('error')
         setError('Ошибка SSE соединения')
-        
+
         // Автоматическое переподключение
         handleReconnect()
       }
-
     } catch (connectError) {
       console.error('[Connect] Ошибка подключения SSE:', connectError)
       setStatus('error')
-      setError(`Ошибка подключения: ${connectError instanceof Error ? connectError.message : String(connectError)}`)
+      setError(
+        `Ошибка подключения: ${connectError instanceof Error ? connectError.message : String(connectError)}`
+      )
       throw connectError instanceof Error ? connectError : new Error(String(connectError))
     }
   }
 
   const disconnect = () => {
     console.log('[Connect] Отключаем SSE соединение')
-    
+
     if (sseConnection) {
       sseConnection.close()
       sseConnection = null
     }
-    
+
     setStatus('disconnected')
     setError(null)
     reconnectAttempts = maxReconnectAttempts // Предотвращаем автоматическое переподключение
@@ -190,10 +198,10 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   const reconnect = async (): Promise<void> => {
     console.log('[Connect] Переподключение SSE...')
     disconnect()
-    
+
     // Небольшая задержка перед переподключением
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
     reconnectAttempts = 0
     await connect()
   }
@@ -206,10 +214,12 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
       return
     }
 
-    const delay = Math.min(baseReconnectDelay * Math.pow(2, reconnectAttempts), 30000)
+    const delay = Math.min(baseReconnectDelay * 2 ** reconnectAttempts, 30000)
     reconnectAttempts++
 
-    console.log(`[Connect] Переподключение через ${delay}ms (попытка ${reconnectAttempts}/${maxReconnectAttempts})`)
+    console.log(
+      `[Connect] Переподключение через ${delay}ms (попытка ${reconnectAttempts}/${maxReconnectAttempts})`
+    )
 
     setTimeout(() => {
       if (session()?.token && reconnectAttempts <= maxReconnectAttempts) {
@@ -224,28 +234,28 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
   const getAwarenessProvider = (editorId: string) => {
     const providers = awarenessProviders()
-    
+
     if (!providers.has(editorId)) {
       const doc = new Doc()
       const awareness = new Awareness(doc)
       providers.set(editorId, { doc, awareness })
     }
-    
+
     return providers.get(editorId)!
   }
 
   const setUserInfo = (editorId: string, user: Partial<EditorState['user']>) => {
     try {
       const provider = getAwarenessProvider(editorId)
-      const currentState = provider.awareness.getLocalState() as EditorState || {}
-      
+      const currentState = (provider.awareness.getLocalState() as EditorState) || {}
+
       const newState: EditorState = {
         ...currentState,
         user: { ...currentState.user, ...user } as EditorState['user'],
         editorId,
         timestamp: Date.now()
       }
-      
+
       provider.awareness.setLocalState(newState)
       console.log(`[Connect] Обновлена информация о пользователе для редактора ${editorId}`)
     } catch (error) {
@@ -256,14 +266,14 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   const setCursorPosition = (editorId: string, anchor: number, head: number) => {
     try {
       const provider = getAwarenessProvider(editorId)
-      const currentState = provider.awareness.getLocalState() as EditorState || {}
-      
+      const currentState = (provider.awareness.getLocalState() as EditorState) || {}
+
       const newState: EditorState = {
         ...currentState,
         cursor: { anchor, head },
         timestamp: Date.now()
       }
-      
+
       provider.awareness.setLocalState(newState)
       console.log(`[Connect] Обновлена позиция курсора для редактора ${editorId}: ${anchor}-${head}`)
     } catch (error) {
@@ -280,28 +290,28 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   ) => {
     try {
       const provider = getAwarenessProvider(editorId)
-      const currentState = provider.awareness.getLocalState() as EditorState || {}
-      
+      const currentState = (provider.awareness.getLocalState() as EditorState) || {}
+
       const draftContent = currentState.draftContent || { draftId, fields: {} }
-      
+
       // Обновляем поле
       draftContent.fields[fieldName] = {
         content,
         isEmpty: isEmpty || false,
         lastUpdate: Date.now()
       }
-      
+
       const newState: EditorState = {
         ...currentState,
         draftContent,
         timestamp: Date.now()
       }
-      
+
       provider.awareness.setLocalState(newState)
-      
+
       // Сохраняем в localStorage для офлайн режима
       saveToLocalStorage(draftId, fieldName, content, isEmpty || false)
-      
+
       console.log(`[Connect] Обновлено поле ${fieldName} черновика ${draftId} (${content.length} символов)`)
     } catch (error) {
       console.error('[Connect] Ошибка обновления поля черновика:', error)
@@ -332,9 +342,10 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
     try {
       const provider = getAwarenessProvider(editorId)
       const states = provider.awareness.getStates()
-      
+
       const users: Array<{ clientId: number; user: EditorState['user']; timestamp: number }> = []
-      
+
+      // biome-ignore lint/suspicious/noExplicitAny: ok
       states.forEach((state: any, clientId: number) => {
         const editorState = state as EditorState
         if (editorState?.user && editorState.editorId === editorId) {
@@ -345,7 +356,7 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
           })
         }
       })
-      
+
       return users
     } catch (error) {
       console.error('[Connect] Ошибка получения подключенных пользователей:', error)
@@ -366,7 +377,7 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
           }
         }
       }
-      
+
       return {}
     } catch (error) {
       console.error('[Connect] Ошибка получения содержимого черновика:', error)
@@ -377,14 +388,14 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   const connectEditor = (editorId: string, draftId?: string | number) => {
     try {
       console.log(`[Connect] Подключаем редактор ${editorId} к черновику ${draftId}`)
-      
-      const provider = getAwarenessProvider(editorId)
-      
+
+      const _provider = getAwarenessProvider(editorId)
+
       // Синхронизируем с localStorage если есть draftId
       if (draftId) {
         syncFromLocalStorage(editorId, draftId)
       }
-      
+
       console.log(`[Connect] Редактор ${editorId} подключен`)
     } catch (error) {
       console.error('[Connect] Ошибка подключения редактора:', error)
@@ -394,16 +405,16 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   const disconnectEditor = (editorId: string) => {
     try {
       console.log(`[Connect] Отключаем редактор ${editorId}`)
-      
+
       const providers = awarenessProviders()
       const provider = providers.get(editorId)
-      
+
       if (provider) {
         provider.awareness.destroy()
         provider.doc.destroy()
         providers.delete(editorId)
       }
-      
+
       console.log(`[Connect] Редактор ${editorId} отключен`)
     } catch (error) {
       console.error('[Connect] Ошибка отключения редактора:', error)
@@ -415,11 +426,11 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
       const provider = getAwarenessProvider(editorId)
       const fieldNames = ['title', 'subtitle', 'lead', 'body', 'media']
       const fieldsData: Record<string, DraftField> = {}
-      
-      fieldNames.forEach(fieldName => {
+
+      fieldNames.forEach((fieldName) => {
         const key = `draft-${draftId}-${fieldName}`
         const stored = localStorage.getItem(key)
-        
+
         if (stored) {
           try {
             const data = JSON.parse(stored)
@@ -433,10 +444,10 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
           }
         }
       })
-      
+
       if (Object.keys(fieldsData).length > 0) {
-        const currentState = provider.awareness.getLocalState() as EditorState || {}
-        
+        const currentState = (provider.awareness.getLocalState() as EditorState) || {}
+
         const newState: EditorState = {
           ...currentState,
           editorId,
@@ -520,10 +531,10 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
 
   onCleanup(() => {
     console.log('[Connect] Очистка ConnectProvider')
-    
+
     // Отключаем SSE
     disconnect()
-    
+
     // Очищаем все awareness провайдеры
     const providers = awarenessProviders()
     providers.forEach((_, editorId) => {
