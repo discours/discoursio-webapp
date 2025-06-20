@@ -1,6 +1,6 @@
 # 🌟 Discours Webapp
 
-![Version](https://img.shields.io/badge/version-0.11.7-blue.svg?style=flat)
+![Version](https://img.shields.io/badge/version-0.11.8-blue.svg?style=flat)
 ![Tests](https://img.shields.io/badge/Tests-12_specs-28a745?style=flat&logo=playwright)
 ![Docs](https://img.shields.io/badge/Docs-29_files-6f42c1?style=flat&logo=markdown)
 ![Lines](https://img.shields.io/badge/Lines-45K+-informational?style=flat)
@@ -26,13 +26,10 @@
 ![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178c6?style=flat&logo=typescript)
 ![SCSS](https://img.shields.io/badge/Styles-SCSS-cf649a?style=flat&logo=sass)
 ![SSR](https://img.shields.io/badge/SSR-SolidStart-2c4f7c?style=flat)
-![PWA](https://img.shields.io/badge/PWA-Ready-5a67d8?style=flat)
 ![Responsive](https://img.shields.io/badge/Responsive-Mobile_First-success?style=flat)
 ![URQL](https://img.shields.io/badge/GraphQL-URQL-e10098?style=flat&logo=graphql)
 ![CodeGen](https://img.shields.io/badge/Codegen-GraphQL-e10098?style=flat)
-![i18next](https://img.shields.io/badge/i18n-i18next-26d0ce?style=flat)
-![Languages](https://img.shields.io/badge/Languages-RU/EN-orange?style=flat)
-![Bun](https://img.shields.io/badge/Bun-Latest-orange.svg?style=flat&logo=bun)
+![i18next](https://img.shields.io/badge/Languages-RU/EN-orange?style=flat)
 ![Vinxi](https://img.shields.io/badge/Build-Vinxi-orange?style=flat)
 ![Vite](https://img.shields.io/badge/Bundler-Vite-646cff?style=flat&logo=vite)
 ![Biome](https://img.shields.io/badge/Linter-Biome-60a5fa?style=flat)

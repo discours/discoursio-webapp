@@ -104,25 +104,35 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
   // Получаем описание напрямую через дедупликацию логики
   const description = createMemo(() => ogMetadata().description)
 
-  // Гарантируем, что все важные мета-теги имеют значения по умолчанию
-  const guaranteedTitle = createMemo(
-    () => ogMetadata().title || props.article?.title || t(props.title) || 'Discours'
-  )
-  const guaranteedDescription = createMemo(
-    () => description() || props.desc || 'Discours – an open magazine about culture, science and society'
-  )
-  const guaranteedType = createMemo(() => ogMetadata().type || 'website')
-  const guaranteedUrl = createMemo(() => ogMetadata().url || `https://testing3.discours.io${loc.pathname}`)
-  const guaranteedImage = createMemo(
-    () => ogMetadata().image || 'https://files.dscrs.site/production/image/logo_image.png'
-  )
-  const guaranteedLogo = createMemo(() => ogMetadata().logo || 'https://files.dscrs.site/logo_sign.png')
+  // Используем более надёжные гарантированные значения
+  const pageTitle = createMemo(() => {
+    return props.article?.title || t(props.title) || ogMetadata().title || 'Discours'
+  })
+
+  const pageDescription = createMemo(() => {
+    return description() || props.desc || 'Discours – открытый журнал о культуре, науке и обществе'
+  })
+
+  const ogType = createMemo(() => ogMetadata().type || 'website')
+  const ogUrl = createMemo(() => ogMetadata().url || `https://discours.io${loc.pathname}`)
+  const ogImage = createMemo(() => ogMetadata().image || `${cdnUrl}/production/image/logo_image.png`)
+  const ogLogo = createMemo(() => ogMetadata().logo || `${cdnUrl}/logo_sign.png`)
+
+  // Debug лог для проверки значений
+  console.log('[PageLayout] OG Meta Debug:', {
+    title: pageTitle(),
+    description: pageDescription(),
+    type: ogType(),
+    url: ogUrl(),
+    image: ogImage(),
+    logo: ogLogo()
+  })
 
   return (
     <ErrorBoundary fallback={PageErrorFallback}>
       <div class={props.withPadding ? 'container' : ''}>
         <Suspense fallback={<Loading />}>
-          <Title>{props.article?.title || t(props.title)}</Title>
+          <Title>{pageTitle()}</Title>
           <Header
             slug={props.slug}
             title={props.headerTitle}
@@ -130,27 +140,30 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
             cover={imageUrl}
             isHeaderFixed={isHeaderFixed}
           />
+
           {/* Основные мета-теги */}
-          <Meta name="description" content={guaranteedDescription()} />
+          <Meta name="description" content={pageDescription()} />
           <Meta name="keywords" content={keywords()} />
 
-          {/* Open Graph теги - все обязательные и дополнительные теги */}
-          <Meta property="og:type" content={guaranteedType()} />
-          <Meta property="og:title" content={guaranteedTitle()} />
-          <Meta property="og:site_name" content={ogMetadata().siteName || 'Discours'} />
-          <Meta property="og:description" content={guaranteedDescription()} />
-          <Meta property="og:url" content={guaranteedUrl()} />
-          <Meta property="og:image" content={guaranteedImage()} />
-          <Meta property="og:image:width" content={ogMetadata().imageWidth?.toString() || '1200'} />
-          <Meta property="og:image:height" content={ogMetadata().imageHeight?.toString() || '630'} />
-          <Meta
-            property="og:image:alt"
-            content={ogMetadata().imageAlt || `${guaranteedTitle()} - Discours`}
-          />
-          <Meta property="og:image:type" content={ogMetadata().imageType || 'image/png'} />
-          <Meta property="og:image:secure_url" content={ogMetadata().imageSecureUrl || guaranteedImage()} />
-          <Meta property="og:locale" content={ogMetadata().locale || 'ru'} />
-          <Meta property="og:logo" content={guaranteedLogo()} />
+          {/* ============ ОБЯЗАТЕЛЬНЫЕ OPEN GRAPH ТЕГИ ============ */}
+          {/* Эти три тега абсолютно необходимы для работы OG */}
+          <Meta property="og:type" content={ogType()} />
+          <Meta property="og:title" content={pageTitle()} />
+          <Meta property="og:description" content={pageDescription()} />
+          <Meta property="og:url" content={ogUrl()} />
+          <Meta property="og:image" content={ogImage()} />
+          <Meta property="og:logo" content={ogLogo()} />
+
+          {/* Дополнительные обязательные теги */}
+          <Meta property="og:site_name" content="Discours" />
+          <Meta property="og:locale" content={lang() || 'ru'} />
+
+          {/* ============ РАСШИРЕННЫЕ OG ТЕГИ ============ */}
+          <Meta property="og:image:width" content="1200" />
+          <Meta property="og:image:height" content="630" />
+          <Meta property="og:image:alt" content={`${pageTitle()} - Discours`} />
+          <Meta property="og:image:type" content="image/png" />
+          <Meta property="og:image:secure_url" content={ogImage().replace('http://', 'https://')} />
 
           {/* Специфичные теги для статей */}
           <Show when={ogMetadata().articleAuthor}>
@@ -182,38 +195,33 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
             <Meta property="profile:username" content={ogMetadata().profileUsername!} />
           </Show>
 
-          {/* Канонический URL и поисковые теги */}
-          <link rel="canonical" href={ogMetadata().canonicalUrl || guaranteedUrl()} />
-          <Meta name="robots" content={ogMetadata().robots || 'index, follow'} />
+          {/* ============ ДУБЛИРОВАНИЕ ДЛЯ СОВМЕСТИМОСТИ ============ */}
+          {/* Дублируем критичные теги с атрибутом name для максимальной совместимости */}
+          <Meta name="og:type" content={ogType()} />
+          <Meta name="og:title" content={pageTitle()} />
+          <Meta name="og:description" content={pageDescription()} />
+          <Meta name="og:url" content={ogUrl()} />
+          <Meta name="og:logo" content={ogLogo()} />
 
-          {/* Дублируем обязательные мета-теги с использованием name вместо property для максимальной совместимости */}
-          <Meta name="og:type" content={guaranteedType()} />
-          <Meta name="og:title" content={guaranteedTitle()} />
-          <Meta name="og:description" content={guaranteedDescription()} />
-          <Meta name="og:url" content={guaranteedUrl()} />
-          <Meta name="og:logo" content={guaranteedLogo()} />
-
-          {/* Twitter Card теги */}
-          <Meta name="twitter:card" content={ogMetadata().twitterCard || 'summary_large_image'} />
+          {/* ============ TWITTER CARD ТЕГИ ============ */}
+          <Meta name="twitter:card" content="summary_large_image" />
           <Meta name="twitter:site" content="@discoursio" />
-          <Meta name="twitter:title" content={guaranteedTitle()} />
-          <Meta name="twitter:description" content={guaranteedDescription()} />
-          <Meta name="twitter:image" content={guaranteedImage()} />
-          <Meta
-            name="twitter:image:alt"
-            content={ogMetadata().imageAlt || `${guaranteedTitle()} - Discours`}
-          />
+          <Meta name="twitter:title" content={pageTitle()} />
+          <Meta name="twitter:description" content={pageDescription()} />
+          <Meta name="twitter:image" content={ogImage()} />
+          <Meta name="twitter:image:alt" content={`${pageTitle()} - Discours`} />
 
-          {/* VK теги */}
-          <Meta name="vk:title" content={guaranteedTitle()} />
-          <Meta name="vk:description" content={guaranteedDescription()} />
-          <Meta name="vk:image" content={guaranteedImage()} />
+          {/* ============ ДРУГИЕ СОЦИАЛЬНЫЕ СЕТИ ============ */}
+          <Meta name="vk:title" content={pageTitle()} />
+          <Meta name="vk:description" content={pageDescription()} />
+          <Meta name="vk:image" content={ogImage()} />
 
-          {/* Telegram теги */}
           <Meta name="telegram:channel" content="@discoursio" />
-
-          {/* LinkedIn теги */}
           <Meta name="linkedin:owner" content="Discours" />
+
+          {/* ============ SEO ТЕГИ ============ */}
+          <link rel="canonical" href={ogUrl()} />
+          <Meta name="robots" content="index, follow" />
 
           <main
             class={clsx('main-content', {
