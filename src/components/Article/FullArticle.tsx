@@ -35,6 +35,7 @@ import { Icon } from '../_shared/Icon'
 import { Image } from '../_shared/Image'
 import { InviteMembers } from '../_shared/InviteMembers'
 import { Lightbox } from '../_shared/Lightbox'
+import { Loading } from '../_shared/Loading'
 import { Modal } from '../_shared/Modal'
 import { Popover } from '../_shared/Popover'
 import { ShareModal } from '../_shared/ShareModal'
@@ -46,7 +47,6 @@ import { AudioPlayer } from './AudioPlayer/AudioPlayer'
 import { SharePopup, getShareUrl } from './SharePopup'
 
 import stylesHeader from '../HeaderNav/Header.module.scss'
-import { Loading } from '../_shared/Loading'
 import styles from './Article.module.scss'
 
 type Props = {
@@ -98,25 +98,6 @@ export const FullArticle = (props: Props) => {
 
   const body = createMemo(() => {
     let body = props.article.body || ''
-    // Для галерей изображений не объединяем медиа-контент в основное тело
-    // так как описания изображений отображаются отдельно в ImageSwiper
-    if ((props.article.layout === 'literature' || body.length < 2) && props.article.layout !== 'image') {
-      try {
-        let mediaBody = ''
-        if (props.article.media) {
-          const media = props.article.media as MediaItem[]
-          if (media.length > 0) {
-            for (const item of media) {
-              if (mediaBody.includes(item.body || '')) continue
-              mediaBody += item.body || ''
-            }
-            body = mediaBody
-          }
-        }
-      } catch (error) {
-        console.error(error)
-      }
-    }
     if (canEdit()) body = processPrepositions(body)
     body = patchBodyUrls(body)
     return body
