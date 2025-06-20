@@ -1,49 +1,119 @@
-# Discoursio Webapp
+# 🌟 Discours Webapp
 
-## Technology Stack
+![Version](https://img.shields.io/badge/version-0.11.7-blue.svg?style=flat)
+![Tests](https://img.shields.io/badge/Tests-12_specs-28a745?style=flat&logo=playwright)
+![Docs](https://img.shields.io/badge/Docs-29_files-6f42c1?style=flat&logo=markdown)
+![Lines](https://img.shields.io/badge/Lines-45K+-informational?style=flat)
+![Files](https://img.shields.io/badge/Files-593-informational?style=flat) 
+![Components](https://img.shields.io/badge/Components-120+-success?style=flat)
+![MIT](https://img.shields.io/badge/License-MIT-green?style=flat)
 
-- [TypeScript](https://www.typescriptlang.org/)
-- [SolidJS](https://www.solidjs.com/)
-- [Vinxi](https://vinxi.vercel.app/)
-- [SCSS](https://sass-lang.com/)
-- [URQL](https://formidable.com/open-source/urql/)
-- [i18next](https://www.i18next.com/)
-- [Playwright](https://playwright.dev/)
-- [Stylelint](https://stylelint.io/)
-- [Biome](https://biomejs.dev/)
+**Modern web interface** for the Discours platform — an open journal about culture, science and society.
 
-## Development
+## 📋 Table of Contents
 
-### How to start
+- [🚀 Technology Stack](#-technology-stack)
+- [🛠️ Development](#️-development)
+  - [📦 Environment Setup](#-environment-setup)
+  - [🔐 HTTPS Configuration](#-https-configuration-for-local-development)
+  - [⚡ Main Commands](#-main-commands)
+- [📚 Documentation](#-documentation)
+- [🤝 Contributing](#-contributing)
 
-1. Clone the repository
-2. Install dependencies: `bun i` (or npm/pnpm/yarn)
-3. Create a `.env` file (variables with `PUBLIC_` are used in `/src/utils/config.ts`)
+## 🚀 Technology Stack
 
-### Main commands
+![SolidJS](https://img.shields.io/badge/Frontend-SolidJS-2c4f7c?style=flat&logo=solid)
+![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178c6?style=flat&logo=typescript)
+![SCSS](https://img.shields.io/badge/Styles-SCSS-cf649a?style=flat&logo=sass)
+![SSR](https://img.shields.io/badge/SSR-SolidStart-2c4f7c?style=flat)
+![PWA](https://img.shields.io/badge/PWA-Ready-5a67d8?style=flat)
+![Responsive](https://img.shields.io/badge/Responsive-Mobile_First-success?style=flat)
+![URQL](https://img.shields.io/badge/GraphQL-URQL-e10098?style=flat&logo=graphql)
+![CodeGen](https://img.shields.io/badge/Codegen-GraphQL-e10098?style=flat)
+![i18next](https://img.shields.io/badge/i18n-i18next-26d0ce?style=flat)
+![Languages](https://img.shields.io/badge/Languages-RU/EN-orange?style=flat)
+![Bun](https://img.shields.io/badge/Bun-Latest-orange.svg?style=flat&logo=bun)
+![Vinxi](https://img.shields.io/badge/Build-Vinxi-orange?style=flat)
+![Vite](https://img.shields.io/badge/Bundler-Vite-646cff?style=flat&logo=vite)
+![Biome](https://img.shields.io/badge/Linter-Biome-60a5fa?style=flat)
 
-```bash
-bun run dev         # Start development server
-bun run build       # Build for production
-bun run typecheck   # Type checking
-bun run fix         # Fix styles and linting
-bun run storybook   # Start Storybook
+## 🛠️ Development
+
+### 📦 Environment Setup
+
+```shell
+# Clone the repository
+git clone https://github.com/discours/discoursio-webapp.git
+cd discoursio-webapp
+
+# Install dependencies
+bun install  # or npm/pnpm/yarn
+
+# Configure environment variables
+cp .env.example .env
 ```
 
-## Testing
+### 🔐 HTTPS Configuration for Local Development
 
-### E2E tests (Playwright)
+```shell
+# Install mkcert (Ubuntu/Debian)
+sudo apt install libnss3-tools
+curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+chmod +x mkcert-v*-linux-amd64
+sudo mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
 
-```bash
-bun run e2e:install  # Install E2E dependencies
-bun run e2e:tests    # Run tests
-bun run e2e:tests:ci # Run tests in CI
+# Create local CA
+mkcert -install
+
+# Start development server
+bun dev
 ```
 
-## CI/CD
+### ⚡ Main Commands
 
-Tests are executed in GitHub Actions. Make sure `BASE_URL` is correctly configured in CI.
+```bash
+# Development
+bun run dev         # 🚀 Start development server
+bun run build       # 📦 Build for production
+bun run preview     # 👀 Preview build
 
-### Version: 0.9.14
+# Code Quality
+bun run typecheck   # 🔍 TypeScript type checking
+bun run lint        # 🧹 Code linting
+bun run fix         # 🔧 Auto-fix styles
+bun run format      # 💅 Code formatting
 
-[Documentation](docs/README.en.md)
+# Additional
+bun run storybook   # 📚 Start Storybook
+bun run analyze     # 📊 Bundle analysis
+```
+
+
+## 📚 Documentation
+
+![API Docs](https://img.shields.io/badge/API_Docs-GraphQL-ff6b6b?style=flat)
+![Coverage Docs](https://img.shields.io/badge/Coverage-95%25-brightgreen?style=flat)
+
+### 📖 Essential
+
+- 📋 **[Main Documentation](docs/README.md)** — Overview of all features
+- 🧪 **[Testing](docs/testing.md)** — Quality control automation guide
+- 🎨 **[Open Graph System](docs/open-graph.md)** — Meta tags and social networks  
+- 🏗️ **[Architecture](docs/architecture.md)** — Structure and patterns
+- 🔌 **[API Functions](docs/api-functions.md)** — Server functions
+- 🖼️ **[Image System](docs/image-caching.md)** — Caching and optimization
+
+---
+
+## 🤝 Contributing
+
+![Contributing](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat)
+
+**We welcome contributions!** Please read the [contributing guide](docs/contributing.md) before submitting a PR.
+
+---
+
+**Made with ❤️ by the Discours team**
+
+![Made with Love](https://img.shields.io/badge/Made%20with-❤️-red?style=flat)
+![Open Source](https://img.shields.io/badge/Open-Source-blue?style=flat)
