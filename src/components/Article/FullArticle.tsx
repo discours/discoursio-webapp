@@ -98,7 +98,9 @@ export const FullArticle = (props: Props) => {
 
   const body = createMemo(() => {
     let body = props.article.body || ''
-    if (props.article.layout === 'literature' || body.length < 2) {
+    // Для галерей изображений не объединяем медиа-контент в основное тело
+    // так как описания изображений отображаются отдельно в ImageSwiper
+    if ((props.article.layout === 'literature' || body.length < 2) && props.article.layout !== 'image') {
       try {
         let mediaBody = ''
         if (props.article.media) {

@@ -14,40 +14,15 @@
   width: 100%;
 
   .list {
-    @include media-breakpoint-up(lg) {
-      flex-wrap: wrap;
-      padding-right: 7em;
-    }
-
-    display: flex;
-    font-weight: 500;
     list-style: none;
-    margin-top: 0;
-    overflow: auto;
-    padding: 0;
-    position: relative;
+    font-weight: 500;
   }
 
   .item {
-    margin-right: 2.4rem;
+    margin-left: 2.4rem;
 
-    &.right {
-      @include media-breakpoint-up(lg) {
-        display: block;
-      }
-
-      display: none;
-      margin-right: 0;
-      position: absolute;
-      right: 0;
-      top: 0;
-      white-space: nowrap;
-
-      :global(.icon) {
-        display: inline-block;
-        margin-left: 0.3em;
-        top: 0.15em;
-      }
+    &:first-child {
+      margin-left: 0;
     }
 
     a {
@@ -72,13 +47,6 @@
       top: 0.15em;
     }
   }
-}
-
-.rightItem {
-  margin-right: 0;
-  position: absolute;
-  right: 0;
-  top: 0;
 }
 
 .rightItemIcon {

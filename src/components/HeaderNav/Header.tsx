@@ -167,7 +167,7 @@ export const Header = (props: Props) => {
         <Feedback />
       </Modal>
 
-      <div class={clsx(styles.mainHeaderInner, 'wide-container')}>
+      <div class={clsx(styles.mainHeaderInner)}>
         <nav class={clsx('row', styles.headerInner, { [styles.fixed]: fixed() })}>
           <div class={clsx(styles.burgerContainer, 'col-auto')}>
             <div class={clsx(styles.burger, { [styles.fixed]: fixed() })} onClick={toggleFixed}>
@@ -179,7 +179,7 @@ export const Header = (props: Props) => {
               <img src="/logo.svg" alt={t('Discours')} />
             </A>
           </div>
-          <div class={clsx('col col-md-13 col-lg-12 offset-xl-1', styles.mainNavigationWrapper)}>
+          <div class={clsx('col col-md-8 col-lg-8', styles.mainNavigationWrapper)}>
             <Show when={props.title}>
               <div class={styles.articleHeader}>{props.title}</div>
             </Show>
@@ -374,7 +374,7 @@ export const Header = (props: Props) => {
             onMouseEnter={() => switchView(true, 'topics')}
             onMouseLeave={hideSubnavigation}
           >
-            <TopicsNav />
+            <TopicsNav inSubnavigation={true} />
           </div>
 
           <div

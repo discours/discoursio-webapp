@@ -12,7 +12,9 @@ import { SwiperRef } from './swiper'
 
 import { useSearchParams } from '@solidjs/router'
 import { Lightbox } from '../Lightbox'
+
 import styles from './Swiper.module.scss'
+
 type Props = {
   images: MediaItem[]
   onImagesAdd?: (value: MediaItem[]) => void

@@ -1,6 +1,6 @@
 import { A, useMatch } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Accessor, For, createEffect, createSignal, untrack } from 'solid-js'
+import { Accessor, For, Show, createEffect, createSignal, untrack } from 'solid-js'
 
 import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
@@ -21,7 +21,7 @@ export const DEFAULT_TOPICS = [
   'poetry'
 ]
 
-export const TopicsNav = (props: { fixed?: boolean }) => {
+export const TopicsNav = (props: { fixed?: boolean; inSubnavigation?: boolean }) => {
   const { t, lang } = useLocalize()
   const { sortedTopics } = useTopics()
   const [randomTopics, setRandomTopics] = createSignal<string[]>(DEFAULT_TOPICS)
@@ -40,19 +40,34 @@ export const TopicsNav = (props: { fixed?: boolean }) => {
   })
 
   const matchExpo = useMatch(() => '/expo')
+
+  const listClasses = clsx(
+    'd-flex flex-nowrap flex-lg-wrap align-items-center overflow-auto position-relative m-0 p-0',
+    styles.list,
+    styles.nodash
+  )
+
+  const getItemClasses = (isRight = false) =>
+    clsx(styles.item, {
+      'me-4': !isRight && !props.inSubnavigation, // отступ между темами только вне subnavigation
+      'ms-auto d-none d-lg-block': isRight // правый элемент
+    })
+
   return (
     <div class={clsx('wide-container', styles.Topics)}>
-      <ul class={clsx(styles.nodash, styles.list)}>
-        <li class={styles.item}>
-          <A class={clsx({ [styles.selected]: matchExpo() })} href="/expo">
-            {t('Art')}
-          </A>
-        </li>
+      <ul class={listClasses}>
+        <Show when={!props.inSubnavigation}>
+          <li class={getItemClasses(false)}>
+            <A class={clsx({ [styles.selected]: matchExpo() })} href="/expo">
+              {t('Art')}
+            </A>
+          </li>
+        </Show>
         <For each={randomTopics()}>
           {(slug: string, _idx: Accessor<number>) => {
             const topic = sortedTopics()?.find((t: Topic) => t.slug === slug)
             return (
-              <li class={styles.item}>
+              <li class={getItemClasses(false)}>
                 <A href={`/topic/${slug}`}>
                   <span>
                     #
@@ -65,7 +80,7 @@ export const TopicsNav = (props: { fixed?: boolean }) => {
             )
           }}
         </For>
-        <li class={styles.rightItem}>
+        <li class={getItemClasses(true)}>
           <A href="/topics">
             {t('All topics')}
             <Icon name="arrow-right-black" class={clsx(styles.icon, styles.rightItemIcon)} />
