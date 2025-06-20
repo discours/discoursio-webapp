@@ -1,7 +1,7 @@
 {
   "name": "discoursio-webapp",
   "private": true,
-  "version": "0.11.5",
+  "version": "0.11.6",
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
@@ -34,6 +34,7 @@
     "@playwright/test": "^1.52.0",
     "@solid-primitives/media": "^2.3.1",
     "@solid-primitives/pagination": "^0.4.1",
+    "@solid-primitives/resource": "0.4.2",
     "@solid-primitives/selection": "^0.1.2",
     "@solid-primitives/share": "^2.2.0",
     "@solid-primitives/storage": "^4.3.1",
@@ -80,7 +81,6 @@
     "yjs": "^13.6.26"
   },
   "dependencies": {
-    "@solid-primitives/resource": "0.4.2",
     "@vercel/og": "^0.6.8",
     "form-data": "^4.0.2",
     "mailgun.js": "^12.0.2"

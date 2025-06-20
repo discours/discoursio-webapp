@@ -67,7 +67,12 @@ export default async (req, _res) => {
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'public, max-age=31536000, immutable',
-        'CDN-Cache-Control': 'public, max-age=31536000'
+        'CDN-Cache-Control': 'public, max-age=31536000',
+        // Дополнительные заголовки для OG
+        'X-OG-Image-Type': 'image/png',
+        'X-OG-Image-Width': OG_IMAGE_WIDTH.toString(),
+        'X-OG-Image-Height': OG_IMAGE_HEIGHT.toString(),
+        'X-OG-Image-Alt': params.title || 'Discours'
       }
     }
 

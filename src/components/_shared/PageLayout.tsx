@@ -2,7 +2,7 @@ import { Meta, Title } from '@solidjs/meta'
 import { useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
 import type { Component, JSX } from 'solid-js'
-import { Show, createMemo } from 'solid-js'
+import { Index, Show, createMemo } from 'solid-js'
 import { ErrorBoundary, Suspense } from 'solid-js'
 import { cdnUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
@@ -143,8 +143,48 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
           <Meta property="og:image" content={guaranteedImage()} />
           <Meta property="og:image:width" content={ogMetadata().imageWidth?.toString() || '1200'} />
           <Meta property="og:image:height" content={ogMetadata().imageHeight?.toString() || '630'} />
+          <Meta
+            property="og:image:alt"
+            content={ogMetadata().imageAlt || `${guaranteedTitle()} - Discours`}
+          />
+          <Meta property="og:image:type" content={ogMetadata().imageType || 'image/png'} />
+          <Meta property="og:image:secure_url" content={ogMetadata().imageSecureUrl || guaranteedImage()} />
           <Meta property="og:locale" content={ogMetadata().locale || 'ru'} />
           <Meta property="og:logo" content={guaranteedLogo()} />
+
+          {/* Специфичные теги для статей */}
+          <Show when={ogMetadata().articleAuthor}>
+            <Meta property="article:author" content={ogMetadata().articleAuthor!} />
+          </Show>
+          <Show when={ogMetadata().articleSection}>
+            <Meta property="article:section" content={ogMetadata().articleSection!} />
+          </Show>
+          <Show when={ogMetadata().articlePublishedTime}>
+            <Meta property="article:published_time" content={ogMetadata().articlePublishedTime!} />
+          </Show>
+          <Show when={ogMetadata().articleModifiedTime}>
+            <Meta property="article:modified_time" content={ogMetadata().articleModifiedTime!} />
+          </Show>
+          <Show when={ogMetadata().articleTags?.length}>
+            <Index each={ogMetadata().articleTags!}>
+              {(tag) => <Meta property="article:tag" content={tag()} />}
+            </Index>
+          </Show>
+
+          {/* Специфичные теги для профилей авторов */}
+          <Show when={ogMetadata().profileFirstName}>
+            <Meta property="profile:first_name" content={ogMetadata().profileFirstName!} />
+          </Show>
+          <Show when={ogMetadata().profileLastName}>
+            <Meta property="profile:last_name" content={ogMetadata().profileLastName!} />
+          </Show>
+          <Show when={ogMetadata().profileUsername}>
+            <Meta property="profile:username" content={ogMetadata().profileUsername!} />
+          </Show>
+
+          {/* Канонический URL и поисковые теги */}
+          <link rel="canonical" href={ogMetadata().canonicalUrl || guaranteedUrl()} />
+          <Meta name="robots" content={ogMetadata().robots || 'index, follow'} />
 
           {/* Дублируем обязательные мета-теги с использованием name вместо property для максимальной совместимости */}
           <Meta name="og:type" content={guaranteedType()} />
@@ -159,6 +199,21 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
           <Meta name="twitter:title" content={guaranteedTitle()} />
           <Meta name="twitter:description" content={guaranteedDescription()} />
           <Meta name="twitter:image" content={guaranteedImage()} />
+          <Meta
+            name="twitter:image:alt"
+            content={ogMetadata().imageAlt || `${guaranteedTitle()} - Discours`}
+          />
+
+          {/* VK теги */}
+          <Meta name="vk:title" content={guaranteedTitle()} />
+          <Meta name="vk:description" content={guaranteedDescription()} />
+          <Meta name="vk:image" content={guaranteedImage()} />
+
+          {/* Telegram теги */}
+          <Meta name="telegram:channel" content="@discoursio" />
+
+          {/* LinkedIn теги */}
+          <Meta name="linkedin:owner" content="Discours" />
 
           <main
             class={clsx('main-content', {

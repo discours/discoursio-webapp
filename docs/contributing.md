@@ -1,0 +1,121 @@
+# 🧘‍♂️ Руководство по участию в разработке
+
+
+![Contributing](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat)
+![Code Style](https://img.shields.io/badge/Code%20Style-Biome-orange?style=flat)
+![Philosophy](https://img.shields.io/badge/Philosophy-Open_Source-purple?style=flat)
+
+---
+
+## 🚀 Быстрый старт
+
+```bash
+# Форк и клонирование
+git clone https://github.com/YOUR_USERNAME/discoursio-webapp.git
+cd discoursio-webapp
+
+# Установка зависимостей
+bun install
+
+# Создание ветки для фичи
+git checkout -b feature/your-amazing-feature
+
+# Запуск в режиме разработки
+bun dev
+```
+
+---
+
+## ⚡ Принципы разработки
+
+### 🔥 **KISS (Keep It Stupid Simple)**
+```typescript
+// ✅ Хорошо: простое и понятное
+const getUserName = (user: User) => user.name || 'Гость';
+
+// ❌ Плохо: излишне сложное
+const getUserName = (user: User) => {
+  return user && user.name && user.name.length > 0 
+    ? user.name.trim().replace(/\s+/g, ' ') 
+    : user?.profile?.displayName || 'Неизвестный пользователь';
+};
+```
+
+### 🏗️ **DRY (Don't Repeat Yourself)**
+```typescript
+// ✅ Хорошо: переиспользуемая логика
+const useApiCall = <T>(endpoint: string) => {
+  const [data, setData] = createSignal<T>();
+  const [loading, setLoading] = createSignal(false);
+  // ... shared logic
+  return { data, loading, refetch };
+};
+
+// ❌ Плохо: дублирование кода в каждом компоненте
+```
+
+### 🎯 **Single Responsibility Principle**
+```typescript
+// ✅ Хорошо: одна ответственность
+const formatDate = (date: Date) => date.toLocaleDateString('ru');
+const validateEmail = (email: string) => /\S+@\S+\.\S+/.test(email);
+
+// ❌ Плохо: много ответственностей в одной функции
+const processUser = (user: User) => {
+  // валидация + форматирование + сохранение + уведомления...
+};
+```
+
+### 🤖 **Автоматизация**
+- **Тесты** — автоматическая проверка качества
+- **Линтинг** — автоматическое форматирование и проверка стиля
+- **CI/CD** — автоматическое развертывание
+
+### 🔄 **Легкость изменений**
+- **Модульная архитектура** — независимые компоненты
+- **Хорошая документация** — понятные README и комментарии
+- **Типизация** — TypeScript для безопасности изменений
+
+---
+
+## 📝 Практические шаги для участия
+
+### 🐛 **Баг-репорты**
+1. Поиск существующих issues
+2. Подробное описание проблемы
+3. Шаги для воспроизведения
+4. Информация об окружении
+
+### ✨ **Новые фичи**
+1. Обсуждение в issues перед реализацией
+2. Создание feature branch
+3. Написание тестов
+4. Документирование изменений
+
+### 🔧 **Code Review**
+- **Будьте добры**: критикуйте код, не человека
+- **Будьте конкретны**: предлагайте альтернативы
+- **Будьте открыты**: принимайте критику с благодарностью
+- **Будьте быстры**: не держите PR в ожидании долго
+
+### 📊 **Тестирование**
+```bash
+# Запуск всех тестов
+bun run e2e:tests
+
+# Только Open Graph тесты
+bun run e2e:og
+
+# В режиме отладки
+bun run e2e:debug
+```
+
+---
+
+## 🌟 Заключение
+
+Участие полностью добровольное, и если ты уже видишь как решить задачу — это твоя задача! Данный репозиторий — это не просто код, это труд тех кто взял на себя какую-то задачу. Каждый commit, каждый PR, каждый комментарий в code review — это кирпичик в построении лучшего будущего, мы создаем не только продукт, но и сообщество, продуктивную, вдохновляющую атмосферу и инструментарий для творчества и профессионального роста.
+
+---
+
+**Добро пожаловать в команду! 🚀**

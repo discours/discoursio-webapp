@@ -64,6 +64,7 @@ console.log(ogMetadata.image)
 Для всех страниц добавляются следующие мета-теги:
 
 ```html
+<!-- Основные Open Graph теги -->
 <meta property="og:type" content="article|profile|website" />
 <meta property="og:title" content="..." />
 <meta property="og:site_name" content="Discours" />
@@ -72,8 +73,41 @@ console.log(ogMetadata.image)
 <meta property="og:image" content="<base_url>/api/og/..." />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="..." />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:secure_url" content="https://..." />
 <meta property="og:locale" content="ru" />
 <meta property="og:logo" content="<base_url>/logo_sign.png" />
+
+<!-- Теги для статей -->
+<meta property="article:author" content="Имя автора" />
+<meta property="article:section" content="Раздел/тема" />
+<meta property="article:published_time" content="2024-01-01T00:00:00.000Z" />
+<meta property="article:modified_time" content="2024-01-01T00:00:00.000Z" />
+<meta property="article:tag" content="тег1" />
+<meta property="article:tag" content="тег2" />
+
+<!-- Теги для профилей авторов -->
+<meta property="profile:first_name" content="Имя" />
+<meta property="profile:last_name" content="Фамилия" />
+<meta property="profile:username" content="username" />
+
+<!-- Twitter Card теги -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@discoursio" />
+<meta name="twitter:title" content="..." />
+<meta name="twitter:description" content="..." />
+<meta name="twitter:image" content="..." />
+<meta name="twitter:image:alt" content="..." />
+
+<!-- VK теги -->
+<meta name="vk:title" content="..." />
+<meta name="vk:description" content="..." />
+<meta name="vk:image" content="..." />
+
+<!-- Поисковые теги -->
+<link rel="canonical" href="<canonical_url>" />
+<meta name="robots" content="index, follow" />
 ```
 
 ### Динамические OG-изображения

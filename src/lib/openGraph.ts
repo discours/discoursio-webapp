@@ -45,6 +45,23 @@ export interface OGMetadata {
   imageHeight?: number
   twitterCard?: string
   logo?: string
+  // Дополнительные метаданные для изображений
+  imageAlt?: string
+  imageType?: string
+  imageSecureUrl?: string
+  // Метаданные для статей
+  articlePublishedTime?: string
+  articleModifiedTime?: string
+  articleAuthor?: string
+  articleSection?: string
+  articleTags?: string[]
+  // Метаданные для профилей авторов
+  profileFirstName?: string
+  profileLastName?: string
+  profileUsername?: string
+  // Дополнительные метаданные
+  canonicalUrl?: string
+  robots?: string
 }
 
 /**
@@ -124,8 +141,8 @@ export function generateOGMetadata(
   const image = getFullImageUrl(imageRelativePath)
   const logo = getLogoUrl()
 
-  // Убедимся, что все обязательные поля заполнены
-  return {
+  // Базовые метаданные
+  const metadata: OGMetadata = {
     title: title || 'Discours',
     description: description || OG_DEFAULT_DESCRIPTION,
     type,
@@ -136,8 +153,41 @@ export function generateOGMetadata(
     imageWidth: OG_IMAGE_WIDTH,
     imageHeight: OG_IMAGE_HEIGHT,
     twitterCard: 'summary_large_image',
-    logo
+    logo,
+    // Дополнительные метаданные для изображений
+    imageAlt: `${title} - ${OG_SITE_NAME}`,
+    imageType: 'image/png',
+    imageSecureUrl: image.replace('http://', 'https://'),
+    canonicalUrl: url,
+    robots: 'index, follow'
   }
+
+  // Специфичные метаданные для статей
+  if (type === OGContentType.ARTICLE && data && 'body' in data) {
+    const article = data as Shout
+    metadata.articleAuthor = article.authors?.[0]?.name || ''
+    metadata.articleSection = article.topics?.[0]?.title || ''
+    metadata.articleTags = article.topics?.map((topic) => topic?.title).filter(Boolean) as string[]
+
+    // Даты публикации и обновления (timestamps в секундах)
+    if (article.created_at) {
+      metadata.articlePublishedTime = new Date(article.created_at * 1000).toISOString()
+    }
+    if (article.updated_at && article.updated_at !== article.created_at) {
+      metadata.articleModifiedTime = new Date(article.updated_at * 1000).toISOString()
+    }
+  }
+
+  // Специфичные метаданные для авторов
+  if (type === OGContentType.PROFILE && data && 'name' in data) {
+    const author = data as Author
+    const nameParts = author.name?.split(' ') || []
+    metadata.profileFirstName = nameParts[0] || ''
+    metadata.profileLastName = nameParts.slice(1).join(' ') || ''
+    metadata.profileUsername = author.slug || author.name || ''
+  }
+
+  return metadata
 }
 
 /**
