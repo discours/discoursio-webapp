@@ -34,33 +34,44 @@ export default createHandler(() => {
   return (
     <StartServer
       document={({ assets, children, scripts }) => {
-        
         return (
           <html lang="ru">
             <head>
               <meta charset="utf-8" />
               <meta name="viewport" content="width=device-width, initial-scale=1" />
               <title>{t('Discours')}</title>
-              
+
               {/* ============ ОБЯЗАТЕЛЬНЫЕ OPEN GRAPH ТЕГИ ============ */}
               <meta property="og:type" content="website" />
               <meta property="og:title" content={t('Discours')} />
-              <meta property="og:description" content={t('Discours – an open magazine about culture, science and society')} />
-              <meta property="og:image" content="https://files.dscrs.site/production/image/logo_image.png" />
+              <meta
+                property="og:description"
+                content={t('Discours – an open magazine about culture, science and society')}
+              />
+              <meta
+                property="og:image"
+                content="https://files.dscrs.site/production/image/logo_image.png"
+              />
               <meta property="og:url" content="https://discours.io" />
               <meta property="og:logo" content="https://files.dscrs.site/logo_sign.png" />
               <meta property="og:site_name" content={t('Discours')} />
               <meta property="og:locale" content="ru" />
-              
+
               {/* ============ ДОПОЛНИТЕЛЬНЫЕ OG ТЕГИ ============ */}
               <meta property="og:image:width" content="1200" />
               <meta property="og:image:height" content="630" />
-              <meta property="og:image:alt" content={t('Discours – an open magazine about culture, science and society')} />
+              <meta
+                property="og:image:alt"
+                content={t('Discours – an open magazine about culture, science and society')}
+              />
               <meta property="og:image:type" content="image/png" />
-              
+
               {/* ============ БАЗОВЫЕ МЕТАТЕГИ ============ */}
               <meta name="keywords" content={t('keywords')} />
-              <meta name="description" content={t('Discours – an open magazine about culture, science and society')} />
+              <meta
+                name="description"
+                content={t('Discours – an open magazine about culture, science and society')}
+              />
               <link rel="icon" href="/favicon.ico" />
               {assets}
             </head>
