@@ -2,6 +2,7 @@
 import { StartServer, createHandler } from '@solidjs/start/server'
 import { ErrorBoundary, Suspense } from 'solid-js'
 import { Loading } from './components/_shared/Loading'
+import { useLocalize } from './context/localize'
 
 // biome-ignore lint/suspicious/noExplicitAny: ok
 const ServerErrorFallback = (err: any) => {
@@ -28,49 +29,39 @@ const ServerErrorFallback = (err: any) => {
 }
 
 export default createHandler(() => {
-  console.log('[Server] createHandler called, NODE_ENV:', process.env.NODE_ENV)
-  console.log('[Server] VERCEL env:', process.env.VERCEL)
-  console.log(
-    '[Server] Available env vars:',
-    Object.keys(process.env).filter((k) => k.startsWith('PUBLIC_'))
-  )
+  const { t } = useLocalize()
 
   return (
     <StartServer
       document={({ assets, children, scripts }) => {
-        console.log('[Server] Document render called')
-        console.log('[Server] Assets count:', Array.isArray(assets) ? assets.length : 'not array')
-        console.log('[Server] Scripts available:', !!scripts)
-
+        
         return (
           <html lang="ru">
             <head>
               <meta charset="utf-8" />
               <meta name="viewport" content="width=device-width, initial-scale=1" />
-              <meta name="description" content="Дискурс - медиа для думающих" />
+              <title>{t('Discours')}</title>
+              
+              {/* ============ ОБЯЗАТЕЛЬНЫЕ OPEN GRAPH ТЕГИ ============ */}
+              <meta property="og:type" content="website" />
+              <meta property="og:title" content={t('Discours')} />
+              <meta property="og:description" content={t('Discours – an open magazine about culture, science and society')} />
+              <meta property="og:image" content="https://files.dscrs.site/production/image/logo_image.png" />
+              <meta property="og:url" content="https://discours.io" />
+              <meta property="og:logo" content="https://files.dscrs.site/logo_sign.png" />
+              <meta property="og:site_name" content={t('Discours')} />
+              <meta property="og:locale" content="ru" />
+              
+              {/* ============ ДОПОЛНИТЕЛЬНЫЕ OG ТЕГИ ============ */}
+              <meta property="og:image:width" content="1200" />
+              <meta property="og:image:height" content="630" />
+              <meta property="og:image:alt" content={t('Discours – an open magazine about culture, science and society')} />
+              <meta property="og:image:type" content="image/png" />
+              
+              {/* ============ БАЗОВЫЕ МЕТАТЕГИ ============ */}
+              <meta name="keywords" content={t('keywords')} />
+              <meta name="description" content={t('Discours – an open magazine about culture, science and society')} />
               <link rel="icon" href="/favicon.ico" />
-              <script
-                innerHTML={`
-                console.log('[Client] Document loaded at:', new Date().toISOString());
-                console.log('[Client] Environment:', {
-                  NODE_ENV: '${process.env.NODE_ENV}',
-                  VERCEL: '${process.env.VERCEL}',
-                  url: window.location.href
-                });
-                
-                // Проверяем загрузку React/SolidJS
-                console.log('[Client] SolidJS available:', typeof window.solid !== 'undefined');
-                
-                // Ловим ошибки
-                window.addEventListener('error', function(e) {
-                  console.error('[Client] Runtime error:', e.error);
-                });
-                
-                window.addEventListener('unhandledrejection', function(e) {
-                  console.error('[Client] Unhandled promise rejection:', e.reason);
-                });
-              `}
-              />
               {assets}
             </head>
             <body>
@@ -79,12 +70,6 @@ export default createHandler(() => {
                   <Suspense fallback={<Loading />}>{children}</Suspense>
                 </ErrorBoundary>
               </div>
-              <script
-                innerHTML={`
-                console.log('[Client] Body loaded, app div:', document.getElementById('app'));
-                console.log('[Client] App div innerHTML length:', document.getElementById('app')?.innerHTML?.length || 0);
-              `}
-              />
               {scripts}
             </body>
           </html>

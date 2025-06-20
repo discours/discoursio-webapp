@@ -1,4 +1,5 @@
 {
+  "_locale": "en",
   "and some more authors": "{restUsersCount, plural, =0 {} one { and one more user} other { and more {restUsersCount} users}}",
   "Discours is an intellectual environment, a web space and tools that allows authors to collaborate with readers and come together to co-create publications and media projects": "Discours is&#160;an&#160;intellectual environment, a&#160;web space and tools that allows authors to&#160;collaborate with readers and come together to&#160;co-create publications and media projects.<br/><em>We&#160;are convinced that one voice is&#160;good, but many is&#160;better. We&#160;create the most amazing stories together</em>",
   "Enter the code or click the link from email to confirm": "Enter the code from the email or follow the link in the email to confirm registration",
