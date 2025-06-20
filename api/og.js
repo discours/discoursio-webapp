@@ -1,33 +1,35 @@
 import { ImageResponse } from '@vercel/og'
 
-// Используем квотер только для динамических изображений, статика напрямую
-const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://discours.io'
-const staticUrl = 'https://files.dscrs.site' // Только для динамических изображений
+// Базовые настройки
+const cdnUrl = 'https://files.dscrs.site'
 const OG_IMAGE_WIDTH = 1200
 const OG_IMAGE_HEIGHT = 630
-const IMAGE_PATH_REGEX = /^image\//
-const CDN_PATH_REGEX = /\/production\/(.+)$/
+
+// Добавляем CORS заголовки
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+}
 
 /**
- * Обрабатывает cover изображения для OG - через квотер с правильным размером
+ * Обрабатывает cover изображения для OG
  */
 function getCoverForOG(cover) {
-  if (!cover) return cover
+  if (!cover) return null
 
-  // Если уже обработано квотером - возвращаем как есть
-  if (cover.includes('files.dscrs.site')) return cover
-
-  // Извлекаем path из CDN URL
-  let imagePath = cover
-  if (cover.includes('cdn.discours.io')) {
-    const pathMatch = cover.match(CDN_PATH_REGEX)
-    if (pathMatch) {
-      imagePath = pathMatch[1]
-    }
+  // Если это относительный путь, делаем абсолютным
+  if (cover.startsWith('/')) {
+    return `${cdnUrl}${cover}`
   }
 
-  // Возвращаем через квотер с оптимальным размером для OG
-  return `${staticUrl}/image/${imagePath.replace(IMAGE_PATH_REGEX, '')}_1200.jpg`
+  // Если это уже полный URL с нашим CDN, возвращаем как есть
+  if (cover.includes('files.dscrs.site') || cover.includes('cdn.discours.io')) {
+    return cover
+  }
+
+  // Для обычных изображений добавляем CDN префикс
+  return `${cdnUrl}/production/image/${cover}`
 }
 
 /**
@@ -37,11 +39,19 @@ function getCoverForOG(cover) {
  * Поддерживает пути: /api/og, /api/og/article, /api/og/author, /api/og/topic
  * Размер: строго 1200x630px для Facebook/Twitter/LinkedIn
  */
-export default async (req, _res) => {
+export default async (req, res) => {
+  // Обработка CORS для preflight запросов
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200, CORS_HEADERS)
+    res.end()
+    return
+  }
+
   try {
     // Определяем тип запроса по URL
-    const { url } = req
-    const { pathname, searchParams } = new URL(url)
+    const requestUrl = req.url || ''
+    const url = new URL(requestUrl, `https://${req.headers.host}`)
+    const { pathname, searchParams } = url
     const pathSegments = pathname.split('/')
 
     // Получаем тип из последнего сегмента пути: /api/og/article -> article
@@ -58,7 +68,7 @@ export default async (req, _res) => {
     const params = { ...Object.fromEntries(searchParams), ...req.query }
 
     // Логируем запрос для отладки
-    console.log(`[OG] Generating image for type: ${type}, params:`, params)
+    console.log(`[OG] Generating image for type: ${type}, params:`, JSON.stringify(params, null, 2))
 
     // Общие параметры ответа с правильными заголовками для OG
     const responseData = {
@@ -66,8 +76,10 @@ export default async (req, _res) => {
       height: OG_IMAGE_HEIGHT,
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Cache-Control': 'public, max-age=86400', // 24 часа для развития
         'CDN-Cache-Control': 'public, max-age=31536000',
+        // CORS заголовки
+        ...CORS_HEADERS,
         // Дополнительные заголовки для OG
         'X-OG-Image-Type': 'image/png',
         'X-OG-Image-Width': OG_IMAGE_WIDTH.toString(),
@@ -213,7 +225,7 @@ function createBasicOGImage() {
       children: {
         type: 'img',
         props: {
-          src: `${baseUrl}/logo_sign.png`,
+          src: `${cdnUrl}/logo_sign.png`,
           width: 200,
           height: 200,
           style: {
@@ -245,7 +257,7 @@ function createLogo() {
         {
           type: 'img',
           props: {
-            src: `${baseUrl}/logo_sign.png`,
+            src: `${cdnUrl}/logo_sign.png`,
             width: 60,
             height: 60,
             style: {

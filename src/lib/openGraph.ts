@@ -137,9 +137,19 @@ export function generateOGMetadata(
   const title = getOGTitle(data, options.defaultTitle || '')
   const description = getOGDescription(data, options.defaultDescription || OG_DEFAULT_DESCRIPTION)
   const url = getFullPageUrl(options.pathname || '')
-  const imageRelativePath = data ? generateRelativeImagePath(data) : OG_BASE_URL
-  const image = getFullImageUrl(imageRelativePath)
-  const logo = getLogoUrl()
+
+  // Генерируем правильное OG изображение
+  let image: string
+  if (data) {
+    // Для специфичного контента используем динамическое изображение через API
+    const imageRelativePath = generateRelativeImagePath(data)
+    image = getFullImageUrl(imageRelativePath)
+  } else {
+    // Для базового сайта используем статичное изображение
+    image = 'https://files.dscrs.site/production/image/logo_image.png'
+  }
+
+  const logo = 'https://files.dscrs.site/logo_sign.png'
 
   // Базовые метаданные
   const metadata: OGMetadata = {
@@ -155,9 +165,9 @@ export function generateOGMetadata(
     twitterCard: 'summary_large_image',
     logo,
     // Дополнительные метаданные для изображений
-    imageAlt: `${title} - ${OG_SITE_NAME}`,
+    imageAlt: title ? `${title} - ${OG_SITE_NAME}` : OG_SITE_NAME,
     imageType: 'image/png',
-    imageSecureUrl: image.replace('http://', 'https://'),
+    imageSecureUrl: image.startsWith('https://') ? image : image.replace('http://', 'https://'),
     canonicalUrl: url,
     robots: 'index, follow'
   }
