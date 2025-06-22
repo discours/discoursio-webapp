@@ -5,10 +5,9 @@ import { ArticleCard } from '~/components/Feed/ArticleCard'
 import { TopicBadge } from '~/components/Topic/TopicBadge/TopicBadge'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
+import styles from './SearchModal.module.scss'
 import { SearchAllProps } from './types'
 import { getSearchCoincidences } from './utils'
-
-import styles from './SearchModal.module.scss'
 
 export const SearchAll = (props: SearchAllProps) => {
   const { t } = useLocalize()

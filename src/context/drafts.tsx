@@ -1,10 +1,9 @@
 import { OperationResult } from '@urql/core'
-import { Accessor, JSX, batch, createContext, createSignal, onCleanup, useContext } from 'solid-js'
+import { Accessor, batch, createContext, createSignal, JSX, onCleanup, useContext } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
 // Импортируем функции из storage.ts вместо дублирования
 import {
-  type SyncStatus,
   getAllDraftFields,
   getAllDraftsFromStorage,
   getDraftField,
@@ -14,6 +13,7 @@ import {
   parseJsonContent,
   performPeriodicCleanup,
   removeDraftFromStorage,
+  type SyncStatus,
   saveDraftField as saveDraftFieldStorage,
   saveEntireDraft
 } from '~/components/SimpleRichEditor/lib/storage'
@@ -287,7 +287,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
             } as ExtendedDraft
             return baseDraft
           }
-          // biome-ignore lint/style/useCollapsedElseIf: Сохраняем существующую структуру для ясности и гибкости логики
         } else {
           // Нет slug, используем timestamp
           if (localTimestamp > serverTimestamp) {

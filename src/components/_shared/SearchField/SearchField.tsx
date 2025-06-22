@@ -18,7 +18,7 @@ export const SearchField = (props: Props) => {
   return (
     <div class={clsx(styles.searchField, props.class, { [styles.bordered]: props.variant === 'bordered' })}>
       <label for="search-field">
-        <Icon name="search" class={styles.icon} />
+        <Icon name="search" class={styles.icon} aria-hidden="true" />
       </label>
       <input
         id="search-field"
@@ -26,6 +26,10 @@ export const SearchField = (props: Props) => {
         class="search-input"
         onInput={handleInputChange}
         placeholder={t('Search')}
+        role="searchbox"
+        aria-label={t('Search')}
+        autocomplete="off"
+        spellcheck={false}
       />
       <label for="search-field">{t('Search')}</label>
     </div>

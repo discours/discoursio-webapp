@@ -1,7 +1,7 @@
 import { RouteSectionProps, redirect } from '@solidjs/router'
 import { createEffect, createMemo, lazy, on } from 'solid-js'
-import { AuthGuard } from '~/components/AuthGuard'
 import { PageLayout } from '~/components/_shared/PageLayout'
+import { AuthGuard } from '~/components/AuthGuard'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { Draft } from '~/graphql/schema/core.gen'

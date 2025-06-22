@@ -1,6 +1,5 @@
-import type { PopupProps } from '../_shared/Popup'
-
 import { createEffect, createSignal } from 'solid-js'
+import type { PopupProps } from '../_shared/Popup'
 
 import { Popup } from '../_shared/Popup'
 import { ShareLinks } from '../_shared/ShareLinks'

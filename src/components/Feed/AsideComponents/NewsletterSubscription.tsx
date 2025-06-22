@@ -1,6 +1,6 @@
 import { createSignal } from 'solid-js'
-import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { Icon } from '~/components/_shared/Icon'
+import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { useLocalize } from '~/context/localize'
 import styles from './NewsletterSubscription.module.scss'
 

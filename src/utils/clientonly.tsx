@@ -1,4 +1,4 @@
-import { JSX, ParentComponent, Show, createSignal, onMount } from 'solid-js'
+import { createSignal, JSX, onMount, ParentComponent, Show } from 'solid-js'
 
 // Компонент для рендеринга только на клиенте
 export const ClientOnly: ParentComponent<{ fallback?: JSX.Element }> = (props) => {

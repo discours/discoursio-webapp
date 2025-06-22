@@ -1,13 +1,12 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
+import { Author, DraftInput, Maybe, Topic } from '~/graphql/schema/core.gen'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 import { Popover } from '../_shared/Popover'
-
-import { Author, DraftInput, Maybe, Topic } from '~/graphql/schema/core.gen'
 import styles from '../HeaderNav/Header.module.scss'
 
 type IconedButtonProps = {

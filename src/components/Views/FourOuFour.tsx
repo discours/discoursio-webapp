@@ -2,9 +2,8 @@ import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { createSignal, onMount } from 'solid-js'
 import { useLocalize } from '~/context/localize'
-import { Icon } from '../_shared/Icon'
-
 import styles from '~/styles/views/FourOuFour.module.scss'
+import { Icon } from '../_shared/Icon'
 
 type EvType = Event & { submitter: HTMLElement } & { currentTarget: HTMLFormElement; target: Element }
 

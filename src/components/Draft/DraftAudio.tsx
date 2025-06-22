@@ -1,13 +1,11 @@
 import { Show, untrack } from 'solid-js'
 import { useLocalize } from '~/context/localize'
-import { MediaItem } from '~/graphql/schema/core.gen'
-import { Draft } from '~/graphql/schema/core.gen'
+import { Draft, MediaItem } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
+import styles from '~/styles/views/EditView.module.scss'
 import { DropArea } from '../_shared/DropArea'
 import { Icon } from '../_shared/Icon'
 import { Popover } from '../_shared/Popover'
-
-import styles from '~/styles/views/EditView.module.scss'
 
 /**
  * Компонент для аудио профиля

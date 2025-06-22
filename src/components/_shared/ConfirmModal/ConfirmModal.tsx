@@ -10,9 +10,9 @@ export const ConfirmModal = () => {
 
   return (
     <div class={styles.confirmModal}>
-      <h4 class={styles.confirmModalTitle}>
+      <h2 class={styles.confirmModalTitle} id="confirm-modal-title">
         {confirmMessage().confirmBody ?? t('Are you sure you want to to proceed the action?')}
-      </h4>
+      </h2>
 
       <div class={styles.confirmModalActions}>
         <Button

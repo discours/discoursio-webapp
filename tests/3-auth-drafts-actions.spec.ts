@@ -1,4 +1,4 @@
-import { type Page, expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import { checkServerWithoutStarting } from './utils/test-helpers'
 
 /* Global starting test config */
@@ -19,7 +19,6 @@ test.beforeAll(async ({ browser }) => {
   await checkServerWithoutStarting(page)
 
   // Проверяем, что страница загрузилась корректно
-  // biome-ignore lint/performance/useTopLevelRegex: <explanation>
   await expect(page).toHaveTitle(/Дискурс/)
   console.log('Тесты действий с черновиками инициализированы успешно!')
   if (page) {
@@ -62,7 +61,6 @@ test.describe('Создание новых материалов', () => {
   test('Создание статьи', async ({ page }) => {
     await page.goto('/edit/new')
     await page.locator('li').filter({ hasText: 'статья' }).locator('img').click()
-    // biome-ignore lint/performance/useTopLevelRegex: тесты
     await expect(page).toHaveURL(/\/edit\/[a-zA-Z0-9-]+/)
     await expect(page.getByRole('heading', { name: 'Новая статья' })).toBeVisible()
   })
@@ -73,11 +71,9 @@ test.describe('Создание новых материалов', () => {
     await page.getByRole('link', { name: 'Создать публикацию' }).click()
     await page
       .locator('li')
-      // biome-ignore lint/performance/useTopLevelRegex: тесты
       .filter({ hasText: /^литература$/ })
       .locator('img')
       .click()
-    // biome-ignore lint/performance/useTopLevelRegex: тесты
     await expect(page).toHaveURL(/\/edit\/[a-zA-Z0-9-]+/)
     await expect(page.getByRole('heading', { name: 'Новая литература' })).toBeVisible()
   })
@@ -87,7 +83,6 @@ test.describe('Создание новых материалов', () => {
     await page.getByRole('link', { name: 'Черновики' }).click()
     await page.getByRole('link', { name: 'Создать публикацию' }).click()
     await page.locator('li').filter({ hasText: 'изображения' }).locator('img').click()
-    // biome-ignore lint/performance/useTopLevelRegex: тесты
     await expect(page).toHaveURL(/\/edit\/[a-zA-Z0-9-]+/)
     await expect(page.getByRole('heading', { name: 'Новые изображения' })).toBeVisible()
 
@@ -110,7 +105,6 @@ test.describe('Создание новых материалов', () => {
     await page.getByRole('link', { name: 'Черновики' }).click()
     await page.getByRole('link', { name: 'Создать публикацию' }).click()
     await page.locator('li').filter({ hasText: 'музыка' }).locator('img').click()
-    // biome-ignore lint/performance/useTopLevelRegex: тесты
     await expect(page).toHaveURL(/\/edit\/[a-zA-Z0-9-]+/)
     await expect(page.getByRole('heading', { name: 'Новая музыка' })).toBeVisible()
 
@@ -133,7 +127,6 @@ test.describe('Создание новых материалов', () => {
     await page.getByRole('link', { name: 'Черновики' }).click()
     await page.getByRole('link', { name: 'Создать публикацию' }).click()
     await page.locator('li').filter({ hasText: 'видео' }).locator('img').click()
-    // biome-ignore lint/performance/useTopLevelRegex: тесты
     await expect(page).toHaveURL(/\/edit\/[a-zA-Z0-9-]+/)
     await expect(page.getByRole('heading', { name: 'Новое видео' })).toBeVisible()
 
@@ -180,7 +173,6 @@ test('Публикация темы', async ({ page }) => {
   await page.getByRole('button', { name: 'Опубликовать' }).click()
 
   // Проверка публикации
-  // biome-ignore lint/performance/useTopLevelRegex: тесты
   await expect(page).toHaveURL(/\/[a-zA-Z0-9-]+/)
   await expect(page.getByText('Тестовая тема')).toBeVisible()
 })

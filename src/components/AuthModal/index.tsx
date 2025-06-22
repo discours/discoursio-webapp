@@ -1,19 +1,17 @@
+import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Component, Show, createEffect, createMemo } from 'solid-js'
+import { Component, createEffect, createMemo, Show } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
-
 import { useLocalize } from '~/context/localize'
 import { ModalSource, useUI } from '~/context/ui'
 import { isMobile } from '~/lib/mediaQuery'
+import styles from './AuthModal.module.scss'
 import { ChangePasswordForm } from './ChangePasswordForm'
 import { EmailConfirm } from './EmailConfirm'
 import { LoginForm } from './LoginForm'
 import { RegisterForm } from './RegisterForm'
 import { SendEmailConfirm } from './SendEmailConfirm'
 import { SendResetLinkForm } from './SendResetLinkForm'
-
-import { useSearchParams } from '@solidjs/router'
-import styles from './AuthModal.module.scss'
 
 export type AuthModalMode =
   | 'login'

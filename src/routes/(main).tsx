@@ -1,8 +1,8 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { Suspense, createEffect, createResource, on } from 'solid-js'
-import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
-import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import { createEffect, createResource, on, Suspense } from 'solid-js'
 import { Loading } from '~/components/_shared/Loading'
+import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
 import { useFeaturedFeed } from '~/context/featured'
 import { FEED_PAGE_SIZE } from '~/context/feed'
 import { loadShouts } from '~/graphql/api/public'
@@ -19,7 +19,7 @@ const featuredLoader = (offset?: number) => {
 }
 
 // Добавляем retry логику для SSR запросов
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+// biome-ignore lint/suspicious/noExplicitAny: SSR
 const withRetry = async (fn: () => Promise<any>, retries = 2, delay = 1000): Promise<any> => {
   for (let i = 0; i <= retries; i++) {
     try {
@@ -39,7 +39,7 @@ const withRetry = async (fn: () => Promise<any>, retries = 2, delay = 1000): Pro
 }
 
 // Некешируемые загрузчики для SSR
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+// biome-ignore lint/suspicious/noExplicitAny: ok
 const loadShoutsSSR = createLoader<any[], QueryLoad_Shouts_ByArgs>(
   loadShoutsByQuery,
   (args: QueryLoad_Shouts_ByArgs) => args

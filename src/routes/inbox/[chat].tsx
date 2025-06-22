@@ -1,9 +1,8 @@
 import { RouteDefinition, RouteSectionProps, useParams } from '@solidjs/router'
-import { Show, createResource, createSignal, onMount } from 'solid-js'
+import { createResource, createSignal, onMount, Show } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
-
-import { InboxView } from '~/components/Views/InboxView'
 import { PageLayout } from '~/components/_shared/PageLayout'
+import { InboxView } from '~/components/Views/InboxView'
 import { useInbox } from '~/context/inbox'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'

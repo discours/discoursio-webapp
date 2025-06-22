@@ -7,17 +7,15 @@
 
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createMemo } from 'solid-js'
-
-import { Icon } from '~/components/_shared/Icon'
-import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
-
+import { createMemo, For, Show } from 'solid-js'
 import placeholderDiscussionsImg from '~/assets/images/placeholder-discussions.webp'
 import placeholderExpertsImg from '~/assets/images/placeholder-experts.webp'
 import placeholderFeedImg from '~/assets/images/placeholder-feed.webp'
 // Импорт изображений
 import placeholderJoinImg from '~/assets/images/placeholder-join.webp'
+import { Icon } from '~/components/_shared/Icon'
+import { useLocalize } from '~/context/localize'
+import { useSession } from '~/context/session'
 
 import styles from './Placeholder.module.scss'
 

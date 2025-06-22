@@ -2,9 +2,8 @@ import { For, Show } from 'solid-js'
 
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { useUI } from '~/context/ui'
-import { SearchAuthorsProps } from './types'
-
 import styles from './SearchModal.module.scss'
+import { SearchAuthorsProps } from './types'
 
 export const SearchAuthors = (props: SearchAuthorsProps) => {
   const { hideModal } = useUI()

@@ -57,7 +57,7 @@ const BASE_CONFIG: Config = {
   ADD_ATTR: ['sandbox', 'loading', 'referrerpolicy'],
   ALLOW_DATA_ATTR: false, // Запрещаем data-* атрибуты
   ALLOW_UNKNOWN_PROTOCOLS: false, // Разрешаем только стандартные протоколы
-  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
   SANITIZE_DOM: true,
   USE_PROFILES: { html: true }, // Используем только HTML профиль
   WHOLE_DOCUMENT: false,

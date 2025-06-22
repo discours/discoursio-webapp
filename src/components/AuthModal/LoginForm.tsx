@@ -1,19 +1,16 @@
+import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { JSX, Show, createSignal } from 'solid-js'
+import { createSignal, JSX, Show } from 'solid-js'
 import { toast } from 'solid-toast'
-
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import { validateEmail } from '~/utils/validate'
-
+import styles from './AuthModal.module.scss'
 import { AuthModalHeader } from './AuthModalHeader'
 import { PasswordField } from './PasswordField'
 import { SocialProviders } from './SocialProviders'
 import { email, setEmail } from './sharedLogic'
-
-import { useSearchParams } from '@solidjs/router'
-import styles from './AuthModal.module.scss'
 
 type FormFields = {
   email: string

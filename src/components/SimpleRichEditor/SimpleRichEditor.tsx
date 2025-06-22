@@ -1,24 +1,22 @@
 import { clsx } from 'clsx'
 import {
   Component,
-  For,
   createEffect,
   createMemo,
   createRoot,
   createSignal,
+  For,
   on,
   onCleanup,
-  onMount
+  onMount,
+  Show
 } from 'solid-js'
-import { Show } from 'solid-js'
-import { isServer } from 'solid-js/web'
-import { Portal } from 'solid-js/web'
+import { isServer, Portal } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
-import { AudioUploader } from '~/components/Upload/AudioUploader'
 import { InlineForm } from '~/components/_shared/InlineForm/InlineForm'
+import { AudioUploader } from '~/components/Upload/AudioUploader'
 import { useLocalize } from '~/context/localize'
-import { useUI } from '~/context/ui'
-import { MODALS } from '~/context/ui'
+import { MODALS, useUI } from '~/context/ui'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { UploadedFile } from '~/types/upload'
 import { validateVideoUrl, validateWebUrl } from '../../lib/validateDraft'
@@ -27,7 +25,7 @@ import { isGroup } from './lib/commands'
 import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
 import { isEmptyContent } from './lib/empty'
 import { getAllFootnotes, getFootnoteById, insertFootnote, removeFootnote } from './lib/footnotes'
-import { type SelectionState, applyFormatting, removeFormatting, toggleFormatting } from './lib/format'
+import { applyFormatting, removeFormatting, type SelectionState, toggleFormatting } from './lib/format'
 import { getEditorPosition, isTouchDevice } from './lib/helpers'
 import { validateUrl } from './lib/link'
 import { useSelection } from './lib/selection'
@@ -53,7 +51,7 @@ import {
   ToolbarMode
 } from './lib/types'
 import { replaceSelection } from './lib/utils'
-import { PlusMenu, handlePlusMenuAction, handleSquibFormatting } from './menu/PlusMenu'
+import { handlePlusMenuAction, handleSquibFormatting, PlusMenu } from './menu/PlusMenu'
 import { SimpleToolbar } from './menu/SimpleToolbar'
 import { SquibMenu } from './menu/SquibMenu'
 

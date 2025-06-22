@@ -1,14 +1,14 @@
 import {
   Accessor,
-  Component,
-  JSX,
-  Resource,
   batch,
+  Component,
   createContext,
   createEffect,
   createResource,
   createSignal,
+  JSX,
   on,
+  Resource,
   useContext
 } from 'solid-js'
 import { createStore } from 'solid-js/store'
@@ -241,7 +241,6 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
             newFollowState = false
             console.log('[FollowingContext] Unfollow: following not found, treating as successful unfollow')
           } else {
-            // biome-ignore lint/style/useCollapsedElseIf: ok
             if (what === 'AUTHOR' && result.authors) {
               newFollowState = result.authors.some((author: Author) => author.slug === slug)
             } else if (what === 'TOPIC' && result.topics) {

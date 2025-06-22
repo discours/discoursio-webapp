@@ -6,7 +6,7 @@
  * @see https://playwright.dev/docs/writing-tests
  */
 
-import { Locator, expect, test } from '@playwright/test'
+import { expect, Locator, test } from '@playwright/test'
 import { baseUrl, getScreenshotName, setupAuthState, waitForPageLoad } from './utils/test-helpers'
 
 // Тесты для страницы создания новой публикации

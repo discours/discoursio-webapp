@@ -1,12 +1,11 @@
-import { For, Show, createSignal, lazy } from 'solid-js'
-
-import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
+import { createSignal, For, lazy, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { Popover } from '~/components/_shared/Popover'
+import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { useLocalize } from '~/context/localize'
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { descFromBody } from '~/utils/meta'
-import { SharePopup, getShareUrl } from '../SharePopup'
+import { getShareUrl, SharePopup } from '../SharePopup'
 
 import styles from './AudioPlayer.module.scss'
 

@@ -1,4 +1,4 @@
-import { JSX, createSignal, onMount } from 'solid-js'
+import { createSignal, JSX, onMount } from 'solid-js'
 
 // see: https://github.com/WICG/translation-api
 
@@ -14,10 +14,7 @@ interface TranslationAPI {
     sourceLanguage?: string
     targetLanguage: string
   }) => Promise<'yes' | 'no' | 'limited'>
-  createTranslator: (options: {
-    sourceLanguage?: string
-    targetLanguage: string
-  }) => Promise<Translator>
+  createTranslator: (options: { sourceLanguage?: string; targetLanguage: string }) => Promise<Translator>
 }
 
 interface Translator {

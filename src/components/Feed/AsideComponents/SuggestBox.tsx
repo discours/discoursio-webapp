@@ -1,7 +1,7 @@
 import { For } from 'solid-js'
-import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
+import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
 import styles from './SuggestBox.module.scss'

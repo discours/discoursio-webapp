@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Show, onMount } from 'solid-js'
+import { onMount, Show } from 'solid-js'
 
 import { Icon } from '../Icon'
 

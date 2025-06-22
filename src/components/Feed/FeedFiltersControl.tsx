@@ -1,19 +1,15 @@
 import clsx from 'clsx'
-import { Show, createMemo, createSignal, onMount } from 'solid-js'
-import { For } from 'solid-js'
+import { TFunction } from 'i18next'
+import { createMemo, createSignal, For, onMount, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon/Icon'
 import { EXPO_LAYOUTS, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
-import { getTimestampFromPeriod } from '~/lib/fromPeriod'
-import { PeriodType } from '~/lib/fromPeriod'
-import { ExpoLayoutType } from '~/types/nav'
-import { FeaturedFilter, FeedFilters } from '~/types/nav'
-import { capitalize } from '~/utils/capitalize'
-import { DropDown } from '../_shared/DropDown/DropDown'
-import type { Option } from '../_shared/DropDown/DropDown'
-
-import { TFunction } from 'i18next'
+import { getTimestampFromPeriod, PeriodType } from '~/lib/fromPeriod'
 import styles from '~/styles/views/Feed.module.scss'
+import { ExpoLayoutType, FeaturedFilter, FeedFilters } from '~/types/nav'
+import { capitalize } from '~/utils/capitalize'
+import type { Option } from '../_shared/DropDown/DropDown'
+import { DropDown } from '../_shared/DropDown/DropDown'
 
 function getPeriodTitle(period: PeriodType, t: TFunction): string {
   return (

@@ -1,6 +1,6 @@
+import { PageLayout } from '~/components/_shared/PageLayout'
 import { AuthGuard } from '~/components/AuthGuard'
 import { ProfileSecurityView } from '~/components/Views/ProfileSecurity'
-import { PageLayout } from '~/components/_shared/PageLayout'
 import { useLocalize } from '~/context/localize'
 import { ProfileProvider } from '~/context/profile'
 

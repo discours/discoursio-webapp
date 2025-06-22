@@ -7,8 +7,7 @@
 
 import { isEmptyContent } from '../lib/empty'
 import { getEditorPosition } from '../lib/helpers'
-import { EditorFieldType } from '../lib/types'
-import { Position } from '../lib/types'
+import { EditorFieldType, Position } from '../lib/types'
 
 /**
  * Обновляет состояние тулбара в зависимости от режима редактора и выделения

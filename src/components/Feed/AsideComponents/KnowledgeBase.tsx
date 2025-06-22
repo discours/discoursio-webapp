@@ -1,7 +1,7 @@
 import { A } from '@solidjs/router'
 import { For } from 'solid-js'
-import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { Icon } from '~/components/_shared/Icon'
+import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { useLocalize } from '~/context/localize'
 import styles from './KnowledgeBase.module.scss'
 

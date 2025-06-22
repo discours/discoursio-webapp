@@ -1,18 +1,16 @@
 import { clsx } from 'clsx'
-import { For, Show, onMount } from 'solid-js'
+import { For, onMount, Show } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
 import SwiperCore from 'swiper'
 import { Manipulation, Navigation, Pagination } from 'swiper/modules'
 
 import { Shout } from '~/graphql/schema/core.gen'
 import { ArticleCard } from '../../Feed/ArticleCard'
-import { Icon } from '../Icon'
-
-import { SwiperRef } from './swiper'
-
 import { Row1 } from '../../Feed/Row1'
 import { Row2 } from '../../Feed/Row2'
+import { Icon } from '../Icon'
 import styles from './Swiper.module.scss'
+import { SwiperRef } from './swiper'
 
 type Props = {
   slides: Shout[]

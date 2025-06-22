@@ -1,16 +1,13 @@
-import type { ChatMember } from '~/graphql/schema/chat.gen'
-
 import { clsx } from 'clsx'
-import { Match, Show, Switch, createMemo } from 'solid-js'
-
+import { createMemo, Match, Show, Switch } from 'solid-js'
 import { useLocalize } from '~/context/localize'
+import type { ChatMember } from '~/graphql/schema/chat.gen'
 import { Author } from '~/graphql/schema/core.gen'
 import { AuthorBadge } from '../Author/AuthorBadge'
 
 import DialogAvatar from './DialogAvatar'
-import GroupDialogAvatar from './GroupDialogAvatar'
-
 import styles from './DialogCard.module.scss'
+import GroupDialogAvatar from './GroupDialogAvatar'
 
 type DialogProps = {
   online?: boolean

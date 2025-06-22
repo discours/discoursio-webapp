@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal } from 'solid-js'
+import { createEffect, createSignal, Show } from 'solid-js'
 
 import { Icon } from '../Icon'
 

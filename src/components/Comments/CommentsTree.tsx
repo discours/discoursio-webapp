@@ -1,14 +1,14 @@
 import clsx from 'clsx'
 import {
-  ErrorBoundary,
-  For,
-  Show,
   batch,
   createEffect,
   createMemo,
   createResource,
   createSignal,
+  ErrorBoundary,
+  For,
   onMount,
+  Show,
   untrack
 } from 'solid-js'
 import toast from 'solid-toast'
@@ -20,20 +20,20 @@ import { useSession } from '~/context/session'
 import { useCommentsMyRates } from '~/graphql/api/private'
 import {
   Author,
+  MutationCreate_ReactionArgs,
   MutationUpdate_ReactionArgs,
   Reaction,
   ReactionKind,
   ReactionSort
 } from '~/graphql/schema/core.gen'
-import { MutationCreate_ReactionArgs } from '~/graphql/schema/core.gen'
+import { Button } from '../_shared/Button'
+import { Loading } from '../_shared/Loading'
+import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
+import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
 import { COMMENTS_PER_PAGE } from '../Article/FullArticle'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { cleanupContent, sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { EditorData } from '../SimpleRichEditor/lib/types'
-import { Button } from '../_shared/Button'
-import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
-import { Loading } from '../_shared/Loading'
-import { ShowIfAuthenticated } from '../_shared/ShowIfAuthenticated'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { CommentCard } from './CommentCard'
 import { CommentsHeader } from './CommentsHeader'
 

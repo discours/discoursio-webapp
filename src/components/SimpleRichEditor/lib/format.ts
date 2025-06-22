@@ -22,8 +22,7 @@
  * ```
  */
 
-import { ActiveFormatsType, getNodesInRange } from './helpers'
-import { findAncestor } from './helpers'
+import { ActiveFormatsType, findAncestor, getNodesInRange } from './helpers'
 import { CommandType } from './types'
 
 // Common types

@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import type { JSX } from 'solid-js'
-import { Show, createMemo, mergeProps } from 'solid-js'
+import { createMemo, mergeProps, Show } from 'solid-js'
 
 import styles from './Icon.module.scss'
 

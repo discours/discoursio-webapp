@@ -1,19 +1,16 @@
+import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
+import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js'
 import SwiperCore from 'swiper'
 import { HashNavigation, Manipulation, Navigation, Pagination } from 'swiper/modules'
 import { throttle } from 'throttle-debounce'
-
 import { MediaItem } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { Icon } from '../Icon'
 import { Image } from '../Image'
-import { SwiperRef } from './swiper'
-
-import { useSearchParams } from '@solidjs/router'
 import { Lightbox } from '../Lightbox'
-
 import styles from './Swiper.module.scss'
+import { SwiperRef } from './swiper'
 
 type Props = {
   images: MediaItem[]

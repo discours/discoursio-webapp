@@ -1,7 +1,7 @@
 import 'cropperjs/dist/cropper.css'
 import { UploadFile } from '@solid-primitives/upload'
 import Cropper from 'cropperjs'
-import { Show, createSignal, onMount } from 'solid-js'
+import { createSignal, onMount, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Button } from '../Button'
 
@@ -10,7 +10,7 @@ import styles from './ImageCropper.module.scss'
 
 interface CropperProps {
   uploadFile: UploadFile
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  // biome-ignore lint/suspicious/noExplicitAny: save file
   onSave: (arg0: any) => void
   onDecline?: () => void
 }

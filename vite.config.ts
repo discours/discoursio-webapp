@@ -1,10 +1,8 @@
-// biome-ignore lint/correctness/noNodejsModules: build
 import { existsSync } from 'node:fs'
-// biome-ignore lint/correctness/noNodejsModules: build
 import { resolve } from 'node:path'
 import { config } from 'dotenv'
 import { CSSOptions, defineConfig } from 'vite'
-import { PolyfillOptions, nodePolyfills } from 'vite-plugin-node-polyfills'
+import { nodePolyfills, PolyfillOptions } from 'vite-plugin-node-polyfills'
 import sassDts from 'vite-plugin-sass-dts'
 
 // Загружаем .env файл с выводом информации о статусе

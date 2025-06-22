@@ -1,6 +1,6 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, on } from 'solid-js'
+import { createEffect, createSignal, on, Show } from 'solid-js'
 import Typograf from 'typograf'
 import { Button } from '~/components/_shared/Button'
 import { DarkModeToggle } from '~/components/_shared/DarkModeToggle'
@@ -8,10 +8,9 @@ import { Icon } from '~/components/_shared/Icon'
 import { DraftInput, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
+import { Draft } from '~/graphql/schema/core.gen'
 import { useEscKeyDownHandler } from '~/lib/useEscKeyDownHandler'
 import { useOutsideClickHandler } from '~/lib/useOutsideClickHandler'
-
-import { Draft } from '~/graphql/schema/core.gen'
 import styles from './Sidebar.module.scss'
 
 const typograf = new Typograf({ locale: ['ru', 'en-US'] })

@@ -1,4 +1,4 @@
-import { Show, createSignal } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 
 export const ConnectView = () => {

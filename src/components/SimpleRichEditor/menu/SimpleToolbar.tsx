@@ -1,13 +1,12 @@
 import { clsx } from 'clsx'
-import { Component, For, JSX, Show, createEffect, createSignal } from 'solid-js'
+import { Component, createEffect, createSignal, For, JSX, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { Popover } from '~/components/_shared/Popover'
 import { Popup } from '~/components/_shared/Popup'
 import { useLocalize } from '~/context/localize'
 import { capitalize } from '~/utils/capitalize'
-import { MENU_GROUPS, isGroup } from '../lib/commands'
-import { CommandGroupType, CommandType } from '../lib/types'
-import { Position } from '../lib/types'
+import { isGroup, MENU_GROUPS } from '../lib/commands'
+import { CommandGroupType, CommandType, Position } from '../lib/types'
 
 import styles from './SimpleToolbar.module.scss'
 

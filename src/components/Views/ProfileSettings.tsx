@@ -1,19 +1,20 @@
-import { UploadFile, createFileUploader } from '@solid-primitives/upload'
+import { createFileUploader, UploadFile } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
 import deepEqual from 'fast-deep-equal'
 import {
-  For,
-  Match,
-  Show,
-  Switch,
   createEffect,
   createSignal,
+  For,
   lazy,
+  Match,
   on,
   onCleanup,
-  onMount
+  onMount,
+  Show,
+  Switch
 } from 'solid-js'
 import { createStore } from 'solid-js/store'
+import { toast } from 'solid-toast'
 import { useLocalize } from '~/context/localize'
 import { useProfile } from '~/context/profile'
 import { useSession } from '~/context/session'
@@ -22,9 +23,9 @@ import { InputMaybe, ProfileInput } from '~/graphql/schema/core.gen'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { handleFileUpload } from '~/lib/handleFileUpload'
 import { profileSocialLinks } from '~/lib/profileSocialLinks'
+import styles from '~/styles/views/ProfileSettings.module.scss'
 import { clone } from '~/utils/clone'
 import { validateUrl } from '~/utils/validate'
-import { ProfileSettingsNavigation } from '../ProfileNav'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 import { ImageCropper } from '../_shared/ImageCropper'
@@ -32,12 +33,10 @@ import { Loading } from '../_shared/Loading'
 import { Modal } from '../_shared/Modal'
 import { Popover } from '../_shared/Popover'
 import { SocialNetworkInput } from '../_shared/SocialNetworkInput'
-
-import { toast } from 'solid-toast'
-import styles from '~/styles/views/ProfileSettings.module.scss'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { ProfileSettingsNavigation } from '../ProfileNav'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { EditorData } from '../SimpleRichEditor/lib/types'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 
 const GrowingTextarea = lazy(() => import('~/components/_shared/GrowingTextarea/GrowingTextarea'))
 
@@ -289,7 +288,7 @@ export const ProfileSettings = () => {
                           name="nameOfUser"
                           id="nameOfUser"
                           data-lpignore="true"
-                          autocomplete="one-time-code"
+                          autocomplete="name"
                           placeholder={t('Name')}
                           onInput={(event) => updateFormField('name', event.currentTarget.value)}
                           value={form.name || ''}
@@ -317,7 +316,7 @@ export const ProfileSettings = () => {
                             name="user-address"
                             id="user-address"
                             data-lpignore="true"
-                            autocomplete="one-time-code2"
+                            autocomplete="off"
                             onInput={slugUpdate}
                             value={form.slug || ''}
                             ref={(el) => (slugInputRef = el)}

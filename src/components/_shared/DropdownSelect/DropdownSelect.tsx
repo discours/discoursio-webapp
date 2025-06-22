@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { For, Show, createSignal } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js'
 
 import { useOutsideClickHandler } from '~/lib/useOutsideClickHandler'
 

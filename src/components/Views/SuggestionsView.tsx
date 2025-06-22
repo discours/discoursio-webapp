@@ -1,16 +1,15 @@
-import { For, Show, createEffect, createSignal } from 'solid-js'
+import { createEffect, createSignal, For, Show } from 'solid-js'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { QueryLoad_Reactions_ByArgs, Reaction, ReactionKind } from '~/graphql/schema/core.gen'
+import styles from '~/styles/views/SuggestionsView.module.scss'
+import { Button } from '../_shared/Button'
 import { SuggestionCard } from '../DiffViewer/SuggestionCard'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { cleanupContent } from '../SimpleRichEditor/lib/sanitize'
 import { EditorData } from '../SimpleRichEditor/lib/types'
-import { Button } from '../_shared/Button'
-
-import styles from '~/styles/views/SuggestionsView.module.scss'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 
 export type Props = {
   shoutId: number

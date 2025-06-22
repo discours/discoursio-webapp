@@ -1,6 +1,6 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createMemo } from 'solid-js'
+import { createMemo, For, Show } from 'solid-js'
 import { orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { FeedMode } from '~/types/nav'

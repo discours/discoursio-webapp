@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { For, createSignal, onMount } from 'solid-js'
+import { createSignal, For, onMount } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Icon } from '../_shared/Icon'
 import { Newsletter } from '../_shared/Newsletter'

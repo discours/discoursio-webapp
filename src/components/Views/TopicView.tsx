@@ -1,17 +1,17 @@
 import { A, useLocation, useParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import {
-  For,
-  Match,
-  Show,
-  Suspense,
-  Switch,
   batch,
   createEffect,
   createMemo,
   createResource,
   createSignal,
-  on
+  For,
+  Match,
+  on,
+  Show,
+  Suspense,
+  Switch
 } from 'solid-js'
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
@@ -19,8 +19,12 @@ import { useTopics } from '~/context/topics'
 import { loadAuthors, loadShouts, loadTopicAuthors, loadTopicFollowers } from '~/graphql/api/public'
 import { Author, AuthorsBy, LoadShoutsOptions, Shout, Stat, Topic } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/lib/fromPeriod'
+import styles from '~/styles/views/Topic.module.scss'
 import { FeedDeduplicationContext } from '~/utils/deduplicate'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
+import { Loading } from '../_shared/Loading'
+import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
+import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 import { AuthorCard } from '../Author/AuthorCard'
 import { Beside } from '../Feed/Beside'
 import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
@@ -29,11 +33,6 @@ import { Row1 } from '../Feed/Row1'
 import { Row2 } from '../Feed/Row2'
 import { Row3 } from '../Feed/Row3'
 import { FullTopic } from '../Topic/Full'
-import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
-import { Loading } from '../_shared/Loading'
-import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
-
-import styles from '~/styles/views/Topic.module.scss'
 
 interface Props {
   topic: Topic

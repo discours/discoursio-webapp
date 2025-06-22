@@ -1,23 +1,22 @@
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, on } from 'solid-js'
-import { AuthGuard } from '~/components/AuthGuard'
-import { PasswordField } from '~/components/AuthModal/PasswordField'
-import { ProfileSettingsNavigation } from '~/components/ProfileNav'
+import { createEffect, createSignal, on, Show } from 'solid-js'
+import toast from 'solid-toast'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'
+import { AuthGuard } from '~/components/AuthGuard'
+import { PasswordField } from '~/components/AuthModal/PasswordField'
+import { ProfileSettingsNavigation } from '~/components/ProfileNav'
 import { useLocalize } from '~/context/localize'
 import { UpdateProfileInput, useSession } from '~/context/session'
 import { DEFAULT_HEADER_OFFSET, useUI } from '~/context/ui'
-import { validateEmail } from '~/utils/validate'
-
-import toast from 'solid-toast'
 import styles from '~/styles/views/ProfileSettings.module.scss'
+import { validateEmail } from '~/utils/validate'
 
 type FormField = 'oldPassword' | 'newPassword' | 'newPasswordConfirm' | 'email'
 type FormData = Record<FormField, string | undefined>
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+// biome-ignore lint/suspicious/noExplicitAny: no props
 export const ProfileSecurityView = (_props: any) => {
   const { t } = useLocalize()
   const { updateProfile, session, isSessionLoaded } = useSession()

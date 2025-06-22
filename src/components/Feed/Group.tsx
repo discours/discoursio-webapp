@@ -1,7 +1,6 @@
+import { For, Show } from 'solid-js'
 import type { JSX } from 'solid-js/jsx-runtime'
 import type { Shout } from '~/graphql/schema/core.gen'
-
-import { For, Show } from 'solid-js'
 
 import { ArticleCard } from './ArticleCard'
 import './Group.scss'

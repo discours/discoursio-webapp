@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Component, Show, createSignal } from 'solid-js'
+import { Component, createSignal, Show } from 'solid-js'
 import { CommandGroupType, CommandType, Position } from '../lib/types'
 import { SimpleToolbar } from './SimpleToolbar'
 

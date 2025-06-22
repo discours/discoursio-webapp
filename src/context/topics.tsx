@@ -1,4 +1,4 @@
-import { Accessor, Component, JSX, createContext, createEffect, createResource, useContext } from 'solid-js'
+import { Accessor, Component, createContext, createEffect, createResource, JSX, useContext } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { loadTopics, loadTopicsByCommunity } from '~/graphql/api/public'
 import { QueryGet_Topics_By_CommunityArgs, Topic } from '~/graphql/schema/core.gen'

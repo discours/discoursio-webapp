@@ -1,6 +1,6 @@
 import { type Client, type ClientOptions, cacheExchange, createClient, fetchExchange } from '@urql/core'
 import { DocumentNode } from 'graphql'
-import { ResourceFetcherInfo, createResource as createSolidResource } from 'solid-js'
+import { createResource as createSolidResource, ResourceFetcherInfo } from 'solid-js'
 import { coreApiUrl } from '~/config'
 
 export type QueryResult<T> = { data?: { [key: string]: T } }

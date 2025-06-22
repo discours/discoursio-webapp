@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Show, createMemo } from 'solid-js'
+import { createMemo, Show } from 'solid-js'
 
 import { getFileUrl } from '~/lib/getThumbUrl'
 import './DialogCard.module.scss'

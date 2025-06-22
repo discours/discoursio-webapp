@@ -1,14 +1,14 @@
+import type { JSX } from 'solid-js'
 import {
   Accessor,
-  Setter,
   createContext,
   createEffect,
   createMemo,
   createSignal,
   on,
+  Setter,
   useContext
 } from 'solid-js'
-import type { JSX } from 'solid-js'
 import { RANDOM_TOPIC_SHOUTS_COUNT } from '~/components/Views/HomeView'
 import { loadShouts } from '~/graphql/api/public'
 import { Shout, Topic } from '~/graphql/schema/core.gen'

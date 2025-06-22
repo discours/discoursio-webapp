@@ -1,14 +1,11 @@
+import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal } from 'solid-js'
-
+import { createEffect, createSignal, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
-
-import { email, setEmail } from './sharedLogic'
-
-import { useSearchParams } from '@solidjs/router'
 import styles from './AuthModal.module.scss'
+import { email, setEmail } from './sharedLogic'
 
 export type ConfirmEmailSearchParams = {
   access_token?: string

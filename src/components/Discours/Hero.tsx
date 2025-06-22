@@ -1,7 +1,6 @@
+import { useSearchParams } from '@solidjs/router'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
-
-import { useSearchParams } from '@solidjs/router'
 import styles from './Hero.module.scss'
 
 export default () => {

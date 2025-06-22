@@ -1,13 +1,11 @@
+import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { JSX, Show, createSignal } from 'solid-js'
-
+import { createSignal, JSX, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
-import { PasswordField } from './PasswordField'
-
-import { useSearchParams } from '@solidjs/router'
 import styles from './AuthModal.module.scss'
+import { PasswordField } from './PasswordField'
 
 type FormFields = {
   password: string

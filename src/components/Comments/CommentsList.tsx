@@ -1,16 +1,14 @@
-import { For, Show, createMemo } from 'solid-js'
-import { batch, createSignal, untrack } from 'solid-js'
+import { batch, createMemo, createSignal, For, Show, untrack } from 'solid-js'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { Reaction, ReactionSort } from '~/graphql/schema/core.gen'
 import { byCreated } from '~/utils/sort'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { Button } from '../_shared/Button'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
-import { CommentCard } from './CommentCard'
-
 import stylesArticle from '../Article/Article.module.scss'
 import { EditorData } from '../SimpleRichEditor/lib/types'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
+import { CommentCard } from './CommentCard'
 import styles from './CommentsList.module.scss'
 
 export interface CommentsListProps {

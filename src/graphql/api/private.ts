@@ -1,6 +1,6 @@
 import { Client } from '@urql/core'
 import { createResource } from 'solid-js'
-import { ResourceArgs, createQueryResource, defaultClient } from '~/graphql/client'
+import { createQueryResource, defaultClient, ResourceArgs } from '~/graphql/client'
 import loadShoutsBookmarkedQuery from '~/graphql/query/core/articles-load-bookmarked'
 import loadShoutsCoauthoredQuery from '~/graphql/query/core/articles-load-coauthored'
 import loadShoutsDiscussedQuery from '~/graphql/query/core/articles-load-discussed'

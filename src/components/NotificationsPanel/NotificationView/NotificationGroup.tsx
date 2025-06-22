@@ -1,13 +1,11 @@
+import { A, useNavigate, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For, Show } from 'solid-js'
-
 import { GroupAvatar } from '~/components/_shared/GroupAvatar'
 import { TimeAgo } from '~/components/_shared/TimeAgo'
 import { useLocalize } from '~/context/localize'
 import { PresenceActionType, PresenceEntityType, useNotifications } from '~/context/notifications'
 import { Author, NotificationGroup as Group } from '~/graphql/schema/core.gen'
-
-import { A, useNavigate, useSearchParams } from '@solidjs/router'
 import styles from './NotificationView.module.scss'
 
 type NotificationGroupProps = {

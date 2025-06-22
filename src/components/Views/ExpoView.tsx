@@ -1,19 +1,17 @@
 import { A } from '@solidjs/router'
 import clsx from 'clsx'
-import { For, Show, createEffect, createSignal, on } from 'solid-js'
+import { createEffect, createSignal, For, on, Show } from 'solid-js'
 import { Loading } from '~/components/_shared/Loading'
 import { ArticleCardSwiper } from '~/components/_shared/SolidSwiper/ArticleCardSwiper'
-import { EXPO_LAYOUTS } from '~/context/feed'
-import { EXPO_TITLES } from '~/context/feed'
+import { EXPO_LAYOUTS, EXPO_TITLES } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import getRandomTopShoutsQuery from '~/graphql/query/core/articles-load-random-top'
 import { LoadShoutsOptions, Shout } from '~/graphql/schema/core.gen'
 import { getUnixtime } from '~/lib/fromPeriod'
+import styles from '~/styles/views/Expo.module.scss'
 import { ExpoLayoutType } from '~/types/nav'
 import { ArticleCard } from '../Feed/ArticleCard'
-
-import styles from '~/styles/views/Expo.module.scss'
 
 const SHOUTS_PER_BLOCK = 12
 

@@ -1,8 +1,7 @@
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createSignal, on } from 'solid-js'
-
-import { AuthorBadge } from '~/components/Author/AuthorBadge'
+import { createEffect, createSignal, For, on, Show } from 'solid-js'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'

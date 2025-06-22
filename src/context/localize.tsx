@@ -1,16 +1,16 @@
 import { useSearchParams } from '@solidjs/router'
 import type { Accessor, JSX } from 'solid-js'
 import {
-  Show,
   createContext,
   createEffect,
   createMemo,
   createSignal,
   on,
   onMount,
+  Show,
   useContext
 } from 'solid-js'
-import { TimeAgo, type i18n, i18next, i18nextInit } from '~/intl/i18next'
+import { type i18n, i18next, i18nextInit, TimeAgo } from '~/intl/i18next'
 
 i18nextInit()
 

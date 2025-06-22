@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Show, createEffect, createMemo, createSignal, on, onCleanup, onMount } from 'solid-js'
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { throttle } from 'throttle-debounce'
 import { useLocalize } from '~/context/localize'
@@ -10,9 +10,8 @@ import { useOutsideClickHandler } from '~/lib/useOutsideClickHandler'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 import { EmptyMessage } from './EmptyMessage'
-import { NotificationGroup } from './NotificationView/NotificationGroup'
-
 import styles from './NotificationsPanel.module.scss'
+import { NotificationGroup } from './NotificationView/NotificationGroup'
 
 type Props = {
   isOpen: boolean

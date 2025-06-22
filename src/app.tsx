@@ -3,13 +3,13 @@ import { Router } from '@solidjs/router'
 import { FileRoutes } from '@solidjs/start/router'
 import {
   Component,
-  ErrorBoundary,
-  type JSX,
-  Suspense,
   createEffect,
   createSignal,
+  ErrorBoundary,
+  type JSX,
   on,
-  onMount
+  onMount,
+  Suspense
 } from 'solid-js'
 
 import { sessionStateChanged } from '~/context/session'

@@ -1,16 +1,15 @@
 import { A, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createMemo, createSignal, on } from 'solid-js'
-import { AuthorBadge } from '~/components/Author/AuthorBadge'
+import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js'
 import { Loading } from '~/components/_shared/Loading'
 import { SearchField } from '~/components/_shared/SearchField'
+import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import type { Author } from '~/graphql/schema/core.gen'
 import { authorLetterReduce } from '~/intl/translate'
-import { scrollHandler } from '~/utils/scroll'
-
 import styles from '~/styles/views/AllAuthors.module.scss'
+import { scrollHandler } from '~/utils/scroll'
 
 const AUTHORS_PAGE_LAYOUTS = ['shouts', 'followers', 'name']
 

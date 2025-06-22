@@ -1,16 +1,14 @@
 import { RouteSectionProps } from '@solidjs/router'
-import { createEffect, createSignal } from 'solid-js'
-import { Suspense } from 'solid-js'
-
-import { FeedView } from '~/components/Views/FeedView'
+import { createEffect, createSignal, Suspense } from 'solid-js'
 import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
+import { FeedView } from '~/components/Views/FeedView'
 import { FEED_PAGE_SIZE, orderByMode } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { ReactionsProvider } from '~/context/reactions'
 import { loadReactions, loadShouts, loadUnratedShouts } from '~/graphql/api/public'
 import { LoadShoutsFilters, Reaction, ReactionKind, ReactionSort, Shout } from '~/graphql/schema/core.gen'
-import { PeriodType, getTimestampFromPeriod } from '~/lib/fromPeriod'
+import { getTimestampFromPeriod, PeriodType } from '~/lib/fromPeriod'
 import { FeedMode } from '~/types/nav'
 
 export interface RouteData {

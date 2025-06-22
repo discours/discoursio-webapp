@@ -1,5 +1,5 @@
 // @refresh reload
-import { StartServer, createHandler } from '@solidjs/start/server'
+import { createHandler, StartServer } from '@solidjs/start/server'
 import { ErrorBoundary, For, Suspense } from 'solid-js'
 import { Loading } from './components/_shared/Loading'
 import { defaultClient } from './graphql/client'

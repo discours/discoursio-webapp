@@ -1,16 +1,13 @@
-import type { ChatMember, Message as MessageType } from '~/graphql/schema/chat.gen'
-
 import { clsx } from 'clsx'
-import { Show, createSignal } from 'solid-js'
-
+import { createSignal, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
+import type { ChatMember, Message as MessageType } from '~/graphql/schema/chat.gen'
 import { Icon } from '../_shared/Icon'
 
 import DialogAvatar from './DialogAvatar'
+import styles from './Message.module.scss'
 import { MessageActionsPopup } from './MessageActionsPopup'
 import QuotedMessage from './QuotedMessage'
-
-import styles from './Message.module.scss'
 
 type Props = {
   content: MessageType

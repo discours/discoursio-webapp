@@ -2,10 +2,9 @@ import { For, Show } from 'solid-js'
 
 import { useUI } from '~/context/ui'
 import { ArticleCard } from '../Feed/ArticleCard'
+import styles from './SearchModal.module.scss'
 import { SearchShoutsProps } from './types'
 import { getSearchCoincidences } from './utils'
-
-import styles from './SearchModal.module.scss'
 
 export const SearchShouts = (props: SearchShoutsProps) => {
   const { hideModal } = useUI()

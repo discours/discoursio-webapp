@@ -2,8 +2,7 @@ import { Meta, Title } from '@solidjs/meta'
 import { useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
 import type { Component, JSX } from 'solid-js'
-import { Index, Show, createMemo } from 'solid-js'
-import { ErrorBoundary, Suspense } from 'solid-js'
+import { createMemo, ErrorBoundary, Index, Show, Suspense } from 'solid-js'
 import { cdnUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
@@ -35,7 +34,7 @@ type PageLayoutProps = {
   key?: string
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+// biome-ignore lint/suspicious/noExplicitAny: page layout error fallback
 const PageErrorFallback = (error: any) => {
   console.error('[PageLayout] Error:', error)
 

@@ -1,7 +1,7 @@
 import { redirect, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
 import type { JSX } from 'solid-js'
-import { Show, createEffect } from 'solid-js'
+import { createEffect, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { useUI } from '~/context/ui'
 import { isPortrait } from '~/lib/mediaQuery'
@@ -50,6 +50,10 @@ export const Modal = (props: Props) => {
           [styles.isMobile]: props.isResponsive && isPortrait()
         })}
         onClick={handleHide}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`modal-${props.name}-title`}
+        aria-describedby={`modal-${props.name}-content`}
       >
         <div class={clsx('wide-container', styles.container)}>
           <div
@@ -60,12 +64,20 @@ export const Modal = (props: Props) => {
               [styles.maxHeight]: props.maxHeight
             })}
             onClick={(event) => event.stopPropagation()}
+            role="document"
           >
-            <div class={styles.modalInner}>{props.children}</div>
+            <div class={styles.modalInner} id={`modal-${props.name}-content`}>
+              {props.children}
+            </div>
             <Show when={!isPortrait()}>
-              <div class={styles.close} onClick={handleHide}>
+              <button
+                class={styles.close}
+                onClick={handleHide}
+                aria-label="Закрыть модальное окно"
+                type="button"
+              >
                 <Icon name="close" class={styles.icon} />
-              </div>
+              </button>
             </Show>
           </div>
         </div>

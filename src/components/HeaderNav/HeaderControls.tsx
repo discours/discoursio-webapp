@@ -1,22 +1,21 @@
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, Suspense, createMemo } from 'solid-js'
+import { createMemo, Show, Suspense } from 'solid-js'
 
 import { useConnect } from '~/context/connect'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
-import { Userpic } from '../Author/Userpic'
-import { PublishButton } from '../Draft/PublishButton'
-import { ProfilePopup } from '../ProfileNav/ProfilePopup'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 import { Popover } from '../_shared/Popover'
 import { Popup } from '../_shared/Popup'
-import NotificationsBell from './NotificationsBell'
-
+import { Userpic } from '../Author/Userpic'
+import { PublishButton } from '../Draft/PublishButton'
+import { ProfilePopup } from '../ProfileNav/ProfilePopup'
 import styles from './Header.module.scss'
+import NotificationsBell from './NotificationsBell'
 
 type Props = {
   setIsProfilePopupVisible: (value: boolean) => void

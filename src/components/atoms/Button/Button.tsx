@@ -1,6 +1,5 @@
-import { JSX, createSignal } from 'solid-js'
-
 import { clsx } from 'clsx'
+import { createSignal, JSX } from 'solid-js'
 
 import styles from './Button.module.scss'
 

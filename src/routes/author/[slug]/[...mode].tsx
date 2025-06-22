@@ -41,36 +41,36 @@
 
 import { RouteSectionProps, useParams, useSearchParams } from '@solidjs/router'
 import {
-  ErrorBoundary,
-  Show,
   createEffect,
   createMemo,
   createResource,
   createSignal,
+  ErrorBoundary,
   on,
-  onMount
+  onMount,
+  Show
 } from 'solid-js'
+import { PageLayout } from '~/components/_shared/PageLayout'
 import { COMMENTS_PER_PAGE } from '~/components/Article/FullArticle'
 import { AuthorView } from '~/components/Views/AuthorView'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
-import { PageLayout } from '~/components/_shared/PageLayout'
 import { useAuthors } from '~/context/authors'
 import { FEED_PAGE_SIZE, orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { ReactionsProvider } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { loadAuthors, loadReactions, loadShouts, loadTopics } from '~/graphql/api/public'
-import { ReactionKind } from '~/graphql/schema/core.gen'
 import {
   Author,
   LoadShoutsOptions,
   QueryLoad_Authors_ByArgs,
   QueryLoad_Reactions_ByArgs,
   Reaction,
+  ReactionKind,
   Shout,
   Topic
 } from '~/graphql/schema/core.gen'
-import { PeriodType, getTimestampFromPeriod } from '~/lib/fromPeriod'
+import { getTimestampFromPeriod, PeriodType } from '~/lib/fromPeriod'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { FeedMode } from '~/types/nav'
 

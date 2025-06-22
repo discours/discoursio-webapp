@@ -1,31 +1,27 @@
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, on, onCleanup, onMount, untrack } from 'solid-js'
-import { batch } from 'solid-js'
+import { batch, createEffect, createSignal, on, onCleanup, onMount, Show, untrack } from 'solid-js'
 import toast from 'solid-toast'
 import { debounce } from 'throttle-debounce'
-import { Panel } from '~/components/Sidebar/Sidebar'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Modal } from '~/components/_shared/Modal'
 import { EditorSwiper } from '~/components/_shared/SolidSwiper'
+import { Panel } from '~/components/Sidebar/Sidebar'
+// Импортируем функцию для сохранения поля черновика
+import { saveDraftField as saveDraftFieldToStorage } from '~/components/SimpleRichEditor/lib/storage'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import type { Draft, DraftInput, MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { slugify } from '~/intl/translit'
+import styles from '~/styles/views/EditView.module.scss'
 import { type SSEMessage, useConnect } from '../../context/connect'
 import { AudioProfile } from '../Draft/DraftAudio'
 import { SubtitleComponent, TitleSection } from '../Draft/DraftEditorHead'
 import { LeadComponent } from '../Draft/DraftEditorLead'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
-
 import { isEmptyContent } from '../SimpleRichEditor/lib/empty'
 import { CommandType, EditorData } from '../SimpleRichEditor/lib/types'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { AudioUploader } from '../Upload/AudioUploader'
 import { VideoUploader } from '../Upload/VideoUploader'
-
-import styles from '~/styles/views/EditView.module.scss'
-
-// Импортируем функцию для сохранения поля черновика
-import { saveDraftField as saveDraftFieldToStorage } from '~/components/SimpleRichEditor/lib/storage'
 
 export const EMPTY_TOPIC: Topic = {
   id: -1,
@@ -759,11 +755,7 @@ export const EditView = (props: { draft?: Draft }) => {
   }
 
   // Полностью переработанная обработка awareness-обновлений
-  const handleAwarenessUpdates = (_params: {
-    added: number[]
-    updated: number[]
-    removed: number[]
-  }) => {
+  const handleAwarenessUpdates = (_params: { added: number[]; updated: number[]; removed: number[] }) => {
     // Если фокус в любом из полей ввода - блокируем внешние обновления полностью
     if (isUserTyping || isEditorFocused()) {
       return

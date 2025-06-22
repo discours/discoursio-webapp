@@ -11,10 +11,10 @@
  */
 
 import {
-  type JSX,
   createContext,
   createEffect,
   createSignal,
+  type JSX,
   on,
   onCleanup,
   onMount,

@@ -1,6 +1,5 @@
-import type { Shout } from '~/graphql/schema/core.gen'
-
 import { Show } from 'solid-js'
+import type { Shout } from '~/graphql/schema/core.gen'
 
 import { ArticleCard } from './ArticleCard'
 

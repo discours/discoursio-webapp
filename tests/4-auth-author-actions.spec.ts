@@ -1,8 +1,8 @@
-import { type Page, expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import { checkServerWithoutStarting } from './utils/test-helpers'
 
 const TEST_PASSWORD = process.env.TEST_PASSWORD
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+// biome-ignore lint/suspicious/noExplicitAny: ok
 let context: any = null
 let page: Page | null = null
 
@@ -21,7 +21,6 @@ test.beforeAll(async ({ browser }) => {
     await checkServerWithoutStarting(page)
 
     // Проверяем, что страница загрузилась корректно
-    // biome-ignore lint/performance/useTopLevelRegex: <explanation>
     await expect(page).toHaveTitle(/Дискурс/)
     await page.getByRole('link', { name: 'Войти' }).click()
     console.log('Тесты действий авторов инициализированы успешно!')

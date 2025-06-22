@@ -1,4 +1,4 @@
-import { type Page, expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import { checkServerWithoutStarting } from './utils/test-helpers'
 
 /* Global starting test config */
@@ -17,7 +17,6 @@ test.beforeAll(async ({ browser }) => {
   await checkServerWithoutStarting(page)
 
   // Проверяем, что страница загрузилась корректно
-  // biome-ignore lint/performance/useTopLevelRegex: <explanation>
   await expect(page).toHaveTitle(/Дискурс/)
   console.log('Тесты инициализированы успешно!')
 })

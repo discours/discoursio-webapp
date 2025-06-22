@@ -1,6 +1,5 @@
-import { For, Show, createSignal, onMount } from 'solid-js'
-
 import { useSearchParams } from '@solidjs/router'
+import { createSignal, For, onMount, Show } from 'solid-js'
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import type { SearchResult, Shout } from '~/graphql/schema/core.gen'

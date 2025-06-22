@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
+import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js'
 import { debounce, throttle } from 'throttle-debounce'
 
 import { useLocalize } from '~/context/localize'
@@ -116,13 +116,19 @@ export const TableOfContents = (props: Props) => {
           [styles.TableOfContentsFixedWrapperLefted]: props.variant === 'editor'
         })}
       >
-        <div class={styles.TableOfContentsContainer} data-custom-scroll="on">
+        <nav
+          class={styles.TableOfContentsContainer}
+          data-custom-scroll="on"
+          aria-label={t('Table of contents')}
+        >
           <Show when={isVisible()}>
             <div class={styles.TableOfContentsContainerInner}>
               <div class={styles.TableOfContentsHeader}>
-                <p class={styles.TableOfContentsHeading}>{t('Contents')}</p>
+                <h2 class={styles.TableOfContentsHeading} id="table-of-contents-heading">
+                  {t('Contents')}
+                </h2>
               </div>
-              <ul class={styles.TableOfContentsHeadingsList}>
+              <ul class={styles.TableOfContentsHeadingsList} aria-labelledby="table-of-contents-heading">
                 <For each={headings()}>
                   {(h, index) => (
                     <li>
@@ -137,6 +143,9 @@ export const TableOfContents = (props: Props) => {
                           e.preventDefault()
                           scrollToHeader(h)
                         }}
+                        aria-current={index() === activeHeaderIndex() ? 'location' : undefined}
+                        aria-label={`Перейти к разделу: ${h.textContent}`}
+                        type="button"
                       />
                     </li>
                   )}
@@ -158,12 +167,18 @@ export const TableOfContents = (props: Props) => {
               toggleIsVisible()
             }}
             title={isVisible() ? t('Hide table of contents') : t('Show table of contents')}
+            aria-label={isVisible() ? t('Hide table of contents') : t('Show table of contents')}
+            aria-expanded={isVisible()}
+            type="button"
           >
-            <Show when={isVisible()} fallback={<Icon name="show-table-of-contents" class="icon" />}>
+            <Show
+              when={isVisible()}
+              fallback={<Icon name="show-table-of-contents" class="icon" aria-hidden="true" />}
+            >
               {props.variant === 'editor' ? (
-                <Icon name="hide-table-of-contents" class="icon" />
+                <Icon name="hide-table-of-contents" class="icon" aria-hidden="true" />
               ) : (
-                <Icon name="hide-table-of-contents-2" class="icon" />
+                <Icon name="hide-table-of-contents-2" class="icon" aria-hidden="true" />
               )}
             </Show>
           </button>
@@ -176,11 +191,13 @@ export const TableOfContents = (props: Props) => {
                 toggleIsVisible()
               }}
               title={isVisible() ? t('Hide table of contents') : t('Show table of contents')}
+              aria-label={t('Close table of contents')}
+              type="button"
             >
-              <Icon name="close-white" class="icon" />
+              <Icon name="close-white" class="icon" aria-hidden="true" />
             </button>
           </Show>
-        </div>
+        </nav>
 
         <Show when={!isVisible()}>
           <button
@@ -196,8 +213,10 @@ export const TableOfContents = (props: Props) => {
               toggleIsVisible()
             }}
             title={isVisible() ? t('Hide table of contents') : t('Show table of contents')}
+            aria-label={t('Show table of contents')}
+            type="button"
           >
-            <Icon name="hide-table-of-contents-2" class="icon" />
+            <Icon name="hide-table-of-contents-2" class="icon" aria-hidden="true" />
           </button>
         </Show>
       </div>

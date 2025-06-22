@@ -1,6 +1,5 @@
-import type { JSX } from 'solid-js'
-
 import { Link } from '@solidjs/meta'
+import type { JSX } from 'solid-js'
 import { createSignal, splitProps } from 'solid-js'
 
 import { getCachedImageSrcSet, getCachedImageUrl } from '~/lib/imageCache'

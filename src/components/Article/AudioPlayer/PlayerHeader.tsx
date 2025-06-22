@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Show, createSignal } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 
 import { Icon } from '~/components/_shared/Icon'
 import { MediaItem } from '~/graphql/schema/core.gen'

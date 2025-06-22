@@ -2,9 +2,9 @@ import { Show, untrack } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Draft } from '~/graphql/schema/core.gen'
 import styles from '~/styles/views/EditView.module.scss'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { isEmptyContent } from '../SimpleRichEditor/lib/empty'
 import { EditorData } from '../SimpleRichEditor/lib/types'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 
 /**
  * Компонент для лида (краткого вступления)

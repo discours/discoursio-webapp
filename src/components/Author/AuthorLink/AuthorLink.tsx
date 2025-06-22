@@ -1,14 +1,12 @@
+import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createMemo } from 'solid-js'
-
+import { createMemo, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Author } from '~/graphql/schema/core.gen'
 import { isCyrillic } from '~/intl/translate'
 import { translit } from '~/intl/translit'
 import { capitalize } from '~/utils/capitalize'
 import { Userpic } from '../Userpic'
-
-import { A } from '@solidjs/router'
 import styles from './AuthorLink.module.scss'
 
 type Props = {

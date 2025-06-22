@@ -1,8 +1,6 @@
-import type { Reaction } from '~/graphql/schema/core.gen'
-
 import { clsx } from 'clsx'
-
 import { useLocalize } from '~/context/localize'
+import type { Reaction } from '~/graphql/schema/core.gen'
 
 import styles from './CommentDate.module.scss'
 

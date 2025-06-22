@@ -1,10 +1,7 @@
-// biome-ignore lint/correctness/noNodejsModules: build
 import { existsSync } from 'node:fs'
-// biome-ignore lint/correctness/noNodejsModules: build
 import { dirname, join } from 'node:path'
-// biome-ignore lint/correctness/noNodejsModules: build
 import { fileURLToPath } from 'node:url'
-import { SolidStartInlineConfig, defineConfig } from '@solidjs/start/config'
+import { defineConfig, SolidStartInlineConfig } from '@solidjs/start/config'
 import viteConfig, { isDev } from './vite.config'
 
 const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)

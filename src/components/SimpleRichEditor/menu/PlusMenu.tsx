@@ -1,12 +1,11 @@
 import { clsx } from 'clsx'
-import { Component, For, Show, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
+import { Component, createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
+import { useLocalize } from '~/context/localize'
 import { replaceSelection } from '../lib/empty'
 import { CommandType } from '../lib/types'
-import { ToolbarControl } from './SimpleToolbar'
-
-import { useLocalize } from '~/context/localize'
 import styles from './PlusMenu.module.scss'
+import { ToolbarControl } from './SimpleToolbar'
 /**
  * Обработчик действий из PlusMenu
  * @param action - тип команды

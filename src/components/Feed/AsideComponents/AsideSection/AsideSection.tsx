@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { JSX, Show, createSignal } from 'solid-js'
+import { createSignal, JSX, Show } from 'solid-js'
 import buttonStyles from '~/components/_shared/Button/Button.module.scss'
 import { Icon } from '~/components/_shared/Icon'
 import styles from './AsideSection.module.scss'

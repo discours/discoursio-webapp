@@ -1,9 +1,9 @@
-import { defaultClient } from '~/graphql/client'
 import {
   createCacheableLoader,
   createCacheableQueryResource,
   createLoader,
-  createQueryResource
+  createQueryResource,
+  defaultClient
 } from '~/graphql/client'
 import getShoutQuery from '~/graphql/query/core/article-load'
 import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
@@ -21,26 +21,23 @@ import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
 import loadTopicsQuery from '~/graphql/query/core/topics-all'
 import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community'
 import {
+  Author,
+  LoadShoutsOptions,
+  QueryGet_AuthorArgs,
+  QueryGet_ShoutArgs,
+  QueryGet_TopicArgs,
+  QueryGet_Topics_By_CommunityArgs,
+  QueryLoad_Authors_ByArgs,
+  QueryLoad_Authors_SearchArgs,
   QueryLoad_Comments_BranchArgs,
+  QueryLoad_Reactions_ByArgs,
   QueryLoad_Shouts_ByArgs,
+  QueryLoad_Shouts_SearchArgs,
+  QueryLoad_Shouts_UnratedArgs,
+  Reaction,
   Shout,
   Topic
 } from '~/graphql/schema/core.gen'
-import {
-  Author,
-  QueryLoad_Authors_ByArgs,
-  QueryLoad_Reactions_ByArgs,
-  Reaction
-} from '~/graphql/schema/core.gen'
-import { QueryGet_ShoutArgs } from '~/graphql/schema/core.gen'
-import { LoadShoutsOptions, QueryLoad_Shouts_SearchArgs } from '~/graphql/schema/core.gen'
-import { QueryLoad_Shouts_UnratedArgs } from '~/graphql/schema/core.gen'
-import {
-  QueryGet_AuthorArgs,
-  QueryGet_TopicArgs,
-  QueryGet_Topics_By_CommunityArgs
-} from '~/graphql/schema/core.gen'
-import { QueryLoad_Authors_SearchArgs } from '~/graphql/schema/core.gen'
 
 // Topics API
 /**

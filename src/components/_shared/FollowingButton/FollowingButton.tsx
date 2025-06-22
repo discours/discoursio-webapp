@@ -1,13 +1,12 @@
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, on } from 'solid-js'
+import { createEffect, createSignal, on, Show } from 'solid-js'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { FollowingEntity } from '~/graphql/schema/core.gen'
 import { Button } from '../Button'
+import stylesButton from '../Button/Button.module.scss'
 import { CheckButton } from '../CheckButton'
 import { Icon } from '../Icon'
-
-import stylesButton from '../Button/Button.module.scss'
 import styles from './FollowingButton.module.scss'
 
 type Props = {

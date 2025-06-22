@@ -1,16 +1,15 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, on } from 'solid-js'
+import { createEffect, createSignal, on, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { Reaction, ReactionBy, ReactionKind, Shout } from '~/graphql/schema/core.gen'
 import { Icon } from '../_shared/Icon'
-import { Popup } from '../_shared/Popup'
-import { RATINGS_PER_PAGE, VotersList } from './VotersList'
-
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
+import { Popup } from '../_shared/Popup'
 import styles from './RatingControl.module.scss'
+import { RATINGS_PER_PAGE, VotersList } from './VotersList'
 
 interface Props {
   shout?: Shout

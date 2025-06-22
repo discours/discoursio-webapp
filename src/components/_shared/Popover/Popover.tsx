@@ -1,4 +1,4 @@
-import { JSX, Show, createSignal, onMount } from 'solid-js'
+import { createSignal, JSX, onMount, Show } from 'solid-js'
 import usePopper from 'solid-popper'
 
 import styles from './Popover.module.scss'
@@ -13,6 +13,7 @@ export const Popover = (props: Props) => {
   const [show, setShow] = createSignal(false)
   const [anchor, setAnchor] = createSignal<HTMLElement>()
   const [popper, setPopper] = createSignal<HTMLElement>()
+  const tooltipId = `tooltip-${Math.random().toString(36).substr(2, 9)}`
 
   usePopper(anchor, popper, {
     modifiers: [
@@ -37,6 +38,13 @@ export const Popover = (props: Props) => {
   const handleMouseOver = () => setShow(true)
   const handleMouseOut = () => setShow(false)
 
+  const setAnchorWithAria = (el: HTMLElement | null) => {
+    setAnchor(el || undefined)
+    if (el && !props.disabled) {
+      el.setAttribute('aria-describedby', tooltipId)
+    }
+  }
+
   if (!props.disabled) {
     onMount(() => {
       if (!anchor()) return
@@ -59,9 +67,9 @@ export const Popover = (props: Props) => {
 
   return (
     <>
-      {props.children(setAnchor)}
+      {props.children(setAnchorWithAria)}
       <Show when={show() && !props.disabled}>
-        <div ref={setPopper} class={styles.tooltip}>
+        <div ref={setPopper} class={styles.tooltip} role="tooltip" id={tooltipId} aria-hidden={!show()}>
           {props.content}
           <div class={styles.arrow} data-popper-arrow={true} />
         </div>

@@ -1,2 +1,2 @@
-export { ImageSwiper } from './ImageSwiper'
 export { EditorSwiper } from './EditorSwiper'
+export { ImageSwiper } from './ImageSwiper'

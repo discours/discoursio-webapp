@@ -1,17 +1,16 @@
 import { A, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { For, Show, createEffect, createMemo, createSignal } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { Loading } from '~/components/_shared/Loading'
 import { SearchField } from '~/components/_shared/SearchField'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import type { Topic } from '~/graphql/schema/core.gen'
 import { findFirstReadableCharIndex, notLatin, notRus } from '~/intl/chars'
+import styles from '~/styles/views/AllTopics.module.scss'
 import { capitalize } from '~/utils/capitalize'
 import { scrollHandler } from '~/utils/scroll'
 import { TopicBadge } from '../Topic/TopicBadge/TopicBadge'
-
-import styles from '~/styles/views/AllTopics.module.scss'
 
 const TOPICS_PAGE_LAYOUTS = ['shouts', 'authors', 'title']
 

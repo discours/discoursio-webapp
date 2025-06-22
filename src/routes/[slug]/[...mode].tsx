@@ -1,27 +1,27 @@
 import { RouteDefinition, RouteSectionProps, useLocation } from '@solidjs/router'
 import { HttpStatusCode } from '@solidjs/start'
 import {
-  ErrorBoundary,
-  Match,
-  Show,
-  Suspense,
-  Switch,
   createEffect,
   createResource,
   createSignal,
+  ErrorBoundary,
+  Match,
   on,
-  onMount
+  onMount,
+  Show,
+  Suspense,
+  Switch
 } from 'solid-js'
-import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { Loading } from '~/components/_shared/Loading'
+import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { gaIdentity } from '~/config'
 import { useLocalize } from '~/context/localize'
 import { getShout, loadTopics } from '~/graphql/api/public'
 import type { Author, Reaction, Shout, Topic } from '~/graphql/schema/core.gen'
 import { initGA, loadGAScript } from '~/utils/ga'
 import { descFromBody, keywordsFromTopics } from '~/utils/meta'
-import { FullArticle } from '../../components/Article/FullArticle'
 import { PageLayout } from '../../components/_shared/PageLayout'
+import { FullArticle } from '../../components/Article/FullArticle'
 import { ReactionsProvider } from '../../context/reactions'
 import AuthorPage, { AuthorPageProps } from '../author/[slug]/[...mode]'
 import TopicPage, { TopicPageProps } from '../topic/[slug]/[...mode]'

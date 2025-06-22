@@ -1,9 +1,7 @@
-import type { PopupProps } from '~/components/_shared/Popup'
-
 import { clsx } from 'clsx'
-import { Show, createSignal } from 'solid-js'
-
+import { createSignal, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
+import type { PopupProps } from '~/components/_shared/Popup'
 import { Popup } from '~/components/_shared/Popup'
 import { SoonChip } from '~/components/_shared/SoonChip'
 import { useLocalize } from '~/context/localize'

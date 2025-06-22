@@ -2,15 +2,15 @@ import { useLocation } from '@solidjs/router'
 import { Client as GraphQLClient } from '@urql/core'
 import {
   Accessor,
-  JSX,
-  Setter,
   batch,
   createContext,
   createEffect,
   createMemo,
   createSignal,
+  JSX,
   on,
   onCleanup,
+  Setter,
   useContext
 } from 'solid-js'
 import { loadCoauthoredShouts, loadDiscussedShouts, loadFollowedShouts } from '~/graphql/api/private'

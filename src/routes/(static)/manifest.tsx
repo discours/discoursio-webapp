@@ -1,8 +1,8 @@
-import { Feedback } from '~/components/Discours/Feedback'
-import { StaticPage } from '~/components/Views/StaticPageView'
 import { Modal } from '~/components/_shared/Modal'
 import { Opener } from '~/components/_shared/Modal/Opener'
 import { Newsletter } from '~/components/_shared/Newsletter'
+import { Feedback } from '~/components/Discours/Feedback'
+import { StaticPage } from '~/components/Views/StaticPageView'
 
 export default () => (
   <StaticPage

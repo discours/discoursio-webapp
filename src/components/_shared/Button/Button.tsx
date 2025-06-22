@@ -1,6 +1,5 @@
-import type { JSX } from 'solid-js'
-
 import { clsx } from 'clsx'
+import type { JSX } from 'solid-js'
 
 import styles from './Button.module.scss'
 
@@ -17,6 +16,10 @@ type Props = {
   class?: string
   ref?: HTMLButtonElement | ((el: HTMLButtonElement) => void)
   isSubscribeButton?: boolean
+  'aria-label'?: string
+  'aria-describedby'?: string
+  'aria-expanded'?: boolean
+  'aria-pressed'?: boolean
 }
 
 export const Button = (props: Props) => {
@@ -33,6 +36,11 @@ export const Button = (props: Props) => {
       onClick={props.onClick}
       type={props.type ?? 'button'}
       disabled={props.loading || props.disabled}
+      aria-label={props['aria-label']}
+      aria-describedby={props['aria-describedby']}
+      aria-expanded={props['aria-expanded']}
+      aria-pressed={props['aria-pressed']}
+      aria-busy={props.loading}
       class={clsx(
         styles.button,
         styles[props.size ?? 'M'],

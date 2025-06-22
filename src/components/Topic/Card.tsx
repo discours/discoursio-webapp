@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Show, createEffect, createMemo, createSignal, on } from 'solid-js'
+import { createEffect, createMemo, createSignal, on, Show } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
 
 import { useFollowing } from '~/context/following'
@@ -7,9 +7,9 @@ import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { Author, FollowingEntity, type Topic } from '~/graphql/schema/core.gen'
 import { capitalize } from '~/utils/capitalize'
-import { CardTopic } from '../Feed/CardTopic'
 import { CheckButton } from '../_shared/CheckButton'
 import { FollowingButton } from '../_shared/FollowingButton'
+import { CardTopic } from '../Feed/CardTopic'
 
 import styles from './Card.module.scss'
 

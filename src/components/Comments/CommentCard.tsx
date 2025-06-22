@@ -1,12 +1,12 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Accessor, JSX, Show, createMemo, createSignal, onMount } from 'solid-js'
-
-import { RatingControl } from '~/components/RatingControl/RatingControl'
+import { Accessor, createMemo, createSignal, JSX, onMount, Show } from 'solid-js'
+import toast from 'solid-toast'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'
 import { Popup } from '~/components/_shared/Popup/Popup'
+import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
@@ -14,13 +14,11 @@ import { Author, Reaction, ReactionKind } from '~/graphql/schema/core.gen'
 import { saveScrollPosition } from '~/utils/scroll'
 import { SharePopup } from '../Article/SharePopup'
 import { AuthorLink } from '../Author/AuthorLink'
-import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { sanitizeHtml } from '../SimpleRichEditor/lib/sanitize'
 import { EditorData } from '../SimpleRichEditor/lib/types'
-import { CommentDate } from './CommentDate'
-
-import toast from 'solid-toast'
+import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import styles from './CommentCard.module.scss'
+import { CommentDate } from './CommentDate'
 /**
  * Свойства компонента CommentCard
  * @typedef {Object} CommentCardProps

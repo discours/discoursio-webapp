@@ -1,8 +1,7 @@
 import { For } from 'solid-js'
 import type { Shout } from '~/graphql/schema/core.gen'
-import { ArticleCard } from './ArticleCard'
-
 import styles from '~/styles/views/Feed.module.scss'
+import { ArticleCard } from './ArticleCard'
 
 export default (props: { articles: Shout[] }) => (
   <div class="floor floor--7">

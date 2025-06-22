@@ -1,9 +1,8 @@
-import type { Author } from '~/graphql/schema/core.gen'
-
 import { clsx } from 'clsx'
-import { Show, createSignal } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 import { useSession } from '~/context/session'
 import rateAuthorMutation from '~/graphql/mutation/core/author-rate'
+import type { Author } from '~/graphql/schema/core.gen'
 import styles from './AuthorRatingControl.module.scss'
 
 interface AuthorRatingControlProps {

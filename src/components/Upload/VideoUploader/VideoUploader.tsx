@@ -1,6 +1,6 @@
 import { createDropzone } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
-import { For, Show, createSignal } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js'
 import { toast } from 'solid-toast'
 
 import { VideoPlayer } from '~/components/_shared/VideoPlayer'

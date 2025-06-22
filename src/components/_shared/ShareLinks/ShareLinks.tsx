@@ -1,12 +1,10 @@
-import { FACEBOOK, TELEGRAM, TWITTER, VK, createSocialShare } from '@solid-primitives/share'
+import { createSocialShare, FACEBOOK, TELEGRAM, TWITTER, VK } from '@solid-primitives/share'
 import { clsx } from 'clsx'
-import { Show, createSignal } from 'solid-js'
-
+import { createSignal, Show } from 'solid-js'
+import toast from 'solid-toast'
 import { useLocalize } from '~/context/localize'
 import { Icon } from '../Icon'
 import { Popover } from '../Popover'
-
-import toast from 'solid-toast'
 import popupStyles from '../Popup/Popup.module.scss'
 import styles from './ShareLinks.module.scss'
 

@@ -2,15 +2,15 @@ import { Link } from '@solidjs/meta'
 import { A, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import {
-  For,
-  Show,
-  Suspense,
   createEffect,
   createMemo,
   createSignal,
+  For,
   on,
   onCleanup,
-  onMount
+  onMount,
+  Show,
+  Suspense
 } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import usePopper from 'solid-popper'
@@ -20,17 +20,12 @@ import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
 import { DEFAULT_HEADER_OFFSET, useUI } from '~/context/ui'
-import { ReactionKind } from '~/graphql/schema/core.gen'
 import type { Author, Maybe, Shout, Topic } from '~/graphql/schema/core.gen'
-import { MediaItem } from '~/graphql/schema/core.gen'
+import { MediaItem, ReactionKind } from '~/graphql/schema/core.gen'
 import { processPrepositions } from '~/intl/prepositions'
 import { isCyrillic } from '~/intl/translate'
 import { patchBodyUrls } from '~/lib/getThumbUrl'
 import { capitalize } from '~/utils/capitalize'
-import { AuthorBadge } from '../Author/AuthorBadge'
-import { CommentsTree } from '../Comments/CommentsTree'
-import { CardTopic } from '../Feed/CardTopic'
-import { FeedArticlePopup } from '../Feed/FeedArticlePopup'
 import { Icon } from '../_shared/Icon'
 import { Image } from '../_shared/Image'
 import { InviteMembers } from '../_shared/InviteMembers'
@@ -42,12 +37,15 @@ import { ShareModal } from '../_shared/ShareModal'
 import { ImageSwiper } from '../_shared/SolidSwiper'
 import { TableOfContents } from '../_shared/TableOfContents'
 import { VideoPlayer } from '../_shared/VideoPlayer'
-import { AudioHeader } from './AudioHeader'
-import { AudioPlayer } from './AudioPlayer/AudioPlayer'
-import { SharePopup, getShareUrl } from './SharePopup'
-
+import { AuthorBadge } from '../Author/AuthorBadge'
+import { CommentsTree } from '../Comments/CommentsTree'
+import { CardTopic } from '../Feed/CardTopic'
+import { FeedArticlePopup } from '../Feed/FeedArticlePopup'
 import stylesHeader from '../HeaderNav/Header.module.scss'
 import styles from './Article.module.scss'
+import { AudioHeader } from './AudioHeader'
+import { AudioPlayer } from './AudioPlayer/AudioPlayer'
+import { getShareUrl, SharePopup } from './SharePopup'
 
 type Props = {
   article: Shout
@@ -494,10 +492,12 @@ export const FullArticle = (props: Props) => {
               styles[`${props.article.layout}Layout`]
             )}
             onClick={handleArticleBodyClick}
+            aria-labelledby="article-title"
+            aria-describedby="article-content"
           >
             {/*TODO: Check styles.shoutTopic*/}
             <Show when={props.article.layout !== 'audio'}>
-              <div class={styles.shoutHeader}>
+              <header class={styles.shoutHeader}>
                 <Show when={props.article.main_topic}>
                   <CardTopic
                     title={props.article.main_topic?.title || ''}
@@ -505,9 +505,9 @@ export const FullArticle = (props: Props) => {
                   />
                 </Show>
 
-                <h1>{props.article.title || ''}</h1>
+                <h1 id="article-title">{props.article.title || ''}</h1>
                 <Show when={props.article.subtitle}>
-                  <h4>{processPrepositions(props.article.subtitle || '')}</h4>
+                  <h2 class="article-subtitle">{processPrepositions(props.article.subtitle || '')}</h2>
                 </Show>
 
                 <div class={styles.shoutAuthor}>
@@ -515,7 +515,9 @@ export const FullArticle = (props: Props) => {
                     {(a: Maybe<Author>, index: () => number) => (
                       <>
                         <Show when={index() > 0}>, </Show>
-                        <A href={`/@${a?.slug}`}>{a && getAuthorName(a)}</A>
+                        <A href={`/@${a?.slug}`} rel="author">
+                          {a && getAuthorName(a)}
+                        </A>
                       </>
                     )}
                   </For>
@@ -536,7 +538,7 @@ export const FullArticle = (props: Props) => {
                     <figcaption innerHTML={props.article?.cover_caption || ''} />
                   </figure>
                 </Show>
-              </div>
+              </header>
             </Show>
 
             <Show when={props.article.lead}>

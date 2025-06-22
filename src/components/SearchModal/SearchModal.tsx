@@ -1,4 +1,4 @@
-import { Show, createEffect, createResource, createSignal, onCleanup, onMount } from 'solid-js'
+import { createEffect, createResource, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { debounce } from 'throttle-debounce'
 
 import { Button } from '~/components/_shared/Button'
@@ -13,11 +13,10 @@ import { dummyFilter } from '~/intl/dummyFilter'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { SearchAll } from './SearchAll'
 import { SearchAuthors } from './SearchAuthors'
+import styles from './SearchModal.module.scss'
 import { SearchNav } from './SearchNav'
 import { SearchShouts } from './SearchShouts'
 import { SearchTopics } from './SearchTopic'
-
-import styles from './SearchModal.module.scss'
 
 export const SearchModal = () => {
   const { t, lang } = useLocalize()

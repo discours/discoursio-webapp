@@ -1,6 +1,6 @@
-import { UploadFile, createDropzone, createFileUploader } from '@solid-primitives/upload'
+import { createDropzone, createFileUploader, UploadFile } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
-import { JSX, Show, createSignal } from 'solid-js'
+import { createSignal, JSX, Show } from 'solid-js'
 
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'

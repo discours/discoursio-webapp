@@ -1,10 +1,9 @@
 import { clsx } from 'clsx'
-import { Show, createSignal } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 
 import { Icon } from '~/components/_shared/Icon'
 import { Image } from '~/components/_shared/Image'
-import { Topic } from '~/graphql/schema/core.gen'
-import { MediaItem } from '~/graphql/schema/core.gen'
+import { MediaItem, Topic } from '~/graphql/schema/core.gen'
 import { CardTopic } from '../../Feed/CardTopic'
 
 import styles from './AudioHeader.module.scss'

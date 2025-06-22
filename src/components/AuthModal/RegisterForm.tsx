@@ -1,18 +1,16 @@
+import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import type { JSX } from 'solid-js'
-import { Show, createMemo, createSignal } from 'solid-js'
-
-import { useSearchParams } from '@solidjs/router'
+import { createMemo, createSignal, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import { validateEmail } from '~/utils/validate'
+import styles from './AuthModal.module.scss'
 import { AuthModalHeader } from './AuthModalHeader'
 import { PasswordField } from './PasswordField'
 import { SocialProviders } from './SocialProviders'
 import { email, setEmail } from './sharedLogic'
-
-import styles from './AuthModal.module.scss'
 
 type EmailStatus = 'not verified' | 'verified' | 'registered' | ''
 
@@ -102,7 +100,7 @@ export const RegisterForm = () => {
     }
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  // biome-ignore lint/suspicious/noExplicitAny: resend link
   const handleResendLink = async (_ev: any) => {
     const success: boolean = await resendVerifyEmail({ email: email() })
     setIsSuccess(success)

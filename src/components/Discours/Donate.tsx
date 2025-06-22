@@ -1,13 +1,11 @@
 import { clsx } from 'clsx'
 import { createSignal, onMount } from 'solid-js'
-
+import { toast } from 'solid-toast'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
-
-import { toast } from 'solid-toast'
 import styles from './Donate.module.scss'
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+// biome-ignore lint/suspicious/noExplicitAny: donate widget
 type DWindow = Window & { cp: any }
 
 export const Donate = () => {
@@ -103,14 +101,14 @@ export const Donate = () => {
           }
         }
       },
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      // biome-ignore lint/suspicious/noExplicitAny: donate options
       (opts: any) => {
         // success
         // действие при успешной оплате
         console.debug('[donate] options', opts)
         showModal('thank')
       },
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      // biome-ignore lint/suspicious/noExplicitAny: donate options
       (reason: string, options: any) => {
         // fail
         // действие при неуспешной оплате

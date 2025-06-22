@@ -1,6 +1,6 @@
-import { UploadFile, createDropzone, createFileUploader } from '@solid-primitives/upload'
+import { createDropzone, createFileUploader, UploadFile } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
-import { Show, createSignal } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'

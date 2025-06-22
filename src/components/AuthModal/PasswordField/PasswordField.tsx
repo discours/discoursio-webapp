@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Show, createEffect, createSignal, on } from 'solid-js'
+import { createEffect, createSignal, on, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Icon } from '../../_shared/Icon'
 import styles from './PasswordField.module.scss'

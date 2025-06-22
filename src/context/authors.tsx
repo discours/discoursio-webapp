@@ -1,10 +1,10 @@
 import {
   Accessor,
-  JSX,
   createContext,
   createEffect,
   createMemo,
   createSignal,
+  JSX,
   on,
   useContext
 } from 'solid-js'

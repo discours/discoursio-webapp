@@ -1,8 +1,7 @@
-import type { PopupProps } from '../Popup'
-
 import { clsx } from 'clsx'
-import { For, JSX, Show, createMemo, createSignal } from 'solid-js'
+import { createMemo, createSignal, For, JSX, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
+import type { PopupProps } from '../Popup'
 import { Popup } from '../Popup'
 
 import popupStyles from '../Popup/Popup.module.scss'
@@ -103,11 +102,7 @@ const OptionItem = (props: {
   </li>
 )
 
-const GroupOptions = (props: {
-  group: OptionGroup
-  showTitle: boolean
-  index: number
-}) => (
+const GroupOptions = (props: { group: OptionGroup; showTitle: boolean; index: number }) => (
   <div>
     <Show when={props.showTitle}>
       {props.index !== 0 && (
@@ -117,7 +112,7 @@ const GroupOptions = (props: {
       )}
       <Show when={props.group.title}>
         <li class={styles.groupTitle}>
-          <span>{props.group.title}</span>
+          <span id={`group-${props.index}`}>{props.group.title}</span>
         </li>
       </Show>
     </Show>
@@ -204,14 +199,20 @@ export const DropDown = (props: DropDownProps) => {
     }
 
     return (
-      <div class={clsx(styles.trigger, props.triggerCssClass, styles.nonSelectable)}>
+      <button
+        class={clsx(styles.trigger, props.triggerCssClass, styles.nonSelectable)}
+        aria-expanded={isPopupVisible()}
+        aria-haspopup="listbox"
+        aria-label="Выберите опцию"
+      >
         {getDisplayTitle()}{' '}
         <Chevron
           class={clsx(styles.chevron, {
             [styles.rotate]: isPopupVisible()
           })}
+          aria-hidden="true"
         />
-      </div>
+      </button>
     )
   }
 

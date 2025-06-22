@@ -1,18 +1,17 @@
 import { clsx } from 'clsx'
-import { Show, createSignal, onCleanup, onMount } from 'solid-js'
-import { Panel } from '~/components/Sidebar/Sidebar'
+import { createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
+import { Panel } from '~/components/Sidebar/Sidebar'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import type { Topic } from '~/graphql/schema/core.gen'
 import { isDesktop } from '~/lib/mediaQuery'
-import { PublishSettings } from '../Draft/PublishSettings'
+import styles from '~/styles/views/EditView.module.scss'
 import { Modal } from '../_shared/Modal'
 import { TableOfContents } from '../_shared/TableOfContents'
-
-import styles from '~/styles/views/EditView.module.scss'
+import { PublishSettings } from '../Draft/PublishSettings'
 
 export const MAX_HEADER_LIMIT = 100
 export const EMPTY_TOPIC: Topic = { id: -1, slug: '' }

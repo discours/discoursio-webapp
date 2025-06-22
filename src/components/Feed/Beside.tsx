@@ -1,13 +1,12 @@
 // TODO: additional entities list column + article
 
-import type { Author, Shout, Topic } from '~/graphql/schema/core.gen'
-
 import { clsx } from 'clsx'
 import { For, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
+import type { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import { Icon } from '../_shared/Icon'
 import { AuthorBadge } from '../Author/AuthorBadge'
 import { TopicCard } from '../Topic/Card'
-import { Icon } from '../_shared/Icon'
 
 import { ArticleCard } from './ArticleCard'
 
