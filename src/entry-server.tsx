@@ -12,12 +12,9 @@ import { generateOGMetadata } from './lib/openGraph'
 
 // biome-ignore lint/suspicious/noExplicitAny: ok
 const ServerErrorFallback = (err: any) => {
-  console.error('[Server] Error during SSR:', err)
-
   if (process.env.NODE_ENV === 'production') {
     return <Loading />
   }
-
   return (
     <div style={{ padding: '20px', background: '#fee', color: '#c00' }}>
       <h1>Server Error</h1>
@@ -27,40 +24,44 @@ const ServerErrorFallback = (err: any) => {
 }
 
 /**
- * Получает данные статьи по slug используя предустановленный GraphQL запрос
+ * Минимальные метатеги для системных запросов и fallback
  */
-async function fetchArticleData(slug: string) {
-  try {
-    const response = await defaultClient.query(getShoutQuery, { slug }).toPromise()
-    return response?.data?.get_shout || null
-  } catch (error) {
-    console.error('[Server] Error fetching article:', error)
-    return null
-  }
+const getMinimalMetaTags = (pathname: string, locale: 'ru' | 'en') => (
+  <>
+    <title>Discours</title>
+    <meta name="description" content="Дискурс – открытый журнал о культуре, науке и обществе" />
+    <meta name="keywords" content="discours.io, Дискурс журнал, культура, наука, искусство, общество" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Discours" />
+    <meta property="og:description" content="Дискурс – открытый журнал о культуре, науке и обществе" />
+    <meta property="og:url" content={`https://discours.io${pathname}`} />
+    <meta property="og:site_name" content="Discours" />
+    <meta property="og:locale" content={locale} />
+    <link rel="canonical" href={`https://discours.io${pathname}`} />
+    <meta name="robots" content="index, follow" />
+  </>
+)
+
+/**
+ * Проверяет является ли запрос системным (боты, скриншоты и т.д.)
+ */
+const isSystemRequest = (userAgent: string): boolean => {
+  const systemAgents = ['vercel-', 'bot', 'crawler', 'spider', 'facebook', 'twitter']
+  return systemAgents.some((agent) => userAgent.toLowerCase().includes(agent))
 }
 
 /**
- * Получает данные автора по slug используя предустановленный GraphQL запрос
+ * Быстрое получение данных GraphQL с обработкой ошибок
  */
-async function fetchAuthorData(slug: string) {
+// biome-ignore lint/suspicious/noExplicitAny: ok
+const fetchGraphQLData = async (query: any, variables: any, type: string) => {
   try {
-    const response = await defaultClient.query(getAuthorQuery, { slug }).toPromise()
-    return response?.data?.get_author || null
+    const response = await defaultClient.query(query, variables).toPromise()
+    return response?.data?.[`get_${type}`] || null
   } catch (error) {
-    console.error('[Server] Error fetching author:', error)
-    return null
-  }
-}
-
-/**
- * Получает данные темы по slug используя предустановленный GraphQL запрос
- */
-async function fetchTopicData(slug: string) {
-  try {
-    const response = await defaultClient.query(topicBySlugQuery, { slug }).toPromise()
-    return response?.data?.get_topic || null
-  } catch (error) {
-    console.error('[Server] Error fetching topic:', error)
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(`[Server] Error fetching ${type}:`, error)
+    }
     return null
   }
 }
@@ -69,67 +70,60 @@ async function fetchTopicData(slug: string) {
  * Анализирует URL и возвращает тип контента и данные
  */
 async function analyzeURLAndFetchData(pathname: string) {
-  try {
-    const segments = pathname.split('/').filter(Boolean)
+  const segments = pathname.split('/').filter(Boolean)
 
-    // Статья: /slug или /slug/mode
-    if (
-      segments.length === 1 ||
-      (segments.length === 2 && segments[1] !== 'authors' && segments[1] !== 'topics')
-    ) {
-      const slug = segments[0]
-      if (slug && !['author', 'topic', 'feed', 'search', 'settings', 'edit', 'inbox'].includes(slug)) {
-        const articleData = await fetchArticleData(slug)
-        if (articleData) {
-          return { type: 'article', data: articleData }
-        }
-      }
-    }
-
-    // Автор: /author/slug
-    if (segments[0] === 'author' && segments[1]) {
-      const authorData = await fetchAuthorData(segments[1])
-      if (authorData) {
-        return { type: 'author', data: authorData }
-      }
-    }
-
-    // Тема: /topic/slug
-    if (segments[0] === 'topic' && segments[1]) {
-      const topicData = await fetchTopicData(segments[1])
-      if (topicData) {
-        return { type: 'topic', data: topicData }
-      }
-    }
-
-    return { type: 'website', data: null }
-  } catch (error) {
-    console.error('[Server] analyzeURLAndFetchData error:', error)
-    return { type: 'website', data: null }
+  // Статья: /slug или /slug/mode
+  if (
+    segments.length <= 2 &&
+    segments[0] &&
+    !['author', 'topic', 'feed', 'search', 'settings', 'edit', 'inbox', 'authors', 'topics'].includes(
+      segments[0]
+    )
+  ) {
+    const data = await fetchGraphQLData(getShoutQuery, { slug: segments[0] }, 'shout')
+    if (data) return { type: 'article', data }
   }
+
+  // Автор: /author/slug
+  if (segments[0] === 'author' && segments[1]) {
+    const data = await fetchGraphQLData(getAuthorQuery, { slug: segments[1] }, 'author')
+    if (data) return { type: 'author', data }
+  }
+
+  // Тема: /topic/slug
+  if (segments[0] === 'topic' && segments[1]) {
+    const data = await fetchGraphQLData(topicBySlugQuery, { slug: segments[1] }, 'topic')
+    if (data) return { type: 'topic', data }
+  }
+
+  return { type: 'website', data: null }
 }
 
 /**
  * Определяет язык интерфейса на основе заголовков запроса
  */
-function getLocaleFromRequest(request: Request): 'ru' | 'en' {
-  // Проверяем Accept-Language заголовок
+const getLocaleFromRequest = (request: Request): 'ru' | 'en' => {
   const acceptLanguage = request.headers.get('Accept-Language') || ''
-
-  // Простая логика определения языка
-  if (acceptLanguage.includes('en') && !acceptLanguage.includes('ru')) {
-    return 'en'
-  }
-
-  // По умолчанию русский
-  return 'ru'
+  return acceptLanguage.includes('en') && !acceptLanguage.includes('ru') ? 'en' : 'ru'
 }
 
 /**
  * Генерирует метатеги на основе данных с поддержкой многоязычности
  */
-// biome-ignore lint/suspicious/noExplicitAny: ok
-function generateMetaTags(contentInfo: any, pathname: string, locale: 'ru' | 'en', t: any) {
+function generateMetaTags(
+  // biome-ignore lint/suspicious/noExplicitAny: ok
+  contentInfo: any,
+  pathname: string,
+  locale: 'ru' | 'en',
+  // biome-ignore lint/suspicious/noExplicitAny: ok
+  t: any,
+  isMinimal = false
+) {
+  // Для системных запросов возвращаем минимальные метатеги
+  if (isMinimal) {
+    return getMinimalMetaTags(pathname, locale)
+  }
+
   try {
     const ogMetadata = generateOGMetadata(contentInfo.data, {
       pathname,
@@ -210,100 +204,75 @@ function generateMetaTags(contentInfo: any, pathname: string, locale: 'ru' | 'en
       </>
     )
   } catch (error) {
-    console.error('[Server] generateMetaTags error:', error)
-    // Возвращаем минимальные метатеги в случае ошибки
-    return (
-      <>
-        <title>Discours</title>
-        <meta name="description" content="Дискурс – открытый журнал о культуре, науке и обществе" />
-        <meta name="keywords" content="discours.io, Дискурс журнал, культура, наука, искусство, общество" />
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content="Discours" />
-        <meta property="og:description" content="Дискурс – открытый журнал о культуре, науке и обществе" />
-        <meta property="og:url" content={`https://discours.io${pathname}`} />
-        <meta property="og:site_name" content="Discours" />
-        <meta property="og:locale" content={locale} />
-        <link rel="canonical" href={`https://discours.io${pathname}`} />
-        <meta name="robots" content="index, follow" />
-      </>
-    )
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Server] generateMetaTags error:', error)
+    }
+    return getMinimalMetaTags(pathname, locale)
   }
 }
+
+/**
+ * Создает базовую HTML структуру
+ */
+// biome-ignore lint/suspicious/noExplicitAny: ok
+const createHTMLDocument = (locale: string, metaTags: any, assets: any, children: any, scripts: any) => (
+  <html lang={locale}>
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      {metaTags}
+      <link rel="icon" href="/favicon.ico" />
+      {assets}
+    </head>
+    <body>
+      <div id="app">
+        <ErrorBoundary fallback={ServerErrorFallback}>
+          <Suspense fallback={<Loading />}>{children}</Suspense>
+        </ErrorBoundary>
+      </div>
+      {scripts}
+    </body>
+  </html>
+)
 
 export default createHandler(async (event) => {
   try {
     const pathname = new URL(event.request.url).pathname
-
-    // Определяем язык из запроса
+    const userAgent = event.request.headers.get('User-Agent') || ''
+    const isSystem = isSystemRequest(userAgent)
     const locale = getLocaleFromRequest(event.request)
 
     // Инициализируем i18next для сервера с нужным языком
     await i18next.changeLanguage(locale)
     const t = i18next.t.bind(i18next)
 
-    // Анализируем URL и получаем данные контента
-    const contentInfo = await analyzeURLAndFetchData(pathname)
+    // Для системных запросов используем минимальные данные
+    const contentInfo = isSystem ? { type: 'website', data: null } : await analyzeURLAndFetchData(pathname)
 
-    console.log(`[Server] Content type: ${contentInfo.type}, pathname: ${pathname}, locale: ${locale}`)
+    if (process.env.NODE_ENV !== 'production' && !isSystem) {
+      console.log(`[Server] ${contentInfo.type} | ${pathname} | ${locale}`)
+    }
 
     return (
       <StartServer
         document={({ assets, children, scripts }) => {
-          // Безопасная проверка assets
-          const safeAssets = assets || []
-          const safeScripts = scripts || []
-
-          return (
-            <html lang={locale}>
-              <head>
-                <meta charset="utf-8" />
-                <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-                {/* Генерируем метатеги на основе анализа URL */}
-                {generateMetaTags(contentInfo, pathname, locale, t)}
-
-                <link rel="icon" href="/favicon.ico" />
-                {safeAssets}
-              </head>
-              <body>
-                <div id="app">
-                  <ErrorBoundary fallback={ServerErrorFallback}>
-                    <Suspense fallback={<Loading />}>{children}</Suspense>
-                  </ErrorBoundary>
-                </div>
-                {safeScripts}
-              </body>
-            </html>
-          )
+          const metaTags = generateMetaTags(contentInfo, pathname, locale, t, isSystem)
+          return createHTMLDocument(locale, metaTags, assets, children, scripts)
         }}
       />
     )
   } catch (error) {
-    console.error('[Server] Handler error:', error)
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Server] Handler error:', error)
+    }
 
     // Возвращаем минимальный HTML в случае ошибки
     return (
       <StartServer
-        document={({ assets, children, scripts }) => (
-          <html lang="ru">
-            <head>
-              <meta charset="utf-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1" />
-              <title>Дискурс</title>
-              <meta name="description" content="Дискурс – открытый журнал о культуре, науке и обществе" />
-              <link rel="icon" href="/favicon.ico" />
-              {assets || []}
-            </head>
-            <body>
-              <div id="app">
-                <ErrorBoundary fallback={ServerErrorFallback}>
-                  <Suspense fallback={<Loading />}>{children}</Suspense>
-                </ErrorBoundary>
-              </div>
-              {scripts || []}
-            </body>
-          </html>
-        )}
+        document={({ assets, children, scripts }) => {
+          const metaTags = getMinimalMetaTags('/', 'ru')
+          return createHTMLDocument('ru', metaTags, assets, children, scripts)
+        }}
       />
     )
   }
