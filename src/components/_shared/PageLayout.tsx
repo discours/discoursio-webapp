@@ -7,8 +7,7 @@ import { ErrorBoundary, Suspense } from 'solid-js'
 import { cdnUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
-import enKeywords from '~/intl/locales/en/keywords.json'
-import ruKeywords from '~/intl/locales/ru/keywords.json'
+import { getPageKeywords } from '~/intl/keywords'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { generateOGMetadata } from '~/lib/openGraph'
 import { FooterView } from '../Discours/Footer'
@@ -79,8 +78,16 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
   const imageUrl = getFileUrl(props.cover || `${cdnUrl}/production/image/logo_image.png`)
 
   const keywords = createMemo(() => {
-    const keypath = (props.key || loc?.pathname.split('/')[0]) as keyof typeof ruKeywords
-    return props.keywords || lang() === 'ru' ? ruKeywords[keypath] : enKeywords[keypath]
+    // Используем переданные keywords или генерируем на основе контента и пути
+    if (props.keywords) return props.keywords
+
+    // Формируем contentInfo для getPageKeywords
+    const contentInfo = {
+      type: props.article ? 'article' : props.author ? 'author' : props.topic ? 'topic' : 'website',
+      data: props.article || props.author || props.topic || null
+    }
+
+    return getPageKeywords(contentInfo, loc.pathname, lang())
   })
 
   // Определяем контент для OG-тегов

@@ -1,8 +1,24 @@
 {
+  "article": "Discours.io, Discours, article, journalism, culture, science, art, society, independent journalism",
+  "author": "Discours.io, Discours, author, writer, journalist, blogger, columnist",
+  "authors": "Discours.io, Discours, authors, writers, journalists, bloggers, team",
+  "connect": "Discours.io, contact, contacts, feedback, editorial",
+  "debate": "Discours.io, debates, discussions, polemics, disputes, dialogue",
   "dogma": "Discours.io, dogma, editorial principles, code of ethics, journalism, community",
+  "edit": "Discours.io, editing, drafts, article creation, publishing",
+  "feed": "Discours.io, feed, news, publications, articles, magazine",
   "guide": "discours.io, guide, help, how to start, reference, tutorial",
   "home": "Discours.io, Discours magazine, Discours, culture, science, art, society, independent journalism, literature, music, cinema, video, photography",
+  "inbox": "Discours.io, messages, chat, private messages, dialogues",
+  "manifest": "Discours.io, manifest, mission, goals, ideology, principles",
+  "partners": "Discours.io, partners, collaboration, sponsors, support",
   "principles": "Discours.io, communities, values, editorial rules, polyphony, creation",
+  "search": "Discours.io, search, find, articles, authors, topics",
+  "settings": "Discours.io, settings, profile, security, subscriptions",
+  "support": "Discours.io, support, help, donations, funding",
+  "terms": "Discours.io, site rules, terms, user agreement, terms of use",
   "terms-of-use": "Discours.io, site rules, terms of use",
-  "topic": "{topic}, Discours.io, articles, journalism, research"
+  "thanks": "Discours.io, thanks, gratitude, support, help",
+  "topic": "{topic}, Discours.io, articles, journalism, research",
+  "topics": "Discours.io, Discours, topics, categories, sections, rubrics"
 }
