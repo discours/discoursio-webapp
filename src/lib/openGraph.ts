@@ -11,10 +11,10 @@ import { descFromBody } from '~/utils/meta'
 // Константы для OG-тегов
 export const OG_IMAGE_WIDTH = 1200
 export const OG_IMAGE_HEIGHT = 630
-export const OG_SITE_NAME = 'Discours'
+export const OG_SITE_NAME = 'Дискурс'
 export const OG_BASE_URL = '/api/og'
 export const OG_TWITTER_SITE = '@discoursio'
-export const OG_DEFAULT_DESCRIPTION = 'Discours – an open magazine about culture, science and society'
+export const OG_DEFAULT_DESCRIPTION = 'Дискурс – открытый журнал о культуре, науке и обществе'
 export const OG_LOGO_PATH = '/logo_sign.png'
 
 // Типы контента для OG
@@ -153,7 +153,7 @@ export function generateOGMetadata(
 
   // Базовые метаданные
   const metadata: OGMetadata = {
-    title: title || 'Discours',
+    title: title || OG_SITE_NAME,
     description: description || OG_DEFAULT_DESCRIPTION,
     type,
     url,

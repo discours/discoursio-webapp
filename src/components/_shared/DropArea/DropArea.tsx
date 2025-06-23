@@ -94,8 +94,8 @@ export const DropArea = (props: Props) => {
    * Handle click on drop field to select files
    */
   const handleDropFieldClick = async () => {
-    selectFiles((selectedFiles) => {
-      initUpload(selectedFiles)
+    selectFiles(async (selectedFiles) => {
+      await initUpload(selectedFiles)
     })
   }
 

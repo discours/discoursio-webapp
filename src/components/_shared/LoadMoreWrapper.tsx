@@ -183,7 +183,7 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
           untrack(() => isLoadMoreButtonVisible())
         ) {
           console.log('[LoadMoreWrapper] IntersectionObserver triggered load')
-          loadItems()
+          void loadItems()
         }
       },
       {
@@ -202,7 +202,7 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
       return
     }
 
-    loadItems()
+    void loadItems()
 
     if (props.useScrollTrigger) {
       // Добавляем небольшую задержку для настройки наблюдателя, чтобы DOM успел обновиться

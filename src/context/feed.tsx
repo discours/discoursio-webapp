@@ -372,7 +372,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
       setter(newFeed)
 
       if (name === mode()) {
-        Promise.resolve().then(() => {
+        void Promise.resolve().then(() => {
           setter(newFeed)
         })
       }

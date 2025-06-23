@@ -110,7 +110,7 @@ export const EditorSwiper = (props: Props) => {
   }
   const handleUploadThumb = async () => {
     selectFiles((selectedFiles) => {
-      initUpload(selectedFiles)
+      void initUpload(selectedFiles)
     })
   }
 

@@ -430,7 +430,7 @@ export const ProfileSettings = () => {
             <ImageCropper
               uploadFile={userpicFile() as UploadFile}
               onSave={(data) => {
-                handleUploadAvatar(data)
+                void handleUploadAvatar(data)
 
                 hideModal()
               }}

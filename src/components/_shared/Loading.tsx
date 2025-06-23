@@ -13,7 +13,7 @@ export const Loading = (props: Props) => {
         [styles.tiny]: props.size === 'tiny'
       })}
     >
-      <div class={styles.icon} style={{ background: `url('/icons/arrows-rotate.svg')` }} />
+      <div class={styles.icon} style={{ background: 'var(--icon-arrows-rotate)' }} />
     </div>
   )
 }

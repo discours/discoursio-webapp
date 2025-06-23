@@ -22,6 +22,7 @@ type Props = {
 }
 
 const PAGE_SIZE = 10
+
 export const InviteMembers = (props: Props) => {
   const { t } = useLocalize()
   const { hideModal } = useUI()
@@ -122,11 +123,11 @@ export const InviteMembers = (props: Props) => {
               placeholder={t('Write your colleagues name or email')}
               onChange={(e) => {
                 if (props.variant === 'recipients') return
-                handleInputChange(e.target.value)
+                void handleInputChange(e.target.value)
               }}
               onInput={(e) => {
                 if (props.variant === 'coauthors') return
-                handleInputChange(e.target.value)
+                void handleInputChange(e.target.value)
               }}
             />
             <Show when={props.variant === 'coauthors'}>

@@ -17,7 +17,10 @@ type IconProps = {
 export const Icon = (passedProps: IconProps) => {
   const props = mergeProps({ title: '', name: '', counter: 0 }, passedProps)
 
-  const iconSrc = createMemo(() => `/icons/${props.name || 'default'}.svg`)
+  const iconSrc = createMemo(() => {
+    const iconName = props.name || 'default'
+    return `/icons/${iconName}.svg`
+  })
 
   return (
     <div class={clsx('icon', styles.icon, props.class)} style={props.style} data-icon={props['data-icon']}>
@@ -26,8 +29,12 @@ export const Icon = (passedProps: IconProps) => {
         class={clsx(props.iconClassName)}
         src={iconSrc()}
         onError={(e) => {
-          console.warn(`Failed to load icon: ${props.name}`)
-          e.currentTarget.style.display = 'none'
+          if (e.currentTarget.src !== '/icons/default.svg') {
+            e.currentTarget.src = '/icons/default.svg'
+          } else {
+            console.warn(`Failed to load icon: ${props.name}`)
+            e.currentTarget.style.display = 'none'
+          }
         }}
       />
 

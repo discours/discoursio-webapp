@@ -4,7 +4,7 @@ import { clsx } from 'clsx'
 import { Show } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { DropArea } from '~/components/_shared/DropArea'
-import { AudioPlayer } from '~/components/Article/AudioPlayer/AudioPlayer'
+import { AudioPlayerPreview } from '~/components/Article/AudioPlayer/AudioPlayerPreview'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { MediaItem } from '~/graphql/schema/core.gen'
@@ -66,7 +66,7 @@ export const AudioUploader = (props: Props) => {
   return (
     <div class={clsx(styles.AudioUploader, props.class)}>
       <Show when={props.audio.length > 0}>
-        <AudioPlayer
+        <AudioPlayerPreview
           editorMode={true}
           media={props.audio}
           onMediaItemFieldChange={handleMediaItemFieldChange}

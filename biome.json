@@ -99,6 +99,10 @@
         "noAssignInExpressions": "off",
         "useAwait": "off",
         "noEmptyBlockStatements": "off"
+      },
+      "nursery": {
+        "noFloatingPromises": "warn",
+        "noImportCycles": "warn"
       }
     }
   }

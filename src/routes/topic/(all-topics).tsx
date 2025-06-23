@@ -92,7 +92,7 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
           setIsLoading(false)
         }
       }
-      loadTitleTopics()
+      void loadTitleTopics()
     }
   })
 

@@ -88,63 +88,63 @@
   
   // Черные версии иконок по умолчанию
   &[data-icon="facebook"] {
-    background-image: url('/icons/facebook.svg') !important;
+    background-image: var(--icon-facebook) !important;
   }
   
   &[data-icon="vk"] {
-    background-image: url('/icons/vk.svg') !important;
+    background-image: var(--icon-vk) !important;
   }
   
   &[data-icon="github"] {
-    background-image: url('/icons/github.svg') !important;
+    background-image: var(--icon-github) !important;
   }
   
   &[data-icon="telegram"] {
-    background-image: url('/icons/telegram.svg') !important;
+    background-image: var(--icon-telegram) !important;
   }
   
   &[data-icon="twitter"] {
-    background-image: url('/icons/twitter.svg') !important;
+    background-image: var(--icon-twitter) !important;
   }
   
   &[data-icon="yandex"] {
-    background-image: url('/icons/yandex.svg') !important;
+    background-image: var(--icon-yandex) !important;
   }
   
   &[data-icon="google"] {
-    background-image: url('/icons/google.svg') !important;
+    background-image: var(--icon-google) !important;
   }
 }
 
 // Ховер эффекты - подмена на цветные версии
 .providerButton:hover {
   .providerIcon[data-icon="facebook"] {
-    background-image: url('/icons/facebook-colored.svg') !important;
+    background-image: var(--icon-facebook-colored) !important;
   }
   
   .providerIcon[data-icon="vk"] {
-    background-image: url('/icons/vk-colored.svg') !important;
+    background-image: var(--icon-vk-colored) !important;
   }
   
   .providerIcon[data-icon="github"] {
-    background-image: url('/icons/github-colored.svg') !important;
+    background-image: var(--icon-github-colored) !important;
   }
   
   .providerIcon[data-icon="telegram"] {
-    background-image: url('/icons/telegram-colored.svg') !important;
+    background-image: var(--icon-telegram-colored) !important;
   }
   
   .providerIcon[data-icon="twitter"] {
     // X.com остается черным (их новый дизайн)
-    background-image: url('/icons/twitter.svg') !important;
+    background-image: var(--icon-twitter) !important;
   }
   
   .providerIcon[data-icon="yandex"] {
-    background-image: url('/icons/yandex-colored.svg') !important;
+    background-image: var(--icon-yandex-colored) !important;
   }
   
   .providerIcon[data-icon="google"] {
-    background-image: url('/icons/google-colored.svg') !important;
+    background-image: var(--icon-google-colored) !important;
   }
 }
 

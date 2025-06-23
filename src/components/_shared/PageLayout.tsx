@@ -2,17 +2,17 @@ import { Meta, Title } from '@solidjs/meta'
 import { useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
 import type { Component, JSX } from 'solid-js'
-import { createMemo, ErrorBoundary, Index, Show, Suspense } from 'solid-js'
+import { createMemo, ErrorBoundary, Show, Suspense } from 'solid-js'
 import { cdnUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 import { getPageKeywords } from '~/intl/keywords'
-import { getFileUrl } from '~/lib/getThumbUrl'
-import { generateOGMetadata } from '~/lib/openGraph'
+import { getCachedImageUrl } from '~/lib/imageCache'
+import { generateOGMetadata, OG_SITE_NAME, OG_TWITTER_SITE } from '~/lib/openGraph'
+import { ClientOnly } from '~/utils/clientonly'
 import { FooterView } from '../Discours/Footer'
 import { Header } from '../HeaderNav'
 import { Loading } from './Loading'
-
 import styles from './PageLayout.module.scss'
 
 type PageLayoutProps = {
@@ -74,7 +74,7 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
   const isHeaderFixed = props.isHeaderFixed === undefined ? true : props.isHeaderFixed // FIXME: выглядит как костылек
   const loc = useLocation()
   const { t, lang } = useLocalize()
-  const imageUrl = getFileUrl(props.cover || `${cdnUrl}/production/image/logo_image.png`)
+  const imageUrl = getCachedImageUrl(props.cover || `${cdnUrl}/production/image/logo_image.png`)
 
   const keywords = createMemo(() => {
     // Используем переданные keywords или генерируем на основе контента и пути
@@ -146,89 +146,36 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
             cover={imageUrl}
             isHeaderFixed={isHeaderFixed}
           />
+          <ClientOnly>
+            <Meta property="og:type" content={ogType()} />
+            <Meta property="og:title" content={pageTitle()} />
+            <Meta property="og:description" content={pageDescription()} />
+            <Meta property="og:url" content={ogUrl()} />
+            <Meta property="og:image" content={ogImage()} />
+            <Meta property="og:logo" content={ogLogo()} />
+            <Meta property="og:site_name" content={OG_SITE_NAME} />
+            <Meta property="og:locale" content={lang()} />
+            <Meta property="og:image:width" content={`${ogMetadata().imageWidth || 1200}`} />
+            <Meta property="og:image:height" content={`${ogMetadata().imageHeight || 630}`} />
+            <Meta property="og:image:type" content={ogMetadata().imageType} />
+            <Meta property="og:image:secure_url" content={ogMetadata().imageSecureUrl} />
 
-          {/* Основные мета-теги */}
-          <Meta name="description" content={pageDescription()} />
-          <Meta name="keywords" content={keywords()} />
+            <Meta property="twitter:card" content="summary_large_image" />
+            <Meta property="twitter:site" content={OG_TWITTER_SITE} />
+            <Meta property="twitter:creator" content={OG_TWITTER_SITE} />
+            <Meta property="twitter:title" content={pageTitle()} />
+            <Meta property="twitter:description" content={pageDescription()} />
+            <Meta property="twitter:image" content={ogImage()} />
+            <Meta property="twitter:image:width" content={`${ogMetadata().imageWidth || 1200}`} />
+            <Meta property="twitter:image:height" content={`${ogMetadata().imageHeight || 630}`} />
+            <Meta property="twitter:image:secure_url" content={ogMetadata().imageSecureUrl} />
+            <Meta property="twitter:image:alt" content={ogMetadata().imageAlt} />
 
-          {/* ============ ОБЯЗАТЕЛЬНЫЕ OPEN GRAPH ТЕГИ ============ */}
-          {/* Эти три тега абсолютно необходимы для работы OG */}
-          <Meta property="og:type" content={ogType()} />
-          <Meta property="og:title" content={pageTitle()} />
-          <Meta property="og:description" content={pageDescription()} />
-          <Meta property="og:url" content={ogUrl()} />
-          <Meta property="og:image" content={ogImage()} />
-          <Meta property="og:logo" content={ogLogo()} />
-
-          {/* Дополнительные обязательные теги */}
-          <Meta property="og:site_name" content="Discours" />
-          <Meta property="og:locale" content={lang() || 'ru'} />
-
-          {/* ============ РАСШИРЕННЫЕ OG ТЕГИ ============ */}
-          <Meta property="og:image:width" content="1200" />
-          <Meta property="og:image:height" content="630" />
-          <Meta property="og:image:alt" content={`${pageTitle()} - Discours`} />
-          <Meta property="og:image:type" content="image/png" />
-          <Meta property="og:image:secure_url" content={ogImage().replace('http://', 'https://')} />
-
-          {/* Специфичные теги для статей */}
-          <Show when={ogMetadata().articleAuthor}>
-            <Meta property="article:author" content={ogMetadata().articleAuthor!} />
-          </Show>
-          <Show when={ogMetadata().articleSection}>
-            <Meta property="article:section" content={ogMetadata().articleSection!} />
-          </Show>
-          <Show when={ogMetadata().articlePublishedTime}>
-            <Meta property="article:published_time" content={ogMetadata().articlePublishedTime!} />
-          </Show>
-          <Show when={ogMetadata().articleModifiedTime}>
-            <Meta property="article:modified_time" content={ogMetadata().articleModifiedTime!} />
-          </Show>
-          <Show when={ogMetadata().articleTags?.length}>
-            <Index each={ogMetadata().articleTags!}>
-              {(tag) => <Meta property="article:tag" content={tag()} />}
-            </Index>
-          </Show>
-
-          {/* Специфичные теги для профилей авторов */}
-          <Show when={ogMetadata().profileFirstName}>
-            <Meta property="profile:first_name" content={ogMetadata().profileFirstName!} />
-          </Show>
-          <Show when={ogMetadata().profileLastName}>
-            <Meta property="profile:last_name" content={ogMetadata().profileLastName!} />
-          </Show>
-          <Show when={ogMetadata().profileUsername}>
-            <Meta property="profile:username" content={ogMetadata().profileUsername!} />
-          </Show>
-
-          {/* ============ ДУБЛИРОВАНИЕ ДЛЯ СОВМЕСТИМОСТИ ============ */}
-          {/* Дублируем критичные теги с атрибутом name для максимальной совместимости */}
-          <Meta name="og:type" content={ogType()} />
-          <Meta name="og:title" content={pageTitle()} />
-          <Meta name="og:description" content={pageDescription()} />
-          <Meta name="og:url" content={ogUrl()} />
-          <Meta name="og:logo" content={ogLogo()} />
-
-          {/* ============ TWITTER CARD ТЕГИ ============ */}
-          <Meta name="twitter:card" content="summary_large_image" />
-          <Meta name="twitter:site" content="@discoursio" />
-          <Meta name="twitter:title" content={pageTitle()} />
-          <Meta name="twitter:description" content={pageDescription()} />
-          <Meta name="twitter:image" content={ogImage()} />
-          <Meta name="twitter:image:alt" content={`${pageTitle()} - Discours`} />
-
-          {/* ============ ДРУГИЕ СОЦИАЛЬНЫЕ СЕТИ ============ */}
-          <Meta name="vk:title" content={pageTitle()} />
-          <Meta name="vk:description" content={pageDescription()} />
-          <Meta name="vk:image" content={ogImage()} />
-
-          <Meta name="telegram:channel" content="@discoursio" />
-          <Meta name="linkedin:owner" content="Discours" />
-
-          {/* ============ SEO ТЕГИ ============ */}
-          <link rel="canonical" href={ogUrl()} />
-          <Meta name="robots" content="index, follow" />
-
+            <Meta name="description" content={pageDescription()} />
+            <Meta name="keywords" content={keywords()} />
+            <link rel="canonical" href={ogUrl()} />
+            <Meta name="robots" content="index, follow" />
+          </ClientOnly>
           <main
             class={clsx('main-content', {
               [styles.zeroBottomPadding]: props.zeroBottomPadding

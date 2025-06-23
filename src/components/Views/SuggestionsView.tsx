@@ -53,7 +53,7 @@ export const SuggestionsView = (props: Props) => {
   // Загрузка реакций при монтировании
   createEffect(() => {
     if (props.shoutId) {
-      loadReactions(props.shoutId)
+      void loadReactions(props.shoutId)
     }
   })
 

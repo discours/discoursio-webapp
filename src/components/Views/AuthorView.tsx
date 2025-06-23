@@ -4,6 +4,7 @@ import { createEffect, createMemo, createSignal, For, Match, on, onMount, Show, 
 import { Loading } from '~/components/_shared/Loading'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { CommentsList } from '~/components/Comments/CommentsList'
+import { COMMENTS_PER_PAGE } from '~/constants/pagination'
 import { useAuthors } from '~/context/authors'
 import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
@@ -16,7 +17,6 @@ import type { Author, Reaction, Shout, Topic } from '~/graphql/schema/core.gen'
 import { ReactionKind, ReactionSort } from '~/graphql/schema/core.gen'
 import styles from '~/styles/views/Author.module.scss'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { COMMENTS_PER_PAGE } from '../Article/FullArticle'
 import { AuthorCard } from '../Author/AuthorCard'
 import { AuthorShoutsRating } from '../Author/AuthorShoutsRating'
 import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
@@ -383,7 +383,7 @@ export const AuthorView = (props: AuthorViewProps) => {
           setSortedFeed([])
           setLoadMoreHidden(false)
 
-          loadAuthorShouts(0).then((result) => {
+          void loadAuthorShouts(0).then((result) => {
             if (result.length) {
               setSortedFeed(result)
               setLoadMoreHidden(result.length < FEED_PAGE_SIZE)
@@ -414,7 +414,7 @@ export const AuthorView = (props: AuthorViewProps) => {
           setSortedFeed([])
           setLoadMoreHidden(false)
 
-          loadAuthorShouts(0).then((result) => {
+          void loadAuthorShouts(0).then((result) => {
             if (result.length) {
               setSortedFeed(result)
               setLoadMoreHidden(result.length < FEED_PAGE_SIZE)

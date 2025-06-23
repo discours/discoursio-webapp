@@ -181,7 +181,7 @@
     width: 24px;
 
     &::before {
-      background-image: url('/icons/user-link-default.svg');
+      background-image: var(--icon-user-link-default);
       background-repeat: no-repeat;
       background-position: 50% 50%;
       background-size: contain;
@@ -214,7 +214,7 @@
 
     &[href*='facebook.com/'] {
       &::before {
-        background-image: url('/icons/user-link-facebook.svg');
+        background-image: var(--icon-user-link-facebook);
       }
 
       &:hover {
@@ -226,7 +226,7 @@
 
     &[href*='twitter.com/'] {
       &::before {
-        background-image: url('/icons/user-link-twitter.svg');
+        background-image: var(--icon-user-link-twitter);
       }
 
       &:hover {
@@ -239,7 +239,7 @@
     &[href*='telegram.com/'],
     &[href*='t.me/'] {
       &::before {
-        background-image: url('/icons/user-link-telegram.svg');
+        background-image: var(--icon-user-link-telegram);
       }
 
       &:hover {
@@ -252,7 +252,7 @@
     &[href*='vk.cc/'],
     &[href*='vk.com/'] {
       &::before {
-        background-image: url('/icons/user-link-vk.svg');
+        background-image: var(--icon-user-link-vk);
       }
 
       &:hover {
@@ -264,7 +264,7 @@
 
     &[href*='tumblr.com/'] {
       &::before {
-        background-image: url('/icons/user-link-tumblr.svg');
+        background-image: var(--icon-user-link-tumblr);
       }
 
       &:hover {
@@ -276,7 +276,7 @@
 
     &[href*='instagram.com/'] {
       &::before {
-        background-image: url('/icons/user-link-instagram.svg');
+        background-image: var(--icon-user-link-instagram);
       }
 
       &:hover {
@@ -288,7 +288,7 @@
 
     &[href*='behance.net/'] {
       &::before {
-        background-image: url('/icons/user-link-behance.svg');
+        background-image: var(--icon-user-link-behance);
       }
 
       &:hover {
@@ -300,7 +300,7 @@
 
     &[href*='dribbble.com/'] {
       &::before {
-        background-image: url('/icons/user-link-dribbble.svg');
+        background-image: var(--icon-user-link-dribbble);
       }
 
       &:hover {
@@ -312,7 +312,7 @@
 
     &[href*='github.com/'] {
       &::before {
-        background-image: url('/icons/user-link-github.svg');
+        background-image: var(--icon-user-link-github);
       }
 
       &:hover {
@@ -324,7 +324,7 @@
 
     &[href*='linkedin.com/'] {
       &::before {
-        background-image: url('/icons/user-link-linkedin.svg');
+        background-image: var(--icon-user-link-linkedin);
       }
 
       &:hover {
@@ -336,7 +336,7 @@
 
     &[href*='medium.com/'] {
       &::before {
-        background-image: url('/icons/user-link-medium.svg');
+        background-image: var(--icon-user-link-medium);
       }
 
       &:hover {
@@ -348,7 +348,7 @@
 
     &[href*='ok.ru/'] {
       &::before {
-        background-image: url('/icons/user-link-ok.svg');
+        background-image: var(--icon-user-link-ok);
       }
 
       &:hover {
@@ -360,7 +360,7 @@
 
     &[href*='pinterest.com/'] {
       &::before {
-        background-image: url('/icons/user-link-pinterest.svg');
+        background-image: var(--icon-user-link-pinterest);
       }
 
       &:hover {
@@ -372,7 +372,7 @@
 
     &[href*='reddit.com/'] {
       &::before {
-        background-image: url('/icons/user-link-reddit.svg');
+        background-image: var(--icon-user-link-reddit);
       }
 
       &:hover {
@@ -384,7 +384,7 @@
 
     &[href*='tiktok.com/'] {
       &::before {
-        background-image: url('/icons/user-link-tiktok.svg');
+        background-image: var(--icon-user-link-tiktok);
       }
 
       &:hover {
@@ -397,7 +397,7 @@
     &[href*='youtube.com/'],
     &[href*='youtu.be/'] {
       &::before {
-        background-image: url('/icons/user-link-youtube.svg');
+        background-image: var(--icon-user-link-youtube);
       }
 
       &:hover {
@@ -409,7 +409,7 @@
 
     &[href*='dzen.ru/'] {
       &::before {
-        background-image: url('/icons/user-link-dzen.svg');
+        background-image: var(--icon-user-link-dzen);
       }
 
       &:hover {

@@ -77,7 +77,9 @@ const scrollTo = (el?: HTMLElement, isComments?: boolean) => {
 }
 
 const imgSrcRegExp = /<img[^>]+src\s*=\s*["']([^"']+)["']/gi
-export const COMMENTS_PER_PAGE = 50
+
+import { COMMENTS_PER_PAGE } from '~/constants/pagination'
+
 const VOTES_PER_PAGE = 50
 
 export const FullArticle = (props: Props) => {

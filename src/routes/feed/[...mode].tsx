@@ -68,7 +68,7 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
   return (
     <PageLayout
       title={`${t('Discours')} :: ${t('Feed')}`}
-      desc="Independent media project about culture, science, art and society"
+      desc={t('Independent media project about culture, science, art and society with horizontal editing')}
     >
       <Suspense fallback={<Loading />}>
         <ReactionsProvider>

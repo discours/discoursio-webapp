@@ -2,8 +2,9 @@ import { clsx } from 'clsx'
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { throttle } from 'throttle-debounce'
+import { ARTICLES_PER_PAGE } from '~/constants/pagination'
 import { useLocalize } from '~/context/localize'
-import { PAGE_SIZE, useNotifications } from '~/context/notifications'
+import { useNotifications } from '~/context/notifications'
 import { useSession } from '~/context/session'
 import { useEscKeyDownHandler } from '~/lib/useEscKeyDownHandler'
 import { useOutsideClickHandler } from '~/lib/useOutsideClickHandler'
@@ -112,7 +113,7 @@ export const NotificationsPanel = (props: Props) => {
   const loadNextPage = async () => {
     await loadNotificationsGrouped({
       after: after() || hourAgo(),
-      limit: PAGE_SIZE,
+      limit: ARTICLES_PER_PAGE,
       offset: loadedNotificationsCount()
     })
     if (loadedNotificationsCount() < totalNotificationsCount()) {

@@ -12,7 +12,7 @@ import {
 } from 'solid-js'
 import { type i18n, i18next, i18nextInit, TimeAgo } from '~/intl/i18next'
 
-i18nextInit()
+void i18nextInit()
 
 const SPEC_REGEX = /\s*г\./
 

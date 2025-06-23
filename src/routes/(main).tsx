@@ -235,7 +235,8 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
     },
     {
       initialValue: props.data?.featuredShouts || [],
-      ssrLoadFrom: 'initial'
+      ssrLoadFrom: 'initial',
+      deferStream: true // Блокируем SSR до загрузки данных
     }
   )
 
@@ -268,7 +269,8 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
         topMonthShouts: props.data?.topMonthShouts || [],
         topCommentedShouts: props.data?.topCommentedShouts || [],
         topRatedShouts: props.data?.topRatedShouts || []
-      }
+      },
+      deferStream: true // Блокируем SSR до загрузки данных
     }
   )
 

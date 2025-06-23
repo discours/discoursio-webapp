@@ -2,6 +2,9 @@
 @use "sass:math" as math;
 @use "sass:map" as map;
 
+// Импорт CSS переменных для иконок
+@use "icons";
+
 $include-column-box-sizing: true !default;
 $rfs-breakpoint: 1460px !default;
 $rfs-base-value: 1.6rem !default;

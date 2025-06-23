@@ -9,7 +9,7 @@ import {
   Setter,
   useContext
 } from 'solid-js'
-import { RANDOM_TOPIC_SHOUTS_COUNT } from '~/components/Views/HomeView'
+import { RANDOM_TOPIC_SHOUTS_COUNT } from '~/constants/pagination'
 import { loadShouts } from '~/graphql/api/public'
 import { Shout, Topic } from '~/graphql/schema/core.gen'
 import { byStat } from '../utils/sort'

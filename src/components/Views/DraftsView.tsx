@@ -175,8 +175,8 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
 
   // Эффект для ограничения доступа только авторизованными пользователями
   onMount(() => {
-    loadData()
-    requireAuthentication(() => {}, 'edit')
+    void loadData()
+    void requireAuthentication(() => {}, 'edit')
   })
 
   /**

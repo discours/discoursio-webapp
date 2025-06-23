@@ -35,7 +35,7 @@
     width: 200px;
     height: 200px;
     transition: all 0.2s ease-in-out;
-    background: var(--placeholder-color-semi) url('/icons/create-audio.svg') no-repeat 50% 50%;
+    background: var(--placeholder-color-semi) var(--icon-create-audio) no-repeat 50% 50%;
 
     .image {
       object-fit: cover;

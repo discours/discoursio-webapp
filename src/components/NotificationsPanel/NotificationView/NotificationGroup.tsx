@@ -4,8 +4,9 @@ import { For, Show } from 'solid-js'
 import { GroupAvatar } from '~/components/_shared/GroupAvatar'
 import { TimeAgo } from '~/components/_shared/TimeAgo'
 import { useLocalize } from '~/context/localize'
-import { PresenceActionType, PresenceEntityType, useNotifications } from '~/context/notifications'
+import { useNotifications } from '~/context/notifications'
 import { Author, NotificationGroup as Group } from '~/graphql/schema/core.gen'
+import { PresenceActionType, PresenceEntityType } from '~/types/notifications'
 import styles from './NotificationView.module.scss'
 
 type NotificationGroupProps = {

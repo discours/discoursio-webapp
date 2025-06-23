@@ -51,9 +51,9 @@ import {
   Show
 } from 'solid-js'
 import { PageLayout } from '~/components/_shared/PageLayout'
-import { COMMENTS_PER_PAGE } from '~/components/Article/FullArticle'
 import { AuthorView } from '~/components/Views/AuthorView'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
+import { COMMENTS_PER_PAGE } from '~/constants/pagination'
 import { useAuthors } from '~/context/authors'
 import { FEED_PAGE_SIZE, orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'

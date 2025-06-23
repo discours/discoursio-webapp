@@ -102,7 +102,7 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
       }
     }
 
-    loadDataForLayout()
+    void loadDataForLayout()
   })
 
   // Function to load more authors for followers layout

@@ -88,8 +88,8 @@ export const SearchModal = () => {
       setshoutsResultsList([])
 
       // Fetch authors when resetting results
-      fetchAuthorsResults(searchQuery)
-      fetchTopicsResults(searchQuery)
+      void fetchAuthorsResults(searchQuery)
+      void fetchTopicsResults(searchQuery)
     }
 
     await loadFeedSearch(searchQuery, {
@@ -121,7 +121,7 @@ export const SearchModal = () => {
   const debouncedSearch = debounce(500, () => {
     const query = inputValue().trim()
     if (query.length >= 3) {
-      fetchShoutsResults(true)
+      void fetchShoutsResults(true)
     } else {
       setshoutsResultsList([])
       setAuthorsResultsList([])
@@ -179,7 +179,7 @@ export const SearchModal = () => {
     }
   }
 
-  const enterQuery = async (ev: KeyboardEvent) => {
+  const enterQuery = (ev: KeyboardEvent) => {
     if (ev.key !== 'Enter') return
 
     setIsLoading(true)
@@ -187,7 +187,7 @@ export const SearchModal = () => {
 
     const query = inputValue().trim()
     if (query.length >= 3) {
-      await fetchShoutsResults(true)
+      void fetchShoutsResults(true)
     } else {
       setshoutsResultsList([])
       setAuthorsResultsList([])
@@ -195,7 +195,7 @@ export const SearchModal = () => {
       setOffset(0)
     }
 
-    await restoreScrollPosition()
+    void restoreScrollPosition()
     setIsLoading(false)
   }
 
@@ -354,7 +354,7 @@ export const SearchModal = () => {
           const query = inputValue().trim()
           if (query.length >= 3) {
             debouncedSearch.cancel()
-            fetchShoutsResults(true)
+            void fetchShoutsResults(true)
           }
         }}
         value={isLoading() ? <div class={styles.searchLoader} /> : <Icon name="search" />}

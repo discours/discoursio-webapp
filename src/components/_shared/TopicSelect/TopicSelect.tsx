@@ -38,7 +38,7 @@ export const TopicSelect = (props: TopicSelectProps) => {
   createEffect(() => {
     // Загружаем темы из контекста, если они не предоставлены через props
     if ((!props.topics || props.topics.length === 0) && topicsContext) {
-      loadTopicsFromContext()
+      void loadTopicsFromContext()
     }
   })
 

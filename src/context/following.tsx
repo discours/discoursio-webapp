@@ -194,7 +194,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
             return subs
           })
           setFollowers(followers)
-          if (!followedAuthors) fetchData()
+          if (!followedAuthors) void fetchData()
         }
       }
     )

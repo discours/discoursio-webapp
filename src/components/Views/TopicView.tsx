@@ -142,7 +142,7 @@ export const TopicView = (props: Props) => {
           setCurrentTab('authors')
           // Загружаем авторов если их еще нет
           if (!topicAuthorsList().length && topic()) {
-            loadTopicAuthorsWithPagination(0).then((result) => {
+            void loadTopicAuthorsWithPagination(0).then((result) => {
               if (result.length) {
                 setTopicAuthorsList(result)
                 setLoadMoreAuthorsHidden(result.length >= stats().authors)
@@ -325,7 +325,7 @@ export const TopicView = (props: Props) => {
           setSortedFeed([])
           setLoadMoreHidden(false)
 
-          loadTopicShouts(0).then((result) => {
+          void loadTopicShouts(0).then((result) => {
             if (result.length) {
               setSortedFeed(result)
               setLoadMoreHidden(result.length < FEED_PAGE_SIZE)

@@ -2,44 +2,15 @@ import { makePersisted } from '@solid-primitives/storage'
 import type { Accessor, JSX } from 'solid-js'
 import { createContext, createMemo, createSignal, onMount, useContext } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { Portal } from 'solid-js/web'
-
+import { ARTICLES_PER_PAGE } from '~/constants/pagination'
 import markSeenMutation from '~/graphql/mutation/notifier/mark-seen'
 import markSeenAfterMutation from '~/graphql/mutation/notifier/mark-seen-after'
 import markSeenThreadMutation from '~/graphql/mutation/notifier/mark-seen-thread'
 import getNotifications from '~/graphql/query/notifier/notifications-load'
 import { Author, NotificationGroup, QueryLoad_NotificationsArgs, Shout } from '~/graphql/schema/core.gen'
-import { ShowIfAuthenticated } from '../components/_shared/ShowIfAuthenticated'
-import { NotificationsPanel } from '../components/NotificationsPanel'
+import { PresenceActionType, PresenceEntityType } from '~/types/notifications'
 import { SSEMessage, useConnect } from './connect'
 import { useSession } from './session'
-
-export const PAGE_SIZE = 10
-
-// Типы уведомлений, которые могут приходить от presence сервиса
-export enum PresenceEntityType {
-  Global = 'global',
-  Personal = 'personal',
-  Topic = 'topic',
-  Shout = 'shout',
-  Reaction = 'reaction',
-  Chat = 'chat',
-  Message = 'message',
-  Editor = 'editor',
-  Cursor = 'cursor',
-  Draft = 'draft',
-  Proposal = 'proposal'
-}
-
-// Действия, которые могут происходить с сущностями
-export enum PresenceActionType {
-  Create = 'create',
-  Update = 'update',
-  Delete = 'delete',
-  Join = 'join',
-  Left = 'left',
-  Seen = 'seen'
-}
 
 // Интерфейс для payload SSE сообщений с типизацией
 interface SSEPayload {
@@ -56,6 +27,7 @@ type NotificationsContextType = {
   sortedNotifications: Accessor<NotificationGroup[]>
   loadedNotificationsCount: Accessor<number>
   totalNotificationsCount: Accessor<number>
+  isNotificationsPanelOpen: Accessor<boolean>
   showNotificationsPanel: () => void
   hideNotificationsPanel: () => void
   markSeen: (notification_id: number) => Promise<void>
@@ -71,12 +43,13 @@ const NotificationsContext = createContext<NotificationsContextType>({
   sortedNotifications: () => [],
   loadedNotificationsCount: () => 0,
   totalNotificationsCount: () => 0,
+  isNotificationsPanelOpen: () => false,
   showNotificationsPanel: () => {},
   hideNotificationsPanel: () => {},
-  markSeen: async (_id) => {},
-  markSeenThread: async (_id) => {},
+  markSeen: async (_id: number) => {},
+  markSeenThread: async (_id: string) => {},
   markSeenAll: async () => {},
-  loadNotificationsGrouped: async (_options) => []
+  loadNotificationsGrouped: async (_options: QueryLoad_NotificationsArgs) => []
 })
 
 export const NotificationsProvider = (props: { children: JSX.Element }) => {
@@ -231,9 +204,9 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
             }
           } else {
             // Для других действий обновляем из API
-            loadNotificationsGrouped({
+            void loadNotificationsGrouped({
               after: after() || now,
-              limit: Math.max(PAGE_SIZE, loadedNotificationsCount())
+              limit: Math.max(ARTICLES_PER_PAGE, loadedNotificationsCount())
             })
           }
           break
@@ -278,9 +251,9 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
           // Для других типов просто загружаем уведомления с сервера
           console.debug('[context.notifications] Unhandled event type:', data.entity)
           if (data.action === PresenceActionType.Create) {
-            loadNotificationsGrouped({
+            void loadNotificationsGrouped({
               after: after() || now,
-              limit: Math.max(PAGE_SIZE, loadedNotificationsCount())
+              limit: Math.max(ARTICLES_PER_PAGE, loadedNotificationsCount())
             })
           }
           break
@@ -310,9 +283,9 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
 
     // Если соединение уже установлено, загружаем уведомления
     if (session()?.token && getStatus() === 'connected') {
-      loadNotificationsGrouped({
+      void loadNotificationsGrouped({
         after: after() || now,
-        limit: PAGE_SIZE
+        limit: ARTICLES_PER_PAGE
       })
     }
   })
@@ -363,23 +336,11 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
     unreadNotificationsCount,
     loadedNotificationsCount,
     totalNotificationsCount,
+    isNotificationsPanelOpen,
     ...actions
   }
 
-  const handleNotificationPanelClose = () => {
-    setIsNotificationsPanelOpen(false)
-  }
-
-  return (
-    <NotificationsContext.Provider value={value}>
-      {props.children}
-      <ShowIfAuthenticated>
-        <Portal>
-          <NotificationsPanel isOpen={isNotificationsPanelOpen()} onClose={handleNotificationPanelClose} />
-        </Portal>
-      </ShowIfAuthenticated>
-    </NotificationsContext.Provider>
-  )
+  return <NotificationsContext.Provider value={value}>{props.children}</NotificationsContext.Provider>
 }
 
 export const useNotifications = () => {

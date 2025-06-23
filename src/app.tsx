@@ -14,6 +14,7 @@ import {
 
 import { sessionStateChanged } from '~/context/session'
 import { Loading } from './components/_shared/Loading'
+import { NotificationsPanelPortal } from './components/_shared/NotificationsPanelPortal'
 import { OfflineStatus } from './components/_shared/OfflineStatus'
 import { AuthorsProvider } from './context/authors'
 import { ConnectProvider } from './context/connect'
@@ -22,6 +23,7 @@ import { FeaturedFeedProvider } from './context/featured'
 import { FeedProvider } from './context/feed'
 import { FollowingProvider } from './context/following'
 import { LocalizeProvider } from './context/localize'
+import { NotificationsProvider } from './context/notifications'
 import { SessionProvider } from './context/session'
 import { TopicsProvider } from './context/topics'
 import { UIProvider } from './context/ui'
@@ -85,23 +87,26 @@ export const Providers: Component<{ children?: JSX.Element }> = (props) => {
         <OfflineStatus />
         <SessionProvider onStateChangeCallback={sessionStateChanged}>
           <ConnectProvider>
-            <UIProvider>
-              <TopicsProvider>
-                <AuthorsProvider>
-                  <FeedProvider>
-                    <DraftsProvider>
-                      <FeaturedFeedProvider>
-                        <FollowingProvider>
-                          <MetaProvider>
-                            <Suspense fallback={<Loading />}>{props.children}</Suspense>
-                          </MetaProvider>
-                        </FollowingProvider>
-                      </FeaturedFeedProvider>
-                    </DraftsProvider>
-                  </FeedProvider>
-                </AuthorsProvider>
-              </TopicsProvider>
-            </UIProvider>
+            <NotificationsProvider>
+              <UIProvider>
+                <TopicsProvider>
+                  <AuthorsProvider>
+                    <FeedProvider>
+                      <DraftsProvider>
+                        <FeaturedFeedProvider>
+                          <FollowingProvider>
+                            <MetaProvider>
+                              <Suspense fallback={<Loading />}>{props.children}</Suspense>
+                              <NotificationsPanelPortal />
+                            </MetaProvider>
+                          </FollowingProvider>
+                        </FeaturedFeedProvider>
+                      </DraftsProvider>
+                    </FeedProvider>
+                  </AuthorsProvider>
+                </TopicsProvider>
+              </UIProvider>
+            </NotificationsProvider>
           </ConnectProvider>
         </SessionProvider>
       </LocalizeProvider>
