@@ -33,6 +33,7 @@ export interface HomeViewProps {
   topMonthShouts: Shout[]
   topViewedShouts: Shout[]
   topCommentedShouts: Shout[]
+  isLoading?: boolean
 }
 
 export const HomeView = (props: HomeViewProps) => {
@@ -50,8 +51,21 @@ export const HomeView = (props: HomeViewProps) => {
     paginate(props.featuredShouts || [], SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, SHOUTS_PER_PAGE)
   )
 
-  const hasFeaturedShouts = createMemo(() => (props.featuredShouts || []).length > 0)
-  const hasMoreShouts = createMemo(() => (props.featuredShouts || []).length >= MIN_SHOUTS_FOR_FULL_VIEW)
+  // Простые проверки без createMemo - используем обычные функции
+  const hasFeaturedShouts = () => (props.featuredShouts || []).length > 0
+  const hasMoreShouts = () => (props.featuredShouts || []).length >= MIN_SHOUTS_FOR_FULL_VIEW
+
+  const shouldShowLoading = () => {
+    // Если есть какие-то данные - не показываем Loading даже при isLoading
+    const hasAnyContent =
+      hasFeaturedShouts() ||
+      (props.topRatedShouts?.length || 0) > 0 ||
+      (props.topMonthShouts?.length || 0) > 0 ||
+      (props.topCommentedShouts?.length || 0) > 0 ||
+      (randomTopicFeed()?.shouts?.length || 0) > 0
+
+    return !!props.isLoading && !hasAnyContent
+  }
 
   // Система дедупликации для предотвращения повторов публикаций
   const deduplicatedBlocks = createMemo(() => {
@@ -97,7 +111,7 @@ export const HomeView = (props: HomeViewProps) => {
   })
 
   return (
-    <Show when={hasFeaturedShouts()} fallback={<Loading />}>
+    <Show when={!shouldShowLoading()} fallback={<Loading />}>
       <TopicsNav />
       <Row5 articles={deduplicatedBlocks().mainFeaturedFirst.slice(0, 5)} nodate={true} />
       <Hero />

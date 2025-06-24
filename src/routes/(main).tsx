@@ -340,6 +340,7 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
             topViewedShouts={topViewedFeed() || []}
             topRatedShouts={topRatedFeed() || []}
             topCommentedShouts={topCommentedFeed() || []}
+            isLoading={featuredShouts.loading || topData.loading}
           />
         </LoadMoreWrapper>
       </Suspense>
