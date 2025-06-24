@@ -253,10 +253,10 @@ export const ArticleCard = (props: ArticleCardProps) => {
         </Show>
 
         {/* Description */}
-        <section class={styles.shoutCardDescription}>{props.article.seo || ''}</section>
+        <section class={styles.shoutCardDescription}>{props.article?.seo || ''}</section>
 
         <Show when={props.settings?.isFeedMode}>
-          <Show when={!props.settings?.noimage && props.article && props.article.cover}>
+          <Show when={!props.settings?.noimage && props.article?.cover}>
             <div class={styles.shoutCardCoverContainer}>
               <Show
                 when={
