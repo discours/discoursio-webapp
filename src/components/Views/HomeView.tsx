@@ -56,15 +56,9 @@ export const HomeView = (props: HomeViewProps) => {
   const hasMoreShouts = () => (props.featuredShouts || []).length >= MIN_SHOUTS_FOR_FULL_VIEW
 
   const shouldShowLoading = () => {
-    // Если есть какие-то данные - не показываем Loading даже при isLoading
-    const hasAnyContent =
-      hasFeaturedShouts() ||
-      (props.topRatedShouts?.length || 0) > 0 ||
-      (props.topMonthShouts?.length || 0) > 0 ||
-      (props.topCommentedShouts?.length || 0) > 0 ||
-      (randomTopicFeed()?.shouts?.length || 0) > 0
-
-    return !!props.isLoading && !hasAnyContent
+    // Показываем Loading только если явно isLoading=true И нет основных данных
+    // Но базовые компоненты (TopicsNav, Hero) показываем всегда
+    return !!props.isLoading && !hasFeaturedShouts()
   }
 
   // Система дедупликации для предотвращения повторов публикаций
@@ -111,9 +105,11 @@ export const HomeView = (props: HomeViewProps) => {
   })
 
   return (
-    <Show when={!shouldShowLoading()} fallback={<Loading />}>
+    <>
       <TopicsNav />
-      <Row5 articles={deduplicatedBlocks().mainFeaturedFirst.slice(0, 5)} nodate={true} />
+      <Show when={!shouldShowLoading()} fallback={<Loading />}>
+        <Row5 articles={deduplicatedBlocks().mainFeaturedFirst.slice(0, 5)} nodate={true} />
+      </Show>
       <Hero />
 
       <Show when={hasMoreShouts()}>
@@ -203,6 +199,6 @@ export const HomeView = (props: HomeViewProps) => {
           )
         }}
       </For>
-    </Show>
+    </>
   )
 }

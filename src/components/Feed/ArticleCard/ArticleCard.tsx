@@ -102,7 +102,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
   const [isCoverImageLoadError, setIsCoverImageLoadError] = createSignal(false)
   const [isCoverImageLoading, setIsCoverImageLoading] = createSignal(true)
   const description = descFromBody(props.article.body)
-  const aspectRatio: Accessor<string> = () => LAYOUT_ASPECT[props.article.layout as string]
+  const aspectRatio: Accessor<string> = () => LAYOUT_ASPECT[props.article?.layout as string] || ''
   const { title, subtitle } = getTitleAndSubtitle(props.article)
 
   const canEdit = createMemo(
@@ -180,7 +180,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
         {/* Shout Card Icon */}
         <Show
           when={
-            props.article.layout &&
+            props.article?.layout &&
             props.article.layout !== 'article' &&
             !(props.settings?.noicon || props.settings?.noimage) &&
             !props.settings?.isFeedMode
@@ -260,7 +260,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
             <div class={styles.shoutCardCoverContainer}>
               <Show
                 when={
-                  props.article.layout &&
+                  props.article?.layout &&
                   props.article.layout !== 'article' &&
                   !(props.settings?.noicon || props.settings?.noimage)
                 }
