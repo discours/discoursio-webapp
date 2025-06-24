@@ -1,5 +1,6 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
 import { createEffect, createResource, on, Suspense } from 'solid-js'
+import { isServer } from 'solid-js/web'
 import { Loading } from '~/components/_shared/Loading'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
@@ -18,14 +19,35 @@ const featuredLoader = (offset?: number) => {
   })
 }
 
-// Добавляем retry логику для SSR запросов
+// Безопасное логирование для SSR
+// biome-ignore lint/suspicious/noExplicitAny: ok
+const safeLog = (message: string, data?: any) => {
+  try {
+    if (isServer) {
+      // На сервере используем process.stderr для избежания EPIPE
+      process.stderr.write(`[HomePage] ${message}\n`)
+      if (data) {
+        process.stderr.write(`[HomePage] Data: ${JSON.stringify(data)}\n`)
+      }
+    } else {
+      console.log(`[HomePage] ${message}`, data || '')
+    }
+  } catch {
+    // Игнорируем ошибки логирования
+  }
+}
+
 // biome-ignore lint/suspicious/noExplicitAny: SSR
 const withRetry = async (fn: () => Promise<any>, retries = 2, delay = 1000): Promise<any> => {
   for (let i = 0; i <= retries; i++) {
     try {
       return await fn()
     } catch (error) {
-      console.error(`[withRetry] Attempt ${i + 1} failed:`, error)
+      if (isServer) {
+        process.stderr.write(`[HomePage] Attempt ${i + 1} failed: ${error}\n`)
+      } else {
+        console.error(`[withRetry] Attempt ${i + 1} failed:`, error)
+      }
 
       if (i === retries) {
         throw error
@@ -48,7 +70,7 @@ const loadShoutsSSR = createLoader<any[], QueryLoad_Shouts_ByArgs>(
 // SSR-безопасная версия загрузки данных с обходом кеша
 const fetchHomeTopDataSSR = async () => {
   try {
-    console.log('[HomePage] SSR fetchHomeTopData started')
+    safeLog('SSR fetchHomeTopData started')
 
     const topCommentedLoader = () =>
       loadShoutsSSR({
@@ -90,7 +112,7 @@ const fetchHomeTopDataSSR = async () => {
     const topMonthShouts = results[1].status === 'fulfilled' ? results[1].value : []
     const topCommentedShouts = results[2].status === 'fulfilled' ? results[2].value : []
 
-    console.log('[HomePage] SSR top data loaded:', {
+    safeLog('SSR top data loaded', {
       topRated: topRatedShouts?.length || 0,
       topMonth: topMonthShouts?.length || 0,
       topCommented: topCommentedShouts?.length || 0
@@ -98,7 +120,11 @@ const fetchHomeTopDataSSR = async () => {
 
     return { topCommentedShouts, topMonthShouts, topRatedShouts } as Partial<HomeViewProps>
   } catch (error) {
-    console.error('[HomePage] SSR fetchHomeTopData error:', error)
+    if (isServer) {
+      process.stderr.write(`[HomePage] SSR fetchHomeTopData error: ${error}\n`)
+    } else {
+      console.error('[HomePage] SSR fetchHomeTopData error:', error)
+    }
     // Возвращаем пустые массивы в случае ошибки
     return { topCommentedShouts: [], topMonthShouts: [], topRatedShouts: [] } as Partial<HomeViewProps>
   }
@@ -106,7 +132,7 @@ const fetchHomeTopDataSSR = async () => {
 
 const fetchHomeTopData = async () => {
   try {
-    console.log('[HomePage] Fetching top data...')
+    safeLog('Fetching top data...')
 
     const topCommentedLoader = loadShouts({
       options: { filters: { featured: true }, order_by: ShoutsOrderBy.CommentsCount, limit: FEED_PAGE_SIZE }
@@ -136,7 +162,7 @@ const fetchHomeTopData = async () => {
     const topMonthShouts = await topMonthLoader()
     const topCommentedShouts = await topCommentedLoader()
 
-    console.log('[HomePage] Top data fetched successfully')
+    safeLog('Top data fetched successfully')
     return { topCommentedShouts, topMonthShouts, topRatedShouts } as Partial<HomeViewProps>
   } catch (error) {
     console.error('[HomePage] Error fetching top data:', error)
@@ -149,8 +175,8 @@ const fetchHomeTopData = async () => {
 export const route = {
   load: async () => {
     try {
-      console.log('[HomePage] SSR route.load started')
-      console.log('[HomePage] Environment:', {
+      safeLog('SSR route.load started')
+      safeLog('Environment', {
         NODE_ENV: process.env.NODE_ENV,
         VERCEL: process.env.VERCEL,
         hasGraphQLEndpoint: !!process.env.PUBLIC_GRAPHQL_ENDPOINT
@@ -183,10 +209,14 @@ export const route = {
 
       const result = await Promise.race([dataPromise, timeoutPromise])
 
-      console.log('[HomePage] SSR route.load completed successfully')
+      safeLog('SSR route.load completed successfully')
       return result
     } catch (error) {
-      console.error('[HomePage] SSR route.load error:', error)
+      if (isServer) {
+        process.stderr.write(`[HomePage] SSR route.load error: ${error}\n`)
+      } else {
+        console.error('[HomePage] SSR route.load error:', error)
+      }
 
       // В случае ошибки возвращаем fallback данные
       return {

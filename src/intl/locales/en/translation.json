@@ -19,7 +19,7 @@
   "some views": "{count} {count, plural, one {view} few {views} other {views}}",
   "some posts": "{count, plural, =0 {no publications} one {{count} publication} other {{count} publications}}",
   "some publications": "{count} {count, plural, one {publication} few {publications} other {publications}}",
-  "Discours – an open magazine about culture, science and society": "Discours – an open magazine about culture, science and society",
+  "keywords": "Discours.io, Discours magazine, culture, science, art, society, independent journalism, literature, music, cinema, video, photography",
   "Subscribe what you like to tune your personal feed": "Subscribe to topics that interest you to customize your personal feed and get instant updates on new posts and discussions",
   "Subscribe who you like to tune your personal feed": "Subscribe to authors you're interested in to customize your personal feed and get instant updates on new posts and discussions",
   "The most interesting publications on the topic": "The most interesting publications on the topic {topicName}",

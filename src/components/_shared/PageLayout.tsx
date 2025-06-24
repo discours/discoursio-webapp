@@ -1,18 +1,18 @@
 import { Meta, Title } from '@solidjs/meta'
 import { useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
-import type { Component, JSX } from 'solid-js'
-import { createMemo, ErrorBoundary, Show, Suspense } from 'solid-js'
+import { Component, createMemo, ErrorBoundary, JSX, Show, Suspense } from 'solid-js'
+import { isServer } from 'solid-js/web'
 import { cdnUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 import { getPageKeywords } from '~/intl/keywords'
 import { getCachedImageUrl } from '~/lib/imageCache'
-import { generateOGMetadata, OG_SITE_NAME, OG_TWITTER_SITE } from '~/lib/openGraph'
-import { ClientOnly } from '~/utils/clientonly'
+import { generateOGMetadata } from '~/lib/openGraph'
 import { FooterView } from '../Discours/Footer'
 import { Header } from '../HeaderNav'
 import { Loading } from './Loading'
+
 import styles from './PageLayout.module.scss'
 
 type PageLayoutProps = {
@@ -34,44 +34,82 @@ type PageLayoutProps = {
   key?: string
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: page layout error fallback
-const PageErrorFallback = (error: any) => {
-  console.error('[PageLayout] Error:', error)
-
+// biome-ignore lint/suspicious/noExplicitAny: ok
+const PageErrorFallback = (err: any) => {
+  console.error('[PageLayout] Error:', err)
   return (
-    <div
-      style={{
-        padding: '40px 20px',
-        'text-align': 'center',
-        'min-height': '50vh',
-        display: 'flex',
-        'flex-direction': 'column',
-        'justify-content': 'center',
-        'align-items': 'center'
-      }}
-    >
-      <h1>Дискурс</h1>
-      <p>Загружаем контент...</p>
-      <button
-        onClick={() => window.location.reload()}
-        style={{
-          padding: '10px 20px',
-          'margin-top': '20px',
-          background: '#007acc',
-          color: 'white',
-          border: 'none',
-          'border-radius': '4px',
-          cursor: 'pointer'
-        }}
-      >
-        Обновить страницу
-      </button>
+    <div style={{ padding: '20px', background: '#fee', color: '#c00' }}>
+      <h1>Ошибка страницы</h1>
+      <pre style={{ 'white-space': 'pre-wrap' }}>{err?.toString()}</pre>
     </div>
   )
 }
 
+/**
+ * Обновляет метатеги на клиенте через прямое DOM API
+ * Обходит проблемы @solidjs/meta с SSR
+ */
+function updateServerMetaTags(ogMetadata: ReturnType<typeof generateOGMetadata>, keywords: string) {
+  if (isServer) return // На сервере только базовые теги
+
+  try {
+    // Обновляем title
+    if (document.title !== ogMetadata.title) {
+      document.title = ogMetadata.title
+    }
+
+    // Функция для обновления/создания метатега
+    const updateMetaTag = (selector: string, content: string) => {
+      let meta = document.querySelector(selector)
+      if (!meta) {
+        meta = document.createElement('meta')
+
+        // Определяем атрибут по селектору
+        if (selector.includes('property=')) {
+          const property = selector.match(/property="([^"]+)"/)?.[1]
+          if (property) meta.setAttribute('property', property)
+        } else if (selector.includes('name=')) {
+          const name = selector.match(/name="([^"]+)"/)?.[1]
+          if (name) meta.setAttribute('name', name)
+        }
+
+        document.head.appendChild(meta)
+      }
+      meta.setAttribute('content', content)
+    }
+
+    // Обновляем базовые метатеги
+    updateMetaTag('meta[name="description"]', ogMetadata.description)
+    updateMetaTag('meta[name="keywords"]', keywords)
+
+    // Обновляем OG теги
+    updateMetaTag('meta[property="og:type"]', ogMetadata.type)
+    updateMetaTag('meta[property="og:title"]', ogMetadata.title)
+    updateMetaTag('meta[property="og:description"]', ogMetadata.description)
+    updateMetaTag('meta[property="og:url"]', ogMetadata.url)
+    updateMetaTag('meta[property="og:image"]', ogMetadata.image)
+    updateMetaTag('meta[property="og:locale"]', ogMetadata.locale)
+
+    // Обновляем Twitter Card теги
+    updateMetaTag('meta[name="twitter:title"]', ogMetadata.title)
+    updateMetaTag('meta[name="twitter:description"]', ogMetadata.description)
+    updateMetaTag('meta[name="twitter:image"]', ogMetadata.image)
+
+    // Обновляем canonical URL
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement
+    if (!canonical) {
+      canonical = document.createElement('link')
+      canonical.rel = 'canonical'
+      document.head.appendChild(canonical)
+    }
+    canonical.href = ogMetadata.canonicalUrl || ogMetadata.url
+  } catch (error) {
+    console.error('[PageLayout] Error updating meta tags:', error)
+  }
+}
+
 export const PageLayout: Component<PageLayoutProps> = (props) => {
-  const isHeaderFixed = props.isHeaderFixed === undefined ? true : props.isHeaderFixed // FIXME: выглядит как костылек
+  const isHeaderFixed = props.isHeaderFixed === undefined ? true : props.isHeaderFixed
   const loc = useLocation()
   const { t, lang } = useLocalize()
   const imageUrl = getCachedImageUrl(props.cover || `${cdnUrl}/production/image/logo_image.png`)
@@ -107,38 +145,32 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
     })
   })
 
-  // Получаем описание напрямую через дедупликацию логики
-  const description = createMemo(() => ogMetadata().description)
-
   // Используем более надёжные гарантированные значения
   const pageTitle = createMemo(() => {
     return props.article?.title || t(props.title) || ogMetadata().title || 'Discours'
   })
 
-  const pageDescription = createMemo(() => {
-    return description() || props.desc || 'Discours – открытый журнал о культуре, науке и обществе'
-  })
-
-  const ogType = createMemo(() => ogMetadata().type || 'website')
-  const ogUrl = createMemo(() => ogMetadata().url || `https://discours.io${loc.pathname}`)
-  const ogImage = createMemo(() => ogMetadata().image || `${cdnUrl}/production/image/logo_image.png`)
-  const ogLogo = createMemo(() => ogMetadata().logo || `${cdnUrl}/logo_sign.png`)
-
-  // Debug лог для проверки значений
-  console.log('[PageLayout] OG Meta Debug:', {
-    title: pageTitle(),
-    description: pageDescription(),
-    type: ogType(),
-    url: ogUrl(),
-    image: ogImage(),
-    logo: ogLogo()
+  // Обновляем метатеги на клиенте
+  createMemo(() => {
+    updateServerMetaTags(ogMetadata(), keywords())
   })
 
   return (
     <ErrorBoundary fallback={PageErrorFallback}>
       <div class={props.withPadding ? 'container' : ''}>
         <Suspense fallback={<Loading />}>
+          {/* Заголовок страницы всегда обновляется */}
           <Title>{pageTitle()}</Title>
+          <Meta
+            name="description"
+            content={
+              ogMetadata().description ||
+              props.desc ||
+              t('Discours – an open magazine about culture, science and society') ||
+              ''
+            }
+          />
+
           <Header
             slug={props.slug}
             title={props.headerTitle}
@@ -146,36 +178,7 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
             cover={imageUrl}
             isHeaderFixed={isHeaderFixed}
           />
-          <ClientOnly>
-            <Meta property="og:type" content={ogType()} />
-            <Meta property="og:title" content={pageTitle()} />
-            <Meta property="og:description" content={pageDescription()} />
-            <Meta property="og:url" content={ogUrl()} />
-            <Meta property="og:image" content={ogImage()} />
-            <Meta property="og:logo" content={ogLogo()} />
-            <Meta property="og:site_name" content={OG_SITE_NAME} />
-            <Meta property="og:locale" content={lang()} />
-            <Meta property="og:image:width" content={`${ogMetadata().imageWidth || 1200}`} />
-            <Meta property="og:image:height" content={`${ogMetadata().imageHeight || 630}`} />
-            <Meta property="og:image:type" content={ogMetadata().imageType} />
-            <Meta property="og:image:secure_url" content={ogMetadata().imageSecureUrl} />
 
-            <Meta property="twitter:card" content="summary_large_image" />
-            <Meta property="twitter:site" content={OG_TWITTER_SITE} />
-            <Meta property="twitter:creator" content={OG_TWITTER_SITE} />
-            <Meta property="twitter:title" content={pageTitle()} />
-            <Meta property="twitter:description" content={pageDescription()} />
-            <Meta property="twitter:image" content={ogImage()} />
-            <Meta property="twitter:image:width" content={`${ogMetadata().imageWidth || 1200}`} />
-            <Meta property="twitter:image:height" content={`${ogMetadata().imageHeight || 630}`} />
-            <Meta property="twitter:image:secure_url" content={ogMetadata().imageSecureUrl} />
-            <Meta property="twitter:image:alt" content={ogMetadata().imageAlt} />
-
-            <Meta name="description" content={pageDescription()} />
-            <Meta name="keywords" content={keywords()} />
-            <link rel="canonical" href={ogUrl()} />
-            <Meta name="robots" content="index, follow" />
-          </ClientOnly>
           <main
             class={clsx('main-content', {
               [styles.zeroBottomPadding]: props.zeroBottomPadding
