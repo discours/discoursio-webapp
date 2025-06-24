@@ -396,7 +396,7 @@ export const FullArticle = (props: Props) => {
           <div class={styles.shoutStatsItem} ref={triggerRef}>
             <SharePopup
               title={props.article.title}
-              description={props.article.seo || ''}
+              description={props.article?.seo || ''}
               imageUrl={props.article.cover || ''}
               shareUrl={shareUrl()}
               containerCssClass={stylesHeader.control}
@@ -616,7 +616,7 @@ export const FullArticle = (props: Props) => {
 
       <ShareModal
         title={props.article.title}
-        description={props.article.seo || ''}
+        description={props.article?.seo || ''}
         imageUrl={props.article?.cover || ''}
         shareUrl={shareUrl()}
       />

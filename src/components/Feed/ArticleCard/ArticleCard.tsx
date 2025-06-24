@@ -59,11 +59,13 @@ const desktopCoverImageWidths: Record<string, number> = {
 }
 const titleSeparator = /{!|\?|:|;}\s/
 const getTitleAndSubtitle = (
-  article: Shout
+  article: Shout | undefined
 ): {
   title: string
   subtitle: string
 } => {
+  if (!article) return { title: '', subtitle: '' }
+
   let title = article.title || ''
   let subtitle: string = article.subtitle || ''
 
@@ -101,29 +103,29 @@ export const ArticleCard = (props: ArticleCardProps) => {
   const [isActionPopupActive, setIsActionPopupActive] = createSignal(false)
   const [isCoverImageLoadError, setIsCoverImageLoadError] = createSignal(false)
   const [isCoverImageLoading, setIsCoverImageLoading] = createSignal(true)
-  const description = descFromBody(props.article.body)
+  const description = descFromBody(props.article?.body || '')
   const aspectRatio: Accessor<string> = () => LAYOUT_ASPECT[props.article?.layout as string] || ''
   const { title, subtitle } = getTitleAndSubtitle(props.article)
 
   const canEdit = createMemo(
     () =>
       Boolean(author()?.id) &&
-      (props.article.authors?.some((a) => Boolean(a) && a?.id === author().id) ||
-        props.article.created_by?.id === author().id ||
+      (props.article?.authors?.some((a) => Boolean(a) && a?.id === author().id) ||
+        props.article?.created_by?.id === author().id ||
         session()?.author?.roles?.includes('editor'))
   )
   const navigate = useNavigate()
 
   const scrollToComments = (event: MouseEvent & { currentTarget: HTMLAnchorElement; target: Element }) => {
     event.preventDefault()
-    navigate(`/${props.article.slug}?commentId=0`)
+    navigate(`/${props.article?.slug || ''}?commentId=0`)
   }
 
   const onInvite = () => {
     if (props.onInvite) props.onInvite()
   }
 
-  const mainTopic = createMemo(() => props.article.main_topic || props.article.topics?.[0])
+  const mainTopic = createMemo(() => props.article?.main_topic || props.article?.topics?.[0])
   return (
     <section
       data-testid="article-card"
@@ -210,7 +212,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
             [styles.shoutCardTitlesContainerFeedMode]: props.settings?.isFeedMode
           })}
         >
-          <A href={`/${props.article.slug}`}>
+          <A href={`/${props.article?.slug || ''}`}>
             <div class={styles.shoutCardTitle}>
               <span class={styles.shoutCardLinkWrapper}>
                 <span class={styles.shoutCardLinkContainer} innerHTML={title} />
@@ -233,7 +235,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
           >
             <Show when={!props.settings?.noauthor}>
               <div class={styles.shoutAuthor}>
-                <For each={props.article.authors}>
+                <For each={props.article?.authors || []}>
                   {(a: Maybe<Author>) => (
                     <AuthorLink
                       size={'XS'}
@@ -247,7 +249,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
               </div>
             </Show>
             <Show when={!props.settings?.nodate}>
-              <time class={styles.shoutDate}>{formatDate(props.article.published_at)}</time>
+              <time class={styles.shoutDate}>{formatDate(props.article?.published_at || 0)}</time>
             </Show>
           </div>
         </Show>
@@ -304,11 +306,13 @@ export const ArticleCard = (props: ArticleCardProps) => {
             classList={{ [styles.shoutCardDetailsActive]: isActionPopupActive() }}
           >
             <div class={styles.shoutCardDetailsContent}>
-              <RatingControl
-                shout={props.article}
-                class={styles.shoutCardDetailsItem}
-                myRate={props.myRate}
-              />
+              <Show when={props.article}>
+                <RatingControl
+                  shout={props.article!}
+                  class={styles.shoutCardDetailsItem}
+                  myRate={props.myRate}
+                />
+              </Show>
 
               <div class={clsx(styles.shoutCardDetailsItem, styles.shoutCardComments)}>
                 <a href="#" onClick={(event) => scrollToComments(event)}>
@@ -318,14 +322,14 @@ export const ArticleCard = (props: ArticleCardProps) => {
                     class={clsx(styles.icon, styles.iconHover, styles.feedControlIcon)}
                   />
                   <Show
-                    when={props.article.stat?.comments_count}
+                    when={props.article?.stat?.comments_count}
                     fallback={
                       <span class={clsx(styles.shoutCardLinkContainer, styles.shoutCardDetailsItemLabel)}>
                         {t('Add comment')}
                       </span>
                     }
                   >
-                    {props.article.stat?.comments_count}
+                    {props.article?.stat?.comments_count}
                   </Show>
                 </a>
               </div>
@@ -333,7 +337,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
               <Show when={props.settings?.withViewed}>
                 <div class={clsx(styles.shoutCardDetailsItem, styles.shoutCardDetailsViewed)}>
                   <Icon name="eye" class={clsx(styles.icon, styles.feedControlIcon)} />
-                  {props.article.stat?.viewed}
+                  {props.article?.stat?.viewed}
                 </div>
               </Show>
             </div>
@@ -343,7 +347,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
                 <Popover content={t('Edit')} disabled={isActionPopupActive()}>
                   {(triggerRef: (el: HTMLElement) => void) => (
                     <div class={styles.shoutCardDetailsItem} ref={triggerRef}>
-                      <A href={`/edit/${props.article.id}`}>
+                      <A href={`/edit/${props.article?.id || ''}`}>
                         <Icon name="pencil-outline" class={clsx(styles.icon, styles.feedControlIcon)} />
                         <Icon
                           name="pencil-outline-hover"
@@ -376,8 +380,8 @@ export const ArticleCard = (props: ArticleCardProps) => {
                       containerCssClass={stylesHeader.control}
                       title={title}
                       description={description}
-                      imageUrl={props.article.cover || ''}
-                      shareUrl={getShareUrl({ pathname: `/${props.article.slug}` })}
+                      imageUrl={props.article?.cover || ''}
+                      shareUrl={getShareUrl({ pathname: `/${props.article?.slug || ''}` })}
                       onVisibilityChange={(isVisible) => setIsActionPopupActive(isVisible)}
                       trigger={
                         <button>
@@ -397,7 +401,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
                 <FeedArticlePopup
                   canEdit={Boolean(canEdit())}
                   containerCssClass={stylesHeader.control}
-                  onShareClick={() => props.onShare?.(props.article)}
+                  onShareClick={() => props.article && props.onShare?.(props.article)}
                   onInviteClick={onInvite}
                   onVisibilityChange={(isVisible) => setIsActionPopupActive(isVisible)}
                   trigger={
