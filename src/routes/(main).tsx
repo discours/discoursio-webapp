@@ -1,7 +1,6 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { createEffect, createResource, on, Suspense } from 'solid-js'
+import { createEffect, createResource, on } from 'solid-js'
 import { isServer } from 'solid-js/web'
-import { Loading } from '~/components/_shared/Loading'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
 import { useFeaturedFeed } from '~/context/featured'
@@ -255,30 +254,32 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
           })
           const result = await featuredLoader()
           console.log('[HomePage] Featured shouts loaded:', result?.length || 0)
-          return result
+          return result || []
         } catch (error) {
           console.error('[HomePage] Error loading featured shouts:', error)
           return []
         }
       }
-      return props.data.featuredShouts
+      return props.data.featuredShouts || []
     },
     {
-      initialValue: props.data?.featuredShouts || [],
+      // Используем undefined как initial value если нет SSR данных
+      initialValue: props.data?.featuredShouts?.length ? props.data.featuredShouts : undefined,
       ssrLoadFrom: 'initial',
       deferStream: true // Блокируем SSR до загрузки данных
     }
   )
 
+  // Проверяем наличие SSR данных для top data
+  const hasSSRTopData = 
+    props.data?.topRatedShouts?.length ||
+    props.data?.topMonthShouts?.length ||
+    props.data?.topCommentedShouts?.length
+
   const [topData] = createResource(
     async () => {
       // Если данных от SSR нет, загружаем на клиенте
-      const hasSSRData =
-        props.data?.topRatedShouts?.length ||
-        props.data?.topMonthShouts?.length ||
-        props.data?.topCommentedShouts?.length
-
-      if (!hasSSRData) {
+      if (!hasSSRTopData) {
         try {
           console.log('[HomePage] Loading top data on client...')
           return await fetchHomeTopData()
@@ -295,11 +296,12 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
       }
     },
     {
-      initialValue: {
+      // Используем undefined если нет SSR данных
+      initialValue: hasSSRTopData ? {
         topMonthShouts: props.data?.topMonthShouts || [],
         topCommentedShouts: props.data?.topCommentedShouts || [],
         topRatedShouts: props.data?.topRatedShouts || []
-      },
+      } : undefined,
       deferStream: true // Блокируем SSR до загрузки данных
     }
   )
@@ -332,18 +334,15 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
 
   return (
     <PageLayout withPadding={true} title={t('Discours')} key="home">
-      <Suspense fallback={<Loading />}>
-        <LoadMoreWrapper loadFunction={loadMoreFeatured} pageSize={FEED_PAGE_SIZE} hidden={false}>
-          <HomeView
-            featuredShouts={featuredFeed() || []}
-            topMonthShouts={topMonthFeed() || []}
-            topViewedShouts={topViewedFeed() || []}
-            topRatedShouts={topRatedFeed() || []}
-            topCommentedShouts={topCommentedFeed() || []}
-            isLoading={featuredShouts.loading || topData.loading}
-          />
-        </LoadMoreWrapper>
-      </Suspense>
+      <LoadMoreWrapper loadFunction={loadMoreFeatured} pageSize={FEED_PAGE_SIZE} hidden={false}>
+        <HomeView
+          featuredShouts={featuredFeed() || []}
+          topMonthShouts={topMonthFeed() || []}
+          topViewedShouts={topViewedFeed() || []}
+          topRatedShouts={topRatedFeed() || []}
+          topCommentedShouts={topCommentedFeed() || []}
+        />
+      </LoadMoreWrapper>
     </PageLayout>
   )
 }

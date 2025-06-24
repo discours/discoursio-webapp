@@ -5,7 +5,6 @@ import { useTopics } from '~/context/topics'
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
 import { FeedDeduplicationContext } from '~/utils/deduplicate'
 import { paginate } from '~/utils/paginate'
-import { Loading } from '../_shared/Loading'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 import Banner from '../Discours/Banner'
 import Hero from '../Discours/Hero'
@@ -17,9 +16,9 @@ import { Row5 } from '../Feed/Row5'
 import RowShort from '../Feed/RowShort'
 import { TopicShoutsGroup } from '../Feed/TopicShoutsGroup'
 import { TopicsNav } from '../HeaderNav/TopicsNav'
+import { useFeaturedFeed } from '~/context/featured'
 
 import '~/styles/views/Home.module.scss'
-import { useFeaturedFeed } from '~/context/featured'
 
 export const RANDOM_TOPICS_COUNT = 12
 export const RANDOM_TOPIC_SHOUTS_COUNT = 7
@@ -33,7 +32,6 @@ export interface HomeViewProps {
   topMonthShouts: Shout[]
   topViewedShouts: Shout[]
   topCommentedShouts: Shout[]
-  isLoading?: boolean
 }
 
 export const HomeView = (props: HomeViewProps) => {
@@ -41,7 +39,7 @@ export const HomeView = (props: HomeViewProps) => {
   const { topAuthors, addAuthors } = useAuthors()
   const { topTopics } = useTopics()
   const { randomTopicFeed } = useFeaturedFeed()
-
+  
   onMount(() => {
     props.featuredShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
     props.topRatedShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
@@ -52,14 +50,7 @@ export const HomeView = (props: HomeViewProps) => {
   )
 
   // Простые проверки без createMemo - используем обычные функции
-  const hasFeaturedShouts = () => (props.featuredShouts || []).length > 0
   const hasMoreShouts = () => (props.featuredShouts || []).length >= MIN_SHOUTS_FOR_FULL_VIEW
-
-  const shouldShowLoading = () => {
-    // Показываем Loading только если явно isLoading=true И нет основных данных
-    // Но базовые компоненты (TopicsNav, Hero) показываем всегда
-    return !!props.isLoading && !hasFeaturedShouts()
-  }
 
   // Система дедупликации для предотвращения повторов публикаций
   const deduplicatedBlocks = createMemo(() => {
@@ -107,9 +98,7 @@ export const HomeView = (props: HomeViewProps) => {
   return (
     <>
       <TopicsNav />
-      <Show when={!shouldShowLoading()} fallback={<Loading />}>
-        <Row5 articles={deduplicatedBlocks().mainFeaturedFirst.slice(0, 5)} nodate={true} />
-      </Show>
+      <Row5 articles={(deduplicatedBlocks().mainFeaturedFirst || []).slice(0, 5)} nodate={true} />
       <Hero />
 
       <Show when={hasMoreShouts()}>

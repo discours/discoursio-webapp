@@ -1,0 +1,147 @@
+// Мерцающая анимация
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.skeleton {
+  background: var(--background-color);
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+  
+  // Базовая структура как у ArticleCard
+  &--small {
+    min-height: 200px;
+  }
+  
+  &--medium {
+    min-height: 300px;
+  }
+  
+  &--large {
+    min-height: 400px;
+  }
+}
+
+.skeletonCover {
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.2%; // 16:9 ratio как у обычных карточек
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 37%,
+    #f0f0f0 63%
+  );
+  background-size: 400px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  
+  // Темная тема
+  :global([data-theme="dark"]) & {
+    background: linear-gradient(
+      90deg,
+      #2a2a2a 25%,
+      #3a3a3a 37%,
+      #2a2a2a 63%
+    );
+  }
+}
+
+.skeletonContent {
+  padding: 1.6rem;
+}
+
+// Базовый элемент скелетона
+%skeletonElement {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 37%,
+    #f0f0f0 63%
+  );
+  background-size: 400px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  
+  // Темная тема  
+  :global([data-theme="dark"]) & {
+    background: linear-gradient(
+      90deg,
+      #2a2a2a 25%,
+      #3a3a3a 37%,
+      #2a2a2a 63%
+    );
+  }
+}
+
+.skeletonTitle {
+  @extend %skeletonElement;
+  height: 2.4rem;
+  margin-bottom: 0.8rem;
+  
+  &.skeletonTitleShort {
+    width: 75%;
+  }
+}
+
+.skeletonDescription {
+  @extend %skeletonElement;
+  height: 1.6rem;
+  margin-bottom: 0.6rem;
+  
+  &.skeletonDescriptionShort {
+    width: 60%;
+    margin-bottom: 1.4rem;
+  }
+}
+
+.skeletonMeta {
+  display: flex;
+  gap: 1.6rem;
+  align-items: center;
+}
+
+.skeletonAuthor {
+  @extend %skeletonElement;
+  height: 1.4rem;
+  width: 120px;
+}
+
+.skeletonDate {
+  @extend %skeletonElement;
+  height: 1.2rem;
+  width: 80px;
+}
+
+// Адаптивные размеры
+@include media-breakpoint-up(md) {
+  .skeleton--large {
+    .skeletonTitle {
+      height: 4rem;
+    }
+    
+    .skeletonDescription {
+      height: 2.4rem;
+    }
+  }
+}
+
+// Вариант для Row режимов
+.skeleton--row {
+  display: flex;
+  
+  .skeletonCover {
+    flex: 1;
+    padding-bottom: 25%; // Меньшая высота для горизонтальных карточек
+  }
+  
+  .skeletonContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+} 

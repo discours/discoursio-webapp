@@ -1,7 +1,7 @@
 import { Meta, Title } from '@solidjs/meta'
 import { useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Component, createMemo, ErrorBoundary, JSX, Show, Suspense } from 'solid-js'
+import { Component, createEffect, createMemo, ErrorBoundary, JSX, on, Show, Suspense } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { cdnUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
@@ -114,11 +114,10 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
   const { t, lang } = useLocalize()
   const imageUrl = getCachedImageUrl(props.cover || `${cdnUrl}/production/image/logo_image.png`)
 
+  // Простая функция для получения ключевых слов - только для сложных вычислений нужен createMemo
   const keywords = createMemo(() => {
-    // Используем переданные keywords или генерируем на основе контента и пути
     if (props.keywords) return props.keywords
 
-    // Формируем contentInfo для getPageKeywords
     const contentInfo = {
       type: props.article ? 'article' : props.author ? 'author' : props.topic ? 'topic' : 'website',
       data: props.article || props.author || props.topic || null
@@ -127,33 +126,32 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
     return getPageKeywords(contentInfo, loc.pathname, lang())
   })
 
-  // Определяем контент для OG-тегов
-  const content = createMemo(() => {
+  // Простая функция для определения контента - избегаем createMemo для простых условий
+  const content = () => {
     if (props.article) return props.article
     if (props.author) return props.author
     if (props.topic) return props.topic
     return undefined
-  })
+  }
 
-  // Генерируем все метаданные для OG в одном вызове
-  const ogMetadata = createMemo(() => {
-    return generateOGMetadata(content(), {
+  // Оставляем createMemo только для сложной функции generateOGMetadata
+  const ogMetadata = createMemo(() => generateOGMetadata(content(), {
       pathname: loc.pathname,
       defaultTitle: t(props.title),
       defaultDescription: props.desc,
       locale: lang()
     })
-  })
+  )
 
   // Используем более надёжные гарантированные значения
-  const pageTitle = createMemo(() => {
-    return props.article?.title || t(props.title) || ogMetadata().title || 'Discours'
-  })
+  const pageTitle = () => {
+    return props.article?.title || t(props.title) || ogMetadata().title || t('Discours')
+  }
 
   // Обновляем метатеги на клиенте
-  createMemo(() => {
-    updateServerMetaTags(ogMetadata(), keywords())
-  })
+  createEffect(on([ogMetadata, keywords], ([ogData, keywords]) => {
+    updateServerMetaTags(ogData, keywords)
+  }))
 
   return (
     <ErrorBoundary fallback={PageErrorFallback}>
