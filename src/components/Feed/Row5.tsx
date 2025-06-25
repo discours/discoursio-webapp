@@ -7,7 +7,7 @@ export const Row5 = (props: { articles: Shout[]; nodate?: boolean }) => {
   // Проверяем что у нас есть хотя бы 5 статей с валидными данными
   const hasArticles = () => {
     const articles = props.articles || []
-    return articles.length >= 5 && articles.every(article => article?.id)
+    return articles.length >= 5 && articles.every((article) => article?.id)
   }
 
   return (

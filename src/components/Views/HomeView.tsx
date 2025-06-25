@@ -1,5 +1,6 @@
 import { createMemo, For, onMount, Show } from 'solid-js'
 import { useAuthors } from '~/context/authors'
+import { useFeaturedFeed } from '~/context/featured'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
@@ -16,7 +17,6 @@ import { Row5 } from '../Feed/Row5'
 import RowShort from '../Feed/RowShort'
 import { TopicShoutsGroup } from '../Feed/TopicShoutsGroup'
 import { TopicsNav } from '../HeaderNav/TopicsNav'
-import { useFeaturedFeed } from '~/context/featured'
 
 import '~/styles/views/Home.module.scss'
 
@@ -39,7 +39,7 @@ export const HomeView = (props: HomeViewProps) => {
   const { topAuthors, addAuthors } = useAuthors()
   const { topTopics } = useTopics()
   const { randomTopicFeed } = useFeaturedFeed()
-  
+
   onMount(() => {
     props.featuredShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
     props.topRatedShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))

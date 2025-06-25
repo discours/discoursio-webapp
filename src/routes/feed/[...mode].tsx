@@ -55,13 +55,12 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
   const [unratedShouts, setUnratedShouts] = createSignal<Shout[]>(props.data?.unratedShouts || [])
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.data?.shouts || [])
 
-  // Обновляем данные при их получении
-  createEffect(async () => {
-    const data = await props.data
-    if (data) {
-      setRecentComments(data.recentComments)
-      setUnratedShouts(data.unratedShouts)
-      setSortedFeed(data.shouts)
+  // Обновляем данные при их получении - исправлена асинхронная логика
+  createEffect(() => {
+    if (props.data) {
+      setRecentComments(props.data.recentComments || [])
+      setUnratedShouts(props.data.unratedShouts || [])
+      setSortedFeed(props.data.shouts || [])
     }
   })
 

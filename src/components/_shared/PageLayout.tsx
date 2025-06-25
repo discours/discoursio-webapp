@@ -135,7 +135,8 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
   }
 
   // Оставляем createMemo только для сложной функции generateOGMetadata
-  const ogMetadata = createMemo(() => generateOGMetadata(content(), {
+  const ogMetadata = createMemo(() =>
+    generateOGMetadata(content(), {
       pathname: loc.pathname,
       defaultTitle: t(props.title),
       defaultDescription: props.desc,
@@ -149,9 +150,11 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
   }
 
   // Обновляем метатеги на клиенте
-  createEffect(on([ogMetadata, keywords], ([ogData, keywords]) => {
-    updateServerMetaTags(ogData, keywords)
-  }))
+  createEffect(
+    on([ogMetadata, keywords], ([ogData, keywords]) => {
+      updateServerMetaTags(ogData, keywords)
+    })
+  )
 
   return (
     <ErrorBoundary fallback={PageErrorFallback}>
