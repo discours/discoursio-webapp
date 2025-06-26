@@ -46,7 +46,10 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
   const [isLoading, setIsLoading] = createSignal(false)
   const [scrollWrapper, setScrollWrapper] = createSignal<HTMLDivElement | null>(null)
   const [initialLoadDone, setInitialLoadDone] = createSignal(false)
+  // Новое состояние для отслеживания готовности показа кнопки после задержки
+  const [buttonDelayReady, setButtonDelayReady] = createSignal(false)
   let observer: IntersectionObserver | null = null
+  let buttonDelayTimer: number | null = null
 
   // Генерируем уникальный идентификатор компонента на основе данных и URL
   const [componentId, setComponentId] = createSignal('')
@@ -146,6 +149,18 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
           if (newItems.length < props.pageSize) {
             console.log('[LoadMoreWrapper] Reached end of data, hiding button')
             setIsLoadMoreButtonVisible(false)
+          } else {
+            // Сбрасываем состояние готовности кнопки
+            setButtonDelayReady(false)
+
+            // Устанавливаем таймер для показа кнопки через 3 секунды
+            if (buttonDelayTimer) {
+              window.clearTimeout(buttonDelayTimer)
+            }
+
+            buttonDelayTimer = window.setTimeout(() => {
+              setButtonDelayReady(true)
+            }, 3000)
           }
 
           // Отмечаем, что начальная загрузка выполнена
@@ -180,7 +195,8 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
         if (
           entries[0].isIntersecting &&
           !untrack(() => isLoading()) &&
-          untrack(() => isLoadMoreButtonVisible())
+          untrack(() => isLoadMoreButtonVisible()) &&
+          untrack(() => buttonDelayReady())
         ) {
           console.log('[LoadMoreWrapper] IntersectionObserver triggered load')
           void loadItems()
@@ -199,6 +215,12 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
     // Проверяем локальное состояние и sessionStorage
     if (untrack(() => initialLoadDone()) || checkInitialLoadDone()) {
       console.log('[LoadMoreWrapper] Initial load already done, skipping for', componentId())
+
+      // Устанавливаем таймер для показа кнопки через 3 секунды после монтирования
+      buttonDelayTimer = window.setTimeout(() => {
+        setButtonDelayReady(true)
+      }, 3000)
+
       return
     }
 
@@ -217,11 +239,18 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
       observer.disconnect()
     }
 
+    // Очищаем таймер при размонтировании компонента
+    if (buttonDelayTimer) {
+      window.clearTimeout(buttonDelayTimer)
+      buttonDelayTimer = null
+    }
+
     // Очищаем состояние при размонтировании для предотвращения проблем при перемонтировании
     untrack(() => {
       setInitialLoadDone(false)
       setItems([])
       setOffset(0)
+      setButtonDelayReady(false)
     })
   })
 
@@ -230,7 +259,7 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
       {props.children}
 
       <div ref={setScrollWrapper} class={styles.loadMoreTrigger}>
-        <Show when={isLoadMoreButtonVisible() && !props.useScrollTrigger}>
+        <Show when={isLoadMoreButtonVisible() && !props.useScrollTrigger && buttonDelayReady()}>
           <div class={styles.loadMoreWrapper}>
             <Button
               onClick={loadItems}

@@ -158,6 +158,14 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
 
   return (
     <ErrorBoundary fallback={PageErrorFallback}>
+      <Header
+        slug={props.slug}
+        title={props.headerTitle}
+        desc={props.desc}
+        cover={imageUrl}
+        isHeaderFixed={isHeaderFixed}
+      />
+
       <div class={props.withPadding ? 'container' : ''}>
         <Suspense fallback={<Loading />}>
           {/* Заголовок страницы всегда обновляется */}
@@ -170,14 +178,6 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
               t('Discours – an open magazine about culture, science and society') ||
               ''
             }
-          />
-
-          <Header
-            slug={props.slug}
-            title={props.headerTitle}
-            desc={props.desc}
-            cover={imageUrl}
-            isHeaderFixed={isHeaderFixed}
           />
 
           <main
