@@ -26,6 +26,25 @@
     padding: 2rem;
     color: var(--black-300);
   }
+
+  // Индикатор загрузки для списка статей
+  .articlesLoading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    padding: 2rem;
+    width: 100%;
+  }
+
+  // Индикатор загрузки для aside
+  .asideLoading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    min-height: 100px;
+  }
 }
 
 .feedFilter {
@@ -1065,19 +1084,20 @@
     }
   }
 
-  // Стили для ссылок
-  a {
+  // Стили для ссылок - только внутри aside секций
+  .asideContent a {
     font-family: Muller, Arial, Helvetica, sans-serif;
     font-size: 1.4rem;
     font-weight: 500;
     line-height: 1.4;
-    color: var(--black-500);
+    color: var(--link-color);
     text-decoration: none;
-    transition: color 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease;
+    border-bottom: none !important; // Убираем border которые могли появиться
     
     &:hover {
-      color: var(--blue-500);
-      text-decoration: underline;
+      color: var(--link-hover-color);
+      background-color: var(--link-hover-background);
     }
   }
 }
@@ -1244,4 +1264,17 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-m);
+}
+
+// Утилитарные классы для адаптивного отображения
+.hiddenOnDesktop {
+  @media (min-width: 992px) {
+    display: none !important;
+  }
+}
+
+.hiddenOnMobile {
+  @media (max-width: 991px) {
+    display: none !important;
+  }
 }

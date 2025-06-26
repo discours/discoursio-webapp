@@ -972,7 +972,17 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             // Exit block: Create new paragraph after
             const p = document.createElement('p')
             p.innerHTML = '<br>'
-            blockElement.parentNode?.insertBefore(p, blockElement.nextSibling)
+            // Безопасная проверка перед insertBefore для избежания NotFoundError
+            if (
+              blockElement.parentNode &&
+              blockElement.nextSibling &&
+              blockElement.parentNode.contains(blockElement)
+            ) {
+              blockElement.parentNode.insertBefore(p, blockElement.nextSibling)
+            } else {
+              console.warn('[SimpleRichEditor] Cannot safely insert element: parent or sibling not found')
+              return
+            }
 
             // Move cursor to new paragraph
             range.selectNodeContents(p)

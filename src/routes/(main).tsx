@@ -1,5 +1,5 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { createEffect, createResource, on, Show } from 'solid-js'
+import { createEffect } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
@@ -59,75 +59,12 @@ const withRetry = async (fn: () => Promise<any>, retries = 2, delay = 1000): Pro
   throw new Error('All retry attempts failed')
 }
 
-// Некешируемые загрузчики для SSR
+// Некешируемый загрузчик для SSR
 // biome-ignore lint/suspicious/noExplicitAny: ok
 const loadShoutsSSR = createLoader<any[], QueryLoad_Shouts_ByArgs>(
   loadShoutsByQuery,
   (args: QueryLoad_Shouts_ByArgs) => args
 )
-
-// SSR-безопасная версия загрузки данных с обходом кеша
-const fetchHomeTopDataSSR = async () => {
-  try {
-    safeLog('SSR fetchHomeTopData started')
-
-    const topCommentedLoader = () =>
-      loadShoutsSSR({
-        options: {
-          filters: { featured: true },
-          order_by: ShoutsOrderBy.CommentsCount,
-          limit: FEED_PAGE_SIZE
-        }
-      })
-
-    const daysago = Date.now() - 30 * 24 * 60 * 60 * 1000
-    const after = Math.floor(daysago / 1000)
-    const topMonthLoader = () =>
-      loadShoutsSSR({
-        options: {
-          filters: { featured: true, after },
-          order_by: ShoutsOrderBy.Rating,
-          limit: FEED_PAGE_SIZE
-        }
-      })
-
-    const topRatedLoader = () =>
-      loadShoutsSSR({
-        options: {
-          filters: { featured: true },
-          order_by: ShoutsOrderBy.Rating,
-          limit: FEED_PAGE_SIZE
-        }
-      })
-
-    // Используем Promise.allSettled для параллельной загрузки с fallback
-    const results = await Promise.allSettled([
-      withRetry(async () => await topRatedLoader()(), 1, 500),
-      withRetry(async () => await topMonthLoader()(), 1, 500),
-      withRetry(async () => await topCommentedLoader()(), 1, 500)
-    ])
-
-    const topRatedShouts = results[0].status === 'fulfilled' ? results[0].value : []
-    const topMonthShouts = results[1].status === 'fulfilled' ? results[1].value : []
-    const topCommentedShouts = results[2].status === 'fulfilled' ? results[2].value : []
-
-    safeLog('SSR top data loaded', {
-      topRated: topRatedShouts?.length || 0,
-      topMonth: topMonthShouts?.length || 0,
-      topCommented: topCommentedShouts?.length || 0
-    })
-
-    return { topCommentedShouts, topMonthShouts, topRatedShouts } as Partial<HomeViewProps>
-  } catch (error) {
-    if (isServer) {
-      process.stderr.write(`[HomePage] SSR fetchHomeTopData error: ${error}\n`)
-    } else {
-      console.error('[HomePage] SSR fetchHomeTopData error:', error)
-    }
-    // Возвращаем пустые массивы в случае ошибки
-    return { topCommentedShouts: [], topMonthShouts: [], topRatedShouts: [] } as Partial<HomeViewProps>
-  }
-}
 
 const fetchHomeTopData = async () => {
   try {
@@ -170,24 +107,20 @@ const fetchHomeTopData = async () => {
   }
 }
 
-// Восстанавливаем SSR загрузку с обходом кеша и retry логикой
+// Упрощенная SSR загрузка только критически важных данных
 export const route = {
   load: async () => {
     try {
       safeLog('SSR route.load started')
-      safeLog('Environment', {
-        NODE_ENV: process.env.NODE_ENV,
-        VERCEL: process.env.VERCEL,
-        hasGraphQLEndpoint: !!process.env.PUBLIC_GRAPHQL_ENDPOINT
-      })
 
-      // Добавляем timeout для SSR запросов (максимум 8 секунд)
+      // Увеличиваем timeout до 12 секунд (меньше GraphQL timeout 15s)
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('SSR timeout')), 8000)
+        setTimeout(() => reject(new Error('SSR timeout')), 12000)
       })
 
       const dataPromise = (async () => {
-        // Загружаем featured shouts без кеша
+        // Загружаем только самые важные featured shouts для первого экрана
+        safeLog('Loading critical featured shouts for SSR...')
         const featuredLoader = loadShoutsSSR({
           options: {
             filters: { featured: true },
@@ -195,19 +128,23 @@ export const route = {
           }
         })
 
-        const [featuredShouts, topData] = await Promise.all([
-          withRetry(async () => await featuredLoader(), 1, 500),
-          fetchHomeTopDataSSR()
-        ])
+        // Загружаем только featured shouts в SSR, остальное - на клиенте
+        const featuredShouts = await withRetry(async () => await featuredLoader(), 2, 300)
+
+        safeLog('SSR critical data loaded', {
+          featured: featuredShouts?.length || 0
+        })
 
         return {
-          ...topData,
-          featuredShouts
+          featuredShouts,
+          // Пустые массивы для остальных данных - загрузим на клиенте
+          topCommentedShouts: [],
+          topMonthShouts: [],
+          topRatedShouts: []
         }
       })()
 
       const result = await Promise.race([dataPromise, timeoutPromise])
-
       safeLog('SSR route.load completed successfully')
       return result
     } catch (error) {
@@ -217,7 +154,7 @@ export const route = {
         console.error('[HomePage] SSR route.load error:', error)
       }
 
-      // В случае ошибки возвращаем fallback данные
+      // В случае ошибки возвращаем пустые данные
       return {
         topCommentedShouts: [],
         topMonthShouts: [],
@@ -230,89 +167,71 @@ export const route = {
 
 export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
   const { t } = useLocalize()
-  const { featuredFeed, setFeaturedFeed, setTopMonthFeed, topViewedFeed, setTopCommentedFeed, setTopFeed } =
-    useFeaturedFeed()
+  const {
+    featuredFeed,
+    setFeaturedFeed,
+    topMonthFeed,
+    setTopMonthFeed,
+    topViewedFeed,
+    topCommentedFeed,
+    setTopCommentedFeed,
+    topFeed,
+    setTopFeed
+  } = useFeaturedFeed()
 
-  // 1. Create Resources for data loading - используем SSR данные как initial value
-  const [featuredShouts] = createResource(
-    async () => {
-      // Если данных от SSR нет, загружаем на клиенте
-      if (!props.data?.featuredShouts?.length) {
-        try {
-          console.log('[HomePage] Loading featured shouts on client...')
-          const featuredLoader = loadShouts({
-            options: { filters: { featured: true }, limit: FEED_PAGE_SIZE }
-          })
-          const result = await featuredLoader()
-          console.log('[HomePage] Featured shouts loaded:', result?.length || 0)
-          return result || []
-        } catch (error) {
-          console.error('[HomePage] Error loading featured shouts:', error)
-          return []
-        }
-      }
-      return props.data.featuredShouts || []
-    },
-    {
-      // Используем undefined как initial value если нет SSR данных
-      initialValue: props.data?.featuredShouts?.length ? props.data.featuredShouts : undefined,
-      ssrLoadFrom: 'initial',
-      deferStream: true // Блокируем SSR до загрузки данных
-    }
-  )
-
-  // Проверяем наличие SSR данных для top data
-  const hasSSRTopData =
-    props.data?.topRatedShouts?.length ||
-    props.data?.topMonthShouts?.length ||
-    props.data?.topCommentedShouts?.length
-
-  const [topData] = createResource(
-    async () => {
-      // Если данных от SSR нет, загружаем на клиенте
-      if (!hasSSRTopData) {
-        try {
-          console.log('[HomePage] Loading top data on client...')
-          return await fetchHomeTopData()
-        } catch (error) {
-          console.error('[HomePage] Error in topData resource:', error)
-          return { topCommentedShouts: [], topMonthShouts: [], topRatedShouts: [] }
-        }
-      }
-
-      return {
-        topMonthShouts: props.data?.topMonthShouts || [],
-        topCommentedShouts: props.data?.topCommentedShouts || [],
-        topRatedShouts: props.data?.topRatedShouts || []
-      }
-    },
-    {
-      // Используем undefined если нет SSR данных
-      initialValue: hasSSRTopData
-        ? {
-            topMonthShouts: props.data?.topMonthShouts || [],
-            topCommentedShouts: props.data?.topCommentedShouts || [],
-            topRatedShouts: props.data?.topRatedShouts || []
-          }
-        : undefined,
-      deferStream: true // Блокируем SSR до загрузки данных
-    }
-  )
-
-  // 2. Effect to update signals if data changes - проверяем состояние ресурсов
-  createEffect(
-    on([featuredShouts, topData], ([featured, top]) => {
-      // Проверяем что ресурсы загружены и не в состоянии error
-      if (featured && !featuredShouts.loading && !featuredShouts.error) {
-        setFeaturedFeed(featured)
-      }
-      if (top && !topData.loading && !topData.error) {
-        setTopMonthFeed(top.topMonthShouts || [])
-        setTopCommentedFeed(top.topCommentedShouts || [])
-        setTopFeed(top.topRatedShouts || [])
-      }
+  // Инициализация с SSR данными (только featured шуты)
+  createEffect(() => {
+    console.log('[HomePage] Initializing with SSR data:', {
+      featuredShouts: props.data?.featuredShouts?.length || 0
     })
-  )
+
+    if (props.data?.featuredShouts?.length) {
+      setFeaturedFeed(props.data.featuredShouts)
+    }
+  })
+
+  // Асинхронная загрузка дополнительных данных на клиенте
+  createEffect(async () => {
+    // Загружаем featured shouts если нет SSR данных
+    if (!props.data?.featuredShouts?.length && !featuredFeed()?.length) {
+      try {
+        console.log('[HomePage] Loading featured shouts on client...')
+        const featuredLoader = loadShouts({
+          options: { filters: { featured: true }, limit: FEED_PAGE_SIZE }
+        })
+        const result = await featuredLoader()
+        if (result?.length) {
+          setFeaturedFeed(result)
+        }
+      } catch (error) {
+        console.error('[HomePage] Error loading featured shouts:', error)
+      }
+    }
+
+    // Всегда загружаем остальные данные на клиенте (не блокируем SSR)
+    try {
+      console.log('[HomePage] Loading additional data on client...')
+      const topData = await fetchHomeTopData()
+
+      if (topData.topMonthShouts?.length) {
+        setTopMonthFeed(topData.topMonthShouts)
+      }
+      if (topData.topCommentedShouts?.length) {
+        setTopCommentedFeed(topData.topCommentedShouts)
+      }
+      if (topData.topRatedShouts?.length) {
+        setTopFeed(topData.topRatedShouts)
+      }
+
+      console.log('[HomePage] Additional data loaded:', {
+        topMonth: topData.topMonthShouts?.length || 0,
+        topCommented: topData.topCommentedShouts?.length || 0,
+        topRated: topData.topRatedShouts?.length || 0
+      })
+    } catch (error) {
+      console.error('[HomePage] Error loading additional data:', error)
+    }
+  })
 
   const loadMoreFeatured = async (offset?: number) => {
     try {
@@ -331,15 +250,13 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
   return (
     <PageLayout withPadding={true} title={t('Discours')} key="home">
       <LoadMoreWrapper loadFunction={loadMoreFeatured} pageSize={FEED_PAGE_SIZE} hidden={false}>
-        <Show when={!featuredShouts.loading && !topData.loading} fallback={<div>Loading...</div>}>
-          <HomeView
-            featuredShouts={featuredFeed() || []}
-            topMonthShouts={topData()?.topMonthShouts || []}
-            topViewedShouts={topViewedFeed() || []}
-            topRatedShouts={topData()?.topRatedShouts || []}
-            topCommentedShouts={topData()?.topCommentedShouts || []}
-          />
-        </Show>
+        <HomeView
+          featuredShouts={props.data?.featuredShouts || featuredFeed() || []}
+          topMonthShouts={topMonthFeed() || []}
+          topViewedShouts={topViewedFeed() || []}
+          topRatedShouts={topFeed() || []}
+          topCommentedShouts={topCommentedFeed() || []}
+        />
       </LoadMoreWrapper>
     </PageLayout>
   )

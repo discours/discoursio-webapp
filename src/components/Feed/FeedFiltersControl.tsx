@@ -128,32 +128,40 @@ export const FeedFiltersControl = () => {
     setHasChanges(periodChanged || featuredChanged || layoutsChanged)
   }
 
-  // Синхронизируем начальные фильтры
+  // Синхронизируем начальные фильтры (только на клиенте, избегаем ошибок гидрации)
   onMount(() => {
-    const filters = filterState()?.filters as FeedFilters
+    // Проверяем что мы на клиенте и filterState инициализирован
+    if (typeof window === 'undefined') return
 
-    // Синхронизация featured фильтра
-    if (filters.featured !== undefined) {
-      const featured =
-        filters.featured === true ? 'featured' : filters.featured === false ? 'unfeatured' : 'all'
-      setCurrentFeaturedFilter(featured)
-      setPendingFeaturedFilter(featured)
-    }
+    try {
+      const filters = filterState()?.filters as FeedFilters
+      if (!filters) return
 
-    // Синхронизация периода
-    if (filters.after !== undefined) {
-      const period = Object.values(PeriodType).find((p) => getTimestampFromPeriod(p) === filters.after)
-      if (period) {
-        setCurrentPeriod(period)
-        setPendingPeriod(period)
+      // Синхронизация featured фильтра
+      if (filters.featured !== undefined) {
+        const featured =
+          filters.featured === true ? 'featured' : filters.featured === false ? 'unfeatured' : 'all'
+        setCurrentFeaturedFilter(featured)
+        setPendingFeaturedFilter(featured)
       }
-    }
 
-    // Синхронизация layouts
-    if (filters.layouts?.length) {
-      const layouts = filters.layouts as (ExpoLayoutType | 'article')[]
-      setCurrentLayouts(layouts)
-      setPendingLayouts(layouts)
+      // Синхронизация периода
+      if (filters.after !== undefined) {
+        const period = Object.values(PeriodType).find((p) => getTimestampFromPeriod(p) === filters.after)
+        if (period) {
+          setCurrentPeriod(period)
+          setPendingPeriod(period)
+        }
+      }
+
+      // Синхронизация layouts
+      if (filters.layouts?.length) {
+        const layouts = filters.layouts as (ExpoLayoutType | 'article')[]
+        setCurrentLayouts(layouts)
+        setPendingLayouts(layouts)
+      }
+    } catch (error) {
+      console.warn('[FeedFiltersControl] Sync error:', error)
     }
   })
 

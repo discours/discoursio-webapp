@@ -64,6 +64,7 @@ interface FeedState {
   hasMore: boolean
   isEmpty?: boolean
   error?: Error
+  lastLoaded?: number
 }
 
 interface FeedContextType {
@@ -271,7 +272,8 @@ const loadPersonalFeed = async (
       shouts: opts?.offset ? [...prev.shouts, ...(result || [])] : result || [],
       isLoading: false,
       hasMore: (result || []).length >= (opts?.limit || FEED_PAGE_SIZE),
-      isEmpty: !result?.length
+      isEmpty: !result?.length,
+      lastLoaded: Date.now()
     }))
   } catch (error) {
     console.error(`[FeedProvider] Failed to load ${type} feed:`, error)
@@ -317,15 +319,54 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   const [feedByLayout, setFeedByLayout] = createSignal<Record<string, Shout[]>>({})
   const [feedByTopic, setFeedByTopic] = createSignal<Record<string, Shout[]>>({})
   const [feedByAuthor, setFeedByAuthor] = createSignal<Record<string, Shout[]>>({})
-  const mode = createMemo((): FeedMode => {
+
+  // ✅ Правильный подход: реактивный сигнал для mode
+  const [mode, setMode] = createSignal<FeedMode>('recent')
+
+  // Отслеживаем изменения URL и обновляем mode
+  createEffect(() => {
     const path = loc.pathname
-    const currentMode = path.includes('/feed/') ? path.split('/feed/')[1] || 'recent' : 'recent'
-    return currentMode as FeedMode
+
+    // Определяем режим из URL
+    let currentMode: FeedMode = 'recent'
+
+    if (path.startsWith('/feed')) {
+      if (path === '/feed') {
+        // Если путь именно /feed, используем recent по умолчанию
+        currentMode = 'recent'
+      } else if (path.startsWith('/feed/')) {
+        // Если путь начинается с /feed/, извлекаем режим после слэша
+        const modePart = path.split('/feed/')[1]
+        if (modePart && modePart !== '') {
+          const modeValue = modePart.split('/')[0] // берем только первую часть после /feed/
+
+          // Проверяем что это валидный режим
+          const validModes: FeedMode[] = [
+            'recent',
+            'hot',
+            'top',
+            'search',
+            'comments',
+            'about',
+            'followed',
+            'discussed',
+            'coauthored'
+          ]
+          if (validModes.includes(modeValue as FeedMode)) {
+            currentMode = modeValue as FeedMode
+          } else {
+            // Если режим не валидный, используем recent по умолчанию
+            currentMode = 'recent'
+          }
+        }
+      }
+    }
+
+    console.log('[FeedProvider] URL mode change:', { path, currentMode, splitResult: path.split('/feed/') })
+    setMode(currentMode)
   })
 
   const [options, setOptions] = createSignal<LoadShoutsOptions>({ limit: FEED_PAGE_SIZE })
-  const _updateOptions = (newOpts: Partial<LoadShoutsOptions>) =>
-    setOptions((prev) => ({ ...prev, ...newOpts }))
 
   // Обновляем инициализацию feedSetters
   const feedSetters: FeedSettersMap = {
@@ -365,7 +406,8 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
       isLoading: false,
       hasMore: shouts.length >= (opts?.limit || FEED_PAGE_SIZE),
       isEmpty: sortedShouts.length === 0,
-      error: undefined
+      error: undefined,
+      lastLoaded: Date.now()
     }
 
     if (existingFeed !== newFeed) {
@@ -539,21 +581,44 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
    */
   const initializeFeed = (name: keyof FeedSettersMap, shouts: Shout[]) => {
     const setter = feedSetters[name]
-    if (!setter) return
+    if (!setter) {
+      console.warn('[FeedProvider] initializeFeed: setter not found for', name)
+      return
+    }
+
+    // Проверяем, есть ли уже данные в этом фиде
+    const currentFeed = setter((prev) => prev)
+    if (currentFeed.shouts?.length > 0) {
+      console.log(
+        '[FeedProvider] initializeFeed: feed already has data for',
+        name,
+        'skipping initialization'
+      )
+      return
+    }
+
+    console.log('[FeedProvider] initializeFeed:', { name, shoutsLength: shouts.length })
 
     const newFeed = {
       shouts,
       isLoading: false,
       hasMore: shouts.length >= FEED_PAGE_SIZE,
-      error: undefined
+      isEmpty: false, // Явно указываем что данные есть
+      error: undefined,
+      lastLoaded: Date.now()
     }
 
     batch(() => {
       setter(newFeed)
-      setFeedByLayout(groupByLayout(shouts))
-      setFeedByTopic(groupByTopic(shouts))
-      setFeedByAuthor(groupByAuthor(shouts))
+      // Обновляем группировки только если данные новые
+      if (shouts.length > 0) {
+        setFeedByLayout(groupByLayout(shouts))
+        setFeedByTopic(groupByTopic(shouts))
+        setFeedByAuthor(groupByAuthor(shouts))
+      }
     })
+
+    console.log('[FeedProvider] initializeFeed completed for', name)
   }
 
   // Добаляем фильры в зачение контекста
@@ -590,7 +655,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   }
 
   /**
-   * Эффект для автоматической перезагрузки данных при изменении фильтров
+   * Эффект для автоматической перезагрузки данных при смене фильтров
    * Перезагружает текущий режим ленты при обновлении фильтров
    */
   createEffect(
@@ -602,10 +667,17 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
           const currentMode = mode()
           console.log('[FeedProvider] Filters changed, reloading feed:', currentMode)
 
-          // Сбрасываем текущий фид и загружаем с новыми фильтрами
+          // Сбрасываем feed ДО начала загрузки, чтобы UI сразу обновился
           const setter = feedSetters[currentMode]
           if (setter) {
-            setter(emptyFeed)
+            setter({
+              shouts: [],
+              isLoading: true,
+              hasMore: false,
+              isEmpty: true,
+              error: undefined,
+              lastLoaded: undefined
+            })
 
             switch (currentMode) {
               case 'hot':
@@ -627,7 +699,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
   /**
    * Эффект для автоматической загрузки данных при смене режима
-   * Загружает данные только если их нет в кеше
+   * Загружает данные только если их нет в кеше или они устарели
    */
   createEffect(
     on(
@@ -635,19 +707,38 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
       async (currentMode) => {
         console.log('[FeedProvider] Feed mode changed:', currentMode)
 
+        // Сбрасываем состояние при смене режима (группируем операции)
+        batch(() => {
+          setOptions((prev) => ({ ...prev, offset: 0 }))
+          setMyRates({})
+        })
+
         // Определяем тип ленты
         const isPersonalFeed = ['followed', 'discussed', 'coauthored'].includes(currentMode)
 
         // Проверяем нужно ли загружать данные
         const currentFeed = feedSetters[currentMode]?.((prev) => prev)
-        const needsLoad = !currentFeed?.shouts?.length || currentFeed.isEmpty
+        const hasValidData = currentFeed?.shouts?.length > 0 && !currentFeed.isEmpty
 
-        if (!needsLoad) {
-          console.log(`[FeedProvider] ${currentMode} feed already has data, skipping load`)
+        // Для публичных лент всегда загружаем свежие данные если нет данных или они устарели
+        const shouldRefresh =
+          !isPersonalFeed &&
+          (!hasValidData || !currentFeed?.lastLoaded || Date.now() - currentFeed.lastLoaded > 5 * 60 * 1000)
+
+        // Для персональных лент загружаем только если нет данных
+        const shouldLoadPersonal = isPersonalFeed && !hasValidData
+
+        if (!shouldRefresh && !shouldLoadPersonal) {
+          console.log(
+            `[FeedProvider] ${currentMode} feed has valid data (${currentFeed?.shouts?.length || 0} items), skipping load`
+          )
           return
         }
 
         console.log(`[FeedProvider] Loading ${currentMode} feed...`)
+
+        // Добавляем небольшую задержку для предотвращения race conditions
+        await new Promise((resolve) => setTimeout(resolve, 100))
 
         // Загружаем данные в зависимости от типа
         try {

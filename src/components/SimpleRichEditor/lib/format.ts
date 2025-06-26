@@ -259,7 +259,13 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
       }
 
       // Вставляем содержимое вместо форматированного элемента
-      formattedParent.parentNode?.insertBefore(tempContainer, formattedParent)
+      // Безопасная проверка перед insertBefore для избежания NotFoundError
+      if (formattedParent?.parentNode?.contains(formattedParent)) {
+        formattedParent.parentNode.insertBefore(tempContainer, formattedParent)
+      } else {
+        console.warn('[removeFormatting] Cannot safely insert element: parent not found or invalid')
+        return
+      }
 
       // Удаляем пустой форматированный элемент
       formattedParent.parentNode?.removeChild(formattedParent)
@@ -1275,8 +1281,13 @@ export const removeHighlightFormatting = (range: Range): void => {
           fragment.appendChild(element.firstChild)
         }
 
-        parent.insertBefore(fragment, element)
-        parent.removeChild(element)
+        // Безопасная проверка перед insertBefore для избежания NotFoundError
+        if (parent.contains(element)) {
+          parent.insertBefore(fragment, element)
+          parent.removeChild(element)
+        } else {
+          console.warn('[cleanupEmptySpans] Cannot safely manipulate element: element not in parent')
+        }
       }
     }
 

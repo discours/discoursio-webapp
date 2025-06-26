@@ -89,9 +89,6 @@ export const AsideSection = (props: AsideSectionProps) => {
           })}
           onClick={toggleExpanded}
         >
-          <Show when={props.icon}>
-            <Icon name={props.icon!} class={styles.headerIcon} />
-          </Show>
           <h4 class={styles.asideSectionTitle}>{props.title}</h4>
           <Show when={props.collapsible}>
             <Icon

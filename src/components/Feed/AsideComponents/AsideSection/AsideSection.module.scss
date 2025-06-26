@@ -213,19 +213,21 @@
     }
   }
 
-  // Стили для ссылок - используем стили похожие на Button inline
+  // Стили для ссылки - используем глобальные стили проекта
   a {
     font-family: Muller, Arial, Helvetica, sans-serif;
     font-size: 1.4rem;
     font-weight: 500;
     line-height: 1.4;
-    color: var(--black-500);
+    color: var(--link-color);
     text-decoration: none;
-    transition: color 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease;
+    border-bottom: none !important; // Убираем любые border
     
     &:hover {
-      color: var(--blue-500);
-      text-decoration: underline;
+      text-decoration: none;
+      color: var(--inverse-color);
+      background-color: var(--inverse-background);
     }
   }
 

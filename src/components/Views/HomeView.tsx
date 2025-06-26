@@ -49,8 +49,7 @@ export const HomeView = (props: HomeViewProps) => {
     paginate(props.featuredShouts || [], SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, SHOUTS_PER_PAGE)
   )
 
-  // Простые проверки без createMemo - используем обычные функции
-  const hasMoreShouts = () => (props.featuredShouts || []).length >= MIN_SHOUTS_FOR_FULL_VIEW
+  const hasMoreShouts = createMemo(() => (props.featuredShouts || []).length >= MIN_SHOUTS_FOR_FULL_VIEW)
 
   // Система дедупликации для предотвращения повторов публикаций
   const deduplicatedBlocks = createMemo(() => {
@@ -101,93 +100,100 @@ export const HomeView = (props: HomeViewProps) => {
       <Row5 articles={(deduplicatedBlocks().mainFeaturedFirst || []).slice(0, 5)} nodate={true} />
       <Hero />
 
+      {/* Если нет featuredShouts — не рендерим остальные секции вообще */}
       <Show when={hasMoreShouts()}>
-        <Beside
-          beside={deduplicatedBlocks().mainFeaturedFirst[5]}
-          title={t('Top viewed')}
-          values={deduplicatedBlocks().topViewed}
-          wrapper={'top-article'}
-          nodate={true}
-        />
-        <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(6, 9)} nodate={true} />
-        <Beside
-          beside={deduplicatedBlocks().mainFeaturedFirst[9]}
-          title={t('Top authors')}
-          values={topAuthors?.() || []}
-          wrapper={'author'}
-          nodate={true}
-        />
-
-        <Show when={deduplicatedBlocks().topMonth.length > 0}>
-          <ArticleCardSwiper title={t('Top month')} slides={deduplicatedBlocks().topMonth.slice(0, 10)} />
-        </Show>
-
-        <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(10, 12)} nodate={true} />
-        <RowShort articles={deduplicatedBlocks().mainFeaturedFirst.slice(12, 16)} />
-        <Row1 article={deduplicatedBlocks().mainFeaturedFirst[16]} nodate={true} />
-        <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(17, 20)} nodate={true} />
-
-        <Show when={deduplicatedBlocks().topCommented.length > 0}>
-          <Row3
-            articles={deduplicatedBlocks().topCommented.slice(0, 3)}
-            header={<h2>{t('Top commented')}</h2>}
-            nodate={true}
-          />
-        </Show>
-
-        <TopicShoutsGroup
-          shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
-          topic={randomTopicFeed()?.topic as Topic}
-        />
-
-        <Show when={deduplicatedBlocks().topRated.length > 0}>
-          <ArticleCardSwiper title={t('Favorite')} slides={deduplicatedBlocks().topRated.slice(0, 10)} />
-        </Show>
-
-        <Show when={deduplicatedBlocks().mainFeaturedFirst.length > SHOUTS_PER_PAGE}>
+        <>
           <Beside
-            beside={deduplicatedBlocks().mainFeaturedFirst[20]}
-            title={t('Top topics')}
-            values={topTopics().slice(0, 5)}
-            wrapper={'topic'}
-            isTopicCompact={true}
+            beside={deduplicatedBlocks().mainFeaturedFirst[5]}
+            title={t('Top viewed')}
+            values={deduplicatedBlocks().topViewed}
+            wrapper={'top-article'}
             nodate={true}
           />
-          <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(21, 24)} nodate={true} />
-          <Banner />
-          <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(24, 26)} nodate={true} />
-          <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(26, 29)} nodate={true} />
-        </Show>
+          <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(6, 9)} nodate={true} />
+          <Beside
+            beside={deduplicatedBlocks().mainFeaturedFirst[9]}
+            title={t('Top authors')}
+            values={topAuthors?.() || []}
+            wrapper={'author'}
+            nodate={true}
+          />
+
+          {deduplicatedBlocks().topMonth.length > 0 && (
+            <ArticleCardSwiper title={t('Top month')} slides={deduplicatedBlocks().topMonth.slice(0, 10)} />
+          )}
+
+          <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(10, 12)} nodate={true} />
+          <RowShort articles={deduplicatedBlocks().mainFeaturedFirst.slice(12, 16)} />
+          <Row1 article={deduplicatedBlocks().mainFeaturedFirst[16]} nodate={true} />
+          <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(17, 20)} nodate={true} />
+
+          {deduplicatedBlocks().topCommented.length > 0 && (
+            <Row3
+              articles={deduplicatedBlocks().topCommented.slice(0, 3)}
+              header={<h2>{t('Top commented')}</h2>}
+              nodate={true}
+            />
+          )}
+
+          <TopicShoutsGroup
+            shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
+            topic={randomTopicFeed()?.topic as Topic}
+          />
+
+          {deduplicatedBlocks().topRated.length > 0 && (
+            <ArticleCardSwiper title={t('Favorite')} slides={deduplicatedBlocks().topRated.slice(0, 10)} />
+          )}
+
+          {deduplicatedBlocks().mainFeaturedFirst.length > SHOUTS_PER_PAGE && (
+            <>
+              <Beside
+                beside={deduplicatedBlocks().mainFeaturedFirst[20]}
+                title={t('Top topics')}
+                values={topTopics().slice(0, 5)}
+                wrapper={'topic'}
+                isTopicCompact={true}
+                nodate={true}
+              />
+              <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(21, 24)} nodate={true} />
+              <Banner />
+              <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(24, 26)} nodate={true} />
+              <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(26, 29)} nodate={true} />
+            </>
+          )}
+        </>
       </Show>
 
       {/* Пагинированные страницы (дедуплицированные) */}
-      <For each={pages()}>
-        {(_page, pageIndex) => {
-          // Используем оставшиеся дедуплицированные публикации для пагинации
-          const startIndex = pageIndex() * SHOUTS_PER_PAGE
-          const deduplicatedPage = deduplicatedBlocks().remainingFeatured.slice(
-            startIndex,
-            startIndex + SHOUTS_PER_PAGE
-          )
-
-          return (
-            <Show when={deduplicatedPage.length > 0}>
-              <Row1 article={deduplicatedPage[0]} nodate={true} />
-              <Row3 articles={deduplicatedPage.slice(1, 4)} nodate={true} />
-              <Row2 articles={deduplicatedPage.slice(4, 6)} nodate={true} />
-              <Beside
-                values={deduplicatedPage.slice(6, 9)}
-                beside={deduplicatedPage[9]}
-                wrapper="article"
-                nodate={true}
-              />
-              <Row1 article={deduplicatedPage[10]} nodate={true} />
-              <Row2 articles={deduplicatedPage.slice(11, 13)} nodate={true} />
-              <Row3 articles={deduplicatedPage.slice(13, 16)} nodate={true} />
-            </Show>
-          )
-        }}
-      </For>
+      <Show when={hasMoreShouts()}>
+        <For each={pages()}>
+          {(_page, pageIndex) => {
+            const startIndex = pageIndex() * SHOUTS_PER_PAGE
+            const deduplicatedPage = deduplicatedBlocks().remainingFeatured.slice(
+              startIndex,
+              startIndex + SHOUTS_PER_PAGE
+            )
+            return (
+              deduplicatedPage.length > 0 && (
+                <>
+                  <Row1 article={deduplicatedPage[0]} nodate={true} />
+                  <Row3 articles={deduplicatedPage.slice(1, 4)} nodate={true} />
+                  <Row2 articles={deduplicatedPage.slice(4, 6)} nodate={true} />
+                  <Beside
+                    values={deduplicatedPage.slice(6, 9)}
+                    beside={deduplicatedPage[9]}
+                    wrapper="article"
+                    nodate={true}
+                  />
+                  <Row1 article={deduplicatedPage[10]} nodate={true} />
+                  <Row2 articles={deduplicatedPage.slice(11, 13)} nodate={true} />
+                  <Row3 articles={deduplicatedPage.slice(13, 16)} nodate={true} />
+                </>
+              )
+            )
+          }}
+        </For>
+      </Show>
     </>
   )
 }

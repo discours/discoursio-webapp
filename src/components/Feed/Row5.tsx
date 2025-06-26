@@ -31,7 +31,7 @@ export const Row5 = (props: { articles: Shout[]; nodate?: boolean }) => {
             </Show>
           </div>
           <div class="col-md-12">
-            <Show when={hasArticles()} fallback={<ArticleCardSkeleton size="large" />}>
+            <Show when={hasArticles()} fallback={<ArticleCardSkeleton size="medium" />}>
               <ArticleCard
                 article={props.articles[2]}
                 settings={{ isBigTitle: true, nodate: props.nodate }}
