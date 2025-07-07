@@ -42,3 +42,5 @@ DEBUG.log
 venv
 .cursor
 /SV-DEV/*
+.cursor
+.cursorrules

@@ -42,41 +42,6 @@ export default defineConfig({
   nitro: {
     timing: true,
     compatibilityDate: '2024-11-29',
-    // Configure WASM handling for @vercel/og
-    experimental: {
-      wasm: true
-    },
-    // Force Edge runtime for OG image generation routes
-    routeRules: {
-      '/api/og': {
-        prerender: false,
-        runtime: 'edge'
-      },
-      '/api/og/**': {
-        prerender: false,
-        runtime: 'edge' // Key fix: Force Edge runtime for OG routes
-      },
-      // Добавим правила для главной страницы
-      '/': {
-        prerender: false,
-        ssr: true
-      },
-      '/api/health': {
-        prerender: false,
-        runtime: 'nodejs'
-      }
-    },
-    rollupConfig: {
-      output: {
-        inlineDynamicImports: false
-      }
-    },
-    // Vercel specific settings
-    vercel: {
-      runtime: 'nodejs20.x',
-      regions: ['iad1'],
-      memory: 1024
-    }
   },
   ssr: true,
   server: {
