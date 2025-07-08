@@ -1,4 +1,5 @@
-@use 'cropt/src/cropt.css';
+// Импорт стилей cropt
+@import 'cropt/src/cropt.css';
 
 .cropperContainer {
   max-height: 55vh;
