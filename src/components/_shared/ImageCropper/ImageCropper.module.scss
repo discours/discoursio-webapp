@@ -1,9 +1,88 @@
 .cropperContainer {
   max-height: 55vh;
+  
+  // Импорт стилей cropt
+  @import 'cropt/src/cropt.css';
+}
+
+.cropperImageContainer {
+  position: relative;
+  width: 100%;
+  
+  // Адаптированные стили для cropt
+  :global(.cr-boundary) {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+  }
+  
+  :global(.cr-viewport) {
+    border: 2px solid #000 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4) !important;
+    outline: none !important;
+  }
+  
+  :global(.cr-overlay) {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+  }
+  
+  // Стили для слайдера масштабирования
+  :global(.cr-slider) {
+    width: 100%;
+    margin: 1rem 0;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: #ddd;
+    outline: none;
+    
+    &::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #007bff;
+      cursor: pointer;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    &::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #007bff;
+      cursor: pointer;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+  }
+  
+  // Стили для обработки изображения
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
 }
 
 .cropperControls {
   display: flex;
   justify-content: space-between;
   margin-top: 2rem;
+  gap: 1rem;
+  
+  // Адаптивность для мобильных устройств
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 0.5rem;
+    
+    button {
+      width: 100%;
+    }
+  }
 }
