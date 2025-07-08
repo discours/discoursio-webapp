@@ -73,6 +73,7 @@
     "isomorphic-dompurify": "^2.25.0",
     "javascript-time-ago": "^2.5.11",
     "lightningcss": "^1.28.1",
+    "patch-package": "8.0.0",
     "playwright": "^1.49.0",
     "sass": "^1.81.0",
     "solid-js": "^1.9.3",
