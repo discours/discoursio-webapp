@@ -7,7 +7,7 @@ import { DropArea } from '~/components/_shared/DropArea'
 import { AudioPlayerPreview } from '~/components/Article/AudioPlayer/AudioPlayerPreview'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import { MediaItem } from '~/graphql/schema/core.gen'
+import { MediaItem } from '~/graphql/generated/graphql'
 import { composeMediaItems } from '~/lib/composeMediaItems'
 import { handleFileUpload } from '~/lib/handleFileUpload'
 

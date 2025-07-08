@@ -1,4 +1,4 @@
-import type { Author, Topic } from '~/graphql/schema/core.gen'
+import type { Author, Topic } from '~/graphql/generated/graphql'
 import { translit } from './translit'
 
 const prepareQuery = (searchQuery: string, lang: string) => {

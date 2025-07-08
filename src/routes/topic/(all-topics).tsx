@@ -8,8 +8,8 @@ import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { loadTopics } from '~/graphql/api/public'
 import { defaultClient } from '~/graphql/client'
+import { QueryGet_Topics_By_CommunityArgs, Topic } from '~/graphql/generated/graphql'
 import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community'
-import { QueryGet_Topics_By_CommunityArgs, Topic } from '~/graphql/schema/core.gen'
 import { byTopicStatDesc } from '~/utils/sort'
 
 const TOPICS_PER_PAGE = 50
@@ -38,14 +38,16 @@ const fetchTopicsWithPagination = async (sortBy: string, offset = 0, limit = TOP
       console.log('[fetchTopicsWithPagination] No results from community API, falling back to topics-all')
       const fallbackLoader = loadTopics()
       const fallbackTopics = await fallbackLoader()
-      const sortedTopics = (fallbackTopics || []).sort(byTopicStatDesc(sortBy))
+      const sortedTopics = (fallbackTopics || []).sort(
+        byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number
+      )
       const sliced = sortedTopics.slice(offset, offset + limit)
       console.log(`[fetchTopicsWithPagination] Fallback returned ${sliced.length} topics`)
       return sliced
     }
 
     // Сортируем результат по указанному критерию
-    const sortedResult = (result || []).sort(byTopicStatDesc(sortBy))
+    const sortedResult = (result || []).sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
     console.log(`[fetchTopicsWithPagination] Sorted result: ${sortedResult.length} topics`)
     return sortedResult
   } catch (error) {
@@ -97,7 +99,7 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
   })
 
   // Function to load more topics for authors layout
-  const loadMoreAuthors = async (offset: number): Promise<LoadMoreItems> => {
+  const loadMoreAuthors = async (offset: number): Promise<Topic[]> => {
     try {
       console.log('[LoadMoreAuthors] Loading from offset:', offset)
       const result = await fetchTopicsWithPagination('authors', offset, TOPICS_PER_PAGE)
@@ -122,7 +124,7 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
   }
 
   // Function to load more topics for shouts layout
-  const loadMoreShouts = async (offset: number): Promise<LoadMoreItems> => {
+  const loadMoreShouts = async (offset: number): Promise<Topic[]> => {
     try {
       console.log('[LoadMoreShouts] Loading from offset:', offset)
       const result = await fetchTopicsWithPagination('shouts', offset, TOPICS_PER_PAGE)
@@ -139,7 +141,7 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
         }
       }
 
-      return result || []
+      return result || ([] as Topic[])
     } catch (error) {
       console.error('Error loading more topics by shouts:', error)
       return []
@@ -155,13 +157,21 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
       desc="All topics of the editorial community"
     >
       <Show when={currentLayout() === 'authors'}>
-        <LoadMoreWrapper loadFunction={loadMoreAuthors} pageSize={TOPICS_PER_PAGE} useScrollTrigger={false}>
+        <LoadMoreWrapper
+          loadFunction={loadMoreAuthors as (offset: number) => Promise<LoadMoreItems>}
+          pageSize={TOPICS_PER_PAGE}
+          useScrollTrigger={false}
+        >
           <AllTopicsView isLoaded={true} topics={authorsTopics()} />
         </LoadMoreWrapper>
       </Show>
 
       <Show when={currentLayout() === 'shouts'}>
-        <LoadMoreWrapper loadFunction={loadMoreShouts} pageSize={TOPICS_PER_PAGE} useScrollTrigger={false}>
+        <LoadMoreWrapper
+          loadFunction={loadMoreShouts as (offset: number) => Promise<LoadMoreItems>}
+          pageSize={TOPICS_PER_PAGE}
+          useScrollTrigger={false}
+        >
           <AllTopicsView isLoaded={true} topics={shoutsTopics()} />
         </LoadMoreWrapper>
       </Show>

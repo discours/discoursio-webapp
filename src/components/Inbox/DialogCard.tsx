@@ -1,8 +1,8 @@
 import { clsx } from 'clsx'
 import { createMemo, Match, Show, Switch } from 'solid-js'
 import { useLocalize } from '~/context/localize'
+import { Author } from '~/graphql/generated/graphql'
 import type { ChatMember } from '~/graphql/schema/chat.gen'
-import { Author } from '~/graphql/schema/core.gen'
 import { AuthorBadge } from '../Author/AuthorBadge'
 
 import DialogAvatar from './DialogAvatar'

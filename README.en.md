@@ -1,6 +1,6 @@
 # 🌟 Discours Webapp
 
-![Version](https://img.shields.io/badge/version-0.11.8-blue.svg?style=flat)
+![Version](https://img.shields.io/badge/version-0.12.0-blue.svg?style=flat)
 ![Tests](https://img.shields.io/badge/Tests-12_specs-28a745?style=flat&logo=playwright)
 ![Docs](https://img.shields.io/badge/Docs-29_files-6f42c1?style=flat&logo=markdown)
 ![Lines](https://img.shields.io/badge/Lines-45K+-informational?style=flat)

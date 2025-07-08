@@ -7,7 +7,7 @@ import { AllAuthorsView } from '~/components/Views/AllAuthorsView'
 import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import { loadAuthors, loadAuthorsAll } from '~/graphql/api/public'
-import { Author, AuthorsBy } from '~/graphql/schema/core.gen'
+import { Author, AuthorsBy } from '~/graphql/generated/graphql'
 
 const AUTHORS_PER_PAGE = 20
 

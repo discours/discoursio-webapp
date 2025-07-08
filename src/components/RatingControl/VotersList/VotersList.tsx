@@ -7,7 +7,7 @@ import { Userpic } from '~/components/Author/Userpic'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { Reaction, ReactionBy, ReactionKind } from '~/graphql/schema/core.gen'
+import { Reaction, ReactionBy, ReactionKind } from '~/graphql/generated/graphql'
 import { byCreated } from '~/utils/sort'
 
 import styles from './VotersList.module.scss'

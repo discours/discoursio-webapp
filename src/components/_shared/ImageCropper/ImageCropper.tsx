@@ -1,6 +1,6 @@
 import { UploadFile } from '@solid-primitives/upload'
-import { createSignal, onMount, onCleanup, Show } from 'solid-js'
 import { Cropt } from 'cropt'
+import { createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Button } from '../Button'
 
@@ -8,7 +8,7 @@ import styles from './ImageCropper.module.scss'
 
 interface CropperProps {
   uploadFile: UploadFile
-  /** 
+  /**
    * Обработчик сохранения обрезанного изображения
    * @param file - обрезанный файл изображения
    */
@@ -74,10 +74,10 @@ export const ImageCropper = (props: CropperProps) => {
 
     try {
       setIsLoading(true)
-      
+
       // Получаем обрезанное изображение как Blob
       const blob = await cropper.toBlob(null, 'image/jpeg', 0.9)
-      
+
       // Создаем File из Blob с оригинальным именем
       const file = new File([blob], props.uploadFile.file.name, {
         type: 'image/jpeg',
@@ -94,12 +94,12 @@ export const ImageCropper = (props: CropperProps) => {
 
   return (
     <div class={styles.cropperContainer}>
-      <div 
-        ref={containerRef} 
+      <div
+        ref={containerRef}
         class={styles.cropperImageContainer}
-        style={{ 
+        style={{
           'min-height': '320px',
-          'display': 'flex',
+          display: 'flex',
           'align-items': 'center',
           'justify-content': 'center'
         }}
@@ -107,10 +107,10 @@ export const ImageCropper = (props: CropperProps) => {
 
       <div class={styles.cropperControls}>
         <Show when={props.onDecline}>
-          <Button 
-            variant="secondary" 
-            onClick={props.onDecline} 
-            value={t('Decline')} 
+          <Button
+            variant="secondary"
+            onClick={props.onDecline}
+            value={t('Decline')}
             disabled={isLoading()}
           />
         </Show>

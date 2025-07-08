@@ -4,7 +4,7 @@ import { Icon } from '~/components/_shared/Icon'
 import { AuthorLink } from '~/components/Author/AuthorLink'
 import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { useLocalize } from '~/context/localize'
-import { Author } from '~/graphql/schema/core.gen'
+import { Author } from '~/graphql/generated/graphql'
 import styles from './TopAuthorsList.module.scss'
 
 export interface TopAuthorsListProps {

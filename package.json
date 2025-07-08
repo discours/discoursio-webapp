@@ -1,7 +1,7 @@
 {
   "name": "discoursio-webapp",
   "private": true,
-  "version": "0.11.11",
+  "version": "0.12.0",
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
@@ -32,8 +32,10 @@
     "@graphql-codegen/schema-ast": "4.1.0",
     "@graphql-codegen/typed-document-node": "5.1.2",
     "@graphql-codegen/typescript": "^4.1.6",
+    "@graphql-codegen/typescript-document-nodes": "4.0.16",
     "@graphql-codegen/typescript-graphql-request": "6.3.0",
     "@graphql-codegen/typescript-operations": "^4.6.1",
+    "@graphql-codegen/typescript-resolvers": "4.5.1",
     "@graphql-codegen/typescript-urql": "^4.0.1",
     "@playwright/test": "^1.53.1",
     "@solid-primitives/media": "^2.3.1",

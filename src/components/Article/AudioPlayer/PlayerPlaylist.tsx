@@ -3,7 +3,7 @@ import { Icon } from '~/components/_shared/Icon'
 import { Popover } from '~/components/_shared/Popover'
 import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { useLocalize } from '~/context/localize'
-import { MediaItem } from '~/graphql/schema/core.gen'
+import { MediaItem } from '~/graphql/generated/graphql'
 import { descFromBody } from '~/utils/meta'
 import { getShareUrl, SharePopup } from '../SharePopup'
 

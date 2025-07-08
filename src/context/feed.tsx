@@ -22,7 +22,7 @@ import {
   Shout,
   ShoutsOrderBy,
   Topic
-} from '~/graphql/schema/core.gen'
+} from '~/graphql/generated/graphql'
 import { FeedFilters, FeedMode, FilterState, MyFeedKind } from '~/types/nav'
 import { useSession } from './session'
 

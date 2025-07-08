@@ -10,7 +10,7 @@ import {
   Reaction,
   ReactionInput,
   ReactionKind
-} from '~/graphql/schema/core.gen'
+} from '~/graphql/generated/graphql'
 
 import styles from './SuggestionCard.module.scss'
 

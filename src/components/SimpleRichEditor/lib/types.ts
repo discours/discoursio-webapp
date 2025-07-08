@@ -1,4 +1,4 @@
-import { MediaItem } from '~/graphql/schema/core.gen'
+import { MediaItem } from '~/graphql/generated/graphql'
 import { UploadedFile } from '~/types/upload'
 
 /**

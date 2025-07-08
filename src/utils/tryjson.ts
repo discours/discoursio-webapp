@@ -1,4 +1,4 @@
-import { InputMaybe, MediaItemInput } from '~/graphql/schema/core.gen'
+import { InputMaybe, MediaItemInput } from '~/graphql/generated/graphql'
 
 type ParsedValueType =
   | string

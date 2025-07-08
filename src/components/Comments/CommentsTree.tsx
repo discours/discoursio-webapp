@@ -26,7 +26,7 @@ import {
   Reaction,
   ReactionKind,
   ReactionSort
-} from '~/graphql/schema/core.gen'
+} from '~/graphql/generated/graphql'
 import { Button } from '../_shared/Button'
 import { Loading } from '../_shared/Loading'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'

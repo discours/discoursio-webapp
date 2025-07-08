@@ -4,7 +4,7 @@
  */
 
 import { VIMEO_URL_REGEX, WEB_URL_REGEX, YOUTUBE_URL_REGEX } from '~/components/SimpleRichEditor/lib/types'
-import { DraftInput } from '~/graphql/schema/core.gen'
+import { DraftInput } from '~/graphql/generated/graphql'
 import { parseJsonContent } from '../components/SimpleRichEditor/lib/storage'
 
 /**

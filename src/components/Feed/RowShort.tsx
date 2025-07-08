@@ -1,5 +1,5 @@
 import { For } from 'solid-js'
-import type { Shout } from '~/graphql/schema/core.gen'
+import type { Shout } from '~/graphql/generated/graphql'
 import styles from '~/styles/views/Feed.module.scss'
 import { ArticleCard } from './ArticleCard'
 

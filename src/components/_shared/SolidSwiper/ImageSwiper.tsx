@@ -4,7 +4,7 @@ import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 's
 import SwiperCore from 'swiper'
 import { HashNavigation, Manipulation, Navigation, Pagination } from 'swiper/modules'
 import { throttle } from 'throttle-debounce'
-import { MediaItem } from '~/graphql/schema/core.gen'
+import { MediaItem } from '~/graphql/generated/graphql'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { Icon } from '../Icon'
 import { Image } from '../Image'

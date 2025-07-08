@@ -2,7 +2,7 @@ import { A } from '@solidjs/router'
 import { createMemo, For, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
-import { Author, Topic } from '~/graphql/schema/core.gen'
+import { Author, Community, Topic } from '~/graphql/generated/graphql'
 import { Userpic } from '../../Author/Userpic'
 
 import styles from './FollowingCounters.module.scss'
@@ -10,7 +10,7 @@ import styles from './FollowingCounters.module.scss'
 type Props = {
   followers?: Author[]
   followersAmount?: number
-  following?: Array<Author | Topic>
+  following?: Array<Author | Topic | Community>
   followingAmount?: number
   authors?: Author[]
   authorsAmount?: number
@@ -18,7 +18,7 @@ type Props = {
   topicsAmount?: number
 }
 
-const UserpicList = (props: { items: Array<Author | Topic>; onClose?: () => void }) => (
+const UserpicList = (props: { items: Array<Author | Topic | Community>; onClose?: () => void }) => (
   <div class={styles.subscribersList}>
     <For each={props.items.slice(0, 3)}>
       {(item) => (

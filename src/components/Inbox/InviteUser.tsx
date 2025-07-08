@@ -1,4 +1,4 @@
-import type { Author } from '~/graphql/schema/core.gen'
+import type { Author } from '~/graphql/generated/graphql'
 
 import { Icon } from '../_shared/Icon'
 

@@ -8,7 +8,7 @@ import { Expo, ExpoNav } from '~/components/Views/ExpoView'
 import { EXPO_LAYOUTS, EXPO_TITLES, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { loadShouts } from '~/graphql/api/public'
-import { Shout } from '~/graphql/schema/core.gen'
+import { Shout } from '~/graphql/generated/graphql'
 import { ExpoLayoutType } from '~/types/nav'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 

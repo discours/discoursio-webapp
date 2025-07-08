@@ -3,7 +3,7 @@ import { createEffect, createSignal, For } from 'solid-js'
 import { useInbox } from '~/context/inbox'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
-import type { Author } from '~/graphql/schema/core.gen'
+import type { Author } from '~/graphql/generated/graphql'
 import { Button } from '../_shared/Button/Button' // Импорт вашего компонента Button
 import styles from './CreateModalContent.module.scss'
 import InviteUser from './InviteUser'

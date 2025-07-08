@@ -4,7 +4,7 @@ import { NoHydration } from 'solid-js/web'
 import SwiperCore from 'swiper'
 import { Manipulation, Navigation, Pagination } from 'swiper/modules'
 
-import { Shout } from '~/graphql/schema/core.gen'
+import { Shout } from '~/graphql/generated/graphql'
 import { ArticleCard } from '../../Feed/ArticleCard'
 import { Row1 } from '../../Feed/Row1'
 import { Row2 } from '../../Feed/Row2'

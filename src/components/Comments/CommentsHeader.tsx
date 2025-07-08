@@ -1,7 +1,7 @@
 import { clsx } from 'clsx'
 import { Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
-import { ReactionSort } from '~/graphql/schema/core.gen'
+import { ReactionSort } from '~/graphql/generated/graphql'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 

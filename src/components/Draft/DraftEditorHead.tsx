@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { Show, untrack } from 'solid-js'
 import { useLocalize } from '~/context/localize'
-import { Draft } from '~/graphql/schema/core.gen'
+import { Draft } from '~/graphql/generated/graphql'
 import styles from '~/styles/views/EditView.module.scss'
 import { LayoutType } from '~/types/nav'
 import GrowingTextarea from '../_shared/GrowingTextarea/GrowingTextarea'

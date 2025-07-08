@@ -1,7 +1,7 @@
 import { clsx } from 'clsx'
 import { For } from 'solid-js'
 
-import { Author } from '~/graphql/schema/core.gen'
+import { Author } from '~/graphql/generated/graphql'
 import { Userpic } from '../../Author/Userpic'
 
 import styles from './GroupAvatar.module.scss'

@@ -3,7 +3,7 @@
 import { clsx } from 'clsx'
 import { For, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
-import type { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import type { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { Icon } from '../_shared/Icon'
 import { AuthorBadge } from '../Author/AuthorBadge'
 import { TopicCard } from '../Topic/Card'

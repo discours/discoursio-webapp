@@ -2,7 +2,7 @@ import { clsx } from 'clsx'
 import { createEffect, createSignal, For, onMount, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import type { Topic } from '~/graphql/schema/core.gen'
+import type { Topic } from '~/graphql/generated/graphql'
 import styles from './TopicSelect.module.scss'
 
 type TopicSelectProps = {

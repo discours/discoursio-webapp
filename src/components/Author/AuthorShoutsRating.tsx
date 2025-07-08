@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import { createMemo } from 'solid-js'
-import type { Author } from '~/graphql/schema/core.gen'
+import type { Author } from '~/graphql/generated/graphql'
 
 import styles from './AuthorRatingControl.module.scss'
 

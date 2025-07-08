@@ -1,4 +1,4 @@
-import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { getPageKeywords } from '~/intl/keywords'
 import { generateOGMetadata, OG_SITE_NAME, OG_TWITTER_SITE } from '~/lib/openGraph'
 

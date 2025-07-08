@@ -5,7 +5,7 @@ import { Component, createEffect, createMemo, ErrorBoundary, JSX, on, Show, Susp
 import { isServer } from 'solid-js/web'
 import { cdnUrl } from '~/config'
 import { useLocalize } from '~/context/localize'
-import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { getPageKeywords } from '~/intl/keywords'
 import { getCachedImageUrl } from '~/lib/imageCache'
 import { generateOGMetadata } from '~/lib/openGraph'

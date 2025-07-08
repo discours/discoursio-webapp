@@ -69,7 +69,7 @@ import {
   ReactionKind,
   Shout,
   Topic
-} from '~/graphql/schema/core.gen'
+} from '~/graphql/generated/graphql'
 import { getTimestampFromPeriod, PeriodType } from '~/lib/fromPeriod'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { FeedMode } from '~/types/nav'

@@ -18,13 +18,6 @@ import {
   saveEntireDraft
 } from '~/components/SimpleRichEditor/lib/storage'
 import { EditorData } from '~/components/SimpleRichEditor/lib/types'
-import unpublishShoutMutation from '~/graphql/mutation/core/article-unpublish'
-import createDraftMutation from '~/graphql/mutation/core/draft-create'
-import deleteDraftMutation from '~/graphql/mutation/core/draft-delete'
-import publishDraftMutation from '~/graphql/mutation/core/draft-publish'
-import updateDraftMutation from '~/graphql/mutation/core/draft-update'
-import loadShoutQuery from '~/graphql/query/core/article-load'
-import loadDraftsQuery from '~/graphql/query/core/drafts-load'
 import type {
   Author,
   CreateDraftMutationMutation,
@@ -35,7 +28,14 @@ import type {
   Topic,
   UnpublishShoutMutationMutation,
   UpdateDraftMutationMutation
-} from '~/graphql/schema/core.gen'
+} from '~/graphql/generated/graphql'
+import unpublishShoutMutation from '~/graphql/mutation/core/article-unpublish'
+import createDraftMutation from '~/graphql/mutation/core/draft-create'
+import deleteDraftMutation from '~/graphql/mutation/core/draft-delete'
+import publishDraftMutation from '~/graphql/mutation/core/draft-publish'
+import updateDraftMutation from '~/graphql/mutation/core/draft-update'
+import loadShoutQuery from '~/graphql/query/core/article-load'
+import loadDraftsQuery from '~/graphql/query/core/drafts-load'
 import { validateDraftForPublishing } from '~/lib/validateDraft'
 import { tryParseJson } from '~/utils/tryjson'
 import { useSession } from './session'
@@ -367,14 +367,14 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           local_id: `local-${draftId}`,
           created_at: localDraftData.timestamp,
           updated_at: localDraftData.timestamp,
-          created_by: { id: 0, slug: '' },
+          created_by: { id: 0, slug: '', name: '' },
           community: {
             id: 0,
             slug: '',
             name: '',
             pic: '',
             created_at: 0,
-            created_by: { id: 0, slug: '' }
+            created_by: { id: 0, slug: '', name: '' }
           },
           title: parseJsonContent(localDraftData.fields.title || ''),
           slug: parseJsonContent(localDraftData.fields.slug || ''),
@@ -632,15 +632,14 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           // Обязательные поля
           topics: [],
           authors: [], // Добавляем пустой массив для обязательного поля authors
-          created_by: { id: 0, slug: '' }, // Заглушка
+          created_by: { id: 0, slug: '', name: '' },
           community: {
-            // Заглушка
             id: 0,
             slug: '',
             name: '',
             pic: '',
             created_at: 0,
-            created_by: { id: 0, slug: '' }
+            created_by: { id: 0, slug: '', name: '' }
           },
           // Специальное поле для локальных черновиков
           local_id: String(draftIdNum)
@@ -793,14 +792,14 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         authors: [],
         created_at: timestamp,
         updated_at: timestamp,
-        created_by: { id: 0, slug: '' },
+        created_by: { id: 0, slug: '', name: '' },
         community: {
           id: 0,
           slug: '',
           name: '',
           pic: '',
           created_at: 0,
-          created_by: { id: 0, slug: '' }
+          created_by: { id: 0, slug: '', name: '' }
         },
         local_id: String(draftId)
       }
@@ -848,14 +847,14 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         authors: [],
         created_at: Date.now(),
         updated_at: Date.now(),
-        created_by: { id: 0, slug: '' },
+        created_by: { id: 0, slug: '', name: '' },
         community: {
           id: 0,
           slug: '',
           name: '',
           pic: '',
           created_at: 0,
-          created_by: { id: 0, slug: '' }
+          created_by: { id: 0, slug: '', name: '' }
         }
       }
 
@@ -1523,7 +1522,7 @@ export const useDrafts = () => {
 }
 
 // Экспортируем тип DraftInput для использования в других компонентах
-export type { DraftInput } from '~/graphql/schema/core.gen'
+export type { DraftInput } from '~/graphql/generated/graphql'
 
 /**
  * Преобразует список тем-объектов в массив их идентификаторов для DraftInput

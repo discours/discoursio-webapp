@@ -2,7 +2,7 @@ import { clsx } from 'clsx'
 import { createSignal, Show } from 'solid-js'
 
 import { Icon } from '~/components/_shared/Icon'
-import { MediaItem } from '~/graphql/schema/core.gen'
+import { MediaItem } from '~/graphql/generated/graphql'
 import { useOutsideClickHandler } from '~/lib/useOutsideClickHandler'
 import styles from './AudioPlayer.module.scss'
 

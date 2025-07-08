@@ -16,7 +16,7 @@ import {
   QueryLoad_Authors_ByArgs,
   Shout,
   Topic
-} from '~/graphql/schema/core.gen'
+} from '~/graphql/generated/graphql'
 import { FilterFunction, SortFunction } from '~/types/nav'
 import { byStat } from '~/utils/sort'
 import { useFeed } from './feed'

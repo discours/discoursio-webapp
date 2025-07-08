@@ -3,7 +3,7 @@
  * @description Модуль для работы с аудио в редакторе
  */
 
-import { MediaItem } from '~/graphql/schema/core.gen'
+import { MediaItem } from '~/graphql/generated/graphql'
 import { replaceSelection } from './utils'
 
 /**

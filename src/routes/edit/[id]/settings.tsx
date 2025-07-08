@@ -5,7 +5,7 @@ import { AuthGuard } from '~/components/AuthGuard'
 import { EditSettingsView } from '~/components/Views/EditSettingsView'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
-import { Draft } from '~/graphql/schema/core.gen'
+import { Draft } from '~/graphql/generated/graphql'
 
 export default (props: RouteSectionProps) => {
   const { t } = useLocalize()

@@ -5,7 +5,7 @@ import { Accessor, createEffect, createSignal, For, Show, untrack } from 'solid-
 import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import type { Topic } from '~/graphql/schema/core.gen'
+import type { Topic } from '~/graphql/generated/graphql'
 import { capitalize } from '~/utils/capitalize'
 import { getRandomItemsFromArray } from '~/utils/random'
 

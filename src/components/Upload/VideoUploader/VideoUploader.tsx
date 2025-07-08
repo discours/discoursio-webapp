@@ -5,7 +5,7 @@ import { toast } from 'solid-toast'
 
 import { VideoPlayer } from '~/components/_shared/VideoPlayer'
 import { useLocalize } from '~/context/localize'
-import { MediaItem } from '~/graphql/schema/core.gen'
+import { MediaItem } from '~/graphql/generated/graphql'
 import { composeMediaItems } from '~/lib/composeMediaItems'
 import { validateUrl } from '~/utils/validate'
 

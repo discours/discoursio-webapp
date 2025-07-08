@@ -6,7 +6,7 @@ import type { ExtendedDraft } from '~/context/drafts'
 import { useDrafts } from '~/context/drafts'
 import { createValidDate, useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
-import { Author, DraftInput, Maybe, Topic } from '~/graphql/schema/core.gen'
+import { Author, DraftInput, Maybe, Topic } from '~/graphql/generated/graphql'
 import { Icon } from '../_shared/Icon'
 
 import styles from './DraftCard.module.scss'

@@ -11,7 +11,7 @@ import {
 } from 'solid-js'
 import { RANDOM_TOPIC_SHOUTS_COUNT } from '~/constants/pagination'
 import { loadShouts } from '~/graphql/api/public'
-import { Shout, Topic } from '~/graphql/schema/core.gen'
+import { Shout, Topic } from '~/graphql/generated/graphql'
 import { byStat } from '../utils/sort'
 import { FEED_PAGE_SIZE } from './feed'
 import { useTopics } from './topics'

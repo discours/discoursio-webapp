@@ -2,7 +2,7 @@ import { useSearchParams } from '@solidjs/router'
 import { createSignal, For, onMount, Show } from 'solid-js'
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
-import type { SearchResult, Shout } from '~/graphql/schema/core.gen'
+import type { SearchResult, Shout } from '~/graphql/generated/graphql'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { ArticleCard } from '../Feed/ArticleCard'
 

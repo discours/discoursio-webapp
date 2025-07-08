@@ -1,6 +1,6 @@
 import { isServer } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
-import type { Draft, DraftInput } from '~/graphql/schema/core.gen'
+import type { Draft, DraftInput } from '~/graphql/generated/graphql'
 import { EditorFieldType } from './types'
 
 /**

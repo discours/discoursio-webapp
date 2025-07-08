@@ -1,7 +1,7 @@
 import { Accessor, createContext, createEffect, createSignal, JSX, on, useContext } from 'solid-js'
 import { createStore } from 'solid-js/store'
+import type { Author, ProfileInput } from '~/graphql/generated/graphql'
 import updateAuthorMuatation from '~/graphql/mutation/core/author-update'
-import type { Author, ProfileInput } from '~/graphql/schema/core.gen'
 import { useAuthors } from './authors'
 import { useSession } from './session'
 

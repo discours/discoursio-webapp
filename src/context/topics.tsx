@@ -1,7 +1,7 @@
 import { Accessor, Component, createContext, createEffect, createResource, JSX, useContext } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { loadTopics, loadTopicsByCommunity } from '~/graphql/api/public'
-import { QueryGet_Topics_By_CommunityArgs, Topic } from '~/graphql/schema/core.gen'
+import { QueryGet_Topics_By_CommunityArgs, Topic } from '~/graphql/generated/graphql'
 import { byTopicStatDesc } from '../utils/sort'
 
 export const TOPICS_PER_PAGE = 50
@@ -101,7 +101,7 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
 
         // Применяем сортировку к результату только один раз
         setState('initialized', true)
-        return result.sort(byTopicStatDesc(sortBy))
+        return result.sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
       } catch (error) {
         console.error('Failed to load topics:', error)
         setState('error', error as Error)
@@ -174,8 +174,8 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
       })
 
       // Сортируем только один раз для каждого типа
-      const byAuthors = topicsWithAuthors.sort(byTopicStatDesc('authors'))
-      const byShouts = topicsWithShouts.sort(byTopicStatDesc('shouts'))
+      const byAuthors = topicsWithAuthors.sort(byTopicStatDesc('authors') as (a: Topic, b: Topic) => number)
+      const byShouts = topicsWithShouts.sort(byTopicStatDesc('shouts') as (a: Topic, b: Topic) => number)
 
       return {
         ...prev,
@@ -209,15 +209,19 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
 
       if (prev.sortBy === 'authors') {
         const newAuthorsTopics = newTopics.filter((t) => t.stat?.authors && t.stat.authors > 0)
-        byAuthors = [...prev.byAuthors, ...newAuthorsTopics].sort(byTopicStatDesc('authors'))
+        byAuthors = [...prev.byAuthors, ...newAuthorsTopics].sort(
+          byTopicStatDesc('authors') as (a: Topic, b: Topic) => number
+        )
       } else if (prev.sortBy === 'shouts') {
         const newShoutsTopics = newTopics.filter((t) => t.stat?.shouts && t.stat.shouts > 0)
-        byShouts = [...prev.byShouts, ...newShoutsTopics].sort(byTopicStatDesc('shouts'))
+        byShouts = [...prev.byShouts, ...newShoutsTopics].sort(
+          byTopicStatDesc('shouts') as (a: Topic, b: Topic) => number
+        )
       }
 
       // Обновляем основной отсортированный список
       const allTopics = Object.values(entities) as Topic[]
-      const sorted = allTopics.sort(byTopicStatDesc(prev.sortBy))
+      const sorted = allTopics.sort(byTopicStatDesc(prev.sortBy) as (a: Topic, b: Topic) => number)
 
       return {
         ...prev,

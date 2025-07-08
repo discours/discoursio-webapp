@@ -1,5 +1,5 @@
 import { baseUrl } from '~/config'
-import { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { descFromBody } from '~/utils/meta'
 
 /**

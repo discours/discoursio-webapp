@@ -1,4 +1,4 @@
-import type { Author, Shout, Topic } from '~/graphql/schema/core.gen'
+import type { Author, Shout, Topic } from '~/graphql/generated/graphql'
 
 export interface SearchBaseProps {
   searchValue: string

@@ -1,7 +1,7 @@
 import { createEffect, createSignal, JSX, on, onCleanup, onMount, Show, untrack } from 'solid-js'
 import { Button } from '~/components/_shared/Button'
 import { useLocalize } from '~/context/localize'
-import { Author, Reaction, Shout } from '~/graphql/schema/core.gen'
+import { Author, Reaction, Shout } from '~/graphql/generated/graphql'
 import { SortFunction } from '~/types/nav'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { byCreated, getFilteredItems } from '~/utils/sort'

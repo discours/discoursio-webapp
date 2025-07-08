@@ -5,21 +5,6 @@ import {
   createQueryResource,
   defaultClient
 } from '~/graphql/client'
-import getShoutQuery from '~/graphql/query/core/article-load'
-import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
-import loadShoutsSearchQuery from '~/graphql/query/core/articles-load-search'
-import loadShoutsUnratedQuery from '~/graphql/query/core/articles-load-unrated'
-import getAuthorQuery from '~/graphql/query/core/author-by'
-import loadAuthorsAllQuery from '~/graphql/query/core/authors-all'
-import loadAuthorsByQuery from '~/graphql/query/core/authors-load-by'
-import loadAuthorsSearchQuery from '~/graphql/query/core/authors-load-search'
-import loadCommentsBranchQuery from '~/graphql/query/core/comments-load-branch'
-import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
-import getAuthorsByTopicQuery from '~/graphql/query/core/topic-authors'
-import topicBySlugQuery from '~/graphql/query/core/topic-by-slug'
-import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
-import loadTopicsQuery from '~/graphql/query/core/topics-all'
-import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community'
 import {
   Author,
   LoadShoutsOptions,
@@ -37,7 +22,22 @@ import {
   Reaction,
   Shout,
   Topic
-} from '~/graphql/schema/core.gen'
+} from '~/graphql/generated/graphql'
+import getShoutQuery from '~/graphql/query/core/article-load'
+import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
+import loadShoutsSearchQuery from '~/graphql/query/core/articles-load-search'
+import loadShoutsUnratedQuery from '~/graphql/query/core/articles-load-unrated'
+import getAuthorQuery from '~/graphql/query/core/author-by'
+import loadAuthorsAllQuery from '~/graphql/query/core/authors-all'
+import loadAuthorsByQuery from '~/graphql/query/core/authors-load-by'
+import loadAuthorsSearchQuery from '~/graphql/query/core/authors-load-search'
+import loadCommentsBranchQuery from '~/graphql/query/core/comments-load-branch'
+import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
+import getAuthorsByTopicQuery from '~/graphql/query/core/topic-authors'
+import topicBySlugQuery from '~/graphql/query/core/topic-by-slug'
+import getFollowersByTopicQuery from '~/graphql/query/core/topic-followers'
+import loadTopicsQuery from '~/graphql/query/core/topics-all'
+import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community'
 
 // Topics API
 /**

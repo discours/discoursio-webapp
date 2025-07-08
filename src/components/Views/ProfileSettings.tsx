@@ -19,7 +19,7 @@ import { useLocalize } from '~/context/localize'
 import { useProfile } from '~/context/profile'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
-import { InputMaybe, ProfileInput } from '~/graphql/schema/core.gen'
+import { InputMaybe, ProfileInput } from '~/graphql/generated/graphql'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { handleFileUpload } from '~/lib/handleFileUpload'
 import { profileSocialLinks } from '~/lib/profileSocialLinks'
@@ -429,8 +429,14 @@ export const ProfileSettings = () => {
           <Show when={Boolean(userpicFile())}>
             <ImageCropper
               uploadFile={userpicFile() as UploadFile}
-              onSave={(data) => {
-                void handleUploadAvatar(data)
+              onSave={(data: File) => {
+                const uploadFile: UploadFile = {
+                  source: data.name,
+                  file: data,
+                  name: data.name,
+                  size: data.size
+                }
+                void handleUploadAvatar(uploadFile)
 
                 hideModal()
               }}

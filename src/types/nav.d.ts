@@ -46,7 +46,7 @@ export type SortFunction<T> = (a: T, b: T) => number
  */
 export type FilterFunction<T> = (a: T) => boolean
 
-import { InputMaybe, ReactionSort } from '~/graphql/schema/core.gen'
+import { InputMaybe, ReactionSort } from '~/graphql/generated/graphql'
 
 /**
  * Фильтр для избранных публикаций

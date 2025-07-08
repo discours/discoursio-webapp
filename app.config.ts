@@ -41,13 +41,13 @@ function checkSSL(): { key: string; cert: string } | undefined {
 export default defineConfig({
   nitro: {
     timing: true,
-    compatibilityDate: '2024-11-29',
+    compatibilityDate: '2024-11-29'
   },
   // Force Edge runtime for OG image generation routes
   routeRules: {
-    '/api/og/**': { 
+    '/api/og/**': {
       prerender: false,
-      runtime: 'edge'  // Key fix: Force Edge runtime for OG routes
+      runtime: 'edge' // Key fix: Force Edge runtime for OG routes
     }
   },
   rollupConfig: {

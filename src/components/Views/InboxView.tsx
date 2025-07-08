@@ -9,13 +9,13 @@ import { useInbox } from '~/context/inbox'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
+import type { Author } from '~/graphql/generated/graphql'
 import type {
   Chat,
   ChatMember,
   Message as MessageType,
   MutationCreate_MessageArgs
 } from '~/graphql/schema/chat.gen'
-import type { Author } from '~/graphql/schema/core.gen'
 import { getShortDate } from '~/lib/fromPeriod'
 import styles from '~/styles/views/Inbox.module.scss'
 import { Button } from '../_shared/Button'

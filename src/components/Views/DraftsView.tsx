@@ -6,7 +6,7 @@ import { Placeholder } from '~/components/Feed/Placeholder'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
-import { Draft } from '~/graphql/schema/core.gen'
+import { Draft } from '~/graphql/generated/graphql'
 import styles from '~/styles/views/DraftsView.module.scss'
 import { Loading } from '../_shared/Loading'
 

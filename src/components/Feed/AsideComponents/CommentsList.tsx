@@ -4,7 +4,7 @@ import { AuthorLink } from '~/components/Author/AuthorLink'
 import { CommentDate } from '~/components/Comments/CommentDate'
 import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { useLocalize } from '~/context/localize'
-import { Author, Reaction } from '~/graphql/schema/core.gen'
+import { Author, Reaction } from '~/graphql/generated/graphql'
 import styles from './CommentsList.module.scss'
 
 export interface CommentsListProps {

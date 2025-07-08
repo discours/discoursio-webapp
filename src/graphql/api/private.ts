@@ -1,15 +1,6 @@
 import { Client } from '@urql/core'
 import { createResource } from 'solid-js'
 import { createQueryResource, defaultClient, ResourceArgs } from '~/graphql/client'
-import loadShoutsBookmarkedQuery from '~/graphql/query/core/articles-load-bookmarked'
-import loadShoutsCoauthoredQuery from '~/graphql/query/core/articles-load-coauthored'
-import loadShoutsDiscussedQuery from '~/graphql/query/core/articles-load-discussed'
-import loadShoutsFeedQuery from '~/graphql/query/core/articles-load-feed'
-import loadShoutsFollowedByQuery from '~/graphql/query/core/articles-load-followed-by'
-import loadArticlesMyRatesQuery from '~/graphql/query/core/articles-myrates'
-import loadCommentsMyRatesQuery from '~/graphql/query/core/comments-myrates'
-import loadCommunitiesFollowedQuery from '~/graphql/query/core/communities-followed-by'
-import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
 import {
   Community,
   LoadShoutsOptions,
@@ -21,7 +12,16 @@ import {
   ReactionBy,
   ReactionKind,
   Shout
-} from '~/graphql/schema/core.gen'
+} from '~/graphql/generated/graphql'
+import loadShoutsBookmarkedQuery from '~/graphql/query/core/articles-load-bookmarked'
+import loadShoutsCoauthoredQuery from '~/graphql/query/core/articles-load-coauthored'
+import loadShoutsDiscussedQuery from '~/graphql/query/core/articles-load-discussed'
+import loadShoutsFeedQuery from '~/graphql/query/core/articles-load-feed'
+import loadShoutsFollowedByQuery from '~/graphql/query/core/articles-load-followed-by'
+import loadArticlesMyRatesQuery from '~/graphql/query/core/articles-myrates'
+import loadCommentsMyRatesQuery from '~/graphql/query/core/comments-myrates'
+import loadCommunitiesFollowedQuery from '~/graphql/query/core/communities-followed-by'
+import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
 
 /**
  * Реактивный ресурс для загрузки ленты подписок

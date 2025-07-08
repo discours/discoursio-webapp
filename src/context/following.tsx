@@ -12,12 +12,11 @@ import {
   useContext
 } from 'solid-js'
 import { createStore } from 'solid-js/store'
-
+import { Author, CommonResult, Community, FollowingEntity, Topic } from '~/graphql/generated/graphql'
 import followMutation from '~/graphql/mutation/core/follow'
 import unfollowMutation from '~/graphql/mutation/core/unfollow'
 import loadAuthorFollowers from '~/graphql/query/core/author-followers'
 import loadAuthorFollowsQuery from '~/graphql/query/core/author-follows'
-import { Author, CommonResult, Community, FollowingEntity, Topic } from '~/graphql/schema/core.gen'
 import { useSession } from './session'
 import { useUI } from './ui'
 

@@ -9,7 +9,7 @@ import { FEED_PAGE_SIZE } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { loadShouts, loadTopicBySlug } from '~/graphql/api/public'
-import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/schema/core.gen'
+import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/generated/graphql'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { descFromBody } from '~/utils/meta'
 

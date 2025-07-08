@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, on, onMount, Show } from 'solid-js'
 
 import { cdnUrl } from '~/config'
-import { MediaItem } from '~/graphql/schema/core.gen'
+import { MediaItem } from '~/graphql/generated/graphql'
 import { AudioTimeLine } from './AudioTimeLine'
 import { PlayerHeader } from './PlayerHeader'
 

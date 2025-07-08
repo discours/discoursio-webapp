@@ -1,7 +1,7 @@
 import { batch, createMemo, createSignal, For, Show, untrack } from 'solid-js'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
-import { Reaction, ReactionSort } from '~/graphql/schema/core.gen'
+import { Reaction, ReactionSort } from '~/graphql/generated/graphql'
 import { byCreated } from '~/utils/sort'
 import { Button } from '../_shared/Button'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'

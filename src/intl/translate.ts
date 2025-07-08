@@ -1,4 +1,4 @@
-import { Author } from '~/graphql/schema/core.gen'
+import { Author } from '~/graphql/generated/graphql'
 import { capitalize } from '~/utils/capitalize'
 import { cyrillicRegex, findFirstReadableCharIndex, notChar, notLatin, notRus } from './chars'
 import { translit } from './translit'

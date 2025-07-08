@@ -2,16 +2,16 @@ import type { Accessor, JSX } from 'solid-js'
 import { createContext, createSignal, onCleanup, useContext } from 'solid-js'
 import toast from 'solid-toast'
 import { loadCommentsBranch as loadCommentsBranchApi, loadReactions } from '~/graphql/api/public'
-import createReactionMutation from '~/graphql/mutation/core/reaction-create'
-import destroyReactionMutation from '~/graphql/mutation/core/reaction-destroy'
-import updateReactionMutation from '~/graphql/mutation/core/reaction-update'
 import {
   MutationCreate_ReactionArgs,
   MutationUpdate_ReactionArgs,
   QueryLoad_Comments_BranchArgs,
   QueryLoad_Reactions_ByArgs,
   Reaction
-} from '~/graphql/schema/core.gen'
+} from '~/graphql/generated/graphql'
+import createReactionMutation from '~/graphql/mutation/core/reaction-create'
+import destroyReactionMutation from '~/graphql/mutation/core/reaction-destroy'
+import updateReactionMutation from '~/graphql/mutation/core/reaction-update'
 import { useLocalize } from './localize'
 import { useSession } from './session'
 

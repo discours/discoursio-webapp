@@ -6,7 +6,7 @@ import { InboxView } from '~/components/Views/InboxView'
 import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import { loadAuthorsAll } from '~/graphql/api/public'
-import { Author } from '~/graphql/schema/core.gen'
+import { Author } from '~/graphql/generated/graphql'
 
 export const route = {
   load: async () => {

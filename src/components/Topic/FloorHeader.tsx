@@ -1,5 +1,5 @@
 import { useLocalize } from '~/context/localize'
-import type { Topic } from '~/graphql/schema/core.gen'
+import type { Topic } from '~/graphql/generated/graphql'
 import { Icon } from '../_shared/Icon'
 
 import './FloorHeader.scss'

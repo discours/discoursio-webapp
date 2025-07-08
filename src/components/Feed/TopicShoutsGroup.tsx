@@ -1,6 +1,6 @@
 import { Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
-import { Shout, Topic } from '~/graphql/schema/core.gen'
+import { Shout, Topic } from '~/graphql/generated/graphql'
 import { capitalize } from '~/utils/capitalize'
 import { Icon } from '../_shared/Icon'
 import Group from './Group'

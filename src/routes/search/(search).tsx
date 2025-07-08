@@ -5,7 +5,7 @@ import { PageLayout } from '~/components/_shared/PageLayout'
 import { SearchView } from '~/components/Views/SearchView'
 import { useLocalize } from '~/context/localize'
 import { loadShoutsSearch } from '~/graphql/api/public'
-import { LoadShoutsOptions, QueryLoad_Shouts_SearchArgs, SearchResult } from '~/graphql/schema/core.gen'
+import { LoadShoutsOptions, QueryLoad_Shouts_SearchArgs, SearchResult } from '~/graphql/generated/graphql'
 
 const fetchSearchResult = async (args: QueryLoad_Shouts_SearchArgs) => {
   if (!args.text.trim()) return () => [] as SearchResult[]
