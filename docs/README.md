@@ -121,6 +121,8 @@
 - i18next интернационализация
 - SolidJS реактивность
 - Vite + Vinxi сборка
+- **Lightning CSS** - Сверхбыстрый CSS обработчик на Rust (50-100x быстрее PostCSS)
+- **Biome** - All-in-one линтер и форматтер (заменил ESLint + Prettier)
 - [Open Graph и социальные сети](open-graph.md) - Динамические OG-изображения и мета-теги
 
 ## 🚀 Быстрый старт

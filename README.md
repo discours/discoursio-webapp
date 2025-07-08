@@ -32,6 +32,7 @@
 ![i18next](https://img.shields.io/badge/Languages-RU/EN-orange?style=flat)
 ![Vinxi](https://img.shields.io/badge/Build-Vinxi-orange?style=flat)
 ![Vite](https://img.shields.io/badge/Bundler-Vite-646cff?style=flat&logo=vite)
+![Lightning CSS](https://img.shields.io/badge/CSS-Lightning_CSS-ffd700?style=flat)
 ![Biome](https://img.shields.io/badge/Linter-Biome-60a5fa?style=flat)
 
 ## 🛠️ Разработка
