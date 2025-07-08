@@ -41,13 +41,20 @@ function checkSSL(): { key: string; cert: string } | undefined {
 export default defineConfig({
   nitro: {
     timing: true,
-    compatibilityDate: '2024-11-29'
+    compatibilityDate: '2024-11-29',
+    // Настройки для правильной работы с Vercel
+    rollupConfig: {
+      external: ['@vercel/og']
+    }
   },
-  // Force Edge runtime for OG image generation routes
+  // Edge runtime ТОЛЬКО для OG routes
   routeRules: {
     '/api/og/**': {
       prerender: false,
-      runtime: 'edge' // Key fix: Force Edge runtime for OG routes
+      runtime: 'edge', // Edge только для OG routes с WASM поддержкой
+      headers: {
+        'Cache-Control': 'public, max-age=3600, s-maxage=86400'
+      }
     }
   },
   rollupConfig: {
@@ -63,9 +70,8 @@ export default defineConfig({
   },
   devOverlay: isDev,
   vite: viteConfig,
-  edge: isVercel,
   experimental: {
-    // wasm: true, //  Build failed: Error: ENOENT: no such file or directory, open '/vercel/path0/.vinxi/build/server-fns/_server/manifest.json'
+    // Минимальные экспериментальные настройки для стабильности
     streaming: false,
     islands: false,
     hydration: true,

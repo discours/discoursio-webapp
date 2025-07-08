@@ -50,23 +50,7 @@ const GET_USER = gql`
 // GET_USER автоматически типизирован!
 ```
 
-### 4. **GraphQL Request SDK**
-- **Пакет**: `@graphql-codegen/typescript-graphql-request`
-- **Назначение**: Готовые к использованию функции для выполнения запросов
-- **Генерирует**: `sdk.ts`
-
-**Использование:**
-```typescript
-import { getSdk } from '~/graphql/generated'
-
-const client = new GraphQLClient('https://api.example.com/graphql')
-const sdk = getSdk(client)
-
-// Типизированные функции для всех операций
-const user = await sdk.GetUser({ id: '123' })
-```
-
-### 5. **Introspection** ⭐ *Добавлен*
+### 4. **Introspection** ⭐ *Основной*
 - **Пакет**: `@graphql-codegen/introspection`
 - **Назначение**: Генерация интроспекции схемы для dev tools
 - **Генерирует**: `introspection.json`
@@ -77,7 +61,7 @@ const user = await sdk.GetUser({ id: '123' })
 - Debugging tools
 - Schema validation
 
-### 6. **Schema AST** ⭐ *Добавлен*
+### 5. **Schema AST** ⭐ *Основной*
 - **Пакет**: `@graphql-codegen/schema-ast`
 - **Назначение**: Человекочитаемая схема GraphQL
 - **Генерирует**: `schema.graphql`
@@ -96,7 +80,6 @@ src/graphql/generated/
 ├── gql.ts                      # Client preset gql функция
 ├── graphql.ts                  # Client preset типы
 ├── types.ts                    # Все GraphQL типы
-├── sdk.ts                      # GraphQL Request SDK
 ├── typed-document-nodes.ts     # TypedDocumentNode экспорты
 ├── introspection.json          # Интроспекция схемы
 └── schema.graphql              # Человекочитаемая схема
@@ -104,7 +87,7 @@ src/graphql/generated/
 
 ## Примеры использования
 
-### Client Preset подход
+### Client Preset подход (Рекомендуется)
 ```typescript
 import { gql } from '~/graphql/generated'
 
@@ -116,14 +99,6 @@ const GET_POSTS = gql`
     }
   }
 `
-```
-
-### SDK подход
-```typescript
-import { getSdk } from '~/graphql/generated'
-
-const sdk = getSdk(client)
-const posts = await sdk.GetPosts()
 ```
 
 ### Импорт типов сущностей
@@ -176,10 +151,10 @@ jq . src/graphql/generated/introspection.json
 
 1. **Используйте Client Preset** для новых запросов
 2. **Импортируйте типы** из `~/graphql/generated`
-3. **Используйте SDK** для готовых функций
-4. **Используйте TypedDocumentNode** для максимальной типизации
-5. **Проверяйте schema.graphql** для понимания API
-6. **Используйте introspection.json** в dev tools
+3. **Используйте TypedDocumentNode** для максимальной типизации
+4. **Проверяйте schema.graphql** для понимания API
+5. **Используйте introspection.json** в dev tools
+6. **Используйте URQL клиент** для выполнения запросов
 
 ## Обновление
 
@@ -188,4 +163,25 @@ jq . src/graphql/generated/introspection.json
 npm run codegen
 ```
 
-Все файлы будут автоматически перегенерированы с актуальными типами. 
+## Архитектура GraphQL клиента
+
+Проект использует **URQL** в качестве основного GraphQL клиента:
+
+```typescript
+import { createClient, fetchExchange, cacheExchange } from '@urql/core'
+
+// Создание клиента
+const client = createClient({
+  url: 'https://api.example.com/graphql',
+  exchanges: [fetchExchange, cacheExchange]
+})
+
+// Выполнение запроса
+const result = await client.query(GET_POSTS, {}).toPromise()
+```
+
+**Преимущества URQL:**
+- Встроенная система кеширования
+- Поддержка SSR
+- Интеграция с SolidJS
+- Расширяемая архитектура exchanges

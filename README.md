@@ -2,7 +2,7 @@
 
 ![Version](https://img.shields.io/badge/version-0.12.0-blue.svg?style=flat)
 ![Tests](https://img.shields.io/badge/Tests-12_specs-28a745?style=flat&logo=playwright)
-![Docs](https://img.shields.io/badge/Docs-29_files-6f42c1?style=flat&logo=markdown)
+![Docs](https://img.shields.io/badge/Docs-30+_files-6f42c1?style=flat&logo=markdown)
 ![Lines](https://img.shields.io/badge/Lines-45K+-informational?style=flat)
 ![Files](https://img.shields.io/badge/Files-593-informational?style=flat) 
 ![Components](https://img.shields.io/badge/Components-120+-success?style=flat)
