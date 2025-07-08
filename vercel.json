@@ -108,11 +108,15 @@
     },
     {
       "source": "/cdn.dscrs.site/:path*",
-      "destination": "https://cdn.dscrs.site/:path*"
+      "destination": "https://files.dscrs.site/:path*"
     },
     {
       "source": "/cdn.discours.io/:path*",
-      "destination": "https://cdn.discours.io/:path*"
+      "destination": "https://files.dscrs.site/:path*"
+    },
+    {
+      "source": "/images.discours.io/:path*",
+      "destination": "https://files.dscrs.site/:path*"
     }
   ]
 }

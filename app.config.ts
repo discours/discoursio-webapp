@@ -8,7 +8,7 @@ const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)
 
 const isVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV)
 const isNetlify = Boolean(process.env.NETLIFY)
-const preset = isNetlify ? 'netlify' : isVercel ? 'vercel' : 'node'
+const preset = isNetlify ? 'netlify' : isVercel ? 'vercel-edge' : 'node'
 console.info(`[app.config] solid-start preset {> ${preset} <} (VERCEL: ${isVercel})`)
 
 // certs for local development
@@ -42,6 +42,18 @@ export default defineConfig({
   nitro: {
     timing: true,
     compatibilityDate: '2024-11-29',
+  },
+  // Force Edge runtime for OG image generation routes
+  routeRules: {
+    '/api/og/**': { 
+      prerender: false,
+      runtime: 'edge'  // Key fix: Force Edge runtime for OG routes
+    }
+  },
+  rollupConfig: {
+    output: {
+      inlineDynamicImports: false
+    }
   },
   ssr: true,
   server: {

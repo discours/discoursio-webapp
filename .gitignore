@@ -44,3 +44,5 @@ venv
 /SV-DEV/*
 .cursor
 .cursorrules
+
+src/graphql/generated/
