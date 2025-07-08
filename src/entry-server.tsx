@@ -11,12 +11,7 @@ const ServerErrorFallback = (err: any) => {
 
   // В production возвращаем минимальный HTML
   if (process.env.NODE_ENV === 'production') {
-    return (
-      <div style={{ padding: '20px', 'text-align': 'center' }}>
-        <h1>Загрузка...</h1>
-        <p>Пожалуйста, подождите</p>
-      </div>
-    )
+    return <Loading />
   }
 
   // В dev режиме показываем детали

@@ -65,6 +65,7 @@ export default defineConfig({
   vite: viteConfig,
   edge: isVercel,
   experimental: {
+    wasm: true,
     streaming: false,
     islands: false,
     hydration: true,
