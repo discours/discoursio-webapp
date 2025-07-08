@@ -8,7 +8,7 @@ const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)
 
 const isVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV)
 const isNetlify = Boolean(process.env.NETLIFY)
-const preset = isNetlify ? 'netlify' : isVercel ? 'vercel-edge' : 'node'
+const preset = isNetlify ? 'netlify' : isVercel ? 'vercel' : 'node'
 console.info(`[app.config] solid-start preset {> ${preset} <} (VERCEL: ${isVercel})`)
 
 // certs for local development
@@ -65,7 +65,7 @@ export default defineConfig({
   vite: viteConfig,
   edge: isVercel,
   experimental: {
-    wasm: true,
+    // wasm: true, //  Build failed: Error: ENOENT: no such file or directory, open '/vercel/path0/.vinxi/build/server-fns/_server/manifest.json'
     streaming: false,
     islands: false,
     hydration: true,
