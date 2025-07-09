@@ -100,7 +100,9 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
 
   createEffect(
     on([() => props.chat, currentDialog], ([c, current]) => {
-      c?.id !== current?.id && handleOpenChat(c as Chat)
+      if (c?.id !== current?.id) {
+        void handleOpenChat(c as Chat)
+      }
     })
   )
 

@@ -681,13 +681,13 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
             switch (currentMode) {
               case 'hot':
-                loadHotFeed()
+                void loadHotFeed()
                 break
               case 'top':
-                loadTopFeed()
+                void loadTopFeed()
                 break
               default:
-                loadRecentFeed()
+                void loadRecentFeed()
                 break
             }
           }

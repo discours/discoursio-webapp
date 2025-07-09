@@ -37,10 +37,10 @@ export const DropArea = (props: Props) => {
     try {
       setLoading(true)
       const tkn = session()?.token as string
-      tkn &&
-        Promise.all(files.map((file) => handleFileUpload(file, tkn)))
-          .then(props.onUpload)
-          .catch(console.error)
+      if (tkn) {
+        await Promise.all(files.map((file) => handleFileUpload(file, tkn)))
+        props.onUpload?.(files)
+      }
       setLoading(false)
     } catch (error) {
       setLoading(false)

@@ -67,7 +67,7 @@ export const HomeView = (props: HomeViewProps) => {
     const topMonth = props.topMonthShouts || []
     const topViewed = props.topViewedShouts || []
     const topCommented = props.topCommentedShouts || []
-    
+
     // Безопасный доступ к randomTopicFeed - может быть undefined на сервере
     const randomTopic = randomTopicFeed()?.shouts || []
 
