@@ -1,88 +1,49 @@
-// Импорт стилей cropt
-@import 'cropt/src/cropt.css';
-
 .cropperContainer {
-  max-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--black-50);
+  border-radius: var(--comment-radius-md);
 }
 
-.cropperImageContainer {
-  position: relative;
-  width: 100%;
-  
-  // Адаптированные стили для cropt
-  :global(.cr-boundary) {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-  }
-  
-  :global(.cr-viewport) {
-    border: 2px solid #000 !important;
-    border-radius: 50% !important;
-    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4) !important;
-    outline: none !important;
-  }
-  
-  :global(.cr-overlay) {
-    background-color: rgba(0, 0, 0, 0.4) !important;
-  }
-  
-  // Стили для слайдера масштабирования
-  :global(.cr-slider) {
-    width: 100%;
-    margin: 1rem 0;
-    -webkit-appearance: none;
-    appearance: none;
-    height: 4px;
-    border-radius: 2px;
-    background: #ddd;
-    outline: none;
-    
-    &::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #007bff;
-      cursor: pointer;
-      border: 2px solid #fff;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-    
-    &::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #007bff;
-      cursor: pointer;
-      border: 2px solid #fff;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-  }
-  
-  // Стили для обработки изображения
-  img {
-    max-width: 100%;
-    max-height: 100%;
-    user-select: none;
-    -webkit-user-drag: none;
-  }
+.cropperCanvas {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--background-color);
+  border-radius: var(--border-radius);
+  padding: 10px;
+  box-shadow: 0 2px 8px var(--shadow-color-medium);
+}
+
+.cropperCanvas canvas {
+  border: 1px solid var(--clr-border-color);
+  border-radius: var(--border-radius);
+  cursor: grab;
+  max-width: 100%;
+  max-height: 400px;
+}
+
+.cropperCanvas canvas.dragging {
+  cursor: grabbing;
 }
 
 .cropperControls {
   display: flex;
-  justify-content: space-between;
-  margin-top: 2rem;
-  gap: 1rem;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .cropperContainer {
+    padding: 0.5rem;
+  }
   
-  // Адаптивность для мобильных устройств
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 0.5rem;
-    
-    button {
-      width: 100%;
-    }
+  .cropperCanvas canvas {
+    max-width: calc(100vw - 2rem);
+    max-height: 300px;
   }
 }
