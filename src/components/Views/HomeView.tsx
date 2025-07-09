@@ -49,18 +49,40 @@ export const HomeView = (props: HomeViewProps) => {
     paginate(props.featuredShouts || [], SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, SHOUTS_PER_PAGE)
   )
 
-  const hasMoreShouts = createMemo(() => (props.featuredShouts || []).length >= MIN_SHOUTS_FOR_FULL_VIEW)
+  // Стабилизируем условие для предотвращения ошибок гидрации
+  // Проверяем наличие данных вместо минимального количества
+  const hasMoreShouts = createMemo(() => {
+    const featured = props.featuredShouts || []
+    // Используем более стабильное условие - проверяем наличие данных
+    return featured.length > 0 && featured.length >= MIN_SHOUTS_FOR_FULL_VIEW
+  })
 
   // Система дедупликации для предотвращения повторов публикаций
   const deduplicatedBlocks = createMemo(() => {
     const dedupContext = new FeedDeduplicationContext()
 
+    // Обеспечиваем консистентность между сервером и клиентом
     const featured = props.featuredShouts || []
     const topRated = props.topRatedShouts || []
     const topMonth = props.topMonthShouts || []
     const topViewed = props.topViewedShouts || []
     const topCommented = props.topCommentedShouts || []
+    
+    // Безопасный доступ к randomTopicFeed - может быть undefined на сервере
     const randomTopic = randomTopicFeed()?.shouts || []
+
+    // Проверяем наличие минимального количества данных для стабильности
+    if (featured.length < MIN_SHOUTS_FOR_FULL_VIEW) {
+      return {
+        mainFeaturedFirst: featured,
+        remainingFeatured: [],
+        topRated: [],
+        topMonth: [],
+        topViewed: [],
+        topCommented: [],
+        randomTopic: []
+      }
+    }
 
     // Основная лента - приоритет для первых публикаций
     const mainFeaturedFirst = featured.slice(0, 29) // Первые 29 публикаций имеют приоритет
@@ -100,33 +122,47 @@ export const HomeView = (props: HomeViewProps) => {
       <Row5 articles={(deduplicatedBlocks().mainFeaturedFirst || []).slice(0, 5)} nodate={true} />
       <Hero />
 
-      {/* Если нет featuredShouts — не рендерим остальные секции вообще */}
+      {/* Условие стабилизировано для предотвращения ошибок гидрации */}
       <Show when={hasMoreShouts()}>
         <>
-          <Beside
-            beside={deduplicatedBlocks().mainFeaturedFirst[5]}
-            title={t('Top viewed')}
-            values={deduplicatedBlocks().topViewed}
-            wrapper={'top-article'}
-            nodate={true}
-          />
-          <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(6, 9)} nodate={true} />
-          <Beside
-            beside={deduplicatedBlocks().mainFeaturedFirst[9]}
-            title={t('Top authors')}
-            values={topAuthors?.() || []}
-            wrapper={'author'}
-            nodate={true}
-          />
+          <Show when={deduplicatedBlocks().mainFeaturedFirst[5]}>
+            <Beside
+              beside={deduplicatedBlocks().mainFeaturedFirst[5]}
+              title={t('Top viewed')}
+              values={deduplicatedBlocks().topViewed}
+              wrapper={'top-article'}
+              nodate={true}
+            />
+          </Show>
+          <Show when={deduplicatedBlocks().mainFeaturedFirst.length > 6}>
+            <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(6, 9)} nodate={true} />
+          </Show>
+          <Show when={deduplicatedBlocks().mainFeaturedFirst[9]}>
+            <Beside
+              beside={deduplicatedBlocks().mainFeaturedFirst[9]}
+              title={t('Top authors')}
+              values={topAuthors?.() || []}
+              wrapper={'author'}
+              nodate={true}
+            />
+          </Show>
 
           {deduplicatedBlocks().topMonth.length > 0 && (
             <ArticleCardSwiper title={t('Top month')} slides={deduplicatedBlocks().topMonth.slice(0, 10)} />
           )}
 
-          <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(10, 12)} nodate={true} />
-          <RowShort articles={deduplicatedBlocks().mainFeaturedFirst.slice(12, 16)} />
-          <Row1 article={deduplicatedBlocks().mainFeaturedFirst[16]} nodate={true} />
-          <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(17, 20)} nodate={true} />
+          <Show when={deduplicatedBlocks().mainFeaturedFirst.length > 10}>
+            <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(10, 12)} nodate={true} />
+          </Show>
+          <Show when={deduplicatedBlocks().mainFeaturedFirst.length > 12}>
+            <RowShort articles={deduplicatedBlocks().mainFeaturedFirst.slice(12, 16)} />
+          </Show>
+          <Show when={deduplicatedBlocks().mainFeaturedFirst[16]}>
+            <Row1 article={deduplicatedBlocks().mainFeaturedFirst[16]} nodate={true} />
+          </Show>
+          <Show when={deduplicatedBlocks().mainFeaturedFirst.length > 17}>
+            <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(17, 20)} nodate={true} />
+          </Show>
 
           {deduplicatedBlocks().topCommented.length > 0 && (
             <Row3
@@ -136,10 +172,12 @@ export const HomeView = (props: HomeViewProps) => {
             />
           )}
 
-          <TopicShoutsGroup
-            shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
-            topic={randomTopicFeed()?.topic as Topic}
-          />
+          <Show when={randomTopicFeed()?.topic}>
+            <TopicShoutsGroup
+              shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
+              topic={randomTopicFeed()?.topic as Topic}
+            />
+          </Show>
 
           {deduplicatedBlocks().topRated.length > 0 && (
             <ArticleCardSwiper title={t('Favorite')} slides={deduplicatedBlocks().topRated.slice(0, 10)} />
@@ -147,18 +185,26 @@ export const HomeView = (props: HomeViewProps) => {
 
           {deduplicatedBlocks().mainFeaturedFirst.length > SHOUTS_PER_PAGE && (
             <>
-              <Beside
-                beside={deduplicatedBlocks().mainFeaturedFirst[20]}
-                title={t('Top topics')}
-                values={topTopics().slice(0, 5)}
-                wrapper={'topic'}
-                isTopicCompact={true}
-                nodate={true}
-              />
-              <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(21, 24)} nodate={true} />
+              <Show when={deduplicatedBlocks().mainFeaturedFirst[20]}>
+                <Beside
+                  beside={deduplicatedBlocks().mainFeaturedFirst[20]}
+                  title={t('Top topics')}
+                  values={topTopics()?.slice(0, 5) || []}
+                  wrapper={'topic'}
+                  isTopicCompact={true}
+                  nodate={true}
+                />
+              </Show>
+              <Show when={deduplicatedBlocks().mainFeaturedFirst.length > 21}>
+                <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(21, 24)} nodate={true} />
+              </Show>
               <Banner />
-              <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(24, 26)} nodate={true} />
-              <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(26, 29)} nodate={true} />
+              <Show when={deduplicatedBlocks().mainFeaturedFirst.length > 24}>
+                <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(24, 26)} nodate={true} />
+              </Show>
+              <Show when={deduplicatedBlocks().mainFeaturedFirst.length > 26}>
+                <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(26, 29)} nodate={true} />
+              </Show>
             </>
           )}
         </>
@@ -176,18 +222,32 @@ export const HomeView = (props: HomeViewProps) => {
             return (
               deduplicatedPage.length > 0 && (
                 <>
-                  <Row1 article={deduplicatedPage[0]} nodate={true} />
-                  <Row3 articles={deduplicatedPage.slice(1, 4)} nodate={true} />
-                  <Row2 articles={deduplicatedPage.slice(4, 6)} nodate={true} />
-                  <Beside
-                    values={deduplicatedPage.slice(6, 9)}
-                    beside={deduplicatedPage[9]}
-                    wrapper="article"
-                    nodate={true}
-                  />
-                  <Row1 article={deduplicatedPage[10]} nodate={true} />
-                  <Row2 articles={deduplicatedPage.slice(11, 13)} nodate={true} />
-                  <Row3 articles={deduplicatedPage.slice(13, 16)} nodate={true} />
+                  <Show when={deduplicatedPage[0]}>
+                    <Row1 article={deduplicatedPage[0]} nodate={true} />
+                  </Show>
+                  <Show when={deduplicatedPage.length > 1}>
+                    <Row3 articles={deduplicatedPage.slice(1, 4)} nodate={true} />
+                  </Show>
+                  <Show when={deduplicatedPage.length > 4}>
+                    <Row2 articles={deduplicatedPage.slice(4, 6)} nodate={true} />
+                  </Show>
+                  <Show when={deduplicatedPage.length > 6 && deduplicatedPage[9]}>
+                    <Beside
+                      values={deduplicatedPage.slice(6, 9)}
+                      beside={deduplicatedPage[9]}
+                      wrapper="article"
+                      nodate={true}
+                    />
+                  </Show>
+                  <Show when={deduplicatedPage[10]}>
+                    <Row1 article={deduplicatedPage[10]} nodate={true} />
+                  </Show>
+                  <Show when={deduplicatedPage.length > 11}>
+                    <Row2 articles={deduplicatedPage.slice(11, 13)} nodate={true} />
+                  </Show>
+                  <Show when={deduplicatedPage.length > 13}>
+                    <Row3 articles={deduplicatedPage.slice(13, 16)} nodate={true} />
+                  </Show>
                 </>
               )
             )
