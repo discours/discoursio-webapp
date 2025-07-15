@@ -1,10 +1,11 @@
-import { createMemo, For, onMount, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js'
 import { useAuthors } from '~/context/authors'
 import { useFeaturedFeed } from '~/context/featured'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { FeedDeduplicationContext } from '~/utils/deduplicate'
+import { compareServerClientDOM } from '~/utils/hydration-comparator'
 import { paginate } from '~/utils/paginate'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
 import Banner from '../Discours/Banner'
@@ -40,6 +41,49 @@ export const HomeView = (props: HomeViewProps) => {
   const { topTopics } = useTopics()
   const { randomTopicFeed } = useFeaturedFeed()
 
+  // Создаем сигналы для отслеживания гидрации
+  const [hydrationDebug, setHydrationDebug] = createSignal({
+    serverProps: null,
+    clientProps: null,
+    hydrationIssues: []
+  } as Record<string, any>)
+
+  // Расширенная диагностика гидрации
+  createEffect(() => {
+    if (typeof window !== 'undefined') {
+      const serverPropsSnapshot = JSON.stringify({
+        featuredShouts: props.featuredShouts?.map((s) => s.id),
+        topRatedShouts: props.topRatedShouts?.map((s) => s.id)
+      })
+
+      const clientPropsSnapshot = JSON.stringify({
+        featuredShouts: props.featuredShouts?.map((s) => s.id),
+        topRatedShouts: props.topRatedShouts?.map((s) => s.id)
+      })
+
+      const hydrationIssues = []
+
+      // Проверка контекстов
+      const randomTopicFeedValue = randomTopicFeed()
+      if (!randomTopicFeedValue) {
+        hydrationIssues.push('Отсутствие randomTopicFeed на клиенте')
+      }
+
+      setHydrationDebug({
+        serverProps: serverPropsSnapshot,
+        clientProps: clientPropsSnapshot,
+        hydrationIssues
+      })
+
+      // Логирование для консоли разработчика
+      console.group('🔍 Solid Start Hydration Debug')
+      console.log('Server Props:', serverPropsSnapshot)
+      console.log('Client Props:', clientPropsSnapshot)
+      console.log('Hydration Issues:', hydrationIssues)
+      console.groupEnd()
+    }
+  })
+
   onMount(() => {
     props.featuredShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
     props.topRatedShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
@@ -58,66 +102,84 @@ export const HomeView = (props: HomeViewProps) => {
   })
 
   // Система дедупликации для предотвращения повторов публикаций
-  const deduplicatedBlocks = createMemo(() => {
-    const dedupContext = new FeedDeduplicationContext()
+  const deduplicatedBlocks = createMemo(
+    () => {
+      const dedupContext = new FeedDeduplicationContext()
 
-    // Обеспечиваем консистентность между сервером и клиентом
-    const featured = props.featuredShouts || []
-    const topRated = props.topRatedShouts || []
-    const topMonth = props.topMonthShouts || []
-    const topViewed = props.topViewedShouts || []
-    const topCommented = props.topCommentedShouts || []
+      // Обеспечиваем консистентность между сервером и клиентом
+      const featured = props.featuredShouts || []
+      const topRated = props.topRatedShouts || []
+      const topMonth = props.topMonthShouts || []
+      const topViewed = props.topViewedShouts || []
+      const topCommented = props.topCommentedShouts || []
 
-    // Безопасный доступ к randomTopicFeed - может быть undefined на сервере
-    const randomTopic = randomTopicFeed()?.shouts || []
+      // Безопасный доступ к randomTopicFeed - может быть undefined на сервере
+      const randomTopic = randomTopicFeed()?.shouts || []
 
-    // Проверяем наличие минимального количества данных для стабильности
-    if (featured.length < MIN_SHOUTS_FOR_FULL_VIEW) {
-      return {
-        mainFeaturedFirst: featured,
-        remainingFeatured: [],
-        topRated: [],
-        topMonth: [],
-        topViewed: [],
-        topCommented: [],
-        randomTopic: []
+      // Проверяем наличие минимального количества данных для стабильности
+      if (featured.length < MIN_SHOUTS_FOR_FULL_VIEW) {
+        return {
+          mainFeaturedFirst: featured,
+          remainingFeatured: [],
+          topRated: [],
+          topMonth: [],
+          topViewed: [],
+          topCommented: [],
+          randomTopic: []
+        }
       }
+
+      // Основная лента - приоритет для первых публикаций
+      const mainFeaturedFirst = featured.slice(0, 29) // Первые 29 публикаций имеют приоритет
+      dedupContext.addUsedShouts(mainFeaturedFirst)
+
+      // Дедуплицируем дополнительные блоки
+      const deduplicatedTopRated = dedupContext.filterUnused(topRated)
+      const deduplicatedTopMonth = dedupContext.filterUnused(topMonth)
+      const deduplicatedTopViewed = dedupContext.filterUnused(topViewed.slice(0, 5))
+      const deduplicatedTopCommented = dedupContext.filterUnused(topCommented.slice(0, 3))
+      const deduplicatedRandomTopic = dedupContext.filterUnused(randomTopic)
+
+      // Добавляем использованные из дополнительных блоков
+      dedupContext.addUsedShouts(deduplicatedTopRated.slice(0, 10)) // Лимитируем слайдер
+      dedupContext.addUsedShouts(deduplicatedTopMonth.slice(0, 10)) // Лимитируем слайдер
+      dedupContext.addUsedShouts(deduplicatedTopViewed)
+      dedupContext.addUsedShouts(deduplicatedTopCommented)
+      dedupContext.addUsedShouts(deduplicatedRandomTopic.slice(0, 7)) // Лимитируем случайную тему
+
+      // Остальная лента (после первых 29)
+      const remainingFeatured = dedupContext.filterUnused(featured.slice(29))
+
+      return {
+        mainFeaturedFirst,
+        remainingFeatured,
+        topRated: deduplicatedTopRated,
+        topMonth: deduplicatedTopMonth,
+        topViewed: deduplicatedTopViewed,
+        topCommented: deduplicatedTopCommented,
+        randomTopic: deduplicatedRandomTopic
+      }
+    },
+    {
+      mainFeaturedFirst: [],
+      remainingFeatured: [],
+      topRated: [],
+      topMonth: [],
+      topViewed: [],
+      topCommented: [],
+      randomTopic: []
     }
+  )
 
-    // Основная лента - приоритет для первых публикаций
-    const mainFeaturedFirst = featured.slice(0, 29) // Первые 29 публикаций имеют приоритет
-    dedupContext.addUsedShouts(mainFeaturedFirst)
-
-    // Дедуплицируем дополнительные блоки
-    const deduplicatedTopRated = dedupContext.filterUnused(topRated)
-    const deduplicatedTopMonth = dedupContext.filterUnused(topMonth)
-    const deduplicatedTopViewed = dedupContext.filterUnused(topViewed.slice(0, 5))
-    const deduplicatedTopCommented = dedupContext.filterUnused(topCommented.slice(0, 3))
-    const deduplicatedRandomTopic = dedupContext.filterUnused(randomTopic)
-
-    // Добавляем использованные из дополнительных блоков
-    dedupContext.addUsedShouts(deduplicatedTopRated.slice(0, 10)) // Лимитируем слайдер
-    dedupContext.addUsedShouts(deduplicatedTopMonth.slice(0, 10)) // Лимитируем слайдер
-    dedupContext.addUsedShouts(deduplicatedTopViewed)
-    dedupContext.addUsedShouts(deduplicatedTopCommented)
-    dedupContext.addUsedShouts(deduplicatedRandomTopic.slice(0, 7)) // Лимитируем случайную тему
-
-    // Остальная лента (после первых 29)
-    const remainingFeatured = dedupContext.filterUnused(featured.slice(29))
-
-    return {
-      mainFeaturedFirst,
-      remainingFeatured,
-      topRated: deduplicatedTopRated,
-      topMonth: deduplicatedTopMonth,
-      topViewed: deduplicatedTopViewed,
-      topCommented: deduplicatedTopCommented,
-      randomTopic: deduplicatedRandomTopic
+  // Добавляем вызов сравнения DOM
+  createEffect(() => {
+    if (typeof window !== 'undefined') {
+      compareServerClientDOM()
     }
   })
 
   return (
-    <>
+    <div data-server-rendered="true">
       <TopicsNav />
       <Row5 articles={(deduplicatedBlocks().mainFeaturedFirst || []).slice(0, 5)} nodate={true} />
       <Hero />
@@ -256,6 +318,25 @@ export const HomeView = (props: HomeViewProps) => {
           }}
         </For>
       </Show>
-    </>
+
+      {/* Отладочный блок */}
+      <Show when={import.meta.env.DEV}>
+        <div
+          data-hydration-debug
+          style={{
+            position: 'fixed',
+            bottom: '10px',
+            right: '10px',
+            background: 'rgba(0,0,0,0.7)',
+            color: 'white',
+            padding: '10px',
+            'z-index': 1000
+          }}
+        >
+          <h3>Hydration Debug</h3>
+          <pre>{JSON.stringify(hydrationDebug(), null, 2)}</pre>
+        </div>
+      </Show>
+    </div>
   )
 }
