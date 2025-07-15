@@ -1,4 +1,14 @@
-import { createEffect, createSignal, JSX, on, onCleanup, onMount, Show, untrack } from 'solid-js'
+import {
+  createEffect,
+  createSignal,
+  createUniqueId,
+  JSX,
+  on,
+  onCleanup,
+  onMount,
+  Show,
+  untrack
+} from 'solid-js'
 import { Button } from '~/components/_shared/Button'
 import { useLocalize } from '~/context/localize'
 import { Author, Reaction, Shout } from '~/graphql/generated/graphql'
@@ -47,31 +57,23 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
   const [scrollWrapper, setScrollWrapper] = createSignal<HTMLDivElement | null>(null)
   const [initialLoadDone, setInitialLoadDone] = createSignal(false)
   // Новое состояние для отслеживания готовности показа кнопки после задержки
+  // Инициализируем как false для предотвращения ошибок гидрации
   const [buttonDelayReady, setButtonDelayReady] = createSignal(false)
   let observer: IntersectionObserver | null = null
   let buttonDelayTimer: number | null = null
 
-  // Генерируем уникальный идентификатор компонента на основе данных и URL
-  const [componentId, setComponentId] = createSignal('')
-  onMount(() => {
-    // Создаем уникальный компонентный идентификатор
-    const pageUrl = window.location.pathname
-    const pageSize = props.pageSize.toString()
-    const hiddenState = props.hidden ? 'hidden' : 'visible'
-    const text = props.loadMoreText || 'default'
-    const hash = window.crypto
-      ? Array.from(window.crypto.getRandomValues(new Uint8Array(4)))
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join('')
-      : Date.now().toString(36)
-
-    setComponentId(`lmw_${pageUrl.replace(/\//g, '_')}_${pageSize}_${hiddenState}_${text}_${hash}`)
-  })
+  // Генерируем стабильный идентификатор компонента между сервером и клиентом
+  const componentId = createUniqueId()
 
   // Проверяем, была ли уже выполнена начальная загрузка
   const checkInitialLoadDone = () => {
+    // Проверяем, что находимся в браузере
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return false
+    }
+
     try {
-      const key = `load_state_${componentId()}`
+      const key = `load_state_${componentId}`
       return sessionStorage.getItem(key) === 'loaded'
     } catch {
       return false
@@ -80,12 +82,19 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
 
   // Отмечаем, что начальная загрузка выполнена
   const markInitialLoadDone = () => {
+    // Проверяем, что находимся в браузере
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      setInitialLoadDone(true)
+      return
+    }
+
     try {
-      const key = `load_state_${componentId()}`
+      const key = `load_state_${componentId}`
       sessionStorage.setItem(key, 'loaded')
       setInitialLoadDone(true)
     } catch {
       // Игнорируем ошибки sessionStorage
+      setInitialLoadDone(true)
     }
   }
 
@@ -214,7 +223,7 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
   onMount(() => {
     // Проверяем локальное состояние и sessionStorage
     if (untrack(() => initialLoadDone()) || checkInitialLoadDone()) {
-      console.log('[LoadMoreWrapper] Initial load already done, skipping for', componentId())
+      console.log('[LoadMoreWrapper] Initial load already done, skipping for', componentId)
 
       // Устанавливаем таймер для показа кнопки через 3 секунды после монтирования
       buttonDelayTimer = window.setTimeout(() => {
@@ -240,7 +249,7 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
     }
 
     // Очищаем таймер при размонтировании компонента
-    if (buttonDelayTimer) {
+    if (buttonDelayTimer && typeof window !== 'undefined') {
       window.clearTimeout(buttonDelayTimer)
       buttonDelayTimer = null
     }
@@ -259,7 +268,14 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
       {props.children}
 
       <div ref={setScrollWrapper} class={styles.loadMoreTrigger}>
-        <Show when={isLoadMoreButtonVisible() && !props.useScrollTrigger && buttonDelayReady()}>
+        <Show
+          when={
+            isLoadMoreButtonVisible() &&
+            !props.useScrollTrigger &&
+            buttonDelayReady() &&
+            typeof window !== 'undefined'
+          }
+        >
           <div class={styles.loadMoreWrapper}>
             <Button
               onClick={loadItems}

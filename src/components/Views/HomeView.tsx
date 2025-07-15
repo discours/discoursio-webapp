@@ -147,9 +147,9 @@ export const HomeView = (props: HomeViewProps) => {
             />
           </Show>
 
-          {deduplicatedBlocks().topMonth.length > 0 && (
+          <Show when={deduplicatedBlocks().topMonth.length > 0}>
             <ArticleCardSwiper title={t('Top month')} slides={deduplicatedBlocks().topMonth.slice(0, 10)} />
-          )}
+          </Show>
 
           <Show when={deduplicatedBlocks().mainFeaturedFirst.length > 10}>
             <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(10, 12)} nodate={true} />
@@ -164,13 +164,13 @@ export const HomeView = (props: HomeViewProps) => {
             <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(17, 20)} nodate={true} />
           </Show>
 
-          {deduplicatedBlocks().topCommented.length > 0 && (
+          <Show when={deduplicatedBlocks().topCommented.length > 0}>
             <Row3
               articles={deduplicatedBlocks().topCommented.slice(0, 3)}
               header={<h2>{t('Top commented')}</h2>}
               nodate={true}
             />
-          )}
+          </Show>
 
           <Show when={randomTopicFeed()?.topic}>
             <TopicShoutsGroup
@@ -179,11 +179,11 @@ export const HomeView = (props: HomeViewProps) => {
             />
           </Show>
 
-          {deduplicatedBlocks().topRated.length > 0 && (
+          <Show when={deduplicatedBlocks().topRated.length > 0}>
             <ArticleCardSwiper title={t('Favorite')} slides={deduplicatedBlocks().topRated.slice(0, 10)} />
-          )}
+          </Show>
 
-          {deduplicatedBlocks().mainFeaturedFirst.length > SHOUTS_PER_PAGE && (
+          <Show when={deduplicatedBlocks().mainFeaturedFirst.length > SHOUTS_PER_PAGE}>
             <>
               <Show when={deduplicatedBlocks().mainFeaturedFirst[20]}>
                 <Beside
@@ -206,11 +206,11 @@ export const HomeView = (props: HomeViewProps) => {
                 <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(26, 29)} nodate={true} />
               </Show>
             </>
-          )}
+          </Show>
         </>
       </Show>
 
-      {/* Пагинированные страницы (дедуплицированные) */}
+      {/* Пагинированные страницы (дедуплицированные) - стабилизировано для гидрации */}
       <Show when={hasMoreShouts()}>
         <For each={pages()}>
           {(_page, pageIndex) => {
@@ -219,8 +219,10 @@ export const HomeView = (props: HomeViewProps) => {
               startIndex,
               startIndex + SHOUTS_PER_PAGE
             )
+
+            // Используем Show для стабильной структуры DOM
             return (
-              deduplicatedPage.length > 0 && (
+              <Show when={deduplicatedPage.length > 0}>
                 <>
                   <Show when={deduplicatedPage[0]}>
                     <Row1 article={deduplicatedPage[0]} nodate={true} />
@@ -249,7 +251,7 @@ export const HomeView = (props: HomeViewProps) => {
                     <Row3 articles={deduplicatedPage.slice(13, 16)} nodate={true} />
                   </Show>
                 </>
-              )
+              </Show>
             )
           }}
         </For>
