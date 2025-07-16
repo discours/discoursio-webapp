@@ -14,12 +14,12 @@ beforeAll(() => {
   // [предположение] Подготавливаем DOM окружение
   Object.defineProperty(window, 'location', {
     value: {
-      origin: 'https://localhost:3000',
-      href: 'https://localhost:3000',
-      protocol: 'https:',
-      host: 'localhost:3000',
+      origin: 'http://localhost:3001',
+      href: 'http://localhost:3001',
+      protocol: 'http:',
+      host: 'localhost:3001',
       hostname: 'localhost',
-      port: '3000',
+      port: '3001',
       pathname: '/',
       search: '',
       hash: ''

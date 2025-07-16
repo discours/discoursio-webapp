@@ -10,7 +10,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from './utils/test-helpers'
+import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
 
 // Константы для регулярных выражений (исправление lint/performance/useTopLevelRegex)
 const QUOTED_STRING_REGEX = /^".*"$/

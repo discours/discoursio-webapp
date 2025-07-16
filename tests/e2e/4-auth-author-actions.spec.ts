@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { checkServerWithoutStarting } from './utils/test-helpers'
+import { checkServerWithoutStarting } from '../utils/test-helpers'
 
 const TEST_PASSWORD = process.env.TEST_PASSWORD
 // biome-ignore lint/suspicious/noExplicitAny: ok

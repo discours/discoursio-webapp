@@ -7,7 +7,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { baseUrl, setupAuthState, waitForPageLoad } from './utils/test-helpers'
+import { baseUrl, setupAuthState, waitForPageLoad } from '../utils/test-helpers'
 
 // Тесты для страницы настроек
 test.describe('Страница настроек профиля', () => {

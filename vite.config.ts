@@ -63,6 +63,19 @@ export default defineConfig({
     } as CSSOptions['preprocessorOptions']
   },
   plugins: [nodePolyfills(polyfillOptions), sassDts()],
+  publicDir: 'public',
+  // Расширяем список разрешенных типов файлов
+  assetsInclude: [
+    '**/*.svg',
+    '**/*.png',
+    '**/*.jpg',
+    '**/*.jpeg',
+    '**/*.gif',
+    '**/*.woff',
+    '**/*.woff2',
+    '**/icons/**/*',
+    '**/public/**/*'
+  ],
   build: {
     target: 'esnext',
     sourcemap: isDev,
@@ -74,9 +87,16 @@ export default defineConfig({
         drop_console: !isDev
       }
     },
+    // Отключение предупреждений о неразрешенных статических ресурсах
+    assetsInlineLimit: 0,
     rollupOptions: {
       external: ['bufferutil', 'utf-8-validate'],
       output: {
+        // Копирование статических файлов без предупреждений
+        assetFileNames: (assetInfo) => {
+          // Сохраняем оригинальную структуру путей
+          return assetInfo.name || ''
+        },
         sourcemapExcludeSources: true,
         manualChunks: (id) => {
           if (id.includes('node_modules')) {

@@ -8,7 +8,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { baseUrl } from './utils/test-helpers'
+import { baseUrl } from '../utils/test-helpers'
 
 test.describe('Open Graph API Tests', () => {
   test('должен генерировать базовое OG изображение', async ({ request }) => {

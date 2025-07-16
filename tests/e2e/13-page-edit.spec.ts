@@ -7,7 +7,7 @@
  */
 
 import { expect, Locator, test } from '@playwright/test'
-import { baseUrl, getScreenshotName, setupAuthState, waitForPageLoad } from './utils/test-helpers'
+import { baseUrl, getScreenshotName, setupAuthState, waitForPageLoad } from '../utils/test-helpers'
 
 // Тесты для страницы создания новой публикации
 test.describe('Страница создания публикации', () => {

@@ -6,18 +6,18 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from './utils/test-helpers'
+import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
 
 test.describe('Валидация формы входа', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(baseUrl)
     await waitForPageLoad(page)
     await page.getByRole('link', { name: 'Войти' }).click()
-    await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByPlaceholder('Почта')).toBeVisible({ timeout: 10000 })
   })
 
   test('Должна валидировать email в форме входа', async ({ page }) => {
-    const emailInput = page.locator('input[type="email"]')
+    const emailInput = page.getByPlaceholder('Почта')
     const submitButton = page.getByRole('button', { name: 'Войти' })
 
     // Пустой email
@@ -49,8 +49,8 @@ test.describe('Валидация формы входа', () => {
   })
 
   test('Должна валидировать пароль в форме входа', async ({ page }) => {
-    const emailInput = page.locator('input[type="email"]')
-    const passwordInput = page.locator('input[type="password"]')
+    const emailInput = page.getByPlaceholder('Почта')
+    const passwordInput = page.getByPlaceholder('Пароль')
     const submitButton = page.getByRole('button', { name: 'Войти' })
 
     // Вводим валидный email
@@ -70,8 +70,8 @@ test.describe('Валидация формы входа', () => {
   })
 
   test('Должна очищать ошибки при исправлении полей', async ({ page }) => {
-    const emailInput = page.locator('input[type="email"]')
-    const passwordInput = page.locator('input[type="password"]')
+    const emailInput = page.getByPlaceholder('Почта')
+    const passwordInput = page.getByPlaceholder('Пароль')
     const submitButton = page.getByRole('button', { name: 'Войти' })
 
     // Создаем ошибки валидации
@@ -90,7 +90,7 @@ test.describe('Валидация формы входа', () => {
   })
 
   test('Должна устанавливать фокус на первое поле с ошибкой', async ({ page }) => {
-    const emailInput = page.locator('input[type="email"]')
+    const emailInput = page.getByPlaceholder('Почта')
     const submitButton = page.getByRole('button', { name: 'Войти' })
 
     // Отправляем форму с ошибками
@@ -117,8 +117,8 @@ test.describe('Валидация формы входа', () => {
       }
     ]
 
-    const emailInput = page.locator('input[type="email"]')
-    const passwordInput = page.locator('input[type="password"]')
+    const emailInput = page.getByPlaceholder('Почта')
+    const passwordInput = page.getByPlaceholder('Пароль')
     const submitButton = page.getByRole('button', { name: 'Войти' })
 
     for (const errorCase of errorCases) {

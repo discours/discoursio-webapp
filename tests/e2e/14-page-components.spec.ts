@@ -7,7 +7,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from './utils/test-helpers'
+import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
 
 test.describe('Основные компоненты веб-приложения', () => {
   // Для каждого теста переходим на главную страницу

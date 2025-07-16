@@ -6,7 +6,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from './utils/test-helpers'
+import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
 
 test.describe('Обработка сетевых ошибок', () => {
   test.beforeEach(async ({ page }) => {

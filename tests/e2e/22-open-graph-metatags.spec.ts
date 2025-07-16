@@ -8,7 +8,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from './utils/test-helpers'
+import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
 
 // Константы для регулярных выражений (исправление lint/performance/useTopLevelRegex)
 const IMAGE_URL_REGEX = /https?:\/\/.*\.(png|jpg|jpeg|webp)/

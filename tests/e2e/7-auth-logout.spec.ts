@@ -6,7 +6,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { baseUrl, isLoggedIn, setupAuthState, waitForPageLoad } from './utils/test-helpers'
+import { baseUrl, isLoggedIn, setupAuthState, waitForPageLoad } from '../utils/test-helpers'
 
 test.describe('Выход из системы', () => {
   test.beforeEach(async ({ page }) => {

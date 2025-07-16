@@ -1,78 +1,58 @@
 import { defineConfig, devices } from '@playwright/test'
 import dotenv from 'dotenv'
 
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-dotenv.config()
+// Загрузка переменных окружения для E2E
+dotenv.config({ path: '.env.e2e' })
 
-/**
- * See https://playwright.dev/docs/test-configuration.
- */
 export default defineConfig({
-  /* Directory to search for tests */
-  testDir: './tests',
-  /* Run tests in files in parallel */
-  fullyParallel: true,
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'list',
-  /* Timeout for each test */
-  timeout: 40000,
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  // Директория с E2E тестами
+  testDir: './tests/e2e',
+  
+  // Параллельный запуск тестов
+  fullyParallel: false, // отключает параллелизм на уровне файлов
+  forbidOnly: true, // (опционально, чтобы не забыть .only)
+  retries: 0, // Без ретраев для быстрой отладки
+  workers: 1,           // один воркер — один процесс
+  
+  // Улучшенная конфигурация репортинга
+  reporter: [['list', { printSteps: false }]],
+  
+  timeout: 30000, // Сокращенный тайм-аут
+  
+  // Глобальные настройки тестов
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'https://localhost:3000',
-    /* Headless */
-    headless: true,
-    /* Ignode SSL certificates */
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
+    headless: false, // Показываем браузер для отладки
     ignoreHTTPSErrors: true,
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
-    /* Capture screenshot after each test failure */
-    screenshot: 'only-on-failure'
+    trace: 'off', // Отключаем трейсы
+    screenshot: 'off', // Отключаем скриншоты
+    video: 'off', // Отключаем видео
+    actionTimeout: 5000 // Тайм-аут для отдельных действий
   },
-
-  /* Configure projects for major browsers */
+  
+  // Конфигурация браузеров
   projects: [
     {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] }
+      name: 'hydration-debug',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 }
+      }
     }
-
-    /* Test against many viewports.
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
-
-  /* Run local dev server before starting the tests */
+  
+  // Веб-сервер для тестирования
   webServer: {
-    command: process.env.E2E ? 'echo "Using existing server"' : 'npm run start',
-    url: 'https://localhost:3000',
-    ignoreHTTPSErrors: true,
-    reuseExistingServer: true,
-    timeout: 5 * 60 * 1000
-  }
+    command: 'vinxi dev --port 3001',
+    url: 'http://localhost:3001',
+    reuseExistingServer: !process.env.CI,
+    timeout: 30000
+  },
+  
+  // Папки для артефактов
+  outputDir: 'test-results/',
+  
+  // Настройки для лучшего отображения
+  globalSetup: undefined,
+  globalTeardown: undefined
 })
