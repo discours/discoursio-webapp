@@ -23,7 +23,6 @@ export const compareServerClientDOM = () => {
         const serverAttrs = Array.from(server.attributes)
         const clientAttrs = Array.from(client.attributes)
 
-        // Проверка атрибутов сервера в клиенте
         serverAttrs.forEach((serverAttr) => {
           const clientAttrValue = client.getAttribute(serverAttr.name)
 
@@ -42,7 +41,6 @@ export const compareServerClientDOM = () => {
           }
         })
 
-        // Дополнительная проверка клиентских атрибутов
         clientAttrs.forEach((clientAttr) => {
           const serverAttrValue = server.getAttribute(clientAttr.name)
 
@@ -93,39 +91,55 @@ export const compareServerClientDOM = () => {
     try {
       traverseAndCompare(serverDOM, clientDOM)
 
-      // Улучшенная визуализация
-      const createReport = () => {
+      const groupedDifferences = differences.reduce(
+        (acc, diff) => {
+          if (!acc[diff.type]) acc[diff.type] = []
+          acc[diff.type].push(diff)
+          return acc
+        },
+        {} as Record<string, typeof differences>
+      )
+
+      const createDetailedReport = () => {
+        const recommendations: Record<string, string[]> = {
+          structure: [
+            '🔧 Структурные различия:',
+            '- Проверьте условные рендеры в компонентах',
+            '- Убедитесь, что серверный и клиентский рендер идентичны',
+            '- Используйте <Show> для стабильных условных блоков'
+          ],
+          attribute: [
+            '🔍 Проблемы с атрибутами:',
+            '- Проверьте динамические атрибуты',
+            '- Используйте memo для стабильных значений',
+            '- Синхронизируйте начальное состояние между SSR и CSR'
+          ]
+        }
+
         const reportContainer = document.createElement('div')
         reportContainer.style.cssText = `
           position: fixed; 
-          bottom: 10px; 
-          left: 10px; 
-          background: ${differences.length ? 'rgba(255,0,0,0.7)' : 'rgba(0,255,0,0.7)'};
+          top: 10px; 
+          right: 10px; 
+          background: rgba(255,100,0,0.9);
           color: white;
-          padding: 10px;
+          padding: 15px;
           z-index: 10000;
-          max-height: 300px;
-          overflow-y: auto;
+          max-width: 400px;
           font-family: monospace;
+          border-radius: 8px;
         `
 
-        const groupedDifferences = differences.reduce(
-          (acc, diff) => {
-            if (!acc[diff.type]) acc[diff.type] = []
-            acc[diff.type].push(diff)
-            return acc
-          },
-          {} as Record<string, typeof differences>
-        )
-
         reportContainer.innerHTML = `
-          <h3>🔍 DOM Hydration Comparison</h3>
-          <p>Total Differences: ${differences.length}</p>
+          <h3>🚨 Hydration Diagnostic Report</h3>
           ${Object.entries(groupedDifferences)
             .map(
               ([type, diffs]) => `
             <details>
               <summary>${type.toUpperCase()} Differences (${diffs.length})</summary>
+              <h4>Recommendations:</h4>
+              <pre>${recommendations[type]?.join('\n') || 'No specific recommendations'}</pre>
+              <h4>Problematic Paths:</h4>
               <ul>
                 ${diffs.map((diff) => `<li>${diff.path}: ${diff.details}</li>`).join('')}
               </ul>
@@ -136,42 +150,32 @@ export const compareServerClientDOM = () => {
         `
 
         document.body.appendChild(reportContainer)
-      }
 
-      // Подсветка проблемных элементов
-      differences.forEach((diff) => {
-        try {
-          const elements = document.evaluate(
-            diff.path,
-            document,
-            null,
-            XPathResult.FIRST_ORDERED_NODE_TYPE,
-            null
-          )
-          const element = elements.singleNodeValue as Element
-          if (element) {
-            element.setAttribute('data-hydration-error', diff.type)
-            ;(element as HTMLElement).style.border =
-              diff.type === 'attribute'
-                ? '2px dashed orange'
-                : diff.type === 'structure'
-                  ? '2px solid red'
-                  : '2px dotted yellow'
+        // Подсветка проблемных элементов
+        differences.forEach((diff) => {
+          try {
+            const elements = document.evaluate(
+              diff.path,
+              document,
+              null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE,
+              null
+            )
+            const element = elements.singleNodeValue as Element
+            if (element) {
+              element.setAttribute('data-hydration-error', diff.type)
+              ;(element as HTMLElement).style.border =
+                diff.type === 'attribute'
+                  ? '2px dashed orange'
+                  : diff.type === 'structure'
+                    ? '2px solid red'
+                    : '2px dotted yellow'
+            }
+          } catch (highlightError) {
+            console.warn('Ошибка подсветки элемента:', highlightError)
           }
-        } catch (highlightError) {
-          console.warn('Ошибка подсветки элемента:', highlightError)
-        }
-      })
-
-      // Move groupedDifferences before logging and reporting
-      const groupedDifferences = differences.reduce(
-        (acc, diff) => {
-          if (!acc[diff.type]) acc[diff.type] = []
-          acc[diff.type].push(diff)
-          return acc
-        },
-        {} as Record<string, typeof differences>
-      )
+        })
+      }
 
       // Логирование
       console.group('🔍 DOM Hydration Comparison')
@@ -180,12 +184,12 @@ export const compareServerClientDOM = () => {
       console.groupEnd()
 
       // Создаем репорт
-      createReport()
+      createDetailedReport()
     } catch (error) {
       console.error('Ошибка сравнения DOM:', error)
     }
   }
 
   // Запускаем после полной гидрации
-  setTimeout(compareDOM, 100)
+  setTimeout(compareDOM, 200)
 }
