@@ -7,75 +7,37 @@
  * @see https://playwright.dev/docs/auth
  */
 
-import { expect, type Page } from '@playwright/test'
-import { config } from 'dotenv'
-
-// Загружаем переменные окружения из .env файла
-config()
-
-// Базовый URL - должен соответствовать запущенному локальному серверу или значению из .env
-export const baseUrl = process.env.BASE_URL || 'http://localhost:3001'
+import { Browser, expect, type Page } from '@playwright/test'
+import { baseUrl, checkServerWithoutStarting, waitForPageLoad } from './common'
 
 /**
- * Проверяет доступность сервера без его запуска
- * Для использования в beforeAll хуках тестовых файлов
- *
- * @param page - Экземпляр страницы Playwright
- * @returns {Promise<boolean>} - Возвращает true, если сервер доступен
- */
-export async function checkServerWithoutStarting(page: Page): Promise<boolean> {
-  try {
-    console.log('Проверка доступности сервера...')
-    await page.goto(baseUrl)
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
-      console.warn('Тайм-аут при ожидании networkidle, продолжаем...')
-    })
-    console.log('Сервер доступен и отвечает')
-    return true
-  } catch (e) {
-    console.error('Сервер недоступен:', e)
-    return false
-  }
-}
-
-/**
- * Ожидает загрузки страницы и всех сетевых запросов
- * @param page - Экземпляр страницы Playwright
- */
-export async function waitForPageLoad(page: Page): Promise<void> {
-  try {
-    await page.waitForLoadState('domcontentloaded')
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
-  } catch (_e) {
-    console.warn('Тайм-аут при ожидании загрузки страницы, продолжаем тест...')
-  }
-}
-
-/**
- * Создает заголовок для скриншота текущей тестовой страницы
- * @param testInfo - Имя текущего теста
+ * Генерирует имя для скриншота на основе имени теста
+ * @param testName - Название теста
+ * @param prefix - Префикс для имени файла
  * @returns {string} - Имя файла скриншота
  */
-export function getScreenshotName(testInfo: string): string {
-  const date = new Date()
-  const timestamp = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}_${date.getHours()}-${date.getMinutes()}-${date.getSeconds()}`
-  return `./test-results/${testInfo.replace(/\s+/g, '_')}_${timestamp}.png`
+export function getScreenshotName(testName: string, prefix = 'screenshot'): string {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const sanitizedTestName = testName.replace(/[^a-zA-Z0-9]/g, '_')
+  return `${prefix}_${sanitizedTestName}_${timestamp}.png`
 }
+
+// Re-export common utilities
+export { baseUrl, checkServerWithoutStarting, waitForPageLoad }
 
 // Re-export auth functions for backward compatibility
 export {
-  performLogin as login,
-  performLogout,
   isUserLoggedIn as isLoggedIn,
+  performLogin as login,
   performLogin as setupAuthState,
+  performLogout,
   TEST_USERS
 } from './auth-helpers'
 
 /**
  * Инициализация тестового окружения для отдельных тестов
  */
-export async function initializeTestEnvironment(browser: any, testName: string): Promise<Page> {
+export async function initializeTestEnvironment(browser: Browser, testName: string): Promise<Page> {
   console.log(`Инициализация тестов ${testName}...`)
 
   const page = await browser.newPage()

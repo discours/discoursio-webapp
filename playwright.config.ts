@@ -4,30 +4,36 @@ import dotenv from 'dotenv'
 // Загрузка переменных окружения для E2E
 dotenv.config({ path: '.env.e2e' })
 
+// Проверяем CI окружение
+const isCI = !!process.env.CI
+
 export default defineConfig({
   // Директория с E2E тестами
   testDir: './tests/e2e',
 
   // Параллельный запуск тестов
-  fullyParallel: false, // отключает параллелизм на уровне файлов
-  forbidOnly: true, // (опционально, чтобы не забыть .only)
-  retries: 0, // Без ретраев для быстрой отладки
-  workers: 1, // один воркер — один процесс
+  fullyParallel: !isCI, // В CI отключаем параллелизм для стабильности
+  forbidOnly: !!isCI, // В CI запрещаем .only
+  retries: isCI ? 2 : 0, // В CI добавляем ретраи
+  workers: isCI ? 1 : undefined, // В CI используем один воркер
 
   // Улучшенная конфигурация репортинга
-  reporter: [['list', { printSteps: false }]],
+  reporter: [
+    ['list', { printSteps: false }],
+    ...(isCI ? ([['github' as const], ['html' as const]] as const) : [])
+  ],
 
-  timeout: 30000, // Сокращенный тайм-аут
+  timeout: isCI ? 60000 : 30000, // Увеличенный тайм-аут для CI
 
   // Глобальные настройки тестов
   use: {
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
-    headless: false, // Показываем браузер для отладки
+    headless: !!isCI, // В CI всегда headless
     ignoreHTTPSErrors: true,
-    trace: 'off', // Отключаем трейсы
-    screenshot: 'off', // Отключаем скриншоты
-    video: 'off', // Отключаем видео
-    actionTimeout: 5000 // Тайм-аут для отдельных действий
+    trace: isCI ? 'retain-on-failure' : 'off',
+    screenshot: isCI ? 'only-on-failure' : 'off',
+    video: isCI ? 'retain-on-failure' : 'off',
+    actionTimeout: isCI ? 10000 : 5000 // Увеличенный тайм-аут для CI
   },
 
   // Конфигурация браузеров
@@ -37,6 +43,24 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 }
+      }
+    },
+    // Добавляем chromium проект для CI
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        headless: true, // Всегда headless для CI
+        viewport: { width: 1280, height: 720 },
+        // Оптимизации для CI
+        launchOptions: {
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-web-security'
+          ]
+        }
       }
     }
   ],

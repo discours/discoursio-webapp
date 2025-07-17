@@ -1,5 +1,5 @@
-import { Page, Locator, expect } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from './test-helpers'
+import { expect, Locator, Page } from '@playwright/test'
+import { baseUrl, waitForPageLoad } from './common'
 
 /**
  * Базовая страница с общими элементами
@@ -21,7 +21,7 @@ export class BasePage {
     this.userAvatar = page.locator('.userpic, [data-testid="user-avatar"]')
   }
 
-  async goto(path: string = ''): Promise<void> {
+  async goto(path = ''): Promise<void> {
     await this.page.goto(`${baseUrl}${path}`)
     await waitForPageLoad(this.page)
   }
@@ -297,7 +297,7 @@ export class SearchModal {
     await this.page.waitForTimeout(1000)
   }
 
-  async expectResults(minCount: number = 1): Promise<void> {
+  async expectResults(minCount = 1): Promise<void> {
     await expect(this.results).toHaveCount(await this.results.count(), { timeout: 5000 })
     const count = await this.results.count()
     expect(count).toBeGreaterThanOrEqual(minCount)

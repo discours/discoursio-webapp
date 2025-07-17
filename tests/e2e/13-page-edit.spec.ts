@@ -7,14 +7,15 @@
  */
 
 import { expect, Locator, test } from '@playwright/test'
+import { TEST_USERS } from '../utils/auth-helpers'
 import { baseUrl, getScreenshotName, setupAuthState, waitForPageLoad } from '../utils/test-helpers'
 
 // Тесты для страницы создания новой публикации
-test.describe('Страница создания публикации', () => {
-  // Перед каждым тестом устанавливаем состояние авторизации и переходим на страницу создания публикации
+
+test.describe('Страница редактирования', () => {
   test.beforeEach(async ({ page }) => {
     // Устанавливаем авторизацию
-    await setupAuthState(page)
+    await setupAuthState(page, TEST_USERS.VALID)
 
     // Переходим на страницу создания публикации
     await page.goto(`${baseUrl}/edit/new`)

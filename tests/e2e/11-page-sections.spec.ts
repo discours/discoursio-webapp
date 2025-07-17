@@ -1,6 +1,6 @@
-import { expect, type Page, test } from '@playwright/test'
-import { initializeTestEnvironment, cleanupTestEnvironment } from '../utils/test-helpers'
+import { type Page, test } from '@playwright/test'
 import { SitePage } from '../utils/page-objects'
+import { cleanupTestEnvironment, initializeTestEnvironment } from '../utils/test-helpers'
 
 /**
  * Тестирование основных страниц сайта

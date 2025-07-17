@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test'
+import { expect, Page } from '@playwright/test'
 
 export interface ValidationError {
   field: string
@@ -130,7 +130,7 @@ export async function validatePasswordField(
 export async function testPasswordVisibilityToggle(
   page: Page,
   passwordLocator: string,
-  toggleLocator: string = '.passwordToggle, [data-testid="password-toggle"]'
+  toggleLocator = '.passwordToggle, [data-testid="password-toggle"]'
 ): Promise<void> {
   const passwordInput = page.locator(passwordLocator)
   const toggleButton = page.locator(toggleLocator)
@@ -178,7 +178,7 @@ export async function testErrorClearingOnCorrection(
 export async function testFormLoadingState(
   page: Page,
   submitButton: string,
-  shouldShowLoading: boolean = true
+  shouldShowLoading = true
 ): Promise<void> {
   const button = page.getByRole('button', { name: submitButton })
 

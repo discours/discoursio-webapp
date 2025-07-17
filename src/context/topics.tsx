@@ -3,7 +3,6 @@ import { createStore } from 'solid-js/store'
 import { loadTopics, loadTopicsByCommunity } from '~/graphql/api/public'
 import { QueryGet_Topics_By_CommunityArgs, Topic } from '~/graphql/generated/graphql'
 import { byTopicStatDesc } from '../utils/sort'
-import { getRandomItemsFromArray } from '~/utils/random'
 
 export const TOPICS_PER_PAGE = 50
 

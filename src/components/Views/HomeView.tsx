@@ -51,11 +51,11 @@ export const HomeView = (props: HomeViewProps) => {
   })
 
   // Создаем сигналы для отслеживания гидрации
-  const [hydrationDebug, setHydrationDebug] = createSignal({
+  const [_hydrationDebug, setHydrationDebug] = createSignal({
     serverProps: null,
     clientProps: null,
     hydrationIssues: []
-  } as Record<string, any>)
+  } as Record<string, unknown>)
 
   // Расширенная диагностика гидрации
   createEffect(() => {

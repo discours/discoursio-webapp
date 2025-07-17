@@ -7,6 +7,7 @@
  */
 
 import { expect, test } from '@playwright/test'
+import { TEST_USERS } from '../utils/auth-helpers'
 import { baseUrl, setupAuthState, waitForPageLoad } from '../utils/test-helpers'
 
 // Тесты для страницы настроек
@@ -14,7 +15,7 @@ test.describe('Страница настроек профиля', () => {
   // Перед каждым тестом устанавливаем состояние авторизации и переходим на страницу настроек
   test.beforeEach(async ({ page }) => {
     // Устанавливаем авторизацию
-    await setupAuthState(page)
+    await setupAuthState(page, TEST_USERS.VALID)
 
     // Переходим на страницу настроек
     await page.goto(`${baseUrl}/settings`)

@@ -1,5 +1,5 @@
-import { Page, expect } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from './test-helpers'
+import { expect, Page } from '@playwright/test'
+import { baseUrl, waitForPageLoad } from './common'
 
 export interface AuthCredentials {
   email: string

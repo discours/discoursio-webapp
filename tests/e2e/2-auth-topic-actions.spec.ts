@@ -1,7 +1,7 @@
-import { expect, type Page, test } from '@playwright/test'
-import { initializeTestEnvironment, cleanupTestEnvironment } from '../utils/test-helpers'
+import { type Page, test } from '@playwright/test'
 import { performLogin, TEST_USERS } from '../utils/auth-helpers'
 import { TopicPage } from '../utils/page-objects'
+import { cleanupTestEnvironment, initializeTestEnvironment } from '../utils/test-helpers'
 
 /**
  * Тестирование действий с темами для авторизованных пользователей

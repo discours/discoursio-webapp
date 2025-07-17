@@ -1,7 +1,8 @@
 // utils/hydration-comparator.ts
 export const compareServerClientDOM = () => {
   if (typeof window === 'undefined') return // Добавляем функцию в window для тестов
-  ;(window as any).compareServerClientDOM = compareServerClientDOM
+  ;(window as unknown as { compareServerClientDOM: typeof compareServerClientDOM }).compareServerClientDOM =
+    compareServerClientDOM
 
   const compareDOM = () => {
     const serverContainer = document.querySelector('[data-server-rendered="true"]')
@@ -45,5 +46,6 @@ export const compareServerClientDOM = () => {
 
 // Экспортируем для глобального доступа
 if (typeof window !== 'undefined') {
-  ;(window as any).compareServerClientDOM = compareServerClientDOM
+  ;(window as unknown as { compareServerClientDOM: typeof compareServerClientDOM }).compareServerClientDOM =
+    compareServerClientDOM
 }

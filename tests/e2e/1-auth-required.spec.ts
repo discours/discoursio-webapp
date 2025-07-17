@@ -8,8 +8,8 @@
  */
 
 import { expect, test } from '@playwright/test'
+import { isUserLoggedIn, performLogin, TEST_USERS } from '../utils/auth-helpers'
 import { AuthModal, BasePage } from '../utils/page-objects'
-import { performLogin, isUserLoggedIn, TEST_USERS } from '../utils/auth-helpers'
 import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
 
 test.describe('Аутентификация и доступ к защищенным страницам', () => {
@@ -22,7 +22,7 @@ test.describe('Аутентификация и доступ к защищенн�
     await basePage.goto()
   })
 
-  test('Должна отображаться форма входа при клике на кнопку "Войти"', async ({ page }) => {
+  test('Должна отображаться форма входа при клике на кнопку "Войти"', async () => {
     await authModal.openLoginForm()
 
     await expect(authModal.emailInput).toBeVisible({ timeout: 10000 })

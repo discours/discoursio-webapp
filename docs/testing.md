@@ -30,15 +30,22 @@
 
 ```bash
 # Установка и настройка
-bun run e2e:install     # 📥 Установка Playwright
+bun run e2e:install     # 📥 Установка Playwright (теперь Chromium для стабильности)
 bun run e2e:install:ci  # 🤖 Установка для CI
 
 # Запуск тестов
-bun run e2e:tests       # 🧪 Все E2E тесты
-bun run e2e:tests:ci    # 🚀 Тесты в CI режиме
+bun run e2e:tests       # 🧪 Все E2E тесты (Chromium)
+bun run e2e:tests:ci    # 🚀 Тесты в CI режиме (оптимизированы)
 bun run e2e:og          # 🎨 Только Open Graph тесты
 
 # Отладка
 bun run e2e:debug       # 🐛 Режим отладки
 bun run e2e:headed      # 👁️ Тесты с UI браузера
+
+# CI оптимизации (новое в v0.12.1)
+# ✅ Ubuntu 22.04 вместо устаревшей ubuntu-latest
+# ✅ Chromium вместо проблемного WebKit fallback  
+# ✅ Кэширование Playwright браузеров
+# ✅ Автоматическая загрузка артефактов при ошибках
+# ✅ Умная конфигурация для CI/локальной разработки
 ```

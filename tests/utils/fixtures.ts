@@ -110,7 +110,7 @@ export class MockManager {
   /**
    * Мок регистрации пользователя
    */
-  async mockRegistration(isSuccess: boolean = true): Promise<void> {
+  async mockRegistration(isSuccess = true): Promise<void> {
     await this.page.route('**/graphql', async (route) => {
       const request = route.request()
       const postData = request.postData()
@@ -156,7 +156,7 @@ export class MockManager {
   /**
    * Мок восстановления пароля
    */
-  async mockPasswordRecovery(isSuccess: boolean = true): Promise<void> {
+  async mockPasswordRecovery(isSuccess = true): Promise<void> {
     await this.page.route('**/graphql', async (route) => {
       const request = route.request()
       const postData = request.postData()
@@ -189,7 +189,7 @@ export class MockManager {
   /**
    * Мок медленного соединения
    */
-  async mockSlowConnection(delay: number = 5000): Promise<void> {
+  async mockSlowConnection(delay = 5000): Promise<void> {
     await this.page.route('**/graphql', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, delay))
       await route.continue()
@@ -246,58 +246,54 @@ export class MockManager {
 /**
  * Генераторы тестовых данных
  */
-export class DataGenerator {
+export const DataGenerator = {
+  /**
+   * Генерирует случайный email
+   */
+  randomEmail: (): string => {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(7)
+    return `test+${timestamp}+${random}@example.com`
+  },
+
   /**
    * Генерирует случайную строку
    */
-  static randomString(length: number = 10): string {
+  randomString: (length = 10): string => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
     let result = ''
     for (let i = 0; i < length; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length))
     }
     return result
-  }
+  },
 
   /**
-   * Генерирует уникальный email
+   * Генерирует тестовую статью
    */
-  static uniqueEmail(domain: string = 'example.com'): string {
-    return `test+${this.randomString(8)}@${domain}`
-  }
+  sampleArticle: () => ({
+    title: `Тестовая статья ${Date.now()}`,
+    lead: 'Это тестовая статья для проверки функциональности',
+    body: 'Содержимое тестовой статьи с достаточным количеством текста для проверки различных сценариев тестирования.'
+  }),
 
   /**
-   * Генерирует данные пользователя
+   * Генерирует тестовый комментарий
    */
-  static user(overrides: Partial<{ email: string; password: string; fullName: string }> = {}) {
-    return {
-      email: overrides.email || this.uniqueEmail(),
-      password: overrides.password || 'TestPassword123!',
-      fullName: overrides.fullName || `Test User ${this.randomString(4)}`,
-      ...overrides
-    }
-  }
-
-  /**
-   * Генерирует контент статьи
-   */
-  static article(overrides: Partial<{ title: string; content: string }> = {}) {
-    return {
-      title: overrides.title || `Test Article ${this.randomString(4)}`,
-      content: overrides.content || `This is test content for article ${this.randomString(6)}`,
-      ...overrides
-    }
-  }
+  sampleComment: () => ({
+    text: `Тестовый комментарий ${Date.now()}`,
+    author: 'Тестовый пользователь'
+  })
 }
 
 /**
  * Вспомогательные функции для OAuth тестирования
  */
-export class OAuthFixtures {
+export const OAuthFixtures = {
   /**
    * Устанавливает мок OAuth state в localStorage
    */
-  static async setOAuthState(page: Page, state: string, provider: string): Promise<void> {
+  setOAuthState: async (page: Page, state: string, provider: string): Promise<void> => {
     await page.addInitScript(
       (stateData) => {
         const oauthState = {
@@ -310,12 +306,12 @@ export class OAuthFixtures {
       },
       { state, provider }
     )
-  }
+  },
 
   /**
    * Устанавливает истекший OAuth state
    */
-  static async setExpiredOAuthState(page: Page, state: string, provider: string): Promise<void> {
+  setExpiredOAuthState: async (page: Page, state: string, provider: string): Promise<void> => {
     await page.addInitScript(
       (stateData) => {
         const expiredTimestamp = Date.now() - 15 * 60 * 1000 // 15 минут назад
@@ -329,12 +325,12 @@ export class OAuthFixtures {
       },
       { state, provider }
     )
-  }
+  },
 
   /**
    * Мок OAuth редиректа
    */
-  static async mockOAuthRedirect(page: Page): Promise<void> {
+  mockOAuthRedirect: async (page: Page): Promise<void> => {
     await page.route('**/oauth/**', (route) => {
       route.fulfill({
         status: 200,

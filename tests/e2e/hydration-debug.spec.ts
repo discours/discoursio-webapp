@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 test.describe('Проверка гидратации SolidJS', () => {
   test('Проверка интерактивности после гидратации', async ({ page }) => {
@@ -36,9 +36,12 @@ test.describe('Проверка гидратации SolidJS', () => {
 
     // Проверяем что hydration-comparator загружен
     await page.evaluate(() => {
-      if (typeof (window as any).compareServerClientDOM === 'function') {
+      if (
+        typeof (window as unknown as { compareServerClientDOM?: () => void }).compareServerClientDOM ===
+        'function'
+      ) {
         console.log('✅ Hydration comparator найден на главной')
-        ;(window as any).compareServerClientDOM()
+        ;(window as unknown as { compareServerClientDOM: () => void }).compareServerClientDOM()
       }
     })
 
@@ -56,12 +59,15 @@ test.describe('Проверка гидратации SolidJS', () => {
 
     // Запускаем проверку гидрации после возврата
     const hydrationError = await page.evaluate(() => {
-      if (typeof (window as any).compareServerClientDOM === 'function') {
+      if (
+        typeof (window as unknown as { compareServerClientDOM?: () => void }).compareServerClientDOM ===
+        'function'
+      ) {
         console.log('🔍 Проверяем гидрацию после возврата на главную...')
-        ;(window as any).compareServerClientDOM()
+        ;(window as unknown as { compareServerClientDOM: () => void }).compareServerClientDOM()
         return 'checked'
       }
-      return 'comparator not found'
+      return 'not_found'
     })
 
     console.log('📊 Результат проверки гидрации:', hydrationError)
@@ -80,7 +86,10 @@ test.describe('Проверка гидратации SolidJS', () => {
     await page.goto('/')
 
     const hydrationValidator = await page.evaluate(() => {
-      return typeof (window as any).compareServerClientDOM !== 'undefined'
+      return (
+        typeof (window as unknown as { compareServerClientDOM?: () => void }).compareServerClientDOM !==
+        'undefined'
+      )
     })
 
     if (hydrationValidator) {
