@@ -1,4 +1,5 @@
 import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js'
+import { isServer } from 'solid-js/web'
 import { useAuthors } from '~/context/authors'
 import { useFeaturedFeed } from '~/context/featured'
 import { useLocalize } from '~/context/localize'
@@ -40,6 +41,14 @@ export const HomeView = (props: HomeViewProps) => {
   const { topAuthors, addAuthors } = useAuthors()
   const { topTopics } = useTopics()
   const { randomTopicFeed } = useFeaturedFeed()
+
+  // Флаг для отслеживания завершения гидрации
+  const [isHydrated, setIsHydrated] = createSignal(isServer)
+
+  // После монтирования компонента отмечаем что гидрация завершена
+  onMount(() => {
+    setIsHydrated(true)
+  })
 
   // Создаем сигналы для отслеживания гидрации
   const [hydrationDebug, setHydrationDebug] = createSignal({
@@ -113,8 +122,10 @@ export const HomeView = (props: HomeViewProps) => {
       const topViewed = props.topViewedShouts || []
       const topCommented = props.topCommentedShouts || []
 
-      // Безопасный доступ к randomTopicFeed - может быть undefined на сервере
-      const randomTopic = randomTopicFeed()?.shouts || []
+      // Стабильный доступ к randomTopicFeed
+      // Возвращаем данные только после завершения гидрации на клиенте
+      const randomTopicData = randomTopicFeed()
+      const randomTopic = isHydrated() && randomTopicData?.shouts ? randomTopicData.shouts : []
 
       // Проверяем наличие минимального количества данных для стабильности
       if (featured.length < MIN_SHOUTS_FOR_FULL_VIEW) {
@@ -234,7 +245,10 @@ export const HomeView = (props: HomeViewProps) => {
             />
           </Show>
 
-          <Show when={randomTopicFeed()?.topic}>
+          {/* Показываем блок случайной темы только после завершения гидрации */}
+          <Show
+            when={isHydrated() && randomTopicFeed()?.topic && deduplicatedBlocks().randomTopic.length > 0}
+          >
             <TopicShoutsGroup
               shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
               topic={randomTopicFeed()?.topic as Topic}
@@ -317,25 +331,6 @@ export const HomeView = (props: HomeViewProps) => {
             )
           }}
         </For>
-      </Show>
-
-      {/* Отладочный блок */}
-      <Show when={import.meta.env.DEV}>
-        <div
-          data-hydration-debug
-          style={{
-            position: 'fixed',
-            bottom: '10px',
-            right: '10px',
-            background: 'rgba(0,0,0,0.7)',
-            color: 'white',
-            padding: '10px',
-            'z-index': 1000
-          }}
-        >
-          <h3>Hydration Debug</h3>
-          <pre>{JSON.stringify(hydrationDebug(), null, 2)}</pre>
-        </div>
       </Show>
     </div>
   )

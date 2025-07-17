@@ -116,7 +116,7 @@ export class MockManager {
       const postData = request.postData()
 
       if (postData?.includes('registerUser')) {
-        const response = isSuccess 
+        const response = isSuccess
           ? MOCK_DATA.API_RESPONSES.SUCCESS.register
           : MOCK_DATA.API_RESPONSES.ERRORS.emailExists
 
@@ -191,7 +191,7 @@ export class MockManager {
    */
   async mockSlowConnection(delay: number = 5000): Promise<void> {
     await this.page.route('**/graphql', async (route) => {
-      await new Promise(resolve => setTimeout(resolve, delay))
+      await new Promise((resolve) => setTimeout(resolve, delay))
       await route.continue()
     })
   }
@@ -269,7 +269,7 @@ export class DataGenerator {
   /**
    * Генерирует данные пользователя
    */
-  static user(overrides: Partial<{email: string, password: string, fullName: string}> = {}) {
+  static user(overrides: Partial<{ email: string; password: string; fullName: string }> = {}) {
     return {
       email: overrides.email || this.uniqueEmail(),
       password: overrides.password || 'TestPassword123!',
@@ -281,7 +281,7 @@ export class DataGenerator {
   /**
    * Генерирует контент статьи
    */
-  static article(overrides: Partial<{title: string, content: string}> = {}) {
+  static article(overrides: Partial<{ title: string; content: string }> = {}) {
     return {
       title: overrides.title || `Test Article ${this.randomString(4)}`,
       content: overrides.content || `This is test content for article ${this.randomString(6)}`,
@@ -298,31 +298,37 @@ export class OAuthFixtures {
    * Устанавливает мок OAuth state в localStorage
    */
   static async setOAuthState(page: Page, state: string, provider: string): Promise<void> {
-    await page.addInitScript((stateData) => {
-      const oauthState = {
-        state: stateData.state,
-        provider: stateData.provider,
-        timestamp: Date.now(),
-        redirectUri: 'http://localhost:3001'
-      }
-      localStorage.setItem('oauth_state', JSON.stringify(oauthState))
-    }, { state, provider })
+    await page.addInitScript(
+      (stateData) => {
+        const oauthState = {
+          state: stateData.state,
+          provider: stateData.provider,
+          timestamp: Date.now(),
+          redirectUri: 'http://localhost:3001'
+        }
+        localStorage.setItem('oauth_state', JSON.stringify(oauthState))
+      },
+      { state, provider }
+    )
   }
 
   /**
    * Устанавливает истекший OAuth state
    */
   static async setExpiredOAuthState(page: Page, state: string, provider: string): Promise<void> {
-    await page.addInitScript((stateData) => {
-      const expiredTimestamp = Date.now() - 15 * 60 * 1000 // 15 минут назад
-      const oauthState = {
-        state: stateData.state,
-        provider: stateData.provider,
-        timestamp: expiredTimestamp,
-        redirectUri: 'http://localhost:3001'
-      }
-      localStorage.setItem('oauth_state', JSON.stringify(oauthState))
-    }, { state, provider })
+    await page.addInitScript(
+      (stateData) => {
+        const expiredTimestamp = Date.now() - 15 * 60 * 1000 // 15 минут назад
+        const oauthState = {
+          state: stateData.state,
+          provider: stateData.provider,
+          timestamp: expiredTimestamp,
+          redirectUri: 'http://localhost:3001'
+        }
+        localStorage.setItem('oauth_state', JSON.stringify(oauthState))
+      },
+      { state, provider }
+    )
   }
 
   /**
@@ -336,4 +342,4 @@ export class OAuthFixtures {
       })
     })
   }
-} 
+}

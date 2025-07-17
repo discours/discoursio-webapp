@@ -44,7 +44,6 @@ export default function middleware(request) {
     return null // Пропускаем статические изображения
   }
 
-  // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: не возвращаем Response для обычных запросов!
   // Middleware должен возвращать null чтобы запрос продолжился к приложению
   console.log(`[Middleware] Passing through to app: ${url.pathname}`)
 

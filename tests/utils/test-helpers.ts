@@ -64,7 +64,7 @@ export function getScreenshotName(testInfo: string): string {
 }
 
 // Re-export auth functions for backward compatibility
-export { 
+export {
   performLogin as login,
   performLogout,
   isUserLoggedIn as isLoggedIn,
@@ -77,11 +77,11 @@ export {
  */
 export async function initializeTestEnvironment(browser: any, testName: string): Promise<Page> {
   console.log(`Инициализация тестов ${testName}...`)
-  
+
   const page = await browser.newPage()
   await checkServerWithoutStarting(page)
   await expect(page).toHaveTitle(/Discours|Дискурс/)
-  
+
   console.log(`Тесты ${testName} инициализированы успешно!`)
   return page
 }

@@ -1,13 +1,12 @@
 import { A, useMatch } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Accessor, createEffect, createSignal, For, Show, untrack } from 'solid-js'
+import { Accessor, createMemo, For, Show } from 'solid-js'
 
 import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import type { Topic } from '~/graphql/generated/graphql'
 import { capitalize } from '~/utils/capitalize'
-import { getRandomItemsFromArray } from '~/utils/random'
 
 import styles from './TopicsNav.module.scss'
 
@@ -23,20 +22,14 @@ export const DEFAULT_TOPICS = [
 
 export const TopicsNav = (props: { fixed?: boolean; inSubnavigation?: boolean }) => {
   const { t, lang } = useLocalize()
-  const { sortedTopics } = useTopics()
-  const [randomTopics, setRandomTopics] = createSignal<string[]>(DEFAULT_TOPICS)
+  const { sortedTopics, randomNavTopics } = useTopics()
 
-  createEffect(() => {
-    if (props.fixed) return
-
-    const topics = untrack(sortedTopics) as Topic[]
-    if (!topics?.length) return
-
-    const slugs = topics.map((t: Topic) => t.slug).filter(Boolean)
-    if (!slugs.length) return
-
-    const randomItems = getRandomItemsFromArray(slugs, 7) as string[]
-    setRandomTopics(randomItems)
+  // Используем стабильные топики из контекста
+  // вместо генерации случайных в компоненте
+  const navTopics = createMemo(() => {
+    const contextTopics = randomNavTopics()
+    // Фоллбэк на DEFAULT_TOPICS если контекст еще не загружен
+    return contextTopics.length > 0 ? contextTopics : DEFAULT_TOPICS
   })
 
   const matchExpo = useMatch(() => '/expo')
@@ -63,7 +56,7 @@ export const TopicsNav = (props: { fixed?: boolean; inSubnavigation?: boolean })
             </A>
           </li>
         </Show>
-        <For each={randomTopics()}>
+        <For each={navTopics()}>
           {(slug: string, _idx: Accessor<number>) => {
             const topic = sortedTopics()?.find((t: Topic) => t.slug === slug)
             return (

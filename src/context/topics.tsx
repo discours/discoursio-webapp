@@ -3,8 +3,20 @@ import { createStore } from 'solid-js/store'
 import { loadTopics, loadTopicsByCommunity } from '~/graphql/api/public'
 import { QueryGet_Topics_By_CommunityArgs, Topic } from '~/graphql/generated/graphql'
 import { byTopicStatDesc } from '../utils/sort'
+import { getRandomItemsFromArray } from '~/utils/random'
 
 export const TOPICS_PER_PAGE = 50
+
+// Стабильные топики по умолчанию для навигации
+export const DEFAULT_NAV_TOPICS = [
+  'interview',
+  'reportage',
+  'empiric',
+  'society',
+  'culture',
+  'theory',
+  'poetry'
+]
 
 type TopicsContextType = {
   topicEntities: Accessor<{ [topicSlug: string]: Topic }>
@@ -19,6 +31,8 @@ type TopicsContextType = {
   isLoading: Accessor<boolean>
   topicsByAuthors: Accessor<Topic[]>
   topicsByShouts: Accessor<Topic[]>
+  // Стабильные случайные топики для навигации
+  randomNavTopics: Accessor<string[]>
 }
 
 const TopicsContext = createContext<TopicsContextType>({
@@ -33,7 +47,8 @@ const TopicsContext = createContext<TopicsContextType>({
   hasMore: () => false,
   isLoading: () => false,
   topicsByAuthors: () => [] as Topic[],
-  topicsByShouts: () => [] as Topic[]
+  topicsByShouts: () => [] as Topic[],
+  randomNavTopics: () => [] as string[]
 } as TopicsContextType)
 
 export function useTopics() {
@@ -86,7 +101,9 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     hasMore: true,
     byAuthors: [] as Topic[],
     byShouts: [] as Topic[],
-    initialized: false // флаг инициализации
+    initialized: false, // флаг инициализации
+    // Стабильные случайные топики для TopicsNav
+    randomNavTopics: [] as string[]
   })
 
   // Ленивая инициализация - загружаем данные только при первом запросе
@@ -177,6 +194,20 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
       const byAuthors = topicsWithAuthors.sort(byTopicStatDesc('authors') as (a: Topic, b: Topic) => number)
       const byShouts = topicsWithShouts.sort(byTopicStatDesc('shouts') as (a: Topic, b: Topic) => number)
 
+      // Генерируем стабильные случайные топики для навигации
+      // только если их еще нет (при первой загрузке)
+      let randomNavTopics = prev.randomNavTopics
+      if (!randomNavTopics.length) {
+        const availableTopicSlugs = newTopics.map((t) => t.slug).filter(Boolean)
+        if (availableTopicSlugs.length > 0) {
+          // Используем детерминированный подход: берем первые 7 топиков вместо случайных
+          // для стабильности между сессиями навигации
+          randomNavTopics = availableTopicSlugs.slice(0, 7)
+        } else {
+          randomNavTopics = DEFAULT_NAV_TOPICS
+        }
+      }
+
       return {
         ...prev,
         entities,
@@ -184,7 +215,8 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
         byAuthors,
         byShouts,
         random: prev.random || newTopics[0],
-        loading: false
+        loading: false,
+        randomNavTopics
       }
     })
   })
@@ -243,6 +275,7 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     isLoading: () => state.loading,
     topicsByAuthors: () => state.byAuthors,
     topicsByShouts: () => state.byShouts,
+    randomNavTopics: () => state.randomNavTopics,
     setTopicsSort: (sortBy) => {
       setState('sortBy', sortBy as TopicSort)
       setState('offset', 0)

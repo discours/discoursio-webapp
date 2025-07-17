@@ -6,8 +6,8 @@ import { hydrate, isServer, renderToString } from 'solid-js/web'
 export const validateHydration = async (renderComponent: () => JSX.Element) => {
   if (isServer) return
 
+  // Расширенная диагностика гидрации
   const serverHTML = await renderToString(renderComponent)
-
   const serverContainer = document.createElement('div')
   serverContainer.innerHTML = serverHTML
 

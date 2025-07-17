@@ -13,7 +13,7 @@ let page: Page | null = null
 test.beforeAll(async ({ browser }) => {
   page = await initializeTestEnvironment(browser, 'draft actions')
   test.setTimeout(150000)
-  
+
   // Закрываем страницу инициализации
   if (page) {
     await page.close()
@@ -36,7 +36,7 @@ test.beforeEach(async ({ page }) => {
 test.describe('Создание новых материалов', () => {
   test('Открытие /edit/new', async ({ page }) => {
     const draftPage = new DraftPage(page)
-    
+
     await page.goto('/edit/new')
     await draftPage.verifyPageTitle('Дискурс :: Выберите тип публикации')
     await draftPage.verifyHeading('Выберите тип публикации')
@@ -44,7 +44,7 @@ test.describe('Создание новых материалов', () => {
 
   test('Создание статьи', async ({ page }) => {
     const draftPage = new DraftPage(page)
-    
+
     await page.goto('/edit/new')
     await draftPage.selectPublicationType('статья')
     await draftPage.verifyEditUrl()
@@ -53,7 +53,7 @@ test.describe('Создание новых материалов', () => {
 
   test('Создание литературы', async ({ page }) => {
     const draftPage = new DraftPage(page)
-    
+
     await draftPage.openDrafts()
     await draftPage.createNewPublication()
     await draftPage.selectPublicationType('литература')
@@ -63,7 +63,7 @@ test.describe('Создание новых материалов', () => {
 
   test('Создание галереи', async ({ page }) => {
     const draftPage = new DraftPage(page)
-    
+
     await draftPage.openDrafts()
     await draftPage.createNewPublication()
     await draftPage.selectPublicationType('изображения')
@@ -72,7 +72,7 @@ test.describe('Создание новых материалов', () => {
 
     // Заполнение формы
     await draftPage.fillGalleryForm('Тестовая галерея', 'Это тестовая галерея изображений')
-    
+
     // Сохранение
     await draftPage.saveDraft()
     await draftPage.verifyDraftSaved()
@@ -80,7 +80,7 @@ test.describe('Создание новых материалов', () => {
 
   test('Создание аудио', async ({ page }) => {
     const draftPage = new DraftPage(page)
-    
+
     await draftPage.openDrafts()
     await draftPage.createNewPublication()
     await draftPage.selectPublicationType('музыка')
@@ -89,7 +89,7 @@ test.describe('Создание новых материалов', () => {
 
     // Заполнение формы
     await draftPage.fillAudioForm('Тестовый трек', 'Тестовый исполнитель')
-    
+
     // Сохранение
     await draftPage.saveDraft()
     await draftPage.verifyDraftSaved()
@@ -97,7 +97,7 @@ test.describe('Создание новых материалов', () => {
 
   test('Создание видео', async ({ page }) => {
     const draftPage = new DraftPage(page)
-    
+
     await draftPage.openDrafts()
     await draftPage.createNewPublication()
     await draftPage.selectPublicationType('видео')
@@ -106,11 +106,11 @@ test.describe('Создание новых материалов', () => {
 
     // Заполнение формы
     await draftPage.fillVideoForm(
-      'Тестовое видео', 
+      'Тестовое видео',
       'Это тестовое видео',
       'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
     )
-    
+
     // Сохранение
     await draftPage.saveDraft()
     await draftPage.verifyDraftSaved()
@@ -118,13 +118,13 @@ test.describe('Создание новых материалов', () => {
 
   test('Инициализация редактора', async ({ page }) => {
     const draftPage = new DraftPage(page)
-    
+
     await page.goto('/edit/new')
     await draftPage.verifyPageTitle('Дискурс :: Выберите тип публикации')
-    
+
     // Ждем готовности редактора
     await draftPage.verifyEditorReady()
-    
+
     // Проверяем что клик работает с первого раза
     await draftPage.selectPublicationType('статья')
     await draftPage.verifyEditUrl()
@@ -133,7 +133,7 @@ test.describe('Создание новых материалов', () => {
 
 test('Публикация статьи', async ({ page }) => {
   const draftPage = new DraftPage(page)
-  
+
   await draftPage.openDrafts()
   await draftPage.createNewPublication()
   await draftPage.selectPublicationType('статья')
@@ -143,7 +143,7 @@ test('Публикация статьи', async ({ page }) => {
 
   // Публикация
   await draftPage.publishDraft()
-  
+
   // Проверка публикации
   await draftPage.verifyPublished('Тестовая статья')
 })

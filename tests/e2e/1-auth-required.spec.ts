@@ -24,12 +24,14 @@ test.describe('Аутентификация и доступ к защищенн�
 
   test('Должна отображаться форма входа при клике на кнопку "Войти"', async ({ page }) => {
     await authModal.openLoginForm()
-    
+
     await expect(authModal.emailInput).toBeVisible({ timeout: 10000 })
     await expect(authModal.passwordInput).toBeVisible({ timeout: 10000 })
   })
 
-  test('Должна перенаправлять на авторизацию при попытке доступа к защищенным страницам', async ({ page }) => {
+  test('Должна перенаправлять на авторизацию при попытке доступа к защищенным страницам', async ({
+    page
+  }) => {
     // Переходим сразу на защищенную страницу
     await page.goto(`${baseUrl}/edit/new`)
     await waitForPageLoad(page)
@@ -48,7 +50,7 @@ test.describe('Аутентификация и доступ к защищенн�
         expect(currentUrl).toMatch(/login|auth/)
       } else {
         // Проверяем наличие элементов формы авторизации
-        const authRequired = 
+        const authRequired =
           (await basePage.loginButton.isVisible()) ||
           (await authModal.emailInput.isVisible()) ||
           (await authModal.modal.isVisible())

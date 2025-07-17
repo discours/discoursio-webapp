@@ -190,7 +190,7 @@ export class SettingsPage extends BasePage {
       privacy: this.privacyTab,
       notifications: this.notificationsTab
     }
-    
+
     const targetTab = tabMap[tab]
     if (await targetTab.isVisible()) {
       await targetTab.click()
@@ -199,14 +199,14 @@ export class SettingsPage extends BasePage {
   }
 
   async updateProfile(name?: string, bio?: string): Promise<void> {
-    if (name && await this.nameField.isVisible()) {
+    if (name && (await this.nameField.isVisible())) {
       await this.nameField.fill(name)
     }
-    
-    if (bio && await this.bioField.isVisible()) {
+
+    if (bio && (await this.bioField.isVisible())) {
       await this.bioField.fill(bio)
     }
-    
+
     if (await this.saveButton.isVisible()) {
       await this.saveButton.click()
     }
@@ -248,7 +248,7 @@ export class EditPage extends BasePage {
     if (await this.titleField.isVisible()) {
       await this.titleField.fill(title)
     }
-    
+
     if (await this.contentEditor.isVisible()) {
       await this.contentEditor.click()
       await this.page.keyboard.type(content)
@@ -387,15 +387,17 @@ export class DraftPage {
     await this.createPublicationLink.click()
   }
 
-  async selectPublicationType(type: 'статья' | 'литература' | 'изображения' | 'музыка' | 'видео'): Promise<void> {
+  async selectPublicationType(
+    type: 'статья' | 'литература' | 'изображения' | 'музыка' | 'видео'
+  ): Promise<void> {
     const typeSelectors = {
-      'статья': 'статья',
-      'литература': /^литература$/,
-      'изображения': 'изображения',
-      'музыка': 'музыка',
-      'видео': 'видео'
+      статья: 'статья',
+      литература: /^литература$/,
+      изображения: 'изображения',
+      музыка: 'музыка',
+      видео: 'видео'
     }
-    
+
     await this.page.locator('li').filter({ hasText: typeSelectors[type] }).locator('img').click()
   }
 
@@ -485,4 +487,4 @@ export class SitePage {
   async verifyPageLoaded(): Promise<void> {
     await expect(this.page).toHaveTitle(/Дискурс/)
   }
-} 
+}

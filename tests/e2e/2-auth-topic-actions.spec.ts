@@ -8,13 +8,13 @@ import { TopicPage } from '../utils/page-objects'
  * Подписка и отписка от тем
  */
 
-// Объявляем глобальную переменную page как nullable  
+// Объявляем глобальную переменную page как nullable
 let page: Page | null = null
 
 test.beforeAll(async ({ browser }) => {
   page = await initializeTestEnvironment(browser, 'topic actions')
   test.setTimeout(150000)
-  
+
   // Закрываем страницу инициализации, чтобы не было конфликтов
   if (page) {
     await page.close()
@@ -36,7 +36,7 @@ test.beforeEach(async ({ page }) => {
 test.describe('Действия с темами', () => {
   test('Подписка на тему', async ({ page }) => {
     const topicPage = new TopicPage(page)
-    
+
     await topicPage.navigateToTopics()
     await topicPage.followSocietyTopic()
     await topicPage.verifyFollowState(true) // Должна быть кнопка "Отписаться"
@@ -44,7 +44,7 @@ test.describe('Действия с темами', () => {
 
   test('Отписка от темы', async ({ page }) => {
     const topicPage = new TopicPage(page)
-    
+
     await topicPage.navigateToTopics()
     await topicPage.unfollowSocietyTopic()
     await topicPage.verifyFollowState(false) // Должна быть кнопка "Подписаться"

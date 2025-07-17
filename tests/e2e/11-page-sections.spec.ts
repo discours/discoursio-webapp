@@ -35,7 +35,7 @@ test.describe('Проверка загрузки основных страниц
   Object.entries(PAGES_CONFIG).forEach(([path, expectedTitle]) => {
     test(`Загрузка страницы ${path}`, async ({ page }) => {
       const sitePage = new SitePage(page)
-      
+
       await sitePage.navigateToPage(path)
       await sitePage.verifyPageTitle(expectedTitle)
     })
