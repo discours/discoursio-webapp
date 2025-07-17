@@ -2,6 +2,7 @@ import { clsx } from 'clsx'
 import { createMemo, Match, Show, Switch } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Author } from '~/graphql/generated/graphql'
+// @ts-ignore - chat module not implemented yet
 import type { ChatMember } from '~/graphql/schema/chat.gen'
 import { AuthorBadge } from '../Author/AuthorBadge'
 

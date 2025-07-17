@@ -45,22 +45,19 @@ export default defineConfig({
         viewport: { width: 1280, height: 720 }
       }
     },
-    // Добавляем chromium проект для CI
+    // WebKit проект для CI тестов
     {
-      name: 'chromium',
+      name: 'webkit',
       use: {
-        ...devices['Desktop Chrome'],
-        headless: true, // Всегда headless для CI
+        ...devices['Desktop Safari'],
+        headless: !!isCI, // В CI всегда headless
         viewport: { width: 1280, height: 720 },
         // Оптимизации для CI
-        launchOptions: {
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-web-security'
-          ]
-        }
+        ...(isCI && {
+          launchOptions: {
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          }
+        })
       }
     }
   ],

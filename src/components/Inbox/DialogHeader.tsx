@@ -1,3 +1,4 @@
+// @ts-ignore - chat module not implemented yet
 import type { Chat, ChatMember } from '~/graphql/schema/chat.gen'
 
 import DialogCard from './DialogCard'

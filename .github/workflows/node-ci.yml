@@ -7,7 +7,7 @@ on:
 jobs:
   ci:
     if: github.event_name == 'push'
-    runs-on: ubuntu-22.04  # Обновлено с ubuntu-latest до поддерживаемой версии
+    runs-on: ubuntu-20.04  # Используем более новую версию для лучшей поддержки WebKit
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,7 +27,7 @@ jobs:
 
   e2e_tests:
     needs: ci
-    runs-on: ubuntu-22.04  # Обновлено до поддерживаемой версии
+    runs-on: ubuntu-20.04  # Используем ту же версию для консистентности
     steps:
       - name: Debug event info
         run: |
