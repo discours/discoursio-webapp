@@ -1,11 +1,9 @@
-import { createEffect, createMemo, createResource, For, onMount, Show } from 'solid-js'
-import { isServer, NoHydration } from 'solid-js/web'
+import { createEffect, createMemo, For, onMount, Show } from 'solid-js'
 import { useAuthors } from '~/context/authors'
 import { useFeaturedFeed } from '~/context/featured'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { loadShouts } from '~/graphql/api/public'
-import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/generated/graphql'
+import { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { FeedDeduplicationContext } from '~/utils/deduplicate'
 import { compareServerClientDOM } from '~/utils/hydration-comparator'
 import { paginate } from '~/utils/paginate'
@@ -43,34 +41,6 @@ export const HomeView = (props: HomeViewProps) => {
   const { topTopics } = useTopics()
   const { randomTopicFeed } = useFeaturedFeed()
 
-  // Клиентские ресурсы для загрузки дополнительных данных (не участвуют в SSR)
-  const [topMonthShouts] = createResource(
-    () => (!isServer ? 'load' : false),
-    async () => {
-      const options: LoadShoutsOptions = { filters: { featured: true }, limit: 10 }
-      const loader = loadShouts({ options })
-      return await loader()
-    }
-  )
-
-  const [topCommentedShouts] = createResource(
-    () => (!isServer ? 'load' : false),
-    async () => {
-      const options: LoadShoutsOptions = { filters: { reacted: true }, limit: 20 }
-      const loader = loadShouts({ options })
-      return await loader()
-    }
-  )
-
-  const [topRatedShouts] = createResource(
-    () => (!isServer ? 'load' : false),
-    async () => {
-      const options: LoadShoutsOptions = { filters: { reacted: true }, limit: 20 }
-      const loader = loadShouts({ options })
-      return await loader()
-    }
-  )
-
   // Диагностика загрузки случайных тем (только в dev)
   createEffect(() => {
     if (typeof window !== 'undefined' && import.meta.env.DEV) {
@@ -104,12 +74,12 @@ export const HomeView = (props: HomeViewProps) => {
     () => {
       const dedupContext = new FeedDeduplicationContext()
 
-      // Обеспечиваем консистентность между сервером и клиентом
+      // Используем данные из props (уже загружены на сервере)
       const featured = props.featuredShouts || []
-      const topRated = topRatedShouts() || props.topRatedShouts || []
-      const topMonth = topMonthShouts() || props.topMonthShouts || []
+      const topRated = props.topRatedShouts || []
+      const topMonth = props.topMonthShouts || []
       const topViewed = props.topViewedShouts || []
-      const topCommented = topCommentedShouts() || props.topCommentedShouts || []
+      const topCommented = props.topCommentedShouts || []
 
       // Простой доступ к randomTopicFeed - данные появятся когда загрузятся
       const randomTopicData = randomTopicFeed()
@@ -208,14 +178,9 @@ export const HomeView = (props: HomeViewProps) => {
             />
           </Show>
 
-          <NoHydration>
-            <Show when={deduplicatedBlocks().topMonth.length > 0}>
-              <ArticleCardSwiper
-                title={t('Top month')}
-                slides={deduplicatedBlocks().topMonth.slice(0, 10)}
-              />
-            </Show>
-          </NoHydration>
+          <Show when={deduplicatedBlocks().topMonth.length > 0}>
+            <ArticleCardSwiper title={t('Top month')} slides={deduplicatedBlocks().topMonth.slice(0, 10)} />
+          </Show>
 
           <Show when={deduplicatedBlocks().mainFeaturedFirst.length > 10}>
             <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(10, 12)} nodate={true} />
@@ -230,40 +195,31 @@ export const HomeView = (props: HomeViewProps) => {
             <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(17, 20)} nodate={true} />
           </Show>
 
-          <NoHydration>
-            <Show when={deduplicatedBlocks().topCommented.length > 0}>
-              <Row3
-                articles={deduplicatedBlocks().topCommented.slice(0, 3)}
-                header={<h2>{t('Top commented')}</h2>}
-                nodate={true}
-              />
-            </Show>
-          </NoHydration>
+          <Show when={deduplicatedBlocks().topCommented.length > 0}>
+            <Row3
+              articles={deduplicatedBlocks().topCommented.slice(0, 3)}
+              header={<h2>{t('Top commented')}</h2>}
+              nodate={true}
+            />
+          </Show>
 
           {/* Случайная тема - ПРАВИЛЬНО: исключена из гидрации как рекомендует Ryan Carniato */}
-          <NoHydration>
-            <Show
-              when={
-                randomTopicFeed()?.shouts &&
-                randomTopicFeed()?.topic &&
-                deduplicatedBlocks().randomTopic.length > 0
-              }
-            >
-              <TopicShoutsGroup
-                shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
-                topic={randomTopicFeed()?.topic as Topic}
-              />
-            </Show>
-          </NoHydration>
+          <Show
+            when={
+              randomTopicFeed()?.shouts &&
+              randomTopicFeed()?.topic &&
+              deduplicatedBlocks().randomTopic.length > 0
+            }
+          >
+            <TopicShoutsGroup
+              shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
+              topic={randomTopicFeed()?.topic as Topic}
+            />
+          </Show>
 
-          <NoHydration>
-            <Show when={deduplicatedBlocks().topRated.length > 0}>
-              <ArticleCardSwiper
-                title={t('Favorite')}
-                slides={deduplicatedBlocks().topRated.slice(0, 10)}
-              />
-            </Show>
-          </NoHydration>
+          <Show when={deduplicatedBlocks().topRated.length > 0}>
+            <ArticleCardSwiper title={t('Favorite')} slides={deduplicatedBlocks().topRated.slice(0, 10)} />
+          </Show>
 
           <Show when={deduplicatedBlocks().mainFeaturedFirst.length > SHOUTS_PER_PAGE}>
             <>

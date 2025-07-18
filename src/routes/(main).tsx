@@ -1,5 +1,5 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { createEffect, onMount } from 'solid-js'
+import { createEffect } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
@@ -7,7 +7,7 @@ import { useFeaturedFeed } from '~/context/featured'
 import { FEED_PAGE_SIZE } from '~/context/feed'
 import { loadShouts } from '~/graphql/api/public'
 import { createLoader } from '~/graphql/client'
-import { LoadShoutsOptions, QueryLoad_Shouts_ByArgs, ShoutsOrderBy } from '~/graphql/generated/graphql'
+import { QueryLoad_Shouts_ByArgs, ShoutsOrderBy } from '~/graphql/generated/graphql'
 import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
 import { PageLayout } from '../components/_shared/PageLayout'
 import { useLocalize } from '../context/localize'
@@ -66,47 +66,6 @@ const loadShoutsSSR = createLoader<any[], QueryLoad_Shouts_ByArgs>(
   (args: QueryLoad_Shouts_ByArgs) => args
 )
 
-const fetchHomeTopData = async () => {
-  try {
-    safeLog('Fetching top data...')
-
-    const topCommentedLoader = loadShouts({
-      options: { filters: { featured: true }, order_by: ShoutsOrderBy.CommentsCount, limit: FEED_PAGE_SIZE }
-    })
-
-    const daysago = Date.now() - 30 * 24 * 60 * 60 * 1000
-    const after = Math.floor(daysago / 1000)
-    const options: LoadShoutsOptions = {
-      filters: {
-        featured: true,
-        after
-      },
-      order_by: ShoutsOrderBy.Rating,
-      limit: FEED_PAGE_SIZE
-    }
-    const topMonthLoader = loadShouts({ options })
-
-    const topRatedLoader = loadShouts({
-      options: {
-        filters: { featured: true },
-        order_by: ShoutsOrderBy.Rating,
-        limit: FEED_PAGE_SIZE
-      }
-    })
-
-    const topRatedShouts = await topRatedLoader()
-    const topMonthShouts = await topMonthLoader()
-    const topCommentedShouts = await topCommentedLoader()
-
-    safeLog('Top data fetched successfully')
-    return { topCommentedShouts, topMonthShouts, topRatedShouts } as Partial<HomeViewProps>
-  } catch (error) {
-    console.error('[HomePage] Error fetching top data:', error)
-    // Возвращаем пустые массивы в случае ошибки
-    return { topCommentedShouts: [], topMonthShouts: [], topRatedShouts: [] } as Partial<HomeViewProps>
-  }
-}
-
 // Упрощенная SSR загрузка только критически важных данных
 export const route = {
   load: async () => {
@@ -119,8 +78,9 @@ export const route = {
       })
 
       const dataPromise = (async () => {
-        // Загружаем только самые важные featured shouts для первого экрана
-        safeLog('Loading critical featured shouts for SSR...')
+        // Загружаем все данные для SSR
+        safeLog('Loading home data for SSR...')
+
         const featuredLoader = loadShoutsSSR({
           options: {
             filters: { featured: true },
@@ -128,19 +88,62 @@ export const route = {
           }
         })
 
-        // Загружаем только featured shouts в SSR, остальное - на клиенте
-        const featuredShouts = await withRetry(async () => await featuredLoader(), 2, 300)
+        const topCommentedLoader = loadShoutsSSR({
+          options: { filters: { featured: true }, limit: FEED_PAGE_SIZE }
+        })
 
-        safeLog('SSR critical data loaded', {
-          featured: featuredShouts?.length || 0
+        const daysago = Date.now() - 30 * 24 * 60 * 60 * 1000
+        const after = Math.floor(daysago / 1000)
+        const topMonthLoader = loadShoutsSSR({
+          options: {
+            filters: {
+              featured: true,
+              after
+            },
+            order_by: ShoutsOrderBy.Rating,
+            limit: FEED_PAGE_SIZE
+          }
+        })
+
+        const topRatedLoader = loadShoutsSSR({
+          options: {
+            filters: { featured: true },
+            order_by: ShoutsOrderBy.Rating,
+            limit: FEED_PAGE_SIZE
+          }
+        })
+
+        const topViewedLoader = loadShoutsSSR({
+          options: {
+            filters: { featured: true },
+            limit: FEED_PAGE_SIZE
+          }
+        })
+
+        // Загружаем все данные параллельно
+        const [featuredShouts, topCommentedShouts, topMonthShouts, topRatedShouts, topViewedShouts] =
+          await Promise.all([
+            withRetry(async () => await featuredLoader(), 2, 300),
+            withRetry(async () => await topCommentedLoader(), 2, 300),
+            withRetry(async () => await topMonthLoader(), 2, 300),
+            withRetry(async () => await topRatedLoader(), 2, 300),
+            withRetry(async () => await topViewedLoader(), 2, 300)
+          ])
+
+        safeLog('SSR data loaded', {
+          featured: featuredShouts?.length || 0,
+          topCommented: topCommentedShouts?.length || 0,
+          topMonth: topMonthShouts?.length || 0,
+          topRated: topRatedShouts?.length || 0,
+          topViewed: topViewedShouts?.length || 0
         })
 
         return {
           featuredShouts,
-          // Пустые массивы для остальных данных - загрузим на клиенте
-          topCommentedShouts: [],
-          topMonthShouts: [],
-          topRatedShouts: []
+          topCommentedShouts,
+          topMonthShouts,
+          topRatedShouts,
+          topViewedShouts
         }
       })()
 
@@ -156,10 +159,11 @@ export const route = {
 
       // В случае ошибки возвращаем пустые данные
       return {
+        featuredShouts: [],
         topCommentedShouts: [],
         topMonthShouts: [],
         topRatedShouts: [],
-        featuredShouts: []
+        topViewedShouts: []
       }
     }
   }
@@ -167,44 +171,22 @@ export const route = {
 
 export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
   const { t } = useLocalize()
-  const { featuredFeed, setFeaturedFeed, topMonthFeed, topViewedFeed, topCommentedFeed, topFeed } =
-    useFeaturedFeed()
+  const { featuredFeed, setFeaturedFeed } = useFeaturedFeed()
 
-  // Инициализация с SSR данными (только featured шуты)
+  // Инициализация с SSR данными
   createEffect(() => {
     console.log('[HomePage] Initializing with SSR data:', {
-      featuredShouts: props.data?.featuredShouts?.length || 0
+      featuredShouts: props.data?.featuredShouts?.length || 0,
+      topCommented: props.data?.topCommentedShouts?.length || 0,
+      topMonth: props.data?.topMonthShouts?.length || 0,
+      topRated: props.data?.topRatedShouts?.length || 0,
+      topViewed: props.data?.topViewedShouts?.length || 0
     })
 
     if (props.data?.featuredShouts?.length) {
       setFeaturedFeed(props.data.featuredShouts)
     }
   })
-
-  // Убираем загрузку дополнительных данных - она будет в компонентах
-  onMount(() => {
-    // Загружаем featured shouts если нет SSR данных
-    if (!props.data?.featuredShouts?.length && !featuredFeed()?.length) {
-      void loadFeaturedShoutsAsync()
-    }
-  })
-
-  const loadFeaturedShoutsAsync = async () => {
-    try {
-      console.log('[HomePage] Loading featured shouts on client...')
-      const featuredLoader = loadShouts({
-        options: { filters: { featured: true }, limit: FEED_PAGE_SIZE }
-      })
-      const result = await featuredLoader()
-      if (result?.length) {
-        setFeaturedFeed(result)
-      }
-    } catch (error) {
-      console.error('[HomePage] Error loading featured shouts:', error)
-    }
-  }
-
-  // Функция удалена - загрузка данных перенесена в компоненты
 
   const loadMoreFeatured = async (offset?: number) => {
     try {
@@ -225,10 +207,10 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
       <LoadMoreWrapper loadFunction={loadMoreFeatured} pageSize={FEED_PAGE_SIZE} hidden={false}>
         <HomeView
           featuredShouts={props.data?.featuredShouts || featuredFeed() || []}
-          topMonthShouts={topMonthFeed() || []}
-          topViewedShouts={topViewedFeed() || []}
-          topRatedShouts={topFeed() || []}
-          topCommentedShouts={topCommentedFeed() || []}
+          topMonthShouts={props.data?.topMonthShouts || []}
+          topViewedShouts={props.data?.topViewedShouts || []}
+          topRatedShouts={props.data?.topRatedShouts || []}
+          topCommentedShouts={props.data?.topCommentedShouts || []}
         />
       </LoadMoreWrapper>
     </PageLayout>
