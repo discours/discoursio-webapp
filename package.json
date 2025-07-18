@@ -34,7 +34,7 @@
     "templates": "node ./templates/compile.cjs",
     "clean": "rm -rf .output .vinxi node_modules/.vinxi",
     "reset": "npm run clean && npm install",
-    "prepare": "npm run e2e:install"
+    "prepare": "[ \"$VERCEL\" != \"1\" ] && npm run e2e:install || true"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.1",
