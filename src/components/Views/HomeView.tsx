@@ -40,7 +40,7 @@ export const HomeView = (props: HomeViewProps) => {
   const { t } = useLocalize()
   const { topAuthors, addAuthors } = useAuthors()
   const { topTopics } = useTopics()
-  const { randomTopicFeed } = useFeaturedFeed()
+  const { randomTopicFeed, isInitialized } = useFeaturedFeed()
 
   // Флаг для отслеживания завершения гидрации
   const [isHydrated, setIsHydrated] = createSignal(isServer)
@@ -72,16 +72,25 @@ export const HomeView = (props: HomeViewProps) => {
 
       const hydrationIssues = []
 
-      // Проверка контекстов
+      // Проверка контекстов с улучшенной диагностикой
       const randomTopicFeedValue = randomTopicFeed()
-      if (!randomTopicFeedValue) {
-        hydrationIssues.push('Отсутствие randomTopicFeed на клиенте')
+      const contextInitialized = isInitialized()
+
+      if (!contextInitialized) {
+        hydrationIssues.push('FeaturedFeed контекст не инициализирован')
+      }
+
+      if (!randomTopicFeedValue && contextInitialized && isHydrated()) {
+        hydrationIssues.push('randomTopicFeed пуст после инициализации контекста')
       }
 
       setHydrationDebug({
         serverProps: serverPropsSnapshot,
         clientProps: clientPropsSnapshot,
-        hydrationIssues
+        hydrationIssues,
+        contextInitialized,
+        isHydrated: isHydrated(),
+        randomTopicFeedExists: !!randomTopicFeedValue
       })
 
       // Логирование для консоли разработчика
@@ -89,6 +98,9 @@ export const HomeView = (props: HomeViewProps) => {
       console.log('Server Props:', serverPropsSnapshot)
       console.log('Client Props:', clientPropsSnapshot)
       console.log('Hydration Issues:', hydrationIssues)
+      console.log('Context Initialized:', contextInitialized)
+      console.log('Is Hydrated:', isHydrated())
+      console.log('RandomTopicFeed Exists:', !!randomTopicFeedValue)
       console.groupEnd()
     }
   })
@@ -122,10 +134,11 @@ export const HomeView = (props: HomeViewProps) => {
       const topViewed = props.topViewedShouts || []
       const topCommented = props.topCommentedShouts || []
 
-      // Стабильный доступ к randomTopicFeed
-      // Возвращаем данные только после завершения гидрации на клиенте
+      // Стабильный доступ к randomTopicFeed с учетом инициализации контекста
+      // Возвращаем данные только после завершения гидрации и инициализации контекста
       const randomTopicData = randomTopicFeed()
-      const randomTopic = isHydrated() && randomTopicData?.shouts ? randomTopicData.shouts : []
+      const contextReady = isInitialized() && isHydrated()
+      const randomTopic = contextReady && randomTopicData?.shouts ? randomTopicData.shouts : []
 
       // Проверяем наличие минимального количества данных для стабильности
       if (featured.length < MIN_SHOUTS_FOR_FULL_VIEW) {
@@ -245,9 +258,14 @@ export const HomeView = (props: HomeViewProps) => {
             />
           </Show>
 
-          {/* Показываем блок случайной темы только после завершения гидрации */}
+          {/* Показываем блок случайной темы только после завершения гидрации и инициализации контекста */}
           <Show
-            when={isHydrated() && randomTopicFeed()?.topic && deduplicatedBlocks().randomTopic.length > 0}
+            when={
+              isInitialized() &&
+              randomTopicFeed()?.shouts &&
+              randomTopicFeed()?.topic &&
+              deduplicatedBlocks().randomTopic.length > 0
+            }
           >
             <TopicShoutsGroup
               shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}

@@ -14,60 +14,32 @@ export default defineConfig({
   // Параллельный запуск тестов
   fullyParallel: !isCI, // В CI отключаем параллелизм для стабильности
   forbidOnly: !!isCI, // В CI запрещаем .only
-  retries: isCI ? 2 : 0, // В CI добавляем ретраи
+  retries: isCI ? 1 : 0, // В CI добавляем ретраи
   workers: isCI ? 1 : undefined, // В CI используем один воркер
 
-  // Улучшенная конфигурация репортинга
-  reporter: [
-    ['list', { printSteps: false }],
-    ...(isCI ? ([['github' as const], ['html' as const]] as const) : [])
-  ],
+  // Reporter to use
+  reporter: 'html',
 
-  timeout: isCI ? 60000 : 30000, // Увеличенный тайм-аут для CI
-
-  // Глобальные настройки тестов
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
-    headless: !!isCI, // В CI всегда headless
-    ignoreHTTPSErrors: true,
-    trace: isCI ? 'retain-on-failure' : 'off',
-    screenshot: isCI ? 'only-on-failure' : 'off',
-    video: isCI ? 'retain-on-failure' : 'off',
-    actionTimeout: isCI ? 10000 : 5000 // Увеличенный тайм-аут для CI
-  },
+    // Base URL to use in actions like `await page.goto('/')`.
+    baseURL: 'https://localhost:3000',
 
-  // Конфигурация браузеров
+    // Collect trace when retrying the failed test.
+    trace: 'on-first-retry'
+  },
+  // Configure projects for major browsers.
   projects: [
     {
-      name: 'hydration-debug',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1280, height: 720 }
-      }
-    },
-    // WebKit проект для CI тестов
-    {
-      name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-        headless: !!isCI, // В CI всегда headless
-        viewport: { width: 1280, height: 720 },
-        // Оптимизации для CI
-        ...(isCI && {
-          launchOptions: {
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-          }
-        })
-      }
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] }
     }
   ],
-
-  // Веб-сервер для тестирования
+  // Run your local dev server before starting the tests.
   webServer: {
-    command: 'vinxi dev --port 3001',
-    url: 'http://localhost:3001',
+    command: 'npm run dev',
+    url: 'https://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 30000
+    timeout: process.env.CI ? 60000 : 20000
   },
 
   // Папки для артефактов
