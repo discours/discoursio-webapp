@@ -1,6 +1,16 @@
 import { A, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { createEffect, createMemo, createSignal, For, on, onCleanup, Show, Suspense } from 'solid-js'
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  on,
+  onCleanup,
+  onMount,
+  Show,
+  Suspense
+} from 'solid-js'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
 import { ShareModal } from '~/components/_shared/ShareModal'
@@ -180,45 +190,50 @@ export const FeedView = (props: FeedProps) => {
     return ssrFallback
   })
 
-  // Асинхронная загрузка дополнительных данных на клиенте
-  createEffect(async () => {
-    // Загружаем recentComments если нет SSR данных
+  // Правильный SolidJS паттерн - onMount для инициализации дополнительных данных
+  onMount(() => {
     if (!props.recentComments?.length && !clientRecentComments()?.length) {
-      try {
-        console.log('[FeedView] Loading recent comments on client...')
-        const commentsLoader = loadReactions({
-          by: {
-            kinds: [ReactionKind.Comment],
-            sort: ReactionSort.Newest
-          },
-          limit: 3
-        })
-        const comments = await commentsLoader()
-        if (comments?.length) {
-          setClientRecentComments(comments)
-        }
-      } catch (error) {
-        console.error('[FeedView] Error loading recent comments:', error)
-      }
+      void loadRecentCommentsAsync()
     }
-
-    // Загружаем unratedShouts если нет SSR данных
     if (!props.unratedShouts?.length && !clientUnratedShouts()?.length) {
-      try {
-        console.log('[FeedView] Loading unrated shouts on client...')
-        const unratedLoader = loadUnratedShouts({ limit: 5, offset: 0 })
-        const unrated = await unratedLoader()
-        if (unrated?.length) {
-          setClientUnratedShouts(unrated)
-        }
-      } catch (error) {
-        console.error('[FeedView] Error loading unrated shouts:', error)
-      }
+      void loadUnratedShoutsAsync()
     }
   })
 
-  // Проверяем, нужно ли принудительно загрузить данные ленты на клиенте
-  createEffect(async () => {
+  const loadRecentCommentsAsync = async () => {
+    try {
+      console.log('[FeedView] Loading recent comments on client...')
+      const commentsLoader = loadReactions({
+        by: {
+          kinds: [ReactionKind.Comment],
+          sort: ReactionSort.Newest
+        },
+        limit: 3
+      })
+      const comments = await commentsLoader()
+      if (comments?.length) {
+        setClientRecentComments(comments)
+      }
+    } catch (error) {
+      console.error('[FeedView] Error loading recent comments:', error)
+    }
+  }
+
+  const loadUnratedShoutsAsync = async () => {
+    try {
+      console.log('[FeedView] Loading unrated shouts on client...')
+      const unratedLoader = loadUnratedShouts({ limit: 5, offset: 0 })
+      const unrated = await unratedLoader()
+      if (unrated?.length) {
+        setClientUnratedShouts(unrated)
+      }
+    } catch (error) {
+      console.error('[FeedView] Error loading unrated shouts:', error)
+    }
+  }
+
+  // Правильная проверка необходимости загрузки данных
+  createEffect(() => {
     const currentMode = mode()
     const currentFeed = feedByMode()
 
@@ -231,30 +246,33 @@ export const FeedView = (props: FeedProps) => {
 
     if (!hasContextData && !hasSSRData && !currentFeed.isLoading) {
       console.log('[FeedView] No data available for mode', currentMode, 'triggering client load')
-
-      // Устанавливаем локальное состояние загрузки
-      setIsArticlesLoading(true)
-
-      try {
-        // Принудительно загружаем данные из контекста
-        switch (currentMode) {
-          case 'recent':
-            await loadRecentFeed()
-            break
-          case 'hot':
-            await loadHotFeed()
-            break
-          case 'top':
-            await loadTopFeed()
-            break
-        }
-      } catch (error) {
-        console.error('[FeedView] Error loading feed data:', error)
-      } finally {
-        setIsArticlesLoading(false)
-      }
+      void loadFeedByModeAsync(currentMode)
     }
   })
+
+  const loadFeedByModeAsync = async (currentMode: string) => {
+    // Устанавливаем локальное состояние загрузки
+    setIsArticlesLoading(true)
+
+    try {
+      // Принудительно загружаем данные из контекста
+      switch (currentMode) {
+        case 'recent':
+          await loadRecentFeed()
+          break
+        case 'hot':
+          await loadHotFeed()
+          break
+        case 'top':
+          await loadTopFeed()
+          break
+      }
+    } catch (error) {
+      console.error('[FeedView] Error loading feed data:', error)
+    } finally {
+      setIsArticlesLoading(false)
+    }
+  }
 
   // Используем новый хук для загрузки рейтингов
   const [myRatesData] = useShoutsMyRates(

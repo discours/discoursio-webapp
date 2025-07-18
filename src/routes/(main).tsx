@@ -1,5 +1,5 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { createEffect } from 'solid-js'
+import { createEffect, onMount } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
@@ -167,17 +167,8 @@ export const route = {
 
 export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
   const { t } = useLocalize()
-  const {
-    featuredFeed,
-    setFeaturedFeed,
-    topMonthFeed,
-    setTopMonthFeed,
-    topViewedFeed,
-    topCommentedFeed,
-    setTopCommentedFeed,
-    topFeed,
-    setTopFeed
-  } = useFeaturedFeed()
+  const { featuredFeed, setFeaturedFeed, topMonthFeed, topViewedFeed, topCommentedFeed, topFeed } =
+    useFeaturedFeed()
 
   // Инициализация с SSR данными (только featured шуты)
   createEffect(() => {
@@ -190,48 +181,30 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
     }
   })
 
-  // Асинхронная загрузка дополнительных данных на клиенте
-  createEffect(async () => {
+  // Убираем загрузку дополнительных данных - она будет в компонентах
+  onMount(() => {
     // Загружаем featured shouts если нет SSR данных
     if (!props.data?.featuredShouts?.length && !featuredFeed()?.length) {
-      try {
-        console.log('[HomePage] Loading featured shouts on client...')
-        const featuredLoader = loadShouts({
-          options: { filters: { featured: true }, limit: FEED_PAGE_SIZE }
-        })
-        const result = await featuredLoader()
-        if (result?.length) {
-          setFeaturedFeed(result)
-        }
-      } catch (error) {
-        console.error('[HomePage] Error loading featured shouts:', error)
-      }
-    }
-
-    // Всегда загружаем остальные данные на клиенте (не блокируем SSR)
-    try {
-      console.log('[HomePage] Loading additional data on client...')
-      const topData = await fetchHomeTopData()
-
-      if (topData.topMonthShouts?.length) {
-        setTopMonthFeed(topData.topMonthShouts)
-      }
-      if (topData.topCommentedShouts?.length) {
-        setTopCommentedFeed(topData.topCommentedShouts)
-      }
-      if (topData.topRatedShouts?.length) {
-        setTopFeed(topData.topRatedShouts)
-      }
-
-      console.log('[HomePage] Additional data loaded:', {
-        topMonth: topData.topMonthShouts?.length || 0,
-        topCommented: topData.topCommentedShouts?.length || 0,
-        topRated: topData.topRatedShouts?.length || 0
-      })
-    } catch (error) {
-      console.error('[HomePage] Error loading additional data:', error)
+      void loadFeaturedShoutsAsync()
     }
   })
+
+  const loadFeaturedShoutsAsync = async () => {
+    try {
+      console.log('[HomePage] Loading featured shouts on client...')
+      const featuredLoader = loadShouts({
+        options: { filters: { featured: true }, limit: FEED_PAGE_SIZE }
+      })
+      const result = await featuredLoader()
+      if (result?.length) {
+        setFeaturedFeed(result)
+      }
+    } catch (error) {
+      console.error('[HomePage] Error loading featured shouts:', error)
+    }
+  }
+
+  // Функция удалена - загрузка данных перенесена в компоненты
 
   const loadMoreFeatured = async (offset?: number) => {
     try {

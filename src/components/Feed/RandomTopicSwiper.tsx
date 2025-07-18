@@ -1,9 +1,8 @@
-import { createResource, Show, Suspense } from 'solid-js'
+import { createEffect, Show } from 'solid-js'
 import { useAuthors } from '~/context/authors'
+import { useFeaturedFeed } from '~/context/featured'
 import { useLocalize } from '~/context/localize'
-import { useTopics } from '~/context/topics'
-import { loadShouts } from '~/graphql/api/public'
-import { Author, Shout, Topic } from '~/graphql/generated/graphql'
+import { Author, Shout } from '~/graphql/generated/graphql'
 import { capitalize } from '~/utils/capitalize'
 import { Icon } from '../_shared/Icon'
 import Group from './Group'
@@ -12,39 +11,37 @@ import styles from './RandomTopicSwiper.module.scss'
 
 export const RandomTopicSwiper = () => {
   const { t } = useLocalize()
-  const { randomTopic } = useTopics()
+  const { randomTopicFeed } = useFeaturedFeed()
   const { addAuthors } = useAuthors()
 
-  const [articles] = createResource(randomTopic, async (topic: Topic) => {
-    const shoutsByTopicLoader = loadShouts({
-      options: {
-        filters: { topic: topic.slug, featured: true },
-        limit: 5,
-        offset: 0
-      }
-    })
-    const shouts = await shoutsByTopicLoader()
-    shouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
-    return shouts || []
+  // Добавляем авторов в контекст при получении данных
+  createEffect(() => {
+    const feedData = randomTopicFeed()
+    if (feedData?.shouts) {
+      feedData.shouts.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
+    }
   })
 
   return (
-    <Show when={randomTopic()}>
-      <Suspense>
-        <Group
-          articles={articles() || []}
-          header={
-            <div class={styles.randomTopicHeaderContainer}>
-              <div class={styles.randomTopicHeader}>{capitalize(randomTopic()?.title || '', true)}</div>
-              <div>
-                <a class={styles.randomTopicHeaderLink} href={`/topic/${randomTopic()?.slug || ''}`}>
-                  {t('All articles')} <Icon class={styles.icon} name="arrow-right" />
-                </a>
-              </div>
+    <Show when={randomTopicFeed()?.topic && randomTopicFeed()?.shouts?.length}>
+      <Group
+        articles={randomTopicFeed()?.shouts?.slice(0, 5) || []}
+        header={
+          <div class={styles.randomTopicHeaderContainer}>
+            <div class={styles.randomTopicHeader}>
+              {capitalize(randomTopicFeed()?.topic?.title || '', true)}
             </div>
-          }
-        />
-      </Suspense>
+            <div>
+              <a
+                class={styles.randomTopicHeaderLink}
+                href={`/topic/${randomTopicFeed()?.topic?.slug || ''}`}
+              >
+                {t('All articles')} <Icon class={styles.icon} name="arrow-right" />
+              </a>
+            </div>
+          </div>
+        }
+      />
     </Show>
   )
 }

@@ -5,7 +5,8 @@ import {
   createEffect,
   createMemo,
   createSignal,
-  on,
+  onCleanup,
+  onMount,
   Setter,
   useContext
 } from 'solid-js'
@@ -37,9 +38,12 @@ const FeaturedFeedContext = createContext<FeaturedFeedContextType>({} as Feature
 export const useFeaturedFeed = () => {
   const context = useContext(FeaturedFeedContext)
 
-  // Добавляем проверку контекста с детальным логированием
+  // Простая проверка контекста
   if (!context || Object.keys(context).length === 0) {
-    console.warn('🔍 FeaturedFeed: Контекст не инициализирован, возвращаем безопасные заглушки')
+    if (import.meta.env.DEV) {
+      console.warn('useFeaturedFeed: Context not available - component may be outside provider')
+    }
+
     return {
       featuredFeed: () => undefined,
       setFeaturedFeed: () => {},
@@ -73,65 +77,83 @@ export const FeaturedFeedProvider = (props: { children: JSX.Element }) => {
   // Флаг инициализации для отслеживания готовности контекста
   const [isInitialized, setIsInitialized] = createSignal(isServer)
 
-  // Безопасное получение randomTopic с проверкой контекста
-  const getRandomTopic = () => {
+  // Правильный порядок загрузки: 1) топики, 2) выбор случайного, 3) загрузка постов один раз
+
+  // Безопасное получение контекста топиков
+  const getTopicsContext = () => {
     try {
-      const { randomTopic } = useTopics()
-      return randomTopic
+      return useTopics()
     } catch (error) {
-      console.warn('🔍 FeaturedFeed: Topics контекст недоступен:', error)
-      return () => undefined
+      if (import.meta.env.DEV) {
+        console.warn('FeaturedFeed: Topics контекст недоступен:', error)
+      }
+      return null
     }
   }
 
-  const randomTopic = getRandomTopic()
+  const topicsContext = getTopicsContext()
 
-  // Безопасная загрузка данных randomTopicFeed только на клиенте
-  createEffect(
-    on(
-      randomTopic,
-      async (t?: Topic) => {
-        // Загружаем только если есть топик и мы на клиенте
-        if (!t || isServer) {
-          console.log('🔍 FeaturedFeed: Пропускаем загрузку randomTopicFeed на сервере или без топика')
-          return
+  onMount(() => {
+    // Только на клиенте, после монтирования DOM
+    if (isServer || !topicsContext) {
+      return
+    }
+
+    // Запускаем загрузку асинхронно
+    void loadRandomTopicFeed()
+  })
+
+  // Отдельная функция для асинхронной загрузки (не в эффекте!)
+  const loadRandomTopicFeed = async () => {
+    try {
+      // 1. Загружаем топики если их нет
+      const topics = await topicsContext!.loadTopics()
+
+      if (!topics || topics.length === 0) {
+        return
+      }
+
+      // 2. Выбираем первый топик для стабильности
+      const randomTopic = topics[0]
+
+      if (!randomTopic?.slug) {
+        return
+      }
+
+      // 3. Загружаем посты для случайного топика
+      const shoutsLoader = await loadShouts({
+        options: {
+          filters: { topic: randomTopic.slug, featured: true },
+          limit: RANDOM_TOPIC_SHOUTS_COUNT,
+          offset: 0
         }
+      })
 
-        try {
-          console.log('🔍 FeaturedFeed: Загружаем randomTopicFeed для топика:', t.slug)
+      const shouts = await shoutsLoader()
 
-          const shoutsLoader = await loadShouts({
-            options: {
-              filters: { topic: t.slug, featured: true },
-              limit: RANDOM_TOPIC_SHOUTS_COUNT,
-              offset: 0
-            }
-          })
-
-          const shouts = await shoutsLoader()
-
-          if (shouts && shouts.length > 0) {
-            setRandomTopicFeed({ shouts, topic: t })
-            console.log('🔍 FeaturedFeed: randomTopicFeed загружен успешно:', shouts.length, 'публикаций')
-          } else {
-            console.log('🔍 FeaturedFeed: randomTopicFeed пуст для топика:', t.slug)
-            setRandomTopicFeed(undefined)
-          }
-        } catch (error) {
-          console.error('🔍 FeaturedFeed: Ошибка загрузки randomTopicFeed:', error)
-          setRandomTopicFeed(undefined)
-        }
-      },
-      { defer: true } // Важно: defer для предотвращения выполнения на SSR
-    )
-  )
+      if (shouts && shouts.length > 0) {
+        setRandomTopicFeed({ shouts, topic: randomTopic })
+      }
+    } catch (error) {
+      // Логируем ошибки только в dev режиме
+      if (import.meta.env.DEV) {
+        console.warn('FeaturedFeed: Ошибка загрузки randomTopicFeed:', error)
+      }
+      setRandomTopicFeed(undefined)
+    }
+  }
 
   // Отмечаем инициализацию после монтирования
   createEffect(() => {
     if (!isServer) {
       setIsInitialized(true)
-      console.log('🔍 FeaturedFeed: Контекст инициализирован на клиенте')
     }
+  })
+
+  // Очистка состояния при размонтировании
+  onCleanup(() => {
+    setRandomTopicFeed(undefined)
+    setIsInitialized(false)
   })
 
   const topViewedFeed = createMemo(() => {
@@ -155,5 +177,11 @@ export const FeaturedFeedProvider = (props: { children: JSX.Element }) => {
     isInitialized
   }
 
-  return <FeaturedFeedContext.Provider value={contextValue}>{props.children}</FeaturedFeedContext.Provider>
+  return (
+    <FeaturedFeedContext.Provider value={contextValue}>
+      <div data-featured-feed-provider style={{ display: 'contents' }}>
+        {props.children}
+      </div>
+    </FeaturedFeedContext.Provider>
+  )
 }

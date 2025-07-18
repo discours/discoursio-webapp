@@ -1,10 +1,11 @@
-import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js'
-import { isServer } from 'solid-js/web'
+import { createEffect, createMemo, createResource, For, onMount, Show } from 'solid-js'
+import { isServer, NoHydration } from 'solid-js/web'
 import { useAuthors } from '~/context/authors'
 import { useFeaturedFeed } from '~/context/featured'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { Author, Shout, Topic } from '~/graphql/generated/graphql'
+import { loadShouts } from '~/graphql/api/public'
+import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/generated/graphql'
 import { FeedDeduplicationContext } from '~/utils/deduplicate'
 import { compareServerClientDOM } from '~/utils/hydration-comparator'
 import { paginate } from '~/utils/paginate'
@@ -40,68 +41,44 @@ export const HomeView = (props: HomeViewProps) => {
   const { t } = useLocalize()
   const { topAuthors, addAuthors } = useAuthors()
   const { topTopics } = useTopics()
-  const { randomTopicFeed, isInitialized } = useFeaturedFeed()
+  const { randomTopicFeed } = useFeaturedFeed()
 
-  // Флаг для отслеживания завершения гидрации
-  const [isHydrated, setIsHydrated] = createSignal(isServer)
+  // Клиентские ресурсы для загрузки дополнительных данных (не участвуют в SSR)
+  const [topMonthShouts] = createResource(
+    () => (!isServer ? 'load' : false),
+    async () => {
+      const options: LoadShoutsOptions = { filters: { featured: true }, limit: 10 }
+      const loader = loadShouts({ options })
+      return await loader()
+    }
+  )
 
-  // После монтирования компонента отмечаем что гидрация завершена
-  onMount(() => {
-    setIsHydrated(true)
-  })
+  const [topCommentedShouts] = createResource(
+    () => (!isServer ? 'load' : false),
+    async () => {
+      const options: LoadShoutsOptions = { filters: { reacted: true }, limit: 20 }
+      const loader = loadShouts({ options })
+      return await loader()
+    }
+  )
 
-  // Создаем сигналы для отслеживания гидрации
-  const [_hydrationDebug, setHydrationDebug] = createSignal({
-    serverProps: null,
-    clientProps: null,
-    hydrationIssues: []
-  } as Record<string, unknown>)
+  const [topRatedShouts] = createResource(
+    () => (!isServer ? 'load' : false),
+    async () => {
+      const options: LoadShoutsOptions = { filters: { reacted: true }, limit: 20 }
+      const loader = loadShouts({ options })
+      return await loader()
+    }
+  )
 
-  // Расширенная диагностика гидрации
+  // Диагностика загрузки случайных тем (только в dev)
   createEffect(() => {
-    if (typeof window !== 'undefined') {
-      const serverPropsSnapshot = JSON.stringify({
-        featuredShouts: props.featuredShouts?.map((s) => s.id),
-        topRatedShouts: props.topRatedShouts?.map((s) => s.id)
-      })
-
-      const clientPropsSnapshot = JSON.stringify({
-        featuredShouts: props.featuredShouts?.map((s) => s.id),
-        topRatedShouts: props.topRatedShouts?.map((s) => s.id)
-      })
-
-      const hydrationIssues = []
-
-      // Проверка контекстов с улучшенной диагностикой
+    if (typeof window !== 'undefined' && import.meta.env.DEV) {
       const randomTopicFeedValue = randomTopicFeed()
-      const contextInitialized = isInitialized()
 
-      if (!contextInitialized) {
-        hydrationIssues.push('FeaturedFeed контекст не инициализирован')
+      if (randomTopicFeedValue) {
+        console.log('✅ HomeView: randomTopicFeed загружен:', randomTopicFeedValue.topic.slug)
       }
-
-      if (!randomTopicFeedValue && contextInitialized && isHydrated()) {
-        hydrationIssues.push('randomTopicFeed пуст после инициализации контекста')
-      }
-
-      setHydrationDebug({
-        serverProps: serverPropsSnapshot,
-        clientProps: clientPropsSnapshot,
-        hydrationIssues,
-        contextInitialized,
-        isHydrated: isHydrated(),
-        randomTopicFeedExists: !!randomTopicFeedValue
-      })
-
-      // Логирование для консоли разработчика
-      console.group('🔍 Solid Start Hydration Debug')
-      console.log('Server Props:', serverPropsSnapshot)
-      console.log('Client Props:', clientPropsSnapshot)
-      console.log('Hydration Issues:', hydrationIssues)
-      console.log('Context Initialized:', contextInitialized)
-      console.log('Is Hydrated:', isHydrated())
-      console.log('RandomTopicFeed Exists:', !!randomTopicFeedValue)
-      console.groupEnd()
     }
   })
 
@@ -129,16 +106,14 @@ export const HomeView = (props: HomeViewProps) => {
 
       // Обеспечиваем консистентность между сервером и клиентом
       const featured = props.featuredShouts || []
-      const topRated = props.topRatedShouts || []
-      const topMonth = props.topMonthShouts || []
+      const topRated = topRatedShouts() || props.topRatedShouts || []
+      const topMonth = topMonthShouts() || props.topMonthShouts || []
       const topViewed = props.topViewedShouts || []
-      const topCommented = props.topCommentedShouts || []
+      const topCommented = topCommentedShouts() || props.topCommentedShouts || []
 
-      // Стабильный доступ к randomTopicFeed с учетом инициализации контекста
-      // Возвращаем данные только после завершения гидрации и инициализации контекста
+      // Простой доступ к randomTopicFeed - данные появятся когда загрузятся
       const randomTopicData = randomTopicFeed()
-      const contextReady = isInitialized() && isHydrated()
-      const randomTopic = contextReady && randomTopicData?.shouts ? randomTopicData.shouts : []
+      const randomTopic = randomTopicData?.shouts || []
 
       // Проверяем наличие минимального количества данных для стабильности
       if (featured.length < MIN_SHOUTS_FOR_FULL_VIEW) {
@@ -233,9 +208,14 @@ export const HomeView = (props: HomeViewProps) => {
             />
           </Show>
 
-          <Show when={deduplicatedBlocks().topMonth.length > 0}>
-            <ArticleCardSwiper title={t('Top month')} slides={deduplicatedBlocks().topMonth.slice(0, 10)} />
-          </Show>
+          <NoHydration>
+            <Show when={deduplicatedBlocks().topMonth.length > 0}>
+              <ArticleCardSwiper
+                title={t('Top month')}
+                slides={deduplicatedBlocks().topMonth.slice(0, 10)}
+              />
+            </Show>
+          </NoHydration>
 
           <Show when={deduplicatedBlocks().mainFeaturedFirst.length > 10}>
             <Row2 articles={deduplicatedBlocks().mainFeaturedFirst.slice(10, 12)} nodate={true} />
@@ -250,32 +230,40 @@ export const HomeView = (props: HomeViewProps) => {
             <Row3 articles={deduplicatedBlocks().mainFeaturedFirst.slice(17, 20)} nodate={true} />
           </Show>
 
-          <Show when={deduplicatedBlocks().topCommented.length > 0}>
-            <Row3
-              articles={deduplicatedBlocks().topCommented.slice(0, 3)}
-              header={<h2>{t('Top commented')}</h2>}
-              nodate={true}
-            />
-          </Show>
+          <NoHydration>
+            <Show when={deduplicatedBlocks().topCommented.length > 0}>
+              <Row3
+                articles={deduplicatedBlocks().topCommented.slice(0, 3)}
+                header={<h2>{t('Top commented')}</h2>}
+                nodate={true}
+              />
+            </Show>
+          </NoHydration>
 
-          {/* Показываем блок случайной темы только после завершения гидрации и инициализации контекста */}
-          <Show
-            when={
-              isInitialized() &&
-              randomTopicFeed()?.shouts &&
-              randomTopicFeed()?.topic &&
-              deduplicatedBlocks().randomTopic.length > 0
-            }
-          >
-            <TopicShoutsGroup
-              shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
-              topic={randomTopicFeed()?.topic as Topic}
-            />
-          </Show>
+          {/* Случайная тема - ПРАВИЛЬНО: исключена из гидрации как рекомендует Ryan Carniato */}
+          <NoHydration>
+            <Show
+              when={
+                randomTopicFeed()?.shouts &&
+                randomTopicFeed()?.topic &&
+                deduplicatedBlocks().randomTopic.length > 0
+              }
+            >
+              <TopicShoutsGroup
+                shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
+                topic={randomTopicFeed()?.topic as Topic}
+              />
+            </Show>
+          </NoHydration>
 
-          <Show when={deduplicatedBlocks().topRated.length > 0}>
-            <ArticleCardSwiper title={t('Favorite')} slides={deduplicatedBlocks().topRated.slice(0, 10)} />
-          </Show>
+          <NoHydration>
+            <Show when={deduplicatedBlocks().topRated.length > 0}>
+              <ArticleCardSwiper
+                title={t('Favorite')}
+                slides={deduplicatedBlocks().topRated.slice(0, 10)}
+              />
+            </Show>
+          </NoHydration>
 
           <Show when={deduplicatedBlocks().mainFeaturedFirst.length > SHOUTS_PER_PAGE}>
             <>

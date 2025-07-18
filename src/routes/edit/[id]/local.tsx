@@ -1,5 +1,5 @@
 import { RouteSectionProps, useNavigate } from '@solidjs/router'
-import { createEffect } from 'solid-js'
+import { onMount } from 'solid-js'
 import { toast } from 'solid-toast'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { EditView } from '~/components/Views/EditView'
@@ -17,8 +17,12 @@ export default function EditLocalPage(props: RouteSectionProps) {
   const { requireAuthentication } = useSession()
   const { t } = useLocalize()
 
-  // Загружаем черновик при монтировании
-  createEffect(async () => {
+  // Правильная загрузка черновика при монтировании
+  onMount(() => {
+    void loadDraftAsync()
+  })
+
+  const loadDraftAsync = async () => {
     await requireAuthentication(async () => {
       // Загружаем все черновики, если их еще нет
       if (!drafts().length) {
@@ -50,7 +54,7 @@ export default function EditLocalPage(props: RouteSectionProps) {
         navigate('/edit')
       }
     }, 'edit')
-  })
+  }
 
   return (
     <PageLayout title={t('Edit draft')} withPadding>

@@ -19,26 +19,31 @@ export default () => {
   const [hasSearched, setHasSearched] = createSignal(false)
   const [searchResults, setSearchResults] = createSignal<SearchResult[]>([])
 
-  createEffect(async () => {
+  // Правильный SolidJS паттерн - createEffect для реакции на изменения параметров
+  createEffect(() => {
     if (searchParams.q?.trim()) {
-      try {
-        console.debug('[routes.search] query:', searchParams.q)
-        const searchAction = action(async (text) => {
-          if (!text.trim()) return { search: () => [] as SearchResult[], query: text }
-          const search = await fetchSearchResult({ text, options: { limit: 50, offset: 0 } })
-          return { search, query: text }
-        })
-        const { search: searchLoader } = await searchAction(searchParams.q)
-        const results = await searchLoader()
-        setSearchResults((results || []) as SearchResult[])
-        setHasSearched(true)
-      } catch (error) {
-        console.error('Error loading search results:', error)
-      } finally {
-        setIsLoaded(true)
-      }
+      void performSearchAsync(searchParams.q)
     }
   })
+
+  const performSearchAsync = async (query: string) => {
+    try {
+      console.debug('[routes.search] query:', query)
+      const searchAction = action(async (text) => {
+        if (!text.trim()) return { search: () => [] as SearchResult[], query: text }
+        const search = await fetchSearchResult({ text, options: { limit: 50, offset: 0 } })
+        return { search, query: text }
+      })
+      const { search: searchLoader } = await searchAction(query)
+      const results = await searchLoader()
+      setSearchResults((results || []) as SearchResult[])
+      setHasSearched(true)
+    } catch (error) {
+      console.error('Error loading search results:', error)
+    } finally {
+      setIsLoaded(true)
+    }
+  }
 
   onCleanup(() => {
     setHasSearched(false)

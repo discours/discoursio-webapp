@@ -34,7 +34,53 @@ import '~/styles/toast.scss'
 // biome-ignore lint/suspicious/noExplicitAny: ok
 const ErrorFallback: Component<{ error: any; reset: () => void }> = (props) => {
   onMount(() => {
-    console.error('[App] ErrorBoundary caught error:', props.error)
+    // Расширенное логирование ошибок с контекстом
+    const errorInfo = {
+      error: props.error,
+      message: props.error?.message || 'Unknown error',
+      stack: props.error?.stack,
+      timestamp: new Date().toISOString(),
+      url: typeof window !== 'undefined' ? window.location.href : 'unknown',
+      userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'unknown',
+      // Информация о состоянии DOM
+      domInfo:
+        typeof window !== 'undefined'
+          ? {
+              documentReadyState: document.readyState,
+              bodyChildrenCount: document.body?.children?.length || 0,
+              hasDataHydrationMarkers: !!document.querySelector('[data-hk]')
+            }
+          : null
+    }
+
+    console.group('🚨 [App] ErrorBoundary caught error')
+    console.error('Error object:', props.error)
+    console.error('Full context:', errorInfo)
+
+    // Специальная обработка DOM ошибок
+    if (props.error?.message?.includes('insertBefore') || props.error?.message?.includes('Node')) {
+      console.error('🔍 DOM Error detected - potential hydration mismatch:')
+      console.error('- This usually indicates SSR/Client state mismatch')
+      console.error('- Check for async state changes that affect initial render')
+      console.error('- Verify that components render consistently on server and client')
+    }
+
+    if (props.error?.message?.includes('hydration') || props.error?.message?.includes('Hydration')) {
+      console.error('💧 Hydration Error detected:')
+      console.error('- Server and client rendered different content')
+      console.error('- Check for browser-only APIs used during SSR')
+      console.error("- Verify async data loading doesn't change initial state")
+    }
+
+    console.groupEnd()
+
+    // Отправка ошибки в систему мониторинга (если настроена)
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'exception', {
+        description: props.error?.message || 'Unknown error',
+        fatal: true
+      })
+    }
   })
 
   return (
@@ -42,7 +88,19 @@ const ErrorFallback: Component<{ error: any; reset: () => void }> = (props) => {
       <h1>Что-то пошло не так</h1>
       <details style={{ 'white-space': 'pre-wrap', 'text-align': 'left' }}>
         <summary>Детали ошибки</summary>
-        {props.error?.toString()}
+        <strong>Сообщение:</strong> {props.error?.message || 'Unknown error'}
+        <br />
+        <br />
+        <strong>Тип:</strong> {props.error?.name || 'Error'}
+        <br />
+        <br />
+        {props.error?.stack && (
+          <>
+            <strong>Stack trace:</strong>
+            <br />
+            {props.error.stack}
+          </>
+        )}
       </details>
       <button onClick={props.reset} style={{ margin: '10px', padding: '10px 20px' }}>
         Попробовать снова
@@ -57,14 +115,59 @@ export const Providers: Component<{ children?: JSX.Element }> = (props) => {
   onMount(() => {
     console.log('[App] Providers mounted')
 
-    // Глобальный обработчик неперехваченных ошибок
+    // Расширенный глобальный обработчик неперехваченных ошибок
     window.addEventListener('error', (event) => {
-      console.error('[App] Global error:', event.error)
+      const errorContext = {
+        message: event.error?.message || event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        stack: event.error?.stack,
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        // DOM context
+        documentReadyState: document.readyState,
+        hasHydrationMarkers: !!document.querySelector('[data-hk]'),
+        activeElement: document.activeElement?.tagName
+      }
+
+      console.group('🚨 [App] Global uncaught error')
+      console.error('Event:', event)
+      console.error('Error object:', event.error)
+      console.error('Context:', errorContext)
+
+      // Специальная обработка известных ошибок
+      if (event.error?.message?.includes('insertBefore')) {
+        console.error('🔍 insertBefore error - likely DOM manipulation issue:')
+        console.error('- Check for components trying to insert nodes in wrong parent')
+        console.error('- Verify Show/For components have stable conditions')
+        console.error('- Look for race conditions in async state updates')
+      }
+
+      if (event.error?.message?.includes('Cannot read properties of null')) {
+        console.error('🔍 Null reference error:')
+        console.error('- Check for missing null checks in reactive computations')
+        console.error('- Verify component cleanup in createEffect')
+      }
+
+      console.groupEnd()
       setHasError(true)
     })
 
     window.addEventListener('unhandledrejection', (event) => {
-      console.error('[App] Unhandled rejection:', event.reason)
+      const rejectionContext = {
+        reason: event.reason,
+        promise: event.promise,
+        timestamp: new Date().toISOString(),
+        url: window.location.href
+      }
+
+      console.group('🚨 [App] Unhandled promise rejection')
+      console.error('Event:', event)
+      console.error('Reason:', event.reason)
+      console.error('Context:', rejectionContext)
+      console.groupEnd()
+
       setHasError(true)
     })
   })

@@ -1,5 +1,5 @@
 import { RouteSectionProps, useNavigate } from '@solidjs/router'
-import { createEffect, createSignal, Show } from 'solid-js'
+import { createSignal, onMount, Show } from 'solid-js'
 import { toast } from 'solid-toast'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { DraftPreview } from '~/components/Draft/DraftPreview'
@@ -22,11 +22,14 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
   const [previewData, setPreviewData] = createSignal<ExtendedDraft | null>(null)
   const [isSyncAttempted, setIsSyncAttempted] = createSignal(false)
 
-  // Загружаем черновик при монтировании
-  createEffect(async () => {
+  // Правильная загрузка черновика при монтировании
+  onMount(() => {
     // Предотвращаем повторные вызовы, если синхронизация уже выполнялась
     if (isSyncAttempted()) return
+    void loadPreviewAsync()
+  })
 
+  const loadPreviewAsync = async () => {
     await requireAuthentication(async () => {
       setIsLoading(true)
       try {
@@ -93,7 +96,7 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
         setIsLoading(false)
       }
     }, 'edit')
-  })
+  }
 
   return (
     <PageLayout title={`${t('Discours')} :: ${t('Preview')}`} hideFooter={false}>

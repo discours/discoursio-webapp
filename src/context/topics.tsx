@@ -51,7 +51,31 @@ const TopicsContext = createContext<TopicsContextType>({
 } as TopicsContextType)
 
 export function useTopics() {
-  return useContext(TopicsContext)
+  const context = useContext(TopicsContext)
+
+  // Проверка контекста с детальным логированием в development
+  if (import.meta.env.DEV && (!context || Object.keys(context).length === 0)) {
+    const debugInfo = {
+      timestamp: new Date().toISOString(),
+      context: 'useTopics',
+      contextExists: !!context,
+      domInfo:
+        typeof window !== 'undefined'
+          ? {
+              url: window.location.href,
+              readyState: document.readyState,
+              providersInDOM: !!document.querySelector('[data-topics-provider]')
+            }
+          : null
+    }
+
+    console.group('⚠️ [useTopics] Context not available')
+    console.warn('Debug info:', debugInfo)
+    console.warn('Component may be rendered outside TopicsProvider')
+    console.groupEnd()
+  }
+
+  return context
 }
 
 export type TopicSort = 'shouts' | 'followers' | 'authors' | 'title'
@@ -119,7 +143,20 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
         setState('initialized', true)
         return result.sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
       } catch (error) {
-        console.error('Failed to load topics:', error)
+        const errorContext = {
+          error,
+          timestamp: new Date().toISOString(),
+          context: 'TopicsProvider.loadTopicsOptimized',
+          sortBy,
+          isInitialized: state.initialized,
+          currentTopicsCount: state.sorted.length
+        }
+
+        console.group('🚨 [TopicsProvider] Error loading topics')
+        console.error('Error object:', error)
+        console.error('Context:', errorContext)
+        console.groupEnd()
+
         setState('error', error as Error)
         return []
       } finally {
@@ -306,5 +343,11 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     }
   }
 
-  return <TopicsContext.Provider value={value}>{props.children}</TopicsContext.Provider>
+  return (
+    <TopicsContext.Provider value={value}>
+      <div data-topics-provider style={{ display: 'contents' }}>
+        {props.children}
+      </div>
+    </TopicsContext.Provider>
+  )
 }
