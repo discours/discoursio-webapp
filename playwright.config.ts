@@ -30,8 +30,11 @@ export default defineConfig({
   // Configure projects for major browsers.
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] }
+      name: 'webkit',
+      use: { 
+        browserName: 'webkit',
+        // другие специфичные настройки
+      },
     }
   ],
   // Run your local dev server before starting the tests.

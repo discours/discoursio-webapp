@@ -1,76 +1,91 @@
-name: "deploy"
+name: "CI Pipeline"
 
-on: [push]
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
 
 jobs:
-  testbuild:
+  build-and-test:
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/feature/email-templates'
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm ci
 
-      - name: Install and run Biome
-        run: |
-          npm install --global --save-exact @biomejs/biome
-          npx @biomejs/biome ci
+      - name: Lint Code
+        run: npx @biomejs/biome check src/
 
-      - name: Run Stylelint
-        run: npx stylelint "**/*.{scss,css}"
-
-      - name: Run typecheck
+      - name: TypeScript Type Check
         run: npm run typecheck
 
-      - name: Build project
+      - name: Build Project
         run: npm run build
 
-  email-templates:
+      - name: Run Unit Tests
+        run: npm run test:unit
+
+      - name: Archive Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            dist/
+            .next/
+            build/
+          retention-days: 7
+
+  e2e-tests:
+    needs: build-and-test
     runs-on: ubuntu-latest
-    name: Update templates on Mailgun
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/email-templates'
-    continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Run templates build
-        run: npm run templates
+      - name: Install Dependencies
+        run: npm ci
 
-      - name: "authorizer_email_confirmation template"
-        uses: gyto/mailgun-template-action@v2
+      - name: Install WebKit Playwright
+        run: |
+          npx playwright install webkit
+          npx playwright install-deps webkit
+
+      - name: Run E2E Tests
+        run: npm run test:e2e
+
+      - name: Archive E2E Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          html-file: "./templates/dist/authorizer_email_confirmation.html"
-          mailgun-api-key: ${{ secrets.MAILGUN_API_KEY }}
-          mailgun-domain: "discours.io"
-          mailgun-template: "authorizer_email_confirmation"
+          name: e2e-test-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 5
 
-      - name: "authorizer_password_reset template"
-        uses: gyto/mailgun-template-action@v2
+  performance-check:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Lighthouse Performance Check
+        uses: treosh/lighthouse-ci-action@v10
         with:
-          html-file: "./templates/dist/authorizer_password_reset.html"
-          mailgun-api-key: ${{ secrets.MAILGUN_API_KEY }}
-          mailgun-domain: "discours.io"
-          mailgun-template: "authorizer_password_reset"
-
-      - name: "email_first_publication template"
-        uses: gyto/mailgun-template-action@v2
-        with:
-          html-file: "./templates/dist/authorizer_first_publication.html"
-          mailgun-api-key: ${{ secrets.MAILGUN_API_KEY }}
-          mailgun-domain: "discours.io"
-          mailgun-template: "email_first_publication"
-
-      - name: "new_comment_notification template"
-        uses: gyto/mailgun-template-action@v2
-        with:
-          html-file: "./templates/dist/authorizer_new_comment.html"
-          mailgun-api-key: ${{ secrets.MAILGUN_API_KEY }}
-          mailgun-domain: "discours.io"
-          mailgun-template: "new_comment_notification"
+          urls: |
+            https://discours.io
+          uploadArtifacts: true
+          temporaryPublicStorage: true
