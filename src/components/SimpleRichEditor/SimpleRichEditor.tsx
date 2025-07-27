@@ -778,8 +778,11 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       // Если это внутренняя ссылка на сноску
       if (link?.getAttribute('data-footnote')) {
         const footnoteId = link?.getAttribute('data-footnote')
-        if (footnoteId) {
-          openFootnoteEditor(footnoteId)
+        if (!footnoteId) return
+        if (!editorRef()) return
+        const footnote = getFootnoteById(editorRef()!, footnoteId)
+        if (footnote) {
+          openFootnoteEditor(footnote.marker as HTMLElement)
         }
         return
       }
@@ -811,6 +814,14 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       setEditingImage(target)
       showImageUploadModal()
       return
+    }
+
+    if (target.tagName === 'FOOTNOTE') {
+      e.preventDefault()
+      const footnote = target.closest('footnote')
+      if (footnote) {
+        openFootnoteEditor(footnote as HTMLElement)
+      }
     }
 
     // Обработка клика по врезке (squib)
@@ -1129,11 +1140,11 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       }
       if (command === 'footnote') {
         const footnotesList = editor.querySelector('.footnotes ol')
-        const footnoteNumber = footnotesList ? footnotesList.children.length + 1 : 1
-        const footnoteId = footnoteNumber.toString()
-        const success = insertFootnote(editor, '', activeSelection)
-        if (success) {
-          openFootnoteEditor(footnoteId)
+        const _footnoteNumber = footnotesList ? footnotesList.children.length + 1 : 1
+        // const footnoteId = footnoteNumber.toString()
+        const footnote = insertFootnote(editor, '', activeSelection)
+        if (footnote) {
+          openFootnoteEditor(footnote)
         }
         return
       }
@@ -1384,13 +1395,11 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   //   })
   // )
 
-  const openFootnoteEditor = (footnoteId: string) => {
-    if (!editorRef()) return
-    const footnote = getFootnoteById(editorRef()!, footnoteId)
+  const openFootnoteEditor = (footnote: HTMLElement) => {
     if (!footnote) return
     saveSelection()
-    setEditingFootnote(footnote.marker as HTMLElement)
-    setFootnoteContent(footnote.content)
+    setEditingFootnote(footnote)
+    setFootnoteContent(footnote.innerHTML)
     setShowFootnoteEditor(true)
   }
 
@@ -1699,7 +1708,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
                     href="#"
                     onClick={(e) => {
                       e.preventDefault()
-                      openFootnoteEditor(footnote.id)
+                      openFootnoteEditor(footnote.marker as HTMLElement)
                     }}
                     title={footnote.content.replace(/<[^>]*>/g, '')}
                   >

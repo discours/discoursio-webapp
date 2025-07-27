@@ -104,13 +104,17 @@ const getFootnotesList = (editor: HTMLElement): HTMLElement => {
  * @param selection Текущее выделение
  * @returns true если вставка успешна
  */
-export const insertFootnote = (editor: HTMLElement, content: string, selection: Selection): boolean => {
-  if (!editor || !content) return false
+export const insertFootnote = (
+  editor: HTMLElement,
+  content: string,
+  selection: Selection
+): HTMLElement | undefined => {
+  if (!editor || !content) return
 
   // Получаем существующий или создаем новый список сносок
   const footnotesList = getFootnotesList(editor)
   const ol = footnotesList.querySelector('ol')
-  if (!ol) return false
+  if (!ol) return
 
   // Определяем номер новой сноски
   const footnoteNumber = ol.children.length + 1
@@ -134,10 +138,10 @@ export const insertFootnote = (editor: HTMLElement, content: string, selection: 
     selection.removeAllRanges()
     selection.addRange(range)
 
-    return true
+    return footnoteRef
   }
 
-  return false
+  return
 }
 
 /**

@@ -7,19 +7,15 @@
  * @see https://playwright.dev/docs/auth
  */
 
-import { expect, test } from '@playwright/test'
-import { isUserLoggedIn, performLogin, TEST_USERS } from '../utils/auth-helpers'
-import { AuthModal, BasePage } from '../utils/page-objects'
-import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
+import { expect } from '@playwright/test'
+import { test, TestUtils } from '../utils/test-helpers'
+import { baseUrl } from '../utils/common'
 
 test.describe('Аутентификация и доступ к защищенным страницам', () => {
-  let authModal: AuthModal
-  let basePage: BasePage
-
-  test.beforeEach(async ({ page }) => {
-    authModal = new AuthModal(page)
-    basePage = new BasePage(page)
-    await basePage.goto()
+  test.beforeEach(async ({ solidPage: page }) => {
+    const utils = new TestUtils(page)
+    await utils.goto()
+    await utils.expectPageReady()
   })
 
   test('Должна отображаться форма входа при клике на кнопку "Войти"', async () => {

@@ -204,9 +204,7 @@ export const FullArticle = (props: Props) => {
       return
     }
 
-    const tooltipElements: NodeListOf<HTMLElement> = document.querySelectorAll(
-      '[data-toggle="tooltip"], footnote'
-    )
+    const tooltipElements: NodeListOf<HTMLElement> = document.querySelectorAll('footnote')
     if (!tooltipElements) {
       return
     }
@@ -215,7 +213,7 @@ export const FullArticle = (props: Props) => {
       tooltip.classList.add(styles.tooltip)
       const tooltipContent = document.createElement('div')
       tooltipContent.classList.add(styles.tooltipContent)
-      tooltipContent.innerHTML = element.dataset.originalTitle || element.dataset.value || ''
+      tooltipContent.innerHTML = element.innerHTML
 
       tooltip.append(tooltipContent)
 
