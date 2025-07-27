@@ -7,8 +7,9 @@
  * @see https://playwright.dev/docs/writing-tests
  */
 
-import { expect, test } from '@playwright/test'
-import { baseUrl } from '../utils/test-helpers'
+import { expect } from '@playwright/test'
+import { baseUrl } from '../utils/common'
+import { test } from '../utils/test-helpers'
 
 test.describe('Open Graph API Tests', () => {
   test('должен генерировать базовое OG изображение', async ({ request }) => {

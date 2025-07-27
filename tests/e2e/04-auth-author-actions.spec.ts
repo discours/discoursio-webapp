@@ -1,5 +1,6 @@
-import { expect, type Page, test } from '@playwright/test'
-import { checkServerWithoutStarting } from '../utils/test-helpers'
+import { expect, type Page } from '@playwright/test'
+import { checkServerWithoutStarting } from '../utils/common'
+import { test } from '../utils/test-helpers'
 
 const TEST_PASSWORD = process.env.TEST_PASSWORD
 // biome-ignore lint/suspicious/noExplicitAny: ok
@@ -22,7 +23,7 @@ test.beforeAll(async ({ browser }) => {
 
     // Проверяем, что страница загрузилась корректно
     await expect(page).toHaveTitle(/Дискурс/)
-    await page.getByRole('link', { name: 'Войти' }).click()
+    await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
     console.log('Тесты действий авторов инициализированы успешно!')
 
     // Закрываем страницу
@@ -61,8 +62,11 @@ const randomstring = generateRandomString(4)
 test('Sign up', async ({ page }) => {
   await page.goto('/')
   /* test.setTimeout(80000); */
-  await page.getByRole('link', { name: 'Войти' }).click()
-  await page.getByRole('link', { name: 'У меня еще нет аккаунта' }).click()
+  await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
+  await page
+    .locator('a:has-text("У меня еще нет аккаунта"), button:has-text("У меня еще нет аккаунта")')
+    .first()
+    .click()
   await page.getByPlaceholder('Имя и фамилия').click()
   await page.getByPlaceholder('Имя и фамилия').fill('Тестируем Разработку')
   await page.getByPlaceholder('Почта').click()
@@ -77,14 +81,14 @@ test('Sign up', async ({ page }) => {
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
   /* test.setTimeout(80000); */
-  await page.getByRole('link', { name: 'Войти' }).click()
+  await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
   await page.getByPlaceholder('Почта').click()
   await page.getByPlaceholder('Почта').fill(`guests+${randomstring}@discours.io`)
   await page.getByPlaceholder('Пароль').click()
   if (TEST_PASSWORD) {
     await page.getByPlaceholder('Пароль').fill(TEST_PASSWORD)
   }
-  await page.getByRole('button', { name: 'Войти' }).click()
+  await page.locator('button[type="submit"]:has-text("Войти")').first().click()
 })
 
 test.describe('Author Actions', () => {

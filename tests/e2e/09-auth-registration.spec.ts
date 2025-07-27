@@ -5,8 +5,9 @@
  * подтверждение email и успешное завершение регистрации
  */
 
-import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
+import { expect } from '@playwright/test'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { test } from '../utils/test-helpers'
 
 // Моковые данные для тестирования
 const MOCK_USER_DATA = {

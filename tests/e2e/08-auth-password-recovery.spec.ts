@@ -5,8 +5,9 @@
  * подтверждение email, смену пароля и вход с новым паролем
  */
 
-import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
+import { expect } from '@playwright/test'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { test } from '../utils/test-helpers'
 
 const MOCK_EMAIL = 'test.recovery@example.com'
 const MOCK_NEW_PASSWORD = 'NewPassword123!'

@@ -46,3 +46,4 @@ venv
 .cursorrules
 
 src/graphql/generated/
+tmp

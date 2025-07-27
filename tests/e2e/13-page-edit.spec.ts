@@ -6,9 +6,12 @@
  * @see https://playwright.dev/docs/writing-tests
  */
 
-import { expect, Locator, test } from '@playwright/test'
-import { TEST_USERS } from '../utils/auth-helpers'
-import { baseUrl, getScreenshotName, setupAuthState, waitForPageLoad } from '../utils/test-helpers'
+import { expect, Locator } from '@playwright/test'
+import { performLogin as setupAuthState, TEST_USERS } from '../utils/auth-helpers'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { test } from '../utils/test-helpers'
+
+const getScreenshotName = (name: string) => `test-results/${name}-${Date.now()}.png`
 
 // Тесты для страницы создания новой публикации
 

@@ -5,9 +5,14 @@
  * блокировку доступа к защищенным страницам после выхода
  */
 
-import { expect, test } from '@playwright/test'
-import { TEST_USERS } from '../utils/auth-helpers'
-import { baseUrl, isLoggedIn, setupAuthState, waitForPageLoad } from '../utils/test-helpers'
+import { expect } from '@playwright/test'
+import {
+  isUserLoggedIn as isLoggedIn,
+  performLogin as setupAuthState,
+  TEST_USERS
+} from '../utils/auth-helpers'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { test } from '../utils/test-helpers'
 
 test.describe('Выход из системы', () => {
   test.beforeEach(async ({ page }) => {

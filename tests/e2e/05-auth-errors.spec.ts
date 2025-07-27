@@ -5,14 +5,15 @@
  * сетевых, серверных, валидации, тайм-аутов и других edge cases
  */
 
-import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
+import { expect } from '@playwright/test'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { test } from '../utils/test-helpers'
 
 test.describe('Обработка сетевых ошибок', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(baseUrl)
     await waitForPageLoad(page)
-    await page.getByRole('link', { name: 'Войти' }).click()
+    await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
     await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 10000 })
   })
 
@@ -126,7 +127,7 @@ test.describe('Обработка серверных ошибок', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(baseUrl)
     await waitForPageLoad(page)
-    await page.getByRole('link', { name: 'Войти' }).click()
+    await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
     await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 10000 })
   })
 
@@ -299,7 +300,7 @@ test.describe('Обработка ошибок аутентификации', ()
   test.beforeEach(async ({ page }) => {
     await page.goto(baseUrl)
     await waitForPageLoad(page)
-    await page.getByRole('link', { name: 'Войти' }).click()
+    await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
     await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 10000 })
   })
 

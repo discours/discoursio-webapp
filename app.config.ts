@@ -27,6 +27,7 @@ function checkSSL(): { key: string; cert: string } | undefined {
   try {
     // Только проверяем существующие сертификаты
     if (existsSync(keyPath) && existsSync(certPath)) {
+      console.log('[app.config] Использую HTTPS сертификаты для разработки')
       return {
         key: keyPath,
         cert: certPath
@@ -35,6 +36,7 @@ function checkSSL(): { key: string; cert: string } | undefined {
   } catch {
     // Игнорируем любые ошибки
   }
+  console.log('[app.config] HTTPS сертификаты не найдены, используется HTTP')
   return undefined
 }
 
@@ -65,8 +67,13 @@ export default defineConfig({
   ssr: true,
   server: {
     preset,
-    port: 3000,
-    https: checkSSL()
+    port: process.env.PORT ? Number(process.env.PORT) : 3000,
+    https: checkSSL(),
+    ...(isDev && {
+      host: '0.0.0.0', // Слушаем на всех интерфейсах
+      strictPort: false, // Разрешаем выбор другого порта
+      logLevel: 'info' // Подробные логи
+    })
   },
   devOverlay: isDev,
   vite: viteConfig,

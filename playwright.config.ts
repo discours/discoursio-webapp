@@ -17,6 +17,9 @@ export default defineConfig({
   retries: isCI ? 2 : 0, // В CI добавляем ретраи
   workers: isCI ? 1 : undefined, // В CI используем один воркер
 
+  // Останавливаем тесты после 5 неудач
+  maxFailures: 5,
+
   // Улучшенная конфигурация репортинга
   reporter: [
     ['list', { printSteps: false }],
@@ -28,7 +31,7 @@ export default defineConfig({
   // Глобальные настройки тестов
   use: {
     baseURL: process.env.E2E_BASE_URL || 'https://localhost:3001',
-    headless: !!isCI, // В CI всегда headless
+    headless: !!isCI,
     ignoreHTTPSErrors: true,
     trace: isCI ? 'retain-on-failure' : 'off',
     screenshot: isCI ? 'only-on-failure' : 'off',
@@ -56,10 +59,10 @@ export default defineConfig({
 
   // Веб-сервер для тестирования
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 60000
+    command: 'PORT=3001 vinxi dev',
+    port: 3001,
+    reuseExistingServer: true,
+    timeout: 30000
   },
 
   // Папки для артефактов

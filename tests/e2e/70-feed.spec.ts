@@ -6,9 +6,10 @@
  * @see https://playwright.dev/docs/writing-tests
  */
 
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 import { performLogin, TEST_USERS } from '../utils/auth-helpers'
-import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { test } from '../utils/test-helpers'
 
 test.describe('Лента публикаций', () => {
   test.beforeEach(async ({ page }) => {
