@@ -6,8 +6,9 @@
  * @see https://playwright.dev/docs/writing-tests
  */
 
-import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
+import { expect } from '@playwright/test'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { test } from '../utils/test-helpers'
 
 test.describe('Основные компоненты веб-приложения', () => {
   // Для каждого теста переходим на главную страницу

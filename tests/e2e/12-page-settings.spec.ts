@@ -6,9 +6,10 @@
  * @see https://playwright.dev/docs/writing-tests
  */
 
-import { expect, test } from '@playwright/test'
-import { TEST_USERS } from '../utils/auth-helpers'
-import { baseUrl, setupAuthState, waitForPageLoad } from '../utils/test-helpers'
+import { expect } from '@playwright/test'
+import { performLogin as setupAuthState, TEST_USERS } from '../utils/auth-helpers'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { test } from '../utils/test-helpers'
 
 // Тесты для страницы настроек
 test.describe('Страница настроек профиля', () => {

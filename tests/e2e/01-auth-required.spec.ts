@@ -8,12 +8,17 @@
  */
 
 import { expect } from '@playwright/test'
-import { baseUrl } from '../utils/common'
+import { isUserLoggedIn, performLogin, TEST_USERS } from '../utils/auth-helpers'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { AuthModal } from '../utils/page-objects'
 import { TestUtils, test } from '../utils/test-helpers'
 
 test.describe('Аутентификация и доступ к защищенным страницам', () => {
+  let authModal: AuthModal
+
   test.beforeEach(async ({ solidPage: page }) => {
     const utils = new TestUtils(page)
+    authModal = new AuthModal(page)
     await utils.goto()
     await utils.expectPageReady()
   })
@@ -47,7 +52,7 @@ test.describe('Аутентификация и доступ к защищенн�
       } else {
         // Проверяем наличие элементов формы авторизации
         const authRequired =
-          (await basePage.loginButton.isVisible()) ||
+          (await page.locator('button:has-text("Войти"), a:has-text("Войти")').isVisible()) ||
           (await authModal.emailInput.isVisible()) ||
           (await authModal.modal.isVisible())
 

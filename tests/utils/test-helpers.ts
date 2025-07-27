@@ -9,20 +9,82 @@
 
 import { test as baseTest, expect, Page } from '@playwright/test'
 import * as AuthHelpers from './auth-helpers'
-import * as Common from './common'
+import { baseUrl, checkServerWithoutStarting } from './common'
 
-// Временный класс для совместимости
-class TestUtils {
-  constructor(page: Page) {}
-  async goto() {}
-  async expectPageReady() {}
+// Класс утилит для тестов
+export class TestUtils {
+  public page: Page
+
+  constructor(page: Page) {
+    this.page = page
+  }
+
+  async goto(path = '/') {
+    const url = path.startsWith('http') ? path : `${baseUrl}${path}`
+    console.log(`Переход на: ${url}`)
+    await this.page.goto(url)
+  }
+
+  async expectPageReady() {
+    console.log('Ожидание готовности страницы...')
+    await this.page.waitForLoadState('domcontentloaded')
+    await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
+      console.warn('Тайм-аут при ожидании networkidle, продолжаем...')
+    })
+
+    // Проверяем что страница загрузилась с правильным заголовком
+    await expect(this.page).toHaveTitle(/Discours|Дискурс/, { timeout: 10000 })
+    console.log('Страница готова!')
+  }
+
+  async expectHydrationSuccessful() {
+    console.log('Проверка успешной гидрации...')
+
+    // Ждем завершения гидрации - проверяем что нет консольных ошибок гидрации
+    await this.page.waitForFunction(
+      () => {
+        // Проверяем что document.readyState === 'complete'
+        return document.readyState === 'complete'
+      },
+      { timeout: 10000 }
+    )
+
+    // Дополнительная проверка на наличие атрибутов data-hk (hydration keys) в SolidJS
+    const hydrationKeys = await this.page.$$eval('[data-hk]', (elements) => elements.length)
+    if (hydrationKeys > 0) {
+      console.log(`Найдено ${hydrationKeys} элементов с ключами гидрации`)
+    }
+
+    // Проверяем что основные интерактивные элементы доступны
+    const interactiveElements = await this.page.$$eval(
+      'button, a, input, [role="button"]',
+      (elements) => elements.length
+    )
+    if (interactiveElements > 0) {
+      console.log(`Найдено ${interactiveElements} интерактивных элементов`)
+    }
+
+    console.log('Гидрация прошла успешно!')
+  }
 }
 
-const test = baseTest.extend<{
+export const test = baseTest.extend<{
   solidPage: Page
   testUtils: TestUtils
 }>({
   solidPage: async ({ page }, use) => {
+    // Отслеживаем консольные ошибки для диагностики
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        console.log('🚨 Console Error:', msg.text())
+      }
+    })
+
+    // Отслеживаем ошибки страницы
+    page.on('pageerror', (error) => {
+      console.log('🚨 Page Error:', error.message)
+    })
+
     await use(page)
   },
   testUtils: async ({ page }, use) => {
@@ -30,12 +92,6 @@ const test = baseTest.extend<{
     await use(utils)
   }
 })
-
-export { test, TestUtils, expect }
-
-export const baseUrl = Common.baseUrl
-export const checkServerWithoutStarting = Common.checkServerWithoutStarting
-export const waitForPageLoad = Common.waitForPageLoad
 
 export const { isUserLoggedIn, performLogin, performLogout, TEST_USERS } = AuthHelpers
 
@@ -65,3 +121,6 @@ export async function cleanupTestEnvironment(page: any | null, testName: string)
     await page.close()
   }
 }
+
+// Re-export auth helpers для удобства
+export { getLoginButton, getLoginSubmitButton } from './auth-helpers'

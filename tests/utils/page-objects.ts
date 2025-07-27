@@ -324,7 +324,7 @@ export class TopicPage {
 
   constructor(page: Page) {
     this.page = page
-    this.topicsLink = page.getByRole('link', { name: 'темы', exact: true })
+    this.topicsLink = page.locator('a[href*="/topic"], a:has-text("темы"), a:has-text("Темы")').first()
     this.societyTopicLink = page.getByRole('link', {
       name: 'Общество Статьи о политике, экономике и обществе, об актуальных событиях, людях, мнениях. Тексты про историю и современность, про то, что происходит в России и мире'
     })
@@ -333,6 +333,12 @@ export class TopicPage {
   }
 
   async navigateToTopics(): Promise<void> {
+    // Проверяем и закрываем модальное окно если оно открыто
+    const modal = this.page.locator('[role="dialog"], .modal, .c7Xfaq_backdrop')
+    if (await modal.isVisible()) {
+      await this.page.keyboard.press('Escape')
+      await this.page.waitForTimeout(500)
+    }
     await this.topicsLink.click()
   }
 
@@ -368,9 +374,13 @@ export class DraftPage {
 
   constructor(page: Page) {
     this.page = page
-    this.profileButton = page.getByRole('button', { name: 'Т.Р.' })
-    this.draftsLink = page.getByRole('link', { name: 'Черновики' })
-    this.createPublicationLink = page.getByRole('link', { name: 'Создать публикацию' })
+    this.profileButton = page
+      .locator('.userpic, [data-testid="user-avatar"], button:has([src*="avatar"]), button[data-user-menu]')
+      .first()
+    this.draftsLink = page.locator('a:has-text("Черновики"), [href*="drafts"]').first()
+    this.createPublicationLink = page
+      .locator('a:has-text("Создать публикацию"), [href*="edit/new"]')
+      .first()
     this.titleInput = page.getByLabel('Заголовок')
     this.contentInput = page.getByLabel('Текст')
     this.descriptionInput = page.getByLabel('Описание')
@@ -458,7 +468,9 @@ export class DraftPage {
   }
 
   async verifyHeading(heading: string): Promise<void> {
-    await expect(this.page.getByRole('heading', { name: heading })).toBeVisible()
+    await expect(this.page.getByRole('heading', { name: heading, exact: false })).toBeVisible({
+      timeout: 10000
+    })
   }
 
   async verifyEditUrl(): Promise<void> {

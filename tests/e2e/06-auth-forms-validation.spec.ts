@@ -5,20 +5,21 @@
  * авторизации включая edge cases и пользовательский опыт
  */
 
-import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
+import { expect } from '@playwright/test'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { getLoginSubmitButton, test } from '../utils/test-helpers'
 
 test.describe('Валидация формы входа', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(baseUrl)
     await waitForPageLoad(page)
-    await page.getByRole('link', { name: 'Войти' }).click()
+    await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
     await expect(page.getByPlaceholder('Почта')).toBeVisible({ timeout: 10000 })
   })
 
   test('Должна валидировать email в форме входа', async ({ page }) => {
     const emailInput = page.getByPlaceholder('Почта')
-    const submitButton = page.getByRole('button', { name: 'Войти' })
+    const submitButton = getLoginSubmitButton(page)
 
     // Пустой email
     await submitButton.click()
@@ -51,7 +52,7 @@ test.describe('Валидация формы входа', () => {
   test('Должна валидировать пароль в форме входа', async ({ page }) => {
     const emailInput = page.getByPlaceholder('Почта')
     const passwordInput = page.getByPlaceholder('Пароль')
-    const submitButton = page.getByRole('button', { name: 'Войти' })
+    const submitButton = getLoginSubmitButton(page)
 
     // Вводим валидный email
     await emailInput.fill('test@example.com')

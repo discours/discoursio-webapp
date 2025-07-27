@@ -9,8 +9,9 @@
  * @see https://playwright.dev/docs/writing-tests
  */
 
-import { expect, test } from '@playwright/test'
-import { baseUrl, waitForPageLoad } from '../utils/test-helpers'
+import { expect } from '@playwright/test'
+import { baseUrl, waitForPageLoad } from '../utils/common'
+import { test } from '../utils/test-helpers'
 
 // Константы для регулярных выражений (исправление lint/performance/useTopLevelRegex)
 const QUOTED_STRING_REGEX = /^".*"$/
