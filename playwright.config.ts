@@ -36,8 +36,8 @@ export default defineConfig({
   ],
   // Run your local dev server before starting the tests.
   webServer: {
-    command: 'npm run dev',
-    url: 'https://localhost:3000',
+    command: 'vinxi dev',
+    url: 'https://localhost:3001',
     reuseExistingServer: !process.env.CI,
     timeout: process.env.CI ? 60000 : 20000
   },
