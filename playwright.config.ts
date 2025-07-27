@@ -14,35 +14,52 @@ export default defineConfig({
   // Параллельный запуск тестов
   fullyParallel: !isCI, // В CI отключаем параллелизм для стабильности
   forbidOnly: !!isCI, // В CI запрещаем .only
-  retries: isCI ? 1 : 0, // В CI добавляем ретраи
+  retries: isCI ? 2 : 0, // В CI добавляем ретраи
   workers: isCI ? 1 : undefined, // В CI используем один воркер
 
-  // Reporter to use
-  reporter: 'html',
+  // Улучшенная конфигурация репортинга
+  reporter: [
+    ['list', { printSteps: false }],
+    ...(isCI ? ([['github' as const], ['html' as const]] as const) : [])
+  ],
 
+  timeout: isCI ? 60000 : 30000, // Увеличенный тайм-аут для CI
+
+  // Глобальные настройки тестов
   use: {
-    // Base URL to use in actions like `await page.goto('/')`.
-    baseURL: 'https://localhost:3000',
-
-    // Collect trace when retrying the failed test.
-    trace: 'on-first-retry'
+    baseURL: process.env.E2E_BASE_URL || 'https://localhost:3001',
+    headless: !!isCI, // В CI всегда headless
+    ignoreHTTPSErrors: true,
+    trace: isCI ? 'retain-on-failure' : 'off',
+    screenshot: isCI ? 'only-on-failure' : 'off',
+    video: isCI ? 'retain-on-failure' : 'off',
+    actionTimeout: isCI ? 10000 : 5000 // Увеличенный тайм-аут для CI
   },
-  // Configure projects for major browsers.
+
+  // Конфигурация браузеров
   projects: [
     {
       name: 'webkit',
-      use: { 
-        browserName: 'webkit',
-        // другие специфичные настройки
-      },
+      use: {
+        ...devices['Desktop Safari'],
+        headless: !!isCI, // В CI всегда headless
+        viewport: { width: 1280, height: 720 },
+        // Оптимизации для CI
+        ...(isCI && {
+          launchOptions: {
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          }
+        })
+      }
     }
   ],
-  // Run your local dev server before starting the tests.
+
+  // Веб-сервер для тестирования
   webServer: {
     command: 'npm run dev',
-    url: 'https://localhost:3000',
+    url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: process.env.CI ? 60000 : 20000
+    timeout: 60000
   },
 
   // Папки для артефактов

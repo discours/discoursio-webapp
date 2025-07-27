@@ -1,10 +1,10 @@
-import { test, TestUtils } from '../utils/test-helpers'
 import { expect } from '@playwright/test'
+import { TestUtils, test } from '../utils/test-helpers'
 
 test.describe('Проверка гидратации SolidJS', () => {
   test('Проверка интерактивности после гидрации', async ({ solidPage: page, testUtils }) => {
     const utils = new TestUtils(page)
-    
+
     await utils.goto('/')
     await utils.expectPageReady()
     await utils.expectHydrationSuccessful()

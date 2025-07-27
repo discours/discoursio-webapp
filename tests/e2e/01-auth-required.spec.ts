@@ -8,8 +8,8 @@
  */
 
 import { expect } from '@playwright/test'
-import { test, TestUtils } from '../utils/test-helpers'
 import { baseUrl } from '../utils/common'
+import { TestUtils, test } from '../utils/test-helpers'
 
 test.describe('Аутентификация и доступ к защищенным страницам', () => {
   test.beforeEach(async ({ solidPage: page }) => {
