@@ -1,5 +1,6 @@
 import { Client } from '@urql/core'
 import { createResource } from 'solid-js'
+import { Chat, ChatInput, Message, MessageInput, MessagesBy } from '~/graphql/generated/chat'
 import createChatMutation from '~/graphql/mutation/chat/chat-create'
 import deleteChatMutation from '~/graphql/mutation/chat/chat-delete'
 import markAsReadMutation from '~/graphql/mutation/chat/chat-mark-as-read'
@@ -9,8 +10,6 @@ import updateMessageMutation from '~/graphql/mutation/chat/chat-message-update'
 import updateChatMutation from '~/graphql/mutation/chat/chat-update'
 import loadMessagesQuery from '~/graphql/query/chat/chat-messages-load-by'
 import loadChatsQuery from '~/graphql/query/chat/chats-load'
-
-import { Chat, ChatInput, Message, MessageInput, MessagesBy } from '~/graphql/generated/chat'
 
 type ResourceArgs<T> = readonly [T, Client | undefined]
 

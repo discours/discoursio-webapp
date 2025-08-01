@@ -4,10 +4,7 @@ const config: CodegenConfig = {
   overwrite: true,
   // Используем только inbox схему
   schema: 'https://inbox.dscrs.site',
-  documents: [
-    'src/graphql/mutation/chat/**/*.ts',
-    'src/graphql/query/chat/**/*.ts'
-  ],
+  documents: ['src/graphql/mutation/chat/**/*.ts', 'src/graphql/query/chat/**/*.ts'],
   generates: {
     './src/graphql/generated/inbox-introspection.json': {
       plugins: ['introspection'],
