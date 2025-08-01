@@ -1,8 +1,7 @@
 import { expect, type Page } from '@playwright/test'
-import { checkServerWithoutStarting } from '../utils/common'
-import { test } from '../utils/test-helpers'
+import { generateRandomString } from '../utils/common'
+import { test, TestUtils } from '../utils/test-helpers'
 
-const TEST_PASSWORD = process.env.TEST_PASSWORD
 // biome-ignore lint/suspicious/noExplicitAny: ok
 let context: any = null
 let page: Page | null = null
@@ -12,24 +11,11 @@ let page: Page | null = null
 test.beforeAll(async ({ browser }) => {
   console.log('Инициализация тестов действий авторов...')
 
-  // Создаем контекст и страницу
+  // Создаем контекст для тестов аутентификации
   context = await browser.newContext()
-  page = await context.newPage()
   test.setTimeout(150000)
 
-  if (page) {
-    // Проверяем доступность сервера без его запуска
-    await checkServerWithoutStarting(page)
-
-    // Проверяем, что страница загрузилась корректно
-    await expect(page).toHaveTitle(/Дискурс/)
-    await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
-    console.log('Тесты действий авторов инициализированы успешно!')
-
-    // Закрываем страницу
-    await page.close()
-    page = null // Устанавливаем null после закрытия
-  }
+  console.log('Тесты действий авторов инициализированы успешно!')
 })
 
 // Добавляем хук afterAll для закрытия контекста
@@ -46,49 +32,79 @@ test.afterAll(async () => {
 
 /* TESTS section */
 
-/* Random Generator */
-function generateRandomString(length = 10) {
-  let result = ''
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  const charactersLength = characters.length
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength))
-  }
-  return result
-}
-
 const randomstring = generateRandomString(4)
+const username = `guests+${randomstring}@discours.io`
+const password = generateRandomString(12)
 
 test('Sign up', async ({ page }) => {
-  await page.goto('/')
-  /* test.setTimeout(80000); */
+  const testUtils = new TestUtils(page)
+  
+  await testUtils.goto('/')
+  await testUtils.expectPageReady()
+
+    // Открываем форму входа
   await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
-  await page
-    .locator('a:has-text("У меня еще нет аккаунта"), button:has-text("У меня еще нет аккаунта")')
-    .first()
-    .click()
-  await page.getByPlaceholder('Имя и фамилия').click()
-  await page.getByPlaceholder('Имя и фамилия').fill('Тестируем Разработку')
-  await page.getByPlaceholder('Почта').click()
-  await page.getByPlaceholder('Почта').fill(`guests+${randomstring}@discours.io`)
-  await page.getByPlaceholder('Пароль').click()
-  if (TEST_PASSWORD) {
-    await page.getByPlaceholder('Пароль').fill(TEST_PASSWORD)
-  }
-  await page.getByRole('button', { name: 'Присоединиться' }).click()
+  
+  // Ждем появления модального окна входа
+  await page.waitForSelector('.authForm, .auth-form, [class*="AuthModal"]', { timeout: 10000 }).catch(() => {
+    console.log('Модальное окно авторизации не найдено, продолжаем...')
+  })
+  
+  // Переходим к регистрации - используем правильный селектор
+  const signupButton = page.locator('.authLink:has-text("У меня еще нет аккаунта"), span:has-text("У меня еще нет аккаунта"), .authLink:has-text("I have no account yet"), span:has-text("I have no account yet")')
+  await signupButton.waitFor({ timeout: 10000 })
+  await signupButton.click()
+
+    // Ждем формы регистрации
+  await page.waitForSelector('input[name="fullName"], input[placeholder*="Full name"], input[placeholder*="Имя"]', { timeout: 10000 })
+  
+  // Заполняем форму регистрации
+  await page.getByPlaceholder('Имя и фамилия').or(page.getByPlaceholder('Full name')).first().click()
+  await page.getByPlaceholder('Имя и фамилия').or(page.getByPlaceholder('Full name')).first().fill(`Тестируем Разработку ${randomstring}`)
+  
+  await page.getByPlaceholder('Почта').or(page.getByPlaceholder('Email')).first().click()
+  await page.getByPlaceholder('Почта').or(page.getByPlaceholder('Email')).first().fill(username)
+  
+  await page.getByPlaceholder('Пароль').or(page.getByPlaceholder('Password')).first().click()
+  await page.getByPlaceholder('Пароль').or(page.getByPlaceholder('Password')).first().fill(password)
+  
+  // Отправляем форму - используем правильный селектор кнопки
+  const submitButton = page.getByRole('button', { name: 'Присоединиться' }).or(page.getByRole('button', { name: 'Join' })).or(page.locator('button[type="submit"]')).first()
+  await submitButton.waitFor({ timeout: 5000 })
+  await submitButton.click()
+
+  // Ждем результата регистрации (может быть редирект или сообщение)
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
+    console.log('Тайм-аут при ожидании после регистрации, продолжаем...')
+  })
 })
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/')
-  /* test.setTimeout(80000); */
+  const testUtils = new TestUtils(page)
+  
+  await testUtils.goto('/')
+  await testUtils.expectPageReady()
+
+    // Открываем форму входа
   await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
-  await page.getByPlaceholder('Почта').click()
-  await page.getByPlaceholder('Почта').fill(`guests+${randomstring}@discours.io`)
-  await page.getByPlaceholder('Пароль').click()
-  if (TEST_PASSWORD) {
-    await page.getByPlaceholder('Пароль').fill(TEST_PASSWORD)
-  }
-  await page.locator('button[type="submit"]:has-text("Войти")').first().click()
+  
+  // Ждем появления формы входа
+  await page.waitForSelector('input[name="email"], input[placeholder*="Email"], input[placeholder*="Почта"]', { timeout: 10000 })
+  
+  // Заполняем форму входа
+  await page.getByPlaceholder('Почта').or(page.getByPlaceholder('Email')).first().click()
+  await page.getByPlaceholder('Почта').or(page.getByPlaceholder('Email')).first().fill(username)
+  await page.getByPlaceholder('Пароль').or(page.getByPlaceholder('Password')).first().click()
+  await page.getByPlaceholder('Пароль').or(page.getByPlaceholder('Password')).first().fill(password)
+  
+  // Отправляем форму входа
+  const loginButton = page.getByRole('button', { name: 'Войти' }).or(page.getByRole('button', { name: 'Enter' })).or(page.locator('button[type="submit"]')).first()
+  await loginButton.click()
+
+  // Ждем завершения входа
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
+    console.log('Тайм-аут при ожидании после входа, продолжаем...')
+  })
 })
 
 test.describe('Author Actions', () => {

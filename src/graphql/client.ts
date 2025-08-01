@@ -93,7 +93,7 @@ export const client = createClient({
  * Создает GraphQL клиент с авторизацией
  * Используется для создания клиентов с токенами авторизации
  */
-export function graphqlClientCreate(apiUrl: string, token?: string) {
+export function graphqlClientCreate(apiUrl: string = coreApiUrl, token?: string) {
   const fetchOptions: RequestInit = {
     credentials: 'include',
     headers: {
@@ -103,7 +103,7 @@ export function graphqlClientCreate(apiUrl: string, token?: string) {
   }
 
   return createClient({
-    url: coreApiUrl,
+    url: apiUrl,
     exchanges: [cacheExchange, ssr, fetchExchange],
     fetchOptions,
     requestPolicy: 'cache-and-network'
@@ -160,7 +160,7 @@ export function createCacheableLoader<T, Args>(
               // 30 минут
               return parsed.data as T
             }
-          } catch (e) {
+          } catch (_e) {
             // Игнорируем ошибки парсинга кеша
           }
         }
@@ -216,7 +216,7 @@ export function createCacheableQueryResource<T, Args>(
                 // 30 минут
                 return parsed.data as T
               }
-            } catch (e) {
+            } catch (_e) {
               // Игнорируем ошибки парсинга кеша
             }
           }

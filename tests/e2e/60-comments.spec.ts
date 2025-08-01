@@ -7,7 +7,7 @@
  */
 
 import { expect } from '@playwright/test'
-import { performLogin, TEST_USERS } from '../utils/auth-helpers'
+import { performLogin } from '../utils/auth-helpers'
 import { baseUrl, waitForPageLoad } from '../utils/common'
 import { test } from '../utils/test-helpers'
 
@@ -19,7 +19,7 @@ test.describe('Функциональность комментариев', () =>
 
   test('Должен позволять писать комментарии авторизованным пользователям', async ({ page }) => {
     // Авторизуемся
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -87,7 +87,7 @@ test.describe('Функциональность комментариев', () =>
   })
 
   test('Должен позволять отвечать на комментарии (древовидная структура)', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -129,7 +129,7 @@ test.describe('Функциональность комментариев', () =>
   })
 
   test('Должен позволять редактировать свои комментарии', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -164,7 +164,7 @@ test.describe('Функциональность комментариев', () =>
   })
 
   test('Должен блокировать отправку пустых комментариев', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return

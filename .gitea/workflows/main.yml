@@ -1,5 +1,10 @@
 name: "CI Pipeline"
 
+# Переменные окружения для E2E тестов:
+# E2E_TEST_USERNAME - email тестового пользователя
+# E2E_TEST_PASSWORD - пароль тестового пользователя
+# Эти переменные должны быть настроены в секретах репозитория
+
 on:
   push:
     branches: [main, dev]
@@ -64,6 +69,9 @@ jobs:
           npx playwright install-deps webkit
 
       - name: Run E2E Tests
+        env:
+          E2E_TEST_USERNAME: ${{ secrets.E2E_TEST_USERNAME }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
         run: npm run test:e2e
 
       - name: Archive E2E Test Results

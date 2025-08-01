@@ -23,7 +23,7 @@ export default defineConfig({
     screenshot: isCI ? 'only-on-failure' : 'off',
     video: isCI ? 'retain-on-failure' : 'off',
     actionTimeout: 30000, // Увеличенный тайм-аут для действий
-    navigationTimeout: 30000, // Увеличенный тайм-аут для навигации
+    navigationTimeout: 30000 // Увеличенный тайм-аут для навигации
   },
 
   projects: [

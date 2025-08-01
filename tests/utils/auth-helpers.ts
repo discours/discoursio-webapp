@@ -34,8 +34,8 @@ export interface MockUser {
  */
 export const TEST_USERS = {
   VALID: {
-    email: process.env.TEST_LOGIN || 'test@example.com',
-    password: process.env.TEST_PASSWORD || 'testPassword123!',
+    email: process.env.E2E_TEST_USERNAME || 'test@example.com',
+    password: process.env.E2E_TEST_PASSWORD || 'testPassword123!',
     fullName: 'Тестовый Пользователь'
   },
   NEW: {

@@ -7,8 +7,7 @@
  * @see https://playwright.dev/docs/auth
  */
 
-import { test as baseTest, expect, Page } from '@playwright/test'
-import * as AuthHelpers from './auth-helpers'
+import { Browser, test as baseTest, expect, Page } from '@playwright/test'
 import { baseUrl, checkServerWithoutStarting } from './common'
 
 // Класс утилит для тестов
@@ -111,18 +110,13 @@ export const test = baseTest.extend<{
   }
 })
 
-export const { isUserLoggedIn, performLogin, performLogout, TEST_USERS } = AuthHelpers
-
-// Алиасы для обратной совместимости
-export const isLoggedIn = isUserLoggedIn
-export const setupAuthState = performLogin
 export const getScreenshotName = (testName: string, prefix = 'screenshot') => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
   const sanitizedTestName = testName.replace(/[^a-zA-Z0-9]/g, '_')
   return `${prefix}_${sanitizedTestName}_${timestamp}.png`
 }
 
-export async function initializeTestEnvironment(browser: any, testName: string): Promise<any> {
+export async function initializeTestEnvironment(browser: Browser, testName: string): Promise<Page> {
   console.log(`Инициализация тестов ${testName}...`)
 
   const page = await browser.newPage()
@@ -133,7 +127,7 @@ export async function initializeTestEnvironment(browser: any, testName: string):
   return page
 }
 
-export async function cleanupTestEnvironment(page: any | null, testName: string): Promise<void> {
+export async function cleanupTestEnvironment(page: Page | null, testName: string): Promise<void> {
   if (page) {
     console.log(`Очистка тестов ${testName}...`)
     await page.close()

@@ -9,8 +9,8 @@ import { config } from 'dotenv'
 // Загружаем переменные окружения из .env файла
 config()
 
-// Базовый URL - должен соответствовать запущенному локальному серверу или значению из .env
-export const baseUrl = `https://localhost:${process.env.PORT}`
+// Базовый URL для E2E тестов - отдельный инстанс на порту 3001  
+export const baseUrl = process.env.E2E_BASE_URL || 'https://localhost:3001'
 
 /**
  * Ожидает загрузки страницы и всех сетевых запросов
@@ -46,6 +46,21 @@ export async function checkServerWithoutStarting(page: Page): Promise<boolean> {
     console.error('Сервер недоступен:', e)
     return false
   }
+}
+
+/**
+ * Генератор случайных строк для тестов
+ * @param length - длина генерируемой строки
+ * @returns случайная строка из букв и цифр
+ */
+export function generateRandomString(length = 10): string {
+  let result = ''
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const charactersLength = characters.length
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength))
+  }
+  return result
 }
 
 /**

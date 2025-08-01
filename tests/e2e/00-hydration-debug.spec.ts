@@ -1,4 +1,4 @@
-import { expect, test as baseTest } from '@playwright/test'
+import { test as baseTest, expect } from '@playwright/test'
 import { TestUtils } from '../utils/test-helpers'
 
 baseTest.describe('Проверка гидратации SolidJS', () => {

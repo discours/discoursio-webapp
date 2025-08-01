@@ -17,7 +17,7 @@ import { test } from '../utils/test-helpers'
 test.describe('Выход из системы', () => {
   test.beforeEach(async ({ page }) => {
     // Авторизуемся перед каждым тестом
-    const authSuccess = await setupAuthState(page, TEST_USERS.VALID)
+    const authSuccess = await setupAuthState(page)
 
     if (!authSuccess) {
       test.skip()
@@ -246,7 +246,7 @@ test.describe('Выход из системы', () => {
 test.describe('Автоматический выход', () => {
   test('Должна обрабатывать истечение токена', async ({ page }) => {
     // Авторизуемся
-    const authSuccess = await setupAuthState(page, TEST_USERS.VALID)
+    const authSuccess = await setupAuthState(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -285,7 +285,7 @@ test.describe('Автоматический выход', () => {
   })
 
   test('Должна обрабатывать неавторизованные ответы API', async ({ page }) => {
-    const authSuccess = await setupAuthState(page, TEST_USERS.VALID)
+    const authSuccess = await setupAuthState(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -329,7 +329,7 @@ test.describe('Множественные сессии', () => {
     const page2 = await context.newPage()
 
     // Авторизуемся в первой вкладке
-    const authSuccess = await setupAuthState(page1, TEST_USERS.VALID)
+    const authSuccess = await setupAuthState(page1)
     if (!authSuccess) {
       test.skip()
       return

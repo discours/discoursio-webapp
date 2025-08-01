@@ -7,7 +7,7 @@
  */
 
 import { expect } from '@playwright/test'
-import { performLogin, TEST_USERS } from '../utils/auth-helpers'
+import { performLogin } from '../utils/auth-helpers'
 import { baseUrl, waitForPageLoad } from '../utils/common'
 import { test } from '../utils/test-helpers'
 
@@ -18,7 +18,7 @@ test.describe('Система подписок', () => {
   })
 
   test('Должен позволять подписываться на авторов в их профиле', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -60,7 +60,7 @@ test.describe('Система подписок', () => {
   })
 
   test('Должен позволять быструю подписку под публикацией', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -90,7 +90,7 @@ test.describe('Система подписок', () => {
   })
 
   test('Должен позволять отписываться от авторов', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -121,7 +121,7 @@ test.describe('Система подписок', () => {
   })
 
   test('Должен позволять подписываться на темы', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -167,7 +167,7 @@ test.describe('Система подписок', () => {
   })
 
   test('Должен отображать управление подписками в профиле', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -196,7 +196,7 @@ test.describe('Система подписок', () => {
       expect(manageButtons >= 0).toBeTruthy()
     } else {
       // Может быть в отдельном разделе профиля
-      await page.goto(`${baseUrl}/author/${TEST_USERS.VALID.email}`) // Или другой способ получить профиль
+      await page.goto(`${baseUrl}/author/`) // Или другой способ получить профиль
       await waitForPageLoad(page)
 
       const profileSubscriptions = await page.locator(':has-text("подписки"), .user-subscriptions').first()
@@ -260,7 +260,7 @@ test.describe('Система подписок', () => {
   })
 
   test('Должен обновлять ленту "Моя лента" на основе подписок', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return

@@ -1,5 +1,5 @@
 import { type Page } from '@playwright/test'
-import { performLogin, TEST_USERS } from '../utils/auth-helpers'
+import { performLogin } from '../utils/auth-helpers'
 import { DraftPage } from '../utils/page-objects'
 import { cleanupTestEnvironment, initializeTestEnvironment, test } from '../utils/test-helpers'
 
@@ -29,7 +29,7 @@ test.afterAll(async () => {
  * Авторизация перед каждым тестом
  */
 test.beforeEach(async ({ page }) => {
-  await performLogin(page, TEST_USERS.VALID)
+  await performLogin(page)
   test.setTimeout(80000)
 })
 

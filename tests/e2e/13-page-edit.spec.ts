@@ -7,7 +7,7 @@
  */
 
 import { expect, Locator } from '@playwright/test'
-import { performLogin as setupAuthState, TEST_USERS } from '../utils/auth-helpers'
+import { performLogin as setupAuthState } from '../utils/auth-helpers'
 import { baseUrl, waitForPageLoad } from '../utils/common'
 import { test } from '../utils/test-helpers'
 
@@ -18,7 +18,7 @@ const getScreenshotName = (name: string) => `test-results/${name}-${Date.now()}.
 test.describe('Страница редактирования', () => {
   test.beforeEach(async ({ page }) => {
     // Устанавливаем авторизацию
-    await setupAuthState(page, TEST_USERS.VALID)
+    await setupAuthState(page)
 
     // Переходим на страницу создания публикации
     await page.goto(`${baseUrl}/edit/new`)

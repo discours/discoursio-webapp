@@ -7,7 +7,7 @@ import { useFeaturedFeed } from '~/context/featured'
 import { FEED_PAGE_SIZE } from '~/context/feed'
 import { loadShouts } from '~/graphql/api/public'
 import { createLoader } from '~/graphql/client'
-import { QueryLoad_Shouts_ByArgs, ShoutsOrderBy } from '~/graphql/generated/graphql'
+import { QueryLoad_Shouts_ByArgs, Shout, ShoutsOrderBy } from '~/graphql/generated/graphql'
 import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
 import { PageLayout } from '../components/_shared/PageLayout'
 import { useLocalize } from '../context/localize'
@@ -60,9 +60,8 @@ const withRetry = async (fn: () => Promise<any>, retries = 2, delay = 1000): Pro
 }
 
 // Некешируемый загрузчик для SSR
-// biome-ignore lint/suspicious/noExplicitAny: ok
 const loadShoutsSSR = (args: QueryLoad_Shouts_ByArgs) => {
-  const loader = createLoader<{ load_shouts_by: any[] }, QueryLoad_Shouts_ByArgs>(
+  const loader = createLoader<{ load_shouts_by: Shout[] }, QueryLoad_Shouts_ByArgs>(
     loadShoutsByQuery,
     (args: QueryLoad_Shouts_ByArgs) => args
   )(args)

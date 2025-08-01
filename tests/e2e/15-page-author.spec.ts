@@ -7,7 +7,7 @@
  */
 
 import { expect } from '@playwright/test'
-import { performLogin, TEST_USERS } from '../utils/auth-helpers'
+import { performLogin } from '../utils/auth-helpers'
 import { baseUrl, waitForPageLoad } from '../utils/common'
 import { test } from '../utils/test-helpers'
 
@@ -103,7 +103,7 @@ test.describe('Страница отдельного автора', () => {
   })
 
   test('Должна позволять подписаться на автора', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return

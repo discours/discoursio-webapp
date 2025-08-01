@@ -7,7 +7,7 @@
  */
 
 import { expect } from '@playwright/test'
-import { performLogin, TEST_USERS } from '../utils/auth-helpers'
+import { performLogin } from '../utils/auth-helpers'
 import { baseUrl, waitForPageLoad } from '../utils/common'
 import { test } from '../utils/test-helpers'
 
@@ -37,7 +37,7 @@ test.describe('Система рейтингов', () => {
   })
 
   test('Должен позволять голосовать авторизованным пользователям', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -86,7 +86,7 @@ test.describe('Система рейтингов', () => {
   })
 
   test('Должен позволять отменять свой голос', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -170,7 +170,7 @@ test.describe('Система рейтингов', () => {
   })
 
   test('Должен различать плюсы и минусы в голосовании', async ({ page }) => {
-    const authSuccess = await performLogin(page, TEST_USERS.VALID)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
