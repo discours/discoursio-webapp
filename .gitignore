@@ -46,3 +46,8 @@ venv
 .cursorrules
 
 src/graphql/generated/
+
+# YoYo AI version control directory
+.yoyo/
+docs/progress/*
+.autopilot.json

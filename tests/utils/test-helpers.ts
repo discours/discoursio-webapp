@@ -26,10 +26,28 @@ export class TestUtils {
   }
 
   async expectPageReady() {
-    console.log('Ожидание готовности страницы...')
+    // Игнорируем CORS ошибки при загрузке страницы
+    this.page.on('console', (msg) => {
+      if (msg.type() === 'error' && msg.text().includes('CORS')) {
+        console.log(`[CORS Ignored] ${msg.text()}`)
+        return
+      }
+      if (msg.type() === 'error' && msg.text().includes('Preflight response')) {
+        console.log(`[CORS Preflight Ignored] ${msg.text()}`)
+        return
+      }
+    })
+
+    this.page.on('pageerror', (error) => {
+      if (error.message.includes('CORS') || error.message.includes('access control checks')) {
+        console.log(`[CORS Error Ignored] ${error.message}`)
+        return
+      }
+    })
+
     await this.page.waitForLoadState('domcontentloaded')
     await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
-      console.warn('Тайм-аут при ожидании networkidle, продолжаем...')
+      console.log('Тайм-аут при ожидании networkidle, продолжаем...')
     })
 
     // Проверяем что страница загрузилась с правильным заголовком

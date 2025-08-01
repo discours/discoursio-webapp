@@ -1,74 +1,49 @@
 import { defineConfig, devices } from '@playwright/test'
-import dotenv from 'dotenv'
 
-// Загрузка переменных окружения для E2E
-dotenv.config({ path: '.env.e2e' })
-
-// Проверяем CI окружение
-const isCI = !!process.env.CI
+const isCI = process.env.CI === 'true'
 
 export default defineConfig({
-  // Директория с E2E тестами
   testDir: './tests/e2e',
-
-  // Параллельный запуск тестов
-  fullyParallel: !isCI, // В CI отключаем параллелизм для стабильности
-  forbidOnly: !!isCI, // В CI запрещаем .only
-  retries: isCI ? 2 : 0, // В CI добавляем ретраи
-  workers: isCI ? 1 : undefined, // В CI используем один воркер
-
-  // Останавливаем тесты после 5 неудач
-  maxFailures: 5,
-
-  // Улучшенная конфигурация репортинга
-  reporter: [
-    ['list', { printSteps: false }],
-    ...(isCI ? ([['github' as const], ['html' as const]] as const) : [])
-  ],
-
-  timeout: isCI ? 60000 : 30000, // Увеличенный тайм-аут для CI
-
-  // Глобальные настройки тестов
+  fullyParallel: true,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  workers: isCI ? 1 : undefined,
+  reporter: isCI ? 'github' : 'html',
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'https://localhost:3001',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:8080', // Используем nginx порт
     headless: !!isCI,
     ignoreHTTPSErrors: true,
+    // Игнорируем CORS ошибки в тестах
+    extraHTTPHeaders: {
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8'
+    },
     trace: isCI ? 'retain-on-failure' : 'off',
     screenshot: isCI ? 'only-on-failure' : 'off',
     video: isCI ? 'retain-on-failure' : 'off',
     actionTimeout: isCI ? 10000 : 5000 // Увеличенный тайм-аут для CI
   },
 
-  // Конфигурация браузеров
   projects: [
     {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] }
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] }
+    },
+    {
       name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-        headless: !!isCI, // В CI всегда headless
-        viewport: { width: 1280, height: 720 },
-        // Оптимизации для CI
-        ...(isCI && {
-          launchOptions: {
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-          }
-        })
-      }
+      use: { ...devices['Desktop Safari'] }
     }
   ],
 
-  // Веб-сервер для тестирования
+  // Запускаем только dev сервер
   webServer: {
-    command: 'PORT=3001 vinxi dev',
-    port: 3001,
+    command: 'PORT=3000 vinxi dev',
+    port: 3000,
     reuseExistingServer: true,
     timeout: 30000
-  },
-
-  // Папки для артефактов
-  outputDir: 'test-results/',
-
-  // Настройки для лучшего отображения
-  globalSetup: undefined,
-  globalTeardown: undefined
+  }
 })

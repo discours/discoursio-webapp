@@ -2,7 +2,8 @@ import type { CodegenConfig } from '@graphql-codegen/cli'
 
 const config: CodegenConfig = {
   overwrite: true,
-  schema: 'https://v3.dscrs.site/graphql',
+  // Используем только core схему для основной генерации
+  schema: '../core/schema',
   documents: [
     'src/graphql/queries/**/*.ts',
     'src/**/*.{ts,tsx}',
@@ -39,6 +40,13 @@ const config: CodegenConfig = {
         }
       }
     }
+  },
+  // Настройки для правильной работы
+  config: {
+    skipTypename: false,
+    useTypeImports: true,
+    dedupeOperationSuffix: true,
+    dedupeFragments: true
   }
 }
 

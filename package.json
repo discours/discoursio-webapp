@@ -48,6 +48,7 @@
     "@graphql-codegen/typescript-operations": "^4.6.1",
     "@graphql-codegen/typescript-resolvers": "4.5.1",
     "@graphql-codegen/typescript-urql": "^4.0.1",
+    "@graphql-tools/url-loader": "8.0.33",
     "@playwright/test": "1.54.1",
     "@solid-primitives/media": "^2.3.1",
     "@solid-primitives/pagination": "^0.4.1",
