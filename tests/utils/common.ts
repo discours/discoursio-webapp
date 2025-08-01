@@ -7,10 +7,10 @@ import { type Page } from '@playwright/test'
 import { config } from 'dotenv'
 
 // Загружаем переменные окружения из .env файла
-config({ path: '.env.e2e' })
+config()
 
 // Базовый URL - должен соответствовать запущенному локальному серверу или значению из .env
-export const baseUrl = process.env.E2E_BASE_URL || process.env.BASE_URL || 'https://localhost:3001'
+export const baseUrl = `https://localhost:${process.env.PORT}`
 
 /**
  * Ожидает загрузки страницы и всех сетевых запросов

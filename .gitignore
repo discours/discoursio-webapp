@@ -44,6 +44,7 @@ venv
 /SV-DEV/*
 .cursor
 .cursorrules
-
 src/graphql/generated/
-tmp
+.yoyo/
+docs/progress/*
+.autopilot.json

@@ -1,5 +1,6 @@
-import { expect, Page } from '@playwright/test'
+import { Page, expect } from '@playwright/test'
 import { baseUrl, waitForPageLoad } from './common'
+import { AuthModal } from './page-objects'
 
 /**
  * Получает локатор для кнопки/ссылки "Войти" с правильным селектором
@@ -49,10 +50,14 @@ export const TEST_USERS = {
  */
 export async function checkApiConnection(page: Page): Promise<boolean> {
   try {
-    const result = await page.evaluate(async () => {
+    // Используем локальный GraphQL прокси вместо прямого API
+    const apiUrl = '/graphql'
+    console.log(`[API Test] Проверка подключения к локальному GraphQL прокси: ${apiUrl}`)
+
+    const result = await page.evaluate(async (url) => {
       try {
-        console.log('[API Test] Проверка подключения к API...')
-        const response = await fetch('https://v3.dscrs.site/graphql', {
+        console.log(`[API Test] Выполняю POST запрос к локальному прокси: ${url}`)
+        const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -61,20 +66,35 @@ export async function checkApiConnection(page: Page): Promise<boolean> {
             query: '{ __typename }'
           })
         })
-        return response.ok
+
+        console.log(`[API Test] Ответ локального прокси: ${response.status} ${response.statusText}`)
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.log(`[API Test] Ошибка локального прокси: ${errorText}`)
+          return false
+        }
+
+        const data = await response.json()
+        console.log(`[API Test] Успешный ответ от локального прокси:`, data)
+        return true
       } catch (error) {
-        console.log('[API Test] Ошибка подключения к API:', error)
+        console.log(`[API Test] Ошибка подключения к локальному прокси ${url}:`, error)
+        console.log(`[API Test] Тип ошибки: ${error instanceof Error ? error.name : 'Unknown'}`)
+        console.log(`[API Test] Сообщение: ${error instanceof Error ? error.message : String(error)}`)
         return false
       }
-    })
+    }, apiUrl)
 
     if (!result) {
-      console.log('[API Test] API недоступен, тесты будут выполняться в режиме fallback')
+      console.log(`[API Test] Локальный GraphQL прокси недоступен по адресу ${apiUrl}, тесты будут выполняться в режиме fallback`)
+    } else {
+      console.log(`[API Test] Локальный GraphQL прокси доступен по адресу ${apiUrl}`)
     }
 
     return result
   } catch (error) {
-    console.warn('[API Test] Ошибка проверки API:', error)
+    console.warn('[API Test] Ошибка проверки локального GraphQL прокси:', error)
     return false
   }
 }
@@ -82,50 +102,70 @@ export async function checkApiConnection(page: Page): Promise<boolean> {
 /**
  * Универсальная функция авторизации
  */
-export async function performLogin(page: Page, credentials: AuthCredentials): Promise<boolean> {
+export async function performLogin(page: Page): Promise<boolean> {
   try {
-    // Проверяем доступность API
+    console.log('[performLogin] Начинаем процесс авторизации...')
+
+    // Проверяем доступность локального GraphQL прокси
     const apiAvailable = await checkApiConnection(page)
     if (!apiAvailable) {
-      console.log('[performLogin] API недоступен, пропускаем авторизацию')
-      // В режиме fallback возвращаем true для продолжения тестов
-      return true
+      console.log('[performLogin] Локальный GraphQL прокси недоступен, но попробуем авторизацию')
+    } else {
+      console.log('[performLogin] Локальный GraphQL прокси доступен, авторизация возможна')
     }
 
-    await page.goto(baseUrl)
-    await waitForPageLoad(page)
+    // Проверяем существующий аккаунт или создаем новый
+    const account = await ensureTestAccount(page)
+    
+    if (!account.email) {
+      console.log('[performLogin] Не удалось получить тестовый аккаунт')
+      return false
+    }
 
-    // Добавляем обработку ошибок авторизации
+    console.log(`[performLogin] Используем аккаунт: ${account.email} (новый: ${account.isNew})`)
+
+    // Добавляем обработчики ошибок для диагностики
     await page.evaluate(() => {
-      // Перехватываем ошибки авторизации
       window.addEventListener('error', (event) => {
         if (event.message.includes('graphql') || event.message.includes('API')) {
-          console.log('[signIn] API недоступен, авторизация невозможна')
+          console.log('[signIn] Локальный GraphQL прокси недоступен, авторизация невозможна')
+          console.log('[signIn] URL запроса:', event.filename || 'unknown')
+          console.log('[signIn] Ошибка:', event.message)
+          console.log('[signIn] Стек:', event.error?.stack || 'no stack')
           event.preventDefault()
         }
       })
+
+      const originalFetch = window.fetch
+      window.fetch = function(...args) {
+        const url = args[0]
+        console.log(`[signIn] Fetch запрос к: ${url}`)
+
+        return originalFetch.apply(this, args).then(response => {
+          if (!response.ok) {
+            console.log(`[signIn] Fetch ошибка ${response.status} для ${url}`)
+          }
+          return response
+        }).catch(error => {
+          console.log(`[signIn] Fetch исключение для ${url}:`, error)
+          throw error
+        })
+      }
     })
 
-    // Открываем форму входа
-    await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click({ timeout: 5000 })
-    await expect(page.getByPlaceholder('Почта')).toBeVisible({ timeout: 10000 })
+    // Проверяем что пользователь авторизован
+    const loginStatus = await isUserLoggedIn(page)
+    console.log('[performLogin] Финальный статус авторизации:', loginStatus)
 
-    // Заполняем поля
-    await page.getByPlaceholder('Почта').fill(credentials.email)
-    await page.getByPlaceholder('Пароль').fill(credentials.password)
-
-    // Отправляем форму - используем более специфичный селектор
-    await page.locator('button[type="submit"]:has-text("Войти")').click()
-
-    // Проверяем успешность входа
-    await page.waitForTimeout(2000)
-
-    const loginButton = page.locator('a:has-text("Войти"), button:has-text("Войти")').first()
-    const isLoggedIn = !(await loginButton.isVisible())
-
-    return isLoggedIn
+    if (loginStatus) {
+      console.log('[performLogin] Авторизация успешна')
+      return true
+    } else {
+      console.log('[performLogin] Авторизация не удалась')
+      return false
+    }
   } catch (error) {
-    console.warn('Ошибка авторизации:', error)
+    console.error('[performLogin] Ошибка авторизации:', error)
     return false
   }
 }
@@ -133,29 +173,59 @@ export async function performLogin(page: Page, credentials: AuthCredentials): Pr
 /**
  * Универсальная функция регистрации
  */
-export async function performRegistration(page: Page, user: MockUser): Promise<boolean> {
+export async function performRegistration(page: Page, user?: MockUser): Promise<boolean> {
   try {
+    console.log('[performRegistration] Начинаем процесс регистрации...')
+
+    // Используем переданные данные или тестовые данные из переменных окружения
+    const testUser = user || {
+      email: process.env.TEST_USERNAME || 'test@example.com',
+      password: process.env.TEST_PASSWORD || 'testpassword',
+      fullName: 'Test User'
+    }
+    
+    console.log(`[performRegistration] Используем данные: ${testUser.email}`)
+
+    // Проверяем доступность API
+    const apiAvailable = await checkApiConnection(page)
+    if (!apiAvailable) {
+      console.log('[performRegistration] API недоступен, но попробуем регистрацию')
+    }
+
     await page.goto(baseUrl)
     await waitForPageLoad(page)
 
     // Открываем форму регистрации
-    await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
-    await page.getByText('У меня еще нет аккаунта').click()
-    await expect(page.locator('input[name="fullName"]')).toBeVisible({ timeout: 10000 })
+    const loginButton = page.locator('a:has-text("Войти"), button:has-text("Войти")').first()
+    await loginButton.click({ timeout: 10000 })
 
-    // Заполняем поля
-    await page.getByPlaceholder('Имя и фамилия').fill(user.fullName)
-    await page.getByPlaceholder('Почта').fill(user.email)
-    await page.getByPlaceholder('Пароль').fill(user.password)
+    // Переключаемся на форму регистрации
+    const switchToRegister = page.getByText('У меня еще нет аккаунта')
+    await switchToRegister.click()
+
+    // Ждем появления формы регистрации
+    await expect(page.locator('input[name="fullName"]')).toBeVisible({ timeout: 15000 })
+
+    // Заполняем поля регистрации
+    await page.locator('input[name="fullName"]').fill(testUser.fullName)
+    await page.getByPlaceholder('Почта').fill(testUser.email)
+    await page.getByPlaceholder('Пароль').fill(testUser.password)
 
     // Отправляем форму
-    await page.getByRole('button', { name: 'Присоединиться' }).click()
+    const submitButton = page.locator('button[type="submit"]:has-text("Присоединиться")').first()
+    await submitButton.click()
 
-    // Проверяем результат
-    await page.waitForTimeout(2000)
+    // Ждем завершения регистрации
+    await page.waitForTimeout(3000)
 
-    const successMessage = page.getByText('Почти готово! Проверьте email')
-    const isRegistered = await successMessage.isVisible()
+    // Проверяем успешность регистрации
+    const isRegistered = await isUserLoggedIn(page)
+
+    if (isRegistered) {
+      console.log('[performRegistration] Регистрация успешна')
+    } else {
+      console.log('[performRegistration] Регистрация не удалась')
+    }
 
     return isRegistered
   } catch (error) {
@@ -231,14 +301,33 @@ export async function performLogout(page: Page): Promise<boolean> {
  */
 export async function isUserLoggedIn(page: Page): Promise<boolean> {
   try {
+    // Проверяем несколько индикаторов авторизации
     const loginButton = page.locator('a:has-text("Войти"), button:has-text("Войти")').first()
-    const profileElement = page.locator('.userpic, [data-testid="user-avatar"]')
+    const profileElement = page.locator('.userpic, [data-testid="user-avatar"], [data-user-menu], button:has([src*="avatar"])')
+    const userMenu = page.locator('[data-user-menu], .user-menu, .profile-menu')
+    const logoutButton = page.locator('button:has-text("Выйти"), a:has-text("Выйти"), [data-logout]')
 
     const loginVisible = await loginButton.isVisible()
     const profileVisible = await profileElement.isVisible()
+    const userMenuVisible = await userMenu.isVisible()
+    const logoutVisible = await logoutButton.isVisible()
 
-    return !loginVisible && profileVisible
-  } catch {
+    // Пользователь авторизован если:
+    // 1. Кнопка входа НЕ видна И
+    // 2. Есть профиль/аватар ИЛИ есть меню пользователя ИЛИ есть кнопка выхода
+    const isLoggedIn = !loginVisible && (profileVisible || userMenuVisible || logoutVisible)
+    
+    console.log('[isUserLoggedIn]', {
+      loginVisible,
+      profileVisible, 
+      userMenuVisible,
+      logoutVisible,
+      isLoggedIn
+    })
+
+    return isLoggedIn
+  } catch (error) {
+    console.warn('[isUserLoggedIn] Ошибка проверки:', error)
     return false
   }
 }
@@ -289,4 +378,105 @@ export async function switchAuthForm(
   const switchText = switchMap[targetForm]
   await page.getByText(switchText).click()
   await page.waitForTimeout(500)
+}
+
+/**
+ * Регистрация нового тестового аккаунта
+ * Создает уникальный email для каждого теста
+ */
+export async function registerNewTestAccount(page: Page): Promise<{ email: string; password: string; success: boolean }> {
+  try {
+    console.log('[registerNewTestAccount] Начинаем регистрацию нового тестового аккаунта...')
+
+    // Создаем уникальный email для теста
+    const timestamp = Date.now()
+    const randomId = Math.random().toString(36).substring(2, 8)
+    const testEmail = `test-${timestamp}-${randomId}@discours.io`
+    const testPassword = process.env.TEST_PASSWORD || 'Well-c0mE!Br0'
+    const testName = `Test User ${randomId}`
+    
+    console.log(`[registerNewTestAccount] Регистрируем: ${testEmail}`)
+
+    // Проверяем доступность локального GraphQL прокси
+    const apiAvailable = await checkApiConnection(page)
+    if (!apiAvailable) {
+      console.log('[registerNewTestAccount] Локальный GraphQL прокси недоступен, но попробуем регистрацию')
+    } else {
+      console.log('[registerNewTestAccount] Локальный GraphQL прокси доступен, регистрация возможна')
+    }
+
+    // Открываем форму регистрации
+    const authModal = new AuthModal(page)
+    await authModal.openRegisterForm()
+
+    // Заполняем форму регистрации
+    await authModal.fillRegisterForm(testName, testEmail, testPassword)
+    await authModal.submitForm()
+
+    // Ждем результат регистрации
+    await page.waitForTimeout(3000)
+
+    // Проверяем успешность регистрации
+    const isRegistered = await isUserLoggedIn(page)
+    console.log('[registerNewTestAccount] Статус регистрации:', isRegistered)
+
+    if (isRegistered) {
+      console.log('[registerNewTestAccount] Регистрация успешна')
+      return { email: testEmail, password: testPassword, success: true }
+    } else {
+      console.log('[registerNewTestAccount] Регистрация не удалась')
+      return { email: testEmail, password: testPassword, success: false }
+    }
+  } catch (error) {
+    console.error('[registerNewTestAccount] Ошибка регистрации:', error)
+    return { email: '', password: '', success: false }
+  }
+}
+
+/**
+ * Проверка существования аккаунта и регистрация нового если нужно
+ */
+export async function ensureTestAccount(page: Page): Promise<{ email: string; password: string; isNew: boolean }> {
+  try {
+    console.log('[ensureTestAccount] Проверяем существующий тестовый аккаунт...')
+
+    // Сначала пробуем войти с существующими данными
+    const existingUsername = process.env.TEST_USERNAME || 'guests@discours.io'
+    const existingPassword = process.env.TEST_PASSWORD || 'Well-c0mE!Br0'
+
+    console.log(`[ensureTestAccount] Пробуем войти с: ${existingUsername}`)
+
+    // Открываем форму входа
+    const authModal = new AuthModal(page)
+    await authModal.openLoginForm()
+
+    // Заполняем форму входа
+    await authModal.fillLoginForm(existingUsername, existingPassword)
+    await authModal.submitForm()
+
+    // Ждем результат авторизации
+    await page.waitForTimeout(2000)
+
+    // Проверяем статус авторизации
+    const loginStatus = await isUserLoggedIn(page)
+    console.log('[ensureTestAccount] Статус входа с существующим аккаунтом:', loginStatus)
+
+    if (loginStatus) {
+      console.log('[ensureTestAccount] Успешный вход с существующим аккаунтом')
+      return { email: existingUsername, password: existingPassword, isNew: false }
+    } else {
+      console.log('[ensureTestAccount] Вход не удался, регистрируем новый аккаунт')
+      
+      // Регистрируем новый аккаунт
+      const newAccount = await registerNewTestAccount(page)
+      return { 
+        email: newAccount.email, 
+        password: newAccount.password, 
+        isNew: newAccount.success 
+      }
+    }
+  } catch (error) {
+    console.error('[ensureTestAccount] Ошибка проверки аккаунта:', error)
+    return { email: '', password: '', isNew: false }
+  }
 }

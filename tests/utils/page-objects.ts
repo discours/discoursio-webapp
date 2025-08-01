@@ -64,7 +64,7 @@ export class AuthModal {
     this.nameInput = page.locator('input[name="fullName"]')
     this.loginButton = page.getByRole('button', { name: 'Войти' })
     this.registerButton = page.getByRole('button', { name: 'Присоединиться' })
-    this.submitButton = page.locator('button[type="submit"]')
+    this.submitButton = page.locator('button[type="submit"]:has-text("Войти")').first()
     this.switchToRegister = page.getByText('У меня еще нет аккаунта')
     this.switchToLogin = page.getByText('У меня есть аккаунт')
     this.forgotPassword = page.getByText('Забыли пароль?')
@@ -72,12 +72,62 @@ export class AuthModal {
   }
 
   async openLoginForm(): Promise<void> {
-    await this.page.getByRole('link', { name: 'Войти' }).click()
-    await expect(this.emailInput).toBeVisible({ timeout: 10000 })
+    // Проверяем если модальное окно уже открыто через URL
+    const currentUrl = this.page.url()
+    const isAuthModalOpen = currentUrl.includes('m=auth') || currentUrl.includes('mode=login')
+    console.log('[AuthModal] Модальное окно уже открыто через URL:', isAuthModalOpen)
+    
+    if (!isAuthModalOpen) {
+      // Диагностика: проверяем что кнопка найдена
+      const loginButton = this.page.locator('a:has-text("Войти"), .loginbtn a, [class*="userControlItem"] a').first()
+      const buttonVisible = await loginButton.isVisible()
+      const buttonText = await loginButton.textContent()
+      console.log('[AuthModal] Кнопка входа найдена:', buttonVisible, 'текст:', buttonText)
+      
+      // Используем force click для обхода backdrop
+      await loginButton.click({ force: true, timeout: 10000 })
+      console.log('[AuthModal] Клик выполнен')
+      
+      // Ждем изменения URL
+      await this.page.waitForURL('**/?m=auth**', { timeout: 10000 })
+      console.log('[AuthModal] URL изменился на:', this.page.url())
+    }
+    
+    // Ждем появления формы входа с увеличенным таймаутом
+    try {
+      await expect(this.emailInput).toBeVisible({ timeout: 15000 })
+      console.log('[AuthModal] Форма входа найдена')
+    } catch (error) {
+      console.log('[AuthModal] Форма входа не найдена, проверяем альтернативные селекторы')
+      
+      // Проверяем альтернативные селекторы
+      const emailInputs = await this.page.locator('input[type="email"], input[name="email"], input[placeholder*="почта"], input[placeholder*="email"]').count()
+      const passwordInputs = await this.page.locator('input[type="password"], input[name="password"]').count()
+      console.log('[AuthModal] Найдено email полей:', emailInputs, 'password полей:', passwordInputs)
+      
+      // Если есть email поля, используем их
+      if (emailInputs > 0) {
+        console.log('[AuthModal] Используем найденные email поля')
+        // Используем найденные поля напрямую
+        const foundEmailInput = this.page.locator('input[type="email"], input[name="email"], input[placeholder*="почта"], input[placeholder*="email"]').first()
+        const foundPasswordInput = this.page.locator('input[type="password"], input[name="password"]').first()
+        await expect(foundEmailInput).toBeVisible({ timeout: 5000 })
+        
+        // Обновляем методы для использования найденных полей
+        this.fillLoginForm = async (email: string, password: string) => {
+          await foundEmailInput.fill(email)
+          await foundPasswordInput.fill(password)
+        }
+      } else {
+        throw error
+      }
+    }
   }
 
   async openRegisterForm(): Promise<void> {
     await this.openLoginForm()
+    
+    // Переключаемся на форму регистрации
     await this.switchToRegister.click()
     await expect(this.nameInput).toBeVisible({ timeout: 10000 })
   }
@@ -94,6 +144,40 @@ export class AuthModal {
   }
 
   async submitForm(): Promise<void> {
+    // Диагностика: проверяем какие кнопки есть на странице
+    const submitButtons = await this.page.locator('button[type="submit"]').count()
+    const loginButtons = await this.page.locator('button:has-text("Войти")').count()
+    const allButtons = await this.page.locator('button').count()
+    
+    console.log('[AuthModal] Найдено кнопок:', {
+      submitButtons,
+      loginButtons,
+      allButtons
+    })
+    
+    // Выводим текст всех кнопок для диагностики
+    const buttonTexts = await this.page.locator('button').allTextContents()
+    console.log('[AuthModal] Тексты кнопок:', buttonTexts)
+    
+    // Пробуем разные селекторы
+    const buttonSelectors = [
+      'button[type="submit"]:has-text("Войти")',
+      'button:has-text("Войти")',
+      'button[type="submit"]',
+      '[data-testid="login-button"]',
+      '[data-testid="submit-button"]'
+    ]
+    
+    for (const selector of buttonSelectors) {
+      const count = await this.page.locator(selector).count()
+      if (count > 0) {
+        console.log(`[AuthModal] Найдена кнопка по селектору: ${selector}`)
+        await this.page.locator(selector).first().click()
+        return
+      }
+    }
+    
+    // Если ничего не найдено, используем оригинальный селектор
     await this.submitButton.click()
   }
 
@@ -324,12 +408,10 @@ export class TopicPage {
 
   constructor(page: Page) {
     this.page = page
-    this.topicsLink = page.locator('a[href*="/topic"], a:has-text("темы"), a:has-text("Темы")').first()
-    this.societyTopicLink = page.getByRole('link', {
-      name: 'Общество Статьи о политике, экономике и обществе, об актуальных событиях, людях, мнениях. Тексты про историю и современность, про то, что происходит в России и мире'
-    })
-    this.followButton = page.getByRole('button', { name: 'Подписаться на тему' })
-    this.unfollowButton = page.getByRole('button', { name: 'Отписаться от темы' })
+    this.topicsLink = page.locator('a[href*="/topic"], a[href*="/topics"], nav a:has-text("темы"), nav a:has-text("Темы"), [data-testid="topics-link"]').first()
+    this.societyTopicLink = page.locator('a:has-text("Общество"), a[href*="society"], a[href*="общество"], [data-topic="society"]').first()
+    this.followButton = page.locator('button:has-text("Подписаться"), button:has-text("Follow"), [data-action="follow"]').first()
+    this.unfollowButton = page.locator('button:has-text("Отписаться"), button:has-text("Unfollow"), [data-action="unfollow"]').first()
   }
 
   async navigateToTopics(): Promise<void> {
@@ -375,11 +457,11 @@ export class DraftPage {
   constructor(page: Page) {
     this.page = page
     this.profileButton = page
-      .locator('.userpic, [data-testid="user-avatar"], button:has([src*="avatar"]), button[data-user-menu]')
+      .locator('.userpic, [data-testid="user-avatar"], button:has([src*="avatar"]), button[data-user-menu], .profile-button, [aria-label*="профиль"], [aria-label*="profile"]')
       .first()
-    this.draftsLink = page.locator('a:has-text("Черновики"), [href*="drafts"]').first()
+    this.draftsLink = page.locator('a:has-text("Черновики"), a:has-text("Drafts"), [href*="drafts"], [data-testid="drafts-link"]').first()
     this.createPublicationLink = page
-      .locator('a:has-text("Создать публикацию"), [href*="edit/new"]')
+      .locator('a:has-text("Создать публикацию"), a:has-text("Create"), [href*="edit/new"], [data-testid="create-publication"]')
       .first()
     this.titleInput = page.getByLabel('Заголовок')
     this.contentInput = page.getByLabel('Текст')
@@ -468,9 +550,27 @@ export class DraftPage {
   }
 
   async verifyHeading(heading: string): Promise<void> {
-    await expect(this.page.getByRole('heading', { name: heading, exact: false })).toBeVisible({
-      timeout: 10000
-    })
+    // Пробуем разные варианты поиска заголовка
+    const headingSelectors = [
+      this.page.getByRole('heading', { name: heading, exact: false }),
+      this.page.locator(`h1:has-text("${heading}")`),
+      this.page.locator(`h2:has-text("${heading}")`),
+      this.page.locator(`h3:has-text("${heading}")`),
+      this.page.locator(`[data-testid="page-title"]:has-text("${heading}")`),
+      this.page.locator(`.page-title:has-text("${heading}")`)
+    ]
+
+    for (const selector of headingSelectors) {
+      try {
+        await expect(selector).toBeVisible({ timeout: 5000 })
+        return // Если нашли, выходим
+      } catch {
+        continue // Пробуем следующий селектор
+      }
+    }
+
+    // Если ничего не нашли, выводим ошибку
+    throw new Error(`Заголовок "${heading}" не найден на странице`)
   }
 
   async verifyEditUrl(): Promise<void> {

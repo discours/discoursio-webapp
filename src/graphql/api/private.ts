@@ -248,15 +248,13 @@ export const useReactions = (by: ReactionBy, limit?: number, offset?: number, si
  */
 export const useFollowedCommunities = (
   slug?: string,
-  user?: string,
   authorId?: number,
   signedClient?: Client
 ) => {
   return createResource(
     () =>
-      [{ slug, user, author_id: authorId }, signedClient] as ResourceArgs<{
+      [{ slug, author_id: authorId }, signedClient] as ResourceArgs<{
         slug?: string
-        user?: string
         author_id?: number
       }>,
     async ([opts, client]) => {
