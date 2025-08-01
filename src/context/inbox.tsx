@@ -1,6 +1,6 @@
 import type { Accessor, JSX } from 'solid-js'
 import { createContext, createSignal, useContext } from 'solid-js'
-import type { Chat, Message, MessagesBy, MutationCreate_MessageArgs } from '~/graphql/generated'
+import type { Chat, Message, MessagesBy, CreateMessageMutationVariables } from '~/graphql/generated/chat'
 import { Author } from '~/graphql/generated/graphql'
 import createChatMutation from '~/graphql/mutation/chat/chat-create'
 import createMessageMutation from '~/graphql/mutation/chat/chat-message-create'
@@ -19,7 +19,7 @@ type InboxContextType = {
   loadRecipients: () => Author[]
   loadMessages: (by: MessagesBy, limit: number, offset: number) => Promise<Message[]>
   getMessages?: (chatId: string) => Promise<Message[]>
-  sendMessage?: (args: MutationCreate_MessageArgs) => void
+  sendMessage?: (args: CreateMessageMutationVariables) => void
 }
 
 export type CreateChatSearchParams = {
@@ -79,7 +79,7 @@ export const InboxProvider = (props: { children: JSX.Element }) => {
     return []
   }
 
-  const sendMessage = async (args: MutationCreate_MessageArgs) => {
+  const sendMessage = async (args: CreateMessageMutationVariables) => {
     const resp = await client()?.mutation(createMessageMutation, args).toPromise()
     const result = resp?.data?.create_message
     if (result) {

@@ -14,8 +14,8 @@ import type {
   Chat,
   ChatMember,
   Message as MessageType,
-  MutationCreate_MessageArgs
-} from '~/graphql/schema/chat.gen'
+  CreateMessageMutationVariables
+} from '~/graphql/generated/chat'
 import { getShortDate } from '~/lib/fromPeriod'
 import styles from '~/styles/views/Inbox.module.scss'
 import { Button } from '../_shared/Button'
@@ -78,7 +78,7 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
         body: message,
         reply_to: messageToReply()?.id,
         chat_id: currentDialog()?.id || ''
-      } as MutationCreate_MessageArgs)
+      } as CreateMessageMutationVariables)
       setMessageToReply(null)
       if (messagesContainerRef)
         (messagesContainerRef as HTMLDivElement).scrollTop = messagesContainerRef?.scrollHeight || 0
@@ -299,7 +299,7 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
                   variant="reply"
                   author={
                     currentDialog()?.members?.find(
-                      (member) => member?.id === Number(messageToReply()?.created_by)
+                      (member: ChatMember) => member?.id === Number(messageToReply()?.created_by)
                     )?.name
                   }
                   body={messageToReply()?.body || ''}

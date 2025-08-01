@@ -10,7 +10,7 @@ import updateChatMutation from '~/graphql/mutation/chat/chat-update'
 import loadMessagesQuery from '~/graphql/query/chat/chat-messages-load-by'
 import loadChatsQuery from '~/graphql/query/chat/chats-load'
 
-import { Chat, ChatInput, Message, MessageInput, MessagesBy } from '~/graphql/schema/chat.gen'
+import { Chat, ChatInput, Message, MessageInput, MessagesBy } from '~/graphql/generated/chat'
 
 type ResourceArgs<T> = readonly [T, Client | undefined]
 

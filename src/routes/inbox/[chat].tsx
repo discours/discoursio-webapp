@@ -7,7 +7,7 @@ import { useInbox } from '~/context/inbox'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { loadAuthorsAll } from '~/graphql/api/public'
-import { Chat } from '~/graphql/generated'
+import { Chat } from '~/graphql/generated/chat'
 import { Author } from '~/graphql/generated/graphql'
 
 export const route = {
@@ -42,7 +42,7 @@ export const ChatPage = (props: RouteSectionProps<{ authors: Author[] }>) => {
   onMount(async () => {
     if (params.id.includes('-')) {
       // real chat id contains -
-      setChat((_prev: Chat) => chats().find((x: Chat) => x.id === params.id))
+      setChat((_prev: Chat | undefined) => chats().find((x: Chat) => x.id === params.id))
     } else {
       try {
         // handle if params.id is an author's id
