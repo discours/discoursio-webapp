@@ -56,6 +56,54 @@ jobs:
           npm install @biomejs/biome@^2.1.1
           npm install
 
+      - name: Install System Dependencies for Playwright
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglib2.0-0 \
+            libnss3 \
+            libnspr4 \
+            libatk1.0-0 \
+            libatk-bridge2.0-0 \
+            libcups2 \
+            libdrm2 \
+            libdbus-1-3 \
+            libxcb1 \
+            libxkbcommon0 \
+            libx11-6 \
+            libxcomposite1 \
+            libxdamage1 \
+            libxext6 \
+            libxfixes3 \
+            libxrandr2 \
+            libgbm1 \
+            libpango-1.0-0 \
+            libcairo2 \
+            libasound2 \
+            libatspi2.0-0 \
+            libgtk-3-0 \
+            libgstreamer-1.0-0 \
+            libgtk-4-1 \
+            libvulkan1 \
+            libgraphene-1.0-0 \
+            libxslt1.1 \
+            libwoff1 \
+            libvpx7 \
+            libevent-2.1-7 \
+            libopus0 \
+            libgstreamer-plugins-base1.0-0 \
+            libflite1 \
+            libwebp7 \
+            libavif13 \
+            libharfbuzz-icu0 \
+            libwebpmux3 \
+            libenchant-2-2 \
+            libsecret-1-0 \
+            libhyphen0 \
+            libmanette-0.2-1 \
+            libgles2-mesa \
+            libx264-163
+
       - name: Install Playwright
         run: npx playwright install --with-deps
 
