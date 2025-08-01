@@ -56,6 +56,12 @@ jobs:
           npm install @biomejs/biome@^2.1.1
           npm install
 
+      - name: Generate GraphQL types
+        run: npm run codegen:all
+
+      - name: TypeScript type check
+        run: npm run typecheck
+
       - name: Install System Dependencies for Playwright
         run: |
           sudo apt-get update

@@ -36,6 +36,9 @@ jobs:
           npm install @biomejs/biome@^2.1.1
           npm install
 
+      - name: Generate GraphQL Types
+        run: npm run codegen:all
+
       - name: Lint Code
         run: npx @biomejs/biome check src/
 
