@@ -1,8 +1,9 @@
-import { expect } from '@playwright/test'
-import { test } from '../utils/test-helpers'
+import { expect, test as baseTest } from '@playwright/test'
+import { TestUtils } from '../utils/test-helpers'
 
-test.describe('Проверка гидратации SolidJS', () => {
-  test('Проверка интерактивности после гидрации', async ({ testUtils }) => {
+baseTest.describe('Проверка гидратации SolidJS', () => {
+  baseTest('Проверка интерактивности после гидрации', async ({ page }) => {
+    const testUtils = new TestUtils(page)
     await testUtils.goto('/')
     await testUtils.expectPageReady()
     await testUtils.expectHydrationSuccessful()
@@ -28,7 +29,7 @@ test.describe('Проверка гидратации SolidJS', () => {
     console.log('✅ Гидрация и интерактивность работают корректно')
   })
 
-  test('Воспроизведение ошибки: главная -> лента -> главная', async ({ page }) => {
+  baseTest('Воспроизведение ошибки: главная -> лента -> главная', async ({ page }) => {
     console.log('🔍 Начинаем тест навигации для поиска ошибки гидрации...')
 
     // Включаем консольные логи для отслеживания ошибок
@@ -117,7 +118,7 @@ test.describe('Проверка гидратации SolidJS', () => {
     expect(isInteractive).toBe(true)
   })
 
-  test('Проверка манипулятора гидратации', async ({ page }) => {
+  baseTest('Проверка манипулятора гидратации', async ({ page }) => {
     // Проверяем наличие нашего hydration-comparator
     await page.goto('/')
 
@@ -137,7 +138,7 @@ test.describe('Проверка гидратации SolidJS', () => {
     expect(hydrationValidator).toBe(true)
   })
 
-  test('Навигация между разными страницами', async ({ page }) => {
+  baseTest('Навигация между разными страницами', async ({ page }) => {
     // Проверяем навигацию между главной, лентой и обратно
     await page.goto('/')
     await page.waitForLoadState('networkidle')
@@ -165,7 +166,7 @@ test.describe('Проверка гидратации SolidJS', () => {
     await expect(mainContent.first()).toBeVisible()
   })
 
-  test('Проверка стабильности DOM после навигации', async ({ page }) => {
+  baseTest('Проверка стабильности DOM после навигации', async ({ page }) => {
     // Новый тест для проверки стабильности DOM структуры
     await page.goto('/')
     await page.waitForLoadState('networkidle')

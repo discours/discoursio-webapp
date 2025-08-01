@@ -16,6 +16,7 @@ if (existsSync(envPath)) {
 
 export const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
 console.log(`[vite.config] ${isDev ? 'dev' : 'prod'} mode`)
+console.log('[vite.config] connected to api: ', process.env.PUBLIC_CORE_API)
 
 const polyfillOptions = {
   include: ['path', 'stream', 'util', 'buffer'],
@@ -54,7 +55,7 @@ export default defineConfig({
     },
     preprocessorOptions: {
       scss: {
-        api: 'modern-compiler',
+        api: 'legacy', // Используем legacy API для стабильности
         quietDeps: true,
         silenceDeprecations: ['mixed-decls', 'legacy-js-api'],
         additionalData: (content: string) => `@use '~/styles/global' as *;\n${content}`,

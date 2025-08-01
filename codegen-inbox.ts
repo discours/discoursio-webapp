@@ -3,7 +3,7 @@ import type { CodegenConfig } from '@graphql-codegen/cli'
 const config: CodegenConfig = {
   overwrite: true,
   // Используем только inbox схему
-  schema: '../inbox/schema.graphql',
+  schema: 'https://inbox.dscrs.site',
   documents: [], // Пока нет документов для inbox
   generates: {
     './src/graphql/generated/inbox-introspection.json': {
@@ -21,4 +21,4 @@ const config: CodegenConfig = {
   }
 }
 
-export default config 
+export default config

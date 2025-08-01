@@ -1,8 +1,8 @@
-import { createClient, cacheExchange, fetchExchange, ssrExchange } from '@urql/core'
+import { cacheExchange, createClient, fetchExchange, ssrExchange } from '@urql/core'
 import { createResource, ResourceReturn } from 'solid-js'
+import { coreApiUrl } from '~/config'
 
 // API URL для разных окружений
-const coreApiUrl = 'https://v3.dscrs.site/graphql'
 
 // Определяем окружение
 const isServer = typeof window === 'undefined'
@@ -32,27 +32,13 @@ export function createQueryResource<T, Args extends any[]>(
 }
 
 /**
- * Получает URL для GraphQL API в зависимости от окружения
- */
-const getApiUrl = (): string => {
-  // В браузере всегда используем локальный прокси для избежания CORS
-  if (!isServer) {
-    return '/graphql'
-  }
-  
-  // В SSR используем прямой API
-  return coreApiUrl
-}
-
-/**
  * Проверяет доступность API
  */
 export const checkApiAvailability = async (): Promise<boolean> => {
   try {
-    const apiUrl = getApiUrl()
-    console.log(`[API Test] Проверка подключения к API: ${apiUrl}`)
-    
-    const response = await fetch(apiUrl, {
+    console.log(`[API Test] Проверка подключения к API: ${coreApiUrl}`)
+
+    const response = await fetch(coreApiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -71,10 +57,10 @@ export const checkApiAvailability = async (): Promise<boolean> => {
     }
 
     const data = await response.json()
-    console.log(`[API Test] Успешный ответ от API:`, data)
+    console.log('[API Test] Успешный ответ от API:', data)
     return true
   } catch (error) {
-    console.log(`[API Test] Ошибка подключения к API:`, error)
+    console.log('[API Test] Ошибка подключения к API:', error)
     console.log(`[API Test] Тип ошибки: ${error instanceof Error ? error.name : 'Unknown'}`)
     console.log(`[API Test] Сообщение: ${error instanceof Error ? error.message : String(error)}`)
     return false
@@ -97,12 +83,8 @@ const fetchOptions: RequestInit = {
 
 // Создаем GraphQL клиент
 export const client = createClient({
-  url: getApiUrl(),
-  exchanges: [
-    cacheExchange,
-    ssr,
-    fetchExchange
-  ],
+  url: coreApiUrl,
+  exchanges: [cacheExchange, ssr, fetchExchange],
   fetchOptions,
   requestPolicy: 'cache-and-network'
 })
@@ -121,12 +103,8 @@ export function graphqlClientCreate(apiUrl: string, token?: string) {
   }
 
   return createClient({
-    url: apiUrl,
-    exchanges: [
-      cacheExchange,
-      ssr,
-      fetchExchange
-    ],
+    url: coreApiUrl,
+    exchanges: [cacheExchange, ssr, fetchExchange],
     fetchOptions,
     requestPolicy: 'cache-and-network'
   })
@@ -137,7 +115,7 @@ export const defaultClient = client
 
 // Экспортируем для гидрации
 if (!isServer) {
-  (window as any).__URQL_DATA__ = ssr.extractData()
+  ;(window as any).__URQL_DATA__ = ssr.extractData()
 }
 
 /**
@@ -164,40 +142,44 @@ export function createLoader<T, Args>(
 export function createCacheableLoader<T, Args>(
   query: any,
   getVariables: (args: Args) => any,
-  enableCache: boolean = false
+  enableCache = false
 ): (args: Args) => () => Promise<T> {
   return (args: Args) => {
     return async () => {
       const variables = getVariables(args)
-      
+
       // Если кеширование включено, используем fetch с кешированием
       if (enableCache && !isServer) {
         const cacheKey = `graphql-${JSON.stringify({ query: query.loc?.source.body, variables })}`
         const cached = sessionStorage.getItem(cacheKey)
-        
+
         if (cached) {
           try {
             const parsed = JSON.parse(cached)
-            if (Date.now() - parsed.timestamp < 1800000) { // 30 минут
+            if (Date.now() - parsed.timestamp < 1800000) {
+              // 30 минут
               return parsed.data as T
             }
           } catch (e) {
             // Игнорируем ошибки парсинга кеша
           }
         }
-        
+
         const response = await client.query(query, variables).toPromise()
         const data = response?.data as T
-        
+
         // Кешируем результат
-        sessionStorage.setItem(cacheKey, JSON.stringify({
-          data,
-          timestamp: Date.now()
-        }))
-        
+        sessionStorage.setItem(
+          cacheKey,
+          JSON.stringify({
+            data,
+            timestamp: Date.now()
+          })
+        )
+
         return data
       }
-      
+
       // Обычный запрос без кеширования
       const response = await client.query(query, variables).toPromise()
       return response?.data as T
@@ -212,52 +194,56 @@ export function createCacheableLoader<T, Args>(
 export function createCacheableQueryResource<T, Args>(
   query: any,
   getVariables: (args: Args) => any,
-  enableCache: boolean = false,
+  enableCache = false,
   clientInstance: any = client,
-  withAbort: boolean = false
+  withAbort = false
 ): (args: Args) => ResourceReturn<T> {
   return (args: Args) => {
     return createResource(
       () => args,
       async (args) => {
         const variables = getVariables(args)
-        
+
         // Если кеширование включено, используем fetch с кешированием
         if (enableCache && !isServer) {
           const cacheKey = `graphql-resource-${JSON.stringify({ query: query.loc?.source.body, variables })}`
           const cached = sessionStorage.getItem(cacheKey)
-          
+
           if (cached) {
             try {
               const parsed = JSON.parse(cached)
-              if (Date.now() - parsed.timestamp < 1800000) { // 30 минут
+              if (Date.now() - parsed.timestamp < 1800000) {
+                // 30 минут
                 return parsed.data as T
               }
             } catch (e) {
               // Игнорируем ошибки парсинга кеша
             }
           }
-          
+
           const response = await clientInstance.query(query, variables).toPromise()
           const data = response?.data as T
-          
+
           // Кешируем результат
-          sessionStorage.setItem(cacheKey, JSON.stringify({
-            data,
-            timestamp: Date.now()
-          }))
-          
+          sessionStorage.setItem(
+            cacheKey,
+            JSON.stringify({
+              data,
+              timestamp: Date.now()
+            })
+          )
+
           return data
         }
-        
+
         // Обычный запрос без кеширования
         const response = await clientInstance.query(query, variables).toPromise()
         return response?.data as T
       },
       {
         // Добавляем поддержку отмены запросов если включено
-        ...(withAbort && { 
-          deferStream: true 
+        ...(withAbort && {
+          deferStream: true
         })
       }
     )

@@ -22,11 +22,10 @@ export const SearchField = (props: Props) => {
       </label>
       <input
         id="search-field"
-        type="text"
-        class="search-input"
+        type="search"
+        class={styles.searchInput}
         onInput={handleInputChange}
         placeholder={t('Search')}
-        role="searchbox"
         aria-label={t('Search')}
         autocomplete="off"
         spellcheck={false}

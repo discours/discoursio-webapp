@@ -30,11 +30,14 @@ export async function GET({ request }: APIEvent) {
   }
 
   try {
-    const response = await fetch(coreApiUrl, {
+    const apiUrl = coreApiUrl
+    console.log('[GraphQL Proxy] GET request to:', apiUrl)
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Accept: 'application/json'
       },
       body: JSON.stringify({ query, variables })
     })
@@ -50,7 +53,7 @@ export async function GET({ request }: APIEvent) {
       }
     })
   } catch (error) {
-    console.error('[GraphQL Proxy] Error:', error)
+    console.error('[GraphQL Proxy] GET Error:', error)
     return new Response(JSON.stringify({ error: 'GraphQL request failed' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -74,14 +77,17 @@ export async function POST({ request }: APIEvent) {
     const authHeader = request.headers.get('authorization')
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      Accept: 'application/json'
     }
 
     if (authHeader) {
       headers.Authorization = authHeader
     }
 
-    const response = await fetch(coreApiUrl, {
+    const apiUrl = coreApiUrl
+    console.log('[GraphQL Proxy] POST request to:', apiUrl)
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({ query, variables })

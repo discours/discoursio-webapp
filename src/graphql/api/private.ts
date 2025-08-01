@@ -5,9 +5,9 @@ import {
   Community,
   LoadShoutsOptions,
   QueryLoad_Shouts_BookmarkedArgs,
+  QueryLoad_Shouts_ByArgs,
   QueryLoad_Shouts_CoauthoredArgs,
   QueryLoad_Shouts_DiscussedArgs,
-  QueryLoad_Shouts_FeedArgs,
   Reaction,
   ReactionBy,
   ReactionKind,
@@ -54,9 +54,9 @@ import loadReactionsByQuery from '~/graphql/query/core/reactions-load-by'
  * )
  * ```
  */
-export const useFollowedShouts = createQueryResource<Shout[], QueryLoad_Shouts_FeedArgs>(
+export const useFollowedShouts = createQueryResource(
   loadShoutsFeedQuery,
-  ({ options }: QueryLoad_Shouts_FeedArgs) => ({ ...options }),
+  ({ options }: QueryLoad_Shouts_ByArgs) => ({ ...options }),
   defaultClient
 )
 
@@ -246,11 +246,7 @@ export const useReactions = (by: ReactionBy, limit?: number, offset?: number, si
  * Особенности:
  * - Автоматическое обновление при изменении параметров
  */
-export const useFollowedCommunities = (
-  slug?: string,
-  authorId?: number,
-  signedClient?: Client
-) => {
+export const useFollowedCommunities = (slug?: string, authorId?: number, signedClient?: Client) => {
   return createResource(
     () =>
       [{ slug, author_id: authorId }, signedClient] as ResourceArgs<{

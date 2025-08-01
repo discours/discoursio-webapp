@@ -300,7 +300,7 @@ export const OAuthFixtures = {
           state: stateData.state,
           provider: stateData.provider,
           timestamp: Date.now(),
-          redirectUri: 'http://localhost:3001'
+          redirectUri: 'https://localhost:3001'
         }
         localStorage.setItem('oauth_state', JSON.stringify(oauthState))
       },
@@ -319,7 +319,7 @@ export const OAuthFixtures = {
           state: stateData.state,
           provider: stateData.provider,
           timestamp: expiredTimestamp,
-          redirectUri: 'http://localhost:3001'
+          redirectUri: 'https://localhost:3001'
         }
         localStorage.setItem('oauth_state', JSON.stringify(oauthState))
       },

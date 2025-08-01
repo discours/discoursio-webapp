@@ -72,7 +72,6 @@ interface ImportMeta {
     PUBLIC_CDN_URL: string;
     PUBLIC_CORE_API: string;
     PUBLIC_CHAT_API: string;
-    PUBLIC_AUTH_API: string;
     PUBLIC_REALTIME_EVENTS: string;
     PUBLIC_GA_IDENTITY: string;
     PUBLIC_AUTHORIZER_CLIENT_ID: string;

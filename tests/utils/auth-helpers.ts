@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test'
+import { expect, Page } from '@playwright/test'
 import { baseUrl, waitForPageLoad } from './common'
 import { AuthModal } from './page-objects'
 
@@ -76,7 +76,7 @@ export async function checkApiConnection(page: Page): Promise<boolean> {
         }
 
         const data = await response.json()
-        console.log(`[API Test] Успешный ответ от локального прокси:`, data)
+        console.log('[API Test] Успешный ответ от локального прокси:', data)
         return true
       } catch (error) {
         console.log(`[API Test] Ошибка подключения к локальному прокси ${url}:`, error)
@@ -87,7 +87,9 @@ export async function checkApiConnection(page: Page): Promise<boolean> {
     }, apiUrl)
 
     if (!result) {
-      console.log(`[API Test] Локальный GraphQL прокси недоступен по адресу ${apiUrl}, тесты будут выполняться в режиме fallback`)
+      console.log(
+        `[API Test] Локальный GraphQL прокси недоступен по адресу ${apiUrl}, тесты будут выполняться в режиме fallback`
+      )
     } else {
       console.log(`[API Test] Локальный GraphQL прокси доступен по адресу ${apiUrl}`)
     }
@@ -116,7 +118,7 @@ export async function performLogin(page: Page): Promise<boolean> {
 
     // Проверяем существующий аккаунт или создаем новый
     const account = await ensureTestAccount(page)
-    
+
     if (!account.email) {
       console.log('[performLogin] Не удалось получить тестовый аккаунт')
       return false
@@ -137,19 +139,22 @@ export async function performLogin(page: Page): Promise<boolean> {
       })
 
       const originalFetch = window.fetch
-      window.fetch = function(...args) {
+      window.fetch = function (...args) {
         const url = args[0]
         console.log(`[signIn] Fetch запрос к: ${url}`)
 
-        return originalFetch.apply(this, args).then(response => {
-          if (!response.ok) {
-            console.log(`[signIn] Fetch ошибка ${response.status} для ${url}`)
-          }
-          return response
-        }).catch(error => {
-          console.log(`[signIn] Fetch исключение для ${url}:`, error)
-          throw error
-        })
+        return originalFetch
+          .apply(this, args)
+          .then((response) => {
+            if (!response.ok) {
+              console.log(`[signIn] Fetch ошибка ${response.status} для ${url}`)
+            }
+            return response
+          })
+          .catch((error) => {
+            console.log(`[signIn] Fetch исключение для ${url}:`, error)
+            throw error
+          })
       }
     })
 
@@ -183,7 +188,7 @@ export async function performRegistration(page: Page, user?: MockUser): Promise<
       password: process.env.TEST_PASSWORD || 'testpassword',
       fullName: 'Test User'
     }
-    
+
     console.log(`[performRegistration] Используем данные: ${testUser.email}`)
 
     // Проверяем доступность API
@@ -303,7 +308,9 @@ export async function isUserLoggedIn(page: Page): Promise<boolean> {
   try {
     // Проверяем несколько индикаторов авторизации
     const loginButton = page.locator('a:has-text("Войти"), button:has-text("Войти")').first()
-    const profileElement = page.locator('.userpic, [data-testid="user-avatar"], [data-user-menu], button:has([src*="avatar"])')
+    const profileElement = page.locator(
+      '.userpic, [data-testid="user-avatar"], [data-user-menu], button:has([src*="avatar"])'
+    )
     const userMenu = page.locator('[data-user-menu], .user-menu, .profile-menu')
     const logoutButton = page.locator('button:has-text("Выйти"), a:has-text("Выйти"), [data-logout]')
 
@@ -316,10 +323,10 @@ export async function isUserLoggedIn(page: Page): Promise<boolean> {
     // 1. Кнопка входа НЕ видна И
     // 2. Есть профиль/аватар ИЛИ есть меню пользователя ИЛИ есть кнопка выхода
     const isLoggedIn = !loginVisible && (profileVisible || userMenuVisible || logoutVisible)
-    
+
     console.log('[isUserLoggedIn]', {
       loginVisible,
-      profileVisible, 
+      profileVisible,
       userMenuVisible,
       logoutVisible,
       isLoggedIn
@@ -384,7 +391,9 @@ export async function switchAuthForm(
  * Регистрация нового тестового аккаунта
  * Создает уникальный email для каждого теста
  */
-export async function registerNewTestAccount(page: Page): Promise<{ email: string; password: string; success: boolean }> {
+export async function registerNewTestAccount(
+  page: Page
+): Promise<{ email: string; password: string; success: boolean }> {
   try {
     console.log('[registerNewTestAccount] Начинаем регистрацию нового тестового аккаунта...')
 
@@ -394,7 +403,7 @@ export async function registerNewTestAccount(page: Page): Promise<{ email: strin
     const testEmail = `test-${timestamp}-${randomId}@discours.io`
     const testPassword = process.env.TEST_PASSWORD || 'Well-c0mE!Br0'
     const testName = `Test User ${randomId}`
-    
+
     console.log(`[registerNewTestAccount] Регистрируем: ${testEmail}`)
 
     // Проверяем доступность локального GraphQL прокси
@@ -436,7 +445,9 @@ export async function registerNewTestAccount(page: Page): Promise<{ email: strin
 /**
  * Проверка существования аккаунта и регистрация нового если нужно
  */
-export async function ensureTestAccount(page: Page): Promise<{ email: string; password: string; isNew: boolean }> {
+export async function ensureTestAccount(
+  page: Page
+): Promise<{ email: string; password: string; isNew: boolean }> {
   try {
     console.log('[ensureTestAccount] Проверяем существующий тестовый аккаунт...')
 
@@ -466,13 +477,13 @@ export async function ensureTestAccount(page: Page): Promise<{ email: string; pa
       return { email: existingUsername, password: existingPassword, isNew: false }
     } else {
       console.log('[ensureTestAccount] Вход не удался, регистрируем новый аккаунт')
-      
+
       // Регистрируем новый аккаунт
       const newAccount = await registerNewTestAccount(page)
-      return { 
-        email: newAccount.email, 
-        password: newAccount.password, 
-        isNew: newAccount.success 
+      return {
+        email: newAccount.email,
+        password: newAccount.password,
+        isNew: newAccount.success
       }
     }
   } catch (error) {

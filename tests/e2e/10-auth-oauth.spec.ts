@@ -61,7 +61,7 @@ test.describe('OAuth Authentication', () => {
         state: 'test-state-123',
         provider: 'google',
         timestamp: Date.now(),
-        redirectUri: 'http://localhost:3000'
+        redirectUri: 'https://localhost:3001'
       }
       localStorage.setItem('oauth_state', JSON.stringify(oauthState))
     })
@@ -80,7 +80,7 @@ test.describe('OAuth Authentication', () => {
         state: 'valid-state-123',
         provider: 'google',
         timestamp: Date.now(),
-        redirectUri: 'http://localhost:3000'
+        redirectUri: 'https://localhost:3001'
       }
       localStorage.setItem('oauth_state', JSON.stringify(oauthState))
     })
@@ -102,7 +102,7 @@ test.describe('OAuth Authentication', () => {
         state: 'test-state-123',
         provider: 'google',
         timestamp: expiredTimestamp,
-        redirectUri: 'http://localhost:3000'
+        redirectUri: 'https://localhost:3001'
       }
       localStorage.setItem('oauth_state', JSON.stringify(oauthState))
     })
@@ -121,7 +121,7 @@ test.describe('OAuth Authentication', () => {
         state: 'test-state-123',
         provider: 'google',
         timestamp: Date.now(),
-        redirectUri: 'http://localhost:3000'
+        redirectUri: 'https://localhost:3001'
       }
       localStorage.setItem('oauth_state', JSON.stringify(oauthState))
     })

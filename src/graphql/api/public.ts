@@ -56,11 +56,16 @@ import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community
  * ```
  */
 export const loadTopics = () => {
-  return createCacheableLoader<Topic[], void>(
+  const loader = createCacheableLoader<{ get_topics_all: Topic[] }, void>(
     loadTopicsQuery,
     () => ({}) as QueryGet_TopicArgs,
     true // Включаем браузерное кеширование для топиков
   )(undefined)
+
+  return async () => {
+    const response = await loader()
+    return response?.get_topics_all || []
+  }
 }
 
 /**
@@ -68,7 +73,7 @@ export const loadTopics = () => {
  * Оптимизирован для статичных данных с долгим временем жизни
  */
 export const useTopicsResource = () => {
-  return createCacheableQueryResource<Topic[], void>(
+  return createCacheableQueryResource<{ get_topics_all: Topic[] }, void>(
     loadTopicsQuery,
     () => ({}),
     true, // Включаем браузерное кеширование
@@ -80,11 +85,21 @@ export const useTopicsResource = () => {
 /**
  * Загрузка топиков по сообществу с кешированием
  */
-export const loadTopicsByCommunity = createCacheableLoader<Topic[], QueryGet_Topics_By_CommunityArgs>(
-  loadTopicsByCommunityQuery,
-  (args: QueryGet_Topics_By_CommunityArgs) => args,
-  true // Кешируем топики по сообществу
-)
+export const loadTopicsByCommunity = (args: QueryGet_Topics_By_CommunityArgs) => {
+  const loader = createCacheableLoader<
+    { get_topics_by_community: Topic[] },
+    QueryGet_Topics_By_CommunityArgs
+  >(
+    loadTopicsByCommunityQuery,
+    (args: QueryGet_Topics_By_CommunityArgs) => args,
+    true // Кешируем топики по сообществу
+  )(args)
+
+  return async () => {
+    const response = await loader()
+    return response?.get_topics_by_community || []
+  }
+}
 
 // Shouts API
 /**
@@ -103,32 +118,48 @@ export const loadTopicsByCommunity = createCacheableLoader<Topic[], QueryGet_Top
  * const shouts = await shoutsLoader()
  * ```
  */
-export const loadShouts = createCacheableLoader<Shout[], QueryLoad_Shouts_ByArgs>(
-  loadShoutsByQuery,
-  (args: QueryLoad_Shouts_ByArgs) => args,
-  true // Включаем кеширование для публичных статей
-)
+export const loadShouts = (args: QueryLoad_Shouts_ByArgs) => {
+  const loader = createCacheableLoader<{ load_shouts_by: Shout[] }, QueryLoad_Shouts_ByArgs>(
+    loadShoutsByQuery,
+    (args: QueryLoad_Shouts_ByArgs) => args,
+    true // Включаем кеширование для публичных статей
+  )(args)
+
+  return async () => {
+    const response = await loader()
+    return response?.load_shouts_by || []
+  }
+}
 
 /**
  * Реактивный ресурс для загрузки шаутов с кешированием
  * Оптимизирован для публичного контента
  */
-export const useShoutsResource = createCacheableQueryResource<Shout[], QueryLoad_Shouts_ByArgs>(
-  loadShoutsByQuery,
-  (args: QueryLoad_Shouts_ByArgs) => args,
-  true, // Включаем кеширование
-  defaultClient,
-  true // withAbort
-)
+export const useShoutsResource = (args: QueryLoad_Shouts_ByArgs) => {
+  return createCacheableQueryResource<{ load_shouts_by: Shout[] }, QueryLoad_Shouts_ByArgs>(
+    loadShoutsByQuery,
+    (args: QueryLoad_Shouts_ByArgs) => args,
+    true, // Включаем кеширование
+    defaultClient,
+    true // withAbort
+  )(args)
+}
 
 /**
  * Поиск статей с кешированием результатов
  */
-export const loadShoutsSearch = createCacheableLoader<Shout[], QueryLoad_Shouts_SearchArgs>(
-  loadShoutsSearchQuery,
-  (args: QueryLoad_Shouts_SearchArgs) => args,
-  true // Кешируем результаты поиска
-)
+export const loadShoutsSearch = (args: QueryLoad_Shouts_SearchArgs) => {
+  const loader = createCacheableLoader<{ load_shouts_search: Shout[] }, QueryLoad_Shouts_SearchArgs>(
+    loadShoutsSearchQuery,
+    (args: QueryLoad_Shouts_SearchArgs) => args,
+    true // Кешируем результаты поиска
+  )(args)
+
+  return async () => {
+    const response = await loader()
+    return response?.load_shouts_search || []
+  }
+}
 
 // Authors API
 /**
@@ -147,42 +178,63 @@ export const loadShoutsSearch = createCacheableLoader<Shout[], QueryLoad_Shouts_
  * const authors = await authorsLoader()
  * ```
  */
-export const loadAuthors = createCacheableLoader<Author[], QueryLoad_Authors_ByArgs>(
-  loadAuthorsByQuery,
-  (options: QueryLoad_Authors_ByArgs) => options,
-  true // Включаем кеширование для авторов
-)
+export const loadAuthors = (options: QueryLoad_Authors_ByArgs) => {
+  const loader = createCacheableLoader<{ load_authors_by: Author[] }, QueryLoad_Authors_ByArgs>(
+    loadAuthorsByQuery,
+    (options: QueryLoad_Authors_ByArgs) => options,
+    true // Включаем кеширование для авторов
+  )(options)
+
+  return async () => {
+    const response = await loader()
+    return response?.load_authors_by || []
+  }
+}
 
 /**
  * Реактивный ресурс для загрузки авторов с кешированием
  */
-export const useAuthorsResource = createCacheableQueryResource<Author[], QueryLoad_Authors_ByArgs>(
-  loadAuthorsByQuery,
-  (options: QueryLoad_Authors_ByArgs) => options,
-  true, // Включаем кеширование
-  defaultClient,
-  true // withAbort
-)
+export const useAuthorsResource = (options: QueryLoad_Authors_ByArgs) => {
+  return createCacheableQueryResource<{ load_authors_by: Author[] }, QueryLoad_Authors_ByArgs>(
+    loadAuthorsByQuery,
+    (options: QueryLoad_Authors_ByArgs) => options,
+    true, // Включаем кеширование
+    defaultClient,
+    true // withAbort
+  )(options)
+}
 
 /**
  * Поиск авторов с кешированием
  */
-export const loadAuthorsSearch = createCacheableLoader<Author[], QueryLoad_Authors_SearchArgs>(
-  loadAuthorsSearchQuery,
-  (options: QueryLoad_Authors_SearchArgs) => options,
-  true // Кешируем результаты поиска авторов
-)
+export const loadAuthorsSearch = (options: QueryLoad_Authors_SearchArgs) => {
+  const loader = createCacheableLoader<{ load_authors_search: Author[] }, QueryLoad_Authors_SearchArgs>(
+    loadAuthorsSearchQuery,
+    (options: QueryLoad_Authors_SearchArgs) => options,
+    true // Кешируем результаты поиска авторов
+  )(options)
+
+  return async () => {
+    const response = await loader()
+    return response?.load_authors_search || []
+  }
+}
 
 /**
  * Кешируемый метод для загрузки всех авторов
  * Используется для начальной загрузки и кеширования
  */
 export const loadAuthorsAll = () => {
-  return createCacheableLoader<Author[], void>(
+  const loader = createCacheableLoader<{ load_authors_all: Author[] }, void>(
     loadAuthorsAllQuery,
     () => ({}),
     true // Включаем кеширование для списка всех авторов
   )(undefined)
+
+  return async () => {
+    const response = await loader()
+    return response?.load_authors_all || []
+  }
 }
 
 // Reactions API
@@ -215,12 +267,13 @@ export const loadReactions = (options: QueryLoad_Reactions_ByArgs) => {
  * Реакции требуют актуальных данных
  */
 export const useReactionsResource = (options: QueryLoad_Reactions_ByArgs) => {
-  return createQueryResource<Reaction[], QueryLoad_Reactions_ByArgs>(
+  return createCacheableQueryResource<{ load_reactions_by: Reaction[] }, QueryLoad_Reactions_ByArgs>(
     loadReactionsByQuery,
-    () => options,
+    (options) => options,
+    true, // Включаем кеширование
     defaultClient,
     true // withAbort
-  )
+  )(options)
 }
 
 // Single Shout API
@@ -243,13 +296,13 @@ export const useReactionsResource = (options: QueryLoad_Reactions_ByArgs) => {
  * ```
  */
 export const useShout = (options: QueryGet_ShoutArgs) => {
-  return createCacheableQueryResource<Shout, QueryGet_ShoutArgs>(
+  return createCacheableQueryResource<{ get_shout: Shout }, QueryGet_ShoutArgs>(
     getShoutQuery,
     () => options,
     true, // Включаем кеширование для статей
     defaultClient,
     true // withAbort
-  )
+  )(options)
 }
 
 /**
@@ -270,13 +323,13 @@ export const useShout = (options: QueryGet_ShoutArgs) => {
  * ```
  */
 export const useAuthor = (options: QueryGet_AuthorArgs) => {
-  return createCacheableQueryResource<Author, QueryGet_AuthorArgs>(
+  return createCacheableQueryResource<{ get_author: Author }, QueryGet_AuthorArgs>(
     getAuthorQuery,
     () => options,
     true, // Включаем кеширование для авторов
     defaultClient,
     true // withAbort
-  )
+  )(options)
 }
 
 // Unrated Shouts API (НЕ кешируются - требуют актуальных данных для модерации)
@@ -285,44 +338,62 @@ export const useAuthor = (options: QueryGet_AuthorArgs) => {
  * Используется в FeedView для показа контента требующего модерации
  */
 export const useUnratedShouts = (options: LoadShoutsOptions) => {
-  return createQueryResource<Shout[], QueryLoad_Shouts_UnratedArgs>(
+  return createCacheableQueryResource<{ load_shouts_unrated: Shout[] }, LoadShoutsOptions>(
     loadShoutsUnratedQuery,
-    () => ({ options }),
+    (options) => ({ options }),
+    false, // НЕ кешируем неоцененные шауты
     defaultClient,
     true // withAbort
-  )
+  )(options)
 }
 
 /**
  * Прямой метод без кеширования для загрузки неоцененных статей
  * Используется для SSR и начальной загрузки данных
  */
-export const loadUnratedShouts = createLoader<Shout[], LoadShoutsOptions>(
-  loadShoutsUnratedQuery,
-  (options: LoadShoutsOptions) => ({ options }) as QueryLoad_Shouts_UnratedArgs
-)
+export const loadUnratedShouts = (options: LoadShoutsOptions) => {
+  const loader = createLoader<{ load_shouts_unrated: Shout[] }, LoadShoutsOptions>(
+    loadShoutsUnratedQuery,
+    (options: LoadShoutsOptions) => ({ options }) as QueryLoad_Shouts_UnratedArgs
+  )(options)
+
+  return async () => {
+    const response = await loader()
+    return response?.load_shouts_unrated || []
+  }
+}
 
 // Topic Authors API (кешируется)
 /**
  * Кешируемая загрузка авторов по топику
  */
 export const loadTopicAuthors = (args: QueryGet_AuthorArgs) => {
-  return createCacheableLoader<Author[], QueryGet_AuthorArgs>(
+  const loader = createCacheableLoader<{ get_authors_by_topic: Author[] }, QueryGet_AuthorArgs>(
     getAuthorsByTopicQuery,
     () => args,
     true // Кешируем авторов по топику
   )(args)
+
+  return async () => {
+    const response = await loader()
+    return response?.get_authors_by_topic || []
+  }
 }
 
 /**
  * Кешируемая загрузка подписчиков топика
  */
 export const loadTopicFollowers = (args: QueryGet_AuthorArgs) => {
-  return createCacheableLoader<Author[], QueryGet_AuthorArgs>(
+  const loader = createCacheableLoader<{ get_followers_by_topic: Author[] }, QueryGet_AuthorArgs>(
     getFollowersByTopicQuery,
     () => args,
     true // Кешируем подписчиков топика
   )(args)
+
+  return async () => {
+    const response = await loader()
+    return response?.get_followers_by_topic || []
+  }
 }
 
 // Comments Branch API (НЕ кешируется - часто обновляется)
@@ -357,11 +428,16 @@ export const loadCommentsBranch = (opts: QueryLoad_Comments_BranchArgs) => {
  * Кешируемый метод для загрузки статьи по slug
  */
 export const getShout = (options: QueryGet_ShoutArgs) => {
-  return createCacheableLoader<Shout, QueryGet_ShoutArgs>(
+  const loader = createCacheableLoader<{ get_shout: Shout }, QueryGet_ShoutArgs>(
     getShoutQuery,
     () => options,
     true // Включаем кеширование
   )(options)
+
+  return async () => {
+    const response = await loader()
+    return response?.get_shout || null
+  }
 }
 
 /**
@@ -369,11 +445,16 @@ export const getShout = (options: QueryGet_ShoutArgs) => {
  * Кешируемый метод для загрузки автора по slug
  */
 export const getAuthor = (options: QueryGet_AuthorArgs) => {
-  return createCacheableLoader<Author, QueryGet_AuthorArgs>(
+  const loader = createCacheableLoader<{ get_author: Author }, QueryGet_AuthorArgs>(
     getAuthorQuery,
     () => options,
     true // Включаем кеширование
   )(options)
+
+  return async () => {
+    const response = await loader()
+    return response?.get_author || null
+  }
 }
 
 /**
@@ -392,11 +473,16 @@ export const getAuthor = (options: QueryGet_AuthorArgs) => {
  * ```
  */
 export const loadTopicBySlug = (slug: string) => {
-  return createCacheableLoader<Topic, QueryGet_TopicArgs>(
+  const loader = createCacheableLoader<{ get_topic: Topic }, QueryGet_TopicArgs>(
     topicBySlugQuery,
     (args: QueryGet_TopicArgs) => args,
     true // Включаем кеширование для топиков
   )({ slug })
+
+  return async () => {
+    const response = await loader()
+    return response?.get_topic || null
+  }
 }
 
 /**
@@ -404,7 +490,7 @@ export const loadTopicBySlug = (slug: string) => {
  * Оптимизирован для публичных топиков
  */
 export const useTopicBySlug = (slug: string) => {
-  return createCacheableQueryResource<Topic, QueryGet_TopicArgs>(
+  return createCacheableQueryResource<{ get_topic: Topic }, QueryGet_TopicArgs>(
     topicBySlugQuery,
     () => ({ slug }),
     true, // Включаем кеширование

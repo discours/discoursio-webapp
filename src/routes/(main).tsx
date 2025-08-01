@@ -61,10 +61,17 @@ const withRetry = async (fn: () => Promise<any>, retries = 2, delay = 1000): Pro
 
 // Некешируемый загрузчик для SSR
 // biome-ignore lint/suspicious/noExplicitAny: ok
-const loadShoutsSSR = createLoader<any[], QueryLoad_Shouts_ByArgs>(
-  loadShoutsByQuery,
-  (args: QueryLoad_Shouts_ByArgs) => args
-)
+const loadShoutsSSR = (args: QueryLoad_Shouts_ByArgs) => {
+  const loader = createLoader<{ load_shouts_by: any[] }, QueryLoad_Shouts_ByArgs>(
+    loadShoutsByQuery,
+    (args: QueryLoad_Shouts_ByArgs) => args
+  )(args)
+
+  return async () => {
+    const response = await loader()
+    return response?.load_shouts_by || []
+  }
+}
 
 // Упрощенная SSR загрузка только критически важных данных
 export const route = {
@@ -192,10 +199,11 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
     try {
       const shoutsLoader = featuredLoader(offset)
       const loaded = await shoutsLoader()
-      if (loaded) {
+      if (loaded && Array.isArray(loaded)) {
         setFeaturedFeed((prev) => [...(prev || []), ...loaded])
+        return loaded as LoadMoreItems
       }
-      return loaded as LoadMoreItems
+      return [] as LoadMoreItems
     } catch (error) {
       console.error('[HomePage] Error loading more featured:', error)
       return [] as LoadMoreItems
