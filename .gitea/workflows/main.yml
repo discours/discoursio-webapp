@@ -24,7 +24,10 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: |
+          # Отключаем кэширование для избежания проблем
+          npm config set cache /tmp/npm-cache
+          npm ci --no-optional
 
       - name: Clean Platform-Specific Dependencies
         run: |
@@ -36,8 +39,39 @@ jobs:
           npm install @biomejs/biome@^2.1.1
           npm install
 
+      - name: Run Postinstall Scripts
+        run: |
+          echo "Running postinstall scripts..."
+          npm run postinstall || echo "Postinstall failed, will generate types manually"
+
       - name: Generate GraphQL Types
-        run: npm run codegen:all
+        run: |
+          echo "Generating GraphQL types..."
+          echo "Current directory: $(pwd)"
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          
+          # Проверяем что файлы существуют
+          echo "Checking if GraphQL files exist:"
+          ls -la src/graphql/mutation/chat/ || echo "Chat mutations not found"
+          ls -la src/graphql/query/chat/ || echo "Chat queries not found"
+          
+          # Генерируем типы
+          npm run codegen:all
+          
+          echo "Types generated successfully"
+          echo "Generated files:"
+          ls -la src/graphql/generated/
+          ls -la src/graphql/generated/inbox/ || echo "Inbox directory not found"
+          
+          # Проверяем что chat.ts создался
+          if [ -f "src/graphql/generated/chat.ts" ]; then
+            echo "✅ chat.ts exists"
+            head -5 src/graphql/generated/chat.ts
+          else
+            echo "❌ chat.ts not found"
+            exit 1
+          fi
 
       - name: Lint Code
         run: npx @biomejs/biome check src/
