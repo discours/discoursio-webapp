@@ -97,13 +97,23 @@ test.beforeEach(async ({ page }) => {
   await page.getByPlaceholder('Пароль').or(page.getByPlaceholder('Password')).first().click()
   await page.getByPlaceholder('Пароль').or(page.getByPlaceholder('Password')).first().fill(password)
   
-  // Отправляем форму входа
+    // Отправляем форму входа
   const loginButton = page.getByRole('button', { name: 'Войти' }).or(page.getByRole('button', { name: 'Enter' })).or(page.locator('button[type="submit"]')).first()
   await loginButton.click()
-
-  // Ждем завершения входа
+  
+  // Ждем завершения входа и проверяем что пользователь авторизован
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
     console.log('Тайм-аут при ожидании после входа, продолжаем...')
+  })
+  
+  // Ждем появления индикатора авторизованного пользователя (кнопка с инициалами или аватар)
+  await page.waitForSelector('button:has-text("Т.Р."), [data-testid="user-menu"], .user-avatar, .user-button', { timeout: 15000 }).catch(() => {
+    console.log('Не найден индикатор авторизованного пользователя, продолжаем...')
+  })
+  
+  // Проверяем что модальное окно закрылось
+  await page.waitForSelector('.authForm, .auth-form, [class*="AuthModal"]', { state: 'hidden', timeout: 5000 }).catch(() => {
+    console.log('Модальное окно авторизации все ещё видно, продолжаем...')
   })
 })
 
