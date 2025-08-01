@@ -50,7 +50,7 @@ export async function GET(request) {
 
   try {
     const { searchParams, pathname } = new URL(request.url)
-    
+
     // Определяем тип запроса по URL
     const pathSegments = pathname.split('/')
 
@@ -66,7 +66,7 @@ export async function GET(request) {
 
     // Получаем параметры из URL
     const params = Object.fromEntries(searchParams)
-    
+
     // Логируем запрос для отладки
     console.log(`[OG] Generating image for type: ${type}, params:`, JSON.stringify(params, null, 2))
 
@@ -324,7 +324,7 @@ function createStatsBar(items) {
       }}
     >
       {items.map((item, index) => (
-        <div key={index} style={{ fontSize: 24 }}>
+        <div key={`stat-${item.text}-${index}`} style={{ fontSize: 24 }}>
           {item.text}
         </div>
       ))}
