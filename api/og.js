@@ -39,19 +39,19 @@ function getCoverForOG(cover) {
  * Поддерживает пути: /api/og, /api/og/article, /api/og/author, /api/og/topic
  * Размер: строго 1200x630px для Facebook/Twitter/LinkedIn
  */
-export default async (req, res) => {
+export async function GET(request) {
   // Обработка CORS для preflight запросов
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200, CORS_HEADERS)
-    res.end()
-    return
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: CORS_HEADERS
+    })
   }
 
   try {
+    const { searchParams, pathname } = new URL(request.url)
+    
     // Определяем тип запроса по URL
-    const requestUrl = req.url || ''
-    const url = new URL(requestUrl, `https://${req.headers.host}`)
-    const { pathname, searchParams } = url
     const pathSegments = pathname.split('/')
 
     // Получаем тип из последнего сегмента пути: /api/og/article -> article
@@ -64,29 +64,11 @@ export default async (req, res) => {
       }
     }
 
-    // Объединяем параметры из URL и query
-    const params = { ...Object.fromEntries(searchParams), ...req.query }
-
+    // Получаем параметры из URL
+    const params = Object.fromEntries(searchParams)
+    
     // Логируем запрос для отладки
     console.log(`[OG] Generating image for type: ${type}, params:`, JSON.stringify(params, null, 2))
-
-    // Общие параметры ответа с правильными заголовками для OG
-    const responseData = {
-      width: OG_IMAGE_WIDTH,
-      height: OG_IMAGE_HEIGHT,
-      headers: {
-        'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=86400', // 24 часа для развития
-        'CDN-Cache-Control': 'public, max-age=31536000',
-        // CORS заголовки
-        ...CORS_HEADERS,
-        // Дополнительные заголовки для OG
-        'X-OG-Image-Type': 'image/png',
-        'X-OG-Image-Width': OG_IMAGE_WIDTH.toString(),
-        'X-OG-Image-Height': OG_IMAGE_HEIGHT.toString(),
-        'X-OG-Image-Alt': params.title || 'Discours'
-      }
-    }
 
     // Общие параметры для всех типов
     const title = params.title || ''
@@ -121,20 +103,22 @@ export default async (req, res) => {
       }
       case 'topic': {
         topRight = params.articlesCount
-          ? {
-              type: 'div',
-              props: {
-                style: { fontSize: 24 },
-                children: `${params.articlesCount} статей`
-              }
-            }
+          ? createStatsBar([{ text: `${params.articlesCount} статей` }])
           : null
         content = { title, description, cover }
         break
       }
       default: {
         // Базовый OG
-        return new ImageResponse(createBasicOGImage(), responseData)
+        return new ImageResponse(createBasicOGImage(), {
+          width: OG_IMAGE_WIDTH,
+          height: OG_IMAGE_HEIGHT,
+          headers: {
+            'Cache-Control': 'public, max-age=86400, s-maxage=31536000',
+            'CDN-Cache-Control': 'public, max-age=31536000',
+            ...CORS_HEADERS
+          }
+        })
       }
     }
 
@@ -147,7 +131,15 @@ export default async (req, res) => {
         topRight,
         theme: cover ? 'dark' : isDark ? 'dark' : 'light'
       }),
-      responseData
+      {
+        width: OG_IMAGE_WIDTH,
+        height: OG_IMAGE_HEIGHT,
+        headers: {
+          'Cache-Control': 'public, max-age=86400, s-maxage=31536000',
+          'CDN-Cache-Control': 'public, max-age=31536000',
+          ...CORS_HEADERS
+        }
+      }
     )
   } catch (error) {
     console.error('Error generating OG image:', error)
@@ -181,156 +173,122 @@ function createOGImage({
         background: isDark ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white'
       }
 
-  // Создаем логотип
-  const logo = createLogo()
-
-  // Создаем заголовок
-  const mainTitle = createTitle(title, isDark)
-
-  // Создаем описание, если оно есть
-  const bottomText = description ? createDescription(description, isDark) : null
-
-  // Финальная сборка
-  return {
-    type: 'div',
-    props: {
-      style: {
+  return (
+    <div
+      style={{
         position: 'relative',
         height: '100%',
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
         ...backgroundStyle
-      },
-      children: [logo, topRight, mainTitle, bottomText].filter(Boolean)
-    }
-  }
+      }}
+    >
+      {/* Логотип */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 40,
+          left: 60,
+          display: 'flex',
+          alignItems: 'center'
+        }}
+      >
+        <img
+          src={`${cdnUrl}/logo_sign.png`}
+          width={60}
+          height={60}
+          style={{
+            width: 60,
+            height: 60,
+            objectFit: 'contain',
+            borderRadius: '16px'
+          }}
+        />
+      </div>
+
+      {/* Правый верхний элемент */}
+      {topRight}
+
+      {/* Заголовок */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: 60,
+          transform: 'translateY(-50%)',
+          maxWidth: 900,
+          textAlign: 'left',
+          color: isDark ? 'white' : '#1f2937',
+          fontWeight: 900,
+          fontSize: title.length > 50 ? 50 : 62,
+          lineHeight: 1.12,
+          textShadow: isDark ? '2px 2px 7px rgba(0,0,0,0.55)' : 'none',
+          letterSpacing: '-1px'
+        }}
+      >
+        {title}
+      </div>
+
+      {/* Описание */}
+      {description && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 60,
+            bottom: 44,
+            fontSize: 32,
+            color: isDark ? 'rgba(255,255,255,0.88)' : 'rgba(31,41,55,0.7)',
+            fontWeight: 300,
+            letterSpacing: 0.5,
+            textShadow: isDark ? '1px 1px 2px rgba(0,0,0,0.34)' : 'none',
+            maxWidth: 900,
+            lineHeight: 1.3
+          }}
+        >
+          {description.length > 120 ? `${description.substring(0, 120)}...` : description}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /**
  * Создает базовое OG-изображение с центрированным логотипом
  */
 function createBasicOGImage() {
-  return {
-    type: 'div',
-    props: {
-      style: {
+  return (
+    <div
+      style={{
         height: '100%',
         width: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'white'
-      },
-      children: {
-        type: 'img',
-        props: {
-          src: `${cdnUrl}/logo_sign.png`,
+      }}
+    >
+      <img
+        src={`${cdnUrl}/logo_sign.png`}
+        width={200}
+        height={200}
+        style={{
           width: 200,
           height: 200,
-          style: {
-            width: 200,
-            height: 200,
-            objectFit: 'contain'
-          }
-        }
-      }
-    }
-  }
-}
-
-/**
- * Создает элемент с логотипом
- */
-function createLogo() {
-  return {
-    type: 'div',
-    props: {
-      style: {
-        position: 'absolute',
-        top: 40,
-        left: 60,
-        display: 'flex',
-        alignItems: 'center'
-      },
-      children: [
-        {
-          type: 'img',
-          props: {
-            src: `${cdnUrl}/logo_sign.png`,
-            width: 60,
-            height: 60,
-            style: {
-              width: 60,
-              height: 60,
-              objectFit: 'contain',
-              borderRadius: '16px'
-            }
-          }
-        }
-      ]
-    }
-  }
-}
-
-/**
- * Создает элемент с заголовком
- */
-function createTitle(text, isDark = false) {
-  return {
-    type: 'div',
-    props: {
-      style: {
-        position: 'absolute',
-        top: '50%',
-        left: 60,
-        transform: 'translateY(-50%)',
-        maxWidth: 900,
-        textAlign: 'left',
-        color: isDark ? 'white' : '#1f2937',
-        fontWeight: 900,
-        fontSize: text.length > 50 ? 50 : 62,
-        lineHeight: 1.12,
-        textShadow: isDark ? '2px 2px 7px rgba(0,0,0,0.55)' : 'none',
-        letterSpacing: '-1px'
-      },
-      children: text
-    }
-  }
-}
-
-/**
- * Создает элемент с описанием
- */
-function createDescription(text, isDark = false) {
-  return {
-    type: 'div',
-    props: {
-      style: {
-        position: 'absolute',
-        left: 60,
-        bottom: 44,
-        fontSize: 32,
-        color: isDark ? 'rgba(255,255,255,0.88)' : 'rgba(31,41,55,0.7)',
-        fontWeight: 300,
-        letterSpacing: 0.5,
-        textShadow: isDark ? '1px 1px 2px rgba(0,0,0,0.34)' : 'none',
-        maxWidth: 900,
-        lineHeight: 1.3
-      },
-      children: text.length > 120 ? `${text.substring(0, 120)}...` : text
-    }
-  }
+          objectFit: 'contain'
+        }}
+      />
+    </div>
+  )
 }
 
 /**
  * Создает бейдж для темы
  */
 function createTopicBadge(text) {
-  return {
-    type: 'div',
-    props: {
-      style: {
+  return (
+    <div
+      style={{
         position: 'absolute',
         top: 40,
         left: 135,
@@ -341,10 +299,11 @@ function createTopicBadge(text) {
         fontSize: 24,
         backdropFilter: 'blur(4px)',
         textShadow: '1px 1px 2px rgba(0,0,0,0.2)'
-      },
-      children: text
-    }
-  }
+      }}
+    >
+      {text}
+    </div>
+  )
 }
 
 /**
@@ -353,24 +312,22 @@ function createTopicBadge(text) {
 function createStatsBar(items) {
   if (!items || items.length === 0) return null
 
-  return {
-    type: 'div',
-    props: {
-      style: {
+  return (
+    <div
+      style={{
         position: 'absolute',
         top: 40,
         right: 60,
         display: 'flex',
         gap: 20,
         color: 'rgba(255,255,255,0.8)'
-      },
-      children: items.map((item) => ({
-        type: 'div',
-        props: {
-          style: { fontSize: 24 },
-          children: item.text
-        }
-      }))
-    }
-  }
+      }}
+    >
+      {items.map((item, index) => (
+        <div key={index} style={{ fontSize: 24 }}>
+          {item.text}
+        </div>
+      ))}
+    </div>
+  )
 }
