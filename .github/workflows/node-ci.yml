@@ -46,6 +46,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Clean Platform-Specific Dependencies
+        run: |
+          # Удаляем платформо-специфичные пакеты для Linux CI
+          npm uninstall sass-embedded-darwin-arm64 sass-embedded-darwin-x64 || true
+          npm uninstall @biomejs/cli-darwin-arm64 @biomejs/cli-darwin-x64 || true
+          # Принудительно переустанавливаем Biome для текущей платформы
+          npm uninstall @biomejs/biome || true
+          npm install @biomejs/biome@^2.1.1
+          npm install
+
       - name: Install Playwright
         run: npx playwright install --with-deps
 
