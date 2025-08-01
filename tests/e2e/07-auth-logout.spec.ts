@@ -6,18 +6,14 @@
  */
 
 import { expect } from '@playwright/test'
-import {
-  isUserLoggedIn as isLoggedIn,
-  performLogin as setupAuthState,
-  TEST_USERS
-} from '../utils/auth-helpers'
+import { isUserLoggedIn, performLogin } from '../utils/auth-helpers'
 import { baseUrl, waitForPageLoad } from '../utils/common'
 import { test } from '../utils/test-helpers'
 
 test.describe('Выход из системы', () => {
   test.beforeEach(async ({ page }) => {
     // Авторизуемся перед каждым тестом
-    const authSuccess = await setupAuthState(page)
+    const authSuccess = await performLogin(page)
 
     if (!authSuccess) {
       test.skip()
@@ -26,7 +22,7 @@ test.describe('Выход из системы', () => {
     }
 
     // Проверяем что мы действительно авторизованы
-    const loggedIn = await isLoggedIn(page)
+    const loggedIn = await isUserLoggedIn(page)
     if (!loggedIn) {
       test.skip()
       console.warn('Пользователь не авторизован, пропускаем тест выхода')
@@ -96,7 +92,7 @@ test.describe('Выход из системы', () => {
         // Проверяем что пользователь вышел
         await page.waitForTimeout(2000)
 
-        const stillLoggedIn = await isLoggedIn(page)
+        const stillLoggedIn = await isUserLoggedIn(page)
         expect(stillLoggedIn).toBeFalsy()
 
         // Должна появиться кнопка "Войти"
@@ -207,14 +203,14 @@ test.describe('Выход из системы', () => {
     await performLogout(page)
 
     // Проверяем что вышли
-    expect(await isLoggedIn(page)).toBeFalsy()
+    expect(await isUserLoggedIn(page)).toBeFalsy()
 
     // Обновляем страницу
     await page.reload()
     await waitForPageLoad(page)
 
     // Должны остаться неавторизованными
-    expect(await isLoggedIn(page)).toBeFalsy()
+    expect(await isUserLoggedIn(page)).toBeFalsy()
     await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible()
   })
 
@@ -246,7 +242,7 @@ test.describe('Выход из системы', () => {
 test.describe('Автоматический выход', () => {
   test('Должна обрабатывать истечение токена', async ({ page }) => {
     // Авторизуемся
-    const authSuccess = await setupAuthState(page)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -281,11 +277,11 @@ test.describe('Автоматический выход', () => {
 
     // Должны быть автоматически разлогинены
     await page.waitForTimeout(2000)
-    expect(await isLoggedIn(page)).toBeFalsy()
+    expect(await isUserLoggedIn(page)).toBeFalsy()
   })
 
   test('Должна обрабатывать неавторизованные ответы API', async ({ page }) => {
-    const authSuccess = await setupAuthState(page)
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -314,7 +310,7 @@ test.describe('Автоматический выход', () => {
       await page.waitForTimeout(2000)
 
       // Должны быть разлогинены
-      expect(await isLoggedIn(page)).toBeFalsy()
+      expect(await isUserLoggedIn(page)).toBeFalsy()
     } else {
       test.skip()
       console.warn('Кнопка создания поста не найдена')
@@ -329,7 +325,7 @@ test.describe('Множественные сессии', () => {
     const page2 = await context.newPage()
 
     // Авторизуемся в первой вкладке
-    const authSuccess = await setupAuthState(page1)
+    const authSuccess = await performLogin(page1)
     if (!authSuccess) {
       test.skip()
       return
@@ -339,7 +335,7 @@ test.describe('Множественные сессии', () => {
     await page2.goto(baseUrl)
     await waitForPageLoad(page2)
 
-    const loggedInPage2 = await isLoggedIn(page2)
+    const loggedInPage2 = await isUserLoggedIn(page2)
     if (!loggedInPage2) {
       test.skip()
       console.warn('Сессия не синхронизируется между вкладками')
@@ -354,7 +350,7 @@ test.describe('Множественные сессии', () => {
     await waitForPageLoad(page2)
 
     // Во второй вкладке тоже должны выйти
-    expect(await isLoggedIn(page2)).toBeFalsy()
+    expect(await isUserLoggedIn(page2)).toBeFalsy()
 
     await page1.close()
     await page2.close()

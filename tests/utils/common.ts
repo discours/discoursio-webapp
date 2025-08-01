@@ -9,7 +9,7 @@ import { config } from 'dotenv'
 // Загружаем переменные окружения из .env файла
 config()
 
-// Базовый URL для E2E тестов - отдельный инстанс на порту 3001  
+// Базовый URL для E2E тестов - отдельный инстанс на порту 3001
 export const baseUrl = process.env.E2E_BASE_URL || 'https://localhost:3001'
 
 /**

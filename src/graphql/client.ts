@@ -1,4 +1,5 @@
-import { cacheExchange, createClient, fetchExchange, ssrExchange } from '@urql/core'
+import { Client, cacheExchange, createClient, fetchExchange, SSRData, ssrExchange } from '@urql/core'
+import { DocumentNode } from 'graphql'
 import { createResource, ResourceReturn } from 'solid-js'
 import { coreApiUrl } from '~/config'
 
@@ -6,18 +7,17 @@ import { coreApiUrl } from '~/config'
 
 // Определяем окружение
 const isServer = typeof window === 'undefined'
-const isTest = process.env.NODE_ENV === 'test' || process.env.CI === 'true'
 
 // Типы для ресурсов
-export type ResourceArgs<T> = [T, any]
+export type ResourceArgs<T> = [T, Client]
 
 /**
  * Создает реактивный ресурс для GraphQL запросов
  */
-export function createQueryResource<T, Args extends any[]>(
-  query: any,
-  getVariables: (...args: Args) => any,
-  client: any
+export function createQueryResource<T, Args extends readonly unknown[]>(
+  query: DocumentNode,
+  getVariables: (...args: Args) => Record<string, unknown>,
+  client: Client
 ): (...args: Args) => ResourceReturn<T> {
   return (...args: Args) => {
     return createResource(
@@ -70,7 +70,7 @@ export const checkApiAvailability = async (): Promise<boolean> => {
 // Создаем SSR exchange для гидрации
 const ssr = ssrExchange({
   isClient: !isServer,
-  initialState: !isServer ? (window as any).__URQL_DATA__ : undefined
+  initialState: !isServer ? (window as { __URQL_DATA__?: SSRData }).__URQL_DATA__ : undefined
 })
 
 // Настройки fetch для клиента
@@ -115,7 +115,7 @@ export const defaultClient = client
 
 // Экспортируем для гидрации
 if (!isServer) {
-  ;(window as any).__URQL_DATA__ = ssr.extractData()
+  ;(window as { __URQL_DATA__?: SSRData }).__URQL_DATA__ = ssr.extractData()
 }
 
 /**
@@ -123,8 +123,8 @@ if (!isServer) {
  * Используется для SSR и одноразовых запросов без кеширования
  */
 export function createLoader<T, Args>(
-  query: any,
-  getVariables: (args: Args) => any
+  query: DocumentNode,
+  getVariables: (args: Args) => Record<string, unknown>
 ): (args: Args) => () => Promise<T> {
   return (args: Args) => {
     return async () => {
@@ -140,8 +140,8 @@ export function createLoader<T, Args>(
  * Использует браузерное кеширование для статичных данных
  */
 export function createCacheableLoader<T, Args>(
-  query: any,
-  getVariables: (args: Args) => any,
+  query: DocumentNode,
+  getVariables: (args: Args) => Record<string, unknown>,
   enableCache = false
 ): (args: Args) => () => Promise<T> {
   return (args: Args) => {
@@ -192,10 +192,10 @@ export function createCacheableLoader<T, Args>(
  * Комбинирует кеширование с реактивностью SolidJS
  */
 export function createCacheableQueryResource<T, Args>(
-  query: any,
-  getVariables: (args: Args) => any,
+  query: DocumentNode,
+  getVariables: (args: Args) => Record<string, unknown>,
   enableCache = false,
-  clientInstance: any = client,
+  clientInstance: Client = client,
   withAbort = false
 ): (args: Args) => ResourceReturn<T> {
   return (args: Args) => {

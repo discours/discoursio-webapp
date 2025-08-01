@@ -2,7 +2,6 @@ import {
   createCacheableLoader,
   createCacheableQueryResource,
   createLoader,
-  createQueryResource,
   defaultClient
 } from '~/graphql/client'
 import {

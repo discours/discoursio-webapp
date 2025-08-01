@@ -26,6 +26,13 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Clean Platform-Specific Dependencies
+        run: |
+          # Удаляем платформо-специфичные пакеты для Linux CI
+          npm uninstall sass-embedded-darwin-arm64 sass-embedded-darwin-x64 || true
+          npm uninstall @biomejs/cli-darwin-arm64 @biomejs/cli-darwin-x64 || true
+          npm install
+
       - name: Lint Code
         run: npx @biomejs/biome check src/
 
@@ -63,10 +70,16 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Clean Platform-Specific Dependencies
+        run: |
+          # Удаляем платформо-специфичные пакеты для Linux CI
+          npm uninstall sass-embedded-darwin-arm64 sass-embedded-darwin-x64 || true
+          npm uninstall @biomejs/cli-darwin-arm64 @biomejs/cli-darwin-x64 || true
+          npm install
+
       - name: Install WebKit Playwright
         run: |
-          npx playwright install webkit
-          npx playwright install-deps webkit
+          npx playwright install webkit --with-deps
 
       - name: Run E2E Tests
         env:

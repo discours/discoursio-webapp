@@ -8,7 +8,7 @@
  */
 
 import { expect } from '@playwright/test'
-import { checkApiConnection, performLogin, TEST_USERS } from '../utils/auth-helpers'
+import { checkApiConnection, performLogin } from '../utils/auth-helpers'
 import { AuthModal } from '../utils/page-objects'
 import { TestUtils, test } from '../utils/test-helpers'
 
