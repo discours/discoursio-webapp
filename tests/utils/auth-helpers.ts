@@ -457,6 +457,20 @@ export async function ensureTestAccount(
 
     console.log(`[ensureTestAccount] Пробуем войти с: ${existingUsername}`)
 
+    // Проверяем что страница загружена
+    const title = await page.title()
+    console.log('[ensureTestAccount] Заголовок страницы:', title)
+
+    // Проверяем наличие кнопки входа
+    const loginButton = page.locator('a:has-text("Войти"), a:has-text("Enter"), .loginbtn a, [class*="userControlItem"] a')
+    const buttonCount = await loginButton.count()
+    console.log('[ensureTestAccount] Найдено кнопок входа:', buttonCount)
+
+    if (buttonCount === 0) {
+      console.log('[ensureTestAccount] Кнопка входа не найдена, возвращаем fallback')
+      return { email: existingUsername, password: existingPassword, isNew: false }
+    }
+
     // Открываем форму входа
     const authModal = new AuthModal(page)
     await authModal.openLoginForm()

@@ -80,7 +80,7 @@ export class AuthModal {
     if (!isAuthModalOpen) {
       // Диагностика: проверяем что кнопка найдена
       const loginButton = this.page
-        .locator('a:has-text("Войти"), .loginbtn a, [class*="userControlItem"] a')
+        .locator('a:has-text("Войти"), a:has-text("Enter"), .loginbtn a, [class*="userControlItem"] a')
         .first()
       const buttonVisible = await loginButton.isVisible()
       const buttonText = await loginButton.textContent()
@@ -424,7 +424,7 @@ export class TopicPage {
     this.page = page
     this.topicsLink = page
       .locator(
-        'a[href*="/topic"], a[href*="/topics"], nav a:has-text("темы"), nav a:has-text("Темы"), [data-testid="topics-link"]'
+        'a[href*="/topic"], a[href*="/topics"], nav a:has-text("темы"), nav a:has-text("Темы"), nav a:has-text("topics"), [data-testid="topics-link"]'
       )
       .first()
     this.societyTopicLink = page
@@ -589,7 +589,8 @@ export class DraftPage {
       this.page.locator(`h2:has-text("${heading}")`),
       this.page.locator(`h3:has-text("${heading}")`),
       this.page.locator(`[data-testid="page-title"]:has-text("${heading}")`),
-      this.page.locator(`.page-title:has-text("${heading}")`)
+      this.page.locator(`.page-title:has-text("${heading}")`),
+      this.page.locator(`*:has-text("${heading}")`).first()
     ]
 
     for (const selector of headingSelectors) {
@@ -599,7 +600,9 @@ export class DraftPage {
       } catch {}
     }
 
-    // Если ничего не нашли, выводим ошибку
+    // Если ничего не нашли, выводим ошибку с диагностикой
+    const pageContent = await this.page.content()
+    console.log(`[DraftPage] Содержимое страницы: ${pageContent.substring(0, 1000)}...`)
     throw new Error(`Заголовок "${heading}" не найден на странице`)
   }
 

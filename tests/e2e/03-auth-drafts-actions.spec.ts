@@ -38,8 +38,8 @@ test.describe('Создание новых материалов', () => {
     const draftPage = new DraftPage(page)
 
     await page.goto('/edit/new')
-    await draftPage.verifyPageTitle('Дискурс :: Выберите тип публикации')
-    await draftPage.verifyHeading('Выберите тип публикации')
+    await draftPage.verifyPageTitle('Дискурс :: Choose a post type')
+    await draftPage.verifyHeading('Choose a post type')
   })
 
   test('Создание статьи', async ({ page }) => {
@@ -120,7 +120,7 @@ test.describe('Создание новых материалов', () => {
     const draftPage = new DraftPage(page)
 
     await page.goto('/edit/new')
-    await draftPage.verifyPageTitle('Дискурс :: Выберите тип публикации')
+    await draftPage.verifyPageTitle('Дискурс :: Choose a post type')
 
     // Ждем готовности редактора
     await draftPage.verifyEditorReady()

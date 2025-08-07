@@ -43,7 +43,7 @@ export default defineConfig({
 
   // Запускаем отдельный тестовый сервер на порту 3001
   webServer: {
-    command: 'PORT=3001 vinxi dev',
+    command: 'PORT=3001 npm run dev',
     port: 3001,
     reuseExistingServer: !process.env.CI, // В CI всегда запускаем новый сервер
     timeout: 120000, // Увеличиваем таймаут запуска до 2 минут
