@@ -18,19 +18,21 @@ export const AuthGuard = (props: Props) => {
     on(
       [() => props.disabled, author],
       ([disabled, a]) => {
-        if (disabled || !a) return
+        if (disabled) return
         if (a) {
           console.debug('[AuthGuard] profile is loaded')
           hideModal()
-        } else {
-          changeSearchParams(
-            {
-              source: 'authguard',
-              m: 'auth'
-            },
-            { replace: true }
-          )
+          return
         }
+        // Нет авторизации — открываем модалку логина через параметры запроса
+        changeSearchParams(
+          {
+            source: 'authguard',
+            m: 'auth',
+            mode: 'login'
+          },
+          { replace: true }
+        )
       },
       { defer: true }
     )

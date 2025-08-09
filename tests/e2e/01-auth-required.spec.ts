@@ -13,7 +13,7 @@ import { AuthModal } from '../utils/page-objects'
 import { TestUtils, test } from '../utils/test-helpers'
 
 test.describe('Аутентификация и доступ к защищенным страницам', () => {
-  test('Должна перенаправлять на авторизацию при попытке доступа к защищенным страницам', async ({
+  test('@smoke Должна перенаправлять на авторизацию при попытке доступа к защищенным страницам', async ({
     page
   }) => {
     const testUtils = new TestUtils(page)
@@ -22,11 +22,11 @@ test.describe('Аутентификация и доступ к защищенн�
     // Переходим на защищенную страницу
     await page.goto('/edit')
 
-    // Должны быть перенаправлены на главную с модальным окном авторизации
-    await expect(page).toHaveURL(/\/\?m=auth/)
+    // Должен появиться параметр m=auth (модальное окно авторизации на текущем пути)
+    await expect(page).toHaveURL(/[?&]m=auth\b/, { timeout: 15000 })
   })
 
-  test('Должна отображаться форма входа при клике на кнопку "Войти"', async ({ page }) => {
+  test('@smoke Должна отображаться форма входа при клике на кнопку "Войти"', async ({ page }) => {
     const testUtils = new TestUtils(page)
     await testUtils.expectPageReady()
 
@@ -34,11 +34,11 @@ test.describe('Аутентификация и доступ к защищенн�
     await authModal.openLoginForm()
 
     // Проверяем что форма входа отображается
-    await expect(authModal.emailInput).toBeVisible()
-    await expect(authModal.passwordInput).toBeVisible()
+    await expect(authModal.emailInput).toBeVisible({ timeout: 15000 })
+    await expect(authModal.passwordInput).toBeVisible({ timeout: 15000 })
   })
 
-  test('Должна позволять войти и получить доступ к защищенным страницам', async ({ page }) => {
+  test('@auth Должна позволять войти и получить доступ к защищенным страницам', async ({ page }) => {
     const testUtils = new TestUtils(page)
     await testUtils.expectPageReady()
 

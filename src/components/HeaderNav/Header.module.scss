@@ -107,15 +107,9 @@
 }
 
 .usernav {
-  @include media-breakpoint-down(lg) {
-    max-width: 100% !important;
-    position: absolute;
-    right: 0;
-  }
-
   display: inline-flex;
   font-weight: 500;
-  justify-content: end;
+  justify-content: flex-end;
   position: relative;
 
   .control {

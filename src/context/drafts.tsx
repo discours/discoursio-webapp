@@ -4,6 +4,7 @@ import { isServer } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
 // Импортируем функции из storage.ts вместо дублирования
 import {
+  clearAllDraftKeys,
   getAllDraftFields,
   getAllDraftsFromStorage,
   getDraftField,
@@ -124,6 +125,7 @@ type DraftsContextType = {
   storageQuotaWarning: Accessor<boolean>
   getDraftSyncStatus: (draftId: string | number) => SyncStatus
   getOfflineStorageStats: () => ReturnType<typeof getStorageStats>
+  clearAllLocalDrafts: () => number
   performMaintenanceTasks: () => void
 }
 
@@ -933,7 +935,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     }
 
     try {
-      const response = await currentClient.mutation(createDraftMutation, { draft_input: draft })
+      const response = await currentClient.mutation(createDraftMutation, { draft_input: draft }).toPromise()
       console.log('[DraftsProvider] Ответ сервера при создании черновика:', response)
 
       if (response?.data?.create_draft?.draft) {
@@ -981,10 +983,12 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   }
 
   const updateDraft = async (draft: DraftInput): Promise<OperationResult<UpdateDraftMutationMutation>> => {
-    const response = await client()?.mutation(updateDraftMutation, {
-      draft_id: draft.id,
-      draft_input: draft
-    })
+    const response = await client()
+      ?.mutation(updateDraftMutation, {
+        draft_id: draft.id,
+        draft_input: draft
+      })
+      .toPromise()
     if (response?.data?.update_draft?.draft) {
       setDrafts(drafts().map((d) => (d.id === draft.id ? response.data.update_draft.draft : d)))
     }
@@ -996,10 +1000,35 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
    * Поэтому удаляем черновик напрямую без каких‑либо попыток unpublish_draft.
    */
   const deleteDraft = async (draftId: number): Promise<OperationResult<DeleteDraftMutationMutation>> => {
-    const response = await client()?.mutation(deleteDraftMutation, { draft_id: draftId })
-    if (response?.data?.delete_draft) {
-      setDrafts(drafts().filter((d) => d.id !== draftId))
+    if (!draftId) {
+      throw new Error('deleteDraft: draftId is required')
     }
+    if (!client()) {
+      throw new Error('deleteDraft: GraphQL client is not initialized')
+    }
+    if (!session()?.token) {
+      throw new Error('deleteDraft: No auth token available')
+    }
+
+    const response = await client()!.mutation(deleteDraftMutation, { draft_id: draftId }).toPromise()
+
+    if (response?.error) {
+      console.error('[DraftsProvider] GraphQL error on delete_draft:', response.error)
+      return response as OperationResult<DeleteDraftMutationMutation>
+    }
+
+    const apiError = response?.data?.delete_draft?.error
+    if (apiError) {
+      console.error('[DraftsProvider] API reported error on delete_draft:', apiError)
+      return response as OperationResult<DeleteDraftMutationMutation>
+    }
+
+    // Успех — обновляем состояние и чистим локальные ключи этого черновика
+    setDrafts(drafts().filter((d) => d.id !== draftId))
+    try {
+      removeDraftFromStorage(draftId)
+    } catch (_e) {}
+
     return response as OperationResult<DeleteDraftMutationMutation>
   }
 
@@ -1075,7 +1104,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       clearValidationErrors()
 
       // Публикуем черновик
-      const response = await client()?.mutation(publishDraftMutation, { draft_id: draftId })
+      const response = await client()?.mutation(publishDraftMutation, { draft_id: draftId }).toPromise()
 
       if (response?.data?.publish_draft?.draft) {
         setDrafts(drafts().map((d) => (d.id === draftId ? response.data.publish_draft.draft : d)))
@@ -1102,7 +1131,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       console.log(`[DraftsProvider] Снимаем с публикации статью #${shoutId}...`)
 
       // Выполняем запрос на снятие с публикации
-      const response = await client()?.mutation(unpublishShoutMutation, { shout_id: shoutId })
+      const response = await client()?.mutation(unpublishShoutMutation, { shout_id: shoutId }).toPromise()
 
       // Проверяем наличие данных в ответе
       if (response?.data?.unpublish_shout) {
@@ -1557,6 +1586,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     storageQuotaWarning,
     getDraftSyncStatus,
     getOfflineStorageStats,
+    clearAllLocalDrafts: () => clearAllDraftKeys(),
     performMaintenanceTasks
   }
 

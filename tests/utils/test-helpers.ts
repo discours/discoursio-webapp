@@ -4,6 +4,7 @@
  */
 
 import { Browser, test as baseTest, expect, Page } from '@playwright/test'
+import { baseUrl } from './common'
 
 /**
  * Утилиты для тестирования SolidJS приложения
@@ -76,6 +77,16 @@ export class TestUtils {
    */
   async expectPageReady() {
     console.log('Ожидание готовности страницы...')
+
+    // Если тест стартует на about:blank, переходим на базовый URL
+    try {
+      const currentUrl = this.page.url()
+      if (!currentUrl || currentUrl === 'about:blank') {
+        await this.page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 })
+      }
+    } catch (e) {
+      console.log('Не удалось автоматически перейти на базовый URL, пробуем продолжить...', e)
+    }
 
     // Ждем завершения загрузки DOM
     await this.page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {

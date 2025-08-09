@@ -87,7 +87,6 @@ const ToolbarDropdown: Component<ToolbarDropdownProps> = (props) => {
 
   return (
     <Popup
-      containerCssClass={styles.dropdownPopup}
       trigger={
         <button class={clsx(styles.dropdownTrigger, props.triggerCssClass)}>{props.triggerContent}</button>
       }

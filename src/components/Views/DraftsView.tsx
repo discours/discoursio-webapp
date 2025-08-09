@@ -13,7 +13,7 @@ import { Loading } from '../_shared/Loading'
 export const DraftsView = (_props: { drafts?: Draft[] }) => {
   const { requireAuthentication, session, isSessionLoaded, isSessionValidating } = useSession()
   const { t } = useLocalize()
-  const { publishDraft, deleteDraft, drafts, loadDrafts, removeLocalDraft, unpublishShout } = useDrafts()
+  const { publishDraft, deleteDraft, drafts, loadDrafts, unpublishShout } = useDrafts()
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = createSignal(true)
   // Сигнал для отслеживания текущего отображаемого черновика (локальный или серверный)
@@ -27,72 +27,33 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       return
     }
 
-    // Признаки локального черновика: явно помечен isLocalOnly или есть local_id без draft_id
-    const isLocalOnly =
-      (d as ExtendedDraft).isLocalOnly === true ||
-      (!!(d as ExtendedDraft).local_id && !(d as ExtendedDraft).draft_id)
-
-    // Для черновиков с локальной и серверной версией удаляем ту, которая активна
-    const activeVersion = d.id ? activeVersions()[d.id] : undefined
-    const shouldDeleteLocal = isLocalOnly || activeVersion === 'local'
-
     try {
-      console.log(
-        '[DraftsView] Удаление черновика:',
-        d.id,
-        shouldDeleteLocal ? '(локальная версия)' : '(серверная версия)',
-        {
-          title: d.title,
-          isLocalOnly: isLocalOnly,
-          activeVersion: activeVersion
-        }
-      )
+      console.log('[DraftsView] Удаление черновика:', d.id, '(серверная версия)', {
+        title: d.title,
+        isLocalOnly: (d as ExtendedDraft).isLocalOnly === true,
+        activeVersion: d.id ? activeVersions()[d.id] : undefined
+      })
 
-      if (shouldDeleteLocal) {
-        // Удаляем локальный черновик из localStorage/контекста без сетевых запросов
-        console.log('[DraftsView] Удаляем локальную версию черновика из localStorage:', d.id)
-        try {
-          const result = removeLocalDraft(d.id)
-          console.log('[DraftsView] Результат удаления локальной версии:', result)
+      // Удаляем серверный черновик (основной сценарий)
+      console.log('[DraftsView] Отправляем запрос на удаление серверной версии черновика:', d.id)
+      const result = await deleteDraft(d.id)
+      const success = !!(result?.data?.delete_draft && !result?.data?.delete_draft.error && !result?.error)
 
-          // Если для этого ID была активна локальная версия, переключимся на серверную
-          if (activeVersion === 'local') {
-            setActiveVersionForDraft(d.id, 'server')
-          }
-        } catch (localError) {
-          console.error('[DraftsView] Ошибка при удалении локальной версии:', localError)
-          toast.error(t('Error deleting local draft'))
-        }
-      } else {
-        // Удаляем черновик на сервере (с учетом возможной публикации)
-        console.log('[DraftsView] Отправляем запрос на удаление серверной версии черновика:', d.id)
-        try {
-          // Попробуем снять с публикации на стороне сервера (через drafts context), если применимо
-          // Контекст сам вызывает unpublish_draft перед удалением
+      console.log('[DraftsView] Результат delete_draft:', success ? 'Успешно' : 'Ошибка', {
+        graphQLError: result?.error?.message,
+        apiError: result?.data?.delete_draft?.error
+      })
 
-          const result = await deleteDraft(d.id)
-          const success = result?.data?.delete_draft && !result?.data?.delete_draft.error
-
-          console.log(
-            '[DraftsView] Результат удаления серверной версии:',
-            success ? 'Успешно' : 'Ошибка',
-            result?.data?.delete_draft?.error || '',
-            result?.error || ''
-          )
-
-          if (!success && result?.data?.delete_draft?.error) {
-            toast.error(result.data.delete_draft.error || t('Error deleting draft'))
-          }
-        } catch (serverError) {
-          console.error('[DraftsView] Ошибка при запросе на удаление серверной версии:', serverError)
-          toast.error(t('Server error when deleting draft'))
-        }
+      if (!success) {
+        toast.error(result?.data?.delete_draft?.error || t('Error deleting draft'))
+        return
       }
 
       // Перезагружаем список после удаления
       console.log('[DraftsView] Перезагружаем список черновиков после удаления')
       await loadDrafts()
       console.log('[DraftsView] Список черновиков перезагружен после удаления')
+      toast.success(t('Draft deleted'))
     } catch (error) {
       console.error('[DraftsView] Общая ошибка при удалении черновика:', error)
       toast.error(t('Error deleting draft'))

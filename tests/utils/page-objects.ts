@@ -17,7 +17,11 @@ export class BasePage {
     this.header = page.locator('header')
     this.footer = page.locator('footer')
     this.mainContent = page.locator('main')
-    this.loginButton = page.getByRole('button', { name: 'Войти' })
+    this.loginButton = page
+      .locator(
+        'a[href*="?m=auth"], .loginbtn a, [data-testid="login-link"], a:has-text("Enter"), button:has-text("Enter"), a:has-text("Войти"), button:has-text("Войти")'
+      )
+      .first()
     this.userAvatar = page.locator('.userpic, [data-testid="user-avatar"]')
   }
 
@@ -59,15 +63,27 @@ export class AuthModal {
   constructor(page: Page) {
     this.page = page
     this.modal = page.locator('.modal, .auth-modal')
-    this.emailInput = page.getByPlaceholder('Почта')
-    this.passwordInput = page.getByPlaceholder('Пароль')
+    this.emailInput = page.locator('input[type="email"], input[name="email"], [data-testid="login-email"]')
+    this.passwordInput = page.locator(
+      'input[type="password"], input[name="password"], [data-testid="login-password"]'
+    )
     this.nameInput = page.locator('input[name="fullName"]')
-    this.loginButton = page.getByRole('button', { name: 'Войти' })
-    this.registerButton = page.getByRole('button', { name: 'Присоединиться' })
-    this.submitButton = page.locator('button[type="submit"]:has-text("Войти")').first()
-    this.switchToRegister = page.getByText('У меня еще нет аккаунта')
-    this.switchToLogin = page.getByText('У меня есть аккаунт')
-    this.forgotPassword = page.getByText('Забыли пароль?')
+    this.loginButton = page.locator('button:has-text("Enter"), button:has-text("Войти")').first()
+    this.registerButton = page.locator('button:has-text("Join"), button:has-text("Присоединиться")').first()
+    this.submitButton = page.locator('button[type="submit"], [data-testid="login-submit"]').first()
+    this.switchToRegister = page
+      .locator(
+        '.authLink, .link, [class*="authLink"], [class*="authControl"], :has-text("I have no account yet"), :has-text("У меня ещё нет аккаунта")'
+      )
+      .filter({ hasText: /I have no account yet|У меня.*нет аккаунта/i })
+      .first()
+    this.switchToLogin = page
+      .locator(
+        '.authLink, .link, [class*="authLink"], [class*="authControl"], :has-text("I have an account"), :has-text("У меня есть аккаунт")'
+      )
+      .filter({ hasText: /I have an account|У меня.*есть аккаунт/i })
+      .first()
+    this.forgotPassword = page.locator('text=/^Forgot password\?|Забыли пароль\?/').first()
     this.validationErrors = page.locator('.validationError')
   }
 
@@ -80,7 +96,9 @@ export class AuthModal {
     if (!isAuthModalOpen) {
       // Диагностика: проверяем что кнопка найдена
       const loginButton = this.page
-        .locator('a:has-text("Войти"), a:has-text("Enter"), .loginbtn a, [class*="userControlItem"] a')
+        .locator(
+          'a[href*="?m=auth"], .loginbtn a, [data-testid="login-link"], a:has-text("Войти"), a:has-text("Enter")'
+        )
         .first()
       const buttonVisible = await loginButton.isVisible()
       const buttonText = await loginButton.textContent()
@@ -91,7 +109,7 @@ export class AuthModal {
       console.log('[AuthModal] Клик выполнен')
 
       // Ждем изменения URL
-      await this.page.waitForURL('**/?m=auth**', { timeout: 10000 })
+      await this.page.waitForURL('**/*m=auth*', { timeout: 10000 })
       console.log('[AuthModal] URL изменился на:', this.page.url())
     }
 
@@ -105,7 +123,7 @@ export class AuthModal {
       // Проверяем альтернативные селекторы
       const emailInputs = await this.page
         .locator(
-          'input[type="email"], input[name="email"], input[placeholder*="почта"], input[placeholder*="email"]'
+          'input[type="email"], input[name="email"], [data-testid="login-email"], input[placeholder*="почта"], input[placeholder*="email"]'
         )
         .count()
       const passwordInputs = await this.page
@@ -123,7 +141,7 @@ export class AuthModal {
           )
           .first()
         const foundPasswordInput = this.page
-          .locator('input[type="password"], input[name="password"]')
+          .locator('input[type="password"], input[name="password"], [data-testid="login-password"]')
           .first()
         await expect(foundEmailInput).toBeVisible({ timeout: 5000 })
 
@@ -160,7 +178,9 @@ export class AuthModal {
   async submitForm(): Promise<void> {
     // Диагностика: проверяем какие кнопки есть на странице
     const submitButtons = await this.page.locator('button[type="submit"]').count()
-    const loginButtons = await this.page.locator('button:has-text("Войти")').count()
+    const loginButtons = await this.page
+      .locator('button:has-text("Войти"), button:has-text("Enter")')
+      .count()
     const allButtons = await this.page.locator('button').count()
 
     console.log('[AuthModal] Найдено кнопок:', {
@@ -175,8 +195,13 @@ export class AuthModal {
 
     // Пробуем разные селекторы
     const buttonSelectors = [
+      'button[type="submit"]:has-text("Enter")',
+      'button:has-text("Enter")',
       'button[type="submit"]:has-text("Войти")',
       'button:has-text("Войти")',
+      'button:has-text("Join")',
+      'button[type="submit"]:has-text("Join")',
+      '[data-testid="login-submit"]',
       'button[type="submit"]',
       '[data-testid="login-button"]',
       '[data-testid="submit-button"]'
@@ -218,12 +243,22 @@ export class Navigation {
 
   constructor(page: Page) {
     this.page = page
-    this.homeLink = page.getByRole('link', { name: 'Главная' })
-    this.feedLink = page.getByRole('link', { name: 'Лента' })
-    this.authorsLink = page.getByRole('link', { name: 'авторы' })
-    this.topicsLink = page.getByRole('link', { name: 'темы' })
-    this.searchButton = page.getByRole('button', { name: 'Поиск' })
-    this.profileMenu = page.locator('.userControlItemUserpic button')
+    this.homeLink = page.locator('a[href="/"]')
+    this.feedLink = page.locator('a[href^="/feed"], nav a:has-text("feed"), nav a:has-text("Лента")')
+    this.authorsLink = page.locator(
+      'a[href^="/authors"], nav a:has-text("Authors"), nav a:has-text("Авторы")'
+    )
+    this.topicsLink = page
+      .locator(
+        'a[href^="/topics"], nav a:has-text("All topics"), nav a:has-text("темы"), nav a:has-text("Темы")'
+      )
+      .first()
+    this.searchButton = page.locator(
+      'button[title="Search"], [aria-label*="Поиск" i], [aria-label*="Search" i]'
+    )
+    this.profileMenu = page.locator(
+      '.userControlItemUserpic button, [data-testid="user-avatar"], .profile-button'
+    )
   }
 
   async navigateToHome(): Promise<void> {
@@ -482,7 +517,7 @@ export class DraftPage {
     this.page = page
     this.profileButton = page
       .locator(
-        '.userpic, [data-testid="user-avatar"], button:has([src*="avatar"]), button[data-user-menu], .profile-button, [aria-label*="профиль"], [aria-label*="profile"]'
+        '.userControlItemUserpic button, .userpic, [data-testid="user-avatar"], button:has([src*="avatar"]), button[data-user-menu], .profile-button, [aria-label*="профиль" i], [aria-label*="profile" i]'
       )
       .first()
     this.draftsLink = page
@@ -522,7 +557,9 @@ export class DraftPage {
       видео: 'видео'
     }
 
-    await this.page.locator('li').filter({ hasText: typeSelectors[type] }).locator('img').click()
+    // Выбираем по тексту внутри элемента списка, клик по всей ссылке
+    const target = this.page.locator('li', { hasText: typeSelectors[type] }).first()
+    await target.click()
   }
 
   async fillBasicForm(title: string, content?: string): Promise<void> {

@@ -167,7 +167,7 @@ export const Header = (props: Props) => {
       </Modal>
 
       <div class={clsx(styles.mainHeaderInner)}>
-        <header>
+        <div class="wide-container">
           <nav
             class={clsx('row', styles.headerInner, { [styles.fixed]: fixed() })}
             aria-label="Основная навигация"
@@ -184,12 +184,12 @@ export const Header = (props: Props) => {
                 <div />
               </button>
             </div>
-            <div class={clsx('col-md-5 col-xl-4 col-auto', styles.mainLogo)}>
+            <div class={clsx('col-auto', styles.mainLogo)}>
               <A href="/" aria-label="Перейти на главную страницу Discours">
                 <img src="/logo.svg" alt={t('Discours')} />
               </A>
             </div>
-            <div class={clsx('col col-md-8 col-lg-8', styles.mainNavigationWrapper)}>
+            <div class={clsx('col', styles.mainNavigationWrapper)}>
               <Show when={props.title}>
                 <div class={styles.articleHeader}>{props.title}</div>
               </Show>
@@ -351,7 +351,9 @@ export const Header = (props: Props) => {
               </div>
             </div>
 
-            <HeaderControls showInboxButton={false} setIsProfilePopupVisible={setIsProfilePopupVisible} />
+            <div class={clsx('col-auto')}>
+              <HeaderControls showInboxButton={false} setIsProfilePopupVisible={setIsProfilePopupVisible} />
+            </div>
 
             <Show when={props.title}>
               <div
@@ -517,7 +519,7 @@ export const Header = (props: Props) => {
               </div>
             </div>
           </nav>
-        </header>
+        </div>
 
         <ClientOnly>
           <Toaster

@@ -30,7 +30,7 @@ export const TabNavigator = ({ setLayout, setSearchQuery }: TabNavigatorProps) =
         <div class="col-lg-20 col-xl-18">
           <h1>{t('Authors')}</h1>
           <p>{t('Subscribe who you like to tune your personal feed')}</p>
-          <ul class={clsx(styles.viewSwitcher, 'view-switcher')}>
+          <ul class={clsx('view-switcher')}>
             <For each={layouts}>
               {(layout) => (
                 <li

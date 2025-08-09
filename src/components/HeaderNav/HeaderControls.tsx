@@ -409,7 +409,7 @@ export const HeaderControls = (props: Props) => {
   )
 
   return (
-    <div class={clsx('col-auto col-lg-7', styles.usernav)}>
+    <div class={clsx(styles.usernav)}>
       <div class={styles.userControl}>
         <Show
           when={isEditingMode()}

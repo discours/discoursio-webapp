@@ -48,3 +48,4 @@ src/graphql/generated/
 .yoyo/
 docs/progress/*
 .autopilot.json
+playwright

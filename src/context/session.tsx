@@ -567,7 +567,12 @@ export const SessionProvider = (props: {
         updateSession(sessionData, true) // Сбрасываем флаг валидации после загрузки
       } catch (error) {
         console.error('[SessionProvider] Error during session initialization:', error)
-        updateSession(undefined, true)
+        // Не удаляем токен из localStorage при временной ошибке загрузки сессии
+        updateSession(undefined, true, false)
+        // Повторная попытка фоновой загрузки
+        setTimeout(() => {
+          void loadSession()
+        }, 1500)
       }
     } else {
       updateSession(undefined, true)
@@ -961,7 +966,7 @@ export const SessionProvider = (props: {
               callbackError.message.includes('unauthenticated'))
           ) {
             updateSession(undefined)
-            changeSearchParams({ mode: 'sign-in', m: 'auth' }, { replace: true })
+            changeSearchParams({ mode: 'login', m: 'auth' }, { replace: true })
           }
           return
         }
@@ -969,7 +974,7 @@ export const SessionProvider = (props: {
 
       // Нет валидной сессии и нет токена в storage — открываем модалку логина
       if (!storedToken) {
-        changeSearchParams({ mode: 'sign-in', m: 'auth' }, { replace: true })
+        changeSearchParams({ mode: 'login', m: 'auth' }, { replace: true })
         return
       }
 
@@ -980,7 +985,7 @@ export const SessionProvider = (props: {
         return
       }
 
-      changeSearchParams({ mode: 'sign-in', m: 'auth' }, { replace: true })
+      changeSearchParams({ mode: 'login', m: 'auth' }, { replace: true })
     } catch (error) {
       console.error('[requireAuthentication] Unexpected error:', error)
       toast.error(t('Try again later'))

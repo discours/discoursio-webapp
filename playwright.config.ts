@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test'
 const isCI = process.env.CI === 'true'
 
 export default defineConfig({
+  globalSetup: './tests/e2e/global-setup.ts',
   testDir: './tests/e2e',
   fullyParallel: false, // Отключаем параллельность для стабильности
   forbidOnly: isCI,

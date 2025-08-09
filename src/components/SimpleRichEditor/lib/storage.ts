@@ -1034,6 +1034,49 @@ export const getAllDraftsFromStorage = (): DraftStorage[] => {
 }
 
 /**
+ * Полная очистка локального хранилища черновиков, включая ключи старого формата
+ * @returns Количество удалённых ключей
+ */
+export const clearAllDraftKeys = (): number => {
+  if (isServer) return 0
+
+  try {
+    // Сначала собираем список ключей, чтобы не нарушать индексы при удалении
+    const keysToRemove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key) continue
+      // Удаляем все известные форматы хранения черновиков
+      if (
+        key.startsWith('draft-fields-') ||
+        key.startsWith('draft-') ||
+        key.startsWith('yjs-content-') ||
+        key === STORAGE_METADATA_KEY ||
+        key === NETWORK_STATUS_KEY
+      ) {
+        keysToRemove.push(key)
+      }
+    }
+
+    keysToRemove.forEach((k) => localStorage.removeItem(k))
+
+    // Обновляем метаданные
+    const metadata = getDefaultMetadata()
+    metadata.storageUsed = checkStorageQuota().used
+    saveStorageMetadata(metadata)
+
+    if (keysToRemove.length > 0) {
+      console.log(`[OfflineStorage] Cleared ${keysToRemove.length} local draft-related keys`)
+    }
+
+    return keysToRemove.length
+  } catch (e) {
+    console.error('[OfflineStorage] Error clearing local draft keys:', e)
+    return 0
+  }
+}
+
+/**
  * Удаляет черновик из localStorage
  * @param draftId Идентификатор черновика
  * @returns true в случае успеха
