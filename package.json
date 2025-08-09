@@ -91,7 +91,6 @@
     "lightningcss": "^1.30.0",
     "patch-package": "^8.0.0",
     "sass": "^1.89.0",
-    "solid-js": "^1.9.7",
     "solid-popper": "^0.3.0",
     "solid-toast": "^0.5.0",
     "swiper": "^11.2.8",
@@ -108,6 +107,7 @@
     "yjs": "^13.6.27"
   },
   "dependencies": {
+    "solid-js": "^1.9.7",
     "@vercel/og": "^0.6.8",
     "form-data": "^4.0.3",
     "mailgun.js": "^12.0.3"

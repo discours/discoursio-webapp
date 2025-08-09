@@ -1,5 +1,10 @@
 import { ImageResponse } from '@vercel/og'
 
+// tiny React-like element factory for @vercel/og
+function h(type, props, ...children) {
+  return { type, props: { ...(props || {}), children } }
+}
+
 // Базовые настройки
 const cdnUrl = 'https://files.dscrs.site'
 const OG_IMAGE_WIDTH = 1200
@@ -152,17 +157,8 @@ export async function GET(request) {
 /**
  * Создает основную структуру OG-изображения
  */
-function createOGImage({
-  title,
-  description,
-  cover,
-  topRight = null,
-  theme = 'light' // light или dark
-}) {
-  // Определяем стили на основе темы и наличия обложки
+function createOGImage({ title, description, cover, topRight = null, theme = 'light' }) {
   const isDark = theme === 'dark'
-
-  // Фон изображения - обложки через квотер для правильного размера OG
   const backgroundStyle = cover
     ? {
         background: `linear-gradient(rgba(0,0,0,0.50), rgba(0,0,0,0.65)), url(${getCoverForOG(cover)})`,
@@ -173,46 +169,30 @@ function createOGImage({
         background: isDark ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white'
       }
 
-  return (
-    <div
-      style={{
-        position: 'relative',
-        height: '100%',
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        ...backgroundStyle
-      }}
-    >
-      {/* Логотип */}
-      <div
-        style={{
+  const children = [
+    h(
+      'div',
+      {
+        style: {
           position: 'absolute',
           top: 40,
           left: 60,
           display: 'flex',
           alignItems: 'center'
-        }}
-      >
-        <img
-          src={`${cdnUrl}/logo_sign.png`}
-          width={60}
-          height={60}
-          style={{
-            width: 60,
-            height: 60,
-            objectFit: 'contain',
-            borderRadius: '16px'
-          }}
-        />
-      </div>
-
-      {/* Правый верхний элемент */}
-      {topRight}
-
-      {/* Заголовок */}
-      <div
-        style={{
+        }
+      },
+      h('img', {
+        src: `${cdnUrl}/logo_sign.png`,
+        width: 60,
+        height: 60,
+        style: { width: 60, height: 60, objectFit: 'contain', borderRadius: '16px' }
+      })
+    ),
+    topRight || null,
+    h(
+      'div',
+      {
+        style: {
           position: 'absolute',
           top: '50%',
           left: 60,
@@ -225,15 +205,18 @@ function createOGImage({
           lineHeight: 1.12,
           textShadow: isDark ? '2px 2px 7px rgba(0,0,0,0.55)' : 'none',
           letterSpacing: '-1px'
-        }}
-      >
-        {title}
-      </div>
+        }
+      },
+      title
+    )
+  ]
 
-      {/* Описание */}
-      {description && (
-        <div
-          style={{
+  if (description) {
+    children.push(
+      h(
+        'div',
+        {
+          style: {
             position: 'absolute',
             left: 60,
             bottom: 44,
@@ -244,12 +227,26 @@ function createOGImage({
             textShadow: isDark ? '1px 1px 2px rgba(0,0,0,0.34)' : 'none',
             maxWidth: 900,
             lineHeight: 1.3
-          }}
-        >
-          {description.length > 120 ? `${description.substring(0, 120)}...` : description}
-        </div>
-      )}
-    </div>
+          }
+        },
+        description.length > 120 ? `${description.substring(0, 120)}...` : description
+      )
+    )
+  }
+
+  return h(
+    'div',
+    {
+      style: {
+        position: 'relative',
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        ...backgroundStyle
+      }
+    },
+    ...children
   )
 }
 
@@ -257,28 +254,24 @@ function createOGImage({
  * Создает базовое OG-изображение с центрированным логотипом
  */
 function createBasicOGImage() {
-  return (
-    <div
-      style={{
+  return h(
+    'div',
+    {
+      style: {
         height: '100%',
         width: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'white'
-      }}
-    >
-      <img
-        src={`${cdnUrl}/logo_sign.png`}
-        width={200}
-        height={200}
-        style={{
-          width: 200,
-          height: 200,
-          objectFit: 'contain'
-        }}
-      />
-    </div>
+      }
+    },
+    h('img', {
+      src: `${cdnUrl}/logo_sign.png`,
+      width: 200,
+      height: 200,
+      style: { width: 200, height: 200, objectFit: 'contain' }
+    })
   )
 }
 
@@ -286,9 +279,10 @@ function createBasicOGImage() {
  * Создает бейдж для темы
  */
 function createTopicBadge(text) {
-  return (
-    <div
-      style={{
+  return h(
+    'div',
+    {
+      style: {
         position: 'absolute',
         top: 40,
         left: 135,
@@ -299,10 +293,9 @@ function createTopicBadge(text) {
         fontSize: 24,
         backdropFilter: 'blur(4px)',
         textShadow: '1px 1px 2px rgba(0,0,0,0.2)'
-      }}
-    >
-      {text}
-    </div>
+      }
+    },
+    text
   )
 }
 
@@ -312,22 +305,20 @@ function createTopicBadge(text) {
 function createStatsBar(items) {
   if (!items || items.length === 0) return null
 
-  return (
-    <div
-      style={{
+  return h(
+    'div',
+    {
+      style: {
         position: 'absolute',
         top: 40,
         right: 60,
         display: 'flex',
         gap: 20,
         color: 'rgba(255,255,255,0.8)'
-      }}
-    >
-      {items.map((item, index) => (
-        <div key={`stat-${item.text}-${index}`} style={{ fontSize: 24 }}>
-          {item.text}
-        </div>
-      ))}
-    </div>
+      }
+    },
+    ...items.map((item, index) =>
+      h('div', { key: `stat-${item.text}-${index}`, style: { fontSize: 24 } }, item.text)
+    )
   )
 }
