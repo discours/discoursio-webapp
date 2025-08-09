@@ -1,6 +1,6 @@
 import { Client } from '@urql/core'
 import { createResource } from 'solid-js'
-import { Chat, ChatInput, Message, MessageInput, MessagesBy } from '~/graphql/generated/chat'
+import { Chat, ChatInput, Message, MessageInput, MessagesBy } from '~/graphql/generated/inbox/graphql'
 import createChatMutation from '~/graphql/mutation/chat/chat-create'
 import deleteChatMutation from '~/graphql/mutation/chat/chat-delete'
 import markAsReadMutation from '~/graphql/mutation/chat/chat-mark-as-read'

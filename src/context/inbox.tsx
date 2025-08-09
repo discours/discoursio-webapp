@@ -1,7 +1,12 @@
 import type { Accessor, JSX } from 'solid-js'
 import { createContext, createSignal, useContext } from 'solid-js'
-import type { Chat, CreateMessageMutationVariables, Message, MessagesBy } from '~/graphql/generated/chat'
 import { Author } from '~/graphql/generated/graphql'
+import type {
+  Chat,
+  CreateMessageMutationVariables,
+  Message,
+  MessagesBy
+} from '~/graphql/generated/inbox/graphql'
 import createChatMutation from '~/graphql/mutation/chat/chat-create'
 import createMessageMutation from '~/graphql/mutation/chat/chat-message-create'
 import loadChatMessagesQuery from '~/graphql/query/chat/chat-messages-load-by'

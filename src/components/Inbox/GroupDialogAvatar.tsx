@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import { For } from 'solid-js'
-import type { ChatMember } from '~/graphql/generated/chat'
+import type { ChatMember } from '~/graphql/generated/inbox/graphql'
 
 import DialogAvatar from './DialogAvatar'
 

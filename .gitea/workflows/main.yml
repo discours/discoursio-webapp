@@ -51,11 +51,6 @@ jobs:
           echo "Node version: $(node --version)"
           echo "NPM version: $(npm --version)"
           
-          # Проверяем что fallback файлы существуют
-          echo "Checking fallback types:"
-          ls -la src/graphql/generated/chat-fallback.ts || echo "Fallback file not found"
-          ls -la src/graphql/generated/chat.ts || echo "Chat types file not found"
-          
           # Пытаемся сгенерировать типы (опционально)
           echo "Attempting to generate types..."
           npm run codegen:all || echo "Type generation failed, using fallback"

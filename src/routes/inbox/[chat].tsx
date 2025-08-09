@@ -7,8 +7,8 @@ import { useInbox } from '~/context/inbox'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { loadAuthorsAll } from '~/graphql/api/public'
-import { Chat } from '~/graphql/generated/chat'
 import { Author } from '~/graphql/generated/graphql'
+import { Chat } from '~/graphql/generated/inbox/graphql'
 
 export const route = {
   load: async () => {

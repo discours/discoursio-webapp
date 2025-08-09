@@ -1,3 +1,4 @@
+import { getCookiesString, parseCookie } from '@solid-primitives/cookies'
 import { useSearchParams } from '@solidjs/router'
 import { Client } from '@urql/core'
 import type { Accessor, JSX } from 'solid-js'
@@ -328,6 +329,13 @@ export const SessionProvider = (props: {
 
   // Функция для безопасного обновления сессии (принцип batch из solid-effects.md)
   const updateSession = (
+    /**
+     * @param {AuthPayload | undefined} sessionData Данные сессии
+     * @param {boolean} clearValidatingFlag Флаг очистки флага валидации
+     * @param {boolean} clearStorage Флаг очистки хранилища
+     *
+     * @returns {void}
+     */
     sessionData: AuthPayload | undefined,
     clearValidatingFlag = true,
     clearStorage = true
@@ -401,9 +409,15 @@ export const SessionProvider = (props: {
 
     console.log('[loadSession] Loading session data')
 
-    const storedToken = localStorage.getItem(AUTH_TOKEN_KEY)
+    // Поддержка зеркалирования токена из cookie
+    if (!isServer && !localStorage.getItem(AUTH_TOKEN_KEY)) {
+      const cookieToken = parseCookie(getCookiesString(), AUTH_TOKEN_KEY) as string | undefined
+      if (cookieToken) localStorage.setItem(AUTH_TOKEN_KEY, cookieToken)
+    }
+
+    const storedToken = isServer ? null : localStorage.getItem(AUTH_TOKEN_KEY)
     if (!storedToken) {
-      updateSession(undefined)
+      updateSession(undefined, true, false)
       return undefined
     }
 
@@ -551,11 +565,24 @@ export const SessionProvider = (props: {
   // Инициализация сессии при монтировании (используем defer для стабильности)
   onMount(async () => {
     // Инициализируем базовый клиент
-    const storedTokenEarly = isServer ? null : localStorage.getItem(AUTH_TOKEN_KEY)
-    initializeClient(storedTokenEarly || undefined)
+    let initialToken: string | null = null
+    if (!isServer) {
+      const lsToken = localStorage.getItem(AUTH_TOKEN_KEY)
+      if (lsToken) {
+        initialToken = lsToken
+      } else {
+        // Если сервер выставил cookie, зеркалим его в localStorage для заголовка Authorization
+        const cookieToken = parseCookie(getCookiesString(), AUTH_TOKEN_KEY) as string | undefined
+        if (cookieToken) {
+          localStorage.setItem(AUTH_TOKEN_KEY, cookieToken)
+          initialToken = cookieToken
+        }
+      }
+    }
+    initializeClient(initialToken || undefined)
 
     // Проверяем наличие токена
-    const storedToken = storedTokenEarly
+    const storedToken = initialToken
 
     if (storedToken) {
       // Устанавливаем флаг валидации только когда действительно есть токен

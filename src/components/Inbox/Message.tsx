@@ -1,7 +1,7 @@
 import { clsx } from 'clsx'
 import { createSignal, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
-import type { ChatMember, Message as MessageType } from '~/graphql/generated/chat'
+import type { ChatMember, Message as MessageType } from '~/graphql/generated/inbox/graphql'
 import { Icon } from '../_shared/Icon'
 
 import DialogAvatar from './DialogAvatar'

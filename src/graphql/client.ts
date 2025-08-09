@@ -86,7 +86,9 @@ export const client = createClient({
   url: coreApiUrl,
   exchanges: [cacheExchange, ssr, fetchExchange],
   fetchOptions,
-  requestPolicy: 'cache-and-network'
+  requestPolicy: 'cache-and-network',
+  // urql@6: disable GET for queries to keep compatibility if server doesn't support it
+  preferGetMethod: false
 })
 
 /**
@@ -106,7 +108,8 @@ export function graphqlClientCreate(apiUrl: string = coreApiUrl, token?: string)
     url: apiUrl,
     exchanges: [cacheExchange, ssr, fetchExchange],
     fetchOptions,
-    requestPolicy: 'cache-and-network'
+    requestPolicy: 'cache-and-network',
+    preferGetMethod: false
   })
 }
 
