@@ -114,7 +114,7 @@ export const PublishSettings = () => {
 
     const stripHtml = (html: string) => {
       return html
-        .replace(/<footnote[^>]*>.*?<\/footnote>/g, '')
+        .replace(/<tooltip[^>]*>.*?<\/tooltip>/g, '')
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
@@ -431,7 +431,7 @@ export const PublishSettings = () => {
                   >
                     <GrowingTextarea
                       allowEnterKey={true}
-                      class={styles.lyrics}
+                      class={styles.lyrics || ''}
                       placeholder={t('Title')}
                       onChange={(value: string) => handleFieldChange('title', value)}
                       initialValue={draft()?.title || ''}
@@ -447,7 +447,7 @@ export const PublishSettings = () => {
                   >
                     <GrowingTextarea
                       allowEnterKey={true}
-                      class={styles.lyrics}
+                      class={styles.lyrics || ''}
                       placeholder={t('Subtitle')}
                       onChange={(value: string) => handleFieldChange('subtitle', value)}
                       initialValue={draft()?.subtitle || ''}

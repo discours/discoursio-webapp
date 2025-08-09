@@ -58,7 +58,7 @@ export const SearchAll = (props: SearchAllProps) => {
           <div class={styles.searchAllBlockGrid}>
             {/* Topics column */}
             <div>
-              <h3 class={styles.searchBlockTitle}>{t('Topics')}</h3>
+              <h3 class={styles.searchAllBlockTitle}>{t('Topics')}</h3>
               <div class={styles.searchAuthorsColumn}>
                 <For each={props.topicsList.slice(0, 6)}>
                   {(topic) => <TopicBadge topic={topic} showStat={true} />}
@@ -68,11 +68,11 @@ export const SearchAll = (props: SearchAllProps) => {
 
             {/* Authors column */}
             <div>
-              <h3 class={styles.searchBlockTitle}>{t('Authors')}</h3>
+              <h3 class={styles.searchAllBlockTitle}>{t('Authors')}</h3>
               <div class={styles.searchAuthorsColumn}>
                 <For each={props.authorsList.slice(0, 6)}>
                   {(author) => (
-                    <div class={styles.searchAllBlockItem}>
+                    <div>
                       <AuthorBadge author={author} showMessageButton={false} />
                     </div>
                   )}

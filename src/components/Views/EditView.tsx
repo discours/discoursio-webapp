@@ -41,7 +41,7 @@ export const featuredEditorCommands = [
   'highlight',
   '',
   'link',
-  'footnote', // иконка снежинки
+  'tooltip', // иконка снежинки
   '',
   // Дропдаун "Списки"
   [
@@ -897,11 +897,11 @@ export const EditView = (props: { draft?: Draft }) => {
       })
 
       // Получаем актуальные данные из Connect context если соединение активно
-      const connectContext = useConnect()
-      if (connectContext.getStatus() === 'connected') {
-        console.log('[EditView] Получаем данные из ConnectProvider для синхронизации')
+      try {
+        const connectContext = useConnect()
+        if (connectContext.getStatus() === 'connected') {
+          console.log('[EditView] Получаем данные из ConnectProvider для синхронизации')
 
-        try {
           const draftFields = connectContext.getDraftContent(draft.id)
 
           if (draftFields && Object.keys(draftFields).length > 0) {
@@ -909,19 +909,21 @@ export const EditView = (props: { draft?: Draft }) => {
 
             // Обновляем поля из connect context
             Object.entries(draftFields).forEach(([fieldName, fieldData]) => {
-              if (fieldName in draftInput && fieldData?.content) {
+              type FieldData = { content?: string }
+              const fd = fieldData as unknown as FieldData
+              if (fieldName in draftInput && fd?.content) {
                 console.log(
-                  `[EditView] Обновляем поле ${fieldName} из connect (${fieldData.content.length} символов)`
+                  `[EditView] Обновляем поле ${fieldName} из connect (${fd.content.length} символов)`
                 )
                 // @ts-ignore - мы проверили что поле существует выше
-                draftInput[fieldName] = fieldData.content
+                draftInput[fieldName] = fd.content
               }
             })
           }
-        } catch (connectError) {
-          console.error('[EditView] Ошибка при получении данных из ConnectProvider:', connectError)
-          // Продолжаем сохранять даже при ошибке с connect
         }
+      } catch (connectError) {
+        console.error('[EditView] Ошибка при получении данных из ConnectProvider:', connectError)
+        // Продолжаем сохранять даже при отсутствии/ошибке ConnectProvider
       }
 
       // Сохраняем на сервер

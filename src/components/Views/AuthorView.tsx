@@ -281,7 +281,7 @@ export const AuthorView = (props: AuthorViewProps) => {
           setCurrentTab('comments')
           // Загружаем комментарии если их еще нет
           if (!commented().length && author()) {
-            loadReactions({
+            void loadReactions({
               by: {
                 kinds: [ReactionKind.Comment],
                 created_by: author()?.id

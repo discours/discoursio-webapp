@@ -214,22 +214,7 @@ export const handleEditorAction = (action: EditorAction, state: EditorState): Ac
     }
   }
 
-  // Обработка вставки сноски
-  if (command === 'footnote') {
-    try {
-      if (!editor.contains(selection.anchorNode)) {
-        editor.focus()
-      }
-
-      state.selection.range = selection.getRangeAt(0)
-      state.currentCommand = 'footnote'
-
-      return { success: true, data: { showFootnoteForm: true } }
-    } catch (error) {
-      console.error('Footnote error:', error)
-      return { success: false, error: String(error) }
-    }
-  }
+  // footnote removed
 
   // Обработка вставки аудио
   if (command === 'audio') {

@@ -327,7 +327,11 @@ export const SessionProvider = (props: {
   }
 
   // Функция для безопасного обновления сессии (принцип batch из solid-effects.md)
-  const updateSession = (sessionData: AuthPayload | undefined, clearValidatingFlag = true) => {
+  const updateSession = (
+    sessionData: AuthPayload | undefined,
+    clearValidatingFlag = true,
+    clearStorage = true
+  ) => {
     console.log('[updateSession] Обновление сессии:', {
       hasSessionData: !!sessionData,
       clearValidatingFlag
@@ -365,7 +369,7 @@ export const SessionProvider = (props: {
         // Очищаем сессию
         setSessionToken(undefined)
         setSessionAuthor(undefined)
-        if (!isServer) {
+        if (!isServer && clearStorage) {
           localStorage.removeItem(AUTH_TOKEN_KEY)
         }
         initializeClient() // Клиент без токена
@@ -407,12 +411,18 @@ export const SessionProvider = (props: {
 
     try {
       const sessionData = await loadSessionData(storedToken)
-      updateSession(sessionData)
+      if (sessionData) {
+        updateSession(sessionData)
+      } else {
+        // Не удаляем токен из localStorage при временных ошибках
+        updateSession(undefined, true, false)
+      }
       return sessionData
     } catch (error) {
       console.error('[loadSession] Failed to load session:', error)
       setAuthError(t('Failed to load session'))
-      updateSession(undefined)
+      // Не удаляем токен из localStorage при исключениях
+      updateSession(undefined, true, false)
       return undefined
     }
   }
@@ -541,10 +551,11 @@ export const SessionProvider = (props: {
   // Инициализация сессии при монтировании (используем defer для стабильности)
   onMount(async () => {
     // Инициализируем базовый клиент
-    initializeClient()
+    const storedTokenEarly = isServer ? null : localStorage.getItem(AUTH_TOKEN_KEY)
+    initializeClient(storedTokenEarly || undefined)
 
     // Проверяем наличие токена
-    const storedToken = isServer ? null : localStorage.getItem(AUTH_TOKEN_KEY)
+    const storedToken = storedTokenEarly
 
     if (storedToken) {
       // Устанавливаем флаг валидации только когда действительно есть токен
@@ -922,17 +933,23 @@ export const SessionProvider = (props: {
     console.info('[requireAuthentication] Require authentication from', modalSource)
 
     try {
-      const currentClient = untrack(() => client())
-      if (!currentClient) {
-        console.warn('[requireAuthentication] GraphQL client is not ready')
-        toast.error(t('Connection error'))
-        return
+      // Обеспечим готовность клиента
+      const storedToken = isServer ? null : localStorage.getItem(AUTH_TOKEN_KEY)
+      if (!client()) {
+        initializeClient(storedToken || undefined)
+      }
+
+      // Если есть токен в storage и сессия ещё загружается/не загружена — дождёмся
+      if (storedToken && (!isSessionLoaded() || isSessionValidating())) {
+        console.info('[requireAuthentication] Waiting for session to load...')
+        await loadSession()
       }
 
       const currentSession = untrack(() => session())
       if (currentSession?.token) {
         try {
           await callback()
+          return
         } catch (callbackError) {
           console.error('[requireAuthentication] Callback execution error:', callbackError)
           toast.error(t('Operation failed'))
@@ -946,10 +963,24 @@ export const SessionProvider = (props: {
             updateSession(undefined)
             changeSearchParams({ mode: 'sign-in', m: 'auth' }, { replace: true })
           }
+          return
         }
-      } else {
-        changeSearchParams({ mode: 'sign-in', m: 'auth' }, { replace: true })
       }
+
+      // Нет валидной сессии и нет токена в storage — открываем модалку логина
+      if (!storedToken) {
+        changeSearchParams({ mode: 'sign-in', m: 'auth' }, { replace: true })
+        return
+      }
+
+      // Если токен есть, но сессия не подтвердилась — пробуем ещё раз загрузить, затем открыть модалку
+      const sessionData = await loadSession()
+      if (sessionData?.token) {
+        await callback()
+        return
+      }
+
+      changeSearchParams({ mode: 'sign-in', m: 'auth' }, { replace: true })
     } catch (error) {
       console.error('[requireAuthentication] Unexpected error:', error)
       toast.error(t('Try again later'))

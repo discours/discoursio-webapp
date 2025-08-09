@@ -1013,3 +1013,25 @@
   padding: var(--toast-padding);
   font-size: var(--toast-font-size);
 }
+
+.notificationsBellContainer {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--background-color-invert);
+  cursor: pointer;
+}
+
+.userControlItemInbox {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: transparent;
+  cursor: pointer;
+}

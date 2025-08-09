@@ -16,6 +16,12 @@
   }
 }
 
+.readOnly,
+.read-only {
+  pointer-events: none;
+  cursor: default;
+}
+
 @mixin toolbar-button {
   width: 32px;
   height: 32px;

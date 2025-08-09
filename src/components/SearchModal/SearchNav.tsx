@@ -10,7 +10,7 @@ export const SearchNav = (props: { view: string; setView: (view: string) => void
   const SEARCH_VIEWS = ['all', 'posts', 'topics', 'authors']
 
   return (
-    <div class={clsx(styles.wrapper, 'wide-container')}>
+    <div class={clsx('wide-container')}>
       <ul class={clsx('view-switcher')}>
         <For each={SEARCH_VIEWS}>
           {(viewKey) => (

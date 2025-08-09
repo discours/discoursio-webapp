@@ -350,7 +350,7 @@ export const PlusMenu: Component<{
       data-editor-id={props.editorId}
       data-position={JSON.stringify(currentPosition())}
     >
-      <div class={styles.plusMenuWrapper}>
+      <div class={styles.menuWrapper}>
         <button
           class={clsx(styles.plusButton, { [styles.active]: isOpen() })}
           onClick={handlePlusClick}

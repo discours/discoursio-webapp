@@ -86,6 +86,8 @@ export interface ExtendedDraft extends Draft {
   draft_id?: number | null
   shout_id?: number | null
   published_at?: number | null
+  // Локальный черновик (существует только в браузере)
+  isLocalOnly?: boolean
 }
 
 type DraftsContextType = {
@@ -642,7 +644,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
             created_by: { id: 0, slug: '', name: '' }
           },
           // Специальное поле для локальных черновиков
-          local_id: String(draftIdNum)
+          local_id: String(draftIdNum),
+          isLocalOnly: true
         }
       })
   }
@@ -656,17 +659,26 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     console.log(`[DraftsProvider] Начинаем удаление локального черновика #${draftId}`)
 
     // Для отладки: найдем черновик перед удалением
-    const draftToRemove = drafts().find((d) => !d.draft_id && d.id === draftId)
+    const draftToRemove = drafts().find((d) => (!d.draft_id || d.isLocalOnly) && d.id === draftId)
     if (draftToRemove) {
       console.log(`[DraftsProvider] Найден черновик для удаления: ${draftToRemove.title}`)
     } else {
       console.warn(`[DraftsProvider] Черновик #${draftId} не найден в текущем состоянии`)
     }
 
-    // Удаляем из состояния, если он там есть
+    // Определим слаг для каскадного удаления всех дубликатов локального черновика
+    const slugToRemove = draftToRemove?.slug?.trim() || ''
+
+    // Удаляем из состояния все локальные версии с тем же ID или тем же slug
     setDrafts((prev) => {
-      const newDrafts = prev.filter((d) => !(!d.draft_id && d.id === draftId))
-      console.log(`[DraftsProvider] Удален черновик #${draftId}`)
+      const newDrafts = prev.filter((d) => {
+        const isSameIdLocal = (!d.draft_id || d.isLocalOnly) && d.id === draftId
+        const isSameSlugLocal = (!d.draft_id || d.isLocalOnly) && slugToRemove && d.slug === slugToRemove
+        return !(isSameIdLocal || isSameSlugLocal)
+      })
+      console.log(
+        `[DraftsProvider] Удален локальный черновик #${draftId}${slugToRemove ? ` (slug=${slugToRemove})` : ''}`
+      )
       return newDrafts
     })
 
@@ -677,8 +689,29 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       setCurrentDraft(undefined)
     }
 
-    // Удаляем из localStorage
-    const result = removeDraftFromStorage(draftId)
+    // Удаляем из localStorage основной черновик
+    const primaryRemoved = removeDraftFromStorage(draftId)
+
+    // Если известен slug, удалим все локальные drafts с тем же slug
+    if (slugToRemove) {
+      try {
+        const allLocal = getAllDraftsFromStorage()
+        const duplicates = allLocal.filter((m) => {
+          const fields = m.fields || {}
+          const storedSlug = (fields.slug as unknown as string) || ''
+          return storedSlug.trim() === slugToRemove
+        })
+        for (const dup of duplicates) {
+          if (String(dup.id) !== String(draftId)) {
+            removeDraftFromStorage(dup.id)
+          }
+        }
+      } catch (e) {
+        console.warn('[DraftsProvider] Ошибка при каскадном удалении локальных дубликатов по slug:', e)
+      }
+    }
+
+    const result = primaryRemoved
     console.log(`[DraftsProvider] Результат удаления из localStorage: ${result ? 'успешно' : 'ошибка'}`)
 
     return result
@@ -722,8 +755,16 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         try {
           const result = await client()!.query(loadDraftsQuery, {}).toPromise()
 
-          if (result.data?.drafts) {
-            const serverDrafts = result.data.drafts as Draft[]
+          if (result.error) {
+            console.error('[DraftsProvider] GraphQL error при загрузке черновиков:', result.error)
+          }
+
+          // Совместимость: поддерживаем как новую схему load_drafts { drafts }, так и плоскую drafts
+          // biome-ignore lint/suspicious/noExplicitAny: GraphQL ответ динамический
+          const apiDrafts = (result.data as any)?.load_drafts?.drafts || (result.data as any)?.drafts
+
+          if (Array.isArray(apiDrafts)) {
+            const serverDrafts = apiDrafts as Draft[]
             console.log(`[DraftsProvider] Загружено ${serverDrafts.length} черновиков с сервера`)
 
             // Используем новую функцию синхронизации по slug
@@ -736,9 +777,9 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
             checkStorageQuotaWarning()
 
             return mergedDrafts
-          } else {
-            console.warn('[DraftsProvider] Сервер вернул пустой список черновиков')
           }
+
+          console.warn('[DraftsProvider] Сервер вернул пустой список черновиков')
         } catch (error) {
           console.error('[DraftsProvider] Ошибка при загрузке черновиков с сервера:', error)
         }
@@ -801,7 +842,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           created_at: 0,
           created_by: { id: 0, slug: '', name: '' }
         },
-        local_id: String(draftId)
+        local_id: String(draftId),
+        isLocalOnly: true
       }
 
       // Проверяем публикацию
@@ -949,6 +991,10 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     return response as OperationResult<UpdateDraftMutationMutation>
   }
 
+  /**
+   * FIXME: Черновики сами по себе не «публикуются». Публикуемыми являются шаута.
+   * Поэтому удаляем черновик напрямую без каких‑либо попыток unpublish_draft.
+   */
   const deleteDraft = async (draftId: number): Promise<OperationResult<DeleteDraftMutationMutation>> => {
     const response = await client()?.mutation(deleteDraftMutation, { draft_id: draftId })
     if (response?.data?.delete_draft) {
@@ -1415,7 +1461,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           // Также добавляем серверную версию с пометкой
           const enhancedServerDraft: ExtendedDraft = {
             ...(serverDraft as Draft),
-            local_id: `local-${localDraft.id}`
+            local_id: `server-${serverDraft.id}`
           }
           resultDrafts.push(enhancedServerDraft)
 
@@ -1426,7 +1472,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           // Если серверная версия новее, добавляем её с пометкой о наличии локальной версии
           const enhancedServerDraft: ExtendedDraft = {
             ...(serverDraft as Draft),
-            local_id: `local-${localDraft.id}`
+            local_id: `server-${serverDraft.id}`
           }
           resultDrafts.push(enhancedServerDraft)
 

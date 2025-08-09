@@ -204,7 +204,7 @@ export const FullArticle = (props: Props) => {
       return
     }
 
-    const tooltipElements: NodeListOf<HTMLElement> = document.querySelectorAll('footnote')
+    const tooltipElements: NodeListOf<HTMLElement> = document.querySelectorAll('tooltip')
     if (!tooltipElements) {
       return
     }
@@ -489,7 +489,7 @@ export const FullArticle = (props: Props) => {
             ref={setArticleContainer}
             class={clsx(
               'col-md-16 col-lg-14 col-xl-12 offset-md-5',
-              styles[`${props.article.layout}Layout`]
+              styles[`${props.article.layout}Layout` as keyof typeof styles]
             )}
             onClick={handleArticleBodyClick}
             aria-labelledby="article-title"

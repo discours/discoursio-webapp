@@ -105,8 +105,7 @@ export const [showUploadModal, setShowUploadModal] = createSignal<boolean>(false
 // Текущий редактируемый сквиб (блок)
 export const [editingSquibId, setEditingSquibId] = createSignal<string | null>(null)
 
-// Текущие сноски в документе
-export const [documentFootnotes, setDocumentFootnotes] = createSignal<Record<string, string>>({})
+// Footnotes removed
 
 /**
  * Хук управления состоянием редактора

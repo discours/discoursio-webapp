@@ -316,7 +316,10 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
       setState('sortBy', sortBy as TopicSort)
       setState('offset', 0)
       setState('initialized', true) // инициализируем при первом вызове
-      refetch()
+      // Даем Solid применить изменение источника ресурса прежде чем делать refetch
+      queueMicrotask(() => {
+        void refetch()
+      })
     },
     addTopics: (newTopics) =>
       setState((prev) => {
@@ -331,6 +334,8 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
       }),
     loadTopics: async () => {
       setState('initialized', true) // инициализируем при первом вызове
+      // Даем источнику ресурса перейти из null в объект
+      await Promise.resolve()
       const result = await refetch()
       return result || []
     },

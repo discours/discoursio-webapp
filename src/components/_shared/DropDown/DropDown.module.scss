@@ -22,6 +22,16 @@
   font-weight: 600;
 }
 
+.nonSelectable {
+  user-select: none;
+  /* TODO: add styles for non-selectable */
+}
+
+.separator {
+  margin: 0.5rem 1rem !important;
+  /* TODO: add styles for separator */
+}
+
 .groupTitle {
   font-weight: 600;
   margin: 0.5rem 1rem !important;

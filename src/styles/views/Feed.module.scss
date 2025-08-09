@@ -1278,3 +1278,24 @@
     display: none !important;
   }
 }
+
+.nonSelectable {
+  user-select: none;
+}
+
+.commentTopic {
+  font-size: 1.2rem;
+  background: rgb(38 56 217 / 5%);
+  display: inline-block;
+  font-weight: bold;
+  line-height: 3.4rem;
+  margin: 0 0.6rem 0.6rem 0;
+  padding: 0 1.2rem;
+  position: relative;
+  vertical-align: middle;
+  white-space: nowrap;
+  &:hover {
+    background: var(--blue-500);
+  }
+  /* TODO: verify with design */
+}

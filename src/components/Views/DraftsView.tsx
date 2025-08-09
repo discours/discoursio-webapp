@@ -11,7 +11,7 @@ import styles from '~/styles/views/DraftsView.module.scss'
 import { Loading } from '../_shared/Loading'
 
 export const DraftsView = (_props: { drafts?: Draft[] }) => {
-  const { requireAuthentication, session } = useSession()
+  const { requireAuthentication, session, isSessionLoaded, isSessionValidating } = useSession()
   const { t } = useLocalize()
   const { publishDraft, deleteDraft, drafts, loadDrafts, removeLocalDraft, unpublishShout } = useDrafts()
   const navigate = useNavigate()
@@ -27,8 +27,10 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       return
     }
 
-    // Проверяем, является ли черновик только локальным
-    const isLocalOnly = 'isLocalOnly' in d && d.isLocalOnly === true
+    // Признаки локального черновика: явно помечен isLocalOnly или есть local_id без draft_id
+    const isLocalOnly =
+      (d as ExtendedDraft).isLocalOnly === true ||
+      (!!(d as ExtendedDraft).local_id && !(d as ExtendedDraft).draft_id)
 
     // Для черновиков с локальной и серверной версией удаляем ту, которая активна
     const activeVersion = d.id ? activeVersions()[d.id] : undefined
@@ -47,14 +49,14 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       )
 
       if (shouldDeleteLocal) {
-        // Удаляем локальный черновик
-        console.log('[DraftsView] Удаляем локальную версию черновика:', d.id)
+        // Удаляем локальный черновик из localStorage/контекста без сетевых запросов
+        console.log('[DraftsView] Удаляем локальную версию черновика из localStorage:', d.id)
         try {
           const result = removeLocalDraft(d.id)
           console.log('[DraftsView] Результат удаления локальной версии:', result)
 
-          // Если была активна локальная версия и есть серверная, переключаемся на неё
-          if (activeVersion === 'local' && !isLocalOnly) {
+          // Если для этого ID была активна локальная версия, переключимся на серверную
+          if (activeVersion === 'local') {
             setActiveVersionForDraft(d.id, 'server')
           }
         } catch (localError) {
@@ -62,9 +64,12 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
           toast.error(t('Error deleting local draft'))
         }
       } else {
-        // Удаляем черновик на сервере
+        // Удаляем черновик на сервере (с учетом возможной публикации)
         console.log('[DraftsView] Отправляем запрос на удаление серверной версии черновика:', d.id)
         try {
+          // Попробуем снять с публикации на стороне сервера (через drafts context), если применимо
+          // Контекст сам вызывает unpublish_draft перед удалением
+
           const result = await deleteDraft(d.id)
           const success = result?.data?.delete_draft && !result?.data?.delete_draft.error
 
@@ -142,41 +147,38 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
     }
   }
 
-  // Загружаем черновики при монтировании и при изменении сессии
+  // Загружаем черновики после полной загрузки сессии
   createEffect(
     on(
-      () => session()?.token,
-      async (token: string | undefined, prevToken: string | undefined) => {
-        console.log('[DraftsView] token changed:', { token: !!token, prevToken: !!prevToken })
-
-        if (token) {
-          console.log('[DraftsView] session is ready, loading drafts...')
-          setIsLoading(true)
-          try {
-            await loadData()
-          } catch (err) {
-            console.error('[DraftsView] Failed to load drafts:', err)
-            setIsLoading(false)
-          }
-        } else {
-          console.log('[DraftsView] no session, requiring authentication...')
-          setIsLoading(true)
+      [() => session()?.token, () => isSessionLoaded?.(), () => isSessionValidating?.()],
+      async ([token, loaded, validating]) => {
+        console.log('[DraftsView] session state:', { token: !!token, loaded, validating })
+        if (!loaded || validating) return
+        if (!token) {
           try {
             await requireAuthentication(() => {}, 'edit')
           } catch (err) {
             console.error('[DraftsView] Authentication failed:', err)
-            setIsLoading(false)
           }
+          return
+        }
+        setIsLoading(true)
+        try {
+          await loadData()
+        } catch (err) {
+          console.error('[DraftsView] Failed to load drafts:', err)
+        } finally {
+          setIsLoading(false)
         }
       },
-      {}
+      { defer: true }
     )
-  ) // Убираем defer чтобы эффект сработал сразу
+  )
 
   // Эффект для ограничения доступа только авторизованными пользователями
   onMount(() => {
-    void loadData()
-    void requireAuthentication(() => {}, 'edit')
+    // Ждём готовности сессии, чтобы не потерять логин на рефреше
+    if (session()?.token && !isSessionValidating?.()) void loadData()
   })
 
   /**

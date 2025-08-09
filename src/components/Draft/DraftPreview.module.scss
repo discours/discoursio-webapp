@@ -1,4 +1,28 @@
 // Стили для страницы предпросмотра черновика
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.col {
+  flex: 1;
+  max-width: 780px;
+  margin: 0 auto;
+  font-family: var(--font-family);
+  color: var(--text-color);
+  padding: 0 16px;
+}
 
 // Панель инструментов превью
 .previewToolbar {

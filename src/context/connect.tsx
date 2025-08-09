@@ -96,7 +96,7 @@ export type ConnectContextType = {
 const ConnectContext = createContext<ConnectContextType>()
 
 export const ConnectProvider = (props: { children: JSX.Element }) => {
-  const { session } = useSession()
+  const { session, isSessionLoaded, isSessionValidating } = useSession()
 
   // SSE состояние
   const [status, setStatus] = createSignal<ConnectionStatus>('disconnected')
@@ -143,7 +143,8 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
             Authorization: `Bearer ${token}`,
             Accept: 'text/event-stream',
             'Cache-Control': 'no-cache'
-          }
+          },
+          credentials: 'include'
         }
       )
 
@@ -550,15 +551,15 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   // Подключаемся при изменении токена
   createEffect(
     on(
-      () => session()?.token,
-      (token) => {
-        if (token) {
-          console.log('[Connect] Токен получен, подключаемся к SSE')
+      [() => session()?.token, isSessionLoaded, isSessionValidating],
+      ([token]) => {
+        if (token && isSessionLoaded() && !isSessionValidating()) {
+          console.log('[Connect] Токен получен и сессия загружена, подключаемся к SSE')
           connect().catch((error) => {
             console.error('[Connect] Ошибка автоматического подключения:', error)
           })
         } else {
-          console.log('[Connect] Токен отсутствует, отключаемся от SSE')
+          console.log('[Connect] Нет готовой сессии/токена, отключаемся от SSE')
           disconnect()
         }
       },

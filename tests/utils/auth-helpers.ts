@@ -462,7 +462,9 @@ export async function ensureTestAccount(
     console.log('[ensureTestAccount] Заголовок страницы:', title)
 
     // Проверяем наличие кнопки входа
-    const loginButton = page.locator('a:has-text("Войти"), a:has-text("Enter"), .loginbtn a, [class*="userControlItem"] a')
+    const loginButton = page.locator(
+      'a:has-text("Войти"), a:has-text("Enter"), .loginbtn a, [class*="userControlItem"] a'
+    )
     const buttonCount = await loginButton.count()
     console.log('[ensureTestAccount] Найдено кнопок входа:', buttonCount)
 

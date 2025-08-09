@@ -1,15 +1,17 @@
 import { RouteSectionProps, redirect } from '@solidjs/router'
-import { createEffect, createMemo, on } from 'solid-js'
+import { createEffect, createMemo, on, onMount } from 'solid-js'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { AuthGuard } from '~/components/AuthGuard'
 import { EditSettingsView } from '~/components/Views/EditSettingsView'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
+import { useSession } from '~/context/session'
 import { Draft } from '~/graphql/generated/graphql'
 
 export default (props: RouteSectionProps) => {
   const { t } = useLocalize()
-  const { drafts, setCurrentDraft } = useDrafts()
+  const { drafts, loadDrafts, setCurrentDraft } = useDrafts()
+  const { requireAuthentication } = useSession()
 
   // Мемоизируем ID черновика, чтобы избежать лишних вычислений
   const draftId = createMemo(() => props.params.id)
@@ -20,14 +22,15 @@ export default (props: RouteSectionProps) => {
    */
   createEffect(
     on(
-      draftId,
-      (id: string) => {
-        if (!id) {
+      [draftId, drafts],
+      ([id]) => {
+        const strId = id as string
+        if (!strId) {
           redirect('/edit')
           return
         }
 
-        const parsedId = Number.parseInt(id)
+        const parsedId = Number.parseInt(strId)
         const draftsArray = drafts()
 
         if (!draftsArray || !Array.isArray(draftsArray)) return
@@ -42,9 +45,17 @@ export default (props: RouteSectionProps) => {
           redirect('/edit')
         }
       },
-      { defer: true } // Откладываем выполнение эффекта, чтобы избежать циклических обновлений
+      { defer: true }
     )
   )
+
+  onMount(() => {
+    void requireAuthentication(async () => {
+      if (!Array.isArray(drafts()) || drafts().length === 0) {
+        await loadDrafts()
+      }
+    }, 'edit')
+  })
 
   // Мемоизируем заголовок страницы
   const pageTitle = createMemo(() => `${t('Discours')} :: ${t('Publication settings')}`)

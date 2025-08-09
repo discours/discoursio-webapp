@@ -106,10 +106,10 @@ test.describe('Проверка гидратации SolidJS', () => {
     for (const pagePath of pages) {
       console.log(`Переход на ${pagePath}`)
       await utils.goto(pagePath)
-      
+
       // Упрощенная проверка готовности страницы
       await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
-      
+
       // Проверяем что страница загрузилась
       const hydrationState = await utils.checkHydrationState()
       expect(hydrationState.isHydrated).toBe(true)

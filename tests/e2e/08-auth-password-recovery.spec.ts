@@ -22,8 +22,9 @@ test.describe('Восстановление пароля', () => {
     await page.getByRole('link', { name: 'Войти' }).click()
     await page.getByText('Забыли пароль?').click()
 
-    // Проверяем что форма восстановления открылась
-    await expect(page.locator('input[name="email"]')).toBeVisible({ timeout: 10000 })
+    // Проверяем что форма восстановления открылась (строго внутри формы модалки)
+    const recoveryForm = page.locator('[class*="authFormForgetPassword"], [class*="authForm"]').first()
+    await expect(recoveryForm.locator('input[name="email"]')).toBeVisible({ timeout: 10000 })
     await expect(page.getByText('Забыли пароль?')).toBeVisible()
   })
 
@@ -33,8 +34,11 @@ test.describe('Восстановление пароля', () => {
     await expect(
       page.getByText('Ничего страшного. Просто введите email для получения ссылки')
     ).toBeVisible()
-    await expect(page.locator('input[name="email"]')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Восстановить пароль' })).toBeVisible()
+    const recoveryForm = page.locator('[class*="authFormForgetPassword"], [class*="authForm"]').first()
+    await expect(recoveryForm.locator('input[name="email"]')).toBeVisible()
+    await expect(
+      recoveryForm.getByRole('button', { name: /Восстановить пароль|Restore password/i })
+    ).toBeVisible()
 
     // Проверяем ссылку для возврата к входу
     await expect(page.getByText('Я знаю пароль')).toBeVisible()
@@ -48,7 +52,8 @@ test.describe('Восстановление пароля', () => {
     await expect(page.locator('.validationError')).toContainText('Невалидный email')
 
     // Вводим невалидный email
-    await page.locator('input[name="email"]').fill('invalid-email')
+    const recoveryForm = page.locator('[class*="authFormForgetPassword"], [class*="authForm"]').first()
+    await recoveryForm.locator('input[name="email"]').fill('invalid-email')
     await submitButton.click()
     await expect(page.locator('.validationError')).toContainText('Невалидный email')
   })
@@ -76,8 +81,9 @@ test.describe('Восстановление пароля', () => {
       }
     })
 
-    const emailInput = page.locator('input[name="email"]')
-    const submitButton = page.getByRole('button', { name: 'Восстановить пароль' })
+    const recoveryForm = page.locator('[class*="authFormForgetPassword"], [class*="authForm"]').first()
+    const emailInput = recoveryForm.locator('input[name="email"]')
+    const submitButton = recoveryForm.getByRole('button', { name: /Восстановить пароль|Restore password/i })
 
     await emailInput.fill(MOCK_EMAIL)
     await submitButton.click()
@@ -110,8 +116,9 @@ test.describe('Восстановление пароля', () => {
       }
     })
 
-    const emailInput = page.locator('input[name="email"]')
-    const submitButton = page.getByRole('button', { name: 'Восстановить пароль' })
+    const recoveryForm = page.locator('[class*="authFormForgetPassword"], [class*="authForm"]').first()
+    const emailInput = recoveryForm.locator('input[name="email"]')
+    const submitButton = recoveryForm.getByRole('button', { name: /Восстановить пароль|Restore password/i })
 
     await emailInput.fill('nonexistent@example.com')
     await submitButton.click()
@@ -133,7 +140,10 @@ test.describe('Восстановление пароля', () => {
     await page.getByText('Забыли пароль?').click()
 
     // Проверяем что снова форма восстановления
-    await expect(page.getByRole('button', { name: 'Восстановить пароль' })).toBeVisible()
+    const recoveryForm = page.locator('[class*="authFormForgetPassword"], [class*="authForm"]').first()
+    await expect(
+      recoveryForm.getByRole('button', { name: /Восстановить пароль|Restore password/i })
+    ).toBeVisible()
   })
 
   test('Должна отключать форму после отправки запроса', async ({ page }) => {
@@ -159,8 +169,9 @@ test.describe('Восстановление пароля', () => {
       }
     })
 
-    const emailInput = page.locator('input[name="email"]')
-    const submitButton = page.getByRole('button', { name: 'Восстановить пароль' })
+    const recoveryForm = page.locator('[class*="authFormForgetPassword"], [class*="authForm"]').first()
+    const emailInput = recoveryForm.locator('input[name="email"]')
+    const submitButton = recoveryForm.getByRole('button', { name: /Восстановить пароль|Restore password/i })
 
     await emailInput.fill(MOCK_EMAIL)
     await submitButton.click()
@@ -186,14 +197,16 @@ test.describe('Смена пароля по токену', () => {
     // Проверяем наличие всех элементов формы
     await expect(page.getByText('Введите новый пароль')).toBeVisible()
     await expect(page.locator('input[name="password"]')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Изменить пароль' })).toBeVisible()
+    const changeForm = page.locator('[class*="authForm"]').first()
+    await expect(changeForm.getByRole('button', { name: /Изменить пароль|Change password/i })).toBeVisible()
 
     // Проверяем ссылку отмены
     await expect(page.getByText('Отмена')).toBeVisible()
   })
 
   test('Должна валидировать новый пароль', async ({ page }) => {
-    const submitButton = page.getByRole('button', { name: 'Изменить пароль' })
+    const changeForm = page.locator('[class*="authForm"]').first()
+    const submitButton = changeForm.getByRole('button', { name: /Изменить пароль|Change password/i })
 
     // Пытаемся отправить без пароля
     await submitButton.click()
@@ -245,7 +258,8 @@ test.describe('Смена пароля по токену', () => {
     })
 
     const passwordInput = page.locator('input[name="password"]')
-    const submitButton = page.getByRole('button', { name: 'Изменить пароль' })
+    const changeForm = page.locator('[class*="authForm"]').first()
+    const submitButton = changeForm.getByRole('button', { name: /Изменить пароль|Change password/i })
 
     await passwordInput.fill(MOCK_NEW_PASSWORD)
     await submitButton.click()
@@ -280,7 +294,8 @@ test.describe('Смена пароля по токену', () => {
     })
 
     const passwordInput = page.locator('input[name="password"]')
-    const submitButton = page.getByRole('button', { name: 'Изменить пароль' })
+    const changeForm = page.locator('[class*="authForm"]').first()
+    const submitButton = changeForm.getByRole('button', { name: /Изменить пароль|Change password/i })
 
     await passwordInput.fill(MOCK_NEW_PASSWORD)
     await submitButton.click()
@@ -313,7 +328,8 @@ test.describe('Смена пароля по токену', () => {
     })
 
     const passwordInput = page.locator('input[name="password"]')
-    const submitButton = page.getByRole('button', { name: 'Изменить пароль' })
+    const changeForm = page.locator('[class*="authForm"]').first()
+    const submitButton = changeForm.getByRole('button', { name: /Изменить пароль|Change password/i })
 
     await passwordInput.fill(MOCK_NEW_PASSWORD)
     await submitButton.click()
@@ -322,7 +338,8 @@ test.describe('Смена пароля по токену', () => {
     await expect(page.getByText('Пароль обновлен!')).toBeVisible({ timeout: 5000 })
 
     // Проверяем наличие кнопок для дальнейших действий
-    await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible()
+    const loginForm = page.locator('[class*="authForm"]').first()
+    await expect(loginForm.getByRole('button', { name: 'Войти' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Вернуться на главную страницу' })).toBeVisible()
   })
 
@@ -385,8 +402,9 @@ test.describe('Обработка ошибок восстановления па
       route.abort('failed')
     })
 
-    const emailInput = page.locator('input[name="email"]')
-    const submitButton = page.getByRole('button', { name: 'Восстановить пароль' })
+    const recoveryForm = page.locator('[class*="authFormForgetPassword"], [class*="authForm"]').first()
+    const emailInput = recoveryForm.locator('input[name="email"]')
+    const submitButton = recoveryForm.getByRole('button', { name: /Восстановить пароль|Restore password/i })
 
     await emailInput.fill(MOCK_EMAIL)
     await submitButton.click()
@@ -432,7 +450,8 @@ test.describe('Обработка ошибок восстановления па
     })
 
     const passwordInput = page.locator('input[name="password"]')
-    const submitButton = page.getByRole('button', { name: 'Изменить пароль' })
+    const changeForm = page.locator('[class*="authForm"]').first()
+    const submitButton = changeForm.getByRole('button', { name: /Изменить пароль|Change password/i })
 
     if (await passwordInput.isVisible()) {
       await passwordInput.fill(MOCK_NEW_PASSWORD)

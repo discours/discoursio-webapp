@@ -79,8 +79,17 @@
     &:hover {
       background: var(--black-50) !important;
     }
+
+    &:not(.expanded) {
+      right: -100%;
+    }
+
+    &.expanded {
+      right: 0;
+    }
   }
   
+
   // Заголовок для card варианта
   &.cardHeader {
     margin-bottom: var(--spacing-m);

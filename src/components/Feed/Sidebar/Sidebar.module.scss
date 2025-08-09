@@ -449,3 +449,9 @@
     transform: rotate(180deg);
   }
 }
+
+.sidebarItem {
+  @include media-breakpoint-down(md) {
+    display: none;
+  }
+}

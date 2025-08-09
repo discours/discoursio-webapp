@@ -7,7 +7,7 @@ export type MenuGroupsType = Record<CommandGroupType, readonly CommandType[]>
 
 export const MENU_GROUPS: MenuGroupsType = {
   text: ['bold', 'italic', 'highlight', 'p'],
-  links: ['link', 'footnote'],
+  links: ['link'],
   headings: ['h1', 'h2', 'h3', 'hr'],
   quotes: ['blockquote', 'punchline', 'squib'],
   lists: ['bulletList', 'orderedList'],
@@ -24,7 +24,7 @@ export const getCommandType = (cmd: CommandType): CommandGroupType => {
   if (['h1', 'h2', 'h3', 'hr'].includes(cmd)) return 'headings'
   if (['blockquote', 'punchline', 'squib'].includes(cmd)) return 'quotes'
   if (['bulletList', 'orderedList'].includes(cmd)) return 'lists'
-  if (['link', 'footnote'].includes(cmd)) return 'links'
+  if (['link'].includes(cmd)) return 'links'
   if (['image', 'video', 'audio'].includes(cmd)) return 'media'
   return 'text'
 }
@@ -51,7 +51,7 @@ export const FULL_COMMANDS = [
 
   // разделитель
 
-  ['link', 'footnote'], // в строку
+  ['link'], // в строку
 
   // разделитель
 

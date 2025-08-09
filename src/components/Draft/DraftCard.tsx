@@ -489,7 +489,7 @@ export const DraftCard = (props: Props) => {
             {/* Кнопки для опубликованной статьи */}
             <div class={styles.publishedActions}>
               {/* Кнопка настроек */}
-              <span onClick={handleSettingsClick} class={clsx(styles.actionItemz)} title={t('Settings')}>
+              <span onClick={handleSettingsClick} class={clsx(styles.actionItem)} title={t('Settings')}>
                 <Icon name="settings" class={styles.actionIcon} />
                 <span class={styles.actionText}>{t('Settings')}</span>
               </span>
@@ -526,7 +526,7 @@ export const DraftCard = (props: Props) => {
       {/* Индикатор изменений после публикации - отображаем компактно */}
       <Show when={isModifiedSincePublish()}>
         <div class={styles.modifiedBadge} title={t('Modified since publish')}>
-          <Icon name="sync-problem" class={styles.modifiedIcon} />
+          <Icon name="sync-problem" class={styles.modifiedIndicator} />
         </div>
       </Show>
     </div>

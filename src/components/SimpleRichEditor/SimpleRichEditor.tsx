@@ -5,7 +5,6 @@ import {
   createMemo,
   createRoot,
   createSignal,
-  For,
   on,
   onCleanup,
   onMount,
@@ -24,7 +23,6 @@ import { handleAudioUploaderResult } from './lib/audio'
 import { isGroup } from './lib/commands'
 import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
 import { isEmptyContent } from './lib/empty'
-import { getAllFootnotes, getFootnoteById, insertFootnote, removeFootnote } from './lib/footnotes'
 import { applyFormatting, removeFormatting, type SelectionState, toggleFormatting } from './lib/format'
 import { getEditorPosition, isTouchDevice } from './lib/helpers'
 import { validateUrl } from './lib/link'
@@ -146,8 +144,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
 
   // Сигналы для работы с ресурсами редактора (Keep footnote signals if footnote editor is used)
-  const [editingFootnote, setEditingFootnote] = createSignal<HTMLElement | null>(null)
-  const [footnoteContent, setFootnoteContent] = createSignal<string>('')
+  // Footnotes removed
+  // const [editingFootnote, setEditingFootnote] = createSignal<HTMLElement | null>(null)
+  // const [footnoteContent, setFootnoteContent] = createSignal<string>('')
   const [localVersion, setLocalVersion] = createSignal()
 
   // Instantiate useSelection hook early
@@ -166,7 +165,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
   // Local state signals (ensure all needed are here and only defined once)
   const [showSquibEditor, setShowSquibEditor] = createSignal(false)
-  const [showFootnoteEditor, setShowFootnoteEditor] = createSignal(false)
+  // Footnote editor removed
+  // const [showFootnoteEditor, setShowFootnoteEditor] = createSignal(false)
   const [hasFocus, setHasFocus] = createSignal(false)
   const [showForm, setShowForm] = createSignal<FormType>(null)
   const [formPosition, setFormPosition] = createSignal<Position | null>(null)
@@ -195,11 +195,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const isClickInsideToolbar = (e: FocusEvent): boolean => {
     if (!e.relatedTarget) return false
     const target = e.relatedTarget as HTMLElement
-    return (
-      target.closest(`.${styles.toolbar}`) !== null ||
-      target.closest(`.${styles.SimpleToolbar_toolbar}`) !== null ||
-      target.closest('[data-toolbar="true"]') !== null
-    )
+    return target.closest(`.${styles.toolbar}`) !== null || target.closest('[data-toolbar="true"]') !== null
   }
 
   const isEditorEmpty = () => {
@@ -254,7 +250,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const shouldShowPlusMenu = createMemo(() => {
     const isNewLine = isCursorOnEmptyLine()
     const isEditorInFocus = hasFocus()
-    const isNoOtherMenuOpen = !showForm() && !showSquibEditor() && !showFootnoteEditor()
+    const isNoOtherMenuOpen = !showForm() && !showSquibEditor()
     const isPlusEnabled = props.plus
     return isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen
   })
@@ -776,7 +772,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       const link = target.tagName === 'A' ? target : target.closest('a')
 
       // Если это внутренняя ссылка на сноску
-      if (link?.getAttribute('data-footnote')) {
+      /* if (link?.getAttribute('data-footnote')) {
         const footnoteId = link?.getAttribute('data-footnote')
         if (!footnoteId) return
         if (!editorRef()) return
@@ -785,7 +781,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           openFootnoteEditor(footnote.marker as HTMLElement)
         }
         return
-      }
+      } */
 
       // Для обычных ссылок - показываем форму редактирования
       const href = link?.getAttribute('href') || ''
@@ -816,13 +812,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       return
     }
 
-    if (target.tagName === 'FOOTNOTE') {
-      e.preventDefault()
-      const footnote = target.closest('footnote')
-      if (footnote) {
-        openFootnoteEditor(footnote as HTMLElement)
-      }
-    }
+    // Custom <tooltip> clicks are regular links/content; no separate editor
 
     // Обработка клика по врезке (squib)
     if (target.closest('[data-type="squib"]')) {
@@ -1119,7 +1109,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     saveSelection()
 
     // --- Специальная обработка для ссылок, медиа, сносок ---
-    if (['link', 'image', 'video', 'audio', 'footnote'].includes(command)) {
+    if (['link', 'image', 'video', 'audio'].includes(command)) {
       if (command === 'link') {
         const linkElement = findLinkAncestor(activeSelection.anchorNode)
         const initialUrl = linkElement ? linkElement.getAttribute('href') || '' : ''
@@ -1138,16 +1128,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         showAudioUploader()
         return
       }
-      if (command === 'footnote') {
-        const footnotesList = editor.querySelector('.footnotes ol')
-        const _footnoteNumber = footnotesList ? footnotesList.children.length + 1 : 1
-        // const footnoteId = footnoteNumber.toString()
-        const footnote = insertFootnote(editor, '', activeSelection)
-        if (footnote) {
-          openFootnoteEditor(footnote)
-        }
-        return
-      }
+      // footnote command removed
     } else {
       // --- Унифицированная обработка форматирования ---
       console.log(`[handleAction] Processing command: ${command}`)
@@ -1362,20 +1343,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     }
   }
 
-  // --- Footnote Handling ---
-  const getFootnotesArray = createMemo(() => {
-    // Depend on content() signal to re-evaluate when content changes
-    content() // Read signal to establish dependency
-    const editor = editorRef()
-    if (!editor) return []
-    const footnotes = getAllFootnotes(editor)
-    return footnotes
-    // const stateFootnotes = stateDocumentFootnotes()
-    // return Object.entries(stateFootnotes).map(([id, content]) => {
-    //   const marker = editorRef()?.querySelector(`[data-footnote-id="${id}"]`)
-    //   return { id, content, marker: marker as Element }
-    // }).filter(f => f.marker) // Ensure marker exists in current editor
-  })
+  // Footnote handling removed
 
   // This manual update might conflict with the createMemo above. Let's rely on the memo.
   // const updateFootnotes = (footnotes: Array<{ id: string; content: string; marker: Element }>) => {
@@ -1395,51 +1363,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   //   })
   // )
 
-  const openFootnoteEditor = (footnote: HTMLElement) => {
-    if (!footnote) return
-    saveSelection()
-    setEditingFootnote(footnote)
-    setFootnoteContent(footnote.innerHTML)
-    setShowFootnoteEditor(true)
-  }
+  // openFootnoteEditor removed
 
-  const handleFootnoteSubmit = (submittedContent: string) => {
-    const footnoteEl = editingFootnote()
-    if (footnoteEl) {
-      // Editing existing
-      const footnoteId = footnoteEl?.getAttribute('data-footnote-id')
-      if (footnoteId) {
-        const footnoteContentElement = editorRef()?.querySelector(`[data-footnote-content="${footnoteId}"]`)
-        if (footnoteContentElement) {
-          footnoteContentElement.innerHTML = submittedContent // Update content in the list
-          // Also update the 'data-footnote-content' attribute on the marker if needed, though it seems redundant
-          // const marker = editorRef()?.querySelector(`[data-footnote-id="${footnoteId}"]`);
-          // marker?.setAttribute('data-footnote-content', encodeURIComponent(submittedContent));
-        }
-        setEditingFootnote(null)
-        setShowFootnoteEditor(false)
-        handleChange(props.fieldType ? String(props.fieldType) : 'content') // Update main editor state
-      }
-    } else {
-      // Creating new
-      const editor = editorRef()
-      const selection = window.getSelection()
-      if (!editor || !selection) return
-
-      saveSelection() // Save before inserting
-      const success = insertFootnote(editor, submittedContent, selection)
-      restoreSelection() // Restore after inserting
-
-      if (success) {
-        setShowFootnoteEditor(false)
-        setFootnoteContent('')
-        handleChange(props.fieldType ? String(props.fieldType) : 'content') // Update main editor state
-      } else {
-        console.error('Failed to insert footnote')
-        // Handle error appropriately, maybe show a message
-      }
-    }
-  }
+  // handleFootnoteSubmit removed
 
   // --- Draft Navigation ---
   const switchFieldInDraft = (
@@ -1597,10 +1523,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   })
 
   return (
-    <div
-      class={clsx(styles.editorWrapper, { [styles.readOnly]: props.readOnly })}
-      data-field-type={props.fieldType}
-    >
+    <div class={clsx(styles.editorWrapper)} data-field-type={props.fieldType}>
       {/* Toolbars */}
       <Show when={currentToolbarMode() === 'top'}>
         <SimpleToolbar
@@ -1670,68 +1593,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         </div>
       </Show>
 
-      {/* Footnote Editor Modal/Section */}
-      <Show when={showFootnoteEditor() && editingFootnote()}>
-        <div class={styles.footnoteEditor}>
-          <h3 class={styles.footnoteEditorTitle}>{t('Enter footnote text')}</h3>
-          <SimpleRichEditor
-            content={footnoteContent()}
-            onChange={(data) => {
-              if (data) {
-                setFootnoteContent(data.content)
-              }
-            }}
-            commands={['bold', 'italic', 'link']}
-            toolbar="bottom"
-            plus={false}
-            placeholder={t('Enter text')}
-          />
-          <div class={styles.footnoteEditorActions}>
-            <button class={styles.cancelBtn} onClick={() => setShowFootnoteEditor(false)}>
-              {t('Cancel')}
-            </button>
-            <button class={styles.saveBtn} onClick={() => handleFootnoteSubmit(footnoteContent())}>
-              {t('Save')}
-            </button>
-          </div>
-        </div>
-      </Show>
-
-      {/* Footnote List */}
-      <Show when={getFootnotesArray().length > 0 && props.fieldType === 'body'}>
-        <div class={styles.footnotesList}>
-          <ul>
-            <For each={getFootnotesArray()}>
-              {(footnote) => (
-                <li>
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      openFootnoteEditor(footnote.marker as HTMLElement)
-                    }}
-                    title={footnote.content.replace(/<[^>]*>/g, '')}
-                  >
-                    {footnote.id}
-                  </a>
-                  <button
-                    class={styles.removeFootnoteButton}
-                    title={t('Remove footnote')}
-                    onClick={() => {
-                      if (editorRef()) {
-                        removeFootnote(editorRef()!, footnote.id)
-                        handleChange(props.fieldType ? String(props.fieldType) : 'content')
-                      }
-                    }}
-                  >
-                    ×
-                  </button>
-                </li>
-              )}
-            </For>
-          </ul>
-        </div>
-      </Show>
+      {/* Footnote editor removed */}
 
       {/* Inline Forms */}
       <Show when={showForm() === 'link'}>

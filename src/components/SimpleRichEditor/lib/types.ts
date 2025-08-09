@@ -41,7 +41,6 @@ export type CommandType =
   | 'bg-red'
   | 'bg-green'
   | 'bg-color'
-  | 'footnote'
   | 'squib'
   | 'highlight'
   | 'p'

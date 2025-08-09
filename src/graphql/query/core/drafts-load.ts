@@ -1,7 +1,7 @@
 import { gql } from 'graphql-tag'
 
 export default gql`
-  query LoadDraftsQuery {
+query LoadDraftsQuery {
     load_drafts {
         drafts {
             id

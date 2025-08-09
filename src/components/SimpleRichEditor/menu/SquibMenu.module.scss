@@ -188,3 +188,44 @@
   white-space: nowrap;
   font-size: 12px;
 } 
+
+.squibMenuContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* TODO: Стили для редактирования контента */
+}
+
+.squibMenuStyle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* TODO: Стили для редактирования squib */
+}
+
+.squibMenuHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* TODO: Стили для заголовка меню */
+}
+
+.closeButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  /* TODO: Стили для кнопки закрытия */
+}
+
+.visible {
+  display: block;
+}
+
+.invisible {
+  display: none;
+}

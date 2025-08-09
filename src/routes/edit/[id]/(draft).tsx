@@ -1,9 +1,10 @@
 import { RouteSectionProps, redirect } from '@solidjs/router'
-import { createEffect, createMemo, lazy, on } from 'solid-js'
+import { createEffect, createMemo, lazy, on, onMount } from 'solid-js'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { AuthGuard } from '~/components/AuthGuard'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
+import { useSession } from '~/context/session'
 import { Draft } from '~/graphql/generated/graphql'
 import { LayoutType } from '~/types/nav'
 
@@ -11,53 +12,60 @@ const EditView = lazy(() => import('~/components/Views/EditView'))
 
 export default (props: RouteSectionProps) => {
   const { t } = useLocalize()
-  const { drafts, setCurrentDraft, getEditorContent, setEditorContent } = useDrafts()
+  const { drafts, loadDrafts, setCurrentDraft, getEditorContent, setEditorContent } = useDrafts()
+  const { requireAuthentication } = useSession()
 
   /**
    * Эффект для загрузки черновика и его содержимого в редактор
    */
   createEffect(
-    on(
-      () => props.params.id,
-      (draftId: string) => {
-        if (!draftId) {
-          redirect('/edit/new')
-          return
-        }
-
-        const parsedId = Number.parseInt(draftId)
-        const draftsArray = drafts()
-
-        if (!draftsArray || !Array.isArray(draftsArray)) return
-
-        const requestedDraft = draftsArray.find((draft: Draft) => draft.id === parsedId)
-
-        if (requestedDraft) {
-          console.log(`[EditDraft] Setting current draft: ${requestedDraft.id}`)
-          setCurrentDraft(requestedDraft)
-
-          const editorId = `draft-${requestedDraft.id}-body`
-          const currentContent = getEditorContent(editorId)
-
-          if (!currentContent && requestedDraft.body) {
-            console.log(`[EditDraft] Setting editor content for ${editorId}`)
-            setEditorContent(editorId, requestedDraft.body)
-          }
-
-          const leadEditorId = `draft-${requestedDraft.id}-lead`
-          const currentLeadContent = getEditorContent(leadEditorId)
-
-          if (!currentLeadContent && requestedDraft.lead) {
-            console.log(`[EditDraft] Setting editor content for ${leadEditorId}`)
-            setEditorContent(leadEditorId, requestedDraft.lead)
-          }
-        } else {
-          console.warn(`Draft with id=${parsedId} not found`)
-          // redirect('/edit')
-        }
+    on([() => props.params.id, drafts], ([id]) => {
+      const draftId = id as string
+      if (!draftId) {
+        redirect('/edit/new')
+        return
       }
-    )
+
+      const parsedId = Number.parseInt(draftId)
+      const draftsArray = drafts()
+
+      if (!draftsArray || !Array.isArray(draftsArray)) return
+
+      const requestedDraft = draftsArray.find((draft: Draft) => draft.id === parsedId)
+
+      if (requestedDraft) {
+        console.log(`[EditDraft] Setting current draft: ${requestedDraft.id}`)
+        setCurrentDraft(requestedDraft)
+
+        const editorId = `draft-${requestedDraft.id}-body`
+        const currentContent = getEditorContent(editorId)
+
+        if (!currentContent && requestedDraft.body) {
+          console.log(`[EditDraft] Setting editor content for ${editorId}`)
+          setEditorContent(editorId, requestedDraft.body)
+        }
+
+        const leadEditorId = `draft-${requestedDraft.id}-lead`
+        const currentLeadContent = getEditorContent(leadEditorId)
+
+        if (!currentLeadContent && requestedDraft.lead) {
+          console.log(`[EditDraft] Setting editor content for ${leadEditorId}`)
+          setEditorContent(leadEditorId, requestedDraft.lead)
+        }
+      } else {
+        console.warn(`Draft with id=${parsedId} not found`)
+      }
+    })
   )
+
+  // Загружаем список черновиков при монтировании, если его ещё нет
+  onMount(() => {
+    void requireAuthentication(async () => {
+      if (!Array.isArray(drafts()) || drafts().length === 0) {
+        await loadDrafts()
+      }
+    }, 'edit')
+  })
 
   const title = createMemo(() => {
     const currentDraftId = props.params.id ? Number.parseInt(props.params.id) : 0

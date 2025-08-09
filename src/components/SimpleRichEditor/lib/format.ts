@@ -67,7 +67,7 @@ export const FORMAT_CONFIG: Record<CommandType, { tag: string; attributes?: Reco
     tag: 'div',
     attributes: { 'data-type': 'punchline' }
   },
-  footnote: { tag: 'sup', attributes: {} },
+  // footnote removed
   hr: { tag: 'hr' },
   image: { tag: 'img', attributes: {} },
   video: { tag: 'div', attributes: { 'data-type': 'video' } },

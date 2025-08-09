@@ -64,7 +64,7 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
       <div class={styles.squibMenuHeader}>
         <button
           onClick={() => setFormTab('content')}
-          class={clsx(styles.tabButton, {
+          class={clsx(styles.button, {
             [styles.active]: formTab() === 'content'
           })}
         >
@@ -72,7 +72,7 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
         </button>
         <button
           onClick={() => setFormTab('style')}
-          class={clsx(styles.tabButton, {
+          class={clsx(styles.button, {
             [styles.active]: formTab() === 'style'
           })}
         >

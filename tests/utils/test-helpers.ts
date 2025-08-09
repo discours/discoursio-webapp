@@ -79,7 +79,9 @@ export class TestUtils {
 
     // Ждем завершения загрузки DOM
     await this.page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {
-      console.log('Тайм-аут при ожидании domcontentloaded, продолжаем ожидание завершения загрузки DOM  ...')
+      console.log(
+        'Тайм-аут при ожидании domcontentloaded, продолжаем ожидание завершения загрузки DOM  ...'
+      )
     })
 
     // Ждем завершения загрузки страницы
@@ -88,9 +90,13 @@ export class TestUtils {
     })
 
     // Ждем завершения всех ресурсов
-    await this.page.waitForFunction(() => document.readyState === 'complete', { timeout: 15000 }).catch(() => {
-      console.log('Тайм-аут при ожидании complete, продолжаем ожидание завершения загрузки всех ресурсов...')
-    })
+    await this.page
+      .waitForFunction(() => document.readyState === 'complete', { timeout: 15000 })
+      .catch(() => {
+        console.log(
+          'Тайм-аут при ожидании complete, продолжаем ожидание завершения загрузки всех ресурсов...'
+        )
+      })
 
     // Ждем стабилизации сети
     await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
@@ -101,19 +107,19 @@ export class TestUtils {
     // Увеличиваем timeout и делаем проверку более гибкой
     try {
       await expect(this.page).toHaveTitle(/Discours|Дискурс/, { timeout: 15000 })
-    } catch (error) {
+    } catch (_error) {
       // Если заголовок не найден, проверяем что страница вообще загрузилась
       try {
         const title = await this.page.title()
         console.log(`Заголовок страницы: "${title}"`)
-        
+
         if (!title || title.trim() === '') {
-          throw new Error(`Страница не загрузилась - заголовок пустой`)
+          throw new Error('Страница не загрузилась - заголовок пустой')
         }
-        
+
         // Если заголовок есть, но не содержит ожидаемый текст, продолжаем
         console.log('Заголовок не содержит ожидаемый текст, но страница загружена')
-      } catch (titleError) {
+      } catch (_titleError) {
         // Если не можем получить заголовок, проверяем что страница все еще открыта
         const isClosed = this.page.isClosed()
         if (isClosed) {
@@ -122,7 +128,7 @@ export class TestUtils {
         console.log('Не удалось получить заголовок, но страница открыта')
       }
     }
-    
+
     console.log('Страница готова!')
   }
 

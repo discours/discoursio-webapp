@@ -30,6 +30,7 @@ $comment-indent: 2.5rem;
   font-size: .7em;
   line-height: 1.333;
   letter-spacing: 0.3%;
+  user-select: none;
   
   &:hover {
     color: var(--color-gray-900);
@@ -44,6 +45,50 @@ $comment-indent: 2.5rem;
   
   &:hover .icon {
     opacity: 1;
+  }
+}
+
+@mixin menu-item-base {
+  @include flex;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  background: none;
+  color: var(--color-gray-700);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease-in-out;
+  white-space: nowrap;
+  user-select: none;
+
+  &:hover {
+    background: var(--color-gray-100);
+    color: var(--color-gray-900);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .menuItemIcon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+
+  &:hover .menuItemIcon {
+    opacity: 1;
+  }
+}
+
+@mixin animation-base($name, $from-props, $to-props) {
+  @keyframes #{$name} {
+    from { @each $prop, $value in $from-props { #{$prop}: $value; } }
+    to { @each $prop, $value in $to-props { #{$prop}: $value; } }
   }
 }
 
@@ -63,7 +108,6 @@ $comment-indent: 2.5rem;
 
   &.isReply {
     margin-left: $comment-indent;
-    padding: 5px 0 10px;
   }
 
   &.isDeleting {
@@ -82,15 +126,13 @@ $comment-indent: 2.5rem;
 }
 
 .commentHeader {
-  display: flex;
-  align-items: center;
+  @include flex(center, 8px);
   justify-content: space-between;
   margin-bottom: 8px;
 }
 
 .authorInfo {
   @include flex;
-
   gap: 8px;
   flex-wrap: wrap;
 }
@@ -114,8 +156,7 @@ $comment-indent: 2.5rem;
   letter-spacing: -1%;
   color: #000;
   overflow-wrap: break-word;
-  margin: 5px 0;
-  margin-bottom: 12px;
+  margin: 5px 0 12px;
   word-break: normal;
   
   p {
@@ -139,7 +180,6 @@ $comment-indent: 2.5rem;
 
 .commentActions {
   @include flex;
-
   justify-content: space-between;
   padding: 0 0 10px;
 }
@@ -150,8 +190,6 @@ $comment-indent: 2.5rem;
 .commentControlShare,
 .commentControlMore {
   @include comment-control-style;
-
-  user-select: none;
 }
 
 .commentControlMore {
@@ -159,7 +197,6 @@ $comment-indent: 2.5rem;
   color: var(--color-gray-500);
   position: relative;
   z-index: 2;
-  user-select: none;
 
   &:hover {
     color: var(--color-gray-700);
@@ -188,7 +225,6 @@ $comment-indent: 2.5rem;
 .leftControls,
 .rightControls {
   @include flex;
-
   flex-wrap: nowrap;
   
   @media (width <= 576px) {
@@ -206,7 +242,6 @@ $comment-indent: 2.5rem;
 
 .articleLink {
   @include flex;
-
   gap: $spacing-md;
   margin-top: $spacing-md;
   color: #6b7280;
@@ -334,41 +369,7 @@ $comment-indent: 2.5rem;
   }
 
   .menuItem {
-    @include flex;
-
-    gap: 8px;
-    width: 100%;
-    padding: 8px;
-    border: none;
-    background: none;
-    color: var(--color-gray-700);
-    font-size: 14px;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s ease-in-out;
-    white-space: nowrap;
-    user-select: none;
-
-    &:hover {
-      background: var(--color-gray-100);
-      color: var(--color-gray-900);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .menuItemIcon {
-      width: 16px;
-      height: 16px;
-      opacity: 0.7;
-      flex-shrink: 0;
-    }
-
-    &:hover .menuItemIcon {
-      opacity: 1;
-    }
+    @include menu-item-base;
 
     &[data-action="delete"] {
       color: var(--color-red-600);
@@ -403,57 +404,29 @@ $comment-indent: 2.5rem;
 }
 
 // Анимации
-@keyframes appear {
-  0% { 
-    opacity: 0;
-    transform: translateY(-10px);
-  }
+@include animation-base('appear', 
+  (opacity: 0, transform: translateY(-10px)), 
+  (opacity: 1, transform: translateY(0))
+);
 
-  100% { 
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+@include animation-base('appearIn',
+  (opacity: 0, transform: translateY(10px)),
+  (opacity: 1, transform: translateY(0))
+);
 
-@keyframes appearIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
+@include animation-base('editorAppear',
+  (opacity: 0, transform: translateY(-4px)),
+  (opacity: 1, transform: translateY(0))
+);
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes editorAppear {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+@include animation-base('fadeIn',
+  (opacity: 0, transform: translateX(10px)),
+  (opacity: 1, transform: translateX(0))
+);
 
 @keyframes highlight {
   0% { background-color: var(--color-primary-50); }
   100% { background-color: transparent; }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
 }
 
 @keyframes fadeOutAndCollapse {
@@ -492,9 +465,9 @@ $comment-indent: 2.5rem;
   line-height: 10px;
   color: var(--color-text-muted);
   opacity: 0.7;
-  margin: 0; padding: 0;
+  margin: 0;
+  padding: 0;
   text-align: left;
-
 }
 
 .commentControlLoadReplies {
@@ -505,4 +478,9 @@ $comment-indent: 2.5rem;
   &:hover {
     color: var(--color-primary-dark);
   }
+}
+
+.repliesCount {
+  font-size: 1.4rem;
+  /* TODO: add styles for replies count */
 }

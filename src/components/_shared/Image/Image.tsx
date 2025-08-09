@@ -3,6 +3,7 @@ import type { JSX } from 'solid-js'
 import { createSignal, splitProps } from 'solid-js'
 
 import { getCachedImageSrcSet, getCachedImageUrl } from '~/lib/imageCache'
+import { ClientOnly } from '~/utils/clientonly'
 
 type Props = JSX.ImgHTMLAttributes<HTMLImageElement> & {
   width: number
@@ -95,22 +96,24 @@ export const Image = (props: Props) => {
 
       {/* Прогрессивная загрузка: сначала низкое разрешение */}
       {local.progressive && lowResUrl() && (
-        <img
-          src={lowResUrl()}
-          alt=""
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            filter: 'blur(5px)',
-            opacity: lowResLoaded() && !loaded() ? 1 : 0,
-            transition: 'opacity 0.3s ease',
-            'z-index': -1
-          }}
-          onLoad={() => setLowResLoaded(true)}
-        />
+        <ClientOnly>
+          <img
+            src={lowResUrl()}
+            alt=""
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              filter: 'blur(5px)',
+              opacity: lowResLoaded() && !loaded() ? 1 : 0,
+              transition: 'opacity 0.3s ease',
+              'z-index': -1
+            }}
+            onLoad={() => setLowResLoaded(true)}
+          />
+        </ClientOnly>
       )}
 
       {/* Основное изображение */}
