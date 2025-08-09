@@ -29,6 +29,8 @@ jobs:
           npm config set cache /tmp/npm-cache
           npm ci --no-optional
 
+      
+
       - name: Clean Platform-Specific Dependencies
         run: |
           # Удаляем платформо-специфичные пакеты для Linux CI
@@ -38,26 +40,6 @@ jobs:
           npm uninstall @biomejs/biome || true
           npm install @biomejs/biome@^2.1.1
           npm install
-
-      - name: Run Postinstall Scripts
-        run: |
-          echo "Running postinstall scripts..."
-          npm run postinstall || echo "Postinstall failed, will generate types manually"
-
-      - name: Generate GraphQL Types
-        run: |
-          echo "Checking GraphQL types..."
-          echo "Current directory: $(pwd)"
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-          
-          # Пытаемся сгенерировать типы (опционально)
-          echo "Attempting to generate types..."
-          npm run codegen:all || echo "Type generation failed, using fallback"
-          
-          echo "Types check completed"
-          echo "Final files:"
-          ls -la src/graphql/generated/
 
       - name: Lint Code
         run: npx @biomejs/biome check src/
@@ -68,42 +50,7 @@ jobs:
 
       - name: Build Project
         run: npm run build
-
-      - name: Archive Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          path: |
-            dist/
-            .next/
-            build/
-          retention-days: 7
-
-  e2e-tests:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Clean Platform-Specific Dependencies
-        run: |
-          # Удаляем платформо-специфичные пакеты для Linux CI
-          npm uninstall sass-embedded-darwin-arm64 sass-embedded-darwin-x64 || true
-          npm uninstall @biomejs/cli-darwin-arm64 @biomejs/cli-darwin-x64 || true
-          # Принудительно переустанавливаем Biome для текущей платформы
-          npm uninstall @biomejs/biome || true
-          npm install @biomejs/biome@^2.1.1
-          npm install
-
       - name: Install WebKit Playwright
         run: |
           npx playwright install webkit --with-deps
@@ -123,6 +70,16 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 5
+
+      - name: Archive Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            dist/
+            .next/
+            build/
+          retention-days: 7
 
   performance-check:
     needs: build-and-test
