@@ -12,7 +12,7 @@ export default defineConfig({
   reporter: isCI ? 'github' : 'html',
   timeout: 60000, // Увеличиваем общий таймаут теста
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'https://localhost:3001',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
     headless: !!isCI,
     ignoreHTTPSErrors: true,
     // Игнорируем CORS ошибки в тестах
