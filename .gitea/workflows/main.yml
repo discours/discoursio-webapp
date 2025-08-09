@@ -56,7 +56,6 @@ jobs:
           E2E_TEST_USERNAME: ${{ secrets.E2E_TEST_USERNAME }}
           E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
         run: |
-          npx playwright install chromium
           npx playwright test tests/e2e --project=chromium --reporter=line
 
       - name: Archive E2E Test Results
@@ -81,7 +80,7 @@ jobs:
 
   push-to-github:
     needs: [build-and-test]
-    if: ${{ always() && needs.build-and-test.result == 'success' && needs.performance-check.result == 'success' }}
+    if: ${{ always() && needs.build-and-test.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
