@@ -55,7 +55,8 @@ export default defineConfig({
     },
     preprocessorOptions: {
       scss: {
-        api: 'legacy', // Используем legacy API для стабильности
+        // Форсируем JS sass в CI для избежания падений embedded
+        api: process.env.CI ? 'modern-compiler' : 'legacy',
         quietDeps: true,
         silenceDeprecations: ['mixed-decls', 'legacy-js-api'],
         additionalData: (content: string) => `@use '~/styles/global' as *;\n${content}`,
