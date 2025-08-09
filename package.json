@@ -17,10 +17,6 @@
     "codegen": "graphql-codegen",
     "codegen:inbox": "graphql-codegen --config codegen-inbox.ts",
     "codegen:all": "npm run codegen && npm run codegen:inbox",
-    "test": "vitest run tests/unit/",
-    "test:unit": "vitest run tests/unit/",
-    "test:unit:ui": "vitest --ui tests/unit/",
-    "test:unit:watch": "vitest watch tests/unit/",
     "e2e": "npm run e2e:clean && npm run e2e:test -- --project=webkit",
     "e2e:hydration": "npx playwright test tests/e2e/hydration-debug.spec.ts",
     "e2e:ui": "playwright test --ui tests/e2e/",
@@ -91,6 +87,7 @@
     "lightningcss": "^1.30.0",
     "patch-package": "^8.0.0",
     "sass": "^1.89.0",
+    "solid-js": "^1.9.7",
     "solid-popper": "^0.3.0",
     "solid-toast": "^0.5.0",
     "swiper": "^11.2.8",
@@ -107,7 +104,6 @@
     "yjs": "^13.6.27"
   },
   "dependencies": {
-    "solid-js": "^1.9.7",
     "@vercel/og": "^0.6.8",
     "form-data": "^4.0.3",
     "mailgun.js": "^12.0.3"
