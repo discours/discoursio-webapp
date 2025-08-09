@@ -49,7 +49,7 @@ jobs:
       - name: Build Project
         run: npm run build
 
-              - name: Run E2E Tests (Chromium)
+      - name: Run E2E Tests (Chromium)
           env:
             CI: true
             PLAYWRIGHT_BROWSERS_PATH: 0
