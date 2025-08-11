@@ -61,7 +61,33 @@ jobs:
           SASS_FORCE_JS: true
         run: npm run build
 
-      - name: Run E2E Tests (Chromium)
+      # Определяем тип тестов в зависимости от ветки
+      - name: Determine Test Strategy
+        id: test-strategy
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "strategy=full" >> $GITHUB_OUTPUT
+            echo "🎯 Main branch: запускаем полный набор E2E тестов"
+          else
+            echo "strategy=smoke" >> $GITHUB_OUTPUT
+            echo "🔥 Feature/dev branch: запускаем только smoke тесты"
+          fi
+
+      # Smoke тесты (быстрые критичные проверки)
+      - name: Run Smoke E2E Tests
+        if: steps.test-strategy.outputs.strategy == 'smoke'
+        env:
+          CI: true
+          SASS_FORCE_JS: true
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+          TEST_USERNAME: ${{ secrets.E2E_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+          E2E_BASE_URL: http://localhost:3001
+        run: npx playwright test tests/e2e --grep "@smoke" --project=chromium --reporter=line
+
+      # Полный набор E2E тестов (только для main)
+      - name: Run Full E2E Tests
+        if: steps.test-strategy.outputs.strategy == 'full'
         env:
           CI: true
           SASS_FORCE_JS: true

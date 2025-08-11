@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { TestUtils } from '../utils/test-helpers'
 
 test.describe('Проверка гидратации SolidJS', () => {
-  test('Проверка интерактивности после гидратации', async ({ page }) => {
+  test('@smoke Проверка интерактивности после гидратации', async ({ page }) => {
     const utils = new TestUtils(page)
 
     // Переходим на главную страницу

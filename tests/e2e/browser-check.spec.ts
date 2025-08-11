@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Browser Installation Check', () => {
-  test('should be able to launch browser and navigate', async ({ page }) => {
+  test('@smoke should be able to launch browser and navigate', async ({ page }) => {
     // Simple test to verify browser is working
     await page.goto('data:text/html,<h1>Hello World</h1>')
     await expect(page.locator('h1')).toHaveText('Hello World')

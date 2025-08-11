@@ -83,74 +83,39 @@ export class TestUtils {
   }
 
   /**
-   * Ожидание готовности страницы с проверкой заголовка
+   * ⚡ Оптимизированное ожидание готовности страницы
    */
   async expectPageReady() {
+    const isCI = process.env.CI === 'true'
+    const timeout = isCI ? 8000 : 15000 // 🔥 Сокращенные таймауты для CI
+    
     console.log('Ожидание готовности страницы...')
 
-    // Если тест стартует на about:blank, переходим на базовый URL
-    try {
-      const currentUrl = this.page.url()
-      if (!currentUrl || currentUrl === 'about:blank') {
-        await this.page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 })
-      }
-    } catch (e) {
-      console.log('Не удалось автоматически перейти на базовый URL, пробуем продолжить...', e)
-    }
-
-    // Ждем завершения загрузки DOM
-    await this.page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {
-      console.log(
-        'Тайм-аут при ожидании domcontentloaded, продолжаем ожидание завершения загрузки DOM  ...'
-      )
+    // Ждем только domcontentloaded - достаточно для большинства случаев
+    await this.page.waitForLoadState('domcontentloaded', { timeout }).catch(() => {
+      console.log('⚠️ Тайм-аут domcontentloaded, продолжаем...')
     })
 
-    // Ждем завершения загрузки страницы
-    await this.page.waitForLoadState('load', { timeout: 15000 }).catch(() => {
-      console.log('Тайм-аут при ожидании load, продолжаем ожидание завершения загрузки страницы...')
-    })
-
-    // Ждем завершения всех ресурсов
-    await this.page
-      .waitForFunction(() => document.readyState === 'complete', { timeout: 15000 })
-      .catch(() => {
-        console.log(
-          'Тайм-аут при ожидании complete, продолжаем ожидание завершения загрузки всех ресурсов...'
-        )
+    // В CI пропускаем медленные проверки
+    if (!isCI) {
+      // Ждем завершения загрузки страницы (только локально)
+      await this.page.waitForLoadState('load', { timeout }).catch(() => {
+        console.log('⚠️ Тайм-аут load, продолжаем...')
       })
-
-    // Ждем стабилизации сети
-    await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
-      console.log('Тайм-аут при ожидании networkidle, продолжаем ожидание стабилизации сети...')
-    })
-
-    // Проверяем что страница загрузилась с правильным заголовком
-    // Увеличиваем timeout и делаем проверку более гибкой
-    try {
-      await expect(this.page).toHaveTitle(/Discours|Дискурс/, { timeout: 15000 })
-    } catch (_error) {
-      // Если заголовок не найден, проверяем что страница вообще загрузилась
-      try {
-        const title = await this.page.title()
-        console.log(`Заголовок страницы: "${title}"`)
-
-        if (!title || title.trim() === '') {
-          throw new Error('Страница не загрузилась - заголовок пустой')
-        }
-
-        // Если заголовок есть, но не содержит ожидаемый текст, продолжаем
-        console.log('Заголовок не содержит ожидаемый текст, но страница загружена')
-      } catch (_titleError) {
-        // Если не можем получить заголовок, проверяем что страница все еще открыта
-        const isClosed = this.page.isClosed()
-        if (isClosed) {
-          throw new Error('Страница была закрыта во время выполнения теста')
-        }
-        console.log('Не удалось получить заголовок, но страница открыта')
-      }
     }
 
-    console.log('Страница готова!')
+    // Быстрая проверка заголовка
+    try {
+      await expect(this.page).toHaveTitle(/Discours|Дискурс/, { timeout: timeout / 2 })
+    } catch (_error) {
+      const title = await this.page.title()
+      if (!title?.trim()) {
+        throw new Error('❌ Страница не загрузилась - заголовок пустой')
+      }
+      console.log(`⚠️ Нестандартный заголовок: "${title}", но страница загружена`)
+    }
+
+    console.log('✅ Страница готова!')
   }
 
   /**

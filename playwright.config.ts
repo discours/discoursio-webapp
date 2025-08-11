@@ -5,12 +5,12 @@ const isCI = process.env.CI === 'true'
 export default defineConfig({
   globalSetup: './tests/e2e/global-setup.ts',
   testDir: './tests/e2e',
-  fullyParallel: false, // Отключаем параллельность для стабильности
+  fullyParallel: true, // ✅ Включаем параллельность для скорости
   forbidOnly: isCI,
-  retries: isCI ? 2 : 1,
-  workers: 1, // Только один воркер для избежания конфликтов
+  retries: isCI ? 1 : 0, // 🔄 Меньше ретраев - быстрее фидбек
+  workers: isCI ? 4 : 2, // ⚡ Больше воркеров для параллельности
   reporter: isCI ? 'github' : 'html',
-  timeout: 60000, // Увеличиваем общий таймаут теста
+  timeout: isCI ? 30000 : 60000, // ⏱️ Сокращенные таймауты для CI
   // В CI используем более надежные настройки
   use: {
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
@@ -24,8 +24,8 @@ export default defineConfig({
     trace: isCI ? 'retain-on-failure' : 'off',
     screenshot: isCI ? 'only-on-failure' : 'off',
     video: isCI ? 'retain-on-failure' : 'off',
-    actionTimeout: 30000, // Увеличенный тайм-аут для действий
-    navigationTimeout: 30000, // Увеличенный тайм-аут для навигации
+    actionTimeout: isCI ? 15000 : 30000, // ⚡ Оптимизированные таймауты для CI
+    navigationTimeout: isCI ? 20000 : 30000, // ⚡ Быстрая навигация в CI
     // В CI добавляем дополнительные аргументы для стабильности
     ...(isCI && {
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
@@ -57,9 +57,9 @@ export default defineConfig({
   webServer: {
     command: 'PORT=3001 npm run dev',
     port: 3001,
-    reuseExistingServer: !process.env.CI, // В CI всегда запускаем новый сервер
-    timeout: 120000, // Увеличиваем таймаут запуска до 2 минут
-    stdout: 'pipe', // Показываем логи сервера
+    reuseExistingServer: !process.env.CI,
+    timeout: isCI ? 90000 : 120000, // ⚡ Быстрый старт в CI
+    stdout: 'pipe',
     stderr: 'pipe'
   }
 })

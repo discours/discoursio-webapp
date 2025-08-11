@@ -17,7 +17,7 @@ test.describe('Страница отдельной темы', () => {
     await waitForPageLoad(page)
   })
 
-  test('Должна загружаться и отображать информацию о теме', async ({ page }) => {
+  test('@smoke Должна загружаться и отображать информацию о теме', async ({ page }) => {
     // Переходим на страницу тем и выбираем первую тему
     await page.goto(`${baseUrl}/topics`)
     await waitForPageLoad(page)

@@ -17,7 +17,7 @@ test.describe('Лента публикаций', () => {
     await waitForPageLoad(page)
   })
 
-  test('Должна отображать раздел "Все"', async ({ page }) => {
+  test('@smoke Должна отображать раздел "Все"', async ({ page }) => {
     await page.goto(`${baseUrl}/feed`)
     await waitForPageLoad(page)
 
