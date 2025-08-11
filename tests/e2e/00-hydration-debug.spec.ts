@@ -109,9 +109,26 @@ test.describe('Проверка гидратации SolidJS', () => {
 
       // Упрощенная проверка готовности страницы
       await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
+      
+      // В CI дополнительно ждем завершения гидрации
+      if (process.env.CI) {
+        await page.waitForTimeout(1000) // Даем время на гидрацию в CI
+        await page.waitForFunction(() => document.readyState === 'complete', { timeout: 5000 })
+      }
 
       // Проверяем что страница загрузилась
       const hydrationState = await utils.checkHydrationState()
+      
+      // Детальное логирование для отладки
+      console.log(`Состояние гидрации для ${pagePath}:`, {
+        hydrationKeys: hydrationState.hydrationKeys,
+        hasMainContent: hydrationState.hasMainContent,
+        hasHeader: hydrationState.hasHeader,
+        isInteractive: hydrationState.isInteractive,
+        hasServerContainer: hydrationState.hasServerContainer,
+        isHydrated: hydrationState.isHydrated
+      })
+      
       expect(hydrationState.isHydrated).toBe(true)
 
       // Уменьшаем паузу между переходами
