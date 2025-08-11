@@ -111,60 +111,14 @@ jobs:
             libx264-163
 
       - name: Install Playwright
-        run: |
-          echo "Installing Playwright..."
-          npm install -g @playwright/test
-          npx playwright install --with-deps
-          echo "Playwright installation complete"
-
-      - name: Set Playwright environment
-        run: |
-          echo "Setting Playwright environment variables..."
-          echo "PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright" >> $GITHUB_ENV
-          echo "PATH=$HOME/.cache/ms-playwright/chromium-*/chrome-linux:$PATH" >> $GITHUB_ENV
-          echo "Environment set:"
-          echo "PLAYWRIGHT_BROWSERS_PATH: $PLAYWRIGHT_BROWSERS_PATH"
-          echo "PATH: $PATH"
-          echo "Current working directory: $(pwd)"
-          echo "Node modules playwright location:"
-          ls -la node_modules/@playwright/test/ || echo "No playwright in node_modules"
+        run: npx playwright install --with-deps
 
       - name: Verify Playwright browsers
         run: |
-          echo "Installing Playwright browsers..."
           npx playwright install chromium
           npx playwright install firefox  
           npx playwright install webkit
-          echo "Verifying browser installations..."
           npx playwright --version
-          echo "Browser cache contents:"
-          ls -la ~/.cache/ms-playwright/
-          echo "Chromium executable check:"
-          find ~/.cache/ms-playwright/ -name "*chromium*" -type f 2>/dev/null || echo "No chromium files found"
-          echo "Environment variables:"
-          echo "PLAYWRIGHT_BROWSERS_PATH: $PLAYWRIGHT_BROWSERS_PATH"
-          echo "HOME: $HOME"
-          echo "USER: $USER"
-
-      - name: Test browser availability
-        run: |
-          echo "Testing browser availability..."
-          npx playwright test --list --project=chromium || echo "Chromium not available"
-          npx playwright test --list --project=firefox || echo "Firefox not available"
-          npx playwright test --list --project=webkit || echo "Webkit not available"
-
-      - name: Run browser check test
-        run: |
-          echo "Running browser check test to verify installation..."
-          npx playwright test tests/e2e/browser-check.spec.ts --project=chromium --reporter=line
-
-      - name: Verify browser executable
-        run: |
-          echo "Final browser executable verification..."
-          echo "Looking for chromium executable:"
-          find ~/.cache/ms-playwright/ -name "chrome" -o -name "headless_shell" -o -name "chromium" 2>/dev/null | head -5
-          echo "Testing direct browser launch:"
-          npx playwright exec chromium --version || echo "Direct launch failed"
 
       - name: Start nginx reverse proxy
         run: |
@@ -179,22 +133,14 @@ jobs:
         run: npm run build
 
       - name: Run tests
-        run: |
-          echo "Running E2E tests with explicit browser specification..."
-          echo "Current working directory: $(pwd)"
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-          echo "Playwright version: $(npx playwright --version)"
-          echo "Browser cache location: $(ls -la ~/.cache/ms-playwright/)"
-          npx playwright test tests/e2e/ --project=chromium --reporter=github
+        run: npm run e2e:ci
         env:
           CI: true
           E2E_BASE_URL: http://localhost:8080
-          PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: playwright-report
           path: playwright-report/
@@ -202,7 +148,7 @@ jobs:
 
       - name: Upload test screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: playwright-screenshots
           path: test-results/
