@@ -39,6 +39,15 @@ jobs:
           npm install @biomejs/biome@^2.1.1
           npm install
 
+      - name: Install Playwright Browsers
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: 0
+        run: |
+          npx playwright install chromium
+          npx playwright install-deps chromium
+          npx playwright --version
+          ls -la node_modules/@playwright/test/node_modules/playwright-core/.local-browsers/ || echo "No browsers directory found"
+
       - name: Lint Code
         run: npx @biomejs/biome check src/
 

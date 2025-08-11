@@ -11,6 +11,7 @@ export default defineConfig({
   workers: 1, // Только один воркер для избежания конфликтов
   reporter: isCI ? 'github' : 'html',
   timeout: 60000, // Увеличиваем общий таймаут теста
+  // В CI используем более надежные настройки
   use: {
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
     headless: !!isCI,
@@ -24,7 +25,11 @@ export default defineConfig({
     screenshot: isCI ? 'only-on-failure' : 'off',
     video: isCI ? 'retain-on-failure' : 'off',
     actionTimeout: 30000, // Увеличенный тайм-аут для действий
-    navigationTimeout: 30000 // Увеличенный тайм-аут для навигации
+    navigationTimeout: 30000, // Увеличенный тайм-аут для навигации
+    // В CI добавляем дополнительные аргументы для стабильности
+    ...(isCI && {
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    })
   },
 
   projects: [
