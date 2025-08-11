@@ -21,10 +21,12 @@ export class TestUtils {
    * Переход на страницу с улучшенной обработкой ошибок
    */
   async goto(path = '/') {
-    console.log(`Переход на: https://localhost:3001${path}`)
+    const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3001'
+    const fullUrl = `${baseUrl}${path}`
+    console.log(`Переход на: ${fullUrl}`)
 
     try {
-      await this.page.goto(`https://localhost:3001${path}`, {
+      await this.page.goto(fullUrl, {
         waitUntil: 'domcontentloaded',
         timeout: 30000
       })
