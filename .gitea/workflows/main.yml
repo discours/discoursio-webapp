@@ -7,9 +7,7 @@ name: "CI Pipeline"
 
 on:
   push:
-    branches: [main, dev]
-  pull_request:
-    branches: [main, dev]
+      branches: [main, dev, feature/*, hotfix/*]
 
 jobs:
   build-and-test:
@@ -120,20 +118,51 @@ jobs:
     needs: build-and-test
     if: ${{ needs.build-and-test.result == 'success' }}
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Push mirror to GitHub
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Git
         run: |
-          git config --global user.name "CI Mirror"
-          git config --global user.email "ci@discours.io"
-          git remote add github https://$GH_TOKEN@github.com/discours/discoursio-webapp.git
-          # Push all branches and tags (mirror-like)
-          git push github +refs/heads/*:refs/heads/* --force
-          git push github --tags --force
+          git config --global user.name "Discours"
+          git config --global user.email "services@discours.io"
+          git config --global init.defaultBranch dev
+      
+      - name: Configure GitHub Remote
+        run: |
+          # Remove existing remote if it exists
+          git remote remove github 2>/dev/null || true
+          
+          # Add GitHub remote with token authentication
+          git remote add github https://${{ secrets.GITHUB_TOKEN }}@github.com/discours/discoursio-webapp.git
+          
+          # Fetch all branches and tags from GitHub
+          git fetch github
+      
+      - name: Sync Current Branch
+        run: |
+          # Get current branch name
+          CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
+          echo "Current branch: $CURRENT_BRANCH"
+          
+          # Skip main and dev branches
+          if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "dev" ]]; then
+            echo "⏭️ Skipping sync for protected branch: $CURRENT_BRANCH"
+            exit 0
+          fi
+          
+          # Push only feature/* and hotfix/* branches that passed CI
+          echo "Syncing branch: $CURRENT_BRANCH"
+          git push github $CURRENT_BRANCH:$CURRENT_BRANCH --force-with-lease || git push github $CURRENT_BRANCH:$CURRENT_BRANCH --force
+          
+          echo "✅ Successfully synced branch: $CURRENT_BRANCH"
+      
+      - name: Verify Sync
+        run: |
+          echo "=== GitHub Remote Branches ==="
+          git ls-remote --heads github
 
   performance-check:
     needs: push-to-github
