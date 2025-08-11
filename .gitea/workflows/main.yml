@@ -31,13 +31,12 @@ jobs:
 
       - name: Clean Platform-Specific Dependencies
         run: |
-          # Удаляем платформо-специфичные пакеты для Linux CI
-          npm uninstall sass-embedded-darwin-arm64 sass-embedded-darwin-x64 || true
-          npm uninstall @biomejs/cli-darwin-arm64 @biomejs/cli-darwin-x64 || true
+          # Используем встроенные CI скрипты проекта
+          npm run ci:fix-platform
+          npm run prebuild
           # Принудительно переустанавливаем Biome для текущей платформы
           npm uninstall @biomejs/biome || true
           npm install @biomejs/biome@^2.1.1
-          npm install
 
       - name: Setup Playwright (use pre-installed browsers)
         env:
@@ -56,11 +55,14 @@ jobs:
         continue-on-error: true
 
       - name: Build Project
+        env:
+          SASS_FORCE_JS: true
         run: npm run build
 
       - name: Run E2E Tests (Chromium)
         env:
           CI: true
+          SASS_FORCE_JS: true
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
           TEST_USERNAME: ${{ secrets.E2E_TEST_USERNAME }}
           TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
