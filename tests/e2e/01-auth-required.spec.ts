@@ -17,6 +17,9 @@ test.describe('Аутентификация и доступ к защищенн�
     page
   }) => {
     const testUtils = new TestUtils(page)
+    
+    // Идем на главную сначала для инициализации
+    await testUtils.goto('/')
     await testUtils.expectPageReady()
 
     // Переходим на защищенную страницу
@@ -28,6 +31,9 @@ test.describe('Аутентификация и доступ к защищенн�
 
   test('@smoke Должна отображаться форма входа при клике на кнопку "Войти"', async ({ page }) => {
     const testUtils = new TestUtils(page)
+    
+    // Идем на главную сначала
+    await testUtils.goto('/')
     await testUtils.expectPageReady()
 
     const authModal = new AuthModal(page)
