@@ -35,7 +35,13 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] }
+      use: { 
+        ...devices['Desktop Chrome'],
+        // В CI используем системный браузер если доступен
+        ...(isCI && process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD && {
+          channel: 'chromium'
+        })
+      }
     },
     {
       name: 'firefox',
