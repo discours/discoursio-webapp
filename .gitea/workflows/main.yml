@@ -50,12 +50,12 @@ jobs:
         run: npm run build
 
       - name: Run E2E Tests (Chromium)
-          env:
-            CI: true
-            PLAYWRIGHT_BROWSERS_PATH: 0
-            E2E_TEST_USERNAME: ${{ secrets.E2E_TEST_USERNAME }}
-            E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
-          run: npx playwright test tests/e2e --project=chromium --reporter=line
+        env:
+          CI: true
+          PLAYWRIGHT_BROWSERS_PATH: 0
+          E2E_TEST_USERNAME: ${{ secrets.E2E_TEST_USERNAME }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+        run: npx playwright test tests/e2e --project=chromium --reporter=line
 
       - name: Archive E2E Test Results
         uses: actions/upload-artifact@v4
@@ -75,6 +75,25 @@ jobs:
             .next/
             build/
           retention-days: 7
+
+  push-to-github:
+    needs: [build-and-test]
+    if: ${{ always() && needs.build-and-test.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push mirror to GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "CI Mirror"
+          git config --global user.email "ci@discours.io"
+          git remote add github https://$GH_TOKEN@github.com/discours/discoursio-webapp.git
+          # Push all branches and tags (mirror-like)
+          git push github +refs/heads/*:refs/heads/* --force
+          git push github --tags --force
 
   performance-check:
     needs: push-to-github
