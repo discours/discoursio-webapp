@@ -37,6 +37,8 @@ jobs:
           # Принудительно переустанавливаем Biome для текущей платформы
           npm uninstall @biomejs/biome || true
           npm install @biomejs/biome@^2.1.1
+          # Убеждаемся что есть обычный sass для CI
+          npm list sass || npm install sass@^1.89.0
 
       - name: Setup Playwright (use pre-installed browsers)
         env:

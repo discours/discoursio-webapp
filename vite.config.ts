@@ -57,6 +57,8 @@ export default defineConfig({
       scss: {
         // Форсируем JS sass в CI для избежания падений embedded
         api: process.env.CI ? 'modern-compiler' : 'legacy',
+        // В CI принудительно используем обычный sass вместо embedded
+        ...(process.env.CI && { implementation: 'sass' }),
         quietDeps: true,
         silenceDeprecations: ['mixed-decls', 'legacy-js-api'],
         additionalData: (content: string) => `@use '~/styles/global' as *;\n${content}`,
@@ -64,7 +66,11 @@ export default defineConfig({
       }
     } as CSSOptions['preprocessorOptions']
   },
-  plugins: [nodePolyfills(polyfillOptions), sassDts()],
+  plugins: [
+    nodePolyfills(polyfillOptions),
+    // Отключаем sassDts в CI из-за проблем с sass-embedded
+    ...(process.env.CI ? [] : [sassDts()])
+  ],
   publicDir: 'public',
   // Расширяем список разрешенных типов файлов
   assetsInclude: [
