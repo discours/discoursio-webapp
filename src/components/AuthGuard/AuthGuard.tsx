@@ -25,6 +25,7 @@ export const AuthGuard = (props: Props) => {
           return
         }
         // Нет авторизации — открываем модалку логина через параметры запроса
+        console.debug('[AuthGuard] No authentication, redirecting to auth modal')
         changeSearchParams(
           {
             source: 'authguard',
@@ -34,7 +35,7 @@ export const AuthGuard = (props: Props) => {
           { replace: true }
         )
       },
-      { defer: true }
+      { defer: false } // ✅ ИСПРАВЛЕНО: запускаем сразу при инициализации
     )
   )
 
