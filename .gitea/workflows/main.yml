@@ -29,6 +29,9 @@ jobs:
           npm config set cache /tmp/npm-cache
           npm ci --no-optional
 
+      - name: Install Playwright Browsers
+        run: npm run e2e:install
+
       - name: Clean Platform-Specific Dependencies
         run: |
           # Удаляем платформо-специфичные пакеты для Linux CI
@@ -53,8 +56,9 @@ jobs:
         env:
           CI: true
           PLAYWRIGHT_BROWSERS_PATH: 0
-          E2E_TEST_USERNAME: ${{ secrets.E2E_TEST_USERNAME }}
-          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+          TEST_USERNAME: ${{ secrets.E2E_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+          E2E_BASE_URL: http://localhost:3001
         run: npx playwright test tests/e2e --project=chromium --reporter=line
 
       - name: Archive E2E Test Results
@@ -77,8 +81,8 @@ jobs:
           retention-days: 7
 
   push-to-github:
-    needs: [build-and-test]
-    if: ${{ always() && needs.build-and-test.result == 'success' }}
+    needs: build-and-test
+    if: ${{ needs.build-and-test.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
