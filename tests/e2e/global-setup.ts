@@ -15,7 +15,7 @@ export default async function globalSetup(_config: FullConfig) {
   if (process.env.CI) {
     console.log('Running in CI mode, checking browser availability...')
     try {
-      const browser = await chromium.launch({ 
+      const browser = await chromium.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
       })

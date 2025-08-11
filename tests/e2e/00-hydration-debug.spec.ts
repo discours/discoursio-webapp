@@ -19,7 +19,7 @@ test.describe('Проверка гидратации SolidJS', () => {
     if (!hydrationState.isHydrated) {
       console.log('⚠️ Гидратация не завершена полностью, проверяем базовые элементы...')
       expect(hydrationState.hasMainContent).toBe(true)
-      
+
       // В CI принимаем если есть хотя бы основной контент
       if (process.env.CI === 'true') {
         console.log('📦 CI: Принимаем базовую загрузку контента')
@@ -119,7 +119,7 @@ test.describe('Проверка гидратации SolidJS', () => {
 
       // Упрощенная проверка готовности страницы
       await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
-      
+
       // В CI дополнительно ждем завершения гидрации
       if (process.env.CI) {
         await page.waitForTimeout(1000) // Даем время на гидрацию в CI
@@ -128,7 +128,7 @@ test.describe('Проверка гидратации SolidJS', () => {
 
       // Проверяем что страница загрузилась
       const hydrationState = await utils.checkHydrationState()
-      
+
       // Детальное логирование для отладки
       console.log(`Состояние гидрации для ${pagePath}:`, {
         hydrationKeys: hydrationState.hydrationKeys,
@@ -138,7 +138,7 @@ test.describe('Проверка гидратации SolidJS', () => {
         hasServerContainer: hydrationState.hasServerContainer,
         isHydrated: hydrationState.isHydrated
       })
-      
+
       expect(hydrationState.isHydrated).toBe(true)
 
       // Уменьшаем паузу между переходами
