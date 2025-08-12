@@ -164,7 +164,8 @@ export async function hasRealContent(page: Page): Promise<boolean> {
     }
 
     // Проверяем что контент не состоит из плейсхолдеров/скелетонов
-    for (const element of contentElements) {
+    for (let i = 0; i < contentElements.length; i++) {
+      const element = contentElements[i]
       const classList = element.classList.toString()
       const isPlaceholder =
         classList.includes('skeleton') || classList.includes('placeholder') || classList.includes('loading')
@@ -191,7 +192,8 @@ export async function waitForRealContent(page: Page, timeout = 15000): Promise<v
       () => {
         const contentElements = document.querySelectorAll('article, .post, .content-item')
 
-        for (const element of contentElements) {
+        for (let i = 0; i < contentElements.length; i++) {
+          const element = contentElements[i]
           const classList = element.classList.toString()
           const isPlaceholder =
             classList.includes('skeleton') ||
@@ -226,8 +228,8 @@ export async function getPagePerformance(page: Page): Promise<{
     const resources = performance.getEntriesByType('resource')
 
     return {
-      loadTime: navigation.loadEventEnd - navigation.navigationStart,
-      domContentLoaded: navigation.domContentLoadedEventEnd - navigation.navigationStart,
+      loadTime: navigation.loadEventEnd - (navigation as any).navigationStart,
+      domContentLoaded: navigation.domContentLoadedEventEnd - (navigation as any).navigationStart,
       networkRequests: resources.length
     }
   })
