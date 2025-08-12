@@ -44,7 +44,7 @@ jobs:
           echo "✅ Отчет о покрытии сгенерирован"
 
       - name: Upload Coverage Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-report-${{ github.event.workflow_run.head_branch }}
           path: docs/test-coverage/
