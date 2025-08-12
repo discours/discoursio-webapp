@@ -33,13 +33,6 @@ npm install
 ```yaml
 - name: Clean Platform-Specific Dependencies
   run: |
-    # Удаляем платформо-специфичные пакеты для Linux CI
-    npm uninstall sass-embedded-darwin-arm64 sass-embedded-darwin-x64 || true
-    npm uninstall @biomejs/cli-darwin-arm64 @biomejs/cli-darwin-x64 || true
-    # Заменяем платформенные пакеты на кросс‑платформенный sass-embedded
-    npm pkg delete dependencies.sass-embedded-darwin-arm64 || true
-    npm pkg delete dependencies.sass-embedded-darwin-x64 || true
-    npm pkg set devDependencies.sass-embedded="^1.90.0"
     # Принудительно переустанавливаем зависимости
     npm uninstall @biomejs/biome || true
     npm install @biomejs/biome@^2.1.1

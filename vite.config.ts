@@ -1,9 +1,8 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { config } from 'dotenv'
-import { CSSOptions, defineConfig } from 'vite'
+import { CSSOptions, defineConfig, LightningCSSOptions } from 'vite'
 import { nodePolyfills, PolyfillOptions } from 'vite-plugin-node-polyfills'
-import sassDts from 'vite-plugin-sass-dts'
 
 // Загружаем .env файл с выводом информации о статусе
 const envPath = resolve(process.cwd(), '.env')
@@ -27,6 +26,11 @@ const polyfillOptions = {
 } as PolyfillOptions
 
 export default defineConfig({
+  server: {
+    hmr: {
+      timeout: 120000 // Увеличиваем HMR таймаут
+    }
+  },
   resolve: {
     alias: {
       '~': resolve('./src'),
@@ -48,8 +52,11 @@ export default defineConfig({
       // Включаем только поддерживаемые draft CSS features
       drafts: {
         customMedia: true
+      },
+      cssModules: {
+        generateScopedName: '[name]__[local]___[hash:base64:5]'
       }
-    },
+    } as LightningCSSOptions,
     modules: {
       generateScopedName: '[name]__[local]___[hash:base64:5]'
     },
@@ -66,11 +73,7 @@ export default defineConfig({
       }
     } as CSSOptions['preprocessorOptions']
   },
-  plugins: [
-    nodePolyfills(polyfillOptions),
-    // Отключаем sassDts в CI из-за проблем с sass-embedded
-    ...(process.env.CI ? [] : [sassDts()])
-  ],
+  plugins: [nodePolyfills(polyfillOptions)],
   publicDir: 'public',
   // Расширяем список разрешенных типов файлов
   assetsInclude: [

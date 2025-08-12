@@ -13,7 +13,7 @@ export default defineConfig({
   timeout: isCI ? 30000 : 60000, // ⏱️ Сокращенные таймауты для CI
   // В CI используем более надежные настройки
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
+    baseURL: process.env.E2E_BASE_URL || `http${isCI ? 's' : ''}://localhost:3001`,
     headless: !!isCI,
     ignoreHTTPSErrors: true,
     // Игнорируем CORS ошибки в тестах
@@ -56,10 +56,11 @@ export default defineConfig({
 
   // Запускаем отдельный тестовый сервер на порту 3001
   webServer: {
-    command: 'PORT=3001 npm run dev',
+    command: 'E2E=true PORT=3001 npm run dev',
+    // command: 'npm run build && npx vinxi preview --port 3001',
     port: 3001,
     reuseExistingServer: !process.env.CI,
-    timeout: isCI ? 90000 : 120000, // ⚡ Быстрый старт в CI
+    timeout: isCI ? 90000 : 180000, // ⏱️ Увеличиваем таймаут для билда
     stdout: 'pipe',
     stderr: 'pipe'
   }

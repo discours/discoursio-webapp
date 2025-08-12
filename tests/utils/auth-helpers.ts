@@ -401,7 +401,10 @@ export async function registerNewTestAccount(
     const timestamp = Date.now()
     const randomId = Math.random().toString(36).substring(2, 8)
     const testEmail = `test-${timestamp}-${randomId}@discours.io`
-    const testPassword = process.env.TEST_PASSWORD || 'Well-c0mE!Br0'
+    const testPassword = process.env.TEST_PASSWORD
+    if (!testPassword) {
+      throw new Error('TEST_PASSWORD is not set')
+    }
     const testName = `Test User ${randomId}`
 
     console.log(`[registerNewTestAccount] Регистрируем: ${testEmail}`)
@@ -453,7 +456,10 @@ export async function ensureTestAccount(
 
     // Сначала пробуем войти с существующими данными
     const existingUsername = process.env.TEST_USERNAME || 'guests@discours.io'
-    const existingPassword = process.env.TEST_PASSWORD || 'Well-c0mE!Br0'
+    const existingPassword = process.env.TEST_PASSWORD
+    if (!existingPassword) {
+      throw new Error('TEST_PASSWORD is not set')
+    }
 
     console.log(`[ensureTestAccount] Пробуем войти с: ${existingUsername}`)
 

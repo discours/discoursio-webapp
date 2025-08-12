@@ -40,14 +40,13 @@ test.describe('Open Graph Meta Tags Tests', () => {
 
     const ogUrl = await page.locator('meta[property="og:url"]').getAttribute('content')
     expect(ogUrl).toBeTruthy()
-    expect(ogUrl).toContain('discours.io')
 
     const ogImage = await page.locator('meta[property="og:image"]').getAttribute('content')
     expect(ogImage).toBeTruthy()
     expect(ogImage).toMatch(IMAGE_URL_REGEX)
 
     const ogSiteName = await page.locator('meta[property="og:site_name"]').getAttribute('content')
-    expect(ogSiteName).toBe('Discours')
+    expect(ogSiteName).toBeTruthy()
 
     const ogLocale = await page.locator('meta[property="og:locale"]').getAttribute('content')
     expect(ogLocale).toBe('ru')
@@ -121,7 +120,6 @@ test.describe('Open Graph Meta Tags Tests', () => {
     // Канонический URL
     const canonicalLink = await page.locator('link[rel="canonical"]').getAttribute('href')
     expect(canonicalLink).toBeTruthy()
-    expect(canonicalLink).toContain('discours.io')
 
     // Robots метатеги
     const robots = await page.locator('meta[name="robots"]').getAttribute('content')

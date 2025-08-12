@@ -48,9 +48,6 @@ jobs:
 
       - name: Clean Platform-Specific Dependencies
         run: |
-          # Удаляем платформо-специфичные пакеты для Linux CI
-          npm uninstall sass-embedded-darwin-arm64 sass-embedded-darwin-x64 || true
-          npm uninstall @biomejs/cli-darwin-arm64 @biomejs/cli-darwin-x64 || true
           # Принудительно переустанавливаем Biome для текущей платформы
           npm uninstall @biomejs/biome || true
           npm install @biomejs/biome@^2.1.1
@@ -125,8 +122,6 @@ jobs:
           docker run -d --name test-nginx -p 8080:80 \
             -v ${{ github.workspace }}/tests/nginx.conf:/etc/nginx/conf.d/default.conf:ro \
             --add-host=host.docker.internal:host-gateway \
-            --health-cmd "curl -fs http://localhost:8080/_health" \
-            --health-interval 2s --health-timeout 5s --health-retries 5 \
             nginx:1.18
 
       - name: Build application
