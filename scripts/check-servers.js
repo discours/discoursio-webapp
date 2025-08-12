@@ -47,12 +47,12 @@ async function checkApiServer() {
 async function checkLocalServer() {
   try {
     console.log('🔍 Проверка локального сервера...')
-    
+
     const response = await fetch(LOCAL_URL, {
       method: 'GET',
       timeout: 5000
     })
-    
+
     if (response.ok) {
       console.log('✅ Локальный сервер доступен')
       return true
@@ -72,7 +72,7 @@ async function checkLocalServer() {
 async function checkLocalGraphQL() {
   try {
     console.log('🔍 Проверка локального GraphQL через прокси...')
-    
+
     const response = await fetch(LOCAL_GRAPHQL_URL, {
       method: 'POST',
       headers: {
@@ -83,7 +83,7 @@ async function checkLocalGraphQL() {
       }),
       timeout: 5000
     })
-    
+
     if (response.ok) {
       console.log('✅ Локальный GraphQL доступен через прокси')
       return true
@@ -103,13 +103,13 @@ async function checkLocalGraphQL() {
 async function main() {
   console.log('🚀 Проверка доступности серверов')
   console.log('═══════════════════════════════════════════════════════════════')
-  
+
   const apiAvailable = await checkApiServer()
   const localAvailable = await checkLocalServer()
   const localGraphQLAvailable = await checkLocalGraphQL()
-  
+
   console.log('═══════════════════════════════════════════════════════════════')
-  
+
   if (apiAvailable && localAvailable && localGraphQLAvailable) {
     console.log('🎉 Все серверы доступны! Тесты должны работать.')
   } else if (apiAvailable && !localAvailable) {
@@ -125,7 +125,7 @@ async function main() {
     console.log('❌ Ни один сервер не доступен.')
     console.log('💡 Проверьте интернет и запустите локальный сервер')
   }
-  
+
   console.log('\n📊 Статус:')
   console.log(`   API сервер: ${apiAvailable ? '✅' : '❌'}`)
   console.log(`   Локальный сервер: ${localAvailable ? '✅' : '❌'}`)

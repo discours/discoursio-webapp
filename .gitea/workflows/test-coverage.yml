@@ -18,6 +18,7 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
 
+      # === SETUP SECTION (reused from main.yml) ===
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -25,7 +26,26 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci --no-optional
+        run: |
+          # Отключаем кэширование для избежания проблем
+          npm config set cache /tmp/npm-cache
+          npm ci --no-optional
+
+      - name: Clean Platform-Specific Dependencies
+        run: |
+          # Принудительно переустанавливаем Biome для текущей платформы
+          npm uninstall @biomejs/biome || true
+          npm install @biomejs/biome@^2.1.1
+          # Убеждаемся что есть обычный sass для CI
+          npm list sass || npm install sass@^1.89.0
+
+      # === COMMON ENV VARS (reused from main.yml) ===
+      - name: Set Common Environment Variables
+        run: |
+          echo "CI=true" >> $GITHUB_ENV
+          echo "SASS_FORCE_JS=true" >> $GITHUB_ENV
+          echo "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1" >> $GITHUB_ENV
+          echo "E2E_BASE_URL=http://localhost:3001" >> $GITHUB_ENV
 
       - name: Download Test Results
         uses: actions/download-artifact@v3
@@ -35,6 +55,7 @@ jobs:
           workflow: ${{ github.event.workflow_run.id }}
 
       - name: Generate Coverage Report
+        if: success() # Только если предыдущие шаги успешны
         run: |
           echo "🔍 Анализ покрытия тестами..."
           
@@ -44,6 +65,7 @@ jobs:
           echo "✅ Отчет о покрытии сгенерирован"
 
       - name: Upload Coverage Report
+        if: success() # Только если анализ успешен
         uses: actions/upload-artifact@v3
         with:
           name: coverage-report-${{ github.event.workflow_run.head_branch }}
@@ -73,6 +95,7 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
 
+      # === SETUP SECTION (reused from main.yml) ===
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -80,7 +103,26 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci --no-optional
+        run: |
+          # Отключаем кэширование для избежания проблем
+          npm config set cache /tmp/npm-cache
+          npm ci --no-optional
+
+      - name: Clean Platform-Specific Dependencies
+        run: |
+          # Принудительно переустанавливаем Biome для текущей платформы
+          npm uninstall @biomejs/biome || true
+          npm install @biomejs/biome@^2.1.1
+          # Убеждаемся что есть обычный sass для CI
+          npm list sass || npm install sass@^1.89.0
+
+      # === COMMON ENV VARS (reused from main.yml) ===
+      - name: Set Common Environment Variables
+        run: |
+          echo "CI=true" >> $GITHUB_ENV
+          echo "SASS_FORCE_JS=true" >> $GITHUB_ENV
+          echo "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1" >> $GITHUB_ENV
+          echo "E2E_BASE_URL=http://localhost:3001" >> $GITHUB_ENV
 
       - name: Download Coverage Report
         uses: actions/download-artifact@v3

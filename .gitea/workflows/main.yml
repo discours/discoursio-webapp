@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      # === SETUP SECTION (reused in test-coverage.yml) ===
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -66,28 +67,24 @@ jobs:
             echo "🔥 Feature/dev branch: запускаем только smoke тесты"
           fi
 
+      # === COMMON ENV VARS (reused in test-coverage.yml) ===
+      - name: Set Common Environment Variables
+        run: |
+          echo "CI=true" >> $GITHUB_ENV
+          echo "SASS_FORCE_JS=true" >> $GITHUB_ENV
+          echo "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1" >> $GITHUB_ENV
+          echo "TEST_USERNAME=${{ secrets.E2E_TEST_USERNAME }}" >> $GITHUB_ENV
+          echo "TEST_PASSWORD=${{ secrets.E2E_TEST_PASSWORD }}" >> $GITHUB_ENV
+          echo "E2E_BASE_URL=http://localhost:3001" >> $GITHUB_ENV
+
       # Smoke тесты (быстрые критичные проверки)
       - name: Run Smoke E2E Tests
         if: steps.test-strategy.outputs.strategy == 'smoke'
-        env:
-          CI: true
-          SASS_FORCE_JS: true
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-          TEST_USERNAME: ${{ secrets.E2E_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
-          E2E_BASE_URL: http://localhost:3001
         run: npx playwright test tests/e2e --grep "@smoke" --project=chromium --reporter=line
 
       # Полный набор E2E тестов (только для main)
       - name: Run Full E2E Tests
         if: steps.test-strategy.outputs.strategy == 'full'
-        env:
-          CI: true
-          SASS_FORCE_JS: true
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-          TEST_USERNAME: ${{ secrets.E2E_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
-          E2E_BASE_URL: http://localhost:3001
         run: npx playwright test tests/e2e --project=chromium --reporter=line
 
       - name: Archive E2E Test Results
@@ -99,9 +96,9 @@ jobs:
             test-results/
           retention-days: 5
 
-      # Генерируем отчет о покрытии тестами
+      # Генерируем отчет о покрытии тестами только если тесты прошли
       - name: Generate Test Coverage Report
-        if: always() # Выполняем даже если тесты провалились
+        if: success() # Только если тесты прошли
         run: |
           echo "📊 Генерация отчета о покрытии тестами..."
           
@@ -113,9 +110,9 @@ jobs:
           
           echo "✅ Отчет о покрытии сгенерирован"
 
-      # Архивируем отчет о покрытии
+      # Архивируем отчет о покрытии только если тесты прошли
       - name: Archive Test Coverage Report
-        if: always()
+        if: success() # Только если предыдущие шаги успешны
         uses: actions/upload-artifact@v3
         with:
           name: test-coverage-report
@@ -124,7 +121,7 @@ jobs:
 
       # Выводим краткую статистику в логи CI
       - name: Display Test Statistics
-        if: always()
+        if: always() # Всегда показываем статистику
         run: |
           echo "📈 СТАТИСТИКА ТЕСТОВ В CI"
           echo "═══════════════════════════════════════════════════════════════"
@@ -133,7 +130,14 @@ jobs:
           npm run test:stats
           
           echo "═══════════════════════════════════════════════════════════════"
-          echo "💡 Детальный отчет доступен в артефактах: test-coverage-report"
+          
+          # Показываем разную информацию в зависимости от результата
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "💡 Детальный отчет доступен в артефактах: test-coverage-report"
+          else
+            echo "⚠️ Тесты не прошли, отчет о покрытии не генерировался"
+            echo "🔧 Исправьте ошибки в тестах и перезапустите CI"
+          fi
 
       - name: Archive Build Artifacts
         uses: actions/upload-artifact@v3
