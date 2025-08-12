@@ -29,9 +29,6 @@ jobs:
 
       - name: Clean Platform-Specific Dependencies
         run: |
-          # Используем встроенные CI скрипты проекта
-          npm run ci:fix-platform
-          npm run prebuild
           # Принудительно переустанавливаем Biome для текущей платформы
           npm uninstall @biomejs/biome || true
           npm install @biomejs/biome@^2.1.1

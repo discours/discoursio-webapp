@@ -33,7 +33,6 @@
     "e2e:install": "npx playwright install webkit && npx playwright install-deps",
     "postinstall": "patch-package && npm run codegen:all",
     "ci:preinstall": "npm config set optional false || true",
-    "ci:postinstall": "npm run prebuild || true",
     "build:ci": "SASS_FORCE_JS=true npm run build",
     "templates": "node ./templates/compile.cjs",
     "clean": "rm -rf .output .vinxi node_modules/.vinxi",
