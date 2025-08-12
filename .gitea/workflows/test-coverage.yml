@@ -28,7 +28,7 @@ jobs:
         run: npm ci --no-optional
 
       - name: Download Test Results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: e2e-test-results
           path: ./
@@ -83,7 +83,7 @@ jobs:
         run: npm ci --no-optional
 
       - name: Download Coverage Report
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: coverage-report-${{ github.event.workflow_run.head_branch }}
           path: docs/test-coverage/

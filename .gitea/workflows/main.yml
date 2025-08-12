@@ -91,7 +91,7 @@ jobs:
         run: npx playwright test tests/e2e --project=chromium --reporter=line
 
       - name: Archive E2E Test Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: e2e-test-results
           path: |
