@@ -41,8 +41,6 @@ jobs:
         run: |
           # Используем предустановленные браузеры в системе
           npx playwright --version
-          # Проверяем доступность браузеров
-          which chromium-browser || which chromium || which google-chrome || echo "Browser check: will use system browsers"
 
       - name: Lint Code
         run: npx @biomejs/biome check src/
@@ -100,6 +98,42 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 5
+
+      # Генерируем отчет о покрытии тестами
+      - name: Generate Test Coverage Report
+        if: always() # Выполняем даже если тесты провалились
+        run: |
+          echo "📊 Генерация отчета о покрытии тестами..."
+          
+          # Устанавливаем права на выполнение скрипта
+          chmod +x scripts/test-coverage.js
+          
+          # Генерируем отчет
+          npm run test:coverage
+          
+          echo "✅ Отчет о покрытии сгенерирован"
+
+      # Архивируем отчет о покрытии
+      - name: Archive Test Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-coverage-report
+          path: docs/test-coverage/
+          retention-days: 30
+
+      # Выводим краткую статистику в логи CI
+      - name: Display Test Statistics
+        if: always()
+        run: |
+          echo "📈 СТАТИСТИКА ТЕСТОВ В CI"
+          echo "═══════════════════════════════════════════════════════════════"
+          
+          # Быстрый просмотр статистики
+          npm run test:stats
+          
+          echo "═══════════════════════════════════════════════════════════════"
+          echo "💡 Детальный отчет доступен в артефактах: test-coverage-report"
 
       - name: Archive Build Artifacts
         uses: actions/upload-artifact@v4

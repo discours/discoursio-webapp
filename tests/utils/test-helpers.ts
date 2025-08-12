@@ -128,17 +128,34 @@ export class TestUtils {
       // Ждем появления заголовка
       await this.page.waitForFunction(() => !!document.title?.trim(), { timeout: 5000 }).catch(() => {})
 
-      const title = await this.page.title()
-      if (!title?.trim()) {
+      try {
+        const title = await this.page.title()
+        if (!title?.trim()) {
+          // Проверяем что хотя бы контент загрузился
+          const hasContent = (await this.page.$('main, body > *')) !== null
+          if (!hasContent) {
+            throw new Error('❌ Страница не загрузилась - нет контента')
+          }
+          console.log('⚠️ Заголовок пустой, но контент загружен')
+        } else {
+          console.log(`⚠️ Нестандартный заголовок: "${title}", но страница загружена`)
+        }
+      } catch (error) {
+        console.log('⚠️ Не удалось получить заголовок страницы:', error)
         // Проверяем что хотя бы контент загрузился
         const hasContent = (await this.page.$('main, body > *')) !== null
         if (!hasContent) {
           throw new Error('❌ Страница не загрузилась - нет контента')
         }
-        console.log('⚠️ Заголовок пустой, но контент загружен')
-      } else {
-        console.log(`⚠️ Нестандартный заголовок: "${title}", но страница загружена`)
+        console.log('⚠️ Заголовок недоступен, но контент загружен')
       }
+    }
+
+    // Проверяем гидратацию
+    try {
+      await this.page.waitForFunction(() => document.readyState === 'complete', { timeout: 5000 })
+    } catch (error) {
+      console.log('⚠️ Гидратация не завершена полностью, но продолжаем...', error)
     }
 
     console.log('✅ Страница готова!')

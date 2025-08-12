@@ -26,7 +26,20 @@ test.describe('Аутентификация и доступ к защищенн�
 
     // Ждем загрузки и проверяем что требуется аутентификация
     // Может быть либо редирект на auth, либо появление модального окна
-    await page.waitForTimeout(2000) // Даем время на загрузку
+    try {
+      // Ждем либо изменения URL, либо появления формы аутентификации
+      await Promise.race([
+        page.waitForFunction(
+          () => window.location.href.includes('m=auth') || window.location.href.includes('auth'),
+          { timeout: 10000 }
+        ),
+        page.waitForSelector('[data-testid="auth-modal"], .auth-modal, input[type="email"], .login-form', {
+          timeout: 10000
+        })
+      ])
+    } catch (error) {
+      console.log('Таймаут ожидания аутентификации, продолжаем проверку...')
+    }
 
     const currentUrl = page.url()
     console.log('Текущий URL после перехода:', currentUrl)

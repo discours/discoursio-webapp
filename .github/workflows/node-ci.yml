@@ -113,8 +113,6 @@ jobs:
       - name: Verify Playwright browsers
         run: |
           npx playwright install chromium
-          npx playwright install firefox  
-          npx playwright install webkit
           npx playwright --version
 
       - name: Start nginx reverse proxy

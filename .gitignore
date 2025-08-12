@@ -57,3 +57,5 @@ src/graphql/generated/
 docs/progress/*
 .autopilot.json
 playwright
+
+docs/test-coverage/*

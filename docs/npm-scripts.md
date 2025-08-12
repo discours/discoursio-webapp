@@ -31,7 +31,7 @@ npm run check        # Полная проверка: lint + typecheck
 ### **E2E тесты (Playwright)**
 ```bash
 npm run e2e:install  # Установка Playwright браузеров
-npm run e2e:tests    # Запуск E2E тестов (WebKit)
+npm run e2e:tests    # Запуск E2E тестов (chromium)
 npm run e2e:tests:ci # Запуск в CI режиме
 npm run e2e          # Полный E2E прогон с окружением
 ```

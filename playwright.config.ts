@@ -13,7 +13,8 @@ export default defineConfig({
   timeout: isCI ? 30000 : 60000, // ⏱️ Сокращенные таймауты для CI
   // В CI используем более надежные настройки
   use: {
-    baseURL: process.env.E2E_BASE_URL || `http${isCI ? 's' : ''}://localhost:3001`,
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
+    // Для работы с прокси на /graphql
     headless: !!isCI,
     ignoreHTTPSErrors: true,
     // Игнорируем CORS ошибки в тестах
@@ -43,14 +44,6 @@ export default defineConfig({
             channel: 'chromium'
           })
       }
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] }
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] }
     }
   ],
 

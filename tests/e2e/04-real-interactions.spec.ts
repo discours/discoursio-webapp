@@ -5,8 +5,8 @@
  */
 
 import { expect } from '@playwright/test'
+import { getCurrentUserInfo, hasRealContent, waitForRealContent } from '../utils/real-api-helpers'
 import { TestUtils, test } from '../utils/test-helpers'
-import { waitForRealContent, hasRealContent, getCurrentUserInfo } from '../utils/real-api-helpers'
 
 test.describe('Реальные взаимодействия', () => {
   test('Гидратация и интерактивность', async ({ page }) => {

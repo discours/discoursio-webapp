@@ -10,7 +10,7 @@ import { config } from 'dotenv'
 config()
 
 // Базовый URL для E2E тестов - отдельный инстанс на порту 3001
-export const baseUrl = process.env.E2E_BASE_URL || `http${process.env.CI ? '' : 's'}://localhost:3001`
+export const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3001'
 
 /**
  * Ожидает загрузки страницы и всех сетевых запросов
@@ -26,24 +26,51 @@ export async function waitForPageLoad(page: Page): Promise<void> {
 }
 
 /**
- * Проверяет доступность сервера без его запуска
- * Для использования в beforeAll хуках тестовых файлов
- *
+ * Проверяет доступность API сервера
+ * @returns {Promise<boolean>} - Возвращает true, если API сервер доступен
+ */
+export async function checkApiServer(): Promise<boolean> {
+  try {
+    const response = await fetch('https://v3.dscrs.site/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query: '{ __typename }'
+      })
+    })
+
+    if (response.ok) {
+      console.log('✅ API сервер доступен')
+      return true
+    } else {
+      console.log('⚠️ API сервер отвечает с ошибкой:', response.status)
+      return false
+    }
+  } catch (error) {
+    console.log('❌ API сервер недоступен:', error)
+    return false
+  }
+}
+
+/**
+ * Проверяет доступность локального dev сервера
  * @param page - Экземпляр страницы Playwright
  * @returns {Promise<boolean>} - Возвращает true, если сервер доступен
  */
-export async function checkServerWithoutStarting(page: Page): Promise<boolean> {
+export async function checkLocalServer(page: Page): Promise<boolean> {
   try {
-    console.log('Проверка доступности сервера...')
+    console.log('🔍 Проверка доступности локального сервера...')
     await page.goto(baseUrl)
     await page.waitForLoadState('domcontentloaded')
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
-      console.warn('Тайм-аут при ожидании networkidle, продолжаем...')
+      console.warn('⚠️ Тайм-аут при ожидании networkidle, продолжаем...')
     })
-    console.log('Сервер доступен и отвечает')
+    console.log('✅ Локальный сервер доступен и отвечает')
     return true
   } catch (e) {
-    console.error('Сервер недоступен:', e)
+    console.error('❌ Локальный сервер недоступен:', e)
     return false
   }
 }
