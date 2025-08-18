@@ -172,9 +172,7 @@ export const EditorSwiper = (props: Props) => {
             >
               <For each={props.images}>
                 {(slide, index) => (
-                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                  // @ts-ignore
-                  <swiper-slide lazy="true" virtual-index={index()}>
+                  <swiper-slide lazy={true} virtual-index={index()}>
                     <div class={styles.image}>
                       <Image src={slide.url || ''} alt={slide.title || ''} width={800} />
 
@@ -226,8 +224,6 @@ export const EditorSwiper = (props: Props) => {
               >
                 <For each={props.images}>
                   {(slide, index) => (
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
                     <swiper-slide virtual-index={index()} style={{ width: 'auto', height: 'auto' }}>
                       <div
                         class={clsx(styles.imageThumb)}

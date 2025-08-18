@@ -228,8 +228,8 @@ export async function getPagePerformance(page: Page): Promise<{
     const resources = performance.getEntriesByType('resource')
 
     return {
-      loadTime: navigation.loadEventEnd - (navigation as any).navigationStart,
-      domContentLoaded: navigation.domContentLoadedEventEnd - (navigation as any).navigationStart,
+      loadTime: navigation.loadEventEnd - navigation.startTime,
+      domContentLoaded: navigation.domContentLoadedEventEnd - navigation.startTime,
       networkRequests: resources.length
     }
   })

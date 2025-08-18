@@ -73,8 +73,6 @@ export const ArticleCardSwiper = (props: Props) => {
                     >
                       <For each={props.slides}>
                         {(slide, index) => (
-                          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                          // @ts-ignore
                           <swiper-slide virtual-index={index()}>
                             <ArticleCard
                               article={slide}

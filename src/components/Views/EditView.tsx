@@ -915,7 +915,7 @@ export const EditView = (props: { draft?: Draft }) => {
                 console.log(
                   `[EditView] Обновляем поле ${fieldName} из connect (${fd.content.length} символов)`
                 )
-                // @ts-ignore - мы проверили что поле существует выше
+                // @ts-expect-error - мы проверили что поле существует выше
                 draftInput[fieldName] = fd.content
               }
             })

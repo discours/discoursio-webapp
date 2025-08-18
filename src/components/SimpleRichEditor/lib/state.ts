@@ -117,7 +117,6 @@ export const useEditor = (props: EditorProps) => {
   const storageKey = createMemo(() => (props.id ? `editor-${props.id}` : ''))
 
   // Начальное состояние
-  // @ts-ignore
   const [state, setState] = createStore<EditorState>({
     id: props.id || `editor-${Math.random().toString(36).slice(2)}`,
     content: props.content || '',

@@ -1,4 +1,3 @@
-import { getCookiesString, parseCookie } from '@solid-primitives/cookies'
 import { useSearchParams } from '@solidjs/router'
 import { Client } from '@urql/core'
 import type { Accessor, JSX } from 'solid-js'
@@ -327,6 +326,65 @@ export const SessionProvider = (props: {
     }
   }
 
+  // Функция для загрузки сессии с переданным клиентом (для работы с httpOnly cookies)
+  const loadSessionDataWithClient = async (client: Client): Promise<AuthPayload | undefined> => {
+    try {
+      console.log('[loadSessionDataWithClient] Загрузка данных сессии с переданным клиентом')
+
+      const result = await client.mutation(GetSessionMutation, {}).toPromise()
+      console.log('[loadSessionDataWithClient] Получен результат GetSession:', result)
+
+      if (result.error) {
+        console.error('[loadSessionDataWithClient] GraphQL error:', result.error)
+        console.error(
+          '[loadSessionDataWithClient] Error details:',
+          result.error.networkError || result.error.graphQLErrors
+        )
+        return undefined
+      }
+
+      if (result.data?.getSession) {
+        const { author, token } = result.data.getSession
+        console.log('[loadSessionDataWithClient] Данные сессии получены:', {
+          authorId: author.id,
+          authorName: author.name,
+          hasToken: !!token
+        })
+
+        if (!token) {
+          console.warn('[loadSessionDataWithClient] Токен отсутствует в ответе')
+          return undefined
+        }
+
+        const sessionData = {
+          token,
+          author: {
+            id: author.id,
+            slug: author.slug,
+            name: author.name,
+            email: author.email,
+            pic: author.pic,
+            bio: author.bio,
+            links: author.links
+          }
+        }
+
+        console.log('[loadSessionDataWithClient] Возвращаем данные сессии:', sessionData)
+        return sessionData
+      }
+
+      console.warn('[loadSessionDataWithClient] Данные сессии отсутствуют в ответе')
+      return undefined
+    } catch (error) {
+      console.error('[loadSessionDataWithClient] Исключение при загрузке данных сессии:', error)
+      console.error(
+        '[loadSessionDataWithClient] Error stack:',
+        error instanceof Error ? error.stack : 'No stack trace'
+      )
+      return undefined
+    }
+  }
+
   // Функция для безопасного обновления сессии (принцип batch из solid-effects.md)
   const updateSession = (
     /**
@@ -409,16 +467,32 @@ export const SessionProvider = (props: {
 
     console.log('[loadSession] Loading session data')
 
-    // Поддержка зеркалирования токена из cookie
-    if (!isServer && !localStorage.getItem(AUTH_TOKEN_KEY)) {
-      const cookieToken = parseCookie(getCookiesString(), AUTH_TOKEN_KEY) as string | undefined
-      if (cookieToken) localStorage.setItem(AUTH_TOKEN_KEY, cookieToken)
-    }
-
     const storedToken = isServer ? null : localStorage.getItem(AUTH_TOKEN_KEY)
+
     if (!storedToken) {
-      updateSession(undefined, true, false)
-      return undefined
+      // Если localStorage пустой, пытаемся восстановить сессию из httpOnly cookie
+      console.log('[loadSession] localStorage пустой, пытаемся восстановить из httpOnly cookie')
+
+      try {
+        const cookieClient = graphqlClientCreate(coreApiUrl)
+        const sessionData = await loadSessionDataWithClient(cookieClient)
+
+        if (sessionData) {
+          console.log('[loadSession] Сессия восстановлена из httpOnly cookie')
+          // Сохраняем токен в localStorage для последующих запросов
+          localStorage.setItem(AUTH_TOKEN_KEY, sessionData.token)
+          updateSession(sessionData, true)
+          return sessionData
+        } else {
+          console.log('[loadSession] Не удалось восстановить сессию из cookie')
+          updateSession(undefined, true, false)
+          return undefined
+        }
+      } catch (error) {
+        console.log('[loadSession] Ошибка при восстановлении сессии из cookie:', error)
+        updateSession(undefined, true, false)
+        return undefined
+      }
     }
 
     setIsSessionValidating(true)
@@ -566,19 +640,40 @@ export const SessionProvider = (props: {
   onMount(async () => {
     // Инициализируем базовый клиент
     let initialToken: string | null = null
+
     if (!isServer) {
+      // 1. Сначала проверяем localStorage
       const lsToken = localStorage.getItem(AUTH_TOKEN_KEY)
       if (lsToken) {
         initialToken = lsToken
+        console.log('[SessionProvider] Токен найден в localStorage')
       } else {
-        // Если сервер выставил cookie, зеркалим его в localStorage для заголовка Authorization
-        const cookieToken = parseCookie(getCookiesString(), AUTH_TOKEN_KEY) as string | undefined
-        if (cookieToken) {
-          localStorage.setItem(AUTH_TOKEN_KEY, cookieToken)
-          initialToken = cookieToken
+        // 2. Если localStorage пустой, проверяем httpOnly cookies
+        // Для httpOnly cookies мы не можем прочитать значение, но можем попробовать
+        // загрузить сессию с пустым токеном - сервер проверит cookie
+        console.log('[SessionProvider] localStorage пустой, проверяем httpOnly cookies')
+
+        // Создаем клиент без токена - сервер проверит httpOnly cookie
+        const cookieClient = graphqlClientCreate(coreApiUrl)
+
+        try {
+          // Пытаемся загрузить сессию с пустым токеном
+          // Сервер должен проверить httpOnly cookie и вернуть данные
+          const sessionData = await loadSessionDataWithClient(cookieClient)
+          if (sessionData) {
+            console.log('[SessionProvider] Сессия восстановлена из httpOnly cookie')
+            // Сохраняем токен в localStorage для последующих запросов
+            localStorage.setItem(AUTH_TOKEN_KEY, sessionData.token)
+            updateSession(sessionData, true)
+            return // Выходим, так как сессия уже загружена
+          }
+        } catch (error) {
+          console.log('[SessionProvider] Не удалось восстановить сессию из cookie:', error)
         }
       }
     }
+
+    // Инициализируем клиент с найденным токеном
     initializeClient(initialToken || undefined)
 
     // Проверяем наличие токена
@@ -794,14 +889,38 @@ export const SessionProvider = (props: {
       console.info('[signOut] Signing out')
 
       const currentSession = untrack(() => session())
+      let logoutSuccess = false
+
       if (currentSession?.token) {
-        const authClient = graphqlClientCreate(coreApiUrl, currentSession.token)
-        await authClient.mutation(LogoutMutation, {}).toPromise()
+        // Пытаемся выполнить logout на сервере с токеном
+        try {
+          const authClient = graphqlClientCreate(coreApiUrl, currentSession.token)
+          await authClient.mutation(LogoutMutation, {}).toPromise()
+          logoutSuccess = true
+        } catch (error) {
+          console.warn('[signOut] Failed to logout with token:', error)
+        }
+      } else {
+        // Если токен недоступен локально, пытаемся выполнить logout через httpOnly cookie
+        console.log('[signOut] No local token, trying logout via httpOnly cookie')
+        try {
+          const cookieClient = graphqlClientCreate(coreApiUrl)
+          await cookieClient.mutation(LogoutMutation, {}).toPromise()
+          logoutSuccess = true
+        } catch (error) {
+          console.warn('[signOut] Failed to logout via cookie:', error)
+        }
       }
 
-      // Очищаем сессию
+      // Очищаем локальную сессию в любом случае
       updateSession(undefined)
-      toast.success(t("You've successfully logged out"))
+
+      if (logoutSuccess) {
+        toast.success(t("You've successfully logged out"))
+      } else {
+        toast.success(t('Local session cleared'))
+      }
+
       return true
     } catch (error) {
       console.error('[signOut] Error:', error)
@@ -900,7 +1019,7 @@ export const SessionProvider = (props: {
   }
 
   /**
-   * Обновление токена
+   * Обновление токена авторизации
    */
   const refreshToken = async (): Promise<boolean> => {
     try {
@@ -908,8 +1027,25 @@ export const SessionProvider = (props: {
 
       const currentToken =
         untrack(() => sessionToken()) || (isServer ? null : localStorage.getItem(AUTH_TOKEN_KEY))
+
       if (!currentToken) {
-        console.warn('[refreshToken] No token available for refresh')
+        console.warn('[refreshToken] No token available for refresh, trying httpOnly cookie')
+
+        // Если токен недоступен, пытаемся обновить сессию через httpOnly cookie
+        try {
+          const cookieClient = graphqlClientCreate(coreApiUrl)
+          const sessionData = await loadSessionDataWithClient(cookieClient)
+
+          if (sessionData) {
+            console.log('[refreshToken] Сессия обновлена из httpOnly cookie')
+            localStorage.setItem(AUTH_TOKEN_KEY, sessionData.token)
+            updateSession(sessionData, true)
+            return true
+          }
+        } catch (cookieError) {
+          console.log('[refreshToken] Не удалось обновить сессию из cookie:', cookieError)
+        }
+
         return false
       }
 
@@ -999,8 +1135,22 @@ export const SessionProvider = (props: {
         }
       }
 
-      // Нет валидной сессии и нет токена в storage — открываем модалку логина
+      // Нет валидной сессии и нет токена в storage — проверяем httpOnly cookie
       if (!storedToken) {
+        console.info('[requireAuthentication] No token in localStorage, checking httpOnly cookie')
+
+        try {
+          const sessionData = await loadSession()
+          if (sessionData?.token) {
+            console.log('[requireAuthentication] Сессия восстановлена из cookie, выполняем callback')
+            await callback()
+            return
+          }
+        } catch (cookieError) {
+          console.log('[requireAuthentication] Не удалось восстановить сессию из cookie:', cookieError)
+        }
+
+        // Если cookie тоже не помог, открываем модалку логина
         changeSearchParams({ mode: 'login', m: 'auth' }, { replace: true })
         return
       }

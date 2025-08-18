@@ -121,8 +121,6 @@ export const ImageSwiper = (props: Props) => {
               >
                 <For each={props.images}>
                   {(slide, index) => (
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
                     <swiper-slide virtual-index={index()} style={{ width: 'auto', height: 'auto' }}>
                       <div
                         class={clsx(styles.imageThumb)}

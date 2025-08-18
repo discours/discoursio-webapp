@@ -5,9 +5,9 @@
  * Выводит таблицу с результатами в консоль
  */
 
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -51,7 +51,7 @@ class TestStatsViewer {
             stats.flaky += data.stats.flaky || 0
             stats.duration += data.stats.duration || 0
           }
-        } catch (error) {
+        } catch (_error) {
           // Игнорируем ошибки чтения
         }
       }
