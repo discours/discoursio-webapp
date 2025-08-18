@@ -1,0 +1,40 @@
+# .cursor/rules/project-workflow.mdc
+---
+description: Project-specific workflow and documentation rules
+alwaysApply: true
+priority: 4
+---
+
+# 📋 Project Workflow
+
+## 📝 Documentation Updates
+**При каждом изменении:**
+```
+1. CHANGELOG.md - новая версия сверху
+2. docs/README.md - если изменена документация  
+3. features.md - если добавлена/изменена функциональность
+4. docs/progress/<timestamp>-<название>.md - отчёты о прогрессе
+```
+
+## 🔄 Base Workflow
+
+DO NOT MAKE any command-line generations, use internal tools
+
+## 📊 Progress Tracking
+
+**Каждый чат должен завершаться:**
+```markdown
+## 🎯 Business Impact: [OUTCOME] - [METRIC] - [DEADLINE]
+## 🛠️ Technical: [PROBLEM] → [SOLUTION] → [QUALITY]
+## ✅ Definition of Done:
+- [ ] Tests pass
+- [ ] Code quality gates passed  
+- [ ] Documentation updated
+- [ ] No regression introduced
+```
+
+## 🎯 Project Context
+- **Tech Stack**: SolidJS + TypeScript + GraphQL + SCSS
+- **Target**: Modern browsers, mobile-first
+- **Performance**: Sub-second loading, smooth interactions
+```

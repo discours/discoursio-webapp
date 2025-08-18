@@ -1,0 +1,49 @@
+# .cursor/rules/code-quality.mdc
+---
+description: Code quality, testing, and validation standards
+alwaysApply: true
+priority: 3
+---
+
+# 🛡️ Code Quality Standards
+
+## 🧪 Testing Philosophy
+```typescript
+// ✅ Test real behavior, not implementation
+test('user can submit valid form', async () => {
+  await page.fill('[data-testid="email"]', 'test@example.com')
+  await page.click('button[type="submit"]')
+  await expect(page.locator('.success')).toBeVisible()
+})
+
+// ❌ Avoid excessive mocking
+// Don't mock everything - test real interactions
+```
+
+## 📏 Quality Gates
+**Before any commit:**
+```bash
+1. npm run fix              # Biome lint + format
+2. npm run typecheck        # TypeScript проверка типов
+3. npm run test:unit        # Vitest unit тесты
+4. npm run e2e --grep="critical"  # Playwright критические E2E тесты
+5. npm run build            # Проверка сборки SolidJS
+6. npm run codegen:all      # GraphQL типы актуальны
+```
+
+## 🏗️ Architecture Rules
+- **Single Responsibility**: Одна функция = одна ответственность
+- **Pure Functions**: Предсказуемые, тестируемые функции
+- **Composition > Inheritance**: Переиспользование через композицию
+- **Explicit > Implicit**: Явные зависимости и побочные эффекты
+## 📊 Performance Standards
+- **Bundle size**: Критические страницы < 500KB gzipped
+- **Core Web Vitals**: LCP < 2.5s, FID < 100ms, CLS < 0.1
+- **Caching**: Агрессивное кеширование GraphQL запросов
+- **Images**: WebP формат, responsive images, lazy loading
+
+## 🔒 Security Standards
+- **Input validation**: Валидация на клиенте И сервере
+- **XSS protection**: Санитизация HTML контента
+- **CSRF**: Токены для форм
+- **Authentication**: JWT + refresh tokens

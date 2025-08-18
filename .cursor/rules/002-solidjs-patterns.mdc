@@ -1,0 +1,249 @@
+---
+description: SolidJS/SolidStart patterns and anti-patterns - Compact Edition 2024
+alwaysApply: true
+priority: 2
+---
+
+## 📂 Structure & GraphQL
+```
+НЕ СОЗДАВАТЬ новые папки без согласования
+src/components/_shared/ - переиспользуемые компоненты
+src/graphql/generated/ - НЕ РЕДАКТИРОВАТЬ! Только через codegen.ts
+```
+
+# ⚡ SolidJS Critical Anti-Patterns
+
+## 🚨 НЕ React! SolidJS имеет принципиально другую модель реактивности
+
+## 🚫 НИКОГДА не делай:
+```typescript
+// ❌ Async createEffect - ЛОМАЕТ ГИДРАЦИЮ
+createEffect(async () => await fetchData())
+
+// ❌ Прямой window доступ в init - SSR error
+const [width] = createSignal(window.innerWidth)
+
+// ❌ Мутация props - нарушает реактивность
+props.data.push(newItem)
+
+// ❌ Множественные async состояния - используй createResource
+const [loading, setLoading] = createSignal(true)
+const [error, setError] = createSignal<Error>()
+const [data, setData] = createSignal<Data>()
+
+// ❌ createAsync - пока недоступен (вернется в Signals 2.0)
+const data = createAsync(async () => fetchData())
+```
+
+# ✅ Правильные Паттерны
+
+## 🔥 Async Data Loading
+```typescript
+// ✅ ВСЕГДА createResource для async данных
+const [data, { refetch }] = createResource(
+  () => params(),
+  async (params) => loadData(params)
+)
+
+// ✅ Обработка состояний
+<Show when={!data.loading} fallback={<Loading />}>
+  <Show when={!data.error} fallback={<Error error={data.error} />}>
+    <DataView data={data()} />
+  </Show>
+</Show>
+
+// ✅ SSR интеграция
+const [shouts] = createResource(async () => {
+  return props.data.featuredShouts || await loadMoreFeatured()
+}, { initialValue: props.data.featuredShouts })
+```
+
+## 🔄 Effect Management
+```typescript
+// ✅ Async в onMount
+onMount(async () => {
+  const data = await fetchData()
+  setData(data)
+})
+
+// ✅ Циклические зависимости с defer
+createEffect(on(
+  () => feedByTopic()[props.topicSlug],
+  (feed) => { if (feed?.length) setSortedFeed(feed) },
+  { defer: true }
+))
+
+// ✅ Группировка через batch
+batch(() => {
+  setState(prev => ({ ...prev, authors: data.authors || [] }))
+})
+
+// ✅ Изоляция через untrack
+const getToken = () => untrack(() => session()?.token)
+```
+
+## 🧊 Hydration Safety
+```typescript
+// ✅ Безопасный browser API доступ
+createEffect(() => {
+  if (typeof window !== 'undefined') {
+    setWidth(window.innerWidth)
+  }
+})
+
+// ✅ Условная клиентская загрузка
+const [data] = createResource(() => {
+  if (typeof window === 'undefined') return null
+  return loadClientData()
+})
+
+// ✅ Immutable updates
+setData(prev => [...prev, newItem])
+```
+
+## 🎯 GraphQL Patterns
+```typescript
+// ✅ Client Preset
+import { gql } from '~/graphql/generated'
+import { ReactionKind } from '~/graphql/generated'
+
+// ✅ Кешируемые загрузчики (публичные данные)
+export const loadTopics = () => createCacheableLoader(query, {}, true)
+
+// ✅ Приватные данные БЕЗ кеширования
+export const loadPrivateData = (client) => async () => {
+  if (!client) return undefined
+  return await client.query(query).toPromise()
+}
+```
+
+## 🎨 Memoization Strategy (НЕ как useMemo в React!)
+```typescript
+// ✅ createMemo РАБОТАЕТ ИНАЧЕ чем useMemo - кеширует навсегда пока зависимости не изменятся
+const sorted = createMemo(() => {
+  const feed = topicFeed()
+  const isEqual = feed.length === prev().length && 
+    feed.every((item, i) => item.id === prev()[i]?.id)
+  if (isEqual) return prevSorted()
+  return [...feed].sort(byViews)
+})
+
+// ✅ Атомарные сигналы вместо useState
+const [entities, setEntities] = createSignal<Record<string, Topic>>({})
+const [sortBy, setSortBy] = createSignal<TopicSort>('shouts')
+```
+
+# 🚨 Антипаттерны из Рефакторинга
+
+## ❌ Неправильное async состояние
+```typescript
+// ❌ Было - множественные состояния
+const [feed, setFeed] = createSignal<Shout[]>([])
+const [loading, setLoading] = createSignal(false)
+createEffect(async () => { setLoading(true); /* fetch */ })
+
+// ✅ Стало - createResource
+const [feed] = createResource(() => options(), loadShouts)
+```
+
+## ❌ Небезопасные контексты SSR
+```typescript
+// ❌ Было - без try/catch
+const { randomTopicFeed } = useFeaturedFeed()
+
+// ✅ Стало - безопасный доступ
+const safeTopicFeed = createMemo(() => {
+  try { return useFeaturedFeed().randomTopicFeed() || [] }
+  catch { return [] }
+})
+```
+
+## ❌ Нестабильные ключи
+```typescript
+// ❌ Было - Math.random() ключи (гидратационные ошибки)
+{ id: Math.random(), text: 'Comment' }
+
+// ✅ Стало - стабильные идентификаторы
+{ id: 'comment-1', text: 'Comment' }
+```
+
+## ❌ Избыточные вычисления
+```typescript
+// ❌ Было - пересчет при каждом рендере
+const topShouts = () => [...feedByTopic()].sort(byStat('views'))
+
+// ✅ Стало - мемоизация с проверкой изменений
+const topShouts = createMemo(() => {
+  // Проверка равенства + кеширование
+})
+```
+
+# 🔄 SolidJS Reactivity Rules (НЕ как в React!)
+- **onMount ≠ useEffect**: Один раз после DOM, async операции
+- **createEffect ≠ useEffect**: Синхронно, реакция на изменения
+- **createResource ≠ useState+useEffect**: ЕДИНСТВЕННЫЙ способ для async данных
+- **createMemo ≠ useMemo**: Только для СЛОЖНЫХ вычислений
+- **batch**: Группировка связанных обновлений (нет в React)
+- **untrack**: Чтение без зависимости (нет в React)
+
+# 🧊 SSR Best Practices
+- Server ↔ Client DOM должен совпадать ТОЧНО
+- `route.load` для SSR данных
+- `initialValue` в createResource для гидрации
+- `typeof window !== 'undefined'` для browser API
+- Избегай условного рендеринга в корне
+
+# 💎 Advanced Patterns
+
+## 🎯 Provider порядок (избежание циклических зависимостей)
+```typescript
+<LocalizeProvider>
+  <SessionProvider>
+    <UIProvider>
+      <TopicsProvider>
+        <FeedProvider>{children}</FeedProvider>
+      </TopicsProvider>
+    </UIProvider>
+  </SessionProvider>
+</LocalizeProvider>
+```
+
+## 🔍 Отладка циклов
+```typescript
+createRenderEffect(() => {
+  console.log('[Debug] Render cycle:', ++count)
+  if (count > 100) console.error('Infinite loop detected')
+})
+```
+
+## 🗂️ Caching Strategy
+```typescript
+// ✅ Кешируется: статичные публичные данные
+// loadTopics(), loadAuthors(), loadShouts()
+
+// ❌ НЕ кешируется: динамические персональные данные  
+// loadReactions(), авторизованные запросы
+```
+
+# 🚨 Red Flags - Срочные исправления
+1. **Async createEffect** → onMount + createResource
+2. **Множественные loading/error** → createResource states
+3. **window.* в init** → typeof проверки
+4. **Math.random() keys** → стабильные ID
+5. **Большие stores** → атомарные сигналы
+
+# 🔮 Signals 2.0 Preview
+```typescript
+// 🔮 Будущее - createAsync возвращается
+const A = createAsync(() => fetchDataA())
+const B = createAsync(() => fetchDataB()) 
+// Параллельная загрузка без блокировок
+
+// 🔮 Явные зависимости effects
+createEffect(() => console.log(data()), () => [data])
+```
+
+---
+💋 При сомнениях выбирай простое решение
+🤖 Базируется на реальных паттернах проекта
+⚠️ **ВАЖНО**: Это SolidJS, НЕ React! Не применяй React-паттерны!

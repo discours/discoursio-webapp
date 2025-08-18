@@ -48,14 +48,10 @@ app.config.*.js
 DEBUG.log
 .prettierrc
 venv
-.cursor
 /SV-DEV/*
-.cursor
-.cursorrules
 src/graphql/generated/
 .yoyo/
 docs/progress/*
 .autopilot.json
 playwright
-
 docs/test-coverage/*
