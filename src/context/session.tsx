@@ -42,10 +42,7 @@ const testApiConnection = async () => {
   try {
     console.log('[API Test] Тестируем подключение к API')
     console.log('[API Test] CoreApiUrl:', coreApiUrl)
-    console.log(
-      '[API Test] Current location:',
-      typeof window !== 'undefined' ? window.location.href : 'SSR'
-    )
+    console.log('[API Test] Current location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
 
     // Простой fetch запрос для проверки доступности
     const response = await fetch(coreApiUrl, {
@@ -171,10 +168,7 @@ type SessionContextType = {
   /** Выход из системы */
   signOut: () => Promise<boolean>
   /** Требование авторизации */
-  requireAuthentication: (
-    callback: (() => Promise<void>) | (() => void),
-    modalSource: ModalSource
-  ) => Promise<void>
+  requireAuthentication: (callback: (() => Promise<void>) | (() => void), modalSource: ModalSource) => Promise<void>
   /** Обновление токена */
   refreshToken: () => Promise<boolean>
   /** Загрузка сессии */
@@ -276,10 +270,7 @@ export const SessionProvider = (props: {
 
       if (result.error) {
         console.error('[loadSessionData] GraphQL error:', result.error)
-        console.error(
-          '[loadSessionData] Error details:',
-          result.error.networkError || result.error.graphQLErrors
-        )
+        console.error('[loadSessionData] Error details:', result.error.networkError || result.error.graphQLErrors)
         return undefined
       }
 
@@ -318,10 +309,7 @@ export const SessionProvider = (props: {
       return undefined
     } catch (error) {
       console.error('[loadSessionData] Исключение при загрузке данных сессии:', error)
-      console.error(
-        '[loadSessionData] Error stack:',
-        error instanceof Error ? error.stack : 'No stack trace'
-      )
+      console.error('[loadSessionData] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
       return undefined
     }
   }
@@ -377,10 +365,7 @@ export const SessionProvider = (props: {
       return undefined
     } catch (error) {
       console.error('[loadSessionDataWithClient] Исключение при загрузке данных сессии:', error)
-      console.error(
-        '[loadSessionDataWithClient] Error stack:',
-        error instanceof Error ? error.stack : 'No stack trace'
-      )
+      console.error('[loadSessionDataWithClient] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
       return undefined
     }
   }
@@ -970,10 +955,7 @@ export const SessionProvider = (props: {
         }
 
         if (securityUpdateResult.data?.updateSecurity?.error) {
-          console.error(
-            '[updateProfile] Security update failed:',
-            securityUpdateResult.data.updateSecurity.error
-          )
+          console.error('[updateProfile] Security update failed:', securityUpdateResult.data.updateSecurity.error)
           throw new Error(securityUpdateResult.data.updateSecurity.error)
         }
 
@@ -1025,8 +1007,7 @@ export const SessionProvider = (props: {
     try {
       console.info('[refreshToken] Refreshing token')
 
-      const currentToken =
-        untrack(() => sessionToken()) || (isServer ? null : localStorage.getItem(AUTH_TOKEN_KEY))
+      const currentToken = untrack(() => sessionToken()) || (isServer ? null : localStorage.getItem(AUTH_TOKEN_KEY))
 
       if (!currentToken) {
         console.warn('[refreshToken] No token available for refresh, trying httpOnly cookie')
@@ -1094,10 +1075,7 @@ export const SessionProvider = (props: {
   /**
    * Требование авторизации
    */
-  const requireAuthentication = async (
-    callback: (() => Promise<void>) | (() => void),
-    modalSource: ModalSource
-  ) => {
+  const requireAuthentication = async (callback: (() => Promise<void>) | (() => void), modalSource: ModalSource) => {
     console.info('[requireAuthentication] Require authentication from', modalSource)
 
     try {
@@ -1125,8 +1103,7 @@ export const SessionProvider = (props: {
           // Если была ошибка авторизации, перенаправляем на форму входа
           if (
             callbackError instanceof Error &&
-            (callbackError.message.includes('unauthorized') ||
-              callbackError.message.includes('unauthenticated'))
+            (callbackError.message.includes('unauthorized') || callbackError.message.includes('unauthenticated'))
           ) {
             updateSession(undefined)
             changeSearchParams({ mode: 'login', m: 'auth' }, { replace: true })
@@ -1173,9 +1150,7 @@ export const SessionProvider = (props: {
   const changePassword = async (password: string, token: string): Promise<boolean> => {
     try {
       const authClient = graphqlClientCreate(coreApiUrl)
-      const result = await authClient
-        .mutation(ResetPasswordMutation, { newPassword: password, token })
-        .toPromise()
+      const result = await authClient.mutation(ResetPasswordMutation, { newPassword: password, token }).toPromise()
       return !!result.data?.resetPassword?.success
     } catch (error) {
       console.error('[changePassword] Error:', error)
@@ -1186,9 +1161,7 @@ export const SessionProvider = (props: {
   const forgotPassword = async (params: ForgotPasswordInput): Promise<string> => {
     try {
       const authClient = graphqlClientCreate(coreApiUrl)
-      const result = await authClient
-        .mutation(RequestPasswordResetMutation, { email: params.email })
-        .toPromise()
+      const result = await authClient.mutation(RequestPasswordResetMutation, { email: params.email }).toPromise()
 
       if (result.data?.requestPasswordReset?.success) {
         return ''
@@ -1254,9 +1227,7 @@ export const SessionProvider = (props: {
     try {
       console.info('[resendVerifyEmail] Resending verification email:', { email: params.email })
       const authClient = graphqlClientCreate(coreApiUrl)
-      const result = await authClient
-        .mutation(ResendVerifyEmailMutation, { email: params.email })
-        .toPromise()
+      const result = await authClient.mutation(ResendVerifyEmailMutation, { email: params.email }).toPromise()
 
       if (result.data?.resendConfirmationEmail?.success) {
         return true

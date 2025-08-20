@@ -33,14 +33,7 @@ type DropDownProps = {
 
 const Chevron = (props: { class?: string }) => {
   return (
-    <svg
-      class={props.class}
-      xmlns="http://www.w3.org/2000/svg"
-      width="18"
-      height="18"
-      viewBox="0 0 18 18"
-      fill="none"
-    >
+    <svg class={props.class} xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none">
       <path
         d="M4.5 6.75L9 11.25L13.5 6.75"
         stroke="#141414"
@@ -87,10 +80,7 @@ const OptionItem = (props: {
       }}
     >
       <Show when={props.option.icon}>
-        <Icon
-          name={props.option.icon as string}
-          class={clsx(styles.optionIcon, props.isActive && styles.active)}
-        />
+        <Icon name={props.option.icon as string} class={clsx(styles.optionIcon, props.isActive && styles.active)} />
       </Show>
       <Show when={props.option.title}>
         <span>{props.option.title}</span>
@@ -178,9 +168,7 @@ export const DropDown = (props: DropDownProps) => {
 
     return (
       <For each={props.options as Option[]}>
-        {(option) => (
-          <OptionItem option={option} isActive={false} onClick={(opt) => props.onChange?.(opt)} />
-        )}
+        {(option) => <OptionItem option={option} isActive={false} onClick={(opt) => props.onChange?.(opt)} />}
       </For>
     )
   }

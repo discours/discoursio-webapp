@@ -56,12 +56,7 @@ export const TitleSection = (props: {
           </a>
         </Show>
         <Show
-          when={
-            props.isTitleClicked &&
-            !props.isLeadVisible &&
-            !props.draft?.lead &&
-            props.draft?.layout !== 'audio'
-          }
+          when={props.isTitleClicked && !props.isLeadVisible && !props.draft?.lead && props.draft?.layout !== 'audio'}
         >
           <a class={styles.action} onClick={props.onShowLead}>
             {t('Add intro')}

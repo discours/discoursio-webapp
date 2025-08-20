@@ -81,12 +81,7 @@ export const InlineForm = (props: Props) => {
         />
         <Popover content={t('Add link')}>
           {(triggerRef: (el: HTMLElement) => void) => (
-            <button
-              ref={triggerRef}
-              type="button"
-              onClick={handleSaveButtonClick}
-              disabled={Boolean(formValueError())}
-            >
+            <button ref={triggerRef} type="button" onClick={handleSaveButtonClick} disabled={Boolean(formValueError())}>
               <Icon name="status-done" />
             </button>
           )}
@@ -100,9 +95,7 @@ export const InlineForm = (props: Props) => {
         </Popover>
       </div>
 
-      <div class={clsx(styles.linkError, { [styles.visible]: Boolean(formValueError()) })}>
-        {formValueError()}
-      </div>
+      <div class={clsx(styles.linkError, { [styles.visible]: Boolean(formValueError()) })}>{formValueError()}</div>
     </div>
   )
 }

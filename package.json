@@ -1,7 +1,7 @@
 {
   "name": "discoursio-webapp",
   "private": true,
-  "version": "0.12.6",
+  "version": "0.12.7",
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
@@ -44,7 +44,7 @@
     "prepare": "[ \"$VERCEL\" != \"1\" ] && npm run e2e:install || true"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.1.4",
+    "@biomejs/biome": "^2.2.0",
     "@graphql-codegen/add": "5.0.3",
     "@graphql-codegen/cli": "^5.0.7",
     "@graphql-codegen/client-preset": "^4.8.3",

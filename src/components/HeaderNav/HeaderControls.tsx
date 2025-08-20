@@ -52,9 +52,7 @@ const ConnectionIndicator = () => {
       return (
         <div>
           <div>{t('Disconnected from server')}</div>
-          <div
-            class={styles.popoverSubtext}
-          >{`${t('Connection status')}: ${t(connectContext.getStatus())}`}</div>
+          <div class={styles.popoverSubtext}>{`${t('Connection status')}: ${t(connectContext.getStatus())}`}</div>
           <div class={styles.popoverSubtext}>{t('Changes saved locally')}</div>
         </div>
       )
@@ -146,9 +144,7 @@ const EditingHeader = (props: Props) => {
         </div>
       </Show>
 
-      <div
-        class={clsx(styles.userControlItem, styles.settingsControlContainer, styles.userControlItemVerbose)}
-      >
+      <div class={clsx(styles.userControlItem, styles.settingsControlContainer, styles.userControlItemVerbose)}>
         <Popover content={t('Settings')}>
           {(ref) => (
             <Button
@@ -200,9 +196,7 @@ const AuthorizedHeader = (props: Props) => {
 
       <NotificationsBell />
 
-      <div
-        class={clsx(styles.userControlItem, styles.userControlItemVerbose, styles.userControlItemCreate)}
-      >
+      <div class={clsx(styles.userControlItem, styles.userControlItemVerbose, styles.userControlItemCreate)}>
         <button onClick={handleCreatePostClick}>
           <span class={styles.textLabel}>{t('Create post')}</span>
           <Icon name="pencil-outline" class={styles.icon} />
@@ -270,9 +264,7 @@ const GuestHeader = () => {
         </button>
       </div>
 
-      <div
-        class={clsx(styles.userControlItem, styles.userControlItemVerbose, styles.userControlItemCreate)}
-      >
+      <div class={clsx(styles.userControlItem, styles.userControlItemVerbose, styles.userControlItemCreate)}>
         <button onClick={handleCreatePostClick}>
           <span class={styles.textLabel}>{t('Create post')}</span>
           <Icon name="pencil-outline" class={styles.icon} />
@@ -364,9 +356,7 @@ const EditingSelector = () => {
         >
           <Icon name="eye" class={styles.editorModeIcon} />
           <div class={styles.editorModeTitle}>{t('Preview')}</div>
-          <div class={styles.editorModeDescription}>
-            {t('This is how the post will look when published')}
-          </div>
+          <div class={styles.editorModeDescription}>{t('This is how the post will look when published')}</div>
         </li>
         {/* Режим редактирования */}
         <li
@@ -387,9 +377,7 @@ const EditingSelector = () => {
           <Icon name="comment" class={styles.editorModeIcon} />
           {/* Используем 'Commenting' на основе существующего UI */}
           <div class={styles.editorModeTitle}>{t('Ask and suggest')}</div>
-          <div class={styles.editorModeDescription}>
-            {t('Suggest edits and comments to make the post better')}
-          </div>
+          <div class={styles.editorModeDescription}>{t('Suggest edits and comments to make the post better')}</div>
         </li>
       </ul>
     </Popup>
@@ -404,9 +392,7 @@ export const HeaderControls = (props: Props) => {
   const isEditingMode = createMemo(() => loc.pathname.startsWith('/edit/') && !loc.pathname.endsWith('new'))
 
   // Правильная логика определения авторизации: есть сессия с токеном И автором
-  const isAuthorized = createMemo(
-    () => Boolean(session()?.token && session()?.author) || isSessionValidating()
-  )
+  const isAuthorized = createMemo(() => Boolean(session()?.token && session()?.author) || isSessionValidating())
 
   return (
     <div class={clsx(styles.usernav)}>

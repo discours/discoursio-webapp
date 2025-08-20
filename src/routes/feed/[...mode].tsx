@@ -7,13 +7,7 @@ import { FEED_PAGE_SIZE } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { ReactionsProvider } from '~/context/reactions'
 import { loadShouts } from '~/graphql/api/public'
-import {
-  LoadShoutsFilters,
-  Reaction,
-  ReactionKind,
-  Shout,
-  ShoutsOrderBy
-} from '~/graphql/generated/graphql'
+import { LoadShoutsFilters, Reaction, ReactionKind, Shout, ShoutsOrderBy } from '~/graphql/generated/graphql'
 import { getTimestampFromPeriod, PeriodType } from '~/lib/fromPeriod'
 import { ClientOnly } from '~/utils/clientonly'
 

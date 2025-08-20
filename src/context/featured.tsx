@@ -70,9 +70,7 @@ export const FeaturedFeedProvider = (props: { children: JSX.Element }) => {
   const [topCommentedFeed, setTopCommentedFeed] = createSignal<Shout[] | undefined>(undefined)
 
   // Инициализируем с undefined для стабильной гидрации
-  const [randomTopicFeed, setRandomTopicFeed] = createSignal<{ shouts: Shout[]; topic: Topic } | undefined>(
-    undefined
-  )
+  const [randomTopicFeed, setRandomTopicFeed] = createSignal<{ shouts: Shout[]; topic: Topic } | undefined>(undefined)
 
   // Флаг инициализации для отслеживания готовности контекста
   const [isInitialized, setIsInitialized] = createSignal(isServer)

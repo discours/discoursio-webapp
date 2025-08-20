@@ -130,8 +130,7 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
   // Обработка пустого выделения (курсор)
   if (state.isEmpty) {
     const container = range.startContainer
-    const element =
-      container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
+    const element = container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
 
     if (!element) return
 
@@ -168,10 +167,7 @@ export const applyFormatting = (command: CommandType, state: SelectionState) => 
 
   // Избегаем создания вложенных тегов
   if (existingFormatted.length > 0) {
-    const formattedText = Array.from(existingFormatted).reduce(
-      (acc, el) => acc + (el.textContent || ''),
-      ''
-    )
+    const formattedText = Array.from(existingFormatted).reduce((acc, el) => acc + (el.textContent || ''), '')
 
     // Если все выделение уже отформатировано этим форматом, не делаем ничего
     if (formattedText.length === (tempDiv.textContent || '').length) {
@@ -235,8 +231,7 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
   // Если пустое выделение (курсор)
   if (state.isEmpty) {
     const container = range.startContainer
-    const element =
-      container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
+    const element = container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
 
     if (!element) return
 
@@ -247,8 +242,7 @@ export const removeFormatting = (command: CommandType, state: SelectionState) =>
     if (formattedParent) {
       // Запоминаем предыдущий или родительский узел перед удалением
       const prevNode = formattedParent.previousSibling || (formattedParent.parentNode as Node)
-      const nodeOffset =
-        prevNode === formattedParent.previousSibling ? prevNode.textContent?.length || 0 : 0
+      const nodeOffset = prevNode === formattedParent.previousSibling ? prevNode.textContent?.length || 0 : 0
 
       // Создаем временный контейнер для содержимого форматированного элемента
       const tempContainer = document.createDocumentFragment()
@@ -508,9 +502,7 @@ function hasTagOrStyle(
       if (hasStyle) return true
     } else {
       // Проверка на соответствие одному из значений
-      const matchesValue = Boolean(
-        (value1 && styleValue.includes(value1)) || (value2 && styleValue.includes(value2))
-      )
+      const matchesValue = Boolean((value1 && styleValue.includes(value1)) || (value2 && styleValue.includes(value2)))
       if (matchesValue) return true
     }
 
@@ -524,10 +516,7 @@ function hasTagOrStyle(
         if (parentStyleValue !== '' && parentStyleValue !== 'none' && parentStyleValue !== 'normal') {
           return true
         }
-      } else if (
-        (value1 && parentStyleValue.includes(value1)) ||
-        (value2 && parentStyleValue.includes(value2))
-      ) {
+      } else if ((value1 && parentStyleValue.includes(value1)) || (value2 && parentStyleValue.includes(value2))) {
         return true
       }
 
@@ -654,8 +643,7 @@ export const getActiveFormats = (selection?: Selection, editor?: HTMLDivElement)
     // Добавление проверки highlight для выделения
     formats.highlight = commonAncestors.some(
       (node) =>
-        node.nodeName === 'MARK' ||
-        (node.nodeName === 'SPAN' && node.parentElement?.classList.contains('highlight'))
+        node.nodeName === 'MARK' || (node.nodeName === 'SPAN' && node.parentElement?.classList.contains('highlight'))
     )
 
     console.log('[getActiveFormats] Selection formats:', formats)
@@ -819,8 +807,7 @@ export const getCurrentFormats = (selection: Selection | null): FormattingState 
   // Получаем элемент, на котором находится курсор
   const range = selection.getRangeAt(0)
   const container = range.commonAncestorContainer
-  const element =
-    container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
+  const element = container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
 
   if (!element) return formats
 
@@ -847,11 +834,7 @@ const getClosestBlockElement = (node: Node | null, editorRoot: HTMLElement): HTM
     if (current.nodeType === Node.ELEMENT_NODE) {
       const element = current as HTMLElement
       // Check common block tags (add more if needed based on editor structure)
-      if (
-        ['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'DIV', 'BLOCKQUOTE', 'LI', 'PRE'].includes(
-          element.tagName
-        )
-      ) {
+      if (['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'DIV', 'BLOCKQUOTE', 'LI', 'PRE'].includes(element.tagName)) {
         return element
       }
       // If the element has display: block, consider it a block too
@@ -875,11 +858,7 @@ const getClosestBlockElement = (node: Node | null, editorRoot: HTMLElement): HTM
  * Toggles block format (H1-H3, Blockquote) for the block containing the selection start.
  * Reverts to paragraph (<p>) if the target format is already active.
  */
-export const toggleBlockFormat = (
-  command: CommandType,
-  state: SelectionState,
-  editorRoot: HTMLElement | null
-) => {
+export const toggleBlockFormat = (command: CommandType, state: SelectionState, editorRoot: HTMLElement | null) => {
   if (!state.range || !editorRoot) {
     console.warn('[toggleBlockFormat] Missing range or editorRoot')
     return

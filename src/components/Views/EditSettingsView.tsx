@@ -47,11 +47,7 @@ export const EditSettingsView = () => {
 
             <div class={styles.wrapperTableOfContents}>
               <Show when={isDesktop() && currentDraft()?.body}>
-                <TableOfContents
-                  variant="editor"
-                  parentSelector="#editorBody"
-                  body={currentDraft()?.body || ''}
-                />
+                <TableOfContents variant="editor" parentSelector="#editorBody" body={currentDraft()?.body || ''} />
               </Show>
             </div>
           </div>

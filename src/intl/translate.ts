@@ -21,10 +21,7 @@ export const isCyrillic = (s: string): boolean => {
  */
 export const translateAuthor = (author: Author, lng: string) =>
   lng === 'en' && isCyrillic(author?.name || '')
-    ? capitalize(
-        translit((author?.name || '').replaceAll('ё', 'e').replaceAll('ь', '')).replaceAll('-', ' '),
-        true
-      )
+    ? capitalize(translit((author?.name || '').replaceAll('ё', 'e').replaceAll('ь', '')).replaceAll('-', ' '), true)
     : author.name
 
 /**

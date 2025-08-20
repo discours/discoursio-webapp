@@ -112,9 +112,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
     setFollowingLoading(true)
     try {
       if (session()?.token) {
-        const result = await client()
-          ?.query(loadAuthorFollowers, { user: session()?.author?.id })
-          .toPromise()
+        const result = await client()?.query(loadAuthorFollowers, { user: session()?.author?.id }).toPromise()
         if (result?.data) {
           setState((subs: FollowingData) => {
             if (result.data.authors) subs.authors = result.data.authors as Author[]
@@ -199,11 +197,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
     )
   )
 
-  const changeFollowing = async (
-    isFollowed: boolean,
-    what: FollowingEntity,
-    slug: string
-  ): Promise<boolean> => {
+  const changeFollowing = async (isFollowed: boolean, what: FollowingEntity, slug: string): Promise<boolean> => {
     if (!session()?.token) {
       showModal('auth')
       return isFollowed
@@ -251,20 +245,12 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
               } else {
                 // Если нет подписок, то состояние = false
                 newFollowState = false
-                console.log(
-                  '[FollowingContext] Unfollow: following not found, treating as successful unfollow'
-                )
+                console.log('[FollowingContext] Unfollow: following not found, treating as successful unfollow')
               }
             }
           }
 
-          console.log(
-            '[FollowingContext] New follow state determined from server:',
-            newFollowState,
-            'for',
-            what,
-            slug
-          )
+          console.log('[FollowingContext] New follow state determined from server:', newFollowState, 'for', what, slug)
           return newFollowState
         } else {
           console.error('[FollowingContext] Operation failed with error:', result.error)

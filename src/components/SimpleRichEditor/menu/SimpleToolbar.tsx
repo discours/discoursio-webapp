@@ -77,9 +77,7 @@ const ToolbarDropdown: Component<ToolbarDropdownProps> = (props) => {
         onClick={() => onChange(option)}
         title={option.title} // Добавляем title для подсказки при наведении
       >
-        {option.icon && (
-          <Icon name={option.icon} class={clsx(styles.optionIcon, { [styles.active]: isActive })} />
-        )}
+        {option.icon && <Icon name={option.icon} class={clsx(styles.optionIcon, { [styles.active]: isActive })} />}
         {/* Текст убран, оставлена только иконка */}
       </button>
     )
@@ -87,9 +85,7 @@ const ToolbarDropdown: Component<ToolbarDropdownProps> = (props) => {
 
   return (
     <Popup
-      trigger={
-        <button class={clsx(styles.dropdownTrigger, props.triggerCssClass)}>{props.triggerContent}</button>
-      }
+      trigger={<button class={clsx(styles.dropdownTrigger, props.triggerCssClass)}>{props.triggerContent}</button>}
       onVisibilityChange={setIsOpen}
       popupCssClass={clsx(styles.dropdown, styles.noBorderRadiusPopup, props.class)}
       variant="tiny"
@@ -132,12 +128,7 @@ const ToolbarDropdown: Component<ToolbarDropdownProps> = (props) => {
   )
 }
 
-export type ToolbarCommands = readonly (
-  | CommandType
-  | CommandGroupType
-  | readonly (readonly CommandType[])[]
-  | ''
-)[]
+export type ToolbarCommands = readonly (CommandType | CommandGroupType | readonly (readonly CommandType[])[] | '')[]
 export type ToolbarMode = 'top' | 'bottom' | 'float'
 
 /**
@@ -208,8 +199,7 @@ export const ToolbarControl: Component<{
           value: item,
           title: ['h1', 'h2', 'h3'].includes(item) ? item.toUpperCase() : t(capitalize(item) as string),
           // Используем новые иконки для списков
-          icon:
-            item === 'bulletList' ? 'editor-ul' : item === 'orderedList' ? 'editor-ol' : `editor-${item}`,
+          icon: item === 'bulletList' ? 'editor-ul' : item === 'orderedList' ? 'editor-ol' : `editor-${item}`,
           selected: props.currentFormats.has(item),
           // Добавляем флаг для кастомного рендеринга заголовков
           customRender: ['h1', 'h2', 'h3'].includes(item)
@@ -257,14 +247,12 @@ export const ToolbarControl: Component<{
           value: item,
           title: ['h1', 'h2', 'h3'].includes(item) ? item.toUpperCase() : t(capitalize(item) as string),
           // Используем новые иконки для списков
-          icon:
-            item === 'bulletList' ? 'editor-ul' : item === 'orderedList' ? 'editor-ol' : `editor-${item}`,
+          icon: item === 'bulletList' ? 'editor-ul' : item === 'orderedList' ? 'editor-ol' : `editor-${item}`,
           selected: props.currentFormats.has(item),
           // Добавляем флаг для кастомного рендеринга заголовков
           customRender: ['h1', 'h2', 'h3'].includes(item)
         })),
-        selected:
-          groupCommands.map((_, i) => i).filter((i) => props.currentFormats.has(groupCommands[i])) || [],
+        selected: groupCommands.map((_, i) => i).filter((i) => props.currentFormats.has(groupCommands[i])) || [],
         onChange: (option: ToolbarDropdownOption) => {
           props.onAction(option.value as CommandType) // Вызываем колбэк с выбранной командой
         }

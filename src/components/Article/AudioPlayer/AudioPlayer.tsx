@@ -11,11 +11,7 @@ type Props = {
   articleSlug?: string
   body?: string
   editorMode?: boolean
-  onMediaItemFieldChange?: (
-    index: number,
-    field: keyof MediaItem | string | number | symbol,
-    value: string
-  ) => void
+  onMediaItemFieldChange?: (index: number, field: keyof MediaItem | string | number | symbol, value: string) => void
   onChangeMediaIndex?: (direction: 'up' | 'down', index: number) => void
 }
 
@@ -125,11 +121,7 @@ export const AudioPlayer = (props: Props) => {
           isPlaying={isPlaying()}
           currentTrack={currentTack()}
         />
-        <AudioTimeLine
-          currentTime={currentTime()}
-          currentTrackDuration={currentTrackDuration()}
-          onScrub={scrub}
-        />
+        <AudioTimeLine currentTime={currentTime()} currentTrackDuration={currentTrackDuration()} onScrub={scrub} />
         <audio
           ref={(el) => (audioRef = el)}
           onTimeUpdate={handleAudioTimeUpdate}

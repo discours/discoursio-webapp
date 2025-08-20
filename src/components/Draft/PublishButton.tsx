@@ -48,28 +48,19 @@ export const PublishButton = () => {
 
     // Подробное логирование состояния тем
     if (!draft.topics || !Array.isArray(draft.topics)) {
-      console.warn(
-        '[PublishButton] Отсутствуют темы (topics) в черновике или они не являются массивом:',
-        draft.topics
-      )
+      console.warn('[PublishButton] Отсутствуют темы (topics) в черновике или они не являются массивом:', draft.topics)
     } else if (draft.topics.length === 0) {
-      console.warn(
-        '[PublishButton] В черновике отсутствуют темы, что может привести к ошибке при публикации'
-      )
+      console.warn('[PublishButton] В черновике отсутствуют темы, что может привести к ошибке при публикации')
     } else {
       console.log(
         '[PublishButton] Темы черновика:',
-        draft.topics.map((topic) =>
-          topic ? { id: topic.id, title: topic.title, slug: topic.slug } : 'null'
-        )
+        draft.topics.map((topic) => (topic ? { id: topic.id, title: topic.title, slug: topic.slug } : 'null'))
       )
     }
 
     // Проверка заголовка
     if (!draft.title || draft.title.trim() === '') {
-      console.warn(
-        '[PublishButton] Черновик не имеет заголовка, что может привести к проблемам при публикации'
-      )
+      console.warn('[PublishButton] Черновик не имеет заголовка, что может привести к проблемам при публикации')
     } else {
       console.log('[PublishButton] Заголовок черновика:', draft.title)
     }
@@ -128,10 +119,7 @@ export const PublishButton = () => {
     updateDraft(updatedDraft)
       .then((result) => {
         if (result?.data?.update_draft?.error) {
-          console.error(
-            '[PublishButton] Ошибка обновления черновика на сервере:',
-            result.data.update_draft.error
-          )
+          console.error('[PublishButton] Ошибка обновления черновика на сервере:', result.data.update_draft.error)
 
           // Создаем более информативное сообщение для пользователя
           let errorMessage = `Ошибка сохранения: ${result.data.update_draft.error}`
@@ -141,9 +129,7 @@ export const PublishButton = () => {
             errorMessage += '. Убедитесь, что выбрана хотя бы одна тема.'
           }
           if (result.error) {
-            console.warn(
-              `[PublishButton] Не удалось показать уведомление об ошибке: ${result.error} ${errorMessage}`
-            )
+            console.warn(`[PublishButton] Не удалось показать уведомление об ошибке: ${result.error} ${errorMessage}`)
           }
 
           // Даже в случае ошибки пробуем перейти к публикации

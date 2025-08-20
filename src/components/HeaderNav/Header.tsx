@@ -168,10 +168,7 @@ export const Header = (props: Props) => {
 
       <div class={clsx(styles.mainHeaderInner)}>
         <div class="wide-container">
-          <nav
-            class={clsx('row', styles.headerInner, { [styles.fixed]: fixed() })}
-            aria-label="Основная навигация"
-          >
+          <nav class={clsx('row', styles.headerInner, { [styles.fixed]: fixed() })} aria-label="Основная навигация">
             <div class={clsx(styles.burgerContainer, 'col-auto')}>
               <button
                 class={clsx(styles.burger, { [styles.fixed]: fixed() })}
@@ -228,11 +225,7 @@ export const Header = (props: Props) => {
                   <h4>{t('Participating')}</h4>
                   <ul class={stylesFeedSwitcher.feedSwitcher}>
                     <li>
-                      <button
-                        onClick={handleCreatePostClick}
-                        aria-label="Создать новую публикацию"
-                        type="button"
-                      >
+                      <button onClick={handleCreatePostClick} aria-label="Создать новую публикацию" type="button">
                         {t('Create post')}
                       </button>
                     </li>
@@ -371,11 +364,7 @@ export const Header = (props: Props) => {
                   trigger={
                     <>
                       <Icon name="share-outline" class={styles.icon} aria-hidden="true" />
-                      <Icon
-                        name="share-outline-hover"
-                        class={clsx(styles.icon, styles.iconHover)}
-                        aria-hidden="true"
-                      />
+                      <Icon name="share-outline-hover" class={clsx(styles.icon, styles.iconHover)} aria-hidden="true" />
                     </>
                   }
                 />
@@ -386,11 +375,7 @@ export const Header = (props: Props) => {
                   type="button"
                 >
                   <Icon name="comment" class={styles.icon} aria-hidden="true" />
-                  <Icon
-                    name="comment-hover"
-                    class={clsx(styles.icon, styles.iconHover)}
-                    aria-hidden="true"
-                  />
+                  <Icon name="comment-hover" class={clsx(styles.icon, styles.iconHover)} aria-hidden="true" />
                 </button>
                 <button
                   class={styles.control}
@@ -399,19 +384,11 @@ export const Header = (props: Props) => {
                   type="button"
                 >
                   <Icon name="pencil-outline" class={styles.icon} aria-hidden="true" />
-                  <Icon
-                    name="pencil-outline-hover"
-                    class={clsx(styles.icon, styles.iconHover)}
-                    aria-hidden="true"
-                  />
+                  <Icon name="pencil-outline-hover" class={clsx(styles.icon, styles.iconHover)} aria-hidden="true" />
                 </button>
                 <A class={styles.control} href="/feed/bookmarked" aria-label="Перейти к закладкам">
                   <Icon name="bookmark" class={styles.icon} aria-hidden="true" />
-                  <Icon
-                    name="bookmark-hover"
-                    class={clsx(styles.icon, styles.iconHover)}
-                    aria-hidden="true"
-                  />
+                  <Icon name="bookmark-hover" class={clsx(styles.icon, styles.iconHover)} aria-hidden="true" />
                 </A>
               </div>
             </Show>

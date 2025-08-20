@@ -1,16 +1,6 @@
 import { A, useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-  on,
-  onCleanup,
-  onMount,
-  Show,
-  Suspense
-} from 'solid-js'
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, Suspense } from 'solid-js'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
 import { ShareModal } from '~/components/_shared/ShareModal'
@@ -59,16 +49,8 @@ export const FeedView = (props: FeedProps) => {
   const loc = useLocation()
   const { showModal } = useUI()
   const { session, client } = useSession()
-  const {
-    isFeedLoading,
-    feedByMode,
-    myFeed,
-    mode,
-    initializeFeed,
-    loadRecentFeed,
-    loadHotFeed,
-    loadTopFeed
-  } = useFeed()
+  const { isFeedLoading, feedByMode, myFeed, mode, initializeFeed, loadRecentFeed, loadHotFeed, loadTopFeed } =
+    useFeed()
 
   // Добавляем состояние для мобильного меню
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = createSignal(false)
@@ -109,8 +91,7 @@ export const FeedView = (props: FeedProps) => {
     const isAuthorized = !!session()?.token
     const isEmpty = !currentFeed?.shouts?.length
     return (
-      ['followed', 'coauthored', 'discussed', 'comments'].includes(feedType as string) &&
-      (isEmpty || !isAuthorized)
+      ['followed', 'coauthored', 'discussed', 'comments'].includes(feedType as string) && (isEmpty || !isAuthorized)
     )
   }
 
@@ -312,8 +293,7 @@ export const FeedView = (props: FeedProps) => {
 
   // Компонент для комментариев с fallback на client data
   const FreshestCommentsList = () => {
-    const comments = () =>
-      props.recentComments?.length ? props.recentComments : clientRecentComments() || []
+    const comments = () => (props.recentComments?.length ? props.recentComments : clientRecentComments() || [])
 
     return (
       <Show when={comments()?.length > 0}>
@@ -381,9 +361,8 @@ export const FeedView = (props: FeedProps) => {
       if (!feed.length) return []
 
       // Создаем новый массив с четкой типизацией
-      const result: Array<
-        { type: 'article'; article: Shout; index: number } | { type: 'authors'; authors: Author[] }
-      > = []
+      const result: Array<{ type: 'article'; article: Shout; index: number } | { type: 'authors'; authors: Author[] }> =
+        []
 
       // Добавляем статьи и блок авторов в нужной позиции
       feed.forEach((article, i) => {
@@ -425,8 +404,7 @@ export const FeedView = (props: FeedProps) => {
 
   // Компонент для неоценённых статей с fallback на client data
   const UnratedArticlesList = () => {
-    const unratedShouts = () =>
-      props.unratedShouts?.length ? props.unratedShouts : clientUnratedShouts() || []
+    const unratedShouts = () => (props.unratedShouts?.length ? props.unratedShouts : clientUnratedShouts() || [])
 
     return (
       <Show when={unratedShouts()?.length > 0}>
@@ -511,10 +489,7 @@ export const FeedView = (props: FeedProps) => {
           </div>
         </div>
         <div class={styles.feedContent}>
-          <Show
-            when={!shouldShowPlaceholder()}
-            fallback={<Placeholder type={placeholderType()} mode="feed" />}
-          >
+          <Show when={!shouldShowPlaceholder()} fallback={<Placeholder type={placeholderType()} mode="feed" />}>
             <div class={styles.feedPage}>
               <Show
                 when={!feedByMode().isEmpty}

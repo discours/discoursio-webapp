@@ -779,12 +779,7 @@ export const EditView = (props: { draft?: Draft }) => {
         let needsUpdate = false
 
         Object.entries(draftFields).forEach(([fieldName, fieldData]) => {
-          if (
-            !currentDraft() ||
-            !(fieldName in currentDraft()!) ||
-            fieldName === 'id' ||
-            !fieldData.content
-          ) {
+          if (!currentDraft() || !(fieldName in currentDraft()!) || fieldName === 'id' || !fieldData.content) {
             return
           }
 
@@ -880,17 +875,14 @@ export const EditView = (props: { draft?: Draft }) => {
         topic_ids: Array.isArray(draft.topics)
           ? draft.topics.filter((topic): topic is Topic => Boolean(topic?.id)).map((topic) => topic.id)
           : [],
-        main_topic_id:
-          draft.topics && draft.topics.length > 0 && draft.topics[0] ? draft.topics[0].id : null,
+        main_topic_id: draft.topics && draft.topics.length > 0 && draft.topics[0] ? draft.topics[0].id : null,
         seo: draft.seo || '',
         author_ids: draft.authors?.map((a) => a?.id).filter((id): id is number => !!id) || []
       }
 
       // Логируем данные, которые будем сохранять
       console.log(`[EditView] Данные для сохранения черновика #${draft.id}:`, {
-        title:
-          draftInput.title?.substring(0, 30) +
-          (draftInput.title && draftInput.title.length > 30 ? '...' : ''),
+        title: draftInput.title?.substring(0, 30) + (draftInput.title && draftInput.title.length > 30 ? '...' : ''),
         bodyLength: draftInput.body?.length || 0,
         leadLength: draftInput.lead?.length || 0,
         topicsCount: draftInput.topic_ids?.length || 0
@@ -912,9 +904,7 @@ export const EditView = (props: { draft?: Draft }) => {
               type FieldData = { content?: string }
               const fd = fieldData as unknown as FieldData
               if (fieldName in draftInput && fd?.content) {
-                console.log(
-                  `[EditView] Обновляем поле ${fieldName} из connect (${fd.content.length} символов)`
-                )
+                console.log(`[EditView] Обновляем поле ${fieldName} из connect (${fd.content.length} символов)`)
                 // @ts-expect-error - мы проверили что поле существует выше
                 draftInput[fieldName] = fd.content
               }

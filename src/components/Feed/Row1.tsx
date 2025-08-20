@@ -3,12 +3,7 @@ import type { Shout } from '~/graphql/generated/graphql'
 
 import { ArticleCard } from './ArticleCard'
 
-export const Row1 = (props: {
-  article: Shout
-  nodate?: boolean
-  noAuthorLink?: boolean
-  noauthor?: boolean
-}) => (
+export const Row1 = (props: { article: Shout; nodate?: boolean; noAuthorLink?: boolean; noauthor?: boolean }) => (
   <Show when={!!props.article}>
     <div class="floor floor--one-article">
       <div class="wide-container">

@@ -20,18 +20,14 @@ export default async function globalSetup(_config: FullConfig) {
 
   // Пробуем открыть форму входа через ссылку в хедере
   const loginLink = page
-    .locator(
-      'a[href*="?m=auth"], .loginbtn a, [data-testid="login-link"], a:has-text("Войти"), a:has-text("Enter")'
-    )
+    .locator('a[href*="?m=auth"], .loginbtn a, [data-testid="login-link"], a:has-text("Войти"), a:has-text("Enter")')
     .first()
 
   if (await loginLink.isVisible({ timeout: 5000 }).catch(() => false)) {
     await loginLink.click({ force: true })
   }
 
-  const emailInput = page
-    .locator('input[type="email"], input[name="email"], [data-testid="login-email"]')
-    .first()
+  const emailInput = page.locator('input[type="email"], input[name="email"], [data-testid="login-email"]').first()
   const passwordInput = page
     .locator('input[type="password"], input[name="password"], [data-testid="login-password"]')
     .first()

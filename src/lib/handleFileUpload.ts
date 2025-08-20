@@ -308,9 +308,7 @@ export const handleFileUpload = async (
           let retryCount = 0
           const maxRetries = 5 // Увеличиваем количество попыток
           const checkUploadedImage = () => {
-            console.log(
-              `[handleFileUpload] Checking image availability (attempt ${retryCount + 1}): ${url}`
-            )
+            console.log(`[handleFileUpload] Checking image availability (attempt ${retryCount + 1}): ${url}`)
             const uploadedImage = new Image()
 
             uploadedImage.addEventListener('load', () => {
@@ -332,9 +330,7 @@ export const handleFileUpload = async (
                 // return reject(new Error('Failed to load uploaded image after multiple attempts'))
               } else {
                 const delay = retryCount * 1000 // Увеличиваем задержку с каждой попыткой
-                console.log(
-                  `[handleFileUpload] Retrying in ${delay / 1000} seconds (attempt ${retryCount + 1})`
-                )
+                console.log(`[handleFileUpload] Retrying in ${delay / 1000} seconds (attempt ${retryCount + 1})`)
                 setTimeout(() => checkUploadedImage(), delay)
               }
             })
@@ -344,10 +340,7 @@ export const handleFileUpload = async (
           checkUploadedImage()
         })
       } catch (imageCheckError) {
-        console.warn(
-          '[handleFileUpload] Image availability check failed but continuing anyway:',
-          imageCheckError
-        )
+        console.warn('[handleFileUpload] Image availability check failed but continuing anyway:', imageCheckError)
         // Продолжаем работу даже если не удалось проверить изображение
       }
 

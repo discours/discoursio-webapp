@@ -175,11 +175,7 @@ export async function testErrorClearingOnCorrection(
 /**
  * Проверка состояния загрузки формы
  */
-export async function testFormLoadingState(
-  page: Page,
-  submitButton: string,
-  shouldShowLoading = true
-): Promise<void> {
+export async function testFormLoadingState(page: Page, submitButton: string, shouldShowLoading = true): Promise<void> {
   const button = page.getByRole('button', { name: submitButton })
 
   await button.click()

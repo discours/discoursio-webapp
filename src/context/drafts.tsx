@@ -67,9 +67,7 @@ const validateTimestamp = (timestamp: number | undefined | null): number => {
 
   // Проверяем, находится ли метка в разумных пределах
   if (ts < minValidDate || ts > maxValidDate) {
-    console.warn(
-      `[drafts] Invalid timestamp detected: ${new Date(ts).toISOString()}, using current time instead`
-    )
+    console.warn(`[drafts] Invalid timestamp detected: ${new Date(ts).toISOString()}, using current time instead`)
     return now
   }
 
@@ -157,9 +155,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   // состояние загрузки черновиков
   const [loading, setLoading] = createSignal(false)
   // Сигнал для хранения ошибок валидации
-  const [validationErrors, setValidationErrors] = createSignal<Partial<Record<keyof DraftInput, string>>>(
-    {}
-  )
+  const [validationErrors, setValidationErrors] = createSignal<Partial<Record<keyof DraftInput, string>>>({})
   // Сигналы для OfflineStatus
   const [storageQuotaWarning, setStorageQuotaWarning] = createSignal(false)
 
@@ -220,9 +216,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       }
 
       // Определяем более свежую версию (по timestamp)
-      const serverTimestamp = currentDraftObj?.updated_at
-        ? processServerTimestamp(currentDraftObj.updated_at)
-        : 0
+      const serverTimestamp = currentDraftObj?.updated_at ? processServerTimestamp(currentDraftObj.updated_at) : 0
       const localTimestamp = validateTimestamp(localDraftData?.timestamp || 0)
 
       // Выводим подробную информацию о timestamp для отладки
@@ -521,9 +515,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           const topicIds = new Set(value as number[])
 
           // Фильтруем topics, оставляя только те, которые есть в topicIds
-          const filteredTopics = topics.filter((topic): topic is Topic =>
-            Boolean(topic?.id && topicIds.has(topic.id))
-          )
+          const filteredTopics = topics.filter((topic): topic is Topic => Boolean(topic?.id && topicIds.has(topic.id)))
 
           // Обновляем черновик с отфильтрованными темами
           setCurrentDraft({ ...draft, topics: filteredTopics })
@@ -863,9 +855,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     return localDraftsFallback
   }
 
-  const createDraft = async (
-    draft: DraftInput
-  ): Promise<OperationResult<CreateDraftMutationMutation> | undefined> => {
+  const createDraft = async (draft: DraftInput): Promise<OperationResult<CreateDraftMutationMutation> | undefined> => {
     console.log('[DraftsProvider] Начинаем создание черновика:', draft)
 
     // Проверяем наличие client только если не создаем локальный черновик
@@ -952,9 +942,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         )
 
         if (matchingLocalDraft) {
-          console.log(
-            `[DraftsProvider] Найден локальный черновик с похожими данными: ${matchingLocalDraft.id}`
-          )
+          console.log(`[DraftsProvider] Найден локальный черновик с похожими данными: ${matchingLocalDraft.id}`)
 
           // Переносим данные из локального черновика в серверный при необходимости
           if (!newDraft.body && matchingLocalDraft.body) {
@@ -968,9 +956,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           }
 
           // Удаляем локальный черновик
-          console.log(
-            `[DraftsProvider] Удаляем локальный черновик после переноса данных: ${matchingLocalDraft.id}`
-          )
+          console.log(`[DraftsProvider] Удаляем локальный черновик после переноса данных: ${matchingLocalDraft.id}`)
           removeLocalDraft(Number(matchingLocalDraft.id))
         }
       }
@@ -1061,9 +1047,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         cover: draftToPublish.cover || '',
         cover_caption: draftToPublish.cover_caption || '',
         topic_ids: Array.isArray(draftToPublish.topics)
-          ? draftToPublish.topics
-              .filter((topic): topic is Topic => Boolean(topic?.id))
-              .map((topic) => topic.id)
+          ? draftToPublish.topics.filter((topic): topic is Topic => Boolean(topic?.id)).map((topic) => topic.id)
           : [],
         main_topic_id:
           draftToPublish.topics && draftToPublish.topics.length > 0 && draftToPublish.topics[0]
@@ -1123,9 +1107,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     }
   }
 
-  const unpublishShout = async (
-    shoutId: number
-  ): Promise<OperationResult<UnpublishShoutMutationMutation>> => {
+  const unpublishShout = async (shoutId: number): Promise<OperationResult<UnpublishShoutMutationMutation>> => {
     try {
       // Перед снятием с публикации отображаем статус загрузки
       console.log(`[DraftsProvider] Снимаем с публикации статью #${shoutId}...`)
@@ -1158,9 +1140,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           const updatedDraft = drafts().find((d) => d.id === shoutId)
 
           if (updatedDraft) {
-            console.log(
-              `[DraftsProvider] Найден черновик в списке после снятия публикации: ${updatedDraft.id}`
-            )
+            console.log(`[DraftsProvider] Найден черновик в списке после снятия публикации: ${updatedDraft.id}`)
 
             // Если текущий черновик имеет тот же ID, обновляем его
             if (currentDraft()?.id === shoutId) {
@@ -1184,17 +1164,12 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
             return response as OperationResult<UnpublishShoutMutationMutation>
           }
 
-          console.warn(
-            `[DraftsProvider] После loadDrafts() не найден черновик с ID=${shoutId} в списке drafts`
-          )
+          console.warn(`[DraftsProvider] После loadDrafts() не найден черновик с ID=${shoutId} в списке drafts`)
         } else {
           console.error('[DraftsProvider] Ответ на снятие публикации не содержит данных shout')
         }
       } else if (response?.error) {
-        console.error(
-          `[DraftsProvider] Ошибка при снятии публикации для статьи #${shoutId}:`,
-          response.error
-        )
+        console.error(`[DraftsProvider] Ошибка при снятии публикации для статьи #${shoutId}:`, response.error)
       }
 
       return response as OperationResult<UnpublishShoutMutationMutation>
@@ -1505,9 +1480,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           }
           resultDrafts.push(enhancedServerDraft)
 
-          console.log(
-            `[DraftsProvider] Обнаружены различия для slug "${serverDraft.slug}". Серверная версия новее.`
-          )
+          console.log(`[DraftsProvider] Обнаружены различия для slug "${serverDraft.slug}". Серверная версия новее.`)
         } else {
           // Если версии одинаковые по времени, но есть различия, добавляем обе
           const enhancedLocalDraft: ExtendedDraft = {

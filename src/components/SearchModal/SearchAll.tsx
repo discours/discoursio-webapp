@@ -60,9 +60,7 @@ export const SearchAll = (props: SearchAllProps) => {
             <div>
               <h3 class={styles.searchAllBlockTitle}>{t('Topics')}</h3>
               <div class={styles.searchAuthorsColumn}>
-                <For each={props.topicsList.slice(0, 6)}>
-                  {(topic) => <TopicBadge topic={topic} showStat={true} />}
-                </For>
+                <For each={props.topicsList.slice(0, 6)}>{(topic) => <TopicBadge topic={topic} showStat={true} />}</For>
               </div>
             </div>
 

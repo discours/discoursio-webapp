@@ -36,21 +36,13 @@ export const PlayerHeader = (props: Props) => {
         <button
           type="button"
           onClick={props.onPlayMedia}
-          class={clsx(
-            styles.playButton,
-            props.isPlaying ? styles.playButtonInvertPause : styles.playButtonInvertPlay
-          )}
+          class={clsx(styles.playButton, props.isPlaying ? styles.playButtonInvertPause : styles.playButtonInvertPlay)}
           aria-label="Play"
           data-playing="false"
         >
           <Icon name={props.isPlaying ? 'pause' : 'play'} />
         </button>
-        <button
-          type="button"
-          onClick={props.playPrevTrack}
-          class={clsx(styles.controlsButton)}
-          aria-label="Previous"
-        >
+        <button type="button" onClick={props.playPrevTrack} class={clsx(styles.controlsButton)} aria-label="Previous">
           <Icon name="player-arrow" />
         </button>
         <button

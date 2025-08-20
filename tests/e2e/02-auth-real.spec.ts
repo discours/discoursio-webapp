@@ -52,9 +52,7 @@ test.describe('Авторизация - UI поведение', () => {
     await emailInput.fill('invalid-email')
     await submitButton.click()
 
-    const emailValidAfterInvalid = await emailInput.evaluate(
-      (el) => (el as HTMLInputElement).validity.valid
-    )
+    const emailValidAfterInvalid = await emailInput.evaluate((el) => (el as HTMLInputElement).validity.valid)
     expect(emailValidAfterInvalid).toBeFalsy()
 
     // Валидный email должен проходить валидацию

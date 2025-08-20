@@ -142,9 +142,7 @@ export async function getFormValidationState(
  */
 export async function getValidationErrors(page: Page): Promise<string[]> {
   return await page.evaluate(() => {
-    const errorElements = document.querySelectorAll(
-      '.error, .validation-error, .field-error, [role="alert"]'
-    )
+    const errorElements = document.querySelectorAll('.error, .validation-error, .field-error, [role="alert"]')
     return Array.from(errorElements)
       .map((el) => el.textContent?.trim() || '')
       .filter(Boolean)
@@ -196,9 +194,7 @@ export async function waitForRealContent(page: Page, timeout = 15000): Promise<v
           const element = contentElements[i]
           const classList = element.classList.toString()
           const isPlaceholder =
-            classList.includes('skeleton') ||
-            classList.includes('placeholder') ||
-            classList.includes('loading')
+            classList.includes('skeleton') || classList.includes('placeholder') || classList.includes('loading')
 
           if (!isPlaceholder && element.textContent?.trim() && element.textContent.trim().length > 10) {
             return true

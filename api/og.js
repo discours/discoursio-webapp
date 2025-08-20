@@ -107,9 +107,7 @@ export async function GET(request) {
         break
       }
       case 'topic': {
-        topRight = params.articlesCount
-          ? createStatsBar([{ text: `${params.articlesCount} статей` }])
-          : null
+        topRight = params.articlesCount ? createStatsBar([{ text: `${params.articlesCount} статей` }]) : null
         content = { title, description, cover }
         break
       }
@@ -317,8 +315,6 @@ function createStatsBar(items) {
         color: 'rgba(255,255,255,0.8)'
       }
     },
-    ...items.map((item, index) =>
-      h('div', { key: `stat-${item.text}-${index}`, style: { fontSize: 24 } }, item.text)
-    )
+    ...items.map((item, index) => h('div', { key: `stat-${item.text}-${index}`, style: { fontSize: 24 } }, item.text))
   )
 }

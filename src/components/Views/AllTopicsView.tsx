@@ -112,9 +112,7 @@ export const AllTopicsView = (props: Props) => {
         (acc, topic) => {
           const firstCharIndex = findFirstReadableCharIndex(topic?.title || '')
           let letter =
-            lang() === 'en'
-              ? topic.slug[0].toUpperCase()
-              : (topic?.title?.[firstCharIndex] || '').toUpperCase()
+            lang() === 'en' ? topic.slug[0].toUpperCase() : (topic?.title?.[firstCharIndex] || '').toUpperCase()
           if (notRus.test(letter) && lang() === 'ru') letter = '#'
           if (notLatin.test(letter) && lang() === 'en') letter = '#'
           if (!acc[letter]) acc[letter] = []
@@ -185,12 +183,8 @@ export const AllTopicsView = (props: Props) => {
                                     ? capitalize(topic.slug.replaceAll('-', ' ') as string)
                                     : topic.title}
                                 </A>
-                                <Show
-                                  when={topicWithStat.stat?.shouts && (topicWithStat.stat?.shouts || 0) > 0}
-                                >
-                                  <span class={styles.articlesCounter}>
-                                    {topicWithStat.stat?.shouts || 0}
-                                  </span>
+                                <Show when={topicWithStat.stat?.shouts && (topicWithStat.stat?.shouts || 0) > 0}>
+                                  <span class={styles.articlesCounter}>{topicWithStat.stat?.shouts || 0}</span>
                                 </Show>
                               </div>
                             </div>

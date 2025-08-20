@@ -42,9 +42,7 @@ export const AuthModal = () => {
   const [searchParams] = useSearchParams<AuthModalSearchParams>()
   const { hideModal } = useUI()
   const mode = createMemo(() => {
-    return (
-      AUTH_MODAL_MODES[searchParams?.mode as AuthModalMode] ? searchParams?.mode : 'login'
-    ) as AuthModalMode
+    return (AUTH_MODAL_MODES[searchParams?.mode as AuthModalMode] ? searchParams?.mode : 'login') as AuthModalMode
   })
 
   createEffect((oldMode) => {

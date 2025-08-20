@@ -147,19 +147,15 @@ test.describe('Open Graph Integration Tests', () => {
         content: (meta as HTMLMetaElement).content
       }))
 
-      const articleTags = Array.from(document.querySelectorAll('meta[property^="article:"]')).map(
-        (meta) => ({
-          property: (meta as HTMLMetaElement).getAttribute('property'),
-          content: (meta as HTMLMetaElement).content
-        })
-      )
+      const articleTags = Array.from(document.querySelectorAll('meta[property^="article:"]')).map((meta) => ({
+        property: (meta as HTMLMetaElement).getAttribute('property'),
+        content: (meta as HTMLMetaElement).content
+      }))
 
-      const profileTags = Array.from(document.querySelectorAll('meta[property^="profile:"]')).map(
-        (meta) => ({
-          property: (meta as HTMLMetaElement).getAttribute('property'),
-          content: (meta as HTMLMetaElement).content
-        })
-      )
+      const profileTags = Array.from(document.querySelectorAll('meta[property^="profile:"]')).map((meta) => ({
+        property: (meta as HTMLMetaElement).getAttribute('property'),
+        content: (meta as HTMLMetaElement).content
+      }))
 
       return { ogTags, twitterTags, articleTags, profileTags }
     })
@@ -199,7 +195,7 @@ test.describe('Open Graph Integration Tests', () => {
     expect(loadTime).toBeLessThan(5000) // Должно загружаться менее чем за 5 секунд
 
     // Проверяем размер изображения (должен быть разумным)
-    const imageSize = Number.parseInt(imageResponse.headers()['content-length'] || '0')
+    const imageSize = Number.parseInt(imageResponse.headers()['content-length'] || '0', 10)
     expect(imageSize).toBeGreaterThan(1000) // Минимум 1KB
     expect(imageSize).toBeLessThan(1000000) // Максимум 1MB
 

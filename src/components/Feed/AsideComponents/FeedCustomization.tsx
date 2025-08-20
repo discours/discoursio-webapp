@@ -41,9 +41,7 @@ export const FeedCustomization = (props: FeedCustomizationProps) => {
                 <h3 class={styles.createFeedTitle}>{t('Create your feed')}</h3>
                 <p class={styles.createFeedDescription}>
                   {props.description ||
-                    t(
-                      'Subscribe to interesting topics and authors to receive a personalized feed of publications'
-                    )}
+                    t('Subscribe to interesting topics and authors to receive a personalized feed of publications')}
                 </p>
                 <A href="/settings/subs" class={styles.createFeedButton}>
                   {t('Customize feed')}

@@ -11,9 +11,7 @@ export const AuthModalHeader = (props: Props) => {
   const { t } = useLocalize()
   const [searchParams] = useSearchParams<{ source: string }>()
 
-  const generateModalTextsFromSource = (
-    modalType: 'login' | 'register'
-  ): { title: string; description: string } => {
+  const generateModalTextsFromSource = (modalType: 'login' | 'register'): { title: string; description: string } => {
     const title = modalType === 'login' ? 'Welcome to Discours' : 'Sign up'
 
     switch (searchParams?.source) {
@@ -26,9 +24,7 @@ export const AuthModalHeader = (props: Props) => {
       case 'bookmark': {
         return {
           title: t(`${title} to add to your bookmarks`),
-          description: t(
-            'In bookmarks, you can save favorite discussions and materials that you want to return to'
-          )
+          description: t('In bookmarks, you can save favorite discussions and materials that you want to return to')
         }
       }
       case 'discussions': {
@@ -42,17 +38,13 @@ export const AuthModalHeader = (props: Props) => {
       case 'follow': {
         return {
           title: t(`${title} to subscribe`),
-          description: t(
-            'This way you ll be able to subscribe to authors, interesting topics and customize your feed'
-          )
+          description: t('This way you ll be able to subscribe to authors, interesting topics and customize your feed')
         }
       }
       case 'subscribe': {
         return {
           title: t(`${title} to subscribe to new publications`),
-          description: t(
-            'This way you ll be able to subscribe to authors, interesting topics and customize your feed'
-          )
+          description: t('This way you ll be able to subscribe to authors, interesting topics and customize your feed')
         }
       }
       case 'vote': {

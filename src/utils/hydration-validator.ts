@@ -47,9 +47,7 @@ const analyzeStructuralDifferences = (serverNode: Element, clientNode: Element):
 
     // Сравнение количества дочерних элементов
     if (serverNode.children.length !== clientNode.children.length) {
-      issues.push(
-        `Children count mismatch: server=${serverNode.children.length}, client=${clientNode.children.length}`
-      )
+      issues.push(`Children count mismatch: server=${serverNode.children.length}, client=${clientNode.children.length}`)
     }
 
     // Сравнение текстового содержимого (без whitespace)
@@ -101,7 +99,9 @@ const compareNodes = (
 
   // Анализируем различия в текущем узле
   const nodeIssues = analyzeStructuralDifferences(serverNode, clientNode)
-  nodeIssues.forEach((issue) => issues.push(`${path}: ${issue}`))
+  nodeIssues.forEach((issue) => {
+    issues.push(`${path}: ${issue}`)
+  })
 
   // Рекурсивно сравниваем дочерние элементы
   const minChildren = Math.min(serverNode.children.length, clientNode.children.length)

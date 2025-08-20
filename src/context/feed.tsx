@@ -15,14 +15,7 @@ import {
 } from 'solid-js'
 import { loadCoauthoredShouts, loadDiscussedShouts, loadFollowedShouts } from '~/graphql/api/private'
 import { loadShouts, loadShoutsSearch } from '~/graphql/api/public'
-import {
-  Author,
-  LoadShoutsOptions,
-  ReactionKind,
-  Shout,
-  ShoutsOrderBy,
-  Topic
-} from '~/graphql/generated/graphql'
+import { Author, LoadShoutsOptions, ReactionKind, Shout, ShoutsOrderBy, Topic } from '~/graphql/generated/graphql'
 import { FeedFilters, FeedMode, FilterState, MyFeedKind } from '~/types/nav'
 import { useSession } from './session'
 
@@ -511,14 +504,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
   // Обновляем методы загрузки персональных лент с передачей client и options
   const loadFollowedFeed = (opts?: Partial<LoadShoutsOptions>) =>
-    loadPersonalFeed(
-      'followed',
-      setFollowedFeed,
-      client() as GraphQLClient,
-      options(),
-      session()?.author?.slug,
-      opts
-    )
+    loadPersonalFeed('followed', setFollowedFeed, client() as GraphQLClient, options(), session()?.author?.slug, opts)
 
   const loadDiscussedFeed = (opts?: Partial<LoadShoutsOptions>) =>
     loadPersonalFeed('discussed', setDiscussedFeed, client() as GraphQLClient, options(), undefined, opts)
@@ -589,11 +575,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     // Проверяем, есть ли уже данные в этом фиде
     const currentFeed = setter((prev) => prev)
     if (currentFeed.shouts?.length > 0) {
-      console.log(
-        '[FeedProvider] initializeFeed: feed already has data for',
-        name,
-        'skipping initialization'
-      )
+      console.log('[FeedProvider] initializeFeed: feed already has data for', name, 'skipping initialization')
       return
     }
 
@@ -642,9 +624,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
     switch (mode) {
       case 'hot':
-        return [...shouts].sort(
-          (a, b) => Number(b.last_commented_at || 0) - Number(a.last_commented_at || 0)
-        )
+        return [...shouts].sort((a, b) => Number(b.last_commented_at || 0) - Number(a.last_commented_at || 0))
       case 'top':
         return [...shouts].sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
       case 'comments':

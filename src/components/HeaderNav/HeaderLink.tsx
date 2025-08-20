@@ -15,10 +15,7 @@ type Props = {
 export const Link = (props: Props) => {
   const loc = useLocation()
   return (
-    <li
-      onClick={props.onClick}
-      classList={{ 'view-switcher__item--selected': props.href === `/${loc.pathname}` }}
-    >
+    <li onClick={props.onClick} classList={{ 'view-switcher__item--selected': props.href === `/${loc.pathname}` }}>
       <ConditionalWrapper
         condition={props.href !== `/${loc.pathname}`}
         wrapper={(children) => <A href={props.href || '/'}>{children}</A>}

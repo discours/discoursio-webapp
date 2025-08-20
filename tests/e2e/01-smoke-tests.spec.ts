@@ -52,11 +52,9 @@ test.describe('Дымовые тесты', () => {
         await linkElement.click()
 
         // Ждем изменения URL вместо networkidle
-        await page.waitForFunction(
-          (expectedPath) => window.location.href.includes(expectedPath),
-          link.expectedPath,
-          { timeout: 10000 }
-        )
+        await page.waitForFunction((expectedPath) => window.location.href.includes(expectedPath), link.expectedPath, {
+          timeout: 10000
+        })
 
         // Проверяем что URL изменился
         const currentUrl = page.url()
@@ -94,11 +92,7 @@ test.describe('Дымовые тесты', () => {
       const currentUrl = page.url()
       const hasSearchResults = page.locator('.search-results, .results, [data-testid="search-results"]')
 
-      if (
-        currentUrl.includes('search') ||
-        currentUrl.includes('поиск') ||
-        (await hasSearchResults.isVisible())
-      ) {
+      if (currentUrl.includes('search') || currentUrl.includes('поиск') || (await hasSearchResults.isVisible())) {
         console.log('Поиск работает, URL или результаты найдены')
       } else {
         console.log('Поиск не привел к ожидаемому результату, но тест не падает')
@@ -115,9 +109,7 @@ test.describe('Дымовые тесты', () => {
     await utils.expectPageReady()
 
     // Ищем переключатель темы
-    const themeToggle = page
-      .locator('[data-testid="theme-toggle"], .theme-toggle, .dark-mode-toggle')
-      .first()
+    const themeToggle = page.locator('[data-testid="theme-toggle"], .theme-toggle, .dark-mode-toggle').first()
 
     if (await themeToggle.isVisible()) {
       // Получаем текущую тему
@@ -141,9 +133,7 @@ test.describe('Дымовые тесты', () => {
     await utils.expectPageReady()
 
     // Ищем бургер-меню
-    const menuToggle = page
-      .locator('.menu-toggle, .burger, [data-testid="menu-toggle"], .hamburger')
-      .first()
+    const menuToggle = page.locator('.menu-toggle, .burger, [data-testid="menu-toggle"], .hamburger').first()
 
     if (await menuToggle.isVisible()) {
       console.log('Бургер-меню найдено, тестируем...')
@@ -152,9 +142,7 @@ test.describe('Дымовые тесты', () => {
       await page.waitForTimeout(500)
 
       // Проверяем что меню открылось (ищем любой из возможных селекторов)
-      const mobileMenu = page.locator(
-        '.mobile-menu, .nav-menu, [data-testid="mobile-menu"], .mobile-nav, .sidebar'
-      )
+      const mobileMenu = page.locator('.mobile-menu, .nav-menu, [data-testid="mobile-menu"], .mobile-nav, .sidebar')
       const isMenuVisible = await mobileMenu.isVisible()
 
       if (isMenuVisible) {

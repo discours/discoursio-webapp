@@ -77,9 +77,7 @@ export const VideoUploader = (props: Props) => {
       when={props.video.length === 0}
       fallback={
         <For each={props.video}>
-          {(mi, index) => (
-            <VideoPlayer onVideoDelete={() => props.onVideoDelete(index())} videoUrl={mi?.url || ''} />
-          )}
+          {(mi, index) => <VideoPlayer onVideoDelete={() => props.onVideoDelete(index())} videoUrl={mi?.url || ''} />}
         </For>
       }
     >

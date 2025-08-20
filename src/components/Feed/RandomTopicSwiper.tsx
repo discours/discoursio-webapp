@@ -18,7 +18,9 @@ export const RandomTopicSwiper = () => {
   createEffect(() => {
     const feedData = randomTopicFeed()
     if (feedData?.shouts) {
-      feedData.shouts.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
+      feedData.shouts.forEach((s: Shout) => {
+        addAuthors((s?.authors || []) as Author[])
+      })
     }
   })
 
@@ -28,14 +30,9 @@ export const RandomTopicSwiper = () => {
         articles={randomTopicFeed()?.shouts?.slice(0, 5) || []}
         header={
           <div class={styles.randomTopicHeaderContainer}>
-            <div class={styles.randomTopicHeader}>
-              {capitalize(randomTopicFeed()?.topic?.title || '', true)}
-            </div>
+            <div class={styles.randomTopicHeader}>{capitalize(randomTopicFeed()?.topic?.title || '', true)}</div>
             <div>
-              <a
-                class={styles.randomTopicHeaderLink}
-                href={`/topic/${randomTopicFeed()?.topic?.slug || ''}`}
-              >
+              <a class={styles.randomTopicHeaderLink} href={`/topic/${randomTopicFeed()?.topic?.slug || ''}`}>
                 {t('All articles')} <Icon class={styles.icon} name="arrow-right" />
               </a>
             </div>

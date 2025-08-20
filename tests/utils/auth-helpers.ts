@@ -372,10 +372,7 @@ export async function performPasswordRecovery(page: Page, email: string): Promis
 /**
  * Переключение между формами авторизации
  */
-export async function switchAuthForm(
-  page: Page,
-  targetForm: 'login' | 'register' | 'recovery'
-): Promise<void> {
+export async function switchAuthForm(page: Page, targetForm: 'login' | 'register' | 'recovery'): Promise<void> {
   const switchMap = {
     login: 'У меня есть аккаунт',
     register: 'У меня еще нет аккаунта',
@@ -448,9 +445,7 @@ export async function registerNewTestAccount(
 /**
  * Проверка существования аккаунта и регистрация нового если нужно
  */
-export async function ensureTestAccount(
-  page: Page
-): Promise<{ email: string; password: string; isNew: boolean }> {
+export async function ensureTestAccount(page: Page): Promise<{ email: string; password: string; isNew: boolean }> {
   try {
     console.log('[ensureTestAccount] Проверяем существующий тестовый аккаунт...')
 

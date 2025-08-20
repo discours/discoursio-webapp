@@ -18,9 +18,7 @@ declare global {
 
 // Реализация полифилла если его нет
 if (!Array.prototype.findLastIndex) {
-  Array.prototype.findLastIndex = function <T>(
-    predicate: (value: T, index: number, obj: T[]) => unknown
-  ): number {
+  Array.prototype.findLastIndex = function <T>(predicate: (value: T, index: number, obj: T[]) => unknown): number {
     for (let i = this.length - 1; i >= 0; i--) {
       if (predicate(this[i] as T, i, this as T[])) {
         return i
@@ -44,10 +42,7 @@ const scrollToHeader = (element: HTMLElement) => {
   console.debug('scroll to header in TableOfContents')
   window?.scrollTo({
     behavior: 'smooth',
-    top:
-      element.getBoundingClientRect().top -
-      document?.body.getBoundingClientRect().top -
-      DEFAULT_HEADER_OFFSET
+    top: element.getBoundingClientRect().top - document?.body.getBoundingClientRect().top - DEFAULT_HEADER_OFFSET
   })
 }
 
@@ -106,21 +101,13 @@ export const TableOfContents = (props: Props) => {
   })
 
   return (
-    <Show
-      when={
-        areHeadingsLoaded() && (props.variant === 'article' ? headings().length > 2 : headings().length > 1)
-      }
-    >
+    <Show when={areHeadingsLoaded() && (props.variant === 'article' ? headings().length > 2 : headings().length > 1)}>
       <div
         class={clsx(styles.TableOfContentsFixedWrapper, {
           [styles.TableOfContentsFixedWrapperLefted]: props.variant === 'editor'
         })}
       >
-        <nav
-          class={styles.TableOfContentsContainer}
-          data-custom-scroll="on"
-          aria-label={t('Table of contents')}
-        >
+        <nav class={styles.TableOfContentsContainer} data-custom-scroll="on" aria-label={t('Table of contents')}>
           <Show when={isVisible()}>
             <div class={styles.TableOfContentsContainerInner}>
               <div class={styles.TableOfContentsHeader}>
@@ -171,10 +158,7 @@ export const TableOfContents = (props: Props) => {
             aria-expanded={isVisible()}
             type="button"
           >
-            <Show
-              when={isVisible()}
-              fallback={<Icon name="show-table-of-contents" class="icon" aria-hidden="true" />}
-            >
+            <Show when={isVisible()} fallback={<Icon name="show-table-of-contents" class="icon" aria-hidden="true" />}>
               {props.variant === 'editor' ? (
                 <Icon name="hide-table-of-contents" class="icon" aria-hidden="true" />
               ) : (

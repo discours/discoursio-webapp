@@ -55,10 +55,7 @@ export const CommentsList = (props: CommentsListProps) => {
 
   return (
     <div class={styles.commentsList}>
-      <Show
-        when={props.comments.length > 0}
-        fallback={<div class={styles.noComments}>{t('No comments yet')}</div>}
-      >
+      <Show when={props.comments.length > 0} fallback={<div class={styles.noComments}>{t('No comments yet')}</div>}>
         <Show when={props.onFiltersChange}>
           <CommentsFiltersBar />
         </Show>

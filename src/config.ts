@@ -4,9 +4,7 @@ export const inboxApiUrl = import.meta.env.PUBLIC_INBOX_API || 'https://inbox.ds
 export const sseUrl = import.meta.env.PUBLIC_REALTIME_EVENTS || 'https://connect.dscrs.site'
 export const gaIdentity = import.meta.env.PUBLIC_GA_IDENTITY || 'G-LQ4B87H8C2'
 export const baseUrl =
-  (import.meta.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${import.meta.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : null) ||
+  (import.meta.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${import.meta.env.VERCEL_PROJECT_PRODUCTION_URL}` : null) ||
   (import.meta.env.VERCEL_URL ? `https://${import.meta.env.VERCEL_URL}` : null) ||
   import.meta.env.PUBLIC_BASE_URL ||
   'https://testing3.dscrs.site'

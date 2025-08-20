@@ -1,14 +1,4 @@
-import {
-  createEffect,
-  createSignal,
-  createUniqueId,
-  JSX,
-  on,
-  onCleanup,
-  onMount,
-  Show,
-  untrack
-} from 'solid-js'
+import { createEffect, createSignal, createUniqueId, JSX, on, onCleanup, onMount, Show, untrack } from 'solid-js'
 import { Button } from '~/components/_shared/Button'
 import { useLocalize } from '~/context/localize'
 import { Author, Reaction, Shout } from '~/graphql/generated/graphql'
@@ -270,10 +260,7 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
       <div ref={setScrollWrapper} class={styles.loadMoreTrigger}>
         <Show
           when={
-            isLoadMoreButtonVisible() &&
-            !props.useScrollTrigger &&
-            buttonDelayReady() &&
-            typeof window !== 'undefined'
+            isLoadMoreButtonVisible() && !props.useScrollTrigger && buttonDelayReady() && typeof window !== 'undefined'
           }
         >
           <div class={styles.loadMoreWrapper}>

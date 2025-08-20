@@ -92,9 +92,7 @@ test.describe('Страница отдельного автора', () => {
         }
       } else {
         // Проверяем сообщение об отсутствии публикаций
-        const emptyMessage = await page
-          .locator(':has-text("нет публикаций"), .empty-author, .no-content')
-          .first()
+        const emptyMessage = await page.locator(':has-text("нет публикаций"), .empty-author, .no-content').first()
         if (await emptyMessage.isVisible()) {
           expect(await emptyMessage.textContent()).toBeTruthy()
         }
@@ -191,9 +189,7 @@ test.describe('Страница отдельного автора', () => {
       await waitForPageLoad(page)
 
       // Ищем фильтры по типу контента
-      const contentFilters = await page
-        .locator('.format-filters, .content-type-filter, .publication-filters')
-        .first()
+      const contentFilters = await page.locator('.format-filters, .content-type-filter, .publication-filters').first()
 
       if (await contentFilters.isVisible()) {
         // Пробуем переключить фильтр
@@ -226,9 +222,7 @@ test.describe('Страница отдельного автора', () => {
       await waitForPageLoad(page)
 
       // Ищем секцию с достижениями
-      const achievements = await page
-        .locator('.achievements, .badges, .awards, .author-achievements')
-        .first()
+      const achievements = await page.locator('.achievements, .badges, .awards, .author-achievements').first()
 
       if (await achievements.isVisible()) {
         // Проверяем наличие достижений
@@ -259,9 +253,7 @@ test.describe('Страница отдельного автора', () => {
 
       // Ищем различные метрики
       const statsElements = await page
-        .locator(
-          ':has-text("публикаци"), :has-text("просмотр"), :has-text("лайк"), :has-text("комментари")'
-        )
+        .locator(':has-text("публикаци"), :has-text("просмотр"), :has-text("лайк"), :has-text("комментари")')
         .count()
 
       if (statsElements > 0) {

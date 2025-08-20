@@ -57,7 +57,7 @@ export const ImageSwiper = (props: Props) => {
       await new Promise((resolve) => setTimeout(resolve, 10)) // wait 10 ms
     }
     mainSwipeRef?.swiper.on('slideChange', handleSlideChange)
-    const initialSlide = searchParams?.slide ? Number.parseInt(searchParams?.slide) - 1 : 0
+    const initialSlide = searchParams?.slide ? Number.parseInt(searchParams?.slide, 10) - 1 : 0
     if (initialSlide && !Number.isNaN(initialSlide) && initialSlide < props.images.length) {
       mainSwipeRef?.swiper.slideTo(initialSlide, 0)
     } else {
@@ -164,7 +164,7 @@ export const ImageSwiper = (props: Props) => {
               <For each={props.images}>
                 {(slide, index) => (
                   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                  // @ts-ignore
+                  // @ts-expect-error
                   <swiper-slide lazy="true" virtual-index={index()} data-hash={index() + 1}>
                     <div class={styles.image} onClick={() => handleImageClick(index())}>
                       <Image src={slide.url || ''} alt={slide.title || ''} width={800} />

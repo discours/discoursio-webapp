@@ -98,11 +98,7 @@ export const SearchView = (props: Props) => {
 
         <div class="floor">
           <div class="row">
-            <LoadMoreWrapper
-              pageSize={RESULTS_PER_PAGE}
-              hidden={!isLoadMoreButtonVisible()}
-              loadFunction={loadMore}
-            >
+            <LoadMoreWrapper pageSize={RESULTS_PER_PAGE} hidden={!isLoadMoreButtonVisible()} loadFunction={loadMore}>
               <For each={searchFeed()?.shouts}>
                 {(article) => (
                   <div class="col-md-6">

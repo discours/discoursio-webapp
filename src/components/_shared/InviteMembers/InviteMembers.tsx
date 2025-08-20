@@ -81,9 +81,7 @@ export const InviteMembers = (props: Props) => {
 
   const handleInputChange = async (value: string) => {
     if (value.length > 1) {
-      const match = authorsToInvite()?.filter((author) =>
-        author.name?.toLowerCase().includes(value.toLowerCase())
-      )
+      const match = authorsToInvite()?.filter((author) => author.name?.toLowerCase().includes(value.toLowerCase()))
       setSearchResultAuthors(match)
     } else {
       setSearchResultAuthors()

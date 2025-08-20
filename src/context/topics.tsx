@@ -7,15 +7,7 @@ import { byTopicStatDesc } from '../utils/sort'
 export const TOPICS_PER_PAGE = 50
 
 // Стабильные топики по умолчанию для навигации
-export const DEFAULT_NAV_TOPICS = [
-  'interview',
-  'reportage',
-  'empiric',
-  'society',
-  'culture',
-  'theory',
-  'poetry'
-]
+export const DEFAULT_NAV_TOPICS = ['interview', 'reportage', 'empiric', 'society', 'culture', 'theory', 'poetry']
 
 type TopicsContextType = {
   topicEntities: Accessor<{ [topicSlug: string]: Topic }>

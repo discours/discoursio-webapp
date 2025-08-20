@@ -35,9 +35,7 @@ type ReactionsContextType = {
   commentsByAuthor: Accessor<Record<number, Reaction[]>>
   loadReactionsBy: (args: QueryLoad_Reactions_ByArgs) => Promise<Reaction[]>
   createShoutReaction: (reaction: MutationCreate_ReactionArgs) => Promise<Reaction | undefined>
-  updateShoutReaction: (
-    reaction: MutationUpdate_ReactionArgs
-  ) => Promise<{ error?: string; reaction?: Reaction }>
+  updateShoutReaction: (reaction: MutationUpdate_ReactionArgs) => Promise<{ error?: string; reaction?: Reaction }>
   deleteShoutReaction: (id: number) => Promise<{ error: string } | null>
   addShoutReactions: (rrr: Reaction[]) => void
   reactionsLoading: Accessor<boolean>
@@ -139,9 +137,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
     return reaction
   }
 
-  const deleteShoutReaction = async (
-    reaction_id: number
-  ): Promise<{ error: string; reaction?: string } | null> => {
+  const deleteShoutReaction = async (reaction_id: number): Promise<{ error: string; reaction?: string } | null> => {
     setReactionsLoading(true)
     if (reaction_id) {
       const resp = await client()?.mutation(destroyReactionMutation, { reaction_id }).toPromise()
@@ -160,9 +156,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
           setReactionsByShout((prev) => {
             const next = { ...prev }
             if (next[reactionToDelete.shout.id]) {
-              next[reactionToDelete.shout.id] = next[reactionToDelete.shout.id].filter(
-                (r) => r.id !== reaction_id
-              )
+              next[reactionToDelete.shout.id] = next[reactionToDelete.shout.id].filter((r) => r.id !== reaction_id)
             }
             return next
           })
@@ -226,9 +220,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
       }
 
       const newReactionsByAuthor = { ...reactionsByAuthor() }
-      const authorIndex = newReactionsByAuthor[reaction.created_by.id]?.findIndex(
-        (r) => r.id === reaction.id
-      )
+      const authorIndex = newReactionsByAuthor[reaction.created_by.id]?.findIndex((r) => r.id === reaction.id)
       if (authorIndex !== undefined && authorIndex !== -1) {
         newReactionsByAuthor[reaction.created_by.id][authorIndex] = reaction
       }

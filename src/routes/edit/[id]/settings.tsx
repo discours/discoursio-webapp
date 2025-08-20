@@ -30,7 +30,7 @@ export default (props: RouteSectionProps) => {
           return
         }
 
-        const parsedId = Number.parseInt(strId)
+        const parsedId = Number.parseInt(strId, 10)
         const draftsArray = drafts()
 
         if (!draftsArray || !Array.isArray(draftsArray)) return

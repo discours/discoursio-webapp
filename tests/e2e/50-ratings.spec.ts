@@ -29,9 +29,7 @@ test.describe('Система рейтингов', () => {
       expect(ratingText).toMatch(/[\d\-+]/) // Содержит цифры, плюс или минус
     } else {
       // Ищем кнопки голосования
-      const voteButtons = await page
-        .locator('button:has-text("+"), button:has-text("−"), .vote-up, .vote-down')
-        .first()
+      const voteButtons = await page.locator('button:has-text("+"), button:has-text("−"), .vote-up, .vote-down').first()
       expect(await voteButtons.isVisible()).toBeTruthy()
     }
   })
@@ -47,9 +45,7 @@ test.describe('Система рейтингов', () => {
     await waitForPageLoad(page)
 
     // Ищем кнопки голосования
-    const upvoteButton = await page
-      .locator('button:has-text("+"), .vote-up, [data-testid="upvote"]')
-      .first()
+    const upvoteButton = await page.locator('button:has-text("+"), .vote-up, [data-testid="upvote"]').first()
 
     if (await upvoteButton.isVisible()) {
       // Голосуем
@@ -156,9 +152,7 @@ test.describe('Система рейтингов', () => {
         expect(await commentRating.textContent()).toMatch(/[\d\-+]/)
       } else {
         // Ищем кнопки голосования для комментариев
-        const commentVoteButtons = await page
-          .locator('.comment button:has-text("+"), .comment .vote-up')
-          .first()
+        const commentVoteButtons = await page.locator('.comment button:has-text("+"), .comment .vote-up').first()
         if (await commentVoteButtons.isVisible()) {
           expect(true).toBeTruthy()
         } else {

@@ -127,14 +127,15 @@ export const route = {
         })
 
         // Загружаем все данные параллельно
-        const [featuredShouts, topCommentedShouts, topMonthShouts, topRatedShouts, topViewedShouts] =
-          await Promise.all([
+        const [featuredShouts, topCommentedShouts, topMonthShouts, topRatedShouts, topViewedShouts] = await Promise.all(
+          [
             withRetry(async () => await featuredLoader(), 2, 300),
             withRetry(async () => await topCommentedLoader(), 2, 300),
             withRetry(async () => await topMonthLoader(), 2, 300),
             withRetry(async () => await topRatedLoader(), 2, 300),
             withRetry(async () => await topViewedLoader(), 2, 300)
-          ])
+          ]
+        )
 
         safeLog('SSR data loaded', {
           featured: featuredShouts?.length || 0,

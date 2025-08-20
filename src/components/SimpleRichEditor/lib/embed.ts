@@ -50,7 +50,9 @@ export interface EmbedOptions {
  */
 const createElement = (tag: string, attrs: Record<string, string> = {}, content?: string): HTMLElement => {
   const el = document.createElement(tag)
-  Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value))
+  Object.entries(attrs).forEach(([key, value]) => {
+    el.setAttribute(key, value)
+  })
   if (content) el.textContent = content
   return el
 }
@@ -70,9 +72,7 @@ export const createVideoEmbed = (videoId: string, platform: 'youtube' | 'vimeo')
   const wrapper = createElement('div', { class: styles['video-embed'] })
   const iframe = createElement('iframe', {
     src:
-      platform === 'youtube'
-        ? `https://www.youtube.com/embed/${videoId}`
-        : `https://player.vimeo.com/video/${videoId}`,
+      platform === 'youtube' ? `https://www.youtube.com/embed/${videoId}` : `https://player.vimeo.com/video/${videoId}`,
     frameborder: '0',
     allowfullscreen: 'true'
   })

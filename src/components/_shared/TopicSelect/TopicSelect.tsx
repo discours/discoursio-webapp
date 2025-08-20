@@ -173,9 +173,7 @@ export const TopicSelect = (props: TopicSelectProps) => {
             <Show
               when={!isLoading() && filteredTopics().length > 0}
               fallback={
-                <div class={styles.emptyState}>
-                  {isLoading() ? t('Loading topics...') : t('No topics found')}
-                </div>
+                <div class={styles.emptyState}>{isLoading() ? t('Loading topics...') : t('No topics found')}</div>
               }
             >
               <For each={filteredTopics()}>

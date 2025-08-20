@@ -66,9 +66,7 @@ test.describe('Open Graph Meta Tags Tests', () => {
     const ogImageType = await page.locator('meta[property="og:image:type"]').getAttribute('content')
     expect(ogImageType).toBe('image/png')
 
-    const ogImageSecureUrl = await page
-      .locator('meta[property="og:image:secure_url"]')
-      .getAttribute('content')
+    const ogImageSecureUrl = await page.locator('meta[property="og:image:secure_url"]').getAttribute('content')
     expect(ogImageSecureUrl).toBeTruthy()
     expect(ogImageSecureUrl).toMatch(HTTPS_URL_REGEX)
   })
@@ -83,9 +81,7 @@ test.describe('Open Graph Meta Tags Tests', () => {
     const twitterTitle = await page.locator('meta[name="twitter:title"]').getAttribute('content')
     expect(twitterTitle).toBeTruthy()
 
-    const twitterDescription = await page
-      .locator('meta[name="twitter:description"]')
-      .getAttribute('content')
+    const twitterDescription = await page.locator('meta[name="twitter:description"]').getAttribute('content')
     expect(twitterDescription).toBeTruthy()
 
     const twitterImage = await page.locator('meta[name="twitter:image"]').getAttribute('content')

@@ -77,9 +77,7 @@ export const RegisterForm = () => {
     const isValid = createMemo(() => Object.keys(newValidationErrors).length === 0)
 
     if (!isValid() && authFormRef) {
-      authFormRef
-        .querySelector<HTMLInputElement>(`input[name="${Object.keys(newValidationErrors)[0]}"]`)
-        ?.focus()
+      authFormRef.querySelector<HTMLInputElement>(`input[name="${Object.keys(newValidationErrors)[0]}"]`)?.focus()
       return
     }
     setIsSubmitting(true)

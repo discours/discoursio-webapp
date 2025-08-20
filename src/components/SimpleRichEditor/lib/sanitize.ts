@@ -2,13 +2,7 @@ import type { Config } from 'dompurify'
 import DOMPurify from 'isomorphic-dompurify'
 
 // Список разрешенных доменов для iframe
-const ALLOWED_IFRAME_DOMAINS = [
-  'youtube.com',
-  'youtube-nocookie.com',
-  'youtu.be',
-  'vimeo.com',
-  'player.vimeo.com'
-]
+const ALLOWED_IFRAME_DOMAINS = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'vimeo.com', 'player.vimeo.com']
 
 /**
  * Конфигурация разрешенных HTML тегов и атрибутов

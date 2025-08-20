@@ -33,9 +33,7 @@ const UserpicList = (props: { items: Array<Author | Topic | Community>; onClose?
   </div>
 )
 
-const Counter = (props: { count: number; label: string }) => (
-  <div class={styles.subscribersCounter}>{props.label}</div>
-)
+const Counter = (props: { count: number; label: string }) => <div class={styles.subscribersCounter}>{props.label}</div>
 
 export const FollowingCounters = (props: Props) => {
   const { t } = useLocalize()
@@ -64,10 +62,7 @@ export const FollowingCounters = (props: Props) => {
             <>
               <Show when={getAuthorsCount() > 0}>
                 <UserpicList items={props.authors || []} onClose={() => hideModal()} />
-                <Counter
-                  count={getAuthorsCount()}
-                  label={t('some authors', { count: getAuthorsCount() })}
-                />
+                <Counter count={getAuthorsCount()} label={t('some authors', { count: getAuthorsCount() })} />
               </Show>
               <Show when={getTopicsCount() > 0}>
                 <Counter count={getTopicsCount()} label={t('some topics', { count: getTopicsCount() })} />
@@ -75,10 +70,7 @@ export const FollowingCounters = (props: Props) => {
             </>
           }
         >
-          <Counter
-            count={getFollowingCount()}
-            label={t('some followings', { count: getFollowingCount() })}
-          />
+          <Counter count={getFollowingCount()} label={t('some followings', { count: getFollowingCount() })} />
         </Show>
       </A>
     </>

@@ -10,15 +10,7 @@ import { capitalize } from '~/utils/capitalize'
 
 import styles from './TopicsNav.module.scss'
 
-export const DEFAULT_TOPICS = [
-  'interview',
-  'reportage',
-  'empiric',
-  'society',
-  'culture',
-  'theory',
-  'poetry'
-]
+export const DEFAULT_TOPICS = ['interview', 'reportage', 'empiric', 'society', 'culture', 'theory', 'poetry']
 
 export const TopicsNav = (props: { fixed?: boolean; inSubnavigation?: boolean }) => {
   const { t, lang } = useLocalize()
@@ -63,10 +55,7 @@ export const TopicsNav = (props: { fixed?: boolean; inSubnavigation?: boolean })
               <li class={getItemClasses(false)}>
                 <A href={`/topic/${slug}`}>
                   <span>
-                    #
-                    {capitalize(
-                      (lang() === 'ru' && topic?.title) || t(capitalize(slug)) || slug.replace('-', ' ')
-                    )}
+                    #{capitalize((lang() === 'ru' && topic?.title) || t(capitalize(slug)) || slug.replace('-', ' '))}
                   </span>
                 </A>
               </li>

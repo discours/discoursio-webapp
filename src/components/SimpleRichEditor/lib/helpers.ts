@@ -152,9 +152,7 @@ export const getEditorPosition = (
  * @param editor Элемент редактора
  * @returns Массив врезок с их идентификаторами и содержимым
  */
-export const getAllSquibs = (
-  editor: HTMLElement
-): Array<{ id: string; content: string; element: HTMLElement }> => {
+export const getAllSquibs = (editor: HTMLElement): Array<{ id: string; content: string; element: HTMLElement }> => {
   if (!editor) return []
 
   // Находим все врезки в редакторе
@@ -234,19 +232,14 @@ export const removeSquib = (editor: HTMLElement, squibId: string): boolean => {
  *   el.tagName === 'SPAN' && el.classList.contains('punchline')
  * );
  */
-export function findAncestor(
-  element: Node | null,
-  selector: string | ((element: Element) => boolean)
-): Element | null {
+export function findAncestor(element: Node | null, selector: string | ((element: Element) => boolean)): Element | null {
   if (!element) return null
 
   // Если текущий элемент - текстовый узел, начинаем с родителя
-  let current: Element | null =
-    element.nodeType === Node.TEXT_NODE ? element.parentElement : (element as Element)
+  let current: Element | null = element.nodeType === Node.TEXT_NODE ? element.parentElement : (element as Element)
 
   // Определяем функцию проверки в зависимости от типа селектора
-  const matchesSelector =
-    typeof selector === 'function' ? selector : (el: Element) => el.tagName === selector
+  const matchesSelector = typeof selector === 'function' ? selector : (el: Element) => el.tagName === selector
 
   // Поднимаемся по дереву DOM до корня документа
   while (current && !matchesSelector(current)) {

@@ -88,16 +88,10 @@ export const ArticleCardSwiper = (props: Props) => {
                         )}
                       </For>
                     </swiper-container>
-                    <div
-                      class={clsx(styles.navigation, styles.prev)}
-                      onClick={() => mainSwipeRef?.swiper.slidePrev()}
-                    >
+                    <div class={clsx(styles.navigation, styles.prev)} onClick={() => mainSwipeRef?.swiper.slidePrev()}>
                       <Icon name="swiper-l-arr" class={styles.icon} />
                     </div>
-                    <div
-                      class={clsx(styles.navigation, styles.next)}
-                      onClick={() => mainSwipeRef?.swiper.slideNext()}
-                    >
+                    <div class={clsx(styles.navigation, styles.next)} onClick={() => mainSwipeRef?.swiper.slideNext()}>
                       <Icon name="swiper-r-arr" class={styles.icon} />
                     </div>
                   </div>

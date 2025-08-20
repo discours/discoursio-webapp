@@ -8,11 +8,7 @@ import { PlayerHeader } from './PlayerHeader'
 type Props = {
   media: MediaItem[]
   editorMode?: boolean
-  onMediaItemFieldChange?: (
-    index: number,
-    field: keyof MediaItem | string | number | symbol,
-    value: string
-  ) => void
+  onMediaItemFieldChange?: (index: number, field: keyof MediaItem | string | number | symbol, value: string) => void
   onChangeMediaIndex?: (direction: 'up' | 'down', index: number) => void
 }
 
@@ -118,11 +114,7 @@ export const AudioPlayerPreview = (props: Props) => {
           isPlaying={isPlaying()}
           currentTrack={currentTack()}
         />
-        <AudioTimeLine
-          currentTime={currentTime()}
-          currentTrackDuration={currentTrackDuration()}
-          onScrub={scrub}
-        />
+        <AudioTimeLine currentTime={currentTime()} currentTrackDuration={currentTrackDuration()} onScrub={scrub} />
         <audio
           ref={(el) => (audioRef = el)}
           onTimeUpdate={handleAudioTimeUpdate}

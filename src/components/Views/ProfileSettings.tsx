@@ -1,18 +1,7 @@
 import { createFileUploader, UploadFile } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
 import deepEqual from 'fast-deep-equal'
-import {
-  createEffect,
-  createSignal,
-  For,
-  lazy,
-  Match,
-  on,
-  onCleanup,
-  onMount,
-  Show,
-  Switch
-} from 'solid-js'
+import { createEffect, createSignal, For, lazy, Match, on, onCleanup, onMount, Show, Switch } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { toast } from 'solid-toast'
 import { useLocalize } from '~/context/localize'
@@ -220,10 +209,7 @@ export const ProfileSettings = () => {
                   <form enctype="multipart/form-data" autocomplete="off">
                     <h4>{t('Userpic')}</h4>
                     <div class="pretty-form__item">
-                      <div
-                        class={clsx(styles.userpic, { [styles.hasControls]: form.pic })}
-                        onClick={handleCropAvatar}
-                      >
+                      <div class={clsx(styles.userpic, { [styles.hasControls]: form.pic })} onClick={handleCropAvatar}>
                         <Switch>
                           <Match when={isUserpicUpdating()}>
                             <Loading />
@@ -254,11 +240,7 @@ export const ProfileSettings = () => {
                               {/* @@TODO inspect popover below. onClick causes page refreshing */}
                               <Popover content={t('Upload userpic')}>
                                 {(triggerRef: (el: HTMLElement) => void) => (
-                                  <button
-                                    ref={triggerRef}
-                                    class={styles.control}
-                                    onClick={() => handleCropAvatar()}
-                                  >
+                                  <button ref={triggerRef} class={styles.control} onClick={() => handleCropAvatar()}>
                                     <Icon name="user-image-black" />
                                   </button>
                                 )}
@@ -343,9 +325,7 @@ export const ProfileSettings = () => {
                     <SimpleRichEditor
                       content={form.about || ''}
                       commands={['bold', 'italic', 'link', 'blockquote', 'image']}
-                      onChange={(data: EditorData) =>
-                        updateFormField('about', String(sanitizeHtml(data.content)))
-                      }
+                      onChange={(data: EditorData) => updateFormField('about', String(sanitizeHtml(data.content)))}
                       placeholder={t('About')}
                       editorId={`profile-about-${session()?.author?.id || ''}`}
                       fieldType="about"

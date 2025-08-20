@@ -68,13 +68,10 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
       const total = result?.total || 0
       const unread = result?.unread || 0
 
-      const newGroupsEntries = groups.reduce(
-        (acc: { [x: string]: NotificationGroup }, group: NotificationGroup) => {
-          acc[group.thread] = group
-          return acc
-        },
-        {}
-      )
+      const newGroupsEntries = groups.reduce((acc: { [x: string]: NotificationGroup }, group: NotificationGroup) => {
+        acc[group.thread] = group
+        return acc
+      }, {})
 
       setTotalNotificationsCount(total)
       setUnreadNotificationsCount(unread)
@@ -263,9 +260,7 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
       // Показываем панель уведомлений для новых уведомлений, если это важное событие
       if (
         data.action === PresenceActionType.Create &&
-        [PresenceEntityType.Message, PresenceEntityType.Personal].includes(
-          data.entity as PresenceEntityType
-        )
+        [PresenceEntityType.Message, PresenceEntityType.Personal].includes(data.entity as PresenceEntityType)
       ) {
         showNotificationsPanel()
       }

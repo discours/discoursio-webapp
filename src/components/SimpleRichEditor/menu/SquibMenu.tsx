@@ -85,11 +85,7 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
 
       <Show when={formTab() === 'style'}>
         <div class={styles.squibMenuStyle}>
-          <SimpleToolbar
-            commands={props.commands}
-            onAction={props.onAction}
-            currentFormats={props.currentFormats}
-          />
+          <SimpleToolbar commands={props.commands} onAction={props.onAction} currentFormats={props.currentFormats} />
         </div>
       </Show>
 

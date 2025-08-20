@@ -114,9 +114,7 @@ export const ProfileSubscriptions = () => {
                     <button type="button" onClick={() => setFollowsFilter('authors')}>
                       {t('Authors')}
                     </button>
-                    <span class="view-switcher__counter">
-                      {flatFollows().filter((s) => 'name' in s).length}
-                    </span>
+                    <span class="view-switcher__counter">{flatFollows().filter((s) => 'name' in s).length}</span>
                   </li>
                   <li
                     class={clsx({
@@ -126,9 +124,7 @@ export const ProfileSubscriptions = () => {
                     <button type="button" onClick={() => setFollowsFilter('topics')}>
                       {t('Topics')}
                     </button>
-                    <span class="view-switcher__counter">
-                      {flatFollows().filter((s) => 'title' in s).length}
-                    </span>
+                    <span class="view-switcher__counter">{flatFollows().filter((s) => 'title' in s).length}</span>
                   </li>
                 </ul>
 
@@ -145,9 +141,7 @@ export const ProfileSubscriptions = () => {
                     when={filtered().length > 0}
                     fallback={
                       <div class="empty-state">
-                        <p>
-                          {searchQuery() ? t('No subscriptions found') : t('No items in this category')}
-                        </p>
+                        <p>{searchQuery() ? t('No subscriptions found') : t('No items in this category')}</p>
                       </div>
                     }
                   >

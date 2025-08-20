@@ -1,17 +1,7 @@
 import { Link } from '@solidjs/meta'
 import { A, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-  on,
-  onCleanup,
-  onMount,
-  Show,
-  Suspense
-} from 'solid-js'
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, Suspense } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import usePopper from 'solid-popper'
 import { RatingControl } from '~/components/RatingControl/RatingControl'
@@ -333,9 +323,7 @@ export const FullArticle = (props: Props) => {
     lang() === 'en' && isCyrillic(a.name || '') ? capitalize(a.slug.replace(/-/g, ' ')) : a.name
 
   const myRate = createMemo(
-    () =>
-      reactionsByShout()[props.article.id || 0]?.find((r) => r.created_by.slug === session()?.author?.slug)
-        ?.kind
+    () => reactionsByShout()[props.article.id || 0]?.find((r) => r.created_by.slug === session()?.author?.slug)?.kind
   )
   const ArticleActionsBar = () => (
     <div class={styles.shoutStats}>
@@ -345,11 +333,7 @@ export const FullArticle = (props: Props) => {
 
       <Popover content={t('Comment')} disabled={isActionPopupActive()}>
         {(triggerRef: (el: HTMLElement) => void) => (
-          <div
-            class={clsx(styles.shoutStatsItem)}
-            ref={triggerRef}
-            onClick={() => scrollTo(commentsWrapper(), true)}
-          >
+          <div class={clsx(styles.shoutStatsItem)} ref={triggerRef} onClick={() => scrollTo(commentsWrapper(), true)}>
             <Icon name="comment" class={styles.icon} />
             <Icon name="comment-hover" class={clsx(styles.icon, styles.iconHover)} />
             <Show
@@ -523,18 +507,10 @@ export const FullArticle = (props: Props) => {
                   </For>
                 </div>
                 <Show
-                  when={
-                    props.article?.cover &&
-                    props.article.layout !== 'video' &&
-                    props.article.layout !== 'image'
-                  }
+                  when={props.article?.cover && props.article.layout !== 'video' && props.article.layout !== 'image'}
                 >
                   <figure class={styles.figureAlignColumn}>
-                    <Image
-                      width={1200}
-                      alt={props.article?.cover_caption || ''}
-                      src={props.article?.cover || ''}
-                    />
+                    <Image width={1200} alt={props.article?.cover_caption || ''} src={props.article?.cover || ''} />
                     <figcaption innerHTML={props.article?.cover_caption || ''} />
                   </figure>
                 </Show>

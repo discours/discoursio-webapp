@@ -47,10 +47,7 @@ export default createHandler(() => {
 
               {/* ========== БАЗОВЫЕ МЕТАТЕГИ ============ */}
               <title>{t('Discours')}</title>
-              <meta
-                name="description"
-                content={t('Discours – an open magazine about culture, science and society')}
-              />
+              <meta name="description" content={t('Discours – an open magazine about culture, science and society')} />
               <meta name="keywords" content={t('keywords')} />
 
               {/* ========== OPEN GRAPH ТЕГИ ============ */}
@@ -60,10 +57,7 @@ export default createHandler(() => {
                 property="og:description"
                 content={t('Discours – an open magazine about culture, science and society')}
               />
-              <meta
-                property="og:image"
-                content="https://files.dscrs.site/production/image/logo_image.png"
-              />
+              <meta property="og:image" content="https://files.dscrs.site/production/image/logo_image.png" />
               <meta property="og:url" content="https://discours.io" />
               <meta property="og:logo" content="https://files.dscrs.site/logo_sign.png" />
               <meta property="og:site_name" content={t('Discours')} />
@@ -71,10 +65,7 @@ export default createHandler(() => {
               <meta property="og:image:width" content="1200" />
               <meta property="og:image:height" content="630" />
               <meta property="og:image:type" content="image/png" />
-              <meta
-                property="og:image:secure_url"
-                content="https://files.dscrs.site/production/image/logo_image.png"
-              />
+              <meta property="og:image:secure_url" content="https://files.dscrs.site/production/image/logo_image.png" />
               <meta property="og:image:alt" content={t('Discours')} />
 
               {/* ========== TWITTER CARD ТЕГИ ============ */}
@@ -86,10 +77,7 @@ export default createHandler(() => {
                 name="twitter:description"
                 content={t('Discours – an open magazine about culture, science and society')}
               />
-              <meta
-                name="twitter:image"
-                content="https://files.dscrs.site/production/image/logo_image.png"
-              />
+              <meta name="twitter:image" content="https://files.dscrs.site/production/image/logo_image.png" />
               <meta name="twitter:image:alt" content={t('Discours')} />
 
               {/* ========== ДОПОЛНИТЕЛЬНЫЕ МЕТАТЕГИ ============ */}

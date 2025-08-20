@@ -16,11 +16,7 @@ export const Row5 = (props: { articles: Shout[]; nodate?: boolean }) => {
         <div class="row">
           <div class="col-md-6">
             <Show when={hasArticles()} fallback={<ArticleCardSkeleton size="small" />}>
-              <ArticleCard
-                article={props.articles[0]}
-                settings={{ nodate: props.nodate }}
-                desktopCoverSize="XS"
-              />
+              <ArticleCard article={props.articles[0]} settings={{ nodate: props.nodate }} desktopCoverSize="XS" />
             </Show>
             <Show when={hasArticles()} fallback={<ArticleCardSkeleton size="noimage" />}>
               <ArticleCard
@@ -41,11 +37,7 @@ export const Row5 = (props: { articles: Shout[]; nodate?: boolean }) => {
           </div>
           <div class="col-md-6">
             <Show when={hasArticles()} fallback={<ArticleCardSkeleton size="small" />}>
-              <ArticleCard
-                article={props.articles[3]}
-                settings={{ nodate: props.nodate }}
-                desktopCoverSize="XS"
-              />
+              <ArticleCard article={props.articles[3]} settings={{ nodate: props.nodate }} desktopCoverSize="XS" />
             </Show>
             <Show when={hasArticles()} fallback={<ArticleCardSkeleton size="noimage" />}>
               <ArticleCard

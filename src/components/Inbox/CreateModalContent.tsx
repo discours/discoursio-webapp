@@ -82,9 +82,7 @@ const CreateModalContent = (props: Props) => {
 
       <div class="invite-recipients" style={{ height: '400px', overflow: 'auto' }}>
         <For each={collectionToInvite()}>
-          {(author) => (
-            <InviteUser onClick={() => handleClick(author)} author={author} selected={author.selected} />
-          )}
+          {(author) => <InviteUser onClick={() => handleClick(author)} author={author} selected={author.selected} />}
         </For>
       </div>
 

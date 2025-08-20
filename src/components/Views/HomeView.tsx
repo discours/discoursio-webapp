@@ -53,8 +53,12 @@ export const HomeView = (props: HomeViewProps) => {
   })
 
   onMount(() => {
-    props.featuredShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
-    props.topRatedShouts?.forEach((s: Shout) => addAuthors((s?.authors || []) as Author[]))
+    props.featuredShouts?.forEach((s: Shout) => {
+      addAuthors((s?.authors || []) as Author[])
+    })
+    props.topRatedShouts?.forEach((s: Shout) => {
+      addAuthors((s?.authors || []) as Author[])
+    })
   })
 
   const pages = createMemo<Shout[][]>(() =>
@@ -205,11 +209,7 @@ export const HomeView = (props: HomeViewProps) => {
 
           {/* Случайная тема - ПРАВИЛЬНО: исключена из гидрации как рекомендует Ryan Carniato */}
           <Show
-            when={
-              randomTopicFeed()?.shouts &&
-              randomTopicFeed()?.topic &&
-              deduplicatedBlocks().randomTopic.length > 0
-            }
+            when={randomTopicFeed()?.shouts && randomTopicFeed()?.topic && deduplicatedBlocks().randomTopic.length > 0}
           >
             <TopicShoutsGroup
               shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}

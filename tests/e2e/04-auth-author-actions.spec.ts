@@ -46,11 +46,9 @@ test('Sign up', async ({ page }) => {
   await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
 
   // Ждем появления модального окна входа
-  await page
-    .waitForSelector('.authForm, .auth-form, [class*="AuthModal"]', { timeout: 10000 })
-    .catch(() => {
-      console.log('Модальное окно авторизации не найдено, продолжаем...')
-    })
+  await page.waitForSelector('.authForm, .auth-form, [class*="AuthModal"]', { timeout: 10000 }).catch(() => {
+    console.log('Модальное окно авторизации не найдено, продолжаем...')
+  })
 
   // Переходим к регистрации - используем правильный селектор
   const signupButton = page.locator(
@@ -60,10 +58,9 @@ test('Sign up', async ({ page }) => {
   await signupButton.click()
 
   // Ждем формы регистрации
-  await page.waitForSelector(
-    'input[name="fullName"], input[placeholder*="Full name"], input[placeholder*="Имя"]',
-    { timeout: 10000 }
-  )
+  await page.waitForSelector('input[name="fullName"], input[placeholder*="Full name"], input[placeholder*="Имя"]', {
+    timeout: 10000
+  })
 
   // Заполняем форму регистрации
   await page.getByPlaceholder('Имя и фамилия').or(page.getByPlaceholder('Full name')).first().click()
@@ -104,10 +101,9 @@ test.beforeEach(async ({ page }) => {
   await page.locator('a:has-text("Войти"), button:has-text("Войти")').first().click()
 
   // Ждем появления формы входа
-  await page.waitForSelector(
-    'input[name="email"], input[placeholder*="Email"], input[placeholder*="Почта"]',
-    { timeout: 10000 }
-  )
+  await page.waitForSelector('input[name="email"], input[placeholder*="Email"], input[placeholder*="Почта"]', {
+    timeout: 10000
+  })
 
   // Заполняем форму входа
   await page.getByPlaceholder('Почта').or(page.getByPlaceholder('Email')).first().click()

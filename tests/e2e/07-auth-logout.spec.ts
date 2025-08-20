@@ -110,11 +110,7 @@ test.describe('Выход из системы', () => {
   test('Должна очищать localStorage при выходе', async ({ page }) => {
     // Проверяем что токен есть в localStorage
     const tokenBefore = await page.evaluate(() => {
-      return (
-        localStorage.getItem('auth_token') ||
-        localStorage.getItem('token') ||
-        localStorage.getItem('accessToken')
-      )
+      return localStorage.getItem('auth_token') || localStorage.getItem('token') || localStorage.getItem('accessToken')
     })
 
     expect(tokenBefore).toBeTruthy()
@@ -124,11 +120,7 @@ test.describe('Выход из системы', () => {
 
     // Проверяем что токен удален
     const tokenAfter = await page.evaluate(() => {
-      return (
-        localStorage.getItem('auth_token') ||
-        localStorage.getItem('token') ||
-        localStorage.getItem('accessToken')
-      )
+      return localStorage.getItem('auth_token') || localStorage.getItem('token') || localStorage.getItem('accessToken')
     })
 
     expect(tokenAfter).toBeFalsy()

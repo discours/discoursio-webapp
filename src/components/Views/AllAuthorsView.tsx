@@ -199,14 +199,8 @@ export const AllAuthorsView = (props: Props) => {
                             <div class={clsx(styles.topic, 'topic col-sm-12 col-md-8')}>
                               <div class="topic-title">
                                 <A href={`/@${author.slug}`}>{author.name}</A>
-                                <Show
-                                  when={
-                                    authorWithStat.stat?.shouts && (authorWithStat.stat?.shouts || 0) > 0
-                                  }
-                                >
-                                  <span class={styles.articlesCounter}>
-                                    {authorWithStat.stat?.shouts || 0}
-                                  </span>
+                                <Show when={authorWithStat.stat?.shouts && (authorWithStat.stat?.shouts || 0) > 0}>
+                                  <span class={styles.articlesCounter}>{authorWithStat.stat?.shouts || 0}</span>
                                 </Show>
                               </div>
                             </div>

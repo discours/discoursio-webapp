@@ -1,9 +1,4 @@
-import {
-  createCacheableLoader,
-  createCacheableQueryResource,
-  createLoader,
-  defaultClient
-} from '~/graphql/client'
+import { createCacheableLoader, createCacheableQueryResource, createLoader, defaultClient } from '~/graphql/client'
 import {
   Author,
   LoadShoutsOptions,
@@ -85,10 +80,7 @@ export const useTopicsResource = () => {
  * Загрузка топиков по сообществу с кешированием
  */
 export const loadTopicsByCommunity = (args: QueryGet_Topics_By_CommunityArgs) => {
-  const loader = createCacheableLoader<
-    { get_topics_by_community: Topic[] },
-    QueryGet_Topics_By_CommunityArgs
-  >(
+  const loader = createCacheableLoader<{ get_topics_by_community: Topic[] }, QueryGet_Topics_By_CommunityArgs>(
     loadTopicsByCommunityQuery,
     (args: QueryGet_Topics_By_CommunityArgs) => args,
     true // Кешируем топики по сообществу

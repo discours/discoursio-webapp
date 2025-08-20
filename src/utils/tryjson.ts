@@ -1,13 +1,6 @@
 import { InputMaybe, MediaItemInput } from '~/graphql/generated/graphql'
 
-type ParsedValueType =
-  | string
-  | string[]
-  | number
-  | number[]
-  | InputMaybe<MediaItemInput>[]
-  | null
-  | undefined
+type ParsedValueType = string | string[] | number | number[] | InputMaybe<MediaItemInput>[] | null | undefined
 
 // Helper function to safely parse JSON fields
 export const tryParseJson = (value?: ParsedValueType, fieldName?: string) => {

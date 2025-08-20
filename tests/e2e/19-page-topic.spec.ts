@@ -78,9 +78,7 @@ test.describe('Страница отдельной темы', () => {
         }
       } else {
         // Проверяем сообщение о пустой теме
-        const emptyMessage = await page
-          .locator(':has-text("нет материалов"), .empty-topic, .no-content')
-          .first()
+        const emptyMessage = await page.locator(':has-text("нет материалов"), .empty-topic, .no-content').first()
         if (await emptyMessage.isVisible()) {
           expect(await emptyMessage.textContent()).toBeTruthy()
         }
@@ -143,9 +141,7 @@ test.describe('Страница отдельной темы', () => {
 
       // Ищем фильтры по типу контента
       const contentFilters = await page
-        .locator(
-          '.format-filters, .content-type-filter, button:has-text("Статьи"), button:has-text("Видео")'
-        )
+        .locator('.format-filters, .content-type-filter, button:has-text("Статьи"), button:has-text("Видео")')
         .first()
 
       if (await contentFilters.isVisible()) {
@@ -180,9 +176,7 @@ test.describe('Страница отдельной темы', () => {
 
       // Ищем элементы сортировки
       const sortOptions = await page
-        .locator(
-          '.sort-options, select[name*="sort"], button:has-text("Новые"), button:has-text("Популярные")'
-        )
+        .locator('.sort-options, select[name*="sort"], button:has-text("Новые"), button:has-text("Популярные")')
         .first()
 
       if (await sortOptions.isVisible()) {
@@ -221,9 +215,7 @@ test.describe('Страница отдельной темы', () => {
       await waitForPageLoad(page)
 
       // Проверяем хлебные крошки
-      const breadcrumbs = await page
-        .locator('.breadcrumbs, .breadcrumb, nav[aria-label*="breadcrumb"]')
-        .first()
+      const breadcrumbs = await page.locator('.breadcrumbs, .breadcrumb, nav[aria-label*="breadcrumb"]').first()
 
       if (await breadcrumbs.isVisible()) {
         // Проверяем ссылку на главную или темы

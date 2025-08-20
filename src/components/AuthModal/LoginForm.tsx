@@ -85,9 +85,7 @@ export const LoginForm = () => {
 
     if (Object.keys(validationErrors()).length > 0) {
       console.warn('[LoginForm] Ошибки валидации:', validationErrors())
-      authFormRef
-        .querySelector<HTMLInputElement>(`input[name="${Object.keys(validationErrors())[0]}"]`)
-        ?.focus()
+      authFormRef.querySelector<HTMLInputElement>(`input[name="${Object.keys(validationErrors())[0]}"]`)?.focus()
       return
     }
 

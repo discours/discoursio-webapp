@@ -56,9 +56,7 @@ const _LayoutFilterTrigger = (props: {
   return (
     <div class={clsx(styles.trigger, styles.layoutIconsTrigger, styles.nonSelectable)}>
       <For each={props.selectedLayouts}>
-        {(layout) => (
-          <Icon name={layout === 'article' ? 'create-article' : layout} class={styles.layoutIcon} />
-        )}
+        {(layout) => <Icon name={layout === 'article' ? 'create-article' : layout} class={styles.layoutIcon} />}
       </For>
       <ChevronDown />
     </div>
@@ -66,10 +64,7 @@ const _LayoutFilterTrigger = (props: {
 }
 
 // Компонент для отображения выбранного featured фильтра
-const FeaturedFilterTrigger = (props: {
-  selectedFilter: FeaturedFilter
-  onToggle: (isOpen: boolean) => void
-}) => {
+const FeaturedFilterTrigger = (props: { selectedFilter: FeaturedFilter; onToggle: (isOpen: boolean) => void }) => {
   const { t } = useLocalize()
 
   return (
@@ -94,9 +89,7 @@ const CombinedFilterTrigger = (props: {
       <span class={styles.featuredText}>{t(capitalize(props.selectedFilter))}</span>
       <div class={styles.layoutIconsGroup}>
         <For each={props.selectedLayouts}>
-          {(layout) => (
-            <Icon name={layout === 'article' ? 'create-article' : layout} class={styles.layoutIcon} />
-          )}
+          {(layout) => <Icon name={layout === 'article' ? 'create-article' : layout} class={styles.layoutIcon} />}
         </For>
       </div>
       <ChevronDown />
@@ -122,8 +115,7 @@ export const FeedFiltersControl = () => {
   const checkForChanges = () => {
     const periodChanged = pendingPeriod() !== currentPeriod()
     const featuredChanged = pendingFeaturedFilter() !== currentFeaturedFilter()
-    const layoutsChanged =
-      JSON.stringify(pendingLayouts().sort()) !== JSON.stringify(currentLayouts().sort())
+    const layoutsChanged = JSON.stringify(pendingLayouts().sort()) !== JSON.stringify(currentLayouts().sort())
 
     setHasChanges(periodChanged || featuredChanged || layoutsChanged)
   }
@@ -139,8 +131,7 @@ export const FeedFiltersControl = () => {
 
       // Синхронизация featured фильтра
       if (filters.featured !== undefined) {
-        const featured =
-          filters.featured === true ? 'featured' : filters.featured === false ? 'unfeatured' : 'all'
+        const featured = filters.featured === true ? 'featured' : filters.featured === false ? 'unfeatured' : 'all'
         setCurrentFeaturedFilter(featured)
         setPendingFeaturedFilter(featured)
       }
@@ -203,11 +194,7 @@ export const FeedFiltersControl = () => {
 
     const filters = {
       featured:
-        pendingFeaturedFilter() === 'featured'
-          ? true
-          : pendingFeaturedFilter() === 'unfeatured'
-            ? false
-            : undefined,
+        pendingFeaturedFilter() === 'featured' ? true : pendingFeaturedFilter() === 'unfeatured' ? false : undefined,
       after: pendingPeriod() === PeriodType.AllTime ? undefined : getTimestampFromPeriod(pendingPeriod()),
       layouts: pendingLayouts().length ? pendingLayouts() : undefined
     }

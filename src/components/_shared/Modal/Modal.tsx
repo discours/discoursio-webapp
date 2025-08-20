@@ -70,12 +70,7 @@ export const Modal = (props: Props) => {
               {props.children}
             </div>
             <Show when={!isPortrait()}>
-              <button
-                class={styles.close}
-                onClick={handleHide}
-                aria-label="Закрыть модальное окно"
-                type="button"
-              >
+              <button class={styles.close} onClick={handleHide} aria-label="Закрыть модальное окно" type="button">
                 <Icon name="close" class={styles.icon} />
               </button>
             </Show>

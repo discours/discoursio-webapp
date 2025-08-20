@@ -5,12 +5,7 @@ import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import {
-  MutationCreate_ReactionArgs,
-  Reaction,
-  ReactionInput,
-  ReactionKind
-} from '~/graphql/generated/graphql'
+import { MutationCreate_ReactionArgs, Reaction, ReactionInput, ReactionKind } from '~/graphql/generated/graphql'
 
 import styles from './SuggestionCard.module.scss'
 

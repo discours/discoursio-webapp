@@ -31,11 +31,7 @@ const colors = [
 ]
 
 const getById = (letter: string) =>
-  colors[
-    Math.abs(
-      Number(BigInt(((letter || '').toLowerCase()?.codePointAt(0) || 97) - 97) % BigInt(colors.length))
-    )
-  ]
+  colors[Math.abs(Number(BigInt(((letter || '').toLowerCase()?.codePointAt(0) || 97) - 97) % BigInt(colors.length)))]
 
 const DialogAvatar = (props: Props) => {
   const nameFirstLetter = createMemo(() => props.name.slice(0, 1))
@@ -57,11 +53,7 @@ const DialogAvatar = (props: Props) => {
           class={styles.imageHolder}
           style={{
             'background-image': `url(
-            ${
-              props.url?.includes('discours.io')
-                ? getFileUrl(props.url || '', { width: 40, height: 40 })
-                : props.url
-            }
+            ${props.url?.includes('discours.io') ? getFileUrl(props.url || '', { width: 40, height: 40 }) : props.url}
             )`
           }}
         />

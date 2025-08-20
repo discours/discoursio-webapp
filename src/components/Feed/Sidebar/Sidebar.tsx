@@ -17,16 +17,8 @@ export const Sidebar = () => {
   const { t } = useLocalize()
   const { follows } = useFollowing()
   const { session } = useSession()
-  const {
-    feedByTopic,
-    feedByAuthor,
-    seen,
-    myFeed,
-    setMyFeed,
-    setFollowedFeed,
-    setDiscussedFeed,
-    setCoauthoredFeed
-  } = useFeed()
+  const { feedByTopic, feedByAuthor, seen, myFeed, setMyFeed, setFollowedFeed, setDiscussedFeed, setCoauthoredFeed } =
+    useFeed()
   const { authorsEntities } = useAuthors()
   const { topicEntities, topTopics } = useTopics()
   const [authorsList, setAuthorsList] = createSignal<Partial<Author>[]>([])
@@ -220,12 +212,7 @@ export const Sidebar = () => {
                     classList={{ [styles.unread]: author.isUnread }}
                   >
                     <div class={styles.sidebarItemName}>
-                      <Userpic
-                        name={author.name || ''}
-                        userpic={author.pic || ''}
-                        size="XS"
-                        class={styles.userpic}
-                      />
+                      <Userpic name={author.name || ''} userpic={author.pic || ''} size="XS" class={styles.userpic} />
                       <span class={styles.sidebarItemNameLabel}>{author.name}</span>
                     </div>
                   </a>

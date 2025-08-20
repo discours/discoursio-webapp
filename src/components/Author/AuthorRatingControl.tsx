@@ -38,10 +38,7 @@ export const AuthorRatingControl = (props: AuthorRatingControlProps) => {
         [styles.isDownvoted]: isDownvoted
       })}
     >
-      <button
-        class={clsx(styles.ratingControl, styles.downvoteButton)}
-        onClick={() => handleRatingChange(false)}
-      >
+      <button class={clsx(styles.ratingControl, styles.downvoteButton)} onClick={() => handleRatingChange(false)}>
         &minus;
       </button>
       {/*TODO*/}
@@ -54,10 +51,7 @@ export const AuthorRatingControl = (props: AuthorRatingControlProps) => {
           <div class={styles.ratingValue}>{props.author?.stat?.rating_comments}</div>
         </Show>
       </div>
-      <button
-        class={clsx(styles.ratingControl, styles.upvoteButton)}
-        onClick={() => handleRatingChange(true)}
-      >
+      <button class={clsx(styles.ratingControl, styles.upvoteButton)} onClick={() => handleRatingChange(true)}>
         +
       </button>
     </div>

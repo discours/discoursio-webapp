@@ -59,9 +59,7 @@ export const AuthorView = (props: AuthorViewProps) => {
   const [isBioExpanded, setIsBioExpanded] = createSignal(false)
   const [author, setAuthor] = createSignal<Author>()
   const [followers, setFollowers] = createSignal<Author[]>([] as Author[])
-  const [followingArray, setFollowingArray] = createSignal<Array<Author | Topic>>(
-    [] as Array<Author | Topic>
-  ) // flat AuthorFollowsResult
+  const [followingArray, setFollowingArray] = createSignal<Array<Author | Topic>>([] as Array<Author | Topic>) // flat AuthorFollowsResult
   const [showExpandBioControl, setShowExpandBioControl] = createSignal(false)
   const [commented, setCommented] = createSignal<Reaction[]>(props.comments || [])
   const [followersLoaded, setFollowersLoaded] = createSignal(false)
@@ -245,10 +243,7 @@ export const AuthorView = (props: AuthorViewProps) => {
           const followersResp = await currentClient.query(getAuthorFollowersQuery, { slug }).toPromise()
           setFollowers(followersResp?.data?.get_author_followers || [])
           setFollowersLoaded(true)
-          console.log(
-            '[AuthorView] Loaded followers:',
-            followersResp?.data?.get_author_followers?.length || 0
-          )
+          console.log('[AuthorView] Loaded followers:', followersResp?.data?.get_author_followers?.length || 0)
         } catch (error) {
           console.error('[AuthorView] Error loading followers/followings:', error)
           // Устанавливаем флаги в true даже при ошибке, чтобы не блокировать отображение
@@ -492,12 +487,7 @@ export const AuthorView = (props: AuthorViewProps) => {
 
     saveScrollPosition()
     try {
-      console.log(
-        '[AuthorView] Loading more comments for author:',
-        author()?.slug,
-        'offset:',
-        commented().length
-      )
+      console.log('[AuthorView] Loading more comments for author:', author()?.slug, 'offset:', commented().length)
       const result = await loadReactions({
         by: {
           kinds: [ReactionKind.Comment],
@@ -689,11 +679,7 @@ export const AuthorView = (props: AuthorViewProps) => {
                 </div>
               }
             >
-              <LoadMoreWrapper
-                loadFunction={loadMoreAuthorShouts}
-                pageSize={FEED_PAGE_SIZE}
-                hidden={loadMoreHidden()}
-              >
+              <LoadMoreWrapper loadFunction={loadMoreAuthorShouts} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
                 <For each={sortedFeed()}>
                   {(_article, index) => {
                     const i = index()

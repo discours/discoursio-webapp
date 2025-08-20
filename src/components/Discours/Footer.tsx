@@ -93,21 +93,13 @@ export const FooterView = () => {
 
         <div class={clsx(styles.footerCopyright, 'row')}>
           <div class="col-md-18 col-lg-20">
-            {t(
-              'Independant magazine with an open horizontal cooperation about culture, science and society'
-            )}
-            . {t('Discours')} &copy; 2015&ndash;{new Date().getFullYear()}{' '}
-            <a href="/terms">{t('Terms of use')}</a>
+            {t('Independant magazine with an open horizontal cooperation about culture, science and society')}.{' '}
+            {t('Discours')} &copy; 2015&ndash;{new Date().getFullYear()} <a href="/terms">{t('Terms of use')}</a>
           </div>
           <div class={clsx(styles.footerCopyrightSocial, 'col-md-6 col-lg-4')}>
             <For each={social}>
               {(provider) => (
-                <div
-                  class={clsx(
-                    styles.socialItem,
-                    styles[`socialItem${provider.name}` as keyof typeof styles]
-                  )}
-                >
+                <div class={clsx(styles.socialItem, styles[`socialItem${provider.name}` as keyof typeof styles])}>
                   <a href={provider.href}>
                     <Icon name={`${provider.name}-white`} class={styles.icon} />
                   </a>

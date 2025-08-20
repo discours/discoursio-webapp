@@ -10,9 +10,7 @@ export const DraftPreviewToolbar = () => {
   return (
     <div class={styles.previewToolbar}>
       {t('Preview Mode')}
-      <span class={styles.previewToolbarSubtitle}>
-        {t('This is how the post will look when published')}
-      </span>
+      <span class={styles.previewToolbarSubtitle}>{t('This is how the post will look when published')}</span>
     </div>
   )
 }

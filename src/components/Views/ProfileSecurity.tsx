@@ -193,10 +193,7 @@ export const ProfileSecurityView = (_props: any) => {
     }
 
     // Проверяем совпадение паролей
-    if (
-      currentFormData['newPassword'] &&
-      currentFormData['newPassword'] !== currentFormData['newPasswordConfirm']
-    ) {
+    if (currentFormData['newPassword'] && currentFormData['newPassword'] !== currentFormData['newPasswordConfirm']) {
       setNewPasswordError(t('Passwords are not equal'))
       setIsSubmitting(false)
       return

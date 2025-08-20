@@ -99,12 +99,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       console.error('[DraftsView] Error loading drafts:', error)
     } finally {
       setIsLoading(false)
-      console.log(
-        '[DraftsView] loading finished, isLoading:',
-        false,
-        'drafts count:',
-        drafts()?.length || 0
-      )
+      console.log('[DraftsView] loading finished, isLoading:', false, 'drafts count:', drafts()?.length || 0)
     }
   }
 

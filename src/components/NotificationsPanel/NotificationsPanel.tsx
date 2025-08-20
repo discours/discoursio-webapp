@@ -98,15 +98,11 @@ export const NotificationsPanel = (props: Props) => {
   })
 
   const yesterdayNotifications = createMemo(() => {
-    return sortedNotifications().filter((notification) =>
-      isYesterday(new Date(notification.updated_at * 1000))
-    )
+    return sortedNotifications().filter((notification) => isYesterday(new Date(notification.updated_at * 1000)))
   })
 
   const earlierNotifications = createMemo(() => {
-    return sortedNotifications().filter((notification) =>
-      isEarlier(new Date(notification.updated_at * 1000))
-    )
+    return sortedNotifications().filter((notification) => isEarlier(new Date(notification.updated_at * 1000)))
   })
 
   let scrollContainerRef: HTMLDivElement | undefined
@@ -133,8 +129,7 @@ export const NotificationsPanel = (props: Props) => {
     }
 
     const isNearBottom =
-      scrollContainerRef.scrollHeight - scrollContainerRef.scrollTop <=
-      scrollContainerRef.clientHeight * 1.5
+      scrollContainerRef.scrollHeight - scrollContainerRef.scrollTop <= scrollContainerRef.clientHeight * 1.5
 
     if (isNearBottom) {
       setIsLoading(true)

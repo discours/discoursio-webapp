@@ -14,11 +14,7 @@ interface ArticleCardSkeletonProps {
 export const ArticleCardSkeleton = (props: ArticleCardSkeletonProps) => {
   return (
     <div
-      class={clsx(
-        styles.skeleton,
-        styles[`skeleton--${props.size || 'medium'}` as keyof typeof styles],
-        props.class
-      )}
+      class={clsx(styles.skeleton, styles[`skeleton--${props.size || 'medium'}` as keyof typeof styles], props.class)}
     >
       <Show when={props.size === 'large'}>
         <div class={styles.skeletonTopic} />

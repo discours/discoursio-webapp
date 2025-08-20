@@ -102,8 +102,7 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
     const currentAuthor = session()?.author
     return (
       Boolean(currentAuthor?.id) &&
-      (props.comment.created_by?.slug === currentAuthor?.slug ||
-        session()?.author?.roles?.includes('editor'))
+      (props.comment.created_by?.slug === currentAuthor?.slug || session()?.author?.roles?.includes('editor'))
     )
   })
 
@@ -188,8 +187,7 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
 
     // Анимируем скрытие комментария перед фактическим удалением
     if (commentRef) {
-      commentRef.style.transition =
-        'opacity 0.3s ease, max-height 0.5s ease, padding 0.5s ease, margin 0.5s ease'
+      commentRef.style.transition = 'opacity 0.3s ease, max-height 0.5s ease, padding 0.5s ease, margin 0.5s ease'
       commentRef.style.opacity = '0'
       commentRef.style.maxHeight = '0'
       commentRef.style.overflow = 'hidden'
@@ -370,17 +368,12 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
                 <div class={styles.leftControls}>
                   <Show when={!isDeleted()}>
                     <RatingControl comment={props.comment} myRate={props.myRate} />
-                    <button
-                      class={clsx(styles.commentControl, styles.commentControlReply)}
-                      onClick={handleReply}
-                    >
+                    <button class={clsx(styles.commentControl, styles.commentControlReply)} onClick={handleReply}>
                       {t('Reply')}
                     </button>
                     <Show
                       when={
-                        props.comment.stat?.comments_count &&
-                        props.comment.stat.comments_count > 0 &&
-                        !props.children
+                        props.comment.stat?.comments_count && props.comment.stat.comments_count > 0 && !props.children
                       }
                     >
                       <button

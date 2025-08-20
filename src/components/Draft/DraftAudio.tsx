@@ -79,11 +79,7 @@ export const AudioProfile = (props: {
         >
           <Popover content={t('Delete cover')}>
             {(triggerRef: (_el: HTMLElement | null) => void) => (
-              <div
-                ref={triggerRef}
-                class={styles.delete}
-                onClick={() => untrack(() => props.onCoverChange(''))}
-              >
+              <div ref={triggerRef} class={styles.delete} onClick={() => untrack(() => props.onCoverChange(''))}>
                 <Icon name="close-white" />
               </div>
             )}

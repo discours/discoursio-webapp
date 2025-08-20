@@ -135,12 +135,7 @@ export const UploadModalContent = (props: Props) => {
               {dragError() ?? t('Drag the image to this area')}
             </div>
           </div>
-          <Button
-            value={t('Upload')}
-            variant="bordered"
-            onClick={handleUpload}
-            class={styles.uploadButton}
-          />
+          <Button value={t('Upload')} variant="bordered" onClick={handleUpload} class={styles.uploadButton} />
           <Show when={uploadError()}>
             <div class={styles.error}>{uploadError()}</div>
           </Show>

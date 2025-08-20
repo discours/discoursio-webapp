@@ -49,7 +49,9 @@ export const compareServerClientDOM = () => {
 
   if (issues.length > 0) {
     console.group('⚠️ Обнаружены потенциальные проблемы гидрации:')
-    issues.forEach((issue) => console.warn(`- ${issue}`))
+    issues.forEach((issue) => {
+      console.warn(`- ${issue}`)
+    })
     console.groupEnd()
   } else {
     console.log('✅ Критических проблем гидрации не обнаружено')

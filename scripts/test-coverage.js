@@ -170,9 +170,7 @@ class TestCoverageAnalyzer {
   generateHtmlContent(testResults, testCoverage) {
     const passRate = testResults.total > 0 ? ((testResults.passed / testResults.total) * 100).toFixed(1) : 0
     const coverageRate =
-      testCoverage.totalTests > 0
-        ? ((testCoverage.implementedTests / testCoverage.totalTests) * 100).toFixed(1)
-        : 0
+      testCoverage.totalTests > 0 ? ((testCoverage.implementedTests / testCoverage.totalTests) * 100).toFixed(1) : 0
 
     return `<!DOCTYPE html>
 <html lang="ru">
@@ -291,9 +289,7 @@ class TestCoverageAnalyzer {
   generateMarkdownContent(testResults, testCoverage) {
     const passRate = testResults.total > 0 ? ((testResults.passed / testResults.total) * 100).toFixed(1) : 0
     const coverageRate =
-      testCoverage.totalTests > 0
-        ? ((testCoverage.implementedTests / testCoverage.totalTests) * 100).toFixed(1)
-        : 0
+      testCoverage.totalTests > 0 ? ((testCoverage.implementedTests / testCoverage.totalTests) * 100).toFixed(1) : 0
 
     return `# 🧪 Отчет о покрытии тестами
 

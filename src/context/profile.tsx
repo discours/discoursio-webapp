@@ -108,9 +108,7 @@ export const ProfileProvider = (props: { children: JSX.Element }) => {
     if (fieldName === 'slug' && value.startsWith('!')) val = value.substring(1)
     if (fieldName === 'links') {
       setForm((prev) => {
-        const updatedLinks = remove
-          ? (prev.links || []).filter((item) => item !== val)
-          : [...(prev.links || []), val]
+        const updatedLinks = remove ? (prev.links || []).filter((item) => item !== val) : [...(prev.links || []), val]
         return { ...prev, links: updatedLinks }
       })
     } else {

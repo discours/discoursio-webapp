@@ -340,10 +340,7 @@ export const isLinkActive = () => {
  * @param onSelectionChange Колбэк, вызываемый при изменении выделения
  * @returns Функции cleanup для отключения отслеживания
  */
-export const setupSelectionTracking = (
-  editor: HTMLElement,
-  onSelectionChange: (state: SelectionState) => void
-) => {
+export const setupSelectionTracking = (editor: HTMLElement, onSelectionChange: (state: SelectionState) => void) => {
   // Обработчик изменения выделения с дебаунсом
   const handleSelectionChange = debounce(150, () => {
     if (!editor) return

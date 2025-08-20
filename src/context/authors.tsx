@@ -1,22 +1,6 @@
-import {
-  Accessor,
-  createContext,
-  createEffect,
-  createMemo,
-  createSignal,
-  JSX,
-  on,
-  useContext
-} from 'solid-js'
+import { Accessor, createContext, createEffect, createMemo, createSignal, JSX, on, useContext } from 'solid-js'
 import { getAuthor, loadAuthors, loadAuthorsAll, loadAuthorsSearch } from '~/graphql/api/public'
-import {
-  Author,
-  Maybe,
-  QueryGet_AuthorArgs,
-  QueryLoad_Authors_ByArgs,
-  Shout,
-  Topic
-} from '~/graphql/generated/graphql'
+import { Author, Maybe, QueryGet_AuthorArgs, QueryLoad_Authors_ByArgs, Shout, Topic } from '~/graphql/generated/graphql'
 import { FilterFunction, SortFunction } from '~/types/nav'
 import { byStat } from '~/utils/sort'
 import { useFeed } from './feed'

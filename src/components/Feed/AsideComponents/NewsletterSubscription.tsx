@@ -52,9 +52,7 @@ export const NewsletterSubscription = (props: NewsletterSubscriptionProps) => {
         <div class={styles.newsletterContent}>
           <p class={styles.newsletterDescription}>
             {props.description ||
-              t(
-                'Subscribe to the newsletter of the best publications to receive a digest of the main materials'
-              )}
+              t('Subscribe to the newsletter of the best publications to receive a digest of the main materials')}
           </p>
 
           {isSubscribed() ? (

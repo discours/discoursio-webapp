@@ -233,15 +233,11 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     console.log('[CommentsTree] Sorting comments:', filteredComments.length, 'order:', sortOrder)
 
     if (sortOrder === 'newest') {
-      return [...filteredComments].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
+      return [...filteredComments].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
 
     if (sortOrder === 'oldest') {
-      return [...filteredComments].sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      )
+      return [...filteredComments].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     }
 
     if (sortOrder === 'popular') {
@@ -313,9 +309,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     const rootCommentIds = (tree[0] || []).map((c) => c.id).join(', ')
     const totalInTree = Object.values(tree).reduce((sum, arr) => sum + arr.length, 0)
 
-    console.log(
-      `[CommentsTree] Tree built: total ${totalInTree} comments, ${tree[0]?.length || 0} root comments`
-    )
+    console.log(`[CommentsTree] Tree built: total ${totalInTree} comments, ${tree[0]?.length || 0} root comments`)
     console.log(`[CommentsTree] Root comment IDs: ${rootCommentIds}`)
 
     return tree
@@ -330,10 +324,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
         // Вычисляем адаптивный лимит загрузки дочерних комментариев
         const childrenLimit = props.totalComments < 30 ? null : 3
 
-        console.log(
-          `[CommentsTree] Loading initial comments for shout ${shout} with children_limit:`,
-          childrenLimit
-        )
+        console.log(`[CommentsTree] Loading initial comments for shout ${shout} with children_limit:`, childrenLimit)
 
         // Вместо старого метода используем новый API для загрузки с ветками
         const response = await loadCommentsBranch({
@@ -366,9 +357,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
             const afterCount = Object.keys(reactionEntities()).length
             const addedCount = afterCount - beforeCount
 
-            console.log(
-              `[CommentsTree] Added ${addedCount} comments to store (${beforeCount} -> ${afterCount})`
-            )
+            console.log(`[CommentsTree] Added ${addedCount} comments to store (${beforeCount} -> ${afterCount})`)
 
             // Проверяем полноту загрузки
             const totalLoaded = response.length
@@ -905,11 +894,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       // При включении режима "только новые" обновляем отображаемые комментарии
       if (newValue && newComments().length > 0) {
         // При включении режима "только новые" снимаем выбранность со всех типов сортировки
-        console.log(
-          '[CommentsTree] Режим "только новые" включен, показываем',
-          newComments().length,
-          'комментариев'
-        )
+        console.log('[CommentsTree] Режим "только новые" включен, показываем', newComments().length, 'комментариев')
       } else {
         console.log('[CommentsTree] Режим "только новые" выключен, показываем все комментарии')
         // Восстанавливаем обычное отображение видимых комментариев
@@ -1157,9 +1142,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       }
 
       if (replies.length > 0) {
-        console.log(
-          `[CommentBranch] Using tree replies for comment #${props.parentId}: ${replies.length} replies`
-        )
+        console.log(`[CommentBranch] Using tree replies for comment #${props.parentId}: ${replies.length} replies`)
       } else {
         console.log(`[CommentBranch] No replies found for comment #${props.parentId}`)
       }
@@ -1200,9 +1183,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
             loadedCount < totalReplies
 
           if (shouldAutoLoad) {
-            console.log(
-              `[CommentBranch] Auto-loading ${totalReplies} replies for comment #${props.parentId}`
-            )
+            console.log(`[CommentBranch] Auto-loading ${totalReplies} replies for comment #${props.parentId}`)
             // Автоматически загружаем небольшое количество ответов на маленьких страницах
             setTimeout(() => loadMoreReplies(), 100)
           }
@@ -1234,9 +1215,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
       setIsLoadingReplies(true)
       try {
-        console.log(
-          `[CommentBranch] Loading more replies for comment #${props.parentId}, offset: ${repliesOffset()}`
-        )
+        console.log(`[CommentBranch] Loading more replies for comment #${props.parentId}, offset: ${repliesOffset()}`)
 
         // Определяем адаптивный лимит загрузки
         // Используем Math.floor для обеспечения целочисленного значения
@@ -1494,8 +1473,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     const hasExcessiveBreaks = /(<p><br\s*\/?><\/p>){3,}/gi.test(data.content)
 
     // Если есть - сразу нормализуем
-    const finalContent =
-      hasEmptyParagraphs || hasExcessiveBreaks ? cleanupContent(data.content) : data.content
+    const finalContent = hasEmptyParagraphs || hasExcessiveBreaks ? cleanupContent(data.content) : data.content
 
     // Устанавливаем очищенный контент
     setLocalContent(finalContent)
@@ -1557,9 +1535,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
       // - без лимита (null), если всего комментариев < 30
       // - 3 комментария, если комментариев >= 30
       const childrenLimit = props.totalComments < 30 ? null : 3
-      console.log(
-        `[CommentsTree] Loading more comments with offset ${offset}, children_limit: ${childrenLimit}`
-      )
+      console.log(`[CommentsTree] Loading more comments with offset ${offset}, children_limit: ${childrenLimit}`)
 
       // Получаем текущий список корневых комментариев для отладки
       const currentRootComments = commentTree()[0]?.length || 0
@@ -1620,9 +1596,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
             const replies = (comment.first_replies || []) as Reaction[]
 
             // Логируем информацию о предзагруженных ответах
-            console.log(
-              `[CommentsTree] Комментарий #${comment.id} содержит ${replies.length} предзагруженных ответов`
-            )
+            console.log(`[CommentsTree] Комментарий #${comment.id} содержит ${replies.length} предзагруженных ответов`)
 
             // Проверяем, что это массив перед добавлением
             if (Array.isArray(replies)) {
@@ -1894,9 +1868,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
 
                       // Если дерево пустое, но комментарии загружены, используем их напрямую
                       if (!rootComments?.length && comments().length > 0 && !onlyNew()) {
-                        console.log(
-                          '[CommentsTree] Tree is empty but comments exist, showing them directly'
-                        )
+                        console.log('[CommentsTree] Tree is empty but comments exist, showing them directly')
                         rootComments = comments().filter((c) => !c.reply_to)
 
                         // Сортируем комментарии согласно выбранному порядку
@@ -1912,10 +1884,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                           rootComments.sort((a, b) => {
                             const aRate = a.stat?.rating ?? 0
                             const bRate = b.stat?.rating ?? 0
-                            return (
-                              bRate - aRate ||
-                              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                            )
+                            return bRate - aRate || new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                           })
                         }
                       }
@@ -1925,11 +1894,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
                     fallback={<div class={styles.noComments}>{t('No comments yet')}</div>}
                   >
                     {(comment) => (
-                      <li
-                        class={styles.commentItem}
-                        data-comment-id={comment.id}
-                        id={`comment-${comment.id}`}
-                      >
+                      <li class={styles.commentItem} data-comment-id={comment.id} id={`comment-${comment.id}`}>
                         <CommentCard
                           comment={comment}
                           sortedComments={sortedComments()}

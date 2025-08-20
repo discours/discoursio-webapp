@@ -24,8 +24,7 @@ export function generateServerMetaTags(
   const ogMetadata = generateOGMetadata(contentData, {
     pathname,
     defaultTitle: defaultTitle || t('Discours'),
-    defaultDescription:
-      defaultDescription || t('Discours – an open magazine about culture, science and society'),
+    defaultDescription: defaultDescription || t('Discours – an open magazine about culture, science and society'),
     locale
   })
 

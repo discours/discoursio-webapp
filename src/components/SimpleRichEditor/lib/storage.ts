@@ -85,9 +85,7 @@ export interface SyncStatus {
  * @param content Строка с контентом, возможно в JSON формате
  * @returns Очищенный контент без JSON-обертки
  */
-export const cleanupJsonContent = (
-  content: string | null | undefined | Record<string, unknown>
-): string => {
+export const cleanupJsonContent = (content: string | null | undefined | Record<string, unknown>): string => {
   if (content === null || content === undefined) return ''
 
   // Если это не строка, пробуем преобразовать
@@ -138,12 +136,7 @@ export const cleanupJsonContent = (
         }
 
         // Проверяем, может быть это массив с первым элементом, содержащим content
-        if (
-          Array.isArray(parsed) &&
-          parsed.length > 0 &&
-          typeof parsed[0] === 'object' &&
-          'content' in parsed[0]
-        ) {
+        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && 'content' in parsed[0]) {
           return cleanupJsonContent(parsed[0].content)
         }
       }
@@ -229,11 +222,7 @@ export const getVersionSource = (key: string): 'server' | 'local' => {
  * @param content Контент для сохранения
  * @param source Источник данных (server или local)
  */
-export const saveVersionToStorage = (
-  key: string,
-  content: string,
-  source: 'server' | 'local' = 'local'
-): void => {
+export const saveVersionToStorage = (key: string, content: string, source: 'server' | 'local' = 'local'): void => {
   if (!key || !content) return
 
   const existingData = getStorageData(key)
@@ -395,9 +384,7 @@ export const loadVersions = (
   } else if (localVersion) {
     // Только локальная
     contentToUse = localVersion.content
-    console.log(
-      `[SimpleRichEditor] Using local version from ${new Date(localVersion.timestamp).toLocaleString()}`
-    )
+    console.log(`[SimpleRichEditor] Using local version from ${new Date(localVersion.timestamp).toLocaleString()}`)
   }
 
   return {
@@ -858,11 +845,7 @@ export const parseJsonContent = (content?: string): string => {
  * @param serverTimestamp Временная метка контента с сервера
  * @returns Черновой контент из хранилища или null если не найден/устарел
  */
-export const getDraftContent = (
-  key: string,
-  serverContent?: string,
-  serverTimestamp?: number
-): string | null => {
+export const getDraftContent = (key: string, serverContent?: string, serverTimestamp?: number): string | null => {
   const localContent = getVersionFromStorage(key)
   const localTimestamp = getVersionTimestamp(key)
 
@@ -1058,7 +1041,9 @@ export const clearAllDraftKeys = (): number => {
       }
     }
 
-    keysToRemove.forEach((k) => localStorage.removeItem(k))
+    keysToRemove.forEach((k) => {
+      localStorage.removeItem(k)
+    })
 
     // Обновляем метаданные
     const metadata = getDefaultMetadata()
@@ -1117,9 +1102,7 @@ export const removeDraftFromStorage = (draftId: string | number): boolean => {
       localStorage.removeItem(k)
     })
 
-    console.log(
-      `[OfflineStorage] Removed draft ${draftId} from storage with ${keysToRemove.length} related keys`
-    )
+    console.log(`[OfflineStorage] Removed draft ${draftId} from storage with ${keysToRemove.length} related keys`)
     return true
   } catch (e) {
     console.error('[OfflineStorage] Error removing draft:', e)
@@ -1354,11 +1337,7 @@ export const getSyncStatus = (draftId: string | number): SyncStatus => {
  * @param success Успешность синхронизации
  * @param errorMessage Сообщение об ошибке (если есть)
  */
-export const updateSyncStatus = (
-  draftId: string | number,
-  success: boolean,
-  errorMessage?: string
-): void => {
+export const updateSyncStatus = (draftId: string | number, success: boolean, errorMessage?: string): void => {
   const metadata = getStorageMetadata()
   const draftIdStr = String(draftId)
 

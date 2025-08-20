@@ -40,7 +40,9 @@ export const VotersList = (props: VotersListProps) => {
     if (sorted.length) {
       batch(() => {
         const newMap = new Map()
-        sorted.forEach((item) => newMap.set(item.id, item))
+        sorted.forEach((item) => {
+          newMap.set(item.id, item)
+        })
         setRatings(newMap)
         setHiddenMoreButton(sorted.length < RATINGS_PER_PAGE)
       })
@@ -73,7 +75,9 @@ export const VotersList = (props: VotersListProps) => {
         setHiddenMoreButton(newRatings.length < RATINGS_PER_PAGE)
         setRatings((prev) => {
           const newMap = new Map(prev)
-          newRatings.forEach((item) => newMap.set(item.id.toString(), item))
+          newRatings.forEach((item) => {
+            newMap.set(item.id.toString(), item)
+          })
           return newMap
         })
       })

@@ -92,9 +92,7 @@ test.describe('Страница отдельного автора', () => {
         }
       } else {
         // Проверяем сообщение об отсутствии публикаций
-        const emptyMessage = await page
-          .locator(':has-text("нет публикаций"), .empty-author, .no-content')
-          .first()
+        const emptyMessage = await page.locator(':has-text("нет публикаций"), .empty-author, .no-content').first()
         if (await emptyMessage.isVisible()) {
           expect(await emptyMessage.textContent()).toBeTruthy()
         }

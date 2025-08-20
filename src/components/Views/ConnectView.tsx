@@ -58,9 +58,7 @@ export const ConnectView = () => {
             </h1>
 
             <p>
-              {t(
-                'Want to suggest, discuss or advise something? Share a topic or an idea?  Please send us a message!'
-              )}
+              {t('Want to suggest, discuss or advise something? Share a topic or an idea?  Please send us a message!')}
               {t('Specify your e-mail and we will reply.')}
             </p>
 

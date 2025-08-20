@@ -16,10 +16,7 @@ export const SearchNav = (props: { view: string; setView: (view: string) => void
           {(viewKey) => (
             <li class={clsx({ 'view-switcher__item--selected': props.view === viewKey })}>
               <span
-                class={clsx(
-                  styles.searchNavButton,
-                  props.view === viewKey && styles.searchNavButtonSelected
-                )}
+                class={clsx(styles.searchNavButton, props.view === viewKey && styles.searchNavButtonSelected)}
                 onClick={() => props.setView(viewKey)}
               >
                 {t(capitalize(viewKey))}

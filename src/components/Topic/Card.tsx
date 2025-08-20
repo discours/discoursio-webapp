@@ -120,15 +120,9 @@ export const TopicCard = (props: TopicProps) => {
             <Show when={author()}>
               <Show
                 when={!props.minimize}
-                fallback={
-                  <CheckButton text={t('Follow')} checked={isFollowed()} onClick={handleFollowClick} />
-                }
+                fallback={<CheckButton text={t('Follow')} checked={isFollowed()} onClick={handleFollowClick} />}
               >
-                <FollowingButton
-                  slug={props.topic.slug}
-                  entity={FollowingEntity.Topic}
-                  isFollowed={isFollowed()}
-                />
+                <FollowingButton slug={props.topic.slug} entity={FollowingEntity.Topic} isFollowed={isFollowed()} />
               </Show>
             </Show>
           </NoHydration>

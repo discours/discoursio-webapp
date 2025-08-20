@@ -145,11 +145,7 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
     >
       <Show when={!isLoading()} fallback={<Loading />}>
         <Show when={currentLayout() === 'followers'}>
-          <LoadMoreWrapper
-            loadFunction={loadMoreFollowers}
-            pageSize={AUTHORS_PER_PAGE}
-            useScrollTrigger={false}
-          >
+          <LoadMoreWrapper loadFunction={loadMoreFollowers} pageSize={AUTHORS_PER_PAGE} useScrollTrigger={false}>
             <AllAuthorsView
               isLoaded={!isLoading()}
               authors={authors()}
@@ -160,11 +156,7 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
         </Show>
 
         <Show when={currentLayout() === 'shouts'}>
-          <LoadMoreWrapper
-            loadFunction={loadMoreShouts}
-            pageSize={AUTHORS_PER_PAGE}
-            useScrollTrigger={false}
-          >
+          <LoadMoreWrapper loadFunction={loadMoreShouts} pageSize={AUTHORS_PER_PAGE} useScrollTrigger={false}>
             <AllAuthorsView
               isLoaded={!isLoading()}
               authors={authors()}

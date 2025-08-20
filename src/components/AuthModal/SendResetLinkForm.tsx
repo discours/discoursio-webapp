@@ -42,9 +42,7 @@ export const SendResetLinkForm = () => {
     const isValid = Object.keys(newValidationErrors).length === 0
 
     if (!isValid) {
-      authFormRef
-        ?.querySelector<HTMLInputElement>(`input[name="${Object.keys(newValidationErrors)[0]}"]`)
-        ?.focus()
+      authFormRef?.querySelector<HTMLInputElement>(`input[name="${Object.keys(newValidationErrors)[0]}"]`)?.focus()
 
       return
     }

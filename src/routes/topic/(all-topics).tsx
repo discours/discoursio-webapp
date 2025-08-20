@@ -17,9 +17,7 @@ const TOPICS_PER_PAGE = 50
 // Function to fetch topics with pagination using get_topics_by_community
 const fetchTopicsWithPagination = async (sortBy: string, offset = 0, limit = TOPICS_PER_PAGE) => {
   try {
-    console.log(
-      `[fetchTopicsWithPagination] Requesting ${sortBy} topics, offset: ${offset}, limit: ${limit}`
-    )
+    console.log(`[fetchTopicsWithPagination] Requesting ${sortBy} topics, offset: ${offset}, limit: ${limit}`)
 
     const options: QueryGet_Topics_By_CommunityArgs = {
       community_id: 1,
@@ -38,9 +36,7 @@ const fetchTopicsWithPagination = async (sortBy: string, offset = 0, limit = TOP
       console.log('[fetchTopicsWithPagination] No results from community API, falling back to topics-all')
       const fallbackLoader = loadTopics()
       const fallbackTopics = await fallbackLoader()
-      const sortedTopics = (fallbackTopics || []).sort(
-        byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number
-      )
+      const sortedTopics = (fallbackTopics || []).sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
       const sliced = sortedTopics.slice(offset, offset + limit)
       console.log(`[fetchTopicsWithPagination] Fallback returned ${sliced.length} topics`)
       return sliced

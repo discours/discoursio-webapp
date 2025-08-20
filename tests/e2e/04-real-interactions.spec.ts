@@ -38,9 +38,7 @@ test.describe('Реальные взаимодействия', () => {
     await utils.expectPageReady()
 
     // Ищем переключатель темы
-    const themeToggle = page
-      .locator('[data-testid="theme-toggle"], .theme-toggle, .dark-mode-toggle')
-      .first()
+    const themeToggle = page.locator('[data-testid="theme-toggle"], .theme-toggle, .dark-mode-toggle').first()
 
     if (await themeToggle.isVisible()) {
       // Включаем темную тему
@@ -120,15 +118,9 @@ test.describe('Реальные взаимодействия', () => {
       const nameInput = contactForm.locator('input[name="name"], input[placeholder*="имя"]').first()
       const emailInput = contactForm.locator('input[type="email"], input[name="email"]').first()
       const messageInput = contactForm.locator('textarea, input[name="message"]').first()
-      const submitButton = contactForm
-        .locator('button[type="submit"], button:has-text("Отправить")')
-        .first()
+      const submitButton = contactForm.locator('button[type="submit"], button:has-text("Отправить")').first()
 
-      if (
-        (await nameInput.isVisible()) &&
-        (await emailInput.isVisible()) &&
-        (await messageInput.isVisible())
-      ) {
+      if ((await nameInput.isVisible()) && (await emailInput.isVisible()) && (await messageInput.isVisible())) {
         await nameInput.fill('Test User')
         await emailInput.fill('test@example.com')
         await messageInput.fill('This is a test message')
@@ -151,9 +143,7 @@ test.describe('Реальные взаимодействия', () => {
 
     if (await newsletterForm.isVisible()) {
       const emailInput = newsletterForm.locator('input[type="email"]').first()
-      const submitButton = newsletterForm
-        .locator('button[type="submit"], button:has-text("Подписаться")')
-        .first()
+      const submitButton = newsletterForm.locator('button[type="submit"], button:has-text("Подписаться")').first()
 
       if ((await emailInput.isVisible()) && (await submitButton.isVisible())) {
         await emailInput.fill('test@example.com')

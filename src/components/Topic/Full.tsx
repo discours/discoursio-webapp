@@ -47,9 +47,7 @@ export const FullTopic = (props: Props) => {
     saveScrollPosition()
     const start = offsetFollowers
     const end = offsetFollowers() + AUTHORS_ON_PAGE
-    const newFollowers = await new Promise<Author[]>((resolve) =>
-      resolve((props.followers ?? []).slice(start(), end))
-    )
+    const newFollowers = await new Promise<Author[]>((resolve) => resolve((props.followers ?? []).slice(start(), end)))
     setDisplayedFollowers([...displayedFollowers(), ...newFollowers])
     setOffsetFollowers(offsetFollowers() + AUTHORS_ON_PAGE)
     if (newFollowers.length < AUTHORS_ON_PAGE) {
@@ -63,9 +61,7 @@ export const FullTopic = (props: Props) => {
     saveScrollPosition()
     const start = offsetAuthors
     const end = offsetAuthors() + AUTHORS_ON_PAGE
-    const newAuthors = await new Promise<Author[]>((resolve) =>
-      resolve((props.authors ?? []).slice(start(), end))
-    )
+    const newAuthors = await new Promise<Author[]>((resolve) => resolve((props.authors ?? []).slice(start(), end)))
     setDisplayedAuthors([...displayedAuthors(), ...newAuthors])
     setOffsetAuthors(offsetAuthors() + AUTHORS_ON_PAGE)
     if (newAuthors.length < AUTHORS_ON_PAGE) {
@@ -82,11 +78,7 @@ export const FullTopic = (props: Props) => {
       <h2>{t('Followers')}</h2>
       <div class="row">
         <div class="col-24">
-          <LoadMoreWrapper
-            loadFunction={loadMoreFollowers}
-            pageSize={AUTHORS_ON_PAGE}
-            hidden={loadMoreHidden()}
-          >
+          <LoadMoreWrapper loadFunction={loadMoreFollowers} pageSize={AUTHORS_ON_PAGE} hidden={loadMoreHidden()}>
             <For each={displayedFollowers()}>
               {(follower: Author) => <AuthorBadge author={follower} onClick={() => hideModal()} />}
             </For>
@@ -101,11 +93,7 @@ export const FullTopic = (props: Props) => {
       <h2>{t('Authors')}</h2>
       <div class="row">
         <div class="col-24">
-          <LoadMoreWrapper
-            loadFunction={loadMoreAuthors}
-            pageSize={AUTHORS_ON_PAGE}
-            hidden={loadMoreHidden()}
-          >
+          <LoadMoreWrapper loadFunction={loadMoreAuthors} pageSize={AUTHORS_ON_PAGE} hidden={loadMoreHidden()}>
             <For each={displayedAuthors()}>
               {(authors: Author) => <AuthorBadge author={authors} onClick={() => hideModal()} />}
             </For>

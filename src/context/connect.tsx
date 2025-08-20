@@ -10,16 +10,7 @@
  * Это единственная точка входа для всей SSE функциональности приложения.
  */
 
-import {
-  createContext,
-  createEffect,
-  createSignal,
-  type JSX,
-  on,
-  onCleanup,
-  onMount,
-  useContext
-} from 'solid-js'
+import { createContext, createEffect, createSignal, type JSX, on, onCleanup, onMount, useContext } from 'solid-js'
 import { Awareness } from 'y-protocols/awareness.js'
 import { Doc } from 'yjs'
 import { useSession } from '~/context/session'
@@ -78,16 +69,8 @@ export type ConnectContextType = {
   // Awareness функциональность
   setUserInfo: (editorId: string, user: Partial<EditorState['user']>) => void
   setCursorPosition: (editorId: string, anchor: number, head: number) => void
-  updateDraftField: (
-    editorId: string,
-    draftId: number,
-    fieldName: string,
-    content: string,
-    isEmpty?: boolean
-  ) => void
-  getConnectedUsers: (
-    editorId: string
-  ) => Array<{ clientId: number; user: EditorState['user']; timestamp: number }>
+  updateDraftField: (editorId: string, draftId: number, fieldName: string, content: string, isEmpty?: boolean) => void
+  getConnectedUsers: (editorId: string) => Array<{ clientId: number; user: EditorState['user']; timestamp: number }>
   getDraftContent: (draftId: string | number) => Record<string, DraftField>
   connectEditor: (editorId: string, draftId?: string | number) => void
   disconnectEditor: (editorId: string) => void
@@ -135,18 +118,15 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
       console.log('[Connect] Устанавливаем SSE соединение...')
 
       // Используем fetch API для SSE с заголовком Authorization
-      const response = await fetch(
-        import.meta.env.PUBLIC_REALTIME_EVENTS || 'https://connect.discours.io',
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'text/event-stream',
-            'Cache-Control': 'no-cache'
-          },
-          credentials: 'include'
-        }
-      )
+      const response = await fetch(import.meta.env.PUBLIC_REALTIME_EVENTS || 'https://connect.discours.io', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'text/event-stream',
+          'Cache-Control': 'no-cache'
+        },
+        credentials: 'include'
+      })
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -238,9 +218,7 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
     } catch (connectError) {
       console.error('[Connect] Ошибка подключения SSE:', connectError)
       setStatus('error')
-      setError(
-        `Ошибка подключения: ${connectError instanceof Error ? connectError.message : String(connectError)}`
-      )
+      setError(`Ошибка подключения: ${connectError instanceof Error ? connectError.message : String(connectError)}`)
       throw connectError instanceof Error ? connectError : new Error(String(connectError))
     }
   }
@@ -280,9 +258,7 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
     const delay = Math.min(baseReconnectDelay * 2 ** reconnectAttempts, 30000)
     reconnectAttempts++
 
-    console.log(
-      `[Connect] Переподключение через ${delay}ms (попытка ${reconnectAttempts}/${maxReconnectAttempts})`
-    )
+    console.log(`[Connect] Переподключение через ${delay}ms (попытка ${reconnectAttempts}/${maxReconnectAttempts})`)
 
     setTimeout(() => {
       if (session()?.token && reconnectAttempts <= maxReconnectAttempts) {
@@ -381,12 +357,7 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
     }
   }
 
-  const saveToLocalStorage = (
-    draftId: string | number,
-    fieldName: string,
-    content: string,
-    isEmpty: boolean
-  ) => {
+  const saveToLocalStorage = (draftId: string | number, fieldName: string, content: string, isEmpty: boolean) => {
     try {
       const key = `draft-${draftId}-${fieldName}`
       const data = {
@@ -680,8 +651,7 @@ export const useEditorAwareness = (editorId: string, draftId?: number | string, 
       }
     },
     getLatestContent: () => (draftId ? getDraftContent(draftId) : null),
-    getActiveUsers: () =>
-      getConnectedUsers(editorId).filter((user) => user.user.id !== session()?.author?.id)
+    getActiveUsers: () => getConnectedUsers(editorId).filter((user) => user.user.id !== session()?.author?.id)
   }
 }
 

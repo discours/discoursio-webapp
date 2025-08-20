@@ -35,9 +35,7 @@ export const AuthorCard = (props: Props) => {
   const { session, isSessionLoaded, requireAuthentication } = useSession()
   const { setForm } = useProfile()
   const author = createMemo<Author>(() => session()?.author as Author)
-  const [authorSubs, setAuthorSubs] = createSignal<Array<Author | Topic | Community>>(
-    props.flatFollows || []
-  )
+  const [authorSubs, setAuthorSubs] = createSignal<Array<Author | Topic | Community>>(props.flatFollows || [])
   const [followsFilter, setFollowsFilter] = createSignal<FollowsFilter>('all')
   const [isFollowed, setIsFollowed] = createSignal<boolean>()
   const isProfileOwner = createMemo(() => author()?.slug === props.author.slug)
@@ -164,11 +162,7 @@ export const AuthorCard = (props: Props) => {
               <For each={filteredSubs()}>
                 {(subscription) =>
                   'name' in subscription ? (
-                    <AuthorBadge
-                      author={subscription as Author}
-                      subscriptionsMode={true}
-                      onClick={() => hideModal()}
-                    />
+                    <AuthorBadge author={subscription as Author} subscriptionsMode={true} onClick={() => hideModal()} />
                   ) : (
                     <TopicBadge topic={subscription as Topic} subscriptionsMode={true} />
                   )

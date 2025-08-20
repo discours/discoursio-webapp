@@ -51,28 +51,19 @@ export const ShareLinks = (props: Props) => {
     <div class={clsx(styles.ShareLinks, props.class, { [styles.inModal]: props.variant === 'inModal' })}>
       <ul class="nodash">
         <li>
-          <button
-            class={clsx(styles.shareControl, popupStyles.action)}
-            onClick={() => handleShare(FACEBOOK)}
-          >
+          <button class={clsx(styles.shareControl, popupStyles.action)} onClick={() => handleShare(FACEBOOK)}>
             <Icon name="facebook-white" class={clsx(styles.icon, popupStyles.icon)} />
             Facebook
           </button>
         </li>
         <li>
-          <button
-            class={clsx(styles.shareControl, popupStyles.action)}
-            onClick={() => handleShare(TWITTER)}
-          >
+          <button class={clsx(styles.shareControl, popupStyles.action)} onClick={() => handleShare(TWITTER)}>
             <Icon name="twitter-white" class={clsx(styles.icon, popupStyles.icon)} />
             Twitter
           </button>
         </li>
         <li>
-          <button
-            class={clsx(styles.shareControl, popupStyles.action)}
-            onClick={() => handleShare(TELEGRAM)}
-          >
+          <button class={clsx(styles.shareControl, popupStyles.action)} onClick={() => handleShare(TELEGRAM)}>
             <Icon name="telegram-white" class={clsx(styles.icon, popupStyles.icon)} />
             Telegram
           </button>

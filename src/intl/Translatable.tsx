@@ -10,10 +10,7 @@ interface TranslationWrapperProps {
 
 // Define the Translation API types
 interface TranslationAPI {
-  canTranslate: (options: {
-    sourceLanguage?: string
-    targetLanguage: string
-  }) => Promise<'yes' | 'no' | 'limited'>
+  canTranslate: (options: { sourceLanguage?: string; targetLanguage: string }) => Promise<'yes' | 'no' | 'limited'>
   createTranslator: (options: { sourceLanguage?: string; targetLanguage: string }) => Promise<Translator>
 }
 
@@ -66,12 +63,6 @@ export default function TranslationWrapper(props: TranslationWrapperProps): JSX.
   })
 
   return (
-    <>
-      {isTranslating() ? (
-        <span style="opacity: 0.9">{props.children}</span>
-      ) : (
-        translatedText() || props.children
-      )}
-    </>
+    <>{isTranslating() ? <span style="opacity: 0.9">{props.children}</span> : translatedText() || props.children}</>
   )
 }

@@ -12,11 +12,7 @@ const stringMatches = (str: string, q: string, lang: string) => {
   return preparedStr.split(' ').some((word) => word.startsWith(q))
 }
 
-export const dummyFilter = <T extends Topic | Author>(
-  data: T[],
-  searchQuery: string,
-  lang: 'ru' | 'en'
-): T[] => {
+export const dummyFilter = <T extends Topic | Author>(data: T[], searchQuery: string, lang: 'ru' | 'en'): T[] => {
   const q = prepareQuery(searchQuery, lang)
 
   if (q.length === 0) {

@@ -12,9 +12,7 @@ import { checkApiConnection, performLogin } from '../utils/auth-helpers'
 import { TestUtils, test } from '../utils/test-helpers'
 
 test.describe('Аутентификация и доступ к защищенным страницам', () => {
-  test('@smoke Должна перенаправлять на авторизацию при попытке доступа к защищенным страницам', async ({
-    page
-  }) => {
+  test('@smoke Должна перенаправлять на авторизацию при попытке доступа к защищенным страницам', async ({ page }) => {
     const testUtils = new TestUtils(page)
 
     // Идем на главную сначала для инициализации
@@ -29,10 +27,9 @@ test.describe('Аутентификация и доступ к защищенн�
     try {
       // Ждем либо изменения URL, либо появления формы аутентификации
       await Promise.race([
-        page.waitForFunction(
-          () => window.location.href.includes('m=auth') || window.location.href.includes('auth'),
-          { timeout: 10000 }
-        ),
+        page.waitForFunction(() => window.location.href.includes('m=auth') || window.location.href.includes('auth'), {
+          timeout: 10000
+        }),
         page.waitForSelector('[data-testid="auth-modal"], .auth-modal, input[type="email"], .login-form', {
           timeout: 10000
         })
@@ -51,8 +48,7 @@ test.describe('Аутентификация и доступ к защищенн�
         '[data-testid="auth-modal"], .auth-modal, .modal[aria-label*="auth"], .modal[aria-label*="Auth"]'
       )) !== null
     const hasLoginForm =
-      (await page.$('input[type="email"], input[name="email"], form[action*="login"], .login-form')) !==
-      null
+      (await page.$('input[type="email"], input[name="email"], form[action*="login"], .login-form')) !== null
 
     // Принимаем любой из признаков требования аутентификации
     const requiresAuth = hasAuthParam || hasAuthModal || hasLoginForm

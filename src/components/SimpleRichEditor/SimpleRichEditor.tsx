@@ -1,15 +1,5 @@
 import { clsx } from 'clsx'
-import {
-  Component,
-  createEffect,
-  createMemo,
-  createRoot,
-  createSignal,
-  on,
-  onCleanup,
-  onMount,
-  Show
-} from 'solid-js'
+import { Component, createEffect, createMemo, createRoot, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import { isServer, Portal } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
 import { InlineForm } from '~/components/_shared/InlineForm/InlineForm'
@@ -219,8 +209,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     const editorNode = editorRef()
     if (!editorNode || !editorNode.contains(node)) return false
     const currentNode = node.nodeType === Node.TEXT_NODE ? node : (node as Element)
-    const parentElement =
-      node.nodeType === Node.TEXT_NODE ? node.parentElement : (currentNode as HTMLElement)
+    const parentElement = node.nodeType === Node.TEXT_NODE ? node.parentElement : (currentNode as HTMLElement)
 
     if (node.nodeType === Node.TEXT_NODE) {
       const textBeforeCursor = node.textContent?.slice(0, range.startOffset) || ''
@@ -285,11 +274,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     }
 
     // Ensure the block element is empty and directly within the editor content area
-    if (
-      !blockElement ||
-      !editor.contains(blockElement) ||
-      blockElement.closest('.ProseMirror') !== editor
-    ) {
+    if (!blockElement || !editor.contains(blockElement) || blockElement.closest('.ProseMirror') !== editor) {
       // Check it belongs to *this* editor instance
       // Check if the direct parent is the editor itself (cursor might be directly in the root)
       if (node.parentElement === editor && (editor.innerHTML === '' || editor.innerHTML === '<br>')) {
@@ -375,9 +360,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const loadLocalVersion = () => {
     const version = localVersion() as ContentVersion
     if (!version || !editorRef()) return
-    console.log(
-      `[SimpleRichEditor] Loading local version from ${new Date(version.timestamp).toLocaleString()}`
-    )
+    console.log(`[SimpleRichEditor] Loading local version from ${new Date(version.timestamp).toLocaleString()}`)
     const cleanContent = loadLocalVersionContent(version)
     editorRef()!.innerHTML = cleanContent
     setContent(cleanContent)
@@ -509,9 +492,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
       // Проверяем есть ли выделение и оно не пустое
       const hasActiveSelection =
-        !selection.isCollapsed &&
-        selection.toString().trim().length > 0 &&
-        editor.contains(selection.anchorNode)
+        !selection.isCollapsed && selection.toString().trim().length > 0 && editor.contains(selection.anchorNode)
 
       setHasSelection(hasActiveSelection)
     }
@@ -676,13 +657,17 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       tempDiv.querySelectorAll('i').forEach((tag) => {
         /* normalize */ const em = document.createElement('em')
         while (tag.firstChild) em.appendChild(tag.firstChild)
-        Array.from(tag.attributes).forEach((attr) => em.setAttribute(attr.name, attr.value))
+        Array.from(tag.attributes).forEach((attr) => {
+          em.setAttribute(attr.name, attr.value)
+        })
         tag.parentNode?.replaceChild(em, tag)
       })
       tempDiv.querySelectorAll('b').forEach((tag) => {
         /* normalize */ const strong = document.createElement('strong')
         while (tag.firstChild) strong.appendChild(tag.firstChild)
-        Array.from(tag.attributes).forEach((attr) => strong.setAttribute(attr.name, attr.value))
+        Array.from(tag.attributes).forEach((attr) => {
+          strong.setAttribute(attr.name, attr.value)
+        })
         tag.parentNode?.replaceChild(strong, tag)
       })
       tempDiv.querySelectorAll('em:empty, strong:empty, i:empty, b:empty, span:empty').forEach((tag) => {
@@ -974,11 +959,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             const p = document.createElement('p')
             p.innerHTML = '<br>'
             // Безопасная проверка перед insertBefore для избежания NotFoundError
-            if (
-              blockElement.parentNode &&
-              blockElement.nextSibling &&
-              blockElement.parentNode.contains(blockElement)
-            ) {
+            if (blockElement.parentNode && blockElement.nextSibling && blockElement.parentNode.contains(blockElement)) {
               blockElement.parentNode.insertBefore(p, blockElement.nextSibling)
             } else {
               console.warn('[SimpleRichEditor] Cannot safely insert element: parent or sibling not found')
@@ -1217,8 +1198,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     // Устанавливаем опции формы
     editorFormOptions = {
       onSubmit,
-      validate:
-        type === 'video' ? (url: string) => validateVideoUrl(url) : (url: string) => validateWebUrl(url)
+      validate: type === 'video' ? (url: string) => validateVideoUrl(url) : (url: string) => validateWebUrl(url)
     }
   }
 
@@ -1296,12 +1276,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           <div class="modal" style={{ display: isOpen() ? 'flex' : 'none' }}>
             <div class="modal-backdrop" onClick={handleClose} />
             <div class="modal-content">
-              <AudioUploader
-                audio={[]}
-                onAudioAdd={handleAudioUpload}
-                onAudioChange={noop}
-                onAudioSorted={noop}
-              />
+              <AudioUploader audio={[]} onAudioAdd={handleAudioUpload} onAudioChange={noop} onAudioSorted={noop} />
             </div>
           </div>
         </Portal>
@@ -1313,7 +1288,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     if (!uploadedFile) return
     const currentImage = editingImage()
     if (currentImage) {
-      // @ts-ignore - Linter error seems incorrect for simple property assignment
+      // @ts-expect-error - Linter error seems incorrect for simple property assignment
       ;(currentImage as HTMLImageElement).src = uploadedFile.url(currentImage as HTMLImageElement).alt =
         uploadedFile.originalFilename || 'Uploaded image'
       setEditingImage(null)
@@ -1332,7 +1307,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const showImageUploadModal = () => {
     saveSelection()
     showModal(MODALS.uploadImage)
-    // @ts-ignore
+    // @ts-expect-error
     window.__imageUploadParams = {
       onSuccess: handleUploadSuccess,
       onCancel: () => {
@@ -1368,11 +1343,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   // handleFootnoteSubmit removed
 
   // --- Draft Navigation ---
-  const switchFieldInDraft = (
-    nextField: EditorFieldType,
-    editorId?: string,
-    fieldType?: EditorFieldType
-  ) => {
+  const switchFieldInDraft = (nextField: EditorFieldType, editorId?: string, fieldType?: EditorFieldType) => {
     if (!editorId || !fieldType) return false
     const draftIdMatch = editorId.match(DRAFT_REGEX)
     if (!draftIdMatch) return false
@@ -1454,19 +1425,13 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     const handleSelectionChange = () => {
       const selection = window.getSelection()
       const hasValidSelection =
-        selection &&
-        selection.rangeCount > 0 &&
-        !selection.isCollapsed &&
-        selection.toString().trim() !== ''
+        selection && selection.rangeCount > 0 && !selection.isCollapsed && selection.toString().trim() !== ''
 
       // Проверяем, есть ли выделение внутри нашего редактора
-      const isSelectionInEditor =
-        hasValidSelection && editor.contains(selection?.getRangeAt(0).commonAncestorContainer)
+      const isSelectionInEditor = hasValidSelection && editor.contains(selection?.getRangeAt(0).commonAncestorContainer)
 
       // Находим тулбар с режимом float
-      const floatToolbar = document.querySelector(
-        `.${styles.floatingToolbar}[data-editor-id="${props.editorId}"]`
-      )
+      const floatToolbar = document.querySelector(`.${styles.floatingToolbar}[data-editor-id="${props.editorId}"]`)
 
       if (floatToolbar && floatToolbar instanceof HTMLElement) {
         if (isSelectionInEditor) {
@@ -1545,13 +1510,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             title={t('You have a newer local version, click to use it')}
           >
             <span class={styles.switcherIcon}>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
                   d="M8 2V8L11 11"
                   stroke="currentColor"
@@ -1574,19 +1533,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             title={t('Delete local version')}
           >
             <span class={styles.switcherIcon}>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M12 4L4 12M4 4L12 12"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                />
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
               </svg>
             </span>
           </button>

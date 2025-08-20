@@ -47,11 +47,7 @@ export const CommentsList = (props: CommentsListProps) => {
                   </div>
 
                   <div class={styles.commentMeta}>
-                    <AuthorLink
-                      author={comment.created_by as Author}
-                      size={'XS'}
-                      class={styles.commentAuthor}
-                    />
+                    <AuthorLink author={comment.created_by as Author} size={'XS'} class={styles.commentAuthor} />
                     <CommentDate comment={comment} isShort={true} isLastInRow={true} />
                   </div>
 

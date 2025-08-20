@@ -31,10 +31,7 @@ export const DropdownSelect = (props: Props) => {
 
   return (
     <div class={clsx(styles.DropdownSelect, props.class)}>
-      <div
-        class={clsx(styles.toggler, { [styles.isOpen]: isDropDownVisible() })}
-        onClick={handleShowDropdown}
-      >
+      <div class={clsx(styles.toggler, { [styles.isOpen]: isDropDownVisible() })} onClick={handleShowDropdown}>
         <div>{selected().title}</div>
       </div>
 

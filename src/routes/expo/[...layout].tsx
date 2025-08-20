@@ -33,9 +33,7 @@ export default (props: RouteSectionProps<Shout[]>) => {
   const [loadMoreVisible, setLoadMoreVisible] = createSignal(true)
   const getTitle = createMemo(() => (l?: string) => EXPO_TITLES[(l as ExpoLayoutType) || ''])
 
-  const [currentLayout, setCurrentLayout] = createSignal<ExpoLayoutType>(
-    (props.params.layout || '') as ExpoLayoutType
-  )
+  const [currentLayout, setCurrentLayout] = createSignal<ExpoLayoutType>((props.params.layout || '') as ExpoLayoutType)
   const [feed, setFeed] = createSignal<Shout[]>([])
 
   createEffect(() => {

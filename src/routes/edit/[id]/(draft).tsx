@@ -26,7 +26,7 @@ export default (props: RouteSectionProps) => {
         return
       }
 
-      const parsedId = Number.parseInt(draftId)
+      const parsedId = Number.parseInt(draftId, 10)
       const draftsArray = drafts()
 
       if (!draftsArray || !Array.isArray(draftsArray)) return
@@ -68,7 +68,7 @@ export default (props: RouteSectionProps) => {
   })
 
   const title = createMemo(() => {
-    const currentDraftId = props.params.id ? Number.parseInt(props.params.id) : 0
+    const currentDraftId = props.params.id ? Number.parseInt(props.params.id, 10) : 0
     const draftsArray = drafts()
     const currentDraft = Array.isArray(draftsArray)
       ? draftsArray.find((draft: Draft) => draft.id === currentDraftId)
@@ -91,7 +91,7 @@ export default (props: RouteSectionProps) => {
 
   // Получение текущего черновика для передачи в EditView
   const currentDraftForEdit = () => {
-    const currentDraftId = props.params.id ? Number.parseInt(props.params.id) : 0
+    const currentDraftId = props.params.id ? Number.parseInt(props.params.id, 10) : 0
     const draftsArray = drafts()
 
     if (!Array.isArray(draftsArray)) return undefined

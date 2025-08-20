@@ -37,17 +37,12 @@ const getTitle = (title: string) => {
 }
 
 // Генерация текста уведомления в зависимости от типа уведомления
-const getNotificationText = (
-  n: Group,
-  t: (key: string, params?: Record<string, number | string>) => string
-) => {
+const getNotificationText = (n: Group, t: (key: string, params?: Record<string, number | string>) => string) => {
   // Для уведомлений от presence сервиса
   if (n.entity && n.action) {
     switch (n.entity) {
       case PresenceEntityType.Reaction:
-        return n.action === PresenceActionType.Create
-          ? t('New reaction to your content')
-          : t('Reaction updated')
+        return n.action === PresenceActionType.Create ? t('New reaction to your content') : t('Reaction updated')
 
       case PresenceEntityType.Message:
         return t('New message')
@@ -142,9 +137,7 @@ export const NotificationGroup = (props: NotificationGroupProps) => {
                   <TimeAgo date={n.updated_at} />
                 </Show>
 
-                <Show when={props.dateTimeFormat === 'time'}>
-                  {formatTime(new Date(n.updated_at * 1000))}
-                </Show>
+                <Show when={props.dateTimeFormat === 'time'}>{formatTime(new Date(n.updated_at * 1000))}</Show>
 
                 <Show when={props.dateTimeFormat === 'date'}>
                   {formatDate(new Date(n.updated_at * 1000), { month: 'numeric', year: '2-digit' })}

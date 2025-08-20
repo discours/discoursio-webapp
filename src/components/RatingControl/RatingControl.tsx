@@ -45,9 +45,7 @@ export const RatingControl = (props: Props) => {
         if (rrr !== ratings() && rrr) {
           // Удаляем дубликаты по id
           const uniqueReactions = Array.from(new Map(rrr.map((r) => [r.id, r])).values())
-          const shoutRatings = uniqueReactions.filter(
-            props.comment ? commentRatingFilter : shoutRatingFilter
-          )
+          const shoutRatings = uniqueReactions.filter(props.comment ? commentRatingFilter : shoutRatingFilter)
           // console.log('[RatingControl] filtered ratings:', shoutRatings)
           // console.debug('[RatingControl] profile:', profile)
           if (author) {
@@ -135,9 +133,7 @@ export const RatingControl = (props: Props) => {
         // Ищем существующую реакцию для удаления
         const reactionToDelete = currentRatings.find(
           (r) =>
-            r.kind === storedRate &&
-            mineFilter(r) &&
-            (props.comment ? commentRatingFilter(r) : shoutRatingFilter(r))
+            r.kind === storedRate && mineFilter(r) && (props.comment ? commentRatingFilter(r) : shoutRatingFilter(r))
         )
 
         if (reactionToDelete) {
@@ -270,11 +266,7 @@ export const RatingControl = (props: Props) => {
               </>
             }
           >
-            <LoadMoreWrapper
-              loadFunction={loadMoreRatings}
-              loadMoreText={'...'}
-              pageSize={RATINGS_PER_PAGE}
-            >
+            <LoadMoreWrapper loadFunction={loadMoreRatings} loadMoreText={'...'} pageSize={RATINGS_PER_PAGE}>
               <VotersList reactions={ratings()} visible={votersListVisible()} />
             </LoadMoreWrapper>
           </Show>

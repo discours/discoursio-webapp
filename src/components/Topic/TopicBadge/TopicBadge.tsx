@@ -37,8 +37,7 @@ export const TopicBadge = (props: Props) => {
     setIsMobileView(!mediaMatches.sm)
   })
 
-  const title = () =>
-    lang() === 'en' ? capitalize(props.topic.slug.replaceAll('-', ' ')) : props.topic.title
+  const title = () => (lang() === 'en' ? capitalize(props.topic.slug.replaceAll('-', ' ')) : props.topic.title)
 
   return (
     <div class={clsx(styles.TopicBadge, { [styles.TopicBadgeSubscriptionsMode]: props.subscriptionsMode })}>
@@ -65,9 +64,7 @@ export const TopicBadge = (props: Props) => {
             <Show
               when={props.topic.body}
               fallback={
-                <div class={styles.description}>
-                  {t('some posts', { count: props.topic?.stat?.shouts ?? 0 })}
-                </div>
+                <div class={styles.description}>{t('some posts', { count: props.topic?.stat?.shouts ?? 0 })}</div>
               }
             >
               <div innerHTML={props.topic?.body || ''} class={clsx('text-truncate', styles.description)} />
@@ -88,13 +85,9 @@ export const TopicBadge = (props: Props) => {
         <div class={styles.stats}>
           <span class={styles.statsItem}>{t('some shouts', { count: props.topic?.stat?.shouts })}</span>
           <span class={styles.statsItem}>{t('some authors', { count: props.topic?.stat?.authors })}</span>
-          <span class={styles.statsItem}>
-            {t('some followers', { count: props.topic?.stat?.followers })}
-          </span>
+          <span class={styles.statsItem}>{t('some followers', { count: props.topic?.stat?.followers })}</span>
           <Show when={props.topic?.stat?.comments}>
-            <span class={styles.statsItem}>
-              {t('some comments', { count: props.topic?.stat?.comments ?? 0 })}
-            </span>
+            <span class={styles.statsItem}>{t('some comments', { count: props.topic?.stat?.comments ?? 0 })}</span>
           </Show>
         </div>
       </Show>

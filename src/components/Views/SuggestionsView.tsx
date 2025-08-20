@@ -73,7 +73,7 @@ export const SuggestionsView = (props: Props) => {
     const shoutId = container?.closest('[data-shout-id]')?.getAttribute('data-shout-id')
 
     if (shoutId) {
-      setCurrentShoutId(Number.parseInt(shoutId))
+      setCurrentShoutId(Number.parseInt(shoutId, 10))
       setSelectedRange(range)
     }
   }

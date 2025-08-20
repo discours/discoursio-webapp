@@ -79,11 +79,7 @@ export const PasswordField = (props: Props) => {
           onBlur={(event) => handleInputBlur(event.currentTarget.value)}
         />
         <label for="password">{t('Password')}</label>
-        <button
-          type="button"
-          class={styles.passwordToggle}
-          onClick={() => setShowPassword(!showPassword())}
-        >
+        <button type="button" class={styles.passwordToggle} onClick={() => setShowPassword(!showPassword())}>
           <Icon class={styles.passwordToggleIcon} name={showPassword() ? 'eye-off' : 'eye'} />
         </button>
         <Show when={error()}>

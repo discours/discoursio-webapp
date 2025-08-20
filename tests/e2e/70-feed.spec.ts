@@ -22,9 +22,7 @@ test.describe('Лента публикаций', () => {
     await waitForPageLoad(page)
 
     // Ищем переключатель "Все"
-    const allFeedTab = await page
-      .locator('button:has-text("Все"), .all-feed, [data-testid="all-feed"]')
-      .first()
+    const allFeedTab = await page.locator('button:has-text("Все"), .all-feed, [data-testid="all-feed"]').first()
 
     if (await allFeedTab.isVisible()) {
       await allFeedTab.click()
@@ -59,9 +57,7 @@ test.describe('Лента публикаций', () => {
     await waitForPageLoad(page)
 
     // Ищем переключатель "Моя лента"
-    const myFeedTab = await page
-      .locator('button:has-text("Моя лента"), .my-feed, [data-testid="my-feed"]')
-      .first()
+    const myFeedTab = await page.locator('button:has-text("Моя лента"), .my-feed, [data-testid="my-feed"]').first()
 
     if (await myFeedTab.isVisible()) {
       await myFeedTab.click()
@@ -91,9 +87,7 @@ test.describe('Лента публикаций', () => {
     await waitForPageLoad(page)
 
     // Ищем элементы сортировки
-    const sortByDate = await page
-      .locator('button:has-text("Новые"), .sort-date, [data-sort="date"]')
-      .first()
+    const sortByDate = await page.locator('button:has-text("Новые"), .sort-date, [data-sort="date"]').first()
 
     if (await sortByDate.isVisible()) {
       await sortByDate.click()
@@ -122,9 +116,7 @@ test.describe('Лента публикаций', () => {
     await waitForPageLoad(page)
 
     // Ищем сортировку по популярности/рейтингу
-    const sortByRating = await page
-      .locator('button:has-text("Популярные"), .sort-rating, [data-sort="rating"]')
-      .first()
+    const sortByRating = await page.locator('button:has-text("Популярные"), .sort-rating, [data-sort="rating"]').first()
 
     if (await sortByRating.isVisible()) {
       await sortByRating.click()
@@ -151,9 +143,7 @@ test.describe('Лента публикаций', () => {
 
     // Ищем фильтры по времени
     const timeFilters = await page
-      .locator(
-        '.time-filter, select[name*="period"], button:has-text("За день"), button:has-text("За неделю")'
-      )
+      .locator('.time-filter, select[name*="period"], button:has-text("За день"), button:has-text("За неделю")')
       .first()
 
     if (await timeFilters.isVisible()) {
@@ -185,9 +175,7 @@ test.describe('Лента публикаций', () => {
 
     // Ищем фильтры по формату
     const formatFilters = await page
-      .locator(
-        '.format-filter, button:has-text("Статьи"), button:has-text("Видео"), button:has-text("Музыка")'
-      )
+      .locator('.format-filter, button:has-text("Статьи"), button:has-text("Видео"), button:has-text("Музыка")')
       .first()
 
     if (await formatFilters.isVisible()) {

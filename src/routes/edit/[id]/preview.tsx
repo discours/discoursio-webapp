@@ -102,10 +102,7 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
     <PageLayout title={`${t('Discours')} :: ${t('Preview')}`} hideFooter={false}>
       <DraftPreviewToolbar />
 
-      <Show
-        when={!isLoading() && previewData()}
-        fallback={<div class="container py-5">{t('Loading preview...')}</div>}
-      >
+      <Show when={!isLoading() && previewData()} fallback={<div class="container py-5">{t('Loading preview...')}</div>}>
         <DraftPreview previewData={previewData} />
       </Show>
     </PageLayout>

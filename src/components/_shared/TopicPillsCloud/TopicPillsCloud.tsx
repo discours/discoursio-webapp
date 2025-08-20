@@ -40,9 +40,7 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
     const draft = currentDraft()
     if (!draft || draft.id !== props.draftId) return []
 
-    return Array.isArray(draft.topics)
-      ? draft.topics.filter((t): t is Topic => t !== null && t !== undefined)
-      : []
+    return Array.isArray(draft.topics) ? draft.topics.filter((t): t is Topic => t !== null && t !== undefined) : []
   })
 
   // Мемоизируем главную тему из черновика
@@ -72,18 +70,12 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
     const currentMainTopic = mainTopic()
 
     // Если нет тем или уже есть главная тема, которая входит в список - ничего не делаем
-    if (
-      topics.length === 0 ||
-      (currentMainTopic && topics.some((t) => Number(t.id) === Number(currentMainTopic.id)))
-    ) {
+    if (topics.length === 0 || (currentMainTopic && topics.some((t) => Number(t.id) === Number(currentMainTopic.id)))) {
       return
     }
 
     // Если есть темы, но нет главной - устанавливаем первую как главную
-    if (
-      topics.length > 0 &&
-      (!currentMainTopic || !topics.some((t) => Number(t.id) === Number(currentMainTopic.id)))
-    ) {
+    if (topics.length > 0 && (!currentMainTopic || !topics.some((t) => Number(t.id) === Number(currentMainTopic.id)))) {
       console.log('[TopicPillsCloud] Устанавливаем первую тему как главную:', topics[0].id)
 
       // Отправляем обновление на сервер через дебаунс
@@ -261,9 +253,7 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
             <div class={styles.selectedTopicsInline}>
               <Show
                 when={localSelectedTopics().length > 0}
-                fallback={
-                  <div style="color: #888; font-size: 12px; padding: 5px;">{t('No topics selected')}</div>
-                }
+                fallback={<div style="color: #888; font-size: 12px; padding: 5px;">{t('No topics selected')}</div>}
               >
                 <For each={localSelectedTopics()}>
                   {(topic) => {

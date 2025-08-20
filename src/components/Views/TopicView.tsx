@@ -169,10 +169,7 @@ export const TopicView = (props: Props) => {
     }
     return []
   }
-  const [topicFollowers, { refetch: refetchFollowers }] = createResource(
-    () => props.topicSlug,
-    getTopicFollowers
-  )
+  const [topicFollowers, { refetch: refetchFollowers }] = createResource(() => props.topicSlug, getTopicFollowers)
 
   // Первая функция для авторов топика (переименована во избежание конфликта)
   const getTopicAuthorsList = async () => {
@@ -183,10 +180,7 @@ export const TopicView = (props: Props) => {
     }
     return []
   }
-  const [topicAuthors, { refetch: refetchAuthors }] = createResource(
-    () => props.topicSlug,
-    getTopicAuthorsList
-  )
+  const [topicAuthors, { refetch: refetchAuthors }] = createResource(() => props.topicSlug, getTopicAuthorsList)
 
   // Функция для загрузки авторов с пагинацией
   const loadTopicAuthorsWithPagination = async (offset = 0): Promise<Author[]> => {
@@ -217,10 +211,7 @@ export const TopicView = (props: Props) => {
     const result = await topicTopAuthorsFetcher()
     return result || []
   }
-  const [topicTopAuthors, { refetch: refetchTopAuthors }] = createResource(
-    () => props.topicSlug,
-    getTopicTopAuthors
-  )
+  const [topicTopAuthors, { refetch: refetchTopAuthors }] = createResource(() => props.topicSlug, getTopicTopAuthors)
 
   // Load Favorite and Reacted Top Month Articles
   const loadFavoriteTopArticles = async () => {
@@ -359,12 +350,7 @@ export const TopicView = (props: Props) => {
   const loadMoreAuthors = async () => {
     saveScrollPosition()
     try {
-      console.log(
-        '[TopicView] Loading more authors for topic:',
-        props.topicSlug,
-        'offset:',
-        topicAuthorsList().length
-      )
+      console.log('[TopicView] Loading more authors for topic:', props.topicSlug, 'offset:', topicAuthorsList().length)
       const result = await loadTopicAuthorsWithPagination(topicAuthorsList().length)
 
       if (result?.length) {
@@ -452,8 +438,7 @@ export const TopicView = (props: Props) => {
   const topViewedShouts = createMemo(() => {
     const feed = topicFeed()
 
-    const isEqual =
-      feed.length === prevFeed().length && feed.every((item, i) => item.id === prevFeed()[i]?.id)
+    const isEqual = feed.length === prevFeed().length && feed.every((item, i) => item.id === prevFeed()[i]?.id)
 
     if (isEqual) return prevSorted()
 
@@ -605,9 +590,7 @@ export const TopicView = (props: Props) => {
                         <div style="text-align: center; padding: 4rem 2rem;">
                           <Show when={topic()?.slug} fallback={<Loading />}>
                             <div>
-                              <h3 style="margin-bottom: 1rem; color: #666;">
-                                {t('No publications found')}
-                              </h3>
+                              <h3 style="margin-bottom: 1rem; color: #666;">{t('No publications found')}</h3>
                               <p style="color: #999;">{t('Try changing filters or check back later')}</p>
                             </div>
                           </Show>
@@ -675,21 +658,14 @@ export const TopicView = (props: Props) => {
                   <Row2 articles={deduplicatedBlocks().remainingFeed.slice(3, 5)} />
                 </Show>
 
-                <LoadMoreWrapper
-                  loadFunction={loadMore}
-                  pageSize={FEED_PAGE_SIZE}
-                  hidden={loadMoreHidden()}
-                >
+                <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
                   <For each={deduplicatedBlocks().remainingFeed}>
                     {(_article, index) => {
                       const i = index()
                       // Начинаем с 5 (пропускаем уже отображенные выше)
                       const adjustedIndex = i + 5
                       if (adjustedIndex % 3 === 0) {
-                        const articles = deduplicatedBlocks().remainingFeed.slice(
-                          adjustedIndex,
-                          adjustedIndex + 3
-                        )
+                        const articles = deduplicatedBlocks().remainingFeed.slice(adjustedIndex, adjustedIndex + 3)
                         return (
                           <Switch>
                             <Match when={articles.length === 1}>

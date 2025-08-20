@@ -23,19 +23,11 @@ const GroupDialogAvatar = (props: Props) => {
     <div class={styles.GroupDialogAvatar}>
       <For each={slicedUsers()}>
         {(user) => (
-          <DialogAvatar
-            class={styles.grouped}
-            bordered={true}
-            size="small"
-            name={user.name}
-            url={user.pic || ''}
-          />
+          <DialogAvatar class={styles.grouped} bordered={true} size="small" name={user.name} url={user.pic || ''} />
         )}
       </For>
       {props.users.length > 3 && (
-        <div class={clsx(styles.counter, { [styles.hundred]: props.users.length >= 100 })}>
-          {++props.users.length}
-        </div>
+        <div class={clsx(styles.counter, { [styles.hundred]: props.users.length >= 100 })}>{++props.users.length}</div>
       )}
     </div>
   )

@@ -34,8 +34,7 @@ export const FeedSwitcher = (props: Props) => {
 
   const getOptionValue = (option: ViewOption) => (typeof option === 'string' ? option : option.value)
 
-  const getOptionTitle = (option: ViewOption) =>
-    typeof option === 'string' ? t(capitalize(option)) : option.title
+  const getOptionTitle = (option: ViewOption) => (typeof option === 'string' ? t(capitalize(option)) : option.title)
 
   const getPath = createMemo(
     () => (value: string, idx: () => number) =>
@@ -70,10 +69,7 @@ export const FeedSwitcher = (props: Props) => {
               onMouseOver={() => !isSelected() && props.onMouseOver?.(value())}
               onMouseOut={() => !isSelected() && props.onMouseOut?.()}
             >
-              <Show
-                when={!(isSelected() && props.isLoading)}
-                fallback={<span class={styles.active}>{title()}</span>}
-              >
+              <Show when={!(isSelected() && props.isLoading)} fallback={<span class={styles.active}>{title()}</span>}>
                 <A href={path()} onClick={(ev) => handleClick(ev, option, idx)}>
                   {title()}
                   <Show when={counter() !== undefined}>

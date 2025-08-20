@@ -230,9 +230,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
         {/* Details */}
         <Show when={!(props.settings?.noauthor && props.settings?.nodate)}>
           {/* Author and Date */}
-          <div
-            class={clsx(styles.shoutDetails, { [styles.shoutDetailsFeedMode]: props.settings?.isFeedMode })}
-          >
+          <div class={clsx(styles.shoutDetails, { [styles.shoutDetailsFeedMode]: props.settings?.isFeedMode })}>
             <Show when={!props.settings?.noauthor}>
               <div class={styles.shoutAuthor}>
                 <For each={props.article?.authors || []}>
@@ -240,9 +238,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
                     <AuthorLink
                       size={'XS'}
                       author={a as Author}
-                      isFloorImportant={Boolean(
-                        props.settings?.isFloorImportant || props.settings?.isWithCover
-                      )}
+                      isFloorImportant={Boolean(props.settings?.isFloorImportant || props.settings?.isWithCover)}
                     />
                   )}
                 </For>
@@ -307,20 +303,13 @@ export const ArticleCard = (props: ArticleCardProps) => {
           >
             <div class={styles.shoutCardDetailsContent}>
               <Show when={props.article}>
-                <RatingControl
-                  shout={props.article!}
-                  class={styles.shoutCardDetailsItem}
-                  myRate={props.myRate}
-                />
+                <RatingControl shout={props.article!} class={styles.shoutCardDetailsItem} myRate={props.myRate} />
               </Show>
 
               <div class={clsx(styles.shoutCardDetailsItem, styles.shoutCardComments)}>
                 <a href="#" onClick={(event) => scrollToComments(event)}>
                   <Icon name="comment" class={clsx(styles.icon, styles.feedControlIcon)} />
-                  <Icon
-                    name="comment-hover"
-                    class={clsx(styles.icon, styles.iconHover, styles.feedControlIcon)}
-                  />
+                  <Icon name="comment-hover" class={clsx(styles.icon, styles.iconHover, styles.feedControlIcon)} />
                   <Show
                     when={props.article?.stat?.comments_count}
                     fallback={
@@ -364,10 +353,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
                   <div class={styles.shoutCardDetailsItem} ref={triggerRef}>
                     <button>
                       <Icon name="bookmark" class={clsx(styles.icon, styles.feedControlIcon)} />
-                      <Icon
-                        name="bookmark-hover"
-                        class={clsx(styles.icon, styles.iconHover, styles.feedControlIcon)}
-                      />
+                      <Icon name="bookmark-hover" class={clsx(styles.icon, styles.iconHover, styles.feedControlIcon)} />
                     </button>
                   </div>
                 )}
@@ -407,10 +393,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
                   trigger={
                     <button>
                       <Icon name="ellipsis" class={clsx(styles.icon, styles.feedControlIcon)} />
-                      <Icon
-                        name="ellipsis"
-                        class={clsx(styles.icon, styles.iconHover, styles.feedControlIcon)}
-                      />
+                      <Icon name="ellipsis" class={clsx(styles.icon, styles.iconHover, styles.feedControlIcon)} />
                     </button>
                   }
                 />

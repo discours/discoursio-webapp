@@ -40,16 +40,7 @@
  */
 
 import { RouteSectionProps, useParams, useSearchParams } from '@solidjs/router'
-import {
-  createEffect,
-  createMemo,
-  createResource,
-  createSignal,
-  ErrorBoundary,
-  on,
-  onMount,
-  Show
-} from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, ErrorBoundary, on, onMount, Show } from 'solid-js'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { AuthorView } from '~/components/Views/AuthorView'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
@@ -166,25 +157,22 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
 
   // everything from address bar to route feed filters
   createEffect(
-    on(
-      [() => params.slug, () => params.mode, () => searchParams.period],
-      ([newSlug, newMode, newPeriod]) => {
-        setCurrentSlug(newSlug)
-        const opts: LoadShoutsOptions = { ...options() }
+    on([() => params.slug, () => params.mode, () => searchParams.period], ([newSlug, newMode, newPeriod]) => {
+      setCurrentSlug(newSlug)
+      const opts: LoadShoutsOptions = { ...options() }
 
-        if (typeof newMode === 'string' && newMode !== 'comments' && newMode !== 'about') {
-          opts.order_by = orderByMode(newMode as FeedMode)
-        }
-
-        if (newPeriod) {
-          opts.filters = {
-            ...(opts.filters || {}),
-            after: getTimestampFromPeriod(newPeriod as PeriodType)
-          }
-        }
-        updateOptions(opts)
+      if (typeof newMode === 'string' && newMode !== 'comments' && newMode !== 'about') {
+        opts.order_by = orderByMode(newMode as FeedMode)
       }
-    )
+
+      if (newPeriod) {
+        opts.filters = {
+          ...(opts.filters || {}),
+          after: getTimestampFromPeriod(newPeriod as PeriodType)
+        }
+      }
+      updateOptions(opts)
+    })
   )
 
   // load author's profile
@@ -196,8 +184,7 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
       async (profile) => {
         // update only if no profile loaded
         if (!profile) {
-          const loadedAuthor =
-            authorsEntities()[props.params.slug] || (await fetchAuthor(props.params.slug))
+          const loadedAuthor = authorsEntities()[props.params.slug] || (await fetchAuthor(props.params.slug))
           if (loadedAuthor) {
             addAuthor(loadedAuthor)
             setAuthor(loadedAuthor)

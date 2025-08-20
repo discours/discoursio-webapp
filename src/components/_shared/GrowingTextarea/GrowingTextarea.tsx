@@ -14,11 +14,7 @@ type Props = {
   variant?: 'bordered'
   fieldName?: string
   textAreaRef?: (el: HTMLTextAreaElement) => void
-  onClick?: (e: {
-    currentTarget: HTMLTextAreaElement
-    target: Element
-    stopPropagation: () => void
-  }) => void
+  onClick?: (e: { currentTarget: HTMLTextAreaElement; target: Element; stopPropagation: () => void }) => void
 }
 
 export const GrowingTextarea = (props: Props) => {

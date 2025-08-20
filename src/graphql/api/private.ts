@@ -84,10 +84,7 @@ export const useFollowedShouts = createQueryResource(
 + * )
 + * ```
  */
-export const useBookmarkedShouts = (
-  { options }: QueryLoad_Shouts_BookmarkedArgs,
-  signedClient: Client | undefined
-) => {
+export const useBookmarkedShouts = ({ options }: QueryLoad_Shouts_BookmarkedArgs, signedClient: Client | undefined) => {
   return createResource(
     () => [options, signedClient] as ResourceArgs<LoadShoutsOptions>,
     async ([opts, client]) => {
@@ -115,10 +112,7 @@ export const useBookmarkedShouts = (
 + * }</For>
 + * ```
  */
-export const useDiscussedShouts = (
-  { options }: QueryLoad_Shouts_DiscussedArgs,
-  signedClient: Client | undefined
-) => {
+export const useDiscussedShouts = ({ options }: QueryLoad_Shouts_DiscussedArgs, signedClient: Client | undefined) => {
   return createResource(
     () => [options, signedClient] as ResourceArgs<LoadShoutsOptions>,
     async ([opts, client]) => {
@@ -135,10 +129,7 @@ export const useDiscussedShouts = (
  * Особенности:
  * - Автоматическое обновление при изменении options/client
  */
-export const useCoauthoredShouts = (
-  { options }: QueryLoad_Shouts_CoauthoredArgs,
-  signedClient: Client | undefined
-) => {
+export const useCoauthoredShouts = ({ options }: QueryLoad_Shouts_CoauthoredArgs, signedClient: Client | undefined) => {
   return createResource(
     () => [options, signedClient] as ResourceArgs<LoadShoutsOptions>,
     async ([opts, client]) => {
@@ -291,10 +282,7 @@ export const loadFollowedShouts = (
  * Загрузка обсуждаемых статей
  * Используется для SSR и начальной загрузки
  */
-export const loadDiscussedShouts = (
-  { options }: QueryLoad_Shouts_DiscussedArgs,
-  signedClient: Client | undefined
-) => {
+export const loadDiscussedShouts = ({ options }: QueryLoad_Shouts_DiscussedArgs, signedClient: Client | undefined) => {
   return async () => {
     if (!signedClient) return undefined
     const resp = await signedClient.query(loadShoutsDiscussedQuery, { options }).toPromise()

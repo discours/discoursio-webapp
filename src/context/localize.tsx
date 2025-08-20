@@ -1,15 +1,6 @@
 import { useSearchParams } from '@solidjs/router'
 import type { Accessor, JSX } from 'solid-js'
-import {
-  createContext,
-  createEffect,
-  createMemo,
-  createSignal,
-  on,
-  onMount,
-  Show,
-  useContext
-} from 'solid-js'
+import { createContext, createEffect, createMemo, createSignal, on, onMount, Show, useContext } from 'solid-js'
 import { type i18n, i18next, i18nextInit, TimeAgo } from '~/intl/i18next'
 
 void i18nextInit()
@@ -56,10 +47,7 @@ export type LocalizeContextType = {
   lang: Accessor<Language>
   setLang: (lang: Language) => void
   formatTime: (date: Date, options?: Intl.DateTimeFormatOptions) => string
-  formatDate: (
-    date: Date | string | number | null | undefined,
-    options?: Intl.DateTimeFormatOptions
-  ) => string
+  formatDate: (date: Date | string | number | null | undefined, options?: Intl.DateTimeFormatOptions) => string
   formatTimeAgo: (date: Date) => string
 }
 
@@ -104,14 +92,9 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
     return date.toLocaleTimeString(lang(), opts)
   }
 
-  const formatDate = (
-    rawDate: Date | string | number | null | undefined,
-    options: Intl.DateTimeFormatOptions = {}
-  ) => {
+  const formatDate = (rawDate: Date | string | number | null | undefined, options: Intl.DateTimeFormatOptions = {}) => {
     let validDate =
-      rawDate instanceof Date
-        ? rawDate
-        : createValidDate(rawDate as string | number | null | undefined) || new Date()
+      rawDate instanceof Date ? rawDate : createValidDate(rawDate as string | number | null | undefined) || new Date()
 
     // Дополнительная проверка на адекватность года
     const year = validDate.getFullYear()

@@ -1,16 +1,7 @@
 import { MetaProvider } from '@solidjs/meta'
 import { Router } from '@solidjs/router'
 import { FileRoutes } from '@solidjs/start/router'
-import {
-  Component,
-  createEffect,
-  createSignal,
-  ErrorBoundary,
-  type JSX,
-  on,
-  onMount,
-  Suspense
-} from 'solid-js'
+import { Component, createEffect, createSignal, ErrorBoundary, type JSX, on, onMount, Suspense } from 'solid-js'
 
 import { sessionStateChanged } from '~/context/session'
 import { Loading } from './components/_shared/Loading'

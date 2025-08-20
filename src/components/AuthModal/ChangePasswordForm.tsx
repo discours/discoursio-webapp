@@ -87,10 +87,7 @@ export const ChangePasswordForm = () => {
         <div class={styles.title}>{t('Password updated!')}</div>
         <div class={styles.text}>{t('You can now login using your new password')}</div>
         <div>
-          <button
-            class={clsx('button', styles.submitButton)}
-            onClick={() => changeSearchParams({ mode: 'login' })}
-          >
+          <button class={clsx('button', styles.submitButton)} onClick={() => changeSearchParams({ mode: 'login' })}>
             {t('Enter')}
           </button>
           <button class={clsx('button', styles.submitButton)} onClick={() => hideModal()}>

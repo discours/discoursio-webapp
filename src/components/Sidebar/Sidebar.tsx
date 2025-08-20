@@ -90,11 +90,7 @@ export const Panel = (props: Props) => {
             </span>
           </p>
           <p>
-            <A
-              class={styles.link}
-              onClick={() => toggleEditorPanel()}
-              href={`/edit/${props.shoutId}/settings`}
-            >
+            <A class={styles.link} onClick={() => toggleEditorPanel()} href={`/edit/${props.shoutId}/settings`}>
               {t('Publication settings')}
             </A>
           </p>

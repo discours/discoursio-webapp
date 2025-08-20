@@ -53,10 +53,7 @@ export const PublishSettings = () => {
   const [isLoading, setIsLoading] = createSignal(false)
   const [coverUploadLoading, setCoverUploadLoading] = createSignal(false)
 
-  const handleFieldChange = (
-    key: keyof DraftInput,
-    value: string | number | boolean | Topic | Author | Topic[]
-  ) => {
+  const handleFieldChange = (key: keyof DraftInput, value: string | number | boolean | Topic | Author | Topic[]) => {
     const draft = currentDraft()
     if (!draft?.id) return
 
@@ -255,9 +252,7 @@ export const PublishSettings = () => {
           ? draft.topics.filter((topic): topic is Topic => Boolean(topic?.id)).map((topic) => topic.id)
           : [],
         main_topic_id:
-          Array.isArray(draft.topics) && draft.topics.length > 0 && draft.topics[0]
-            ? draft.topics[0].id
-            : undefined,
+          Array.isArray(draft.topics) && draft.topics.length > 0 && draft.topics[0] ? draft.topics[0].id : undefined,
         author_ids: draft.authors?.map((a) => a?.id).filter((id): id is number => !!id) || []
       }
 
@@ -382,11 +377,7 @@ export const PublishSettings = () => {
             </div>
 
             <h4>{t('Collaborators')}</h4>
-            <Button
-              variant="primary"
-              onClick={() => showModal('inviteMembers')}
-              value={t('Invite collaborators')}
-            />
+            <Button variant="primary" onClick={() => showModal('inviteMembers')} value={t('Invite collaborators')} />
 
             <h4>{t('Material card')}</h4>
             <div class={styles.articlePreview}>
@@ -523,9 +514,7 @@ export const PublishSettings = () => {
       </div>
       <Modal variant="narrow" name="uploadCoverImage">
         <UploadModalContent
-          onClose={(value: UploadedFile | undefined) =>
-            handleUploadModalContentCloseSetCover(value as UploadedFile)
-          }
+          onClose={(value: UploadedFile | undefined) => handleUploadModalContentCloseSetCover(value as UploadedFile)}
         />
       </Modal>
       <Modal variant="medium" name="inviteMembers">

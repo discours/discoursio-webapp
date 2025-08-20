@@ -110,9 +110,7 @@ test.describe('Система подписок', () => {
       await page.waitForTimeout(1000)
 
       // Проверяем, что кнопка изменилась или элемент исчез
-      const subscribeButton = await page
-        .locator('button:has-text("Подписаться"), .subscribe-button')
-        .first()
+      const subscribeButton = await page.locator('button:has-text("Подписаться"), .subscribe-button').first()
       expect(await subscribeButton.isVisible()).toBeTruthy()
     } else {
       console.warn('Нет активных подписок для отмены')
@@ -132,9 +130,7 @@ test.describe('Система подписок', () => {
     await waitForPageLoad(page)
 
     // Ищем кнопку подписки на тему
-    const topicSubscribe = await page
-      .locator('button:has-text("Подписаться"), .topic-subscribe, .follow-topic')
-      .first()
+    const topicSubscribe = await page.locator('button:has-text("Подписаться"), .topic-subscribe, .follow-topic').first()
 
     if (await topicSubscribe.isVisible()) {
       await topicSubscribe.click()
@@ -151,9 +147,7 @@ test.describe('Система подписок', () => {
         await topicLink.click()
         await waitForPageLoad(page)
 
-        const topicPageSubscribe = await page
-          .locator('button:has-text("Подписаться"), .subscribe-topic')
-          .first()
+        const topicPageSubscribe = await page.locator('button:has-text("Подписаться"), .subscribe-topic').first()
         if (await topicPageSubscribe.isVisible()) {
           await topicPageSubscribe.click()
           await page.waitForTimeout(1000)
@@ -184,9 +178,7 @@ test.describe('Система подписок', () => {
 
     if (await subscriptionsSection.isVisible()) {
       // Проверяем наличие списка подписок
-      const subscriptionItems = await page
-        .locator('.subscription-item, .followed-author, .followed-topic')
-        .count()
+      const subscriptionItems = await page.locator('.subscription-item, .followed-author, .followed-topic').count()
       expect(subscriptionItems >= 0).toBeTruthy() // Может быть пустой список
 
       // Проверяем возможность управления
@@ -215,9 +207,7 @@ test.describe('Система подписок', () => {
       await firstAuthor.click()
       await waitForPageLoad(page)
 
-      const subscribeButton = await page
-        .locator('button:has-text("Подписаться"), .subscribe-button')
-        .first()
+      const subscribeButton = await page.locator('button:has-text("Подписаться"), .subscribe-button').first()
 
       if (await subscribeButton.isVisible()) {
         await subscribeButton.click()
@@ -251,9 +241,7 @@ test.describe('Система подписок', () => {
         await firstAuthor.click()
         await waitForPageLoad(page)
 
-        const profileStats = await page
-          .locator('.profile-stats, .user-stats, :has-text("подписчи")')
-          .first()
+        const profileStats = await page.locator('.profile-stats, .user-stats, :has-text("подписчи")').first()
         expect(await profileStats.isVisible()).toBeTruthy()
       }
     }
@@ -271,9 +259,7 @@ test.describe('Система подписок', () => {
     await waitForPageLoad(page)
 
     // Ищем переключатель между "Все" и "Моя лента"
-    const myFeedTab = await page
-      .locator('button:has-text("Моя лента"), .my-feed, [data-testid="my-feed"]')
-      .first()
+    const myFeedTab = await page.locator('button:has-text("Моя лента"), .my-feed, [data-testid="my-feed"]').first()
 
     if (await myFeedTab.isVisible()) {
       await myFeedTab.click()

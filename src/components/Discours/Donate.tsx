@@ -75,9 +75,8 @@ export const Donate = () => {
     // $openModal = 'donate'
     setShowingPayment(true)
     console.log('[donate] clicked')
-    const choice: HTMLInputElement | undefined | null =
-      amountSwitchElement?.querySelector('input[type=radio]:checked')
-    setAmount(Number.parseInt(customAmountElement?.value || choice?.value || '0'))
+    const choice: HTMLInputElement | undefined | null = amountSwitchElement?.querySelector('input[type=radio]:checked')
+    setAmount(Number.parseInt(customAmountElement?.value || choice?.value || '0', 10))
     console.log(`[donate] input amount ${amount}`)
     // biome-ignore lint/suspicious/noExplicitAny: it's a widget!
     ;(widget() as any).charge(
@@ -160,11 +159,7 @@ export const Donate = () => {
             onClick={() => setPeriod(once)}
             checked={period() === once}
           />
-          <label
-            for="once"
-            class={clsx(styles.btn, styles.paymentType)}
-            classList={{ active: period() === once }}
-          >
+          <label for="once" class={clsx(styles.btn, styles.paymentType)} classList={{ active: period() === once }}>
             {t('One time')}
           </label>
           <input

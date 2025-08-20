@@ -19,18 +19,14 @@ test.describe('Функциональность поиска', () => {
   test('Должен открывать модальное окно поиска', async ({ page }) => {
     // Ищем кнопку поиска
     const searchButton = await page
-      .locator(
-        'button[aria-label*="поиск"], button:has-text("Поиск"), .search-button, [data-testid="search-button"]'
-      )
+      .locator('button[aria-label*="поиск"], button:has-text("Поиск"), .search-button, [data-testid="search-button"]')
       .first()
 
     if (await searchButton.isVisible()) {
       await searchButton.click()
 
       // Проверяем, что появилось поле поиска
-      const searchInput = await page
-        .locator('input[type="search"], input[placeholder*="поиск"], .search-input')
-        .first()
+      const searchInput = await page.locator('input[type="search"], input[placeholder*="поиск"], .search-input').first()
       await expect(searchInput).toBeVisible({ timeout: 5000 })
     } else {
       // Может быть поле поиска уже видно
@@ -58,9 +54,7 @@ test.describe('Функциональность поиска', () => {
 
       // Проверяем, что есть результаты или сообщение об их отсутствии
       const results = await page.locator('.search-results, .search-result, article').count()
-      const noResults = await page
-        .locator('text*="не найдено", text*="нет результатов", .no-results')
-        .isVisible()
+      const noResults = await page.locator('text*="не найдено", text*="нет результатов", .no-results').isVisible()
 
       expect(results > 0 || noResults).toBeTruthy()
     } else {
@@ -251,9 +245,7 @@ test.describe('Функциональность поиска', () => {
       await searchInput.clear()
       await searchInput.focus()
 
-      const historyItems = await page
-        .locator('.search-history, .search-suggestions, datalist option')
-        .count()
+      const historyItems = await page.locator('.search-history, .search-suggestions, datalist option').count()
 
       if (historyItems > 0) {
         expect(historyItems).toBeGreaterThan(0)

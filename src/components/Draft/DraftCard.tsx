@@ -197,10 +197,7 @@ export const DraftCard = (props: Props) => {
    * Проверяет, есть ли у черновика опубликованная версия
    */
   const isPublished = () => {
-    return (
-      !!props.draft.publication?.published_at ||
-      ('published_at' in props.draft && !!props.draft.published_at)
-    )
+    return !!props.draft.publication?.published_at || ('published_at' in props.draft && !!props.draft.published_at)
   }
 
   /**
@@ -512,11 +509,7 @@ export const DraftCard = (props: Props) => {
           </Show>
 
           {/* Удаление - всегда присутствует */}
-          <span
-            onClick={handleDeleteLinkClick}
-            class={clsx(styles.actionItem, styles.delete)}
-            title={t('Delete')}
-          >
+          <span onClick={handleDeleteLinkClick} class={clsx(styles.actionItem, styles.delete)} title={t('Delete')}>
             <Icon name="trash" class={styles.actionIcon} />
             <span class={clsx(styles.actionText)}>{t('Delete')}</span>
           </span>

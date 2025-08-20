@@ -36,12 +36,7 @@ export const GroupAvatar = (props: Props) => {
     >
       <For each={displayedAvatars}>
         {(author: Author) => (
-          <Userpic
-            size={avatarSize()}
-            name={author.name || ''}
-            userpic={author.pic || ''}
-            class={styles.item}
-          />
+          <Userpic size={avatarSize()} name={author.name || ''} userpic={author.pic || ''} class={styles.item} />
         )}
       </For>
       {props.authors.length > 4 && <div class={styles.moreUsers}>+{props.authors?.length - 3}</div>}

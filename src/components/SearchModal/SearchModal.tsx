@@ -111,10 +111,10 @@ export const SearchModal = () => {
     return resetResults ? newShouts || [] : []
   }
 
-  const [shoutsResultsList, { mutate: setshoutsResultsList }] = createResource<Shout[]>(
-    fetchShoutsResults,
-    { ssrLoadFrom: 'initial', initialValue: [] }
-  )
+  const [shoutsResultsList, { mutate: setshoutsResultsList }] = createResource<Shout[]>(fetchShoutsResults, {
+    ssrLoadFrom: 'initial',
+    initialValue: []
+  })
 
   const [searchEl, setSearchEl] = createSignal<HTMLInputElement | undefined>()
 

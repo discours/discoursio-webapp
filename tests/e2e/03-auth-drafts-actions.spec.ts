@@ -115,11 +115,7 @@ test.describe('Создание новых материалов', () => {
     await draftPage.verifyHeading('Новое видео')
 
     // Заполнение формы
-    await draftPage.fillVideoForm(
-      'Тестовое видео',
-      'Это тестовое видео',
-      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-    )
+    await draftPage.fillVideoForm('Тестовое видео', 'Это тестовое видео', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
     // Сохранение
     await draftPage.saveDraft()

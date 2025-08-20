@@ -313,11 +313,7 @@ export const InboxView = (props: { authors: Author[]; chat?: Chat }) => {
                   commands={['bold', 'italic', 'link', 'image', 'video', 'audio', 'blockquote']}
                 />
               </div>
-              <Button
-                variant="primary"
-                value={t('Send')}
-                onClick={() => handleSubmit(messageToReply()?.body || '')}
-              />
+              <Button variant="primary" value={t('Send')} onClick={() => handleSubmit(messageToReply()?.body || '')} />
             </div>
           </Show>
         </div>

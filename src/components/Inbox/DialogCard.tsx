@@ -24,9 +24,7 @@ type DialogProps = {
 
 const DialogCard = (props: DialogProps) => {
   const { t, formatTime } = useLocalize()
-  const companions = createMemo(() =>
-    props.members?.filter((member: ChatMember) => member.id !== props.ownId)
-  )
+  const companions = createMemo(() => props.members?.filter((member: ChatMember) => member.id !== props.ownId))
 
   const names = createMemo<string>(() => (companions() || []).map((companion) => companion.name).join(', '))
 
@@ -62,9 +60,7 @@ const DialogCard = (props: DialogProps) => {
 
         <Show when={!props.isChatHeader}>
           <div class={styles.row}>
-            <div class={styles.name}>
-              {companions()?.length > 1 ? t('Group Chat') : companions()[0]?.name}
-            </div>
+            <div class={styles.name}>{companions()?.length > 1 ? t('Group Chat') : companions()[0]?.name}</div>
             <div class={styles.message}>
               <Switch>
                 <Match when={props.message}>

@@ -66,11 +66,7 @@ export const Lightbox = (props: Props) => {
     })
   }
 
-  const handleMouseWheelZoom = (event: {
-    preventDefault: () => void
-    stopPropagation: () => void
-    deltaY: number
-  }) => {
+  const handleMouseWheelZoom = (event: { preventDefault: () => void; stopPropagation: () => void; deltaY: number }) => {
     event.preventDefault()
     event.stopPropagation()
 
