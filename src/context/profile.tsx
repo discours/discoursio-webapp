@@ -9,7 +9,7 @@ type ProfileContextType = {
   author: Accessor<Author>
   setAuthor: (a: Author) => void
   form: ProfileInput
-  setForm: (profile: Partial<ProfileInput>) => void
+  setForm: (profile: ProfileInput) => void
   submit: (profile: ProfileInput) => Promise<Author | undefined>
   updateFormField: (fieldName: string, value: string, remove?: boolean) => void
 }
@@ -27,7 +27,7 @@ const userpicUrl = (userpic: string) => {
   return userpic
 }
 
-const filterProfileInput = (profile: Partial<ProfileInput>): ProfileInput => {
+const filterProfileInput = (profile: ProfileInput): ProfileInput => {
   const filtered = {
     name: profile.name || '',
     slug: profile.slug || '',
@@ -120,7 +120,7 @@ export const ProfileProvider = (props: { children: JSX.Element }) => {
     author,
     setAuthor,
     form,
-    setForm: (profile: Partial<ProfileInput>) => {
+    setForm: (profile: ProfileInput) => {
       const filteredProfile = filterProfileInput(profile)
       setForm((prev) => ({ ...prev, ...filteredProfile }))
     },

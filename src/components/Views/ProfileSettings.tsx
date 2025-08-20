@@ -8,7 +8,7 @@ import { useLocalize } from '~/context/localize'
 import { useProfile } from '~/context/profile'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
-import { InputMaybe, ProfileInput } from '~/graphql/generated/graphql'
+import { ProfileInput } from '~/graphql/generated/graphql'
 import { getFileUrl } from '~/lib/getThumbUrl'
 import { handleFileUpload } from '~/lib/handleFileUpload'
 import { profileSocialLinks } from '~/lib/profileSocialLinks'
@@ -29,7 +29,7 @@ import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 
 const GrowingTextarea = lazy(() => import('~/components/_shared/GrowingTextarea/GrowingTextarea'))
 
-function filterNulls(arr: InputMaybe<string>[]): string[] {
+function filterNulls(arr: (string | null | undefined)[]): string[] {
   return arr.filter((item): item is string => item !== null && item !== undefined)
 }
 
@@ -49,7 +49,7 @@ export const ProfileSettings = () => {
   const [nameError, setNameError] = createSignal<string>()
   const { form, submit, updateFormField, setForm } = useProfile()
   const { loadSession, session } = useSession()
-  const [prevForm, setPrevForm] = createStore<ProfileInput>()
+  const [prevForm, setPrevForm] = createStore<ProfileInput>({} as ProfileInput)
   const { showConfirm } = useUI()
   const { showModal, hideModal } = useUI()
   const [loading, setLoading] = createSignal(true)

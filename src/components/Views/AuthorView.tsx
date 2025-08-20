@@ -76,6 +76,20 @@ export const AuthorView = (props: AuthorViewProps) => {
     if (initialShouts.length > 0) {
       setSortedFeed(initialShouts)
       console.log('[AuthorView] Set initial feed:', initialShouts.length, 'items')
+
+      // Инициализируем флаг loadMoreHidden на основе статистики автора
+      if (props.author?.stat?.shouts) {
+        const allShoutsLoaded = initialShouts.length >= props.author.stat.shouts
+        setLoadMoreHidden(allShoutsLoaded)
+        console.log(
+          '[AuthorView] Initial loadMoreHidden set to:',
+          allShoutsLoaded,
+          'based on stats:',
+          props.author.stat.shouts
+        )
+      } else {
+        setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
+      }
     }
 
     // Инициализируем автора из пропсов если доступен
@@ -106,6 +120,30 @@ export const AuthorView = (props: AuthorViewProps) => {
     }
     console.log('[AuthorView] Stats calculated:', result, 'for author:', authorData?.slug)
     return result
+  })
+
+  // Мемо для определения, нужно ли показывать фильтры и кнопку "Показать еще"
+  const shouldShowFiltersAndLoadMore = createMemo(() => {
+    // Показываем фильтры и кнопку только если:
+    // 1. Мы на вкладке публикаций (не comments/about)
+    // 2. Есть публикации для отображения
+    // 3. Не все публикации уже загружены
+    if (currentTab()) return false
+    if (stats().shouts === 0) return false
+
+    // Проверяем, загружены ли все публикации автора
+    const allShoutsLoaded = sortedFeed().length >= stats().shouts
+    return !allShoutsLoaded
+  })
+
+  // Мемо для определения, нужно ли показывать кнопку "Показать еще"
+  const shouldShowLoadMore = createMemo(() => {
+    if (currentTab()) return false
+    if (stats().shouts === 0) return false
+
+    // Показываем кнопку только если не все публикации загружены
+    const allShoutsLoaded = sortedFeed().length >= stats().shouts
+    return !allShoutsLoaded && !loadMoreHidden()
   })
 
   // Эффект для обработки изменения таба через браузер
@@ -173,6 +211,7 @@ export const AuthorView = (props: AuthorViewProps) => {
         if (authorFeed?.length && (!sortedFeed().length || authorFeed.length > sortedFeed().length)) {
           setSortedFeed(authorFeed)
           if (stats().shouts > 0) {
+            // Скрываем кнопку "Показать еще" если загружены все публикации автора
             setLoadMoreHidden(authorFeed.length >= stats().shouts)
           } else {
             setLoadMoreHidden(authorFeed.length < FEED_PAGE_SIZE)
@@ -381,7 +420,12 @@ export const AuthorView = (props: AuthorViewProps) => {
           void loadAuthorShouts(0).then((result) => {
             if (result.length) {
               setSortedFeed(result)
-              setLoadMoreHidden(result.length < FEED_PAGE_SIZE)
+              // Скрываем кнопку "Показать еще" если загружены все публикации автора
+              if (stats().shouts > 0) {
+                setLoadMoreHidden(result.length >= stats().shouts)
+              } else {
+                setLoadMoreHidden(result.length < FEED_PAGE_SIZE)
+              }
             } else {
               setLoadMoreHidden(true)
             }
@@ -412,7 +456,12 @@ export const AuthorView = (props: AuthorViewProps) => {
           void loadAuthorShouts(0).then((result) => {
             if (result.length) {
               setSortedFeed(result)
-              setLoadMoreHidden(result.length < FEED_PAGE_SIZE)
+              // Скрываем кнопку "Показать еще" если загружены все публикации автора
+              if (stats().shouts > 0) {
+                setLoadMoreHidden(result.length >= stats().shouts)
+              } else {
+                setLoadMoreHidden(result.length < FEED_PAGE_SIZE)
+              }
             } else {
               setLoadMoreHidden(true)
             }
@@ -440,7 +489,12 @@ export const AuthorView = (props: AuthorViewProps) => {
 
         if (newShouts.length) {
           setSortedFeed((prev) => [...prev, ...newShouts])
-          setLoadMoreHidden(newShouts.length < FEED_PAGE_SIZE)
+          // Скрываем кнопку "Показать еще" если загружены все публикации автора
+          if (stats().shouts > 0) {
+            setLoadMoreHidden(sortedFeed().length + newShouts.length >= stats().shouts)
+          } else {
+            setLoadMoreHidden(newShouts.length < FEED_PAGE_SIZE)
+          }
         } else {
           setLoadMoreHidden(true)
         }
@@ -469,7 +523,12 @@ export const AuthorView = (props: AuthorViewProps) => {
           // Сбрасываем и сразу устанавливаем начальные данные для нового автора
           const initialShouts = newShouts || []
           setSortedFeed(initialShouts)
-          setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
+          // Скрываем кнопку "Показать еще" если загружены все публикации автора
+          if (stats().shouts > 0) {
+            setLoadMoreHidden(initialShouts.length >= stats().shouts)
+          } else {
+            setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
+          }
 
           // Сбрасываем флаги загрузки фолловеров для нового автора
           setFollowersLoaded(false)
@@ -562,8 +621,8 @@ export const AuthorView = (props: AuthorViewProps) => {
                 <div class={styles.controlsRow}>
                   <TabNavigator />
 
-                  {/* Центральный блок с фильтрами - показываем только на вкладке публикаций */}
-                  <Show when={!currentTab()}>
+                  {/* Центральный блок с фильтрами - показываем только на вкладке публикаций и когда есть что фильтровать */}
+                  <Show when={shouldShowFiltersAndLoadMore()}>
                     <div class={styles.filtersInline}>
                       <FeedSwitcher
                         options={['recent', 'top', 'hot']}
@@ -679,7 +738,11 @@ export const AuthorView = (props: AuthorViewProps) => {
                 </div>
               }
             >
-              <LoadMoreWrapper loadFunction={loadMoreAuthorShouts} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
+              <LoadMoreWrapper
+                loadFunction={loadMoreAuthorShouts}
+                pageSize={FEED_PAGE_SIZE}
+                hidden={!shouldShowLoadMore()}
+              >
                 <For each={sortedFeed()}>
                   {(_article, index) => {
                     const i = index()

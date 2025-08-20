@@ -21,10 +21,13 @@ export const ProfileSubscriptions = () => {
   const [searchQuery, setSearchQuery] = createSignal('')
 
   createEffect(() => {
-    const allFollows = [...(follows?.authors || []), ...(follows?.topics || [])]
+    // Безопасный доступ к follows с проверкой на undefined
+    const authors = follows?.authors || []
+    const topics = follows?.topics || []
+    const allFollows = [...authors, ...topics]
     console.log('[ProfileSubscriptions] Updating follows:', {
-      authors: follows?.authors?.length || 0,
-      topics: follows?.topics?.length || 0,
+      authors: authors.length,
+      topics: topics.length,
       total: allFollows.length
     })
     setFlatFollows(allFollows)
@@ -87,7 +90,7 @@ export const ProfileSubscriptions = () => {
               <Show
                 when={flatFollows().length > 0}
                 fallback={
-                  <Show when={follows} fallback={<Loading />}>
+                  <Show when={follows && (follows.authors || follows.topics)} fallback={<Loading />}>
                     <div class="empty-state">
                       <p>{t('You have no subscriptions yet')}</p>
                       <p>{t('Subscribe to authors and topics to see them here')}</p>
