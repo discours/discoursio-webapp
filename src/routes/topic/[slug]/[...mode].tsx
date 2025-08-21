@@ -10,7 +10,7 @@ import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { loadShouts, loadTopicBySlug } from '~/graphql/api/public'
 import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/generated/graphql'
-import { getFileUrl } from '~/lib/getThumbUrl'
+import { getFileUrl } from '~/lib/imageCache'
 import { descFromBody } from '~/utils/meta'
 
 const fetchTopicShouts = async (slug: string, offset?: number) => {

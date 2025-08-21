@@ -10,7 +10,6 @@ import {
   QueryLoad_Shouts_DiscussedArgs,
   Reaction,
   ReactionBy,
-  ReactionKind,
   Shout
 } from '~/graphql/generated/graphql'
 import loadShoutsBookmarkedQuery from '~/graphql/query/core/articles-load-bookmarked'
@@ -305,42 +304,4 @@ export const loadCoauthoredShouts = (
   }
 }
 
-/**
- * @deprecated Используйте useCommentsMyRates вместо loadCommentsMyRates
- * Активно используется в RatingControl для реактивных обновлений
- *
- * @example
- * ```tsx
- * // Было в Comment.tsx:
- * const commentsRatesFetcher = loadCommentsMyRates(
- *   comments.map(c => c.id),
- *   client
- * )
- * const myratesData = await commentsRatesFetcher()
- * ```
- */
-export const loadCommentsMyRates = (comments: number[], signedClient: Client | undefined) => {
-  return async () => {
-    if (!signedClient) return undefined
-    const resp = await signedClient.query(loadCommentsMyRatesQuery, { comments }).toPromise()
-    return resp?.data?.get_my_rates_comments as { comment: number; my_rate: ReactionKind }[]
-  }
-}
-
-/**
- * @deprecated Используйте useShoutsMyRates вместо loadShoutsMyRates
- * Активно используется в RatingControl для реактивных обновлений
- */
-export const loadShoutsMyRates = (shoutIds: number[], client?: Client) => {
-  return async () => {
-    if (!client) return undefined
-    try {
-      const response = await client.query(loadArticlesMyRatesQuery, { shouts: shoutIds }).toPromise()
-      if (response.error) return undefined
-      return response.data?.get_my_rates_shouts
-    } catch (error) {
-      console.error('[API] loadShoutsMyRates caught error:', error)
-      return undefined
-    }
-  }
-}
+// ✅ Legacy API удален - используйте useCommentsMyRates и useShoutsMyRates

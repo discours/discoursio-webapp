@@ -3,11 +3,12 @@ import { createEffect } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
+import { coreApiUrl } from '~/config'
 import { useFeaturedFeed } from '~/context/featured'
 import { FEED_PAGE_SIZE } from '~/context/feed'
 import { loadShouts } from '~/graphql/api/public'
-import { createLoader } from '~/graphql/client'
-import { QueryLoad_Shouts_ByArgs, Shout, ShoutsOrderBy } from '~/graphql/generated/graphql'
+import { createCacheableLoader } from '~/graphql/client'
+import { QueryLoad_Shouts_ByArgs, Shout } from '~/graphql/generated/graphql'
 import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
 import { PageLayout } from '../components/_shared/PageLayout'
 import { useLocalize } from '../context/localize'
@@ -61,14 +62,21 @@ const withRetry = async (fn: () => Promise<any>, retries = 2, delay = 1000): Pro
 
 // Некешируемый загрузчик для SSR
 const loadShoutsSSR = (args: QueryLoad_Shouts_ByArgs) => {
-  const loader = createLoader<{ load_shouts_by: Shout[] }, QueryLoad_Shouts_ByArgs>(
+  // Используем createCacheableLoader с включенным кешированием для лучшей производительности
+  const loader = createCacheableLoader<{ load_shouts_by: Shout[] }, QueryLoad_Shouts_ByArgs>(
     loadShoutsByQuery,
-    (args: QueryLoad_Shouts_ByArgs) => args
+    (args: QueryLoad_Shouts_ByArgs) => args,
+    true // Включаем кеширование для SSR
   )(args)
 
   return async () => {
-    const response = await loader()
-    return response?.load_shouts_by || []
+    try {
+      const response = await loader()
+      return response?.load_shouts_by || []
+    } catch (error) {
+      safeLog('loadShoutsSSR error:', error)
+      return []
+    }
   }
 }
 
@@ -78,15 +86,35 @@ export const route = {
     try {
       safeLog('SSR route.load started')
 
-      // Увеличиваем timeout до 12 секунд (меньше GraphQL timeout 15s)
+      // Увеличиваем timeout до 20 секунд для стабильной загрузки всех данных
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('SSR timeout')), 12000)
+        setTimeout(() => reject(new Error('SSR timeout - 20s exceeded')), 20000)
       })
 
       const dataPromise = (async () => {
         // Загружаем все данные для SSR
         safeLog('Loading home data for SSR...')
 
+        // Проверяем доступность API
+        try {
+          const apiCheck = await fetch(coreApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: '{ __typename }' }),
+            signal: AbortSignal.timeout(5000) // 5 секунд на проверку API
+          })
+
+          if (!apiCheck.ok) {
+            throw new Error(`API недоступен: ${apiCheck.status} ${apiCheck.statusText}`)
+          }
+
+          safeLog('API доступен, начинаем загрузку данных...')
+        } catch (apiError) {
+          safeLog('API недоступен:', apiError)
+          throw new Error(`API недоступен: ${apiError}`)
+        }
+
+        // Загружаем только основные данные для начала
         const featuredLoader = loadShoutsSSR({
           options: {
             filters: { featured: true },
@@ -94,63 +122,21 @@ export const route = {
           }
         })
 
-        const topCommentedLoader = loadShoutsSSR({
-          options: { filters: { featured: true }, limit: FEED_PAGE_SIZE }
-        })
+        safeLog('Starting featured data loading...')
 
-        const daysago = Date.now() - 30 * 24 * 60 * 60 * 1000
-        const after = Math.floor(daysago / 1000)
-        const topMonthLoader = loadShoutsSSR({
-          options: {
-            filters: {
-              featured: true,
-              after
-            },
-            order_by: ShoutsOrderBy.Rating,
-            limit: FEED_PAGE_SIZE
-          }
-        })
+        // Загружаем featured данные
+        const featuredShouts = await withRetry(async () => await featuredLoader(), 2, 300)
 
-        const topRatedLoader = loadShoutsSSR({
-          options: {
-            filters: { featured: true },
-            order_by: ShoutsOrderBy.Rating,
-            limit: FEED_PAGE_SIZE
-          }
-        })
-
-        const topViewedLoader = loadShoutsSSR({
-          options: {
-            filters: { featured: true },
-            limit: FEED_PAGE_SIZE
-          }
-        })
-
-        // Загружаем все данные параллельно
-        const [featuredShouts, topCommentedShouts, topMonthShouts, topRatedShouts, topViewedShouts] = await Promise.all(
-          [
-            withRetry(async () => await featuredLoader(), 2, 300),
-            withRetry(async () => await topCommentedLoader(), 2, 300),
-            withRetry(async () => await topMonthLoader(), 2, 300),
-            withRetry(async () => await topRatedLoader(), 2, 300),
-            withRetry(async () => await topViewedLoader(), 2, 300)
-          ]
-        )
-
-        safeLog('SSR data loaded', {
-          featured: featuredShouts?.length || 0,
-          topCommented: topCommentedShouts?.length || 0,
-          topMonth: topMonthShouts?.length || 0,
-          topRated: topRatedShouts?.length || 0,
-          topViewed: topViewedShouts?.length || 0
+        safeLog('SSR featured data loaded:', {
+          featured: featuredShouts?.length || 0
         })
 
         return {
-          featuredShouts,
-          topCommentedShouts,
-          topMonthShouts,
-          topRatedShouts,
-          topViewedShouts
+          featuredShouts: featuredShouts || [],
+          topCommentedShouts: [],
+          topMonthShouts: [],
+          topRatedShouts: [],
+          topViewedShouts: []
         }
       })()
 

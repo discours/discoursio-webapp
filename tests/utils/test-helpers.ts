@@ -216,20 +216,9 @@ export class TestUtils {
   }
 
   /**
-   * Retry механизм для нестабильных операций
+   * ❌ Retry механизм удален - тесты должны падать сразу чтобы показать реальные проблемы
+   * Если операция нестабильна, нужно исправить корневую причину, а не маскировать retries
    */
-  async retryOperation<T>(operation: () => Promise<T>, maxRetries = 3, delay = 1000): Promise<T> {
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        return await operation()
-      } catch (error) {
-        console.log(`Попытка ${i + 1}/${maxRetries} не удалась:`, error)
-        if (i === maxRetries - 1) throw error
-        await new Promise((resolve) => setTimeout(resolve, delay))
-      }
-    }
-    throw new Error('Max retries exceeded')
-  }
 }
 
 export const test = baseTest.extend<{

@@ -41,6 +41,22 @@ export const HomeView = (props: HomeViewProps) => {
   const { topTopics } = useTopics()
   const { randomTopicFeed } = useFeaturedFeed()
 
+  // Детальная диагностика загрузки данных
+  createEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('🔍 HomeView: Props data received:', {
+        featuredShouts: props.featuredShouts?.length || 0,
+        topRatedShouts: props.topRatedShouts?.length || 0,
+        topMonthShouts: props.topMonthShouts?.length || 0,
+        topViewedShouts: props.topViewedShouts?.length || 0,
+        topCommentedShouts: props.topCommentedShouts?.length || 0,
+        hasFeaturedData: !!props.featuredShouts?.length,
+        hasTopRatedData: !!props.topRatedShouts?.length,
+        hasTopMonthData: !!props.topMonthShouts?.length
+      })
+    }
+  })
+
   // Диагностика загрузки случайных тем (только в dev)
   createEffect(() => {
     if (typeof window !== 'undefined' && import.meta.env.DEV) {
@@ -61,8 +77,22 @@ export const HomeView = (props: HomeViewProps) => {
     })
   })
 
+  // Fallback для случаев когда SSR данные не загрузились
+  const fallbackShouts = createMemo(() => {
+    if (props.featuredShouts?.length) {
+      return props.featuredShouts
+    }
+
+    // Если нет SSR данных, показываем минимальный контент
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ HomeView: No SSR data available, using fallback')
+    }
+
+    return []
+  })
+
   const pages = createMemo<Shout[][]>(() =>
-    paginate(props.featuredShouts || [], SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, SHOUTS_PER_PAGE)
+    paginate(fallbackShouts() || [], SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, SHOUTS_PER_PAGE)
   )
 
   // Стабилизируем условие для предотвращения ошибок гидрации
@@ -79,7 +109,7 @@ export const HomeView = (props: HomeViewProps) => {
       const dedupContext = new FeedDeduplicationContext()
 
       // Используем данные из props (уже загружены на сервере)
-      const featured = props.featuredShouts || []
+      const featured = fallbackShouts() || []
       const topRated = props.topRatedShouts || []
       const topMonth = props.topMonthShouts || []
       const topViewed = props.topViewedShouts || []

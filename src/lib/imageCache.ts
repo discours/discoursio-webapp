@@ -44,7 +44,10 @@ const isPublicStaticResource = (src: string): boolean => {
  * @param options - параметры для формирования URL
  * @returns URL изображения через квотер
  */
-export const getCachedImageUrl = (src: string, options: { width?: number } = {}): string => {
+export const getCachedImageUrl = (
+  src: string,
+  options: { width?: number; height?: number; noSizeUrlPart?: boolean } = {}
+): string => {
   if (!src) return ''
 
   // ВАЖНО: Статические ресурсы из public возвращаем как есть!
@@ -54,6 +57,11 @@ export const getCachedImageUrl = (src: string, options: { width?: number } = {})
 
   // Для локальных ресурсов возвращаем как есть
   if (!src.startsWith('http')) {
+    return src
+  }
+
+  // Если noSizeUrlPart = true, возвращаем оригинальный URL без изменений
+  if (options.noSizeUrlPart) {
     return src
   }
 
@@ -83,14 +91,21 @@ export const getCachedImageUrl = (src: string, options: { width?: number } = {})
     return src
   }
 
-  // Обрабатываем параметры ширины - quoter поддерживает добавление размера к имени файла
-  if (options.width) {
+  // Обрабатываем параметры размера - quoter поддерживает добавление размера к имени файла
+  if (options.width || options.height) {
     const parts = imagePath.split('.')
     const extension = parts.pop() || ''
     let filepath = parts.join('.')
 
-    // Добавляем размер к имени файла (quoter поддерживает filename_640.jpg)
-    filepath = `${filepath}_${options.width}`
+    // Добавляем размер к имени файла (quoter поддерживает filename_640x480.jpg)
+    if (options.width && options.height) {
+      filepath = `${filepath}_${options.width}x${options.height}`
+    } else if (options.width) {
+      filepath = `${filepath}_${options.width}`
+    } else if (options.height) {
+      filepath = `${filepath}_x${options.height}`
+    }
+
     imagePath = `${filepath}.${extension}`
   }
 

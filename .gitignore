@@ -55,3 +55,4 @@ docs/progress/*
 .autopilot.json
 playwright
 docs/test-coverage/*
+.kiro

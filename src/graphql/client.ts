@@ -88,7 +88,16 @@ export const client = createClient({
   fetchOptions,
   requestPolicy: 'cache-and-network',
   // urql@6: disable GET for queries to keep compatibility if server doesn't support it
-  preferGetMethod: false
+  preferGetMethod: false,
+  // SSR оптимизации
+  ...(isServer && {
+    requestPolicy: 'network-only', // В SSR всегда загружаем свежие данные
+    fetchOptions: {
+      ...fetchOptions,
+      // Увеличиваем timeout для SSR
+      signal: AbortSignal.timeout(25000) // 25 секунд для SSR
+    }
+  })
 })
 
 /**
@@ -152,33 +161,40 @@ export function createCacheableLoader<T, Args>(
       const variables = getVariables(args)
 
       // Если кеширование включено, используем fetch с кешированием
-      if (enableCache && !isServer) {
-        const cacheKey = `graphql-${JSON.stringify({ query: query.loc?.source.body, variables })}`
-        const cached = sessionStorage.getItem(cacheKey)
+      // Убираем проверку !isServer чтобы кеширование работало и в SSR
+      if (enableCache) {
+        // В SSR используем только память, в браузере - sessionStorage
+        if (!isServer) {
+          const cacheKey = `graphql-${JSON.stringify({ query: query.loc?.source.body, variables })}`
+          const cached = sessionStorage.getItem(cacheKey)
 
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached)
-            if (Date.now() - parsed.timestamp < 1800000) {
-              // 30 минут
-              return parsed.data as T
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached)
+              if (Date.now() - parsed.timestamp < 1800000) {
+                // 30 минут
+                return parsed.data as T
+              }
+            } catch (_e) {
+              // Игнорируем ошибки парсинга кеша
             }
-          } catch (_e) {
-            // Игнорируем ошибки парсинга кеша
           }
         }
 
         const response = await client.query(query, variables).toPromise()
         const data = response?.data as T
 
-        // Кешируем результат
-        sessionStorage.setItem(
-          cacheKey,
-          JSON.stringify({
-            data,
-            timestamp: Date.now()
-          })
-        )
+        // Кешируем результат только в браузере
+        if (!isServer) {
+          const cacheKey = `graphql-${JSON.stringify({ query: query.loc?.source.body, variables })}`
+          sessionStorage.setItem(
+            cacheKey,
+            JSON.stringify({
+              data,
+              timestamp: Date.now()
+            })
+          )
+        }
 
         return data
       }

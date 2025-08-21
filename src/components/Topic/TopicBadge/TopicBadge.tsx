@@ -5,7 +5,7 @@ import { FollowingButton } from '~/components/_shared/FollowingButton'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { FollowingEntity, Topic } from '~/graphql/generated/graphql'
-import { getFileUrl } from '~/lib/getThumbUrl'
+import { getFileUrl } from '~/lib/imageCache'
 import { mediaMatches } from '~/lib/mediaQuery'
 import { capitalize } from '~/utils/capitalize'
 

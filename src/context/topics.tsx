@@ -73,50 +73,22 @@ export function useTopics() {
 export type TopicSort = 'shouts' | 'followers' | 'authors' | 'title'
 
 /**
- * Оптимизированная загрузка топиков - используем только один источник данных
+ * 💋 KISS: Упрощенная загрузка топиков - используем только основное API
  * @returns Промис с массивом топиков
  */
 async function loadTopicsOptimized(): Promise<Topic[]> {
   try {
-    console.log('[TopicsProvider] loadTopicsOptimized: Starting...')
+    console.log('[TopicsProvider] Starting to load topics...')
 
-    // Пробуем сначала старое API, так как новое возвращает 0 тем
-    console.log('[TopicsProvider] loadTopicsOptimized: Trying old API first...')
-    const fallbackLoader = loadTopics()
-    const fallbackTopics = (await fallbackLoader()) || []
-    console.log('[TopicsProvider] loadTopicsOptimized: Old API returned:', fallbackTopics.length, 'topics')
-
-    if (fallbackTopics.length > 0) {
-      return fallbackTopics
-    }
-
-    // Если старое API не дало результатов, пробуем новое
-    console.log('[TopicsProvider] loadTopicsOptimized: Old API returned 0 topics, trying new API...')
-    const options: QueryGet_Topics_By_CommunityArgs = {
-      community_id: 1,
-      limit: 200, // загружаем больше данных за один раз
-      offset: 0
-    }
-
-    console.log('[TopicsProvider] loadTopicsOptimized: Calling loadTopicsByCommunity with options:', options)
-    const topicsLoader = loadTopicsByCommunity(options)
+    // ✅ Используем только основное API loadTopics
+    const topicsLoader = loadTopics()
     const topics = (await topicsLoader()) || []
-    console.log('[TopicsProvider] loadTopicsOptimized: New API returned:', topics.length, 'topics')
 
+    console.log('[TopicsProvider] Topics loaded:', topics.length, 'topics')
     return topics
   } catch (error) {
-    console.error('[TopicsProvider] loadTopicsOptimized: Failed to load topics:', error)
-    // В случае ошибки пробуем старое API
-    try {
-      console.log('[TopicsProvider] loadTopicsOptimized: Trying fallback API...')
-      const fallbackLoader = loadTopics()
-      const fallbackTopics = (await fallbackLoader()) || []
-      console.log('[TopicsProvider] loadTopicsOptimized: Fallback topics:', fallbackTopics.length, 'topics')
-      return fallbackTopics
-    } catch (fallbackError) {
-      console.error('[TopicsProvider] loadTopicsOptimized: Fallback topics loading failed:', fallbackError)
-      return []
-    }
+    console.error('[TopicsProvider] Failed to load topics:', error)
+    return []
   }
 }
 

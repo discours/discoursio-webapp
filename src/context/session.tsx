@@ -276,6 +276,13 @@ export const SessionProvider = (props: {
 
       if (result.data?.getSession) {
         const { author, token: newToken } = result.data.getSession
+
+        // ✅ Проверяем что author не null перед доступом к свойствам
+        if (!author) {
+          console.warn('[loadSessionData] Author отсутствует в ответе getSession')
+          return undefined
+        }
+
         console.log('[loadSessionData] Данные сессии получены:', {
           authorId: author.id,
           authorName: author.name,
@@ -333,6 +340,13 @@ export const SessionProvider = (props: {
 
       if (result.data?.getSession) {
         const { author, token } = result.data.getSession
+
+        // ✅ Проверяем что author не null перед доступом к свойствам
+        if (!author) {
+          console.warn('[loadSessionDataWithClient] Author отсутствует в ответе getSession')
+          return undefined
+        }
+
         console.log('[loadSessionDataWithClient] Данные сессии получены:', {
           authorId: author.id,
           authorName: author.name,
@@ -780,6 +794,14 @@ export const SessionProvider = (props: {
       if (result.data?.login?.success) {
         console.log('[signIn] Авторизация успешна на сервере')
         const { author, token } = result.data.login
+
+        // ✅ Проверяем что author и token не null
+        if (!author || !token) {
+          console.error('[signIn] Author или token отсутствуют в ответе login')
+          setAuthError('Invalid login response')
+          return false
+        }
+
         console.log('[signIn] Получены данные:', { authorId: author.id, tokenLength: token.length })
 
         // Сохраняем токен в localStorage
@@ -833,6 +855,12 @@ export const SessionProvider = (props: {
 
       if (result.data?.registerUser?.success) {
         const { author, token } = result.data.registerUser
+
+        // ✅ Проверяем что author и token не null
+        if (!author || !token) {
+          console.error('[signUp] Author или token отсутствуют в ответе registerUser')
+          return false
+        }
 
         // Сохраняем токен в localStorage
         if (!isServer) {

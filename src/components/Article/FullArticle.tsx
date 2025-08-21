@@ -14,7 +14,7 @@ import type { Author, Maybe, Shout, Topic } from '~/graphql/generated/graphql'
 import { MediaItem, ReactionKind } from '~/graphql/generated/graphql'
 import { processPrepositions } from '~/intl/prepositions'
 import { isCyrillic } from '~/intl/translate'
-import { patchBodyUrls } from '~/lib/getThumbUrl'
+// ✅ patchBodyUrls удален - больше не нужен
 import { capitalize } from '~/utils/capitalize'
 import { Icon } from '../_shared/Icon'
 import { Image } from '../_shared/Image'
@@ -89,7 +89,7 @@ export const FullArticle = (props: Props) => {
   const body = createMemo(() => {
     let body = props.article.body || ''
     if (canEdit()) body = processPrepositions(body)
-    body = patchBodyUrls(body)
+    // ✅ patchBodyUrls удален - больше не нужен
     return body
   })
 

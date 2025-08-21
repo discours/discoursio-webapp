@@ -1,5 +1,5 @@
 /**
- * Дымовые тесты - базовая проверка работоспособности
+ * Смоуктесты - базовая проверка работоспособности
  *
  * Проверяют что основные страницы загружаются и интерактивны
  */
@@ -7,7 +7,7 @@
 import { expect } from '@playwright/test'
 import { TestUtils, test } from '../utils/test-helpers'
 
-test.describe('Дымовые тесты', () => {
+test.describe('Смоуктесты', () => {
   test('@smoke Главная страница загружается', async ({ page }) => {
     const utils = new TestUtils(page)
 

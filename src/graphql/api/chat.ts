@@ -199,27 +199,4 @@ export const markMessageAsRead = async (chatId: string, messageId: number, signe
   return resp?.data?.mark_as_read
 }
 
-// @deprecated Legacy API
-// будет удалено в следующих версиях
-
-/**
- * @deprecated Используйте useMessages
- */
-export const loadMessages = (by: MessagesBy, limit?: number, offset?: number, signedClient?: Client) => {
-  return async () => {
-    if (!signedClient) return undefined
-    const resp = await signedClient.query(loadMessagesQuery, { by, limit, offset }).toPromise()
-    return resp?.data?.load_messages_by?.messages as Message[]
-  }
-}
-
-/**
- * @deprecated Используйте useChats
- */
-export const loadChats = (limit?: number, offset?: number, signedClient?: Client) => {
-  return async () => {
-    if (!signedClient) return undefined
-    const resp = await signedClient.query(loadChatsQuery, { limit, offset }).toPromise()
-    return resp?.data?.load_chats?.chats as Chat[]
-  }
-}
+// ✅ Legacy API удален - используйте useMessages и useChats

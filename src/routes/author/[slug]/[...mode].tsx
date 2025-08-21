@@ -62,7 +62,7 @@ import {
   Topic
 } from '~/graphql/generated/graphql'
 import { getTimestampFromPeriod, PeriodType } from '~/lib/fromPeriod'
-import { getFileUrl } from '~/lib/getThumbUrl'
+import { getFileUrl } from '~/lib/imageCache'
 import { FeedMode } from '~/types/nav'
 
 const fetchAuthorShouts = async (slug: string, offset?: number) => {

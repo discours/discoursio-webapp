@@ -429,40 +429,29 @@ export const loadCommentsBranch = (opts: QueryLoad_Comments_BranchArgs) => {
   }
 }
 
-// @deprecated Legacy API - будет удалено в следующих версиях
-// Оставляем для обратной совместимости, но используем кеширование где возможно
+// ✅ Legacy API удален - используйте useShout и useAuthor
 
 /**
- * @deprecated Используйте useShout вместо getShout
- * Кешируемый метод для загрузки статьи по slug
+ * SSR-специфичный метод для загрузки данных автора
+ * Используется в route.load и контекстах провайдеров
+ * @SSR_ONLY Не используйте в компонентах - используйте useAuthor
  */
-export const getShout = (options: QueryGet_ShoutArgs) => {
-  const loader = createCacheableLoader<{ get_shout: Shout }, QueryGet_ShoutArgs>(
-    getShoutQuery,
-    () => options,
-    true // Включаем кеширование
-  )(options)
-
+export const getAuthor = (options: QueryGet_AuthorArgs) => {
   return async () => {
-    const response = await loader()
-    return response?.get_shout || null
+    const resp = await defaultClient.query(getAuthorQuery, options).toPromise()
+    return resp?.data?.get_author || null
   }
 }
 
 /**
- * @deprecated Используйте useAuthor вместо getAuthor
- * Кешируемый метод для загрузки автора по slug
+ * SSR-специфичный метод для загрузки данных статьи
+ * Используется в route.load и контекстах провайдеров
+ * @SSR_ONLY Не используйте в компонентах - используйте useShout
  */
-export const getAuthor = (options: QueryGet_AuthorArgs) => {
-  const loader = createCacheableLoader<{ get_author: Author }, QueryGet_AuthorArgs>(
-    getAuthorQuery,
-    () => options,
-    true // Включаем кеширование
-  )(options)
-
+export const getShout = (options: QueryGet_ShoutArgs) => {
   return async () => {
-    const response = await loader()
-    return response?.get_author || null
+    const resp = await defaultClient.query(getShoutQuery, options).toPromise()
+    return resp?.data?.get_shout || null
   }
 }
 

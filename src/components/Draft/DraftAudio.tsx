@@ -1,7 +1,7 @@
 import { Show, untrack } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Draft, MediaItem } from '~/graphql/generated/graphql'
-import { getFileUrl } from '~/lib/getThumbUrl'
+import { getFileUrl } from '~/lib/imageCache'
 import styles from '~/styles/views/EditView.module.scss'
 import { DropArea } from '../_shared/DropArea'
 import { Icon } from '../_shared/Icon'
