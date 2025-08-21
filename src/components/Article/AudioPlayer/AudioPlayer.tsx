@@ -24,22 +24,38 @@ export const AudioPlayer = (props: Props) => {
   const [currentTime, setCurrentTime] = createSignal(0)
   const [currentTrackIndex, setCurrentTrackIndex] = createSignal<number>(0)
   const [isPlaying, setIsPlaying] = createSignal(false)
+  const [audioError, setAudioError] = createSignal<string | null>(null)
 
   const currentTack = createMemo(() => props.media[currentTrackIndex()])
   createEffect(on(currentTrackIndex, () => setCurrentTrackDuration(0), { defer: true }))
 
   const handlePlayMedia = async (trackIndex: number) => {
-    setIsPlaying(!isPlaying() || trackIndex !== currentTrackIndex())
-    setCurrentTrackIndex(trackIndex)
+    try {
+      const shouldPlay = !isPlaying() || trackIndex !== currentTrackIndex()
+      setCurrentTrackIndex(trackIndex)
+      
+      if (audioContextRef?.state === 'suspended') {
+        await audioContextRef?.resume()
+      }
 
-    if (audioContextRef?.state === 'suspended') {
-      await audioContextRef?.resume()
-    }
-
-    if (isPlaying()) {
-      await audioRef?.play()
-    } else {
-      audioRef?.pause()
+      if (shouldPlay) {
+        setIsPlaying(true)
+        if (audioRef) {
+          try {
+            await audioRef.play()
+          } catch (error) {
+            console.error('[AudioPlayer] Play error:', error)
+            setAudioError('Failed to play audio')
+            setIsPlaying(false)
+          }
+        }
+      } else {
+        setIsPlaying(false)
+        audioRef?.pause()
+      }
+    } catch (error) {
+      console.error('[AudioPlayer] handlePlayMedia error:', error)
+      setAudioError('Audio playback error')
     }
   }
 
@@ -62,12 +78,38 @@ export const AudioPlayer = (props: Props) => {
     setCurrentTime(audioRef?.currentTime || 0)
   }
 
+  const handleAudioError = (event: Event) => {
+    console.error('[AudioPlayer] Audio error:', event)
+    setAudioError('Audio loading error')
+    setIsPlaying(false)
+  }
+
+  const handleAudioLoadStart = () => {
+    setAudioError(null)
+  }
+
+  // Инициализация AudioContext после установки audioRef
+  createEffect(() => {
+    if (audioRef && audioContextRef && gainNodeRef) {
+      try {
+        const track = audioContextRef.createMediaElementSource(audioRef)
+        track.connect(gainNodeRef).connect(audioContextRef.destination)
+        console.log('[AudioPlayer] AudioContext connected successfully')
+      } catch (error) {
+        console.error('[AudioPlayer] AudioContext connection error:', error)
+        setAudioError('Audio context error')
+      }
+    }
+  })
+
   onMount(() => {
-    audioContextRef = new AudioContext()
-    gainNodeRef = audioContextRef.createGain()
-    if (audioRef) {
-      const track = audioContextRef?.createMediaElementSource(audioRef)
-      track.connect(gainNodeRef).connect(audioContextRef?.destination)
+    try {
+      audioContextRef = new AudioContext()
+      gainNodeRef = audioContextRef.createGain()
+      console.log('[AudioPlayer] AudioContext initialized')
+    } catch (error) {
+      console.error('[AudioPlayer] AudioContext initialization error:', error)
+      setAudioError('Audio context initialization failed')
     }
   })
 
@@ -110,6 +152,45 @@ export const AudioPlayer = (props: Props) => {
     }
   }
 
+  // Генерация правильного URL для аудио
+  const getAudioUrl = (url: string | null | undefined): string => {
+    if (!url) {
+      console.warn('[AudioPlayer] No URL provided for audio')
+      return ''
+    }
+    
+    // Заменяем старый CDN на новый
+    let audioUrl = url.replace('images.discours.io', cdnUrl)
+    
+    // Убираем лишние параметры
+    if (audioUrl.includes('?')) {
+      audioUrl = audioUrl.split('?')[0]
+    }
+    
+    console.log('[AudioPlayer] Audio URL processing:', { 
+      original: url, 
+      processed: audioUrl,
+      cdnUrl,
+      hasUrl: !!url,
+      urlType: typeof url
+    })
+    return audioUrl
+  }
+
+  // Диагностика медиа данных
+  createEffect(() => {
+    const media = props.media
+    const currentTrack = currentTack()
+    
+    console.log('[AudioPlayer] Media data:', {
+      mediaLength: media?.length,
+      currentTrackIndex: currentTrackIndex(),
+      currentTrack: currentTrack,
+      currentTrackUrl: currentTrack?.url,
+      mediaUrls: media?.map(m => m.url)
+    })
+  })
+
   return (
     <div>
       <Show when={props.media}>
@@ -122,19 +203,34 @@ export const AudioPlayer = (props: Props) => {
           currentTrack={currentTack()}
         />
         <AudioTimeLine currentTime={currentTime()} currentTrackDuration={currentTrackDuration()} onScrub={scrub} />
+        
+        {/* Показываем ошибку если есть */}
+        <Show when={audioError()}>
+          <div style={{ color: 'red', padding: '10px', 'text-align': 'center' }}>
+            Error: {audioError()}
+          </div>
+        </Show>
+        
         <audio
           ref={(el) => (audioRef = el)}
           onTimeUpdate={handleAudioTimeUpdate}
-          src={currentTack()?.url?.replace('images.discours.io', cdnUrl) || ''}
+          src={getAudioUrl(currentTack()?.url)}
           onCanPlay={() => {
             // start to play the next track on src change
             if (isPlaying() && audioRef) {
-              audioRef.play()
+              audioRef.play().catch(error => {
+                console.error('[AudioPlayer] Auto-play error:', error)
+                setAudioError('Auto-play failed')
+                setIsPlaying(false)
+              })
             }
           }}
           onLoadedMetadata={({ currentTarget }) => setCurrentTrackDuration(currentTarget.duration)}
           onEnded={handleAudioEnd}
+          onError={handleAudioError}
+          onLoadStart={handleAudioLoadStart}
           crossorigin="anonymous"
+          preload="metadata"
         />
         <PlayerPlaylist
           editorMode={props.editorMode}
