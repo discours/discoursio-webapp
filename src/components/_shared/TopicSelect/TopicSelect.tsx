@@ -162,7 +162,7 @@ export const TopicSelect = (props: TopicSelectProps) => {
       <div class={styles.selectWrapper} onClick={toggleDropdown}>
         <input
           type="text"
-          placeholder={t('Search topics or select from list')}
+          placeholder={t('Search topics')}
           class={styles.searchInput}
           value={searchTerm()}
           onInput={handleSearch}
