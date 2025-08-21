@@ -1,12 +1,21 @@
 # 🌟 Discours Webapp
 
-![Version](https://img.shields.io/badge/version-0.12.0-blue.svg?style=flat)
-![Tests](https://img.shields.io/badge/Tests-12_specs-28a745?style=flat&logo=playwright)
-![Docs](https://img.shields.io/badge/Docs-30+_files-6f42c1?style=flat&logo=markdown)
-![Lines](https://img.shields.io/badge/Lines-45K+-informational?style=flat)
-![Files](https://img.shields.io/badge/Files-593-informational?style=flat) 
-![Components](https://img.shields.io/badge/Components-120+-success?style=flat)
-![MIT](https://img.shields.io/badge/License-MIT-green?style=flat)
+![Version](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.version&label=Version&color=blue)
+![Lines](https://img.shields.io/badge/Lines-50K+-informational?style=flat&logo=typescript&logoColor=white)
+![Files](https://img.shields.io/badge/Files-600+-informational?style=flat&logo=git&logoColor=white)
+![Components](https://img.shields.io/badge/Components-130+-success?style=flat&logo=solid&logoColor=white&color=blue)
+![CI/CD](https://img.shields.io/badge/CI/CD-Passing-blue?style=flat&logo=github-actions&logoColor=white)
+
+
+![TypeScript](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.typescript&label=TypeScript&color=3178c6&logo=typescript&logoColor=white)
+![SolidJS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.solid-js&label=SolidJS&color=2c4f7c&logo=solid&logoColor=white)
+![SolidStart](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.@solidjs/start&label=SolidStart&color=2c4f7c&logo=solid&logoColor=white)
+![SCSS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.sass&label=SCSS&color=cf649a&logo=sass&logoColor=white)
+![Lightning CSS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.lightningcss&label=Lightning&color=ffd700&logo=lightning&logoColor=white)
+![GraphQL](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.graphql&label=GraphQL&color=e10098&logo=graphql&logoColor=white)
+![i18next](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.i18next&label=i18next&color=orange&logo=i18next&logoColor=white)
+![Playwright](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.@playwright/test&label=Playwright&color=2EAD33&logo=microsoft&logoColor=white)
+![Biome](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.@biomejs/biome&label=Biome&color=60a5fa&logo=biome&logoColor=white)
 
 **Современный веб-интерфейс** для платформы Discours — открытого журнала о культуре, науке и обществе.
 
@@ -19,21 +28,6 @@
   - [⚡ Основные команды](#-основные-команды)
 - [📚 Документация](#-документация)
 - [🤝 Участие в разработке](#-участие-в-разработке)
-
-## 🚀 Технологический стек
-
-![SolidJS](https://img.shields.io/badge/Frontend-SolidJS-2c4f7c?style=flat&logo=solid)
-![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178c6?style=flat&logo=typescript)
-![SCSS](https://img.shields.io/badge/Styles-SCSS-cf649a?style=flat&logo=sass)
-![SSR](https://img.shields.io/badge/SSR-SolidStart-2c4f7c?style=flat)
-![Responsive](https://img.shields.io/badge/Responsive-Mobile_First-success?style=flat)
-![URQL](https://img.shields.io/badge/GraphQL-URQL-e10098?style=flat&logo=graphql)
-![CodeGen](https://img.shields.io/badge/Codegen-GraphQL-e10098?style=flat)
-![i18next](https://img.shields.io/badge/Languages-RU/EN-orange?style=flat)
-![Vinxi](https://img.shields.io/badge/Build-Vinxi-orange?style=flat)
-![Vite](https://img.shields.io/badge/Bundler-Vite-646cff?style=flat&logo=vite)
-![Lightning CSS](https://img.shields.io/badge/CSS-Lightning_CSS-ffd700?style=flat)
-![Biome](https://img.shields.io/badge/Linter-Biome-60a5fa?style=flat)
 
 ## 🛠️ Разработка
 
@@ -86,12 +80,6 @@ bun run storybook   # 📚 Запуск Storybook
 bun run analyze     # 📊 Анализ бандла
 ```
 
-
-## 📚 Документация
-
-![API Docs](https://img.shields.io/badge/API_Docs-GraphQL-ff6b6b?style=flat)
-![Coverage Docs](https://img.shields.io/badge/Coverage-95%25-brightgreen?style=flat)
-
 ### 📖 Важное
 
 - 📋 **[Основная документация](docs/README.md)** — Обзор всех возможностей
@@ -105,13 +93,12 @@ bun run analyze     # 📊 Анализ бандла
 
 ## 🤝 Участие в разработке
 
-![Contributing](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat)
-
 **Мы приветствуем участие!** Пожалуйста, ознакомьтесь с [руководством по участию](docs/contributing.md) перед отправкой PR.
 
----
+![Last Commit](https://img.shields.io/badge/dynamic/json?url=https://api.github.com/repos/discours/discoursio-webapp&query=$.updated_at&label=Last%20Update&color=blue&logo=github&logoColor=white)
+![Repository Size](https://img.shields.io/badge/dynamic/json?url=https://api.github.com/repos/discours/discoursio-webapp&query=$.size&label=Repo%20Size&color=informational&logo=github&logoColor=white)
 
-**Сделано с ❤️ командой Discours**
 
-![Made with Love](https://img.shields.io/badge/Made%20with-❤️-red?style=flat)
-![Open Source](https://img.shields.io/badge/Open-Source-blue?style=flat)
+![Made with Love](https://img.shields.io/badge/Made%20with-❤️-gray?style=flat&logo=heart)
+![Open Source](https://img.shields.io/badge/Open-Source-gray?style=flat&logo=github&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-gray?style=flat&logo=license)
