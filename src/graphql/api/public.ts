@@ -60,7 +60,7 @@ export const loadTopics = () => {
     try {
       console.log('[loadTopics] Starting API call...')
       const response = await loader()
-      console.log('[loadTopics] API response:', response)
+      // console.log('[loadTopics] API response:', response)
       const topics = response?.get_topics_all || []
       console.log('[loadTopics] Extracted topics:', topics.length, 'topics')
       return topics

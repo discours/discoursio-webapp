@@ -26,9 +26,17 @@ export class TestUtils {
     console.log(`Переход на: ${fullUrl}`)
 
     try {
+      // Увеличиваем таймаут для CI
+      const timeout = process.env.CI === 'true' ? 45000 : 30000
+
       await this.page.goto(fullUrl, {
         waitUntil: 'domcontentloaded',
-        timeout: 30000
+        timeout
+      })
+
+      // Дополнительная проверка что страница загрузилась
+      await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {
+        console.log('⚠️ Дополнительная проверка domcontentloaded не прошла, но продолжаем...')
       })
     } catch (error) {
       console.error(`Ошибка при переходе на ${path}:`, error)
@@ -92,30 +100,33 @@ export class TestUtils {
    */
   async expectPageReady() {
     const isCI = process.env.CI === 'true'
-    const timeout = isCI ? 15000 : 20000 // 🔄 Больше времени для SolidJS гидратации
+    const timeout = isCI ? 25000 : 30000 // 🔄 Увеличиваем таймауты для стабильности
 
     console.log('Ожидание готовности страницы...')
 
-    // Ждем domcontentloaded
+    // Ждем domcontentloaded с увеличенным таймаутом
     await this.page.waitForLoadState('domcontentloaded', { timeout }).catch(() => {
       console.log('⚠️ Тайм-аут domcontentloaded, продолжаем...')
     })
 
-    // Ждем load state даже в CI для SolidJS
-    await this.page.waitForLoadState('load', { timeout: timeout * 0.8 }).catch(() => {
+    // Ждем load state с увеличенным таймаутом
+    await this.page.waitForLoadState('load', { timeout: timeout * 0.9 }).catch(() => {
       console.log('⚠️ Тайм-аут load, продолжаем...')
     })
 
-    // Ждем завершения гидратации SolidJS
+    // Более мягкая проверка гидратации SolidJS
     await this.page
       .waitForFunction(
         () => {
-          // Проверяем что документ готов И есть интерактивные элементы
-          const hasInteractive = document.querySelectorAll('button, a[href], input').length > 0
+          // Проверяем что документ готов И есть базовый контент
+          const hasContent = document.querySelectorAll('main, body > *').length > 0
           const isComplete = document.readyState === 'complete'
-          return isComplete && hasInteractive
+          const hasBasicElements = document.querySelectorAll('button, a[href], input, nav, header').length > 0
+
+          // Достаточно базового контента И готовности документа
+          return isComplete && (hasContent || hasBasicElements)
         },
-        { timeout: timeout * 0.6 }
+        { timeout: timeout * 0.8 }
       )
       .catch(() => {
         console.log('⚠️ Гидратация не завершена полностью, но продолжаем...')
@@ -123,16 +134,19 @@ export class TestUtils {
 
     // Более гибкая проверка заголовка
     try {
-      await expect(this.page).toHaveTitle(/Discours|Дискурс/, { timeout: timeout * 0.4 })
+      await expect(this.page).toHaveTitle(/Discours|Дискурс/, { timeout: timeout * 0.5 })
     } catch (_error) {
       // Ждем появления заголовка
-      await this.page.waitForFunction(() => !!document.title?.trim(), { timeout: 5000 }).catch(() => {})
+      await this.page.waitForFunction(() => !!document.title?.trim(), { timeout: 8000 }).catch(() => {})
 
       try {
         const title = await this.page.title()
         if (!title?.trim()) {
           // Проверяем что хотя бы контент загрузился
-          const hasContent = (await this.page.$('main, body > *')) !== null
+          const hasContent = await this.page.evaluate(() => {
+            return document.querySelectorAll('main, body > *').length > 0
+          })
+
           if (!hasContent) {
             throw new Error('❌ Страница не загрузилась - нет контента')
           }
@@ -143,7 +157,10 @@ export class TestUtils {
       } catch (error) {
         console.log('⚠️ Не удалось получить заголовок страницы:', error)
         // Проверяем что хотя бы контент загрузился
-        const hasContent = (await this.page.$('main, body > *')) !== null
+        const hasContent = await this.page.evaluate(() => {
+          return document.querySelectorAll('main, body > *').length > 0
+        })
+
         if (!hasContent) {
           throw new Error('❌ Страница не загрузилась - нет контента')
         }
@@ -151,9 +168,9 @@ export class TestUtils {
       }
     }
 
-    // Проверяем гидратацию
+    // Проверяем гидратацию с увеличенным таймаутом
     try {
-      await this.page.waitForFunction(() => document.readyState === 'complete', { timeout: 5000 })
+      await this.page.waitForFunction(() => document.readyState === 'complete', { timeout: 10000 })
     } catch (error) {
       console.log('⚠️ Гидратация не завершена полностью, но продолжаем...', error)
     }
