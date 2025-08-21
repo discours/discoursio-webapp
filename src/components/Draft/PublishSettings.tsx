@@ -91,7 +91,9 @@ export const PublishSettings = () => {
 
     setIsTopicsLoading(true)
     try {
-      await loadTopics()
+      console.log('[PublishSettings] Starting to load topics...')
+      const topics = await loadTopics()
+      console.log('[PublishSettings] Topics loaded:', topics?.length || 0, 'topics')
     } catch (error) {
       console.error('[PublishSettings] Error loading topics:', error)
     } finally {

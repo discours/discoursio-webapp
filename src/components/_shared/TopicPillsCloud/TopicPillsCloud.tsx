@@ -9,6 +9,10 @@ import type { Topic } from '~/graphql/generated/graphql'
 
 import styles from './TopicPillsCloud.module.scss'
 
+// Константы для ограничения отображения
+const TOPICS_DISPLAY_LIMIT = 20
+const MIN_SEARCH_LENGTH = 1
+
 /**
  * Компонент отображения тем в виде кликабельного облака тегов
  *
@@ -86,7 +90,14 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
   // Загружаем темы при монтировании
   createEffect(
     on([sortedTopics], ([allTopics]) => {
+      console.log('[TopicPillsCloud] sortedTopics changed:', {
+        topicsCount: allTopics?.length || 0,
+        topics: allTopics?.slice(0, 3) || [],
+        isLoading: topicsLoading()
+      })
+
       if (!allTopics || !Array.isArray(allTopics) || allTopics.length === 0) {
+        console.warn('[TopicPillsCloud] No topics from sortedTopics, setting loading state')
         setIsLoading(topicsLoading())
         return
       }
@@ -136,7 +147,7 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
 
     // Отправляем обновление на сервер через debouncedTopicChange
     debouncedTopicChange(newTopics)
-    toast.success(t('Main topic changed'), { duration: 1500 })
+    toast.success(t('Main topic selected'), { duration: 1500 })
   }
 
   const handleToggleTopic = (topic: Topic, e: MouseEvent) => {
@@ -201,31 +212,61 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
 
   /**
    * Возвращает отфильтрованный список тем для отображения
-   * Фильтрует темы по поисковому запросу и исключает уже выбранные
+   * Показывает темы только при поиске, ограничивает количество
    */
   const filteredTopics = createMemo(() => {
     const search = searchTerm().toLowerCase().trim()
     const selectedIds = selectedTopicIds()
-
-    // Используем все доступные темы
     const allTopics = availableTopics()
+
+    console.log('[TopicPillsCloud] filteredTopics calculation:', {
+      search,
+      searchLength: search.length,
+      selectedIdsCount: selectedIds.size,
+      allTopicsCount: allTopics?.length || 0,
+      allTopics: allTopics?.slice(0, 3) || [],
+      isLoading: topicsLoading()
+    })
 
     // Проверяем, что у нас есть темы для отображения
     if (!Array.isArray(allTopics) || allTopics.length === 0) {
+      console.warn('[TopicPillsCloud] No available topics to filter')
       return []
     }
 
-    // Фильтруем темы по поисковому запросу и исключаем уже выбранные
-    return allTopics.filter((topic: Topic) => {
+    // Фильтруем темы: исключаем уже выбранные
+    let filtered = allTopics.filter((topic: Topic) => {
       // Пропускаем темы без названия
       if (!topic?.title) return false
 
       // Проверяем, что тема ещё не выбрана
-      if (selectedIds.has(Number(topic.id))) return false
-
-      // Если есть поисковый запрос, проверяем соответствие
-      return !search || topic.title.toLowerCase().includes(search)
+      return !selectedIds.has(Number(topic.id))
     })
+
+    // Если есть поисковый запрос минимальной длины, дополнительно фильтруем
+    if (search.length >= MIN_SEARCH_LENGTH) {
+      filtered = filtered.filter((topic: Topic) => {
+        const topicName = topic.title?.toLowerCase() || ''
+        return topicName.includes(search)
+      })
+      console.log('[TopicPillsCloud] Filtering by search term:', search)
+    } else {
+      console.log('[TopicPillsCloud] Showing initial topics without search filter')
+    }
+
+    // Ограничиваем количество результатов
+    const limitedResults = filtered.slice(0, TOPICS_DISPLAY_LIMIT)
+
+    console.log('[TopicPillsCloud] Filtered topics result:', {
+      searchTerm: search,
+      isSearching: search.length >= MIN_SEARCH_LENGTH,
+      totalFiltered: filtered.length,
+      limitedCount: limitedResults.length,
+      limit: TOPICS_DISPLAY_LIMIT,
+      results: limitedResults.slice(0, 3)
+    })
+
+    return limitedResults
   })
 
   const isMainTopic = (topic: Topic) => {
@@ -286,6 +327,16 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
           </div>
         </div>
         <hr />
+
+        {/* Показываем индикатор результатов поиска */}
+        <Show when={searchTerm().length >= MIN_SEARCH_LENGTH && filteredTopics().length > 0}>
+          <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
+            {filteredTopics().length >= TOPICS_DISPLAY_LIMIT
+              ? `${t('Showing first')} ${TOPICS_DISPLAY_LIMIT} ${t('topics')}`
+              : `${filteredTopics().length} ${t('topics found')}`}
+          </div>
+        </Show>
+
         <div class={styles.topicCloud}>
           <Show
             when={!isLoading() && filteredTopics().length > 0}
@@ -293,9 +344,13 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
               <div class={styles.emptyState}>
                 {isLoading()
                   ? t('Loading topics...')
-                  : searchTerm()
-                    ? `${t('No topics found matching:')} ${searchTerm()}`
-                    : t('No more topics available.')}
+                  : searchTerm().length >= MIN_SEARCH_LENGTH
+                    ? `${t('No topics found matching:')} "${searchTerm()}"`
+                    : availableTopics().length === 0
+                      ? t('No topics available from server')
+                      : selectedTopicIds().size >= availableTopics().length
+                        ? t('All available topics are already selected')
+                        : t('No available topics to display')}
               </div>
             }
           >

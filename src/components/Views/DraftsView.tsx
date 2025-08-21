@@ -53,7 +53,6 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       console.log('[DraftsView] Перезагружаем список черновиков после удаления')
       await loadDrafts()
       console.log('[DraftsView] Список черновиков перезагружен после удаления')
-      toast.success(t('Draft deleted'))
     } catch (error) {
       console.error('[DraftsView] Общая ошибка при удалении черновика:', error)
       toast.error(t('Error deleting draft'))

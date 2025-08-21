@@ -78,25 +78,43 @@ export type TopicSort = 'shouts' | 'followers' | 'authors' | 'title'
  */
 async function loadTopicsOptimized(): Promise<Topic[]> {
   try {
-    // Используем только один источник данных - новое API с актуальной статистикой
+    console.log('[TopicsProvider] loadTopicsOptimized: Starting...')
+
+    // Пробуем сначала старое API, так как новое возвращает 0 тем
+    console.log('[TopicsProvider] loadTopicsOptimized: Trying old API first...')
+    const fallbackLoader = loadTopics()
+    const fallbackTopics = (await fallbackLoader()) || []
+    console.log('[TopicsProvider] loadTopicsOptimized: Old API returned:', fallbackTopics.length, 'topics')
+
+    if (fallbackTopics.length > 0) {
+      return fallbackTopics
+    }
+
+    // Если старое API не дало результатов, пробуем новое
+    console.log('[TopicsProvider] loadTopicsOptimized: Old API returned 0 topics, trying new API...')
     const options: QueryGet_Topics_By_CommunityArgs = {
       community_id: 1,
       limit: 200, // загружаем больше данных за один раз
       offset: 0
     }
 
+    console.log('[TopicsProvider] loadTopicsOptimized: Calling loadTopicsByCommunity with options:', options)
     const topicsLoader = loadTopicsByCommunity(options)
     const topics = (await topicsLoader()) || []
+    console.log('[TopicsProvider] loadTopicsOptimized: New API returned:', topics.length, 'topics')
 
     return topics
   } catch (error) {
-    console.error('Failed to load topics:', error)
+    console.error('[TopicsProvider] loadTopicsOptimized: Failed to load topics:', error)
     // В случае ошибки пробуем старое API
     try {
+      console.log('[TopicsProvider] loadTopicsOptimized: Trying fallback API...')
       const fallbackLoader = loadTopics()
-      return (await fallbackLoader()) || []
+      const fallbackTopics = (await fallbackLoader()) || []
+      console.log('[TopicsProvider] loadTopicsOptimized: Fallback topics:', fallbackTopics.length, 'topics')
+      return fallbackTopics
     } catch (fallbackError) {
-      console.error('Fallback topics loading failed:', fallbackError)
+      console.error('[TopicsProvider] loadTopicsOptimized: Fallback topics loading failed:', fallbackError)
       return []
     }
   }
@@ -121,19 +139,23 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     randomNavTopics: [] as string[]
   })
 
-  // Ленивая инициализация - загружаем данные только при первом запросе
+  // Автоматическая загрузка тем при инициализации провайдера
   const [topics, { refetch }] = createResource<Topic[], { sortBy: TopicSort; force?: boolean }>(
-    () => (state.initialized ? { sortBy: state.sortBy } : null), // возвращаем null пока не инициализирован
+    () => ({ sortBy: state.sortBy }), // Всегда возвращаем параметры для загрузки
     async ({ sortBy }) => {
       try {
+        console.log('[TopicsProvider] Starting to load topics with sortBy:', sortBy)
         setState('loading', true)
 
         // Упрощенная загрузка данных
         const result = await loadTopicsOptimized()
+        console.log('[TopicsProvider] Topics loaded from API:', result?.length || 0, 'topics')
 
         // Применяем сортировку к результату только один раз
         setState('initialized', true)
-        return result.sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
+        const sortedResult = result.sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
+        console.log('[TopicsProvider] Topics sorted and ready:', sortedResult.length, 'topics')
+        return sortedResult
       } catch (error) {
         const errorContext = {
           error,
@@ -307,7 +329,6 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     setTopicsSort: (sortBy) => {
       setState('sortBy', sortBy as TopicSort)
       setState('offset', 0)
-      setState('initialized', true) // инициализируем при первом вызове
       // Даем Solid применить изменение источника ресурса прежде чем делать refetch
       queueMicrotask(() => {
         void refetch()
@@ -325,7 +346,6 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
         return { ...prev, entities }
       }),
     loadTopics: async () => {
-      setState('initialized', true) // инициализируем при первом вызове
       // Даем источнику ресурса перейти из null в объект
       await Promise.resolve()
       const result = await refetch()

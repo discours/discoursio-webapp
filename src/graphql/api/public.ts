@@ -57,8 +57,17 @@ export const loadTopics = () => {
   )(undefined)
 
   return async () => {
-    const response = await loader()
-    return response?.get_topics_all || []
+    try {
+      console.log('[loadTopics] Starting API call...')
+      const response = await loader()
+      console.log('[loadTopics] API response:', response)
+      const topics = response?.get_topics_all || []
+      console.log('[loadTopics] Extracted topics:', topics.length, 'topics')
+      return topics
+    } catch (error) {
+      console.error('[loadTopics] API error:', error)
+      return []
+    }
   }
 }
 
@@ -87,8 +96,17 @@ export const loadTopicsByCommunity = (args: QueryGet_Topics_By_CommunityArgs) =>
   )(args)
 
   return async () => {
-    const response = await loader()
-    return response?.get_topics_by_community || []
+    try {
+      console.log('[loadTopicsByCommunity] Starting API call with args:', args)
+      const response = await loader()
+      console.log('[loadTopicsByCommunity] API response:', response)
+      const topics = response?.get_topics_by_community || []
+      console.log('[loadTopicsByCommunity] Extracted topics:', topics.length, 'topics')
+      return topics
+    } catch (error) {
+      console.error('[loadTopicsByCommunity] API error:', error)
+      return []
+    }
   }
 }
 
