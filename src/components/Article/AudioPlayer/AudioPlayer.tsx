@@ -33,7 +33,7 @@ export const AudioPlayer = (props: Props) => {
     try {
       const shouldPlay = !isPlaying() || trackIndex !== currentTrackIndex()
       setCurrentTrackIndex(trackIndex)
-      
+
       if (audioContextRef?.state === 'suspended') {
         await audioContextRef?.resume()
       }
@@ -158,17 +158,17 @@ export const AudioPlayer = (props: Props) => {
       console.warn('[AudioPlayer] No URL provided for audio')
       return ''
     }
-    
+
     // Заменяем старый CDN на новый
     let audioUrl = url.replace('images.discours.io', cdnUrl)
-    
+
     // Убираем лишние параметры
     if (audioUrl.includes('?')) {
       audioUrl = audioUrl.split('?')[0]
     }
-    
-    console.log('[AudioPlayer] Audio URL processing:', { 
-      original: url, 
+
+    console.log('[AudioPlayer] Audio URL processing:', {
+      original: url,
       processed: audioUrl,
       cdnUrl,
       hasUrl: !!url,
@@ -181,13 +181,13 @@ export const AudioPlayer = (props: Props) => {
   createEffect(() => {
     const media = props.media
     const currentTrack = currentTack()
-    
+
     console.log('[AudioPlayer] Media data:', {
       mediaLength: media?.length,
       currentTrackIndex: currentTrackIndex(),
       currentTrack: currentTrack,
       currentTrackUrl: currentTrack?.url,
-      mediaUrls: media?.map(m => m.url)
+      mediaUrls: media?.map((m) => m.url)
     })
   })
 
@@ -203,14 +203,12 @@ export const AudioPlayer = (props: Props) => {
           currentTrack={currentTack()}
         />
         <AudioTimeLine currentTime={currentTime()} currentTrackDuration={currentTrackDuration()} onScrub={scrub} />
-        
+
         {/* Показываем ошибку если есть */}
         <Show when={audioError()}>
-          <div style={{ color: 'red', padding: '10px', 'text-align': 'center' }}>
-            Error: {audioError()}
-          </div>
+          <div style={{ color: 'red', padding: '10px', 'text-align': 'center' }}>Error: {audioError()}</div>
         </Show>
-        
+
         <audio
           ref={(el) => (audioRef = el)}
           onTimeUpdate={handleAudioTimeUpdate}
@@ -218,7 +216,7 @@ export const AudioPlayer = (props: Props) => {
           onCanPlay={() => {
             // start to play the next track on src change
             if (isPlaying() && audioRef) {
-              audioRef.play().catch(error => {
+              audioRef.play().catch((error) => {
                 console.error('[AudioPlayer] Auto-play error:', error)
                 setAudioError('Auto-play failed')
                 setIsPlaying(false)
