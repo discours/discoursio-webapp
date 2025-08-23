@@ -9,7 +9,7 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: 0, // ❌ Убираем retries чтобы видеть реальные проблемы
   workers: isCI ? 2 : 2, // ⚡ Меньше воркеров для стабильности
-  reporter: isCI ? 'github' : 'html',
+  reporter: isCI ? [['github'], ['json', { outputFile: 'test-results/results.json' }]] : 'html',
   timeout: 30000, // ⏱️ Стандартный таймаут без маскировки проблем
   // В CI используем более надежные настройки
   use: {
