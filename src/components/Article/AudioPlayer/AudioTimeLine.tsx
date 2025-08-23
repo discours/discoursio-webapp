@@ -32,33 +32,33 @@ export const AudioTimeLine = (props: {
 }) => {
   let progressRef: HTMLDivElement | undefined
   const [isMouseDown, setIsMouseDown] = createSignal(false)
-  
+
   const handleMouseDown = (e: MouseEvent) => {
     e.preventDefault()
     setIsMouseDown(true)
     props.onScrub(e)
   }
-  
+
   const handleMouseUp = () => {
     setIsMouseDown(false)
   }
-  
+
   const handleMouseMove = (e: MouseEvent) => {
     if (isMouseDown()) {
       props.onScrub(e)
     }
   }
-  
+
   const handleClick = (e: MouseEvent) => {
     props.onScrub(e)
   }
-  
+
   // Вычисляем процент прогресса с защитой от деления на ноль
   const progressPercentage = () => {
     if (props.currentTrackDuration <= 0) return 0
     return Math.min((props.currentTime / props.currentTrackDuration) * 100, 100)
   }
-  
+
   return (
     <div class={styles.timeline}>
       <div
