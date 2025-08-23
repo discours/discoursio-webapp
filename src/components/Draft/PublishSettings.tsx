@@ -179,12 +179,13 @@ export const PublishSettings = () => {
       }
 
       const result = await publishDraft(draft.id)
-      const publishedDraftId = result?.data?.publish_draft?.draft?.id
+      const publishedDraft = result?.data?.publish_draft?.draft
 
-      if (publishedDraftId) {
+      if (publishedDraft) {
         batch(() => {
           toast.success(t('Article published successfully'))
-          navigate(`/shout/${publishedDraftId}`)
+          // Используем slug опубликованной статьи для корректного URL
+          navigate(`/${publishedDraft.slug}`)
         })
       } else if (result?.error) {
         toast.error(t(result.error.message || 'Error publishing article'))
