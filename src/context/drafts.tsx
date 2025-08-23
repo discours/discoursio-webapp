@@ -1154,7 +1154,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
                   return {
                     ...d,
                     published_at: null,
-                    publication: d.publication ? { ...d.publication, published_at: null } : null
+                    shout: d.shout ? { ...d.shout, published_at: null } : null
                   } as ExtendedDraft
                 }
                 return d

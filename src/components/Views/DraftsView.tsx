@@ -142,7 +142,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
    * @return {boolean} true если черновик опубликован
    */
   const isDraftPublished = (draft: Draft | ExtendedDraft): boolean => {
-    return !!(draft.publication?.published_at || ('published_at' in draft && draft.published_at))
+    return !!(draft.shout?.published_at || ('published_at' in draft && draft.published_at))
   }
 
   const handleUnpublish = async (draft: Draft | ExtendedDraft) => {

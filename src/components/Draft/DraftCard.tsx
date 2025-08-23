@@ -190,14 +190,14 @@ export const DraftCard = (props: Props) => {
    * Проверяет, были ли внесены изменения в черновик после публикации
    */
   const isModifiedSincePublish = () => {
-    return props.draft.publication?.published_at && props.draft.publication?.published_at > 0
+    return props.draft.shout?.published_at && props.draft.shout?.published_at > 0
   }
 
   /**
    * Проверяет, есть ли у черновика опубликованная версия
    */
   const isPublished = () => {
-    return !!props.draft.publication?.published_at || ('published_at' in props.draft && !!props.draft.published_at)
+    return !!props.draft.shout?.published_at || ('published_at' in props.draft && !!props.draft.published_at)
   }
 
   /**

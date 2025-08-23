@@ -16,7 +16,7 @@ query LoadDraftsQuery {
             media { url pic source artist title body date genre lyrics }
             topics { id title slug }
             authors { id name slug pic }
-            publication { id slug published_at }
+            shout { id slug published_at }
             created_at
             updated_at
         }
