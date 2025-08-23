@@ -1,6 +1,5 @@
 import { createEffect, createMemo, createSignal, on, onMount, Show } from 'solid-js'
 
-import { cdnUrl } from '~/config'
 import { MediaItem } from '~/graphql/generated/graphql'
 import { AudioTimeLine } from './AudioTimeLine'
 import { PlayerHeader } from './PlayerHeader'
@@ -19,22 +18,52 @@ export const AudioPlayer = (props: Props) => {
   let audioRef: HTMLAudioElement | undefined
   let gainNodeRef: GainNode | undefined
   let audioContextRef: AudioContext | undefined
+  let mediaSourceRef: MediaElementAudioSourceNode | undefined
 
   const [currentTrackDuration, setCurrentTrackDuration] = createSignal(0)
   const [currentTime, setCurrentTime] = createSignal(0)
   const [currentTrackIndex, setCurrentTrackIndex] = createSignal<number>(0)
   const [isPlaying, setIsPlaying] = createSignal(false)
   const [audioError, setAudioError] = createSignal<string | null>(null)
+  const [isSeeking, setIsSeeking] = createSignal(false)
 
   const currentTack = createMemo(() => props.media[currentTrackIndex()])
-  createEffect(on(currentTrackIndex, () => setCurrentTrackDuration(0), { defer: true }))
+  createEffect(
+    on(
+      currentTrackIndex,
+      (newIndex, prevIndex) => {
+        console.log('[AudioPlayer] Track index changed:', {
+          from: prevIndex,
+          to: newIndex,
+          resettingDuration: true
+        })
+        setCurrentTrackDuration(0)
+      },
+      { defer: true }
+    )
+  )
 
   const handlePlayMedia = async (trackIndex: number) => {
     try {
-      const shouldPlay = !isPlaying() || trackIndex !== currentTrackIndex()
+      // Определяем, нужно ли воспроизводить или ставить на паузу
+      const shouldPlay = trackIndex !== currentTrackIndex() || !isPlaying()
       setCurrentTrackIndex(trackIndex)
 
+      // Диагностика состояния аудио
+      console.log('[AudioPlayer] handlePlayMedia:', {
+        trackIndex,
+        shouldPlay,
+        currentIsPlaying: isPlaying(),
+        audioRef: !!audioRef,
+        audioRefReadyState: audioRef?.readyState,
+        audioRefSrc: audioRef?.src,
+        audioContextState: audioContextRef?.state,
+        gainNode: !!gainNodeRef,
+        mediaSource: !!mediaSourceRef
+      })
+
       if (audioContextRef?.state === 'suspended') {
+        console.log('[AudioPlayer] Resuming suspended AudioContext')
         await audioContextRef?.resume()
       }
 
@@ -42,7 +71,31 @@ export const AudioPlayer = (props: Props) => {
         setIsPlaying(true)
         if (audioRef) {
           try {
-            await audioRef.play()
+            // Проверяем готовность аудио
+            if (audioRef && audioRef.readyState < 2) {
+              // HAVE_CURRENT_DATA
+              console.log('[AudioPlayer] Audio not ready, waiting...')
+              audioRef.addEventListener(
+                'canplay',
+                async () => {
+                  try {
+                    if (audioRef) {
+                      console.log('[AudioPlayer] Audio ready, starting playback')
+                      await audioRef.play()
+                      console.log('[AudioPlayer] Audio started playing after canplay event')
+                    }
+                  } catch (error) {
+                    console.error('[AudioPlayer] Play error after canplay:', error)
+                    setAudioError('Failed to play audio after loading')
+                    setIsPlaying(false)
+                  }
+                },
+                { once: true }
+              )
+            } else if (audioRef) {
+              await audioRef.play()
+              console.log('[AudioPlayer] Audio started playing immediately')
+            }
           } catch (error) {
             console.error('[AudioPlayer] Play error:', error)
             setAudioError('Failed to play audio')
@@ -50,8 +103,29 @@ export const AudioPlayer = (props: Props) => {
           }
         }
       } else {
+        // Пауза - останавливаем воспроизведение
+        console.log('[AudioPlayer] Pausing audio playback')
         setIsPlaying(false)
-        audioRef?.pause()
+
+        if (audioRef) {
+          try {
+            audioRef.pause()
+            console.log('[AudioPlayer] Audio paused successfully')
+          } catch (error) {
+            console.error('[AudioPlayer] Pause error:', error)
+            setAudioError('Failed to pause audio')
+          }
+        }
+
+        // Также приостанавливаем AudioContext если нужно
+        if (audioContextRef?.state === 'running') {
+          try {
+            await audioContextRef.suspend()
+            console.log('[AudioPlayer] AudioContext suspended')
+          } catch (error) {
+            console.error('[AudioPlayer] AudioContext suspend error:', error)
+          }
+        }
       }
     } catch (error) {
       console.error('[AudioPlayer] handlePlayMedia error:', error)
@@ -75,7 +149,10 @@ export const AudioPlayer = (props: Props) => {
   }
 
   const handleAudioTimeUpdate = () => {
-    setCurrentTime(audioRef?.currentTime || 0)
+    // Не обновляем время во время перемотки
+    if (!isSeeking()) {
+      setCurrentTime(audioRef?.currentTime || 0)
+    }
   }
 
   const handleAudioError = (event: Event) => {
@@ -90,13 +167,14 @@ export const AudioPlayer = (props: Props) => {
 
   // Инициализация AudioContext после установки audioRef
   createEffect(() => {
-    if (audioRef && audioContextRef && gainNodeRef) {
+    if (audioRef && audioContextRef && gainNodeRef && !mediaSourceRef) {
       try {
-        const track = audioContextRef.createMediaElementSource(audioRef)
-        track.connect(gainNodeRef).connect(audioContextRef.destination)
-        console.log('[AudioPlayer] AudioContext connected successfully')
+        console.log('[AudioPlayer] Connecting AudioContext via createEffect')
+        mediaSourceRef = audioContextRef.createMediaElementSource(audioRef)
+        mediaSourceRef.connect(gainNodeRef).connect(audioContextRef.destination)
+        console.log('[AudioPlayer] AudioContext connected successfully via createEffect')
       } catch (error) {
-        console.error('[AudioPlayer] AudioContext connection error:', error)
+        console.error('[AudioPlayer] AudioContext connection error in createEffect:', error)
         setAudioError('Audio context error')
       }
     }
@@ -107,6 +185,21 @@ export const AudioPlayer = (props: Props) => {
       audioContextRef = new AudioContext()
       gainNodeRef = audioContextRef.createGain()
       console.log('[AudioPlayer] AudioContext initialized')
+
+      // Принудительно подключаем AudioContext после небольшой задержки только если createEffect не сработал
+      setTimeout(() => {
+        if (audioRef && audioContextRef && gainNodeRef && !mediaSourceRef) {
+          try {
+            console.log('[AudioPlayer] Connecting AudioContext via onMount timeout fallback')
+            mediaSourceRef = audioContextRef.createMediaElementSource(audioRef)
+            mediaSourceRef.connect(gainNodeRef).connect(audioContextRef.destination)
+            console.log('[AudioPlayer] AudioContext connected in onMount timeout')
+          } catch (error) {
+            console.error('[AudioPlayer] AudioContext connection error in onMount:', error)
+            setAudioError('Audio context connection failed')
+          }
+        }
+      }, 100)
     } catch (error) {
       console.error('[AudioPlayer] AudioContext initialization error:', error)
       setAudioError('Audio context initialization failed')
@@ -119,6 +212,14 @@ export const AudioPlayer = (props: Props) => {
       newCurrentTrackIndex = 0
     }
 
+    console.log('[AudioPlayer] playPrevTrack:', {
+      from: currentTrackIndex(),
+      to: newCurrentTrackIndex
+    })
+
+    // Сбрасываем время и останавливаем воспроизведение при смене трека
+    setCurrentTime(0)
+    setIsPlaying(false)
     setCurrentTrackIndex(newCurrentTrackIndex)
   }
 
@@ -128,6 +229,14 @@ export const AudioPlayer = (props: Props) => {
       newCurrentTrackIndex = props.media.length - 1
     }
 
+    console.log('[AudioPlayer] playNextTrack:', {
+      from: currentTrackIndex(),
+      to: newCurrentTrackIndex
+    })
+
+    // Сбрасываем время и останавливаем воспроизведение при смене трека
+    setCurrentTime(0)
+    setIsPlaying(false)
     setCurrentTrackIndex(newCurrentTrackIndex)
   }
 
@@ -143,12 +252,81 @@ export const AudioPlayer = (props: Props) => {
    * Обрабатывает перемотку аудио при взаимодействии с прогресс-баром
    * @param event Событие мыши
    */
-  const scrub = (event: MouseEvent | undefined) => {
-    if (event && audioRef) {
-      const progressElement = event.currentTarget as HTMLDivElement
-      const offsetX = event.offsetX
-      const width = progressElement.offsetWidth
-      audioRef.currentTime = (offsetX / width) * currentTrackDuration()
+  const scrub = async (event: MouseEvent | undefined) => {
+    if (!event || !audioRef) {
+      console.warn('[AudioPlayer] scrub: missing event or audioRef')
+      return
+    }
+
+    const progressElement = event.currentTarget as HTMLDivElement
+    const offsetX = event.offsetX
+    const width = progressElement.offsetWidth
+    const duration = currentTrackDuration()
+
+    // Проверяем валидность данных
+    if (width <= 0) {
+      console.warn('[AudioPlayer] scrub: invalid width:', width)
+      return
+    }
+
+    if (duration <= 0) {
+      console.warn('[AudioPlayer] scrub: invalid duration:', duration)
+      return
+    }
+
+    // Вычисляем новую позицию
+    const newTime = (offsetX / width) * duration
+
+    console.log('[AudioPlayer] scrub:', {
+      offsetX,
+      width,
+      duration,
+      newTime,
+      currentTime: audioRef.currentTime,
+      wasPlaying: !audioRef.paused
+    })
+
+    // Запоминаем состояние воспроизведения
+    const wasPlaying = !audioRef.paused
+
+    try {
+      // Устанавливаем флаг перемотки
+      setIsSeeking(true)
+      console.log('[AudioPlayer] scrub: seeking started')
+
+      // Приостанавливаем воспроизведение для надежной перемотки
+      if (wasPlaying) {
+        audioRef.pause()
+        console.log('[AudioPlayer] scrub: paused for seeking')
+      }
+
+      // Устанавливаем новую позицию
+      audioRef.currentTime = newTime
+      console.log('[AudioPlayer] scrub: time set to', newTime)
+
+      // Ждем небольшую задержку для применения изменений
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      // Возобновляем воспроизведение если было активно
+      if (wasPlaying) {
+        try {
+          await audioRef.play()
+          console.log('[AudioPlayer] scrub: resumed playback')
+        } catch (error) {
+          console.error('[AudioPlayer] scrub: failed to resume playback:', error)
+          setIsPlaying(false)
+        }
+      }
+
+      // Обновляем отображаемое время
+      setCurrentTime(newTime)
+
+      // Снимаем флаг перемотки
+      setIsSeeking(false)
+      console.log('[AudioPlayer] scrub: seeking completed, new time:', audioRef.currentTime)
+    } catch (error) {
+      console.error('[AudioPlayer] scrub: failed to set currentTime:', error)
+      setIsSeeking(false)
     }
   }
 
@@ -159,8 +337,12 @@ export const AudioPlayer = (props: Props) => {
       return ''
     }
 
-    // Заменяем старый CDN на новый
-    let audioUrl = url.replace('images.discours.io', cdnUrl)
+    // Заменяем все старые CDN домены на новый
+    let audioUrl = url
+      .replace('https://cdn.discours.io', 'https://files.dscrs.site')
+      .replace('https://images.discours.io', 'https://files.dscrs.site')
+      .replace('cdn.discours.io', 'files.dscrs.site')
+      .replace('images.discours.io', 'files.dscrs.site')
 
     // Убираем лишние параметры
     if (audioUrl.includes('?')) {
@@ -170,9 +352,12 @@ export const AudioPlayer = (props: Props) => {
     console.log('[AudioPlayer] Audio URL processing:', {
       original: url,
       processed: audioUrl,
-      cdnUrl,
       hasUrl: !!url,
-      urlType: typeof url
+      urlType: typeof url,
+      replacements: {
+        'images.discours.io': url.includes('images.discours.io'),
+        'cdn.discours.io': url.includes('cdn.discours.io')
+      }
     })
     return audioUrl
   }
@@ -223,7 +408,24 @@ export const AudioPlayer = (props: Props) => {
               })
             }
           }}
-          onLoadedMetadata={({ currentTarget }) => setCurrentTrackDuration(currentTarget.duration)}
+          onLoadedMetadata={({ currentTarget }) => {
+            const duration = currentTarget.duration
+            console.log('[AudioPlayer] Metadata loaded:', {
+              duration,
+              isValid: duration > 0,
+              currentTime: currentTarget.currentTime,
+              readyState: currentTarget.readyState,
+              trackIndex: currentTrackIndex(),
+              trackUrl: currentTack()?.url
+            })
+
+            if (duration > 0) {
+              setCurrentTrackDuration(duration)
+              console.log('[AudioPlayer] Duration set to:', duration)
+            } else {
+              console.warn('[AudioPlayer] Invalid duration received:', duration)
+            }
+          }}
           onEnded={handleAudioEnd}
           onError={handleAudioError}
           onLoadStart={handleAudioLoadStart}
