@@ -1,4 +1,4 @@
-import { Show } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 
 import styles from './AudioPlayer.module.scss'
 
@@ -31,21 +31,49 @@ export const AudioTimeLine = (props: {
   onScrub: (event: MouseEvent | undefined) => void
 }) => {
   let progressRef: HTMLDivElement | undefined
-  let mouseDownRef: boolean | undefined
+  const [isMouseDown, setIsMouseDown] = createSignal(false)
+  
+  const handleMouseDown = (e: MouseEvent) => {
+    e.preventDefault()
+    setIsMouseDown(true)
+    props.onScrub(e)
+  }
+  
+  const handleMouseUp = () => {
+    setIsMouseDown(false)
+  }
+  
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isMouseDown()) {
+      props.onScrub(e)
+    }
+  }
+  
+  const handleClick = (e: MouseEvent) => {
+    props.onScrub(e)
+  }
+  
+  // Вычисляем процент прогресса с защитой от деления на ноль
+  const progressPercentage = () => {
+    if (props.currentTrackDuration <= 0) return 0
+    return Math.min((props.currentTime / props.currentTrackDuration) * 100, 100)
+  }
+  
   return (
     <div class={styles.timeline}>
       <div
         class={styles.progress}
         ref={(el) => (progressRef = el)}
-        onClick={(e) => props.onScrub(e)}
-        onMouseMove={(e) => mouseDownRef && props.onScrub(e)}
-        onMouseDown={() => (mouseDownRef = true)}
-        onMouseUp={() => (mouseDownRef = false)}
+        onClick={handleClick}
+        onMouseMove={handleMouseMove}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
         <div
           class={styles.progressFilled}
           style={{
-            width: `${(props.currentTime / props.currentTrackDuration) * 100 || 0}%`
+            width: `${progressPercentage()}%`
           }}
         />
       </div>

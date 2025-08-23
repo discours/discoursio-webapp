@@ -267,8 +267,8 @@ export const AudioPlayerPreview = (props: Props) => {
       return
     }
 
-    // Вычисляем новую позицию
-    const newTime = (offsetX / width) * duration
+    // Вычисляем новую позицию с ограничениями
+    const newTime = Math.max(0, Math.min((offsetX / width) * duration, duration))
 
     console.log('[AudioPlayerPreview] scrub:', {
       offsetX,
@@ -297,8 +297,11 @@ export const AudioPlayerPreview = (props: Props) => {
       audioRef.currentTime = newTime
       console.log('[AudioPlayerPreview] scrub: time set to', newTime)
 
+      // Обновляем отображаемое время сразу
+      setCurrentTime(newTime)
+
       // Ждем небольшую задержку для применения изменений
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       // Возобновляем воспроизведение если было активно
       if (wasPlaying) {
@@ -310,9 +313,6 @@ export const AudioPlayerPreview = (props: Props) => {
           setIsPlaying(false)
         }
       }
-
-      // Обновляем отображаемое время
-      setCurrentTime(newTime)
 
       // Снимаем флаг перемотки
       setIsSeeking(false)

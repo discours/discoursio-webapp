@@ -101,13 +101,27 @@
   justify-content: space-between;
   margin-top: 28px;
   padding-left: 10px;
+  user-select: none;
 }
 
 .progress {
   position: relative;
   width: 100%;
+  height: 20px;
   cursor: pointer;
   border-bottom: 2px solid #ccc;
+  
+  &:hover {
+    .progressFilled::after {
+      transform: scale(1.2);
+    }
+  }
+  
+  &:active {
+    .progressFilled::after {
+      transform: scale(1.3);
+    }
+  }
 }
 
 .progressFilled {
@@ -117,7 +131,7 @@
   z-index: 2;
   box-sizing: border-box;
   border-bottom: 4px solid var(--default-color);
-  transition: width 0.3s linear;
+  transition: width 0.1s ease-out;
 
   &::after {
     content: '';
@@ -130,6 +144,7 @@
     border-radius: 50%;
     border: 4px solid var(--default-color);
     background-color: var(--background-color);
+    transition: transform 0.2s ease;
   }
 }
 
