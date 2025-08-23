@@ -177,7 +177,7 @@ export const EditView = (props: { draft?: Draft }) => {
         }
 
         // Инициализируем Awareness только после установки текущего черновика
-        if (navigator.onLine) {
+        if (typeof window !== 'undefined' && navigator.onLine) {
           try {
             initializeAwareness(draft)
           } catch (error) {
@@ -376,7 +376,7 @@ export const EditView = (props: { draft?: Draft }) => {
     const draftId = currentDraft()?.id
     const { getStatus, reconnect } = useConnect() // Вызываем useConnect на верхнем уровне функции
 
-    if (navigator.onLine && draftId) {
+    if (typeof window !== 'undefined' && navigator.onLine && draftId) {
       // Синхронизация с сервером при восстановлении соединения
       syncDraft(draftId)
         .then(() => {
@@ -391,7 +391,7 @@ export const EditView = (props: { draft?: Draft }) => {
         .catch((error) => {
           console.error('[EditView] Failed to sync draft after network change:', error)
         })
-    } else if (!navigator.onLine) {
+    } else if (typeof window !== 'undefined' && !navigator.onLine) {
       // Если сеть отключена, показываем уведомление и продолжаем работу офлайн
       console.warn('[EditView] Network is offline, continuing in offline mode')
     }

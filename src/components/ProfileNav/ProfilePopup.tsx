@@ -17,7 +17,7 @@ export const ProfilePopup = (props: ProfilePopupProps) => {
   const { t } = useLocalize()
 
   // Состояние для оффлайн-функций
-  const [isOnline, setIsOnline] = createSignal(navigator.onLine)
+  const [isOnline, setIsOnline] = createSignal(true)
   const [storageStats, setStorageStats] = createSignal({
     syncPending: 0,
     syncFailed: 0,

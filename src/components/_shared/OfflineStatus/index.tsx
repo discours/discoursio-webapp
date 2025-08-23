@@ -2,7 +2,7 @@ import { createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import { isServer } from 'solid-js/web'
 
 export const OfflineStatus = () => {
-  const [isOnline, setIsOnline] = createSignal(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const [isOnline, setIsOnline] = createSignal(true)
 
   // Обработчики событий изменения статуса сети
   const handleOnline = () => {

@@ -84,17 +84,16 @@ const getToken = () => untrack(() => session()?.token)
 
 ## 🧊 Hydration Safety
 ```typescript
-// ✅ Безопасный browser API доступ
+// ✅ Безопасный browser API доступ в onMount (автоматически клиентский)
+onMount(() => {
+  setWidth(window.innerWidth)
+})
+
+// ✅ Условная клиентская загрузка в createEffect
 createEffect(() => {
   if (typeof window !== 'undefined') {
     setWidth(window.innerWidth)
   }
-})
-
-// ✅ Условная клиентская загрузка
-const [data] = createResource(() => {
-  if (typeof window === 'undefined') return null
-  return loadClientData()
 })
 
 // ✅ Immutable updates
@@ -190,7 +189,8 @@ const topShouts = createMemo(() => {
 - Server ↔ Client DOM должен совпадать ТОЧНО
 - `route.load` для SSR данных
 - `initialValue` в createResource для гидрации
-- `typeof window !== 'undefined'` для browser API
+- `typeof window !== 'undefined'` для browser API в createEffect
+- **onMount автоматически клиентский - НЕ нужны проверки window**
 - Избегай условного рендеринга в корне
 
 # 💎 Advanced Patterns
@@ -229,8 +229,9 @@ createRenderEffect(() => {
 1. **Async createEffect** → onMount + createResource
 2. **Множественные loading/error** → createResource states
 3. **window.* в init** → typeof проверки
-4. **Math.random() keys** → стабильные ID
-5. **Большие stores** → атомарные сигналы
+4. **window.* в onMount** → БЕЗ проверок (onMount = клиентский код)
+5. **Math.random() keys** → стабильные ID
+6. **Большие stores** → атомарные сигналы
 
 # 🔮 Signals 2.0 Preview
 ```typescript

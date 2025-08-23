@@ -71,7 +71,7 @@ export const LayoutSelector = () => {
           )}
         </For>
       </ul>
-      <Button value={t('Back')} onClick={() => window?.history.back()} />
+      <Button value={t('Back')} onClick={() => window.history.back()} />
     </article>
   )
 }

@@ -141,11 +141,13 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
           if (!viewed()) {
             const topic = currentTopic()
             if (topic) {
-              window?.gtag?.('event', 'page_view', {
-                page_title: topic.title,
-                page_location: window.location.href,
-                page_path: window.location.pathname
-              })
+              if (window?.gtag) {
+                window.gtag('event', 'page_view', {
+                  page_title: topic.title,
+                  page_location: window.location.href,
+                  page_path: window.location.pathname
+                })
+              }
               setViewed(true)
             }
           }

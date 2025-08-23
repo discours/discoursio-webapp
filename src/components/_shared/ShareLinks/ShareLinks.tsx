@@ -35,7 +35,9 @@ export const ShareLinks = (props: Props) => {
     }
   }
   const copyLink = async () => {
-    await navigator.clipboard.writeText(props.shareUrl)
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(props.shareUrl)
+    }
     if (props.variant === 'inModal') {
       setIsLinkCopied(true)
       setTimeout(() => {
