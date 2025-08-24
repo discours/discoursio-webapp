@@ -4,6 +4,7 @@ import { toast } from 'solid-toast'
 import { DraftCard } from '~/components/Draft'
 import { Placeholder } from '~/components/Feed/Placeholder'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
+import { useLocalDrafts } from '~/context/localDrafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { Draft } from '~/graphql/generated/graphql'
@@ -14,6 +15,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
   const { requireAuthentication, session, isSessionLoaded, isSessionValidating } = useSession()
   const { t } = useLocalize()
   const { publishDraft, deleteDraft, drafts, loadDrafts, unpublishShout } = useDrafts()
+  const { removeLocalDraft, checkDraftExistsOnServer } = useLocalDrafts()
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = createSignal(true)
   // Сигнал для отслеживания текущего отображаемого черновика (локальный или серверный)
@@ -28,13 +30,47 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
     }
 
     try {
-      console.log('[DraftsView] Удаление черновика:', d.id, '(серверная версия)', {
+      const isLocalOnly = (d as ExtendedDraft).isLocalOnly === true
+      console.log('[DraftsView] Удаление черновика:', d.id, {
         title: d.title,
-        isLocalOnly: (d as ExtendedDraft).isLocalOnly === true,
+        isLocalOnly,
         activeVersion: d.id ? activeVersions()[d.id] : undefined
       })
 
-      // Удаляем серверный черновик (основной сценарий)
+      if (isLocalOnly) {
+        // Удаляем локальный черновик
+        console.log('[DraftsView] Удаляем локальный черновик:', d.id)
+        const success = removeLocalDraft(d.id)
+
+        if (success) {
+          console.log('[DraftsView] Локальный черновик успешно удален')
+          toast.success(t('Draft successfully deleted'))
+        } else {
+          console.error('[DraftsView] Ошибка при удалении локального черновика')
+          toast.error(t('Error deleting local draft'))
+        }
+        return
+      }
+
+      // Для серверных черновиков сначала проверяем существование на сервере
+      console.log('[DraftsView] Проверяем существование черновика на сервере:', d.id)
+      const existsOnServer = await checkDraftExistsOnServer(d.id)
+
+      if (!existsOnServer) {
+        console.log('[DraftsView] Черновик не существует на сервере, удаляем локально')
+        const success = removeLocalDraft(d.id)
+
+        if (success) {
+          console.log('[DraftsView] Черновик успешно удален локально')
+          toast.success(t('Draft successfully deleted'))
+        } else {
+          console.error('[DraftsView] Ошибка при локальном удалении')
+          toast.error(t('Error deleting draft'))
+        }
+        return
+      }
+
+      // Черновик существует на сервере, удаляем через API
       console.log('[DraftsView] Отправляем запрос на удаление серверной версии черновика:', d.id)
       const result = await deleteDraft(d.id)
       const success = !!(result?.data?.delete_draft && !result?.data?.delete_draft.error && !result?.error)
@@ -44,17 +80,62 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
         apiError: result?.data?.delete_draft?.error
       })
 
-      if (!success) {
-        toast.error(result?.data?.delete_draft?.error || t('Error deleting draft'))
+      if (success) {
+        // Успешно удалили с сервера
+        console.log('[DraftsView] Серверный черновик успешно удален')
+        toast.success(t('Draft successfully deleted'))
+
+        // Перезагружаем список после удаления
+        console.log('[DraftsView] Перезагружаем список черновиков после удаления')
+        await loadDrafts()
+        console.log('[DraftsView] Список черновиков перезагружен после удаления')
         return
       }
 
-      // Перезагружаем список после удаления
-      console.log('[DraftsView] Перезагружаем список черновиков после удаления')
-      await loadDrafts()
-      console.log('[DraftsView] Список черновиков перезагружен после удаления')
+      // Если сервер вернул ошибку "черновик не существует",
+      // пытаемся удалить локально как fallback
+      const apiError = result?.data?.delete_draft?.error
+      if (
+        apiError &&
+        (apiError.includes('не существует') || apiError.includes('not found') || apiError.includes('does not exist'))
+      ) {
+        console.log('[DraftsView] Сервер сообщает, что черновик не существует, удаляем локально как fallback')
+
+        // Удаляем из локального состояния
+        const success = removeLocalDraft(d.id)
+
+        if (success) {
+          console.log('[DraftsView] Черновик успешно удален локально (fallback)')
+          toast.success(t('Draft successfully deleted'))
+        } else {
+          console.error('[DraftsView] Ошибка при локальном удалении (fallback)')
+          toast.error(t('Error deleting draft'))
+        }
+        return
+      }
+
+      // Другие ошибки сервера
+      toast.error(apiError || t('Error deleting draft'))
     } catch (error) {
       console.error('[DraftsView] Общая ошибка при удалении черновика:', error)
+
+      // При сетевых ошибках пытаемся удалить локально как fallback
+      if (
+        error instanceof Error &&
+        (error.message.includes('network') || error.message.includes('fetch') || error.message.includes('timeout'))
+      ) {
+        console.log('[DraftsView] Сетевая ошибка, пытаемся удалить локально как fallback')
+        const success = removeLocalDraft(d.id)
+
+        if (success) {
+          console.log('[DraftsView] Черновик успешно удален локально (fallback)')
+          toast.success(t('Draft successfully deleted'))
+        } else {
+          toast.error(t('Error deleting draft'))
+        }
+        return
+      }
+
       toast.error(t('Error deleting draft'))
     }
   }

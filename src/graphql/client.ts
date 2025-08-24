@@ -2,6 +2,7 @@ import { Client, cacheExchange, createClient, fetchExchange, SSRData, ssrExchang
 import { DocumentNode } from 'graphql'
 import { createResource, ResourceReturn } from 'solid-js'
 import { coreApiUrl } from '~/config'
+import { GraphQLResponse } from './types'
 
 // API URL для разных окружений
 
@@ -267,4 +268,20 @@ export function createCacheableQueryResource<T, Args>(
       }
     )
   }
+}
+
+/**
+ * Обрабатывает GraphQL ошибки (устраняет дублирование)
+ */
+// biome-ignore lint/suspicious/noExplicitAny: graphql
+export const handleGraphQLError = (response: GraphQLResponse<any>, operation: string): boolean => {
+  if (response?.error) {
+    console.error(`[GraphQL] API error in ${operation}:`, response.error)
+    return true
+  }
+  if (response?.data?.[operation]?.error) {
+    console.error(`[GraphQL] API error in ${operation}:`, response.data[operation].error)
+    return true
+  }
+  return false
 }

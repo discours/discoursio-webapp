@@ -297,6 +297,42 @@ export const DraftCard = (props: Props) => {
   }
 
   /**
+   * Возвращает иконку для статуса черновика
+   */
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'published':
+        return 'check-circle'
+      case 'unpublished':
+        return 'eye-off'
+      case 'local':
+        return 'file-storage'
+      default:
+        return 'edit'
+    }
+  }
+
+  /**
+   * Возвращает CSS класс для статуса черновика
+   */
+  const getDraftStatusClass = (draftId: number): string => {
+    const { getDraftStatus } = useDrafts()
+    const status = getDraftStatus(draftId)
+
+    // Используем строковые классы пока TypeScript не увидит обновленные CSS модули
+    switch (status) {
+      case 'published':
+        return styles.statusPublished
+      case 'unpublished':
+        return styles.statusUnpublished
+      case 'local':
+        return styles.statusLocal
+      default:
+        return styles.statusDraft
+    }
+  }
+
+  /**
    * Обработчик клика на индикатор расхождения версий
    */
   const handleVersionIndicatorClick = (e: MouseEvent) => {
@@ -404,6 +440,22 @@ export const DraftCard = (props: Props) => {
                 <Icon name="file-storage" class={styles.localIcon} />
               </span>
             </Show>
+
+            {/* Статус черновика */}
+            <Show when={props.draft.id}>
+              {(() => {
+                const { getDraftStatusText, getDraftStatus } = useDrafts()
+                const statusText = getDraftStatusText(props.draft.id!)
+                const status = getDraftStatus(props.draft.id!)
+                return (
+                  <span class={clsx(styles.statusBadge, getDraftStatusClass(props.draft.id!))} title={statusText}>
+                    <Icon name={getStatusIcon(status)} class={styles.badgeIcon} />
+                    {statusText}
+                  </span>
+                )
+              })()}
+            </Show>
+
             {(() => {
               const date = createValidDate(props.draft.created_at)
               if (!date) return ''

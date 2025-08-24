@@ -225,6 +225,28 @@ createRenderEffect(() => {
 // loadReactions(), авторизованные запросы
 ```
 
+# 🎨 CSS Module Best Practices
+```scss
+// ✅ Используй CSS модули вместо глобальных стилей
+.localClass {
+  color: red;
+  @extend .baseClass; // DRY через наследование
+}
+
+// ✅ Базовые классы для переиспользования
+.baseBadge {
+  display: inline-flex;
+  padding: 4px 8px;
+}
+
+// ❌ НЕ используй :global() без крайней необходимости
+:global(.some-class) { /* избегай */ }
+
+// ✅ Импортируй и используй модульные стили
+import styles from './Component.module.scss'
+<div class={styles.localClass}>
+```
+
 # 🚨 Red Flags - Срочные исправления
 1. **Async createEffect** → onMount + createResource
 2. **Множественные loading/error** → createResource states
@@ -232,6 +254,8 @@ createRenderEffect(() => {
 4. **window.* в onMount** → БЕЗ проверок (onMount = клиентский код)
 5. **Math.random() keys** → стабильные ID
 6. **Большие stores** → атомарные сигналы
+7. **:global() стили** → CSS модули с @extend для DRY
+8. **Глобальные стили** → модульные классы в компонентах
 
 # 🔮 Signals 2.0 Preview
 ```typescript

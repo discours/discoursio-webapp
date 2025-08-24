@@ -166,30 +166,78 @@ export const PublishSettings = () => {
 
   const handlePublishSubmit = async () => {
     const draft = currentDraft()
-    if (!draft?.id) return
+    if (!draft?.id) {
+      console.error('[PublishSettings] No draft ID found for publishing')
+      toast.error(t('No draft found for publishing'))
+      return
+    }
+
+    // Проверяем наличие тем перед публикацией
+    const hasTopics = draft.topics && Array.isArray(draft.topics) && draft.topics.length > 0
+    if (!hasTopics) {
+      console.warn('[PublishSettings] No topics selected for draft')
+      toast.error(t('Please select at least one topic before publishing'))
+      return
+    }
+
+    // Проверяем наличие заголовка
+    if (!draft.title || draft.title.trim() === '') {
+      console.warn('[PublishSettings] No title for draft')
+      toast.error(t('Please enter a title before publishing'))
+      return
+    }
+
+    // Проверяем наличие содержимого
+    if (!draft.body || draft.body.trim() === '' || draft.body === '<br>') {
+      console.warn('[PublishSettings] No content for draft')
+      toast.error(t('Please add content before publishing'))
+      return
+    }
+
+    console.log('[PublishSettings] Starting publication process for draft:', {
+      id: draft.id,
+      title: draft.title,
+      topics: draft.topics,
+      topicIds: draft.topics?.map((t) => t?.id),
+      body: `${draft.body?.substring(0, 100)}...`,
+      slug: draft.slug
+    })
 
     setIsLoading(true)
     clearValidationErrors()
 
     try {
+      console.log('[PublishSettings] Validating draft...')
       const validationResult = await validateCurrentDraft()
+      console.log('[PublishSettings] Validation result:', validationResult)
+
       if (!validationResult) {
         console.warn('[PublishSettings] Draft validation failed')
+        toast.error(t('Please fix validation errors before publishing'))
         return
       }
 
+      console.log('[PublishSettings] Calling publishDraft...')
       const result = await publishDraft(draft.id)
+      console.log('[PublishSettings] publishDraft result:', result)
+
       const publishedDraft = result?.data?.publish_draft?.draft
 
       if (publishedDraft) {
+        console.log('[PublishSettings] Publication successful, navigating to:', publishedDraft.slug)
         batch(() => {
           toast.success(t('Article published successfully'))
           // Используем slug опубликованной статьи для корректного URL
           navigate(`/${publishedDraft.slug}`)
         })
       } else if (result?.error) {
+        console.error('[PublishSettings] GraphQL error:', result.error)
         toast.error(t(result.error.message || 'Error publishing article'))
+      } else if (result?.data?.publish_draft?.error) {
+        console.error('[PublishSettings] Server error:', result.data.publish_draft.error)
+        toast.error(t(result.data.publish_draft.error))
       } else {
+        console.error('[PublishSettings] Unknown error in result:', result)
         toast.error(t('Error publishing article'))
       }
     } catch (error) {
@@ -363,6 +411,9 @@ export const PublishSettings = () => {
             <div class={styles.errorMessage}>
               {t(validationErrors().topic_ids || validationErrors().main_topic_id || '')}
             </div>
+            <Show when={!draft()?.topics?.length}>
+              <div class={styles.errorMessage}>{t('⚠️ Please select at least one topic before publishing')}</div>
+            </Show>
             <p class="description">
               {t(
                 'Add a few topics so that the reader knows what your content is about and can find it on pages of topics that interest them. Topics can be swapped, the first topic becomes the title'
@@ -415,11 +466,14 @@ export const PublishSettings = () => {
                   <Show when={draft()?.topics?.length}>
                     <div class={styles.mainTopic}>{draft()?.topics?.[0]?.title || ''}</div>
                   </Show>
+                  <Show when={!draft()?.title?.trim()}>
+                    <div class={styles.errorMessage}>{t('⚠️ Please enter a title before publishing')}</div>
+                  </Show>
                   <Show
                     when={editingTitle()}
                     fallback={
                       <div onClick={() => setEditingTitle(true)} class={styles.shoutCardTitle}>
-                        {draft()?.title}
+                        {draft()?.title || t('Click to add title')}
                       </div>
                     }
                   >
@@ -446,6 +500,10 @@ export const PublishSettings = () => {
                       onChange={(value: string) => handleFieldChange('subtitle', value)}
                       initialValue={draft()?.subtitle || ''}
                     />
+                  </Show>
+
+                  <Show when={!draft()?.body?.trim() || draft()?.body === '<br>'}>
+                    <div class={styles.errorMessage}>{t('⚠️ Please add content before publishing')}</div>
                   </Show>
 
                   <Show
