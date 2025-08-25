@@ -13,6 +13,7 @@ import { DraftsProvider } from './context/drafts'
 import { FeaturedFeedProvider } from './context/featured'
 import { FeedProvider } from './context/feed'
 import { FollowingProvider } from './context/following'
+import { LocalDraftsProvider } from './context/localDrafts'
 import { LocalizeProvider } from './context/localize'
 import { NotificationsProvider } from './context/notifications'
 import { SessionProvider } from './context/session'
@@ -186,16 +187,18 @@ export const Providers: Component<{ children?: JSX.Element }> = (props) => {
                 <TopicsProvider>
                   <AuthorsProvider>
                     <FeedProvider>
-                      <DraftsProvider>
-                        <FeaturedFeedProvider>
-                          <FollowingProvider>
-                            <MetaProvider>
-                              <Suspense fallback={<Loading />}>{props.children}</Suspense>
-                              <NotificationsPanelPortal />
-                            </MetaProvider>
-                          </FollowingProvider>
-                        </FeaturedFeedProvider>
-                      </DraftsProvider>
+                      <LocalDraftsProvider>
+                        <DraftsProvider>
+                          <FeaturedFeedProvider>
+                            <FollowingProvider>
+                              <MetaProvider>
+                                <Suspense fallback={<Loading />}>{props.children}</Suspense>
+                                <NotificationsPanelPortal />
+                              </MetaProvider>
+                            </FollowingProvider>
+                          </FeaturedFeedProvider>
+                        </DraftsProvider>
+                      </LocalDraftsProvider>
                     </FeedProvider>
                   </AuthorsProvider>
                 </TopicsProvider>

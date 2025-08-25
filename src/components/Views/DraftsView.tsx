@@ -15,7 +15,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
   const { requireAuthentication, session, isSessionLoaded, isSessionValidating } = useSession()
   const { t } = useLocalize()
   const { publishDraft, deleteDraft, drafts, loadDrafts, unpublishShout } = useDrafts()
-  const { removeLocalDraft, checkDraftExistsOnServer } = useLocalDrafts()
+  const { removeLocalDraft } = useLocalDrafts()
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = createSignal(true)
   // Сигнал для отслеживания текущего отображаемого черновика (локальный или серверный)
@@ -52,69 +52,31 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
         return
       }
 
-      // Для серверных черновиков сначала проверяем существование на сервере
-      console.log('[DraftsView] Проверяем существование черновика на сервере:', d.id)
-      const existsOnServer = await checkDraftExistsOnServer(d.id)
-
-      if (!existsOnServer) {
-        console.log('[DraftsView] Черновик не существует на сервере, удаляем локально')
-        const success = removeLocalDraft(d.id)
-
-        if (success) {
-          console.log('[DraftsView] Черновик успешно удален локально')
-          toast.success(t('Draft successfully deleted'))
-        } else {
-          console.error('[DraftsView] Ошибка при локальном удалении')
-          toast.error(t('Error deleting draft'))
-        }
-        return
-      }
-
-      // Черновик существует на сервере, удаляем через API
-      console.log('[DraftsView] Отправляем запрос на удаление серверной версии черновика:', d.id)
       const result = await deleteDraft(d.id)
       const success = !!(result?.data?.delete_draft && !result?.data?.delete_draft.error && !result?.error)
 
-      console.log('[DraftsView] Результат delete_draft:', success ? 'Успешно' : 'Ошибка', {
-        graphQLError: result?.error?.message,
-        apiError: result?.data?.delete_draft?.error
-      })
-
       if (success) {
-        // Успешно удалили с сервера
-        console.log('[DraftsView] Серверный черновик успешно удален')
         toast.success(t('Draft successfully deleted'))
-
-        // Перезагружаем список после удаления
-        console.log('[DraftsView] Перезагружаем список черновиков после удаления')
         await loadDrafts()
-        console.log('[DraftsView] Список черновиков перезагружен после удаления')
         return
       }
 
-      // Если сервер вернул ошибку "черновик не существует",
-      // пытаемся удалить локально как fallback
+      // Обрабатываем ошибки
       const apiError = result?.data?.delete_draft?.error
       if (
         apiError &&
         (apiError.includes('не существует') || apiError.includes('not found') || apiError.includes('does not exist'))
       ) {
-        console.log('[DraftsView] Сервер сообщает, что черновик не существует, удаляем локально как fallback')
+        // Очищаем локальные данные
+        try {
+          removeLocalDraft(d.id)
+        } catch (_e) {}
 
-        // Удаляем из локального состояния
-        const success = removeLocalDraft(d.id)
-
-        if (success) {
-          console.log('[DraftsView] Черновик успешно удален локально (fallback)')
-          toast.success(t('Draft successfully deleted'))
-        } else {
-          console.error('[DraftsView] Ошибка при локальном удалении (fallback)')
-          toast.error(t('Error deleting draft'))
-        }
+        toast.success(t('Draft successfully deleted'))
+        await loadDrafts()
         return
       }
 
-      // Другие ошибки сервера
       toast.error(apiError || t('Error deleting draft'))
     } catch (error) {
       console.error('[DraftsView] Общая ошибка при удалении черновика:', error)
@@ -250,17 +212,19 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
     }
 
     try {
-      console.log('[DraftsView] Отправляем запрос на снятие с публикации для черновика:', draft.id)
-      const result = await unpublishShout(draft.id)
-      console.log(
-        '[DraftsView] Получен ответ на запрос снятия с публикации:',
-        result?.data?.unpublish_shout ? 'Данные получены' : 'Данные отсутствуют'
-      )
+      const shoutId = draft.shout?.id
+      if (!shoutId) {
+        toast.error(t('Error: Shout ID not found'), {
+          style: { 'z-index': 10001 },
+          position: 'bottom-center'
+        })
+        return
+      }
+
+      const result = await unpublishShout(shoutId)
 
       if (result?.data?.unpublish_shout) {
-        // Проверяем наличие ошибки в ответе
         if (result.data.unpublish_shout.error) {
-          console.error('[DraftsView] Ошибка при снятии с публикации:', result.data.unpublish_shout.error)
           toast.error(result.data.unpublish_shout.error || t('Error unpublishing article'), {
             style: { 'z-index': 10001 },
             position: 'bottom-center'
@@ -268,22 +232,18 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
           return
         }
 
-        console.log('[DraftsView] Черновик успешно снят с публикации:', draft.id)
         toast.success(t('Article unpublished successfully'), {
           style: { 'z-index': 10001 },
           position: 'bottom-center'
         })
         await loadDrafts()
-        console.log('[DraftsView] Список черновиков перезагружен после снятия с публикации')
       } else {
-        console.error('[DraftsView] Ошибка при снятии с публикации: ответ не содержит данных')
         toast.error(t('Error unpublishing article'), {
           style: { 'z-index': 10001 },
           position: 'bottom-center'
         })
       }
     } catch (error) {
-      console.error('[DraftsView] Error unpublishing article:', error)
       toast.error(error instanceof Error ? error.message : t('Unknown error occurred'), {
         style: { 'z-index': 10001 },
         position: 'bottom-center'

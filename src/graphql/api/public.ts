@@ -136,7 +136,9 @@ export const loadShouts = (args: QueryLoad_Shouts_ByArgs) => {
 
   return async () => {
     const response = await loader()
-    return response?.load_shouts_by || []
+    const shouts = response?.load_shouts_by || []
+
+    return shouts
   }
 }
 

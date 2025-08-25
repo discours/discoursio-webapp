@@ -1,5 +1,6 @@
 import { clsx } from 'clsx'
 import { createSignal, onCleanup, onMount, Show } from 'solid-js'
+import { isServer } from 'solid-js/web'
 import { Icon } from '~/components/_shared/Icon'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
@@ -28,7 +29,13 @@ export const EditSettingsView = () => {
 
   const handleScroll = () => setIsScrolled(window.scrollY > 0)
   onCleanup(() => window.removeEventListener('scroll', handleScroll))
-  onMount(() => window.addEventListener('scroll', handleScroll, { passive: true }))
+
+  // Исправляем гидрацию: инициализируем скролл только на клиенте
+  onMount(() => {
+    // Устанавливаем начальное значение только после монтирования
+    setIsScrolled(window.scrollY > 0)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+  })
 
   return (
     <Show when={currentDraft()} fallback={<Loading />}>
@@ -46,7 +53,7 @@ export const EditSettingsView = () => {
             </button>
 
             <div class={styles.wrapperTableOfContents}>
-              <Show when={isDesktop() && currentDraft()?.body}>
+              <Show when={!isServer && isDesktop() && currentDraft()?.body}>
                 <TableOfContents variant="editor" parentSelector="#editorBody" body={currentDraft()?.body || ''} />
               </Show>
             </div>

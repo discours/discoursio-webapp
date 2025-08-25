@@ -79,16 +79,25 @@ export const PublishSettings = () => {
     console.log(`[PublishSettings] Updated field ${key} via context for draft ${draft.id}`)
   }
 
-  onMount(async () => {
-    createEffect(() => {
-      const coverUrl = currentDraft()?.cover
-      if (coverUrl) {
-        setCoverImage({ url: coverUrl } as UploadedFile)
-      } else {
-        setCoverImage(null)
-      }
-    })
+  // Исправляем гидрацию: createEffect НЕ должен быть внутри onMount!
+  // Добавляем проверку для стабильной гидрации
+  createEffect(() => {
+    const draft = currentDraft()
+    if (!draft) {
+      // Если черновика нет, устанавливаем null стабильно
+      setCoverImage(null)
+      return
+    }
 
+    const coverUrl = draft.cover
+    if (coverUrl && coverUrl.trim() !== '') {
+      setCoverImage({ url: coverUrl } as UploadedFile)
+    } else {
+      setCoverImage(null)
+    }
+  })
+
+  onMount(async () => {
     setIsTopicsLoading(true)
     try {
       console.log('[PublishSettings] Starting to load topics...')
@@ -165,6 +174,7 @@ export const PublishSettings = () => {
   }
 
   const handlePublishSubmit = async () => {
+    // Сначала синхронизируем черновик чтобы получить актуальный контент
     const draft = currentDraft()
     if (!draft?.id) {
       console.error('[PublishSettings] No draft ID found for publishing')
@@ -172,35 +182,143 @@ export const PublishSettings = () => {
       return
     }
 
+    // 🔍 ДИАГНОСТИКА: Логируем состояние черновика ДО синхронизации
+    console.group(`🔍 [VALIDATION DEBUG] Диагностика черновика #${draft.id} перед публикацией`)
+    console.log('📝 Исходное состояние черновика:', {
+      id: draft.id,
+      title: draft.title,
+      titleLength: draft.title?.length || 0,
+      titleTrimmed: draft.title?.trim(),
+      slug: draft.slug,
+      body: `${draft.body?.substring(0, 100)}...`,
+      bodyLength: draft.body?.length || 0,
+      bodyTrimmed: draft.body?.trim(),
+      topics: draft.topics,
+      topicsCount: draft.topics?.length || 0,
+      topicsArray: Array.isArray(draft.topics),
+      hasValidTopics: draft.topics && Array.isArray(draft.topics) && draft.topics.length > 0
+    })
+
+    // Синхронизируем черновик чтобы получить актуальный контент из localStorage
+    console.log('🔄 Синхронизируем черновик с localStorage...')
+    const syncedDraft = await syncDraft(draft.id)
+    const finalDraft = syncedDraft || draft
+
+    console.log('📝 Состояние после синхронизации:', {
+      id: finalDraft?.id,
+      title: finalDraft?.title,
+      titleLength: finalDraft?.title?.length || 0,
+      titleTrimmed: finalDraft?.title?.trim(),
+      slug: finalDraft?.slug,
+      body: `${finalDraft?.body?.substring(0, 100)}...`,
+      bodyLength: finalDraft?.body?.length || 0,
+      bodyTrimmed: finalDraft?.body?.trim(),
+      topics: finalDraft?.topics,
+      topicsCount: finalDraft?.topics?.length || 0,
+      topicsArray: Array.isArray(finalDraft?.topics),
+      hasValidTopics: finalDraft?.topics && Array.isArray(finalDraft?.topics) && finalDraft?.topics.length > 0
+    })
+
     // Проверяем наличие тем перед публикацией
-    const hasTopics = draft.topics && Array.isArray(draft.topics) && draft.topics.length > 0
+    const hasTopics = finalDraft.topics && Array.isArray(finalDraft.topics) && finalDraft.topics.length > 0
+    console.log('✅ Проверка тем:', { hasTopics, topics: finalDraft.topics })
     if (!hasTopics) {
-      console.warn('[PublishSettings] No topics selected for draft')
+      console.warn('❌ ОШИБКА: Нет выбранных тем')
+      console.groupEnd()
       toast.error(t('Please select at least one topic before publishing'))
       return
     }
 
     // Проверяем наличие заголовка
-    if (!draft.title || draft.title.trim() === '') {
-      console.warn('[PublishSettings] No title for draft')
+    const hasTitle = finalDraft.title && finalDraft.title.trim() !== ''
+    console.log('✅ Проверка заголовка:', { hasTitle, title: finalDraft.title, trimmed: finalDraft.title?.trim() })
+    if (!hasTitle) {
+      console.warn('❌ ОШИБКА: Нет заголовка')
+      console.groupEnd()
       toast.error(t('Please enter a title before publishing'))
       return
     }
 
     // Проверяем наличие содержимого
-    if (!draft.body || draft.body.trim() === '' || draft.body === '<br>') {
-      console.warn('[PublishSettings] No content for draft')
+    const hasContent = finalDraft.body && finalDraft.body.trim() !== '' && finalDraft.body !== '<br>'
+    console.log('✅ Проверка контента:', {
+      hasContent,
+      body: finalDraft.body?.substring(0, 50),
+      trimmed: finalDraft.body?.trim()
+    })
+    if (!hasContent) {
+      console.warn('❌ ОШИБКА: Нет контента')
+      console.groupEnd()
       toast.error(t('Please add content before publishing'))
       return
     }
 
+    // 🔧 ИСПРАВЛЕНИЕ: Автоматически генерируем slug если его нет
+    if (!finalDraft.slug || finalDraft.slug.trim() === '') {
+      console.log('🔧 [AUTO-FIX] Генерируем slug из заголовка:', finalDraft.title)
+      const generatedSlug = slugify(finalDraft.title || '')
+      console.log('🔧 [AUTO-FIX] Сгенерированный slug:', generatedSlug)
+
+      if (generatedSlug) {
+        // Обновляем slug в черновике
+        finalDraft.slug = generatedSlug
+
+        // 🔧 КРИТИЧЕСКИ ВАЖНО: Сохраняем slug на сервере перед публикацией
+        console.log('🔧 [AUTO-FIX] Сохраняем slug на сервере перед публикацией...')
+        try {
+          const draftInput: DraftInput = {
+            id: finalDraft.id,
+            slug: generatedSlug,
+            // Включаем другие обязательные поля для сохранения
+            title: finalDraft.title || '',
+            body: finalDraft.body || '',
+            topic_ids: Array.isArray(finalDraft.topics)
+              ? finalDraft.topics.filter((topic): topic is Topic => Boolean(topic?.id)).map((topic) => topic.id)
+              : []
+          }
+
+          const updateResult = await updateDraft(draftInput)
+          console.log('🔧 [AUTO-FIX] Результат сохранения slug на сервере:', updateResult)
+
+          if (updateResult?.error || updateResult?.data?.update_draft?.error) {
+            console.error(
+              '🔧 [AUTO-FIX] ❌ Ошибка сохранения slug на сервере:',
+              updateResult?.error || updateResult?.data?.update_draft?.error
+            )
+            console.groupEnd()
+            toast.error(t('Failed to save URL on server. Please try again.'))
+            return
+          }
+
+          console.log('🔧 [AUTO-FIX] ✅ Slug успешно сохранен на сервере:', generatedSlug)
+        } catch (error) {
+          console.error('🔧 [AUTO-FIX] ❌ Критическая ошибка при сохранении slug:', error)
+          console.groupEnd()
+          toast.error(t('Failed to save URL. Please try again.'))
+          return
+        }
+
+        // Также сохраняем в локальном контексте
+        updateDraftField(finalDraft.id, 'slug', generatedSlug, false)
+        console.log('🔧 [AUTO-FIX] ✅ Slug установлен локально и на сервере:', generatedSlug)
+      } else {
+        console.warn('🔧 [AUTO-FIX] ❌ Не удалось сгенерировать slug из заголовка')
+        console.groupEnd()
+        toast.error(t('Cannot generate URL from title. Please enter a valid title.'))
+        return
+      }
+    }
+
+    console.log('✅ Все проверки пройдены, переходим к публикации')
+    console.groupEnd()
+
     console.log('[PublishSettings] Starting publication process for draft:', {
-      id: draft.id,
-      title: draft.title,
-      topics: draft.topics,
-      topicIds: draft.topics?.map((t) => t?.id),
-      body: `${draft.body?.substring(0, 100)}...`,
-      slug: draft.slug
+      id: finalDraft.id,
+      title: finalDraft.title,
+      topics: finalDraft.topics,
+      topicIds: finalDraft.topics?.map((t) => t?.id),
+      body: `${finalDraft.body?.substring(0, 100)}...`,
+      slug: finalDraft.slug
     })
 
     setIsLoading(true)
@@ -218,7 +336,7 @@ export const PublishSettings = () => {
       }
 
       console.log('[PublishSettings] Calling publishDraft...')
-      const result = await publishDraft(draft.id)
+      const result = await publishDraft(finalDraft.id)
       console.log('[PublishSettings] publishDraft result:', result)
 
       const publishedDraft = result?.data?.publish_draft?.draft
@@ -257,10 +375,18 @@ export const PublishSettings = () => {
     const draft = currentDraft()
     if (!draft?.id) return
 
+    // 🔧 ИСПРАВЛЕНИЕ: Используем ID шаута, а не ID черновика
+    const shoutId = draft.shout?.id
+    if (!shoutId) {
+      console.error('[PublishSettings] Не найден ID шаута для снятия с публикации')
+      toast.error(t('Error: Shout ID not found'))
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const result = await unpublishShout(draft.id)
+      const result = await unpublishShout(shoutId)
       const unpublishedShoutId = result?.data?.unpublish_shout?.shout?.id
 
       if (unpublishedShoutId) {
@@ -274,7 +400,6 @@ export const PublishSettings = () => {
         toast.error(t('Error unpublishing article'))
       }
     } catch (error) {
-      console.error('[PublishSettings] Error unpublishing article:', error)
       toast.error(error instanceof Error ? error.message : t('Unknown error occurred'))
     } finally {
       setIsLoading(false)
@@ -411,9 +536,6 @@ export const PublishSettings = () => {
             <div class={styles.errorMessage}>
               {t(validationErrors().topic_ids || validationErrors().main_topic_id || '')}
             </div>
-            <Show when={!draft()?.topics?.length}>
-              <div class={styles.errorMessage}>{t('⚠️ Please select at least one topic before publishing')}</div>
-            </Show>
             <p class="description">
               {t(
                 'Add a few topics so that the reader knows what your content is about and can find it on pages of topics that interest them. Topics can be swapped, the first topic becomes the title'
@@ -457,7 +579,7 @@ export const PublishSettings = () => {
                   [styles.loading]: coverUploadLoading()
                 })}
               >
-                <Show when={coverImage()}>
+                <Show when={coverImage()?.url}>
                   <div class={styles.shoutCardCover}>
                     <Image src={coverImage()?.url || ''} alt={draft()?.title || ''} width={800} />
                   </div>
