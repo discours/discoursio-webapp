@@ -57,16 +57,33 @@ export const TopicView = (props: Props) => {
   const { t } = useLocalize()
   const loc = useLocation()
   const params = useParams()
-  const { feedByTopic, mode: feedMode, filterState, options } = useFeed()
+  const { feedByTopic, mode: feedMode, filterState, options, initializeFeed } = useFeed()
   const { topicEntities } = useTopics()
 
   // Состояние для управления табами
   const [currentTab, setCurrentTab] = createSignal<TopicTab | undefined>()
 
+  // 📊 ОТЛАДКА: Проверим, что приходит в TopicView
+  console.log(`[TopicView] Props for "${props.topicSlug}":`, {
+    hasTopic: !!props.topic,
+    topicTitle: props.topic?.title,
+    topicStat: props.topic?.stat,
+    hasShouts: !!props.shouts,
+    shoutsCount: props.shouts?.length || 0
+  })
+
   // 1. Обновим сигналы и добавим эффект для начальных данных
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
   const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
   const [topic, setTopic] = createSignal<Topic>(props.topic) // Инициализируем сразу с данными из пропсов
+
+  // 🔧 FALLBACK: Если топик не загрузился через route.load, пытаемся найти в контексте
+  createEffect(() => {
+    if (!props.topic && topicEntities()[props.topicSlug]) {
+      console.log(`[TopicView] Using fallback topic from context for "${props.topicSlug}"`)
+      setTopic(topicEntities()[props.topicSlug])
+    }
+  })
 
   // Сигналы для авторов топика с пагинацией
   const [topicAuthorsList, setTopicAuthorsList] = createSignal<Author[]>([])
@@ -78,8 +95,15 @@ export const TopicView = (props: Props) => {
       const contextTopic = ttt[props.topicSlug]
       const currentTopic = topic()
 
-      // Обновляем только если топик из контекста более актуальный (имеет статистику)
-      if (contextTopic && (!currentTopic || !currentTopic.stat || contextTopic.stat)) {
+      // 🔧 ИСПРАВЛЕНИЕ: Обновляем топик из контекста только если:
+      // 1. У нас нет текущего топика ИЛИ
+      // 2. У текущего топика нет статистики, А у контекстного есть
+      if (contextTopic && (!currentTopic || (!currentTopic.stat && contextTopic.stat))) {
+        // Временный лог для отладки - можно убрать позже
+        console.log(`[TopicView] Updating topic "${props.topicSlug}" from context:`, {
+          fromContext: !!contextTopic.stat,
+          current: !!currentTopic?.stat
+        })
         setTopic(contextTopic)
       }
     })
@@ -93,12 +117,24 @@ export const TopicView = (props: Props) => {
       authors: topicData?.stat?.authors ?? 0,
       followers: topicData?.stat?.followers ?? 0
     }
+
+    // Временная отладка для проверки статистики
+    console.log(`[TopicView] Stats for "${props.topicSlug}":`, {
+      topicTitle: topicData?.title,
+      hasStat: !!topicData?.stat,
+      rawStat: topicData?.stat,
+      calculatedStats: result
+    })
+
     return result
   })
 
   // 2. Добавим эффект для обработки начальных данных
   createEffect(() => {
     if (props.shouts?.length) {
+      // 🔧 ИСПРАВЛЕНИЕ: Инициализируем фид в контексте с SSR данными
+      initializeFeed(feedMode() || 'recent', props.shouts)
+
       setSortedFeed(props.shouts)
       setLoadMoreHidden(props.shouts.length < FEED_PAGE_SIZE)
     }
@@ -109,6 +145,12 @@ export const TopicView = (props: Props) => {
     on(
       () => feedByTopic()[props.topicSlug],
       (topicFeed) => {
+        // Временный лог для отладки - можно убрать позже
+        console.log(`[TopicView] feedByTopic update for "${props.topicSlug}":`, {
+          feedLength: topicFeed?.length || 0,
+          currentSortedFeed: sortedFeed().length,
+          topicStats: stats()
+        })
         if (topicFeed?.length) {
           console.debug('Feed updated:', topicFeed.length, 'articles')
           setSortedFeed(topicFeed)
@@ -385,7 +427,7 @@ export const TopicView = (props: Props) => {
           </Show>
         </li>
         <li classList={{ 'view-switcher__item--selected': currentTab() === 'about' }}>
-          <A href={`/topic/${props.topicSlug}/about`}>{t('About')}</A>
+          <A href={`/topic/${props.topicSlug}/about`}>{t('About topic')}</A>
         </li>
       </ul>
     </div>
@@ -495,7 +537,7 @@ export const TopicView = (props: Props) => {
   return (
     <div class={styles.topicPage}>
       <Suspense fallback={<Loading />}>
-        <FullTopic topic={topic()} followers={topicFollowers()} authors={topicAuthors()} />
+        <FullTopic topic={topic()} followers={topicFollowers() || []} authors={topicAuthors() || []} />
 
         <div class="wide-container">
           <div class={clsx(styles.groupControls, 'row')}>
@@ -524,7 +566,7 @@ export const TopicView = (props: Props) => {
             <div class="wide-container">
               <div class="row">
                 <div class="col-md-20 col-lg-18">
-                  <Show when={topic()?.body} fallback={<div>{t('No information provided')}</div>}>
+                  <Show when={topic()?.body} fallback={<div>{t('No description')}</div>}>
                     <div innerHTML={topic()?.body || ''} />
                   </Show>
                 </div>
@@ -579,8 +621,8 @@ export const TopicView = (props: Props) => {
           </Match>
 
           <Match when={!currentTab()}>
-            {/* Показываем публикации если статистика показывает больше 0 */}
-            <Show when={stats().shouts > 0}>
+            {/* 🔧 ИСПРАВЛЕНИЕ: Показываем публикации если есть данные ИЛИ статистика показывает больше 0 */}
+            <Show when={sortedFeed().length > 0 || stats().shouts > 0}>
               <Show
                 when={sortedFeed().length > 0}
                 fallback={

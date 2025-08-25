@@ -379,15 +379,20 @@ export const loadUnratedShouts = (options: LoadShoutsOptions) => {
  * Кешируемая загрузка авторов по топику
  */
 export const loadTopicAuthors = (args: QueryGet_AuthorArgs) => {
-  const loader = createCacheableLoader<{ get_authors_by_topic: Author[] }, QueryGet_AuthorArgs>(
+  const loader = createCacheableLoader<{ get_topic_authors: Author[] }, QueryGet_AuthorArgs>(
     getAuthorsByTopicQuery,
     () => args,
     true // Кешируем авторов по топику
   )(args)
 
   return async () => {
+    console.log('[loadTopicAuthors] Loading authors for topic:', args.slug)
     const response = await loader()
-    return response?.get_authors_by_topic || []
+    console.log('[loadTopicAuthors] Response:', {
+      hasResponse: !!response,
+      authorsCount: response?.get_topic_authors?.length || 0
+    })
+    return response?.get_topic_authors || []
   }
 }
 
@@ -395,15 +400,20 @@ export const loadTopicAuthors = (args: QueryGet_AuthorArgs) => {
  * Кешируемая загрузка подписчиков топика
  */
 export const loadTopicFollowers = (args: QueryGet_AuthorArgs) => {
-  const loader = createCacheableLoader<{ get_followers_by_topic: Author[] }, QueryGet_AuthorArgs>(
+  const loader = createCacheableLoader<{ get_topic_followers: Author[] }, QueryGet_AuthorArgs>(
     getFollowersByTopicQuery,
     () => args,
     true // Кешируем подписчиков топика
   )(args)
 
   return async () => {
+    console.log('[loadTopicFollowers] Loading followers for topic:', args.slug)
     const response = await loader()
-    return response?.get_followers_by_topic || []
+    console.log('[loadTopicFollowers] Response:', {
+      hasResponse: !!response,
+      followersCount: response?.get_topic_followers?.length || 0
+    })
+    return response?.get_topic_followers || []
   }
 }
 
@@ -476,12 +486,27 @@ export const loadTopicBySlug = (slug: string) => {
   const loader = createCacheableLoader<{ get_topic: Topic }, QueryGet_TopicArgs>(
     topicBySlugQuery,
     (args: QueryGet_TopicArgs) => args,
-    true // Включаем кеширование для топиков
+    false // Временно отключаем кеширование для отладки
   )({ slug })
 
   return async () => {
-    const response = await loader()
-    return response?.get_topic || null
+    // Временная отладка
+    console.log(`[loadTopicBySlug] Loading topic: "${slug}"`)
+    try {
+      const response = await loader()
+      console.log(`[loadTopicBySlug] Raw response for "${slug}":`, response)
+      console.log(`[loadTopicBySlug] Parsed response for "${slug}":`, {
+        hasResponse: !!response,
+        hasTopic: !!response?.get_topic,
+        topicTitle: response?.get_topic?.title,
+        topicStat: response?.get_topic?.stat,
+        fullTopic: response?.get_topic
+      })
+      return response?.get_topic || null
+    } catch (error) {
+      console.error(`[loadTopicBySlug] Error loading topic "${slug}":`, error)
+      return null
+    }
   }
 }
 

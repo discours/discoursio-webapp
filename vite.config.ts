@@ -1,21 +1,8 @@
-import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { config } from 'dotenv'
 import { CSSOptions, defineConfig, LightningCSSOptions } from 'vite'
 import { nodePolyfills, PolyfillOptions } from 'vite-plugin-node-polyfills'
 
-// Загружаем .env файл с выводом информации о статусе
-const envPath = resolve(process.cwd(), '.env')
-if (existsSync(envPath)) {
-  console.log('[vite.config] Loading .env file from:', envPath)
-  config({ path: envPath })
-} else {
-  console.warn('[vite.config] No .env file found')
-}
-
 export const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
-console.log(`[vite.config] ${isDev ? 'dev' : 'prod'} mode`)
-console.log('[vite.config] connected to api: ', process.env.PUBLIC_CORE_API)
 
 const polyfillOptions = {
   include: ['path', 'stream', 'util', 'buffer'],

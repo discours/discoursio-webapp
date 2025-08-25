@@ -127,13 +127,24 @@ export const FullTopic = (props: Props) => {
     }
   })
 
+  // 🔧 ОТЛАДКА: Проверим props топика
+  console.log('[FullTopic] Props received:', {
+    topicTitle: props.topic?.title,
+    hasTopic: !!props.topic,
+    hasTopicStat: !!props.topic?.stat,
+    topicStat: props.topic?.stat,
+    shoutsCount: props.topic?.stat?.shouts,
+    authorsCount: props.topic?.stat?.authors,
+    followersCount: props.topic?.stat?.followers
+  })
+
   return (
     <div class={clsx(styles.topicHeader, 'col-md-16 col-lg-12 offset-md-4 offset-lg-6')}>
       <h1>{title()}</h1>
       <p class={styles.topicDescription} innerHTML={props.topic?.body || ''} />
 
       <div class={styles.topicDetails}>
-        <Show when={props.topic?.stat}>
+        <Show when={props.topic?.stat?.shouts && props.topic.stat.shouts > 0}>
           <div class={styles.topicDetailsItem}>
             <Icon name="feed-all" class={styles.topicDetailsIcon} />
             {t('some posts', {

@@ -26,14 +26,38 @@ export const route = {
     try {
       // Load articles
       const articles = await fetchTopicShouts(params.slug, offset)
+      console.log(`[TopicRoute] Loaded articles for "${params.slug}":`, {
+        hasArticles: !!articles,
+        articlesCount: articles?.length || 0,
+        firstArticle: articles?.[0]?.title
+      })
 
       // Load topic
       const topic = await loadTopicBySlug(params.slug)()
 
-      return {
+      // Временная отладка загрузки топика
+      console.log(`[TopicRoute] Loaded topic "${params.slug}":`, {
+        found: !!topic,
+        title: topic?.title,
+        hasStat: !!topic?.stat,
+        stat: topic?.stat
+      })
+
+      const result = {
         articles,
         topic
       }
+
+      console.log('[TopicRoute] route.load RETURNING:', {
+        hasArticles: !!result.articles,
+        articlesCount: result.articles?.length || 0,
+        hasTopic: !!result.topic,
+        topicTitle: result.topic?.title,
+        topicStat: result.topic?.stat,
+        fullResult: result
+      })
+
+      return result
     } catch (error) {
       console.error('Error in topic route loader:', error)
       return {
@@ -59,11 +83,44 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
     }
   })
 
-  // Use preloaded topic data immediately, fallback to context
-  const [currentTopic, setCurrentTopic] = createSignal<Topic | undefined>()
-
   // Define route data accessor FIRST
   const routeData = () => props.data
+
+  // 🔧 ПРОСТОЕ РЕШЕНИЕ: Прямой доступ к данным из route.load через сигнал
+  const [currentTopic, setCurrentTopic] = createSignal<Topic | undefined>()
+
+  // 🔧 ПРАВИЛЬНЫЙ ПАТТЕРН: Используем createResource для работы с Promise из route.load
+  const [resolvedData] = createResource(
+    () => routeData(),
+    async (data) => {
+      console.log('[TopicRoute] Resolving route data:', {
+        hasData: !!data,
+        dataType: typeof data,
+        isPromise: data instanceof Promise
+      })
+
+      // Если это Promise, ждем разрешения
+      const resolved = data instanceof Promise ? await data : data
+
+      console.log('[TopicRoute] Resolved route data:', {
+        hasResolved: !!resolved,
+        hasTopic: !!resolved?.topic,
+        topicTitle: resolved?.topic?.title,
+        topicStat: resolved?.topic?.stat
+      })
+
+      return resolved
+    }
+  )
+
+  // Устанавливаем топик когда данные разрешились
+  createEffect(() => {
+    const data = resolvedData()
+    if (data?.topic) {
+      console.log('[TopicRoute] Setting currentTopic:', data.topic.title)
+      setCurrentTopic(data.topic)
+    }
+  })
 
   // Initialize topic data from route loader
   createEffect(() => {
@@ -88,9 +145,19 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
     async (slug) => {
       try {
         const data = routeData()
+        console.log('[TopicRoute] createResource - routeData:', {
+          hasData: !!data,
+          hasArticles: !!data?.articles,
+          articlesCount: data?.articles?.length || 0,
+          hasTopic: !!data?.topic
+        })
+
         if (data?.articles) {
+          console.log('[TopicRoute] Using route.load articles:', data.articles.length)
           return data.articles
         }
+
+        console.log(`[TopicRoute] No route data, fetching articles for "${slug}"`)
         const result = await fetchTopicShouts(slug)
         if (!result) {
           setLoadingError(true)
@@ -114,6 +181,21 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   const [cover, setCover] = createSignal<string>('/logo.png')
   const [viewed, setViewed] = createSignal(false)
   const [topicsAdded, setTopicsAdded] = createSignal(false)
+
+  // 🔧 Установка мета-данных страницы при наличии топика
+  createEffect(() => {
+    const topic = currentTopic()
+    if (topic) {
+      console.log('[TopicRoute] Setting page meta for topic:', topic.title)
+      setTitle(`${t('Discours')} :: ${topic.title}`)
+      setDesc(
+        topic.body
+          ? descFromBody(topic.body)
+          : t('The most interesting publications on the topic', { topicName: topic.title })
+      )
+      setCover(topic.pic ? getFileUrl(topic.pic, { width: 1200 }) : '/logo.png')
+    }
+  })
 
   createEffect(
     on(
@@ -167,7 +249,7 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
         </PageLayout>
       }
     >
-      <Show when={!articles.loading && articles()} fallback={<Loading />}>
+      <Show when={!articles.loading} fallback={<Loading />}>
         <Show when={!articles.error} fallback={<div>Error: {articles.error?.message}</div>}>
           <PageLayout key="topic" title={title()} desc={desc()} cover={cover()} topic={currentTopic() as Topic}>
             <TopicView topic={currentTopic() as Topic} shouts={articles() || []} topicSlug={props.params.slug} />

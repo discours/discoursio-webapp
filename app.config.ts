@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, SolidStartInlineConfig } from '@solidjs/start/config'
-import viteConfig, { isDev } from './vite.config'
+import { config } from 'dotenv'
 
 const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)
 
@@ -10,6 +10,20 @@ const isVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV)
 const isNetlify = Boolean(process.env.NETLIFY)
 const preset = isNetlify ? 'netlify' : isVercel ? 'vercel' : 'node'
 console.info(`[app.config] solid-start preset {> ${preset} <} (VERCEL: ${isVercel})`)
+
+// Загружаем .env файл с выводом информации о статусе
+const envPath = resolve(process.cwd(), '.env')
+if (existsSync(envPath)) {
+  console.log('[app.config] Loading .env file from:', envPath)
+  config({ path: envPath })
+} else {
+  console.warn('[app.config] No .env file found')
+}
+
+import viteConfig, { isDev } from './vite.config'
+
+console.log(`[app.config] vite ${isDev ? 'dev' : 'prod'} mode`)
+console.log('[app.config] connected to api: ', process.env.PUBLIC_CORE_API)
 
 // certs for local development
 const __filename = fileURLToPath(import.meta.url)

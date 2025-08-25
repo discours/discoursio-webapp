@@ -18,7 +18,8 @@ priority: 4
 
 ## 🔄 Base Workflow
 
-DO NOT MAKE any command-line generations, use internal tools
+НИКОГДА: "Теперь запустите", "Давайте запустим" или "Давайте сгенерируем команду" и подобное с генерацией консольных команд!!!
+Только прямое редактирование и анализ кода, только подробный отчёт.
 
 ## 📊 Progress Tracking
 
