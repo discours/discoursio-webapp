@@ -99,7 +99,6 @@ export const loadTopicsByCommunity = (args: QueryGet_Topics_By_CommunityArgs) =>
     try {
       console.log('[loadTopicsByCommunity] Starting API call with args:', args)
       const response = await loader()
-      console.log('[loadTopicsByCommunity] API response:', response)
       const topics = response?.get_topics_by_community || []
       console.log('[loadTopicsByCommunity] Extracted topics:', topics.length, 'topics')
       return topics
@@ -197,7 +196,10 @@ export const loadAuthors = (options: QueryLoad_Authors_ByArgs) => {
   )(options)
 
   return async () => {
+    console.log('[loadAuthors] 🚀 Starting API call with args:', options)
     const response = await loader()
+    // console.log('[loadAuthors] 📡 Raw API response:', response)
+    console.log('[loadAuthors] ✅ Extracted authors:', response?.load_authors_by?.length || 0, 'authors')
     return response?.load_authors_by || []
   }
 }
@@ -236,15 +238,18 @@ export const loadAuthorsSearch = (options: QueryLoad_Authors_SearchArgs) => {
  * Используется для начальной загрузки и кеширования
  */
 export const loadAuthorsAll = () => {
-  const loader = createCacheableLoader<{ load_authors_all: Author[] }, void>(
+  const loader = createCacheableLoader<{ get_authors_all: Author[] }, void>(
     loadAuthorsAllQuery,
     () => ({}),
     true // Включаем кеширование для списка всех авторов
   )(undefined)
 
   return async () => {
+    console.log('[loadAuthorsAll] 🚀 Starting API call...')
     const response = await loader()
-    return response?.load_authors_all || []
+    // console.log('[loadAuthorsAll] 📡 Raw API response:', response)
+    console.log('[loadAuthorsAll] ✅ Extracted authors:', response?.get_authors_all?.length || 0, 'authors')
+    return response?.get_authors_all || []
   }
 }
 

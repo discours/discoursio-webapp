@@ -343,7 +343,6 @@ export const SessionProvider = (props: {
 
         // ✅ Проверяем что author не null перед доступом к свойствам
         if (!author) {
-          console.warn('[loadSessionDataWithClient] Author отсутствует в ответе getSession')
           return undefined
         }
 

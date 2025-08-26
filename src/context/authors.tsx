@@ -47,6 +47,9 @@ type AuthorsContextType = {
   searchAuthorsState: Accessor<AuthorsSearchState>
   loadAuthorsSearchResults: (text: string, limit?: number, offset?: number) => Promise<void>
   resetAuthorsSearch: () => void
+  // ✅ Простые геттеры для AllAuthorsView - используем существующие данные
+  allAuthors: Accessor<Author[]>  // Все авторы без статистики (из entities)
+  isLoading: Accessor<boolean>
 }
 
 const AuthorsContext = createContext<AuthorsContextType>({} as AuthorsContextType)
@@ -61,6 +64,9 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
 
   // state for authors search
   const [searchAuthorsState, setSearchAuthorsState] = createSignal<AuthorsSearchState>(emptySearch)
+  
+  // ✅ Простой флаг загрузки
+  const [isLoading, setIsLoading] = createSignal(false)
 
   const setAuthorsSort = (stat: string) => setSortBy(() => byStat(stat) as SortFunction<Author>)
 
@@ -78,12 +84,26 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
   )
 
   const addAuthors = (newAuthors: Author[]) => {
-    // console.debug('[context.authors] storing new authors:', newAuthors)
     setAuthors((prevAuthors) => {
       const updatedAuthors = { ...prevAuthors }
       Array.isArray(newAuthors) &&
         newAuthors.forEach((author) => {
-          updatedAuthors[author.slug] = author
+          // ✅ ОБЪЕДИНЯЕМ данные: сохраняем существующие поля + добавляем новые
+          const existingAuthor = updatedAuthors[author.slug]
+          if (existingAuthor) {
+            // Объединяем существующего автора с новыми данными
+            updatedAuthors[author.slug] = {
+              ...existingAuthor,
+              // ✅ Особое внимание к статистике - объединяем stat если есть
+              stat: author.stat ? {
+                ...existingAuthor.stat,
+                ...author.stat
+              } : existingAuthor.stat
+            }
+          } else {
+            // Новый автор - просто добавляем
+            updatedAuthors[author.slug] = author
+          }
         })
       return updatedAuthors
     })
@@ -92,7 +112,20 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
   const addAuthor = (newAuthor: Author) => {
     setAuthors((prevAuthors) => {
       const updatedAuthors = { ...prevAuthors }
-      updatedAuthors[newAuthor.slug] = newAuthor
+      // ✅ ОБЪЕДИНЯЕМ данные и для одного автора
+      const existingAuthor = updatedAuthors[newAuthor.slug]
+      if (existingAuthor) {
+        updatedAuthors[newAuthor.slug] = {
+          ...existingAuthor,
+          ...newAuthor,
+          stat: newAuthor.stat ? {
+            ...existingAuthor.stat,
+            ...newAuthor.stat
+          } : existingAuthor.stat
+        }
+      } else {
+        updatedAuthors[newAuthor.slug] = newAuthor
+      }
       return updatedAuthors
     })
   }
@@ -260,7 +293,10 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
     // New search methods
     searchAuthorsState,
     loadAuthorsSearchResults,
-    resetAuthorsSearch
+    resetAuthorsSearch,
+    // ✅ Простые геттеры для AllAuthorsView
+    allAuthors: () => Object.values(authorsEntities()), // Все авторы из entities
+    isLoading
   }
 
   return <AuthorsContext.Provider value={contextValue}>{props.children}</AuthorsContext.Provider>

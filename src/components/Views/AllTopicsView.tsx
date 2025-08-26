@@ -25,6 +25,17 @@ export const TabNavigator = ({ setLayout, setSearchQuery }: TabNavigatorProps) =
 
   const layouts = [...TOPICS_PAGE_LAYOUTS]
 
+  const getLayoutName = (layout: string) => {
+    switch (layout) {
+      case 'shouts':
+        return t('By shouts')
+      case 'authors':
+        return t('By authors')
+      default:
+        return t('By title')
+    }
+  }
+
   return (
     <div class="offset-md-5">
       <div class="row">
@@ -42,7 +53,7 @@ export const TabNavigator = ({ setLayout, setSearchQuery }: TabNavigatorProps) =
                   onClick={() => setLayout(layout)}
                 >
                   <A href={`/topic?by=${layout}`}>
-                    <span class="linkReplacement">{t(`By ${layout}`)}</span>
+                    <span class="linkReplacement">{getLayoutName(layout)}</span>
                   </A>
                 </li>
               )}
@@ -60,8 +71,8 @@ export const TabNavigator = ({ setLayout, setSearchQuery }: TabNavigatorProps) =
 }
 
 type Props = {
-  topics: Topic[]
   isLoaded: boolean
+  layout: string
 }
 
 export const ABC = {
@@ -71,16 +82,18 @@ export const ABC = {
 
 export const AllTopicsView = (props: Props) => {
   const { lang } = useLocalize()
-  const { topicEntities } = useTopics()
+  const { topicEntities, sortedTopics } = useTopics()
   const alphabet = createMemo(() => ABC[lang()] || ABC['ru'])
-  const [searchParams] = useSearchParams<{ by?: string }>()
-  const [layout, setLayout] = createSignal(searchParams.by || 'shouts')
+  const [layout, setLayout] = createSignal(props.layout || 'shouts')
   const [searchQuery, setSearchQuery] = createSignal('')
 
   // Watch for changes in the URL and update the layout state
   createEffect(() => {
-    setLayout(searchParams.by || 'shouts')
+    setLayout(props.layout || 'shouts')
   })
+
+  // ✅ Получаем данные из контекста вместо props (простое обращение)
+  const topics = () => sortedTopics() || []
 
   // Функция для получения топика со статистикой из контекста
   const getTopicWithStat = (topic: Topic): Topic => {
@@ -95,17 +108,17 @@ export const AllTopicsView = (props: Props) => {
 
   // Memo to store topics grouped by the first letter and sorted by the alphabet
   const byLetterFiltered = createMemo<{ [letter: string]: Topic[] }>(() => {
-    if (!props.topics || !Array.isArray(props.topics)) return {}
+    if (!topics() || !Array.isArray(topics())) return {}
 
     // Применяем поиск только на вкладке 'title'
     const filteredTopics =
       layout() === 'title' && searchQuery().trim()
-        ? props.topics.filter(
+        ? topics().filter(
             (topic) =>
               topic.title?.toLowerCase().includes(searchQuery().toLowerCase()) ||
               topic.slug?.toLowerCase().includes(searchQuery().toLowerCase())
           )
-        : props.topics
+        : topics()
 
     const groupedTopics =
       filteredTopics?.reduce(
@@ -205,7 +218,7 @@ export const AllTopicsView = (props: Props) => {
   // Component to render the sorted list of topics - используется для вкладок shouts и authors
   const TopicsSortedList = () => (
     <div class={clsx(styles.TopicsList)}>
-      <For each={props.topics}>
+      <For each={topics()}>
         {(topic) => (
           <div class="row">
             <div class="col-lg-20 col-xl-18">
@@ -227,12 +240,9 @@ export const AllTopicsView = (props: Props) => {
       <Show when={props.isLoaded} fallback={<Loading />}>
         <TabNavigator setLayout={setLayout} setSearchQuery={setSearchQuery} />
         <div class="offset-md-5">
-          <Show when={layout() === 'title'}>
+          <Show when={layout() === 'title'} fallback={<TopicsSortedList />}>
             <AbcNavigator />
             <AbcTopicsList />
-          </Show>
-          <Show when={layout() === 'authors' || layout() === 'shouts'}>
-            <TopicsSortedList />
           </Show>
         </div>
       </Show>

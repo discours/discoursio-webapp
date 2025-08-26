@@ -1,28 +1,39 @@
 import { A, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js'
-import { Loading } from '~/components/_shared/Loading'
-import { SearchField } from '~/components/_shared/SearchField'
+import { For, Show, createEffect, createMemo, createSignal } from 'solid-js'
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
-import { useAuthors } from '~/context/authors'
+import { Loading } from '~/components/_shared/Loading'
+import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import { SearchField } from '~/components/_shared/SearchField'
 import { useLocalize } from '~/context/localize'
-import type { Author } from '~/graphql/generated/graphql'
+import { useAuthors } from '~/context/authors'
 import { authorLetterReduce } from '~/intl/translate'
-import styles from '~/styles/views/AllAuthors.module.scss'
 import { scrollHandler } from '~/utils/scroll'
+import { loadAuthors } from '~/graphql/api/public'
+import styles from '~/styles/views/AllAuthors.module.scss'
+import { Author } from '~/graphql/generated/graphql'
 
-const AUTHORS_PAGE_LAYOUTS = ['shouts', 'followers', 'name']
+const AUTHORS_PAGE_LAYOUTS = ['shouts', 'followers', 'name'] as const
+type LayoutType = typeof AUTHORS_PAGE_LAYOUTS[number]
 
 type TabNavigatorProps = {
-  setLayout: (layout: string) => void
   setSearchQuery: (query: string) => void
 }
 
-export const TabNavigator = ({ setLayout, setSearchQuery }: TabNavigatorProps) => {
+export const TabNavigator = ({ setSearchQuery }: TabNavigatorProps) => {
   const { t } = useLocalize()
   const [searchParams] = useSearchParams<{ by?: string }>()
 
-  const layouts = [...AUTHORS_PAGE_LAYOUTS]
+  const getLayoutName = (layout: string) => {
+    switch (layout) {
+      case 'shouts':
+        return t('By shouts')
+      case 'followers':
+        return t('By followers')
+      default:
+        return t('By name')
+    }
+  }
 
   return (
     <div class="offset-md-5">
@@ -31,17 +42,15 @@ export const TabNavigator = ({ setLayout, setSearchQuery }: TabNavigatorProps) =
           <h1>{t('Authors')}</h1>
           <p>{t('Subscribe who you like to tune your personal feed')}</p>
           <ul class={clsx('view-switcher')}>
-            <For each={layouts}>
-              {(layout) => (
+            <For each={AUTHORS_PAGE_LAYOUTS}>
+              {(layout: LayoutType) => (
                 <li
                   class={clsx({
-                    'view-switcher__item--selected':
-                      searchParams?.by === layout || (!searchParams?.by && layout === 'shouts')
+                    'view-switcher__item--selected': searchParams?.by === layout || (!searchParams?.by && layout === 'shouts')
                   })}
-                  onClick={() => setLayout(layout)}
                 >
                   <A href={`/author?by=${layout}`}>
-                    <span class="linkReplacement">{t(`By ${layout}`)}</span>
+                    <span class="linkReplacement">{getLayoutName(layout)}</span>
                   </A>
                 </li>
               )}
@@ -59,10 +68,9 @@ export const TabNavigator = ({ setLayout, setSearchQuery }: TabNavigatorProps) =
 }
 
 type Props = {
-  authors: Author[]
+  authors: Author[] // authorsByName из роута
   authorsByFollowers?: Author[]
   authorsByShouts?: Author[]
-  isLoaded: boolean
 }
 
 export const ABC = {
@@ -72,140 +80,114 @@ export const ABC = {
 
 export const AllAuthorsView = (props: Props) => {
   const { lang } = useLocalize()
-  const { authorsEntities } = useAuthors()
+  const { allAuthors } = useAuthors()
   const alphabet = createMemo(() => ABC[lang()] || ABC['ru'])
   const [searchParams] = useSearchParams<{ by?: string }>()
-  const [authors, setAuthors] = createSignal<Author[]>([])
-  const [layout, setLayout] = createSignal(searchParams.by || 'shouts')
   const [searchQuery, setSearchQuery] = createSignal('')
 
-  // Watch for changes in the URL and update the layout state
-  createEffect(() => {
-    setLayout(searchParams.by || 'shouts')
-  })
+  // ✅ Простая проверка layout
+  const layout = () => searchParams.by || 'shouts'
 
-  // Update the authors signal based on layout
-  createEffect(() => {
-    if (layout() === 'followers') {
-      setAuthors(props.authorsByFollowers || [])
-    } else if (layout() === 'shouts') {
-      setAuthors(props.authorsByShouts || [])
-    } else {
-      setAuthors(props.authors || [])
-    }
-  })
+  console.log('[AllAuthorsView] layout:', layout(), '| Props counts - authors:', props.authors?.length || 0, 'followers:', props.authorsByFollowers?.length || 0, 'shouts:', props.authorsByShouts?.length || 0)
 
-  // Watch for changes in props and update the authors signal
-  createEffect(
-    on(
-      () => [props.authors, props.authorsByFollowers, props.authorsByShouts],
-      ([newAuthors, newAuthorsByFollowers, newAuthorsByShouts]) => {
-        if (layout() === 'followers') {
-          setAuthors(newAuthorsByFollowers || [])
-        } else if (layout() === 'shouts') {
-          setAuthors(newAuthorsByShouts || [])
-        } else {
-          setAuthors(newAuthors || [])
-        }
+  // ✅ Простые данные для каждой вкладки
+  const getAuthorsForLayout = () => {
+    const result = (() => {
+      switch (layout()) {
+        case 'name':
+          // ✅ Используем props.authors как fallback для гидратации
+          return allAuthors().length > 0 ? allAuthors() : props.authors || []
+        case 'followers':
+          return props.authorsByFollowers || []
+        case 'shouts':
+          return props.authorsByShouts || []
+        default:
+          return props.authorsByShouts || []
       }
-    )
-  )
-
-  // Функция для получения автора со статистикой из контекста
-  const getAuthorWithStat = (author: Author): Author => {
-    const contextAuthor = authorsEntities()[author.slug]
-    // Если в контексте есть автор со статистикой, используем его
-    if (contextAuthor?.stat) {
-      return contextAuthor
-    }
-    // Иначе возвращаем исходного автора
-    return author
+    })()
+    
+    console.log('[getAuthorsForLayout] layout:', layout(), '| result count:', result.length)
+    return result
   }
 
-  // Memo to store authors grouped by the first letter and sorted by the alphabet
-  const byLetterFiltered = createMemo<{ [letter: string]: Author[] }>(() => {
-    if (!authors()) return {}
+  // ✅ Простая группировка по алфавиту только для name
+  const getGroupedByLetter = () => {
+    if (layout() !== 'name') return {}
+    
+    const authors = getAuthorsForLayout()
+    if (!authors.length) return {}
 
-    // Применяем поиск только на вкладке 'name'
-    const filteredAuthors =
-      layout() === 'name' && searchQuery().trim()
-        ? authors().filter(
-            (author) =>
-              author.name?.toLowerCase().includes(searchQuery().toLowerCase()) ||
-              author.slug?.toLowerCase().includes(searchQuery().toLowerCase())
-          )
-        : authors()
+    // Применяем поиск
+    const filteredAuthors = searchQuery().trim()
+      ? authors.filter((author: Author) =>
+          author.name?.toLowerCase().includes(searchQuery().toLowerCase()) ||
+          author.slug?.toLowerCase().includes(searchQuery().toLowerCase())
+        )
+      : authors
 
-    const groupedAuthors =
-      filteredAuthors?.reduce(
-        (acc, author: Author) => authorLetterReduce(acc, author, lang()),
-        {} as { [letter: string]: Author[] }
-      ) || {}
+    const grouped = filteredAuthors.reduce((acc: { [letter: string]: Author[] }, author: Author) => {
+      return authorLetterReduce(acc, author, lang())
+    }, {} as { [letter: string]: Author[] })
 
-    // Sort the keys based on the alphabet
-    const sortedGroupedAuthors: { [letter: string]: Author[] } = {}
-    for (const letter of alphabet()) {
-      if (groupedAuthors[letter]) {
-        sortedGroupedAuthors[letter] = groupedAuthors[letter]
-      }
-    }
+    return grouped
+  }
 
-    return sortedGroupedAuthors
-  })
-
-  // Component to render the alphabet navigator
-  const AbcNavigator = () => (
-    <div class="row">
-      <div class="col-lg-20 col-xl-18">
-        <ul class={clsx('nodash', styles.alphabet)}>
-          <For each={[...(alphabet() || [])]}>
-            {(letter, index) => (
-              <li>
-                <Show when={letter in byLetterFiltered()} fallback={letter}>
-                  <A
-                    href={`/author?by=name#letter-${index()}`}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      scrollHandler(`letter-${index()}`)
-                    }}
-                  >
-                    {letter}
-                  </A>
-                </Show>
-              </li>
-            )}
-          </For>
-        </ul>
+  // ✅ Простой компонент алфавитного навигатора
+  const AbcNavigator = () => {
+    const grouped = getGroupedByLetter()
+    
+    return (
+      <div class="row">
+        <div class="col-lg-20 col-xl-18">
+          <ul class={clsx('nodash', styles.alphabet)}>
+            <For each={alphabet().split('')}>
+              {(letter, index) => (
+                <li>
+                  <Show when={letter in grouped} fallback={letter}>
+                    <A
+                      href={`/author?by=name#letter-${index()}`}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        scrollHandler(`letter-${index()}`)
+                      }}
+                    >
+                      {letter}
+                    </A>
+                  </Show>
+                </li>
+              )}
+            </For>
+          </ul>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
-  // Component to render the list of authors grouped by the first letter of their name
+  // ✅ Простой компонент списка авторов по алфавиту
   const AbcAuthorsList = () => {
+    const grouped = getGroupedByLetter()
+    
     return (
       <For each={alphabet().split('')}>
         {(letter) => (
-          <Show when={byLetterFiltered()[letter]}>
+          <Show when={grouped[letter]}>
             <div class={clsx(styles.group, 'group')}>
-              <h2 id={`letter-${alphabet()?.indexOf(letter) || ''}`}>{letter}</h2>
+              <h2 id={`letter-${alphabet().indexOf(letter)}`}>{letter}</h2>
               <div class="container">
                 <div class="row">
                   <div class="col-lg-20">
                     <div class="row">
-                      <For each={byLetterFiltered()[letter]}>
-                        {(author) => {
-                          const authorWithStat = getAuthorWithStat(author)
-                          return (
-                            <div class={clsx(styles.topic, 'topic col-sm-12 col-md-8')}>
-                              <div class="topic-title">
-                                <A href={`/@${author.slug}`}>{author.name}</A>
-                                <Show when={authorWithStat.stat?.shouts && (authorWithStat.stat?.shouts || 0) > 0}>
-                                  <span class={styles.articlesCounter}>{authorWithStat.stat?.shouts || 0}</span>
-                                </Show>
-                              </div>
+                      <For each={grouped[letter]}>
+                        {(author) => (
+                          <div class={clsx(styles.topic, 'topic col-sm-12 col-md-8')}>
+                            <div class="topic-title">
+                              <A href={`/@${author.slug}`}>{author.name}</A>
+                              <Show when={author.stat?.shouts && (author.stat?.shouts || 0) > 0}>
+                                <span class={styles.articlesCounter}>{author.stat?.shouts || 0}</span>
+                              </Show>
                             </div>
-                          )
-                        }}
+                          </div>
+                        )}
                       </For>
                     </div>
                   </div>
@@ -218,40 +200,43 @@ export const AllAuthorsView = (props: Props) => {
     )
   }
 
-  // Component to render the sorted list of authors
-  const AuthorsSortedList = (props: { authors: Author[] }) => (
-    <div class={clsx(styles.AuthorsList)}>
-      <For each={props.authors}>
-        {(author) => (
-          <div class="row">
-            <div class="col-lg-20 col-xl-18">
-              <AuthorBadge author={author} />
+  // ✅ Простой компонент списка авторов для followers/shouts
+  const AuthorsSortedList = () => {
+    const authors = getAuthorsForLayout()
+    
+    return (
+      <div class={clsx(styles.AuthorsList)}>
+        <For each={authors}>
+          {(author: Author) => (
+            <div class="row">
+              <div class="col-lg-20 col-xl-18">
+                <AuthorBadge author={author} />
+              </div>
             </div>
-          </div>
-        )}
-      </For>
-      <div class="row">
-        <div class="col-lg-20 col-xl-18">
-          <div class={styles.action} />
-        </div>
+          )}
+        </For>
       </div>
-    </div>
-  )
+    )
+  }
+
+
+
+
+
+
 
   return (
     <>
-      <Show when={props.isLoaded} fallback={<Loading />}>
-        <TabNavigator setLayout={setLayout} setSearchQuery={setSearchQuery} />
-        <div class="offset-md-5">
-          <Show when={layout() === 'name'}>
-            <AbcNavigator />
-            <AbcAuthorsList />
-          </Show>
-          <Show when={layout() === 'followers' || layout() === 'shouts'}>
-            <AuthorsSortedList authors={authors()} />
-          </Show>
-        </div>
-      </Show>
+      <TabNavigator setSearchQuery={setSearchQuery} />
+      <div class="offset-md-5">
+        {/* ✅ Простая логика отображения */}
+        <Show when={layout() === 'name'} fallback={
+          <AuthorsSortedList />
+        }>
+          <AbcNavigator />
+          <AbcAuthorsList />
+        </Show>
+      </div>
     </>
   )
 }

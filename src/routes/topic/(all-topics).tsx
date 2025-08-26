@@ -15,9 +15,9 @@ import { byTopicStatDesc } from '~/utils/sort'
 const TOPICS_PER_PAGE = 50
 
 // Function to fetch topics with pagination using get_topics_by_community
-const fetchTopicsWithPagination = async (sortBy: string, offset = 0, limit = TOPICS_PER_PAGE) => {
+const fetchTopics = async (sortBy: string, offset = 0, limit = TOPICS_PER_PAGE) => {
   try {
-    console.log(`[fetchTopicsWithPagination] Requesting ${sortBy} topics, offset: ${offset}, limit: ${limit}`)
+    console.log(`[fetchTopics] Requesting ${sortBy} topics, offset: ${offset}, limit: ${limit}`)
 
     const options: QueryGet_Topics_By_CommunityArgs = {
       community_id: 1,
@@ -29,22 +29,22 @@ const fetchTopicsWithPagination = async (sortBy: string, offset = 0, limit = TOP
     const resp = await defaultClient.query(loadTopicsByCommunityQuery, options).toPromise()
     const result = resp?.data?.get_topics_by_community as Topic[]
 
-    console.log(`[fetchTopicsWithPagination] API returned ${result?.length || 0} topics for ${sortBy}`)
+    console.log(`[fetchTopics] API returned ${result?.length || 0} topics for ${sortBy}`)
 
     // Если нет результатов с первого запроса, используем fallback
     if (!result?.length && offset === 0) {
-      console.log('[fetchTopicsWithPagination] No results from community API, falling back to topics-all')
+      console.log('[fetchTopics] No results from community API, falling back to topics-all')
       const fallbackLoader = loadTopics()
       const fallbackTopics = await fallbackLoader()
       const sortedTopics = (fallbackTopics || []).sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
       const sliced = sortedTopics.slice(offset, offset + limit)
-      console.log(`[fetchTopicsWithPagination] Fallback returned ${sliced.length} topics`)
+      console.log(`[fetchTopics] Fallback returned ${sliced.length} topics`)
       return sliced
     }
 
     // Сортируем результат по указанному критерию
     const sortedResult = (result || []).sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
-    console.log(`[fetchTopicsWithPagination] Sorted result: ${sortedResult.length} topics`)
+    console.log(`[fetchTopics] Sorted result: ${sortedResult.length} topics`)
     return sortedResult
   } catch (error) {
     console.error('Error fetching topics with pagination:', error)
@@ -67,82 +67,14 @@ type AllTopicsData = {
 
 export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
   const { t } = useLocalize()
-  const { addTopics } = useTopics()
-  const [titleTopics, setTitleTopics] = createSignal<Topic[]>([])
-  const [authorsTopics, setAuthorsTopics] = createSignal<Topic[]>([])
-  const [shoutsTopics, setShoutsTopics] = createSignal<Topic[]>([])
-  const [isLoading, setIsLoading] = createSignal(false)
-
-  // Специальная загрузка для вкладки 'title' - все топики сразу без пагинации
+  const { setTopicsSort } = useTopics()
+  
+  // ✅ Устанавливаем сортировку в контексте на основе URL
   createEffect(() => {
     const layout = props.location.query.by || 'shouts'
-
-    if (layout === 'title' && titleTopics().length === 0) {
-      const loadTitleTopics = async () => {
-        setIsLoading(true)
-        try {
-          const result = (await loadTopics()()) || []
-          setTitleTopics(result)
-          addTopics(result)
-        } catch (error) {
-          console.error('Error loading topics for title layout:', error)
-        } finally {
-          setIsLoading(false)
-        }
-      }
-      void loadTitleTopics()
-    }
+    console.log('[AllTopicsPage] Setting topics sort to:', layout)
+    setTopicsSort(layout as string)
   })
-
-  // Function to load more topics for authors layout
-  const loadMoreAuthors = async (offset: number): Promise<Topic[]> => {
-    try {
-      console.log('[LoadMoreAuthors] Loading from offset:', offset)
-      const result = await fetchTopicsWithPagination('authors', offset, TOPICS_PER_PAGE)
-      console.log('[LoadMoreAuthors] Received:', result.length, 'items')
-
-      if (result && result.length > 0) {
-        // Добавляем топики в контекст для статистики
-        addTopics(result)
-        // Обновляем локальный стейт для отображения
-        if (offset === 0) {
-          setAuthorsTopics(result)
-        } else {
-          setAuthorsTopics((prev) => [...prev, ...result])
-        }
-      }
-
-      return result || []
-    } catch (error) {
-      console.error('Error loading more topics by authors:', error)
-      return []
-    }
-  }
-
-  // Function to load more topics for shouts layout
-  const loadMoreShouts = async (offset: number): Promise<Topic[]> => {
-    try {
-      console.log('[LoadMoreShouts] Loading from offset:', offset)
-      const result = await fetchTopicsWithPagination('shouts', offset, TOPICS_PER_PAGE)
-      console.log('[LoadMoreShouts] Received:', result.length, 'items')
-
-      if (result && result.length > 0) {
-        // Добавляем топики в контекст для статистики
-        addTopics(result)
-        // Обновляем локальный стейт для отображения
-        if (offset === 0) {
-          setShoutsTopics(result)
-        } else {
-          setShoutsTopics((prev) => [...prev, ...result])
-        }
-      }
-
-      return result || ([] as Topic[])
-    } catch (error) {
-      console.error('Error loading more topics by shouts:', error)
-      return []
-    }
-  }
 
   const currentLayout = () => props.location.query.by || 'shouts'
 
@@ -152,31 +84,11 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
       title={`${t('Discours')} :: ${t('All topics')}`}
       desc="All topics of the editorial community"
     >
-      <Show when={currentLayout() === 'authors'}>
-        <LoadMoreWrapper
-          loadFunction={loadMoreAuthors as (offset: number) => Promise<LoadMoreItems>}
-          pageSize={TOPICS_PER_PAGE}
-          useScrollTrigger={false}
-        >
-          <AllTopicsView isLoaded={true} topics={authorsTopics()} />
-        </LoadMoreWrapper>
-      </Show>
-
-      <Show when={currentLayout() === 'shouts'}>
-        <LoadMoreWrapper
-          loadFunction={loadMoreShouts as (offset: number) => Promise<LoadMoreItems>}
-          pageSize={TOPICS_PER_PAGE}
-          useScrollTrigger={false}
-        >
-          <AllTopicsView isLoaded={true} topics={shoutsTopics()} />
-        </LoadMoreWrapper>
-      </Show>
-
-      <Show when={currentLayout() === 'title'}>
-        <Show when={!isLoading()} fallback={<Loading />}>
-          <AllTopicsView isLoaded={!isLoading()} topics={titleTopics()} />
-        </Show>
-      </Show>
+      {/* ✅ Простой роут - компонент получает данные из контекста */}
+      <AllTopicsView 
+        isLoaded={true} 
+        layout={currentLayout() as string} 
+      />
     </PageLayout>
   )
 }

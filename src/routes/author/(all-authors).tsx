@@ -1,41 +1,70 @@
 import { RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { createEffect, createSignal, Show } from 'solid-js'
-import { Loading } from '~/components/_shared/Loading'
-import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import { createEffect, createResource } from 'solid-js'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { AllAuthorsView } from '~/components/Views/AllAuthorsView'
-import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
+import { useAuthors } from '~/context/authors'
 import { loadAuthors, loadAuthorsAll } from '~/graphql/api/public'
-import { Author, AuthorsBy } from '~/graphql/generated/graphql'
+import { Author } from '~/graphql/generated/graphql'
 
 const AUTHORS_PER_PAGE = 20
 
-// Function to fetch authors with a specific stat (followers or shouts)
-const fetchAuthorsWithStat = async (offset: number, order?: string, limit = AUTHORS_PER_PAGE) => {
-  const by: AuthorsBy = { order }
-  const authorsFetcher = loadAuthors({ by, offset, limit })
-  const result = await authorsFetcher()
-  return result
-}
-
-// Route definition - загружаем только базовые данные для текущей вкладки
+// ✅ Route definition - загружаем только начальные данные для SSR
 export const route = {
   load: async ({ location: { query } }) => {
     const layout = query.by || 'shouts'
+    console.log('[route.load] 🔍 === ДЕТАЛЬНАЯ ОТЛАДКА ROUTE.LOAD ===')
+    console.log('[route.load] Loading initial authors data for layout:', layout)
 
-    // Загружаем только нужные данные для текущей вкладки
-    if (layout === 'name') {
-      // Для алфавитного списка - все авторы без статистики
-      return {
-        authors: (await loadAuthorsAll()()) || [],
+    // ✅ Загружаем ВСЕ три выборки данных параллельно для стабильной гидратации:
+    // 1. По алфавиту (name) - используем loadAuthorsAll для полного списка без статистики
+    // 2. По количеству фолловеров - топ 20 для режима "followers" 
+    // 3. По количеству публикаций - топ 20 для режима "shouts"
+    
+    console.log('[route.load] 🚀 Начинаем загрузку данных...')
+    
+    try {
+      const [authorsByName, authorsByFollowers, authorsByShouts] = await Promise.all([
+        loadAuthorsAll()().then(result => {
+          console.log('[route.load] ✅ loadAuthorsAll результат:', result?.length || 0, 'авторов')
+          return result || []
+        }),
+        loadAuthors({ by: { order: 'followers' }, limit: AUTHORS_PER_PAGE, offset: 0 })().then(result => {
+          console.log('[route.load] ✅ loadAuthors followers результат:', result?.length || 0, 'авторов')
+          return result || []
+        }),
+        loadAuthors({ by: { order: 'shouts' }, limit: AUTHORS_PER_PAGE, offset: 0 })().then(result => {
+          console.log('[route.load] ✅ loadAuthors shouts результат:', result?.length || 0, 'авторов')
+          return result || []
+        })
+      ])
+
+      console.log('[route.load] 📊 Итоговые данные:', {
+        authors: authorsByName.length,
+        authorsByFollowers: authorsByFollowers.length,
+        authorsByShouts: authorsByShouts.length
+      })
+
+      const result = {
+        authors: authorsByName,           // ← authors для алфавитного списка
+        authorsByFollowers, 
+        authorsByShouts,
         currentLayout: layout
       }
-    } else {
-      // Для сортировки по статистике - авторы со статистикой
-      const order = layout === 'followers' ? 'followers' : 'shouts'
+      
+      console.log('[route.load] 🔍 === ВОЗВРАЩАЕМЫЕ ДАННЫЕ ===')
+      // console.log('[route.load] Результат:', result)
+      console.log('[route.load] authors.length:', result.authors?.length)
+      console.log('[route.load] authorsByFollowers.length:', result.authorsByFollowers?.length)
+      console.log('[route.load] authorsByShouts.length:', result.authorsByShouts?.length)
+      
+      return result
+    } catch (error) {
+      console.error('[route.load] ❌ Ошибка загрузки данных:', error)
       return {
-        authorsByLayout: (await fetchAuthorsWithStat(0, order, AUTHORS_PER_PAGE)) || [],
+        authors: [],                    // ← Исправляем на authors
+        authorsByFollowers: [],
+        authorsByShouts: [],
         currentLayout: layout
       }
     }
@@ -43,99 +72,57 @@ export const route = {
 } satisfies RouteDefinition
 
 type AllAuthorsData = {
-  authors?: Author[]
-  authorsByLayout?: Author[]
+  authors: Author[]                    // ← Переименовываем в authors
+  authorsByFollowers: Author[]
+  authorsByShouts: Author[]
   currentLayout: string
 }
 
 export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>) {
   const { t } = useLocalize()
   const { addAuthors } = useAuthors()
-  const [authors, setAuthors] = createSignal<Author[]>([])
-  const [authorsByFollowers, setAuthorsByFollowers] = createSignal<Author[]>([])
-  const [authorsByShouts, setAuthorsByShouts] = createSignal<Author[]>([])
-  const [isLoading, setIsLoading] = createSignal(false)
 
-  // Инициализируем данные из route.load
-  createEffect(() => {
-    if (props.data) {
-      if (props.data.authors) {
-        setAuthors(props.data.authors)
-        addAuthors(props.data.authors)
-      }
-      if (props.data.authorsByLayout) {
-        if (props.data.currentLayout === 'followers') {
-          setAuthorsByFollowers(props.data.authorsByLayout)
-        } else {
-          setAuthorsByShouts(props.data.authorsByLayout)
+  // ✅ Отладка - что приходит в компонент
+  console.log('[AllAuthorsPage] 🔍 === ДЕТАЛЬНАЯ ОТЛАДКА КОМПОНЕНТА ===')
+  console.log('[AllAuthorsPage] props.data:', props.data)
+  console.log('[AllAuthorsPage] typeof props.data:', typeof props.data)
+  console.log('[AllAuthorsPage] props.data instanceof Promise:', props.data instanceof Promise)
+  
+  // ✅ ИСПРАВЛЕНИЕ: Используем createResource вместо async createEffect для правильной гидрации
+  const [data] = createResource(
+    () => props.data,
+    async (dataOrPromise) => {
+      if (dataOrPromise instanceof Promise) {
+        console.log('[AllAuthorsPage] 🔄 Ожидаем Promise...')
+        try {
+          const resolvedData = await dataOrPromise
+          console.log('[AllAuthorsPage] ✅ Promise разрешен:', resolvedData)
+          return resolvedData
+        } catch (error) {
+          console.error('[AllAuthorsPage] ❌ Ошибка Promise:', error)
+          throw error
         }
-        addAuthors(props.data.authorsByLayout)
+      } else {
+        console.log('[AllAuthorsPage] 🔄 props.data не Promise, возвращаем напрямую')
+        return dataOrPromise
       }
+    },
+    { 
+      // ✅ Если данные не Promise, используем как начальные для SSR
+      initialValue: props.data instanceof Promise ? undefined : props.data
+    }
+  )
+
+  // ✅ Инициализируем контекст данными из роута
+  createEffect(() => {
+    const resolvedData = data()
+    if (resolvedData?.authors?.length) {
+      console.log('[AllAuthorsPage] ✅ Добавляем авторов в контекст:', resolvedData.authors.length)
+      addAuthors(resolvedData.authors)
+    } else {
+      console.log('[AllAuthorsPage] ⏳ Ожидаем данные...')
     }
   })
-
-  // Динамическая загрузка при смене вкладки
-  createEffect(() => {
-    const layout = props.location.query.by || 'shouts'
-
-    const loadDataForLayout = async () => {
-      setIsLoading(true)
-
-      try {
-        if (layout === 'name' && authors().length === 0) {
-          const result = (await loadAuthorsAll()()) || []
-          setAuthors(result)
-          addAuthors(result)
-        } else if (layout === 'followers' && authorsByFollowers().length === 0) {
-          const result = (await fetchAuthorsWithStat(0, 'followers', AUTHORS_PER_PAGE)) || []
-          setAuthorsByFollowers(result)
-          addAuthors(result)
-        } else if (layout === 'shouts' && authorsByShouts().length === 0) {
-          const result = (await fetchAuthorsWithStat(0, 'shouts', AUTHORS_PER_PAGE)) || []
-          setAuthorsByShouts(result)
-          addAuthors(result)
-        }
-      } catch (error) {
-        console.error('Error loading authors for layout:', layout, error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    void loadDataForLayout()
-  })
-
-  // Function to load more authors for followers layout
-  const loadMoreFollowers = async (offset: number): Promise<LoadMoreItems> => {
-    try {
-      const result = await fetchAuthorsWithStat(offset, 'followers', AUTHORS_PER_PAGE)
-      if (result && result.length > 0) {
-        setAuthorsByFollowers((prev) => [...prev, ...result])
-        addAuthors(result) // Добавляем в контекст
-      }
-      return result || []
-    } catch (error) {
-      console.error('Error loading more followers:', error)
-      return []
-    }
-  }
-
-  // Function to load more authors for shouts layout
-  const loadMoreShouts = async (offset: number): Promise<LoadMoreItems> => {
-    try {
-      const result = await fetchAuthorsWithStat(offset, 'shouts', AUTHORS_PER_PAGE)
-      if (result && result.length > 0) {
-        setAuthorsByShouts((prev) => [...prev, ...result])
-        addAuthors(result) // Добавляем в контекст
-      }
-      return result || []
-    } catch (error) {
-      console.error('Error loading more shouts:', error)
-      return []
-    }
-  }
-
-  const currentLayout = () => props.location.query.by || 'shouts'
 
   return (
     <PageLayout
@@ -143,38 +130,11 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
       title={`${t('Discours')} :: ${t('All authors')}`}
       desc="List of authors of the open editorial community"
     >
-      <Show when={!isLoading()} fallback={<Loading />}>
-        <Show when={currentLayout() === 'followers'}>
-          <LoadMoreWrapper loadFunction={loadMoreFollowers} pageSize={AUTHORS_PER_PAGE} useScrollTrigger={false}>
-            <AllAuthorsView
-              isLoaded={!isLoading()}
-              authors={authors()}
-              authorsByFollowers={authorsByFollowers()}
-              authorsByShouts={authorsByShouts()}
-            />
-          </LoadMoreWrapper>
-        </Show>
-
-        <Show when={currentLayout() === 'shouts'}>
-          <LoadMoreWrapper loadFunction={loadMoreShouts} pageSize={AUTHORS_PER_PAGE} useScrollTrigger={false}>
-            <AllAuthorsView
-              isLoaded={!isLoading()}
-              authors={authors()}
-              authorsByFollowers={authorsByFollowers()}
-              authorsByShouts={authorsByShouts()}
-            />
-          </LoadMoreWrapper>
-        </Show>
-
-        <Show when={currentLayout() === 'name'}>
-          <AllAuthorsView
-            isLoaded={!isLoading()}
-            authors={authors()}
-            authorsByFollowers={authorsByFollowers()}
-            authorsByShouts={authorsByShouts()}
-          />
-        </Show>
-      </Show>
+      <AllAuthorsView
+        authors={data()?.authors || []}
+        authorsByFollowers={data()?.authorsByFollowers || []}
+        authorsByShouts={data()?.authorsByShouts || []}
+      />
     </PageLayout>
   )
 }

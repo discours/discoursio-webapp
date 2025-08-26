@@ -72,25 +72,7 @@ export function useTopics() {
 
 export type TopicSort = 'shouts' | 'followers' | 'authors' | 'title'
 
-/**
- * 💋 KISS: Упрощенная загрузка топиков - используем только основное API
- * @returns Промис с массивом топиков
- */
-async function loadTopicsOptimized(): Promise<Topic[]> {
-  try {
-    console.log('[TopicsProvider] Starting to load topics...')
 
-    // ✅ Используем только основное API loadTopics
-    const topicsLoader = loadTopics()
-    const topics = (await topicsLoader()) || []
-
-    console.log('[TopicsProvider] Topics loaded:', topics.length, 'topics')
-    return topics
-  } catch (error) {
-    console.error('[TopicsProvider] Failed to load topics:', error)
-    return []
-  }
-}
 
 // Оптимизированная реализация провайдера
 export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
@@ -116,23 +98,26 @@ export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {
     () => ({ sortBy: state.sortBy }), // Всегда возвращаем параметры для загрузки
     async ({ sortBy }) => {
       try {
-        console.log('[TopicsProvider] Starting to load topics with sortBy:', sortBy)
         setState('loading', true)
 
-        // Упрощенная загрузка данных
-        const result = await loadTopicsOptimized()
-        console.log('[TopicsProvider] Topics loaded from API:', result?.length || 0, 'topics')
+        // ✅ Используем ТОЛЬКО loadTopicsByCommunity
+        const options: QueryGet_Topics_By_CommunityArgs = {
+          community_id: 1,
+          limit: 1000, // Загружаем все топики
+          offset: 0
+        }
+        const topicsLoader = loadTopicsByCommunity(options)
+        const result = (await topicsLoader()) || []
 
         // Применяем сортировку к результату только один раз
         setState('initialized', true)
         const sortedResult = result.sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
-        console.log('[TopicsProvider] Topics sorted and ready:', sortedResult.length, 'topics')
         return sortedResult
       } catch (error) {
         const errorContext = {
           error,
           timestamp: new Date().toISOString(),
-          context: 'TopicsProvider.loadTopicsOptimized',
+          context: 'TopicsProvider.loadTopicsByCommunity',
           sortBy,
           isInitialized: state.initialized,
           currentTopicsCount: state.sorted.length
