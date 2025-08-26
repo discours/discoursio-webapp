@@ -2,8 +2,7 @@ import type { APIEvent } from '@solidjs/start/server'
 import { coreApiUrl } from '~/config'
 
 /**
- * GraphQL прокси для обхода CORS в тестах
- * Проксирует все запросы к внешнему API
+ * GraphQL прокси к внешнему API
  */
 export async function GET({ request }: APIEvent) {
   const url = new URL(request.url)

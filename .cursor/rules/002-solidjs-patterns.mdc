@@ -1,5 +1,5 @@
 ---
-description: SolidJS/SolidStart patterns and anti-patterns - Compact Edition 2024
+description: SolidJS/SolidStart patterns and anti-patterns
 alwaysApply: true
 priority: 2
 ---
@@ -23,6 +23,10 @@ createEffect(async () => await fetchData())
 // ❌ Прямой window доступ в init - SSR error
 const [width] = createSignal(window.innerWidth)
 
+// ❌ Деструктуризация props - ТЕРЯЕТСЯ РЕАКТИВНОСТЬ!
+const { data, isLoading } = props // ❌ Реактивность сломана!
+const MyComponent = ({ data, isLoading }: Props) => {} // ❌ НЕТ!
+
 // ❌ Мутация props - нарушает реактивность
 props.data.push(newItem)
 
@@ -36,6 +40,22 @@ const data = createAsync(async () => fetchData())
 ```
 
 # ✅ Правильные Паттерны
+
+## 🔥 Props Reactivity (КРИТИЧЕСКИ ВАЖНО!)
+```typescript
+// ✅ ВСЕГДА используй props.* для сохранения реактивности
+const MyComponent = (props: Props) => {
+  return <div>{props.data}</div> // ✅ Реактивно!
+}
+
+// ✅ В функциях тоже используй props.*
+createEffect(() => {
+  console.log(props.isLoading) // ✅ Реактивно!
+})
+
+// ❌ НЕ деструктурируй - теряется реактивность!
+const { data } = props // ❌ Больше не реактивно!
+```
 
 ## 🔥 Async Data Loading
 ```typescript
@@ -145,6 +165,19 @@ createEffect(async () => { setLoading(true); /* fetch */ })
 const [feed] = createResource(() => options(), loadShouts)
 ```
 
+## ❌ Деструктуризация props (НОВОЕ!)
+```typescript
+// ❌ Было - деструктуризация ломает реактивность
+const MyComponent = ({ data, isLoading }: Props) => {
+  return <div>{data}</div> // ❌ НЕ реактивно!
+}
+
+// ✅ Стало - используй props.*
+const MyComponent = (props: Props) => {
+  return <div>{props.data}</div> // ✅ Реактивно!
+}
+```
+
 ## ❌ Небезопасные контексты SSR
 ```typescript
 // ❌ Было - без try/catch
@@ -184,6 +217,7 @@ const topShouts = createMemo(() => {
 - **createMemo ≠ useMemo**: Только для СЛОЖНЫХ вычислений
 - **batch**: Группировка связанных обновлений (нет в React)
 - **untrack**: Чтение без зависимости (нет в React)
+- **props.* ОБЯЗАТЕЛЬНО**: НЕ деструктурируй пропсы!
 
 # 🧊 SSR Best Practices
 - Server ↔ Client DOM должен совпадать ТОЧНО
@@ -249,23 +283,15 @@ import styles from './Component.module.scss'
 
 # 🚨 Red Flags - Срочные исправления
 1. **Async createEffect** → onMount + createResource
-2. **Множественные loading/error** → createResource states
-3. **window.* в init** → typeof проверки
-4. **window.* в onMount** → БЕЗ проверок (onMount = клиентский код)
-5. **Math.random() keys** → стабильные ID
-6. **Большие stores** → атомарные сигналы
-7. **:global() стили** → CSS модули с @extend для DRY
-8. **Глобальные стили** → модульные классы в компонентах
+2. **Деструктуризация props** → props.* ВСЕГДА!
+3. **Множественные loading/error** → createResource states
+4. **window.* в init** → typeof проверки
+5. **window.* в onMount** → БЕЗ проверок (onMount = клиентский код)
+6. **Math.random() keys** → стабильные ID
+7. **Большие stores** → атомарные сигналы
+8. **:global() стили** → CSS модули с @extend для DRY
+9. **Глобальные стили** → модульные классы в компонентах
 
-# 🔮 Signals 2.0 Preview
-```typescript
-// 🔮 Будущее - createAsync возвращается
-const A = createAsync(() => fetchDataA())
-const B = createAsync(() => fetchDataB()) 
-// Параллельная загрузка без блокировок
-
-// 🔮 Явные зависимости effects
-createEffect(() => console.log(data()), () => [data])
 ```
 
 ---
