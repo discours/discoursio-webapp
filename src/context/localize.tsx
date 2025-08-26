@@ -66,6 +66,7 @@ type LocalizeSearchParams = {
 export const LocalizeProvider = (props: { children: JSX.Element }) => {
   const [lang, setLang] = createSignal<Language>(i18next.language === 'en' ? 'en' : 'ru')
   const [searchParams, changeSearchParams] = useSearchParams<LocalizeSearchParams>()
+  
   // set lang effects
   onMount(() => {
     const lng = searchParams?.lng || localStorage?.getItem('lng') || 'ru'
@@ -132,9 +133,7 @@ export const LocalizeProvider = (props: { children: JSX.Element }) => {
 
   return (
     <LocalizeContext.Provider value={value}>
-      <Show when={lang()} keyed={true}>
-        {props.children}
-      </Show>
+      {props.children}
     </LocalizeContext.Provider>
   )
 }

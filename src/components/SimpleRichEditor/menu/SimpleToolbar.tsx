@@ -54,12 +54,6 @@ const renderHeadingButton = (option: ToolbarDropdownOption, isActive: boolean, o
  */
 const ToolbarDropdown: Component<ToolbarDropdownProps> = (props) => {
   const [isOpen, setIsOpen] = createSignal(false)
-
-  // Добавляем консоль-лог для отладки
-  createEffect(() => {
-    console.log('Dropdown state:', isOpen())
-  })
-
   const renderOptionButton = (
     option: ToolbarDropdownOption,
     isActive: boolean,

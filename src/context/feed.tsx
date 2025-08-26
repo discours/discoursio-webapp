@@ -464,27 +464,6 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
       const fetcher = loadShouts({ options: mergedOptions })
       const shouts = await fetcher()
 
-      // 🔍 ДИАГНОСТИКА БАГА: Логируем результаты load_shouts для расследования
-      console.log('📊 Параметры запроса:', mergedOptions)
-      console.log('📝 Получено статей:', shouts?.length || 0)
-      if (shouts?.length) {
-        console.log(
-          '📋 Последние статьи:',
-          shouts.slice(0, 3).map((s) => ({
-            id: s.id,
-            title: s.title,
-            slug: s.slug,
-            published_at: s.published_at,
-            created_at: s.created_at,
-            featured_at: s.featured_at
-          }))
-        )
-        console.log('⚠️ ВАЖНО: Проверьте, есть ли среди них недавно опубликованные статьи!')
-      } else {
-        console.warn('❌ Не получено ни одной статьи - возможна проблема с бекендом!')
-      }
-      console.groupEnd()
-
       // Проверяем, не был ли запрос отменен
       if (abortController.signal.aborted) {
         return

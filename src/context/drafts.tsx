@@ -369,17 +369,9 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   }
 
   const getEditorContent = (editorId: string): string => {
-    console.log(`🔍 [EDITOR CONTENT DEBUG] Запрос контента для редактора: ${editorId}`)
-
     // 1. Попробовать получить из editorsContent (для мгновенного отклика UI)
     const localUiContent = editorsContent()[editorId]
     if (localUiContent !== undefined) {
-      console.log('🔍 [EDITOR CONTENT DEBUG] ✅ Найдено в UI состоянии:', {
-        editorId,
-        length: localUiContent.length,
-        preview: localUiContent.substring(0, 100),
-        isEmpty: localUiContent.trim() === ''
-      })
       return localUiContent
     }
 
@@ -388,27 +380,13 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     if (match) {
       const draftId = match[1]
       const fieldType = match[2]
-      console.log('🔍 [EDITOR CONTENT DEBUG] Поиск в localStorage:', { draftId, fieldType })
 
       const storageContent = getDraftField(draftId, fieldType) // Используем новую внутреннюю функцию
       if (storageContent !== null) {
-        console.log('🔍 [EDITOR CONTENT DEBUG] ✅ Найдено в localStorage:', {
-          editorId,
-          storageLength: storageContent.length,
-          storagePreview: storageContent.substring(0, 100)
-        })
 
         // Парсим JSON для body/lead
         const parsedContent =
           fieldType === 'body' || fieldType === 'lead' ? parseJsonContent(storageContent) : storageContent
-
-        console.log('🔍 [EDITOR CONTENT DEBUG] После парсинга:', {
-          editorId,
-          parsedLength: parsedContent.length,
-          parsedPreview: parsedContent.substring(0, 100),
-          isEmpty: parsedContent.trim() === '',
-          isOnlyBr: parsedContent === '<br>'
-        })
 
         // Обновляем editorsContent для кэширования
         setEditorsContent((prev) => ({ ...prev, [editorId]: parsedContent }))
@@ -421,12 +399,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     if (draft && match) {
       const fieldName = match[2] as keyof Draft
       if (fieldName in draft) {
-        console.log('🔍 [EDITOR CONTENT DEBUG] ✅ Найдено в currentDraft:', {
-          editorId,
-          fieldName,
-          length: ((draft[fieldName] as string) || '').length,
-          preview: ((draft[fieldName] as string) || '').substring(0, 100)
-        })
 
         const draftContent = (draft[fieldName] as string) || ''
         // Обновляем editorsContent для кэширования
@@ -435,7 +407,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       }
     }
 
-    console.log(`🔍 [EDITOR CONTENT DEBUG] ❌ Контент не найден нигде для ${editorId}, возвращаем пустую строку`)
     return ''
   }
 
@@ -463,31 +434,18 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   ): undefined => {
     if (!draftId) return undefined
 
-    // 🔍 ДИАГНОСТИКА: Логируем обновление полей черновика
-    console.log(`🔍 [FIELD UPDATE DEBUG] Обновление поля ${fieldName} для черновика #${draftId}:`, {
-      fieldName,
-      value,
-      valueType: typeof value,
-      isArray: Array.isArray(value),
-      isEditorUpdate,
-      valueLength: Array.isArray(value) ? value.length : typeof value === 'string' ? value.length : 'N/A'
-    })
-
     let contentValue: string
 
     // 1. Правильная обработка значения в зависимости от типа
     if (typeof value === 'object' && value !== null && 'content' in value) {
       // Для объекта EditorData берем уже санитизированный контент
       contentValue = value.content
-      console.log('🔍 [FIELD UPDATE DEBUG] EditorData контент:', contentValue.substring(0, 100))
     } else if (Array.isArray(value)) {
       // Для массивов (например, topic_ids) преобразуем в JSON-строку
       contentValue = JSON.stringify(value)
-      console.log('🔍 [FIELD UPDATE DEBUG] Массив преобразован в JSON:', contentValue)
 
       // Если это topic_ids, также обновляем topics в currentDraft для синхронизации UI
       if (fieldName === 'topic_ids') {
-        console.log(`🔍 [FIELD UPDATE DEBUG] Обновление topic_ids для черновика #${draftId}:`, value)
 
         // Находим соответствующие темы по их ID
         const draft = currentDraft()
@@ -525,17 +483,9 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     } else if (typeof value === 'string') {
       // Для строковых значений не делаем лишней санитизации
       contentValue = value
-      console.log('🔍 [FIELD UPDATE DEBUG] Строковое значение:', {
-        field: fieldName,
-        length: contentValue.length,
-        preview: contentValue.substring(0, 100),
-        isEmpty: contentValue.trim() === '',
-        isOnlyBr: contentValue === '<br>'
-      })
     } else {
       // Для других типов просто конвертируем в строку
       contentValue = String(value)
-      console.log('🔍 [FIELD UPDATE DEBUG] Преобразовано в строку:', contentValue)
     }
 
     // 2. Сохранение в localStorage

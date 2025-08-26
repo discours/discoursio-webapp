@@ -213,7 +213,6 @@ export const LoadMoreWrapper = (props: LoadMoreProps) => {
   onMount(() => {
     // Проверяем локальное состояние и sessionStorage
     if (untrack(() => initialLoadDone()) || checkInitialLoadDone()) {
-      console.log('[LoadMoreWrapper] Initial load already done, skipping for', componentId)
 
       // Устанавливаем таймер для показа кнопки через 3 секунды после монтирования
       buttonDelayTimer = window.setTimeout(() => {
