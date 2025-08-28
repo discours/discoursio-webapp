@@ -1,7 +1,5 @@
 import { RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { createEffect, createSignal, Show } from 'solid-js'
-import { Loading } from '~/components/_shared/Loading'
-import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
+import { createEffect } from 'solid-js'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { AllTopicsView } from '~/components/Views/AllTopicsView'
 import { useLocalize } from '~/context/localize'
@@ -40,22 +38,45 @@ const fetchTopics = async (sortBy: string, offset = 0, limit = TOPICS_PER_PAGE) 
   }
 }
 
-// Route definition - возвращаем минимальную информацию
+// ✅ Route definition - загружаем топики для SSR через fetchTopics
 export const route = {
   load: async ({ location: { query } }) => {
-    return {
-      currentLayout: query.by || 'shouts'
+    const layout = query.by || 'shouts'
+    console.log('[route.load] Loading topics for SSR, layout:', layout)
+
+    try {
+      // ✅ Используем fetchTopics для SSR загрузки
+      const topics = await fetchTopics(layout as string, 0, TOPICS_PER_PAGE)
+      console.log('[route.load] Loaded topics for SSR:', topics.length)
+
+      return {
+        topics,
+        currentLayout: layout
+      }
+    } catch (error) {
+      console.error('[route.load] Error loading topics:', error)
+      return {
+        topics: [],
+        currentLayout: layout
+      }
     }
   }
 } satisfies RouteDefinition
 
 type AllTopicsData = {
+  topics: Topic[]
   currentLayout: string
 }
 
 export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
   const { t } = useLocalize()
-  const { setTopicsSort } = useTopics()
+  const { setTopicsSort, addTopics } = useTopics()
+
+  // ✅ SSR данные - добавляем топики в контекст синхронно
+  if (props.data?.topics?.length) {
+    console.log('[AllTopicsPage] Adding SSR topics to context:', props.data.topics.length)
+    addTopics(props.data.topics)
+  }
 
   // ✅ Устанавливаем сортировку в контексте на основе URL
   createEffect(() => {

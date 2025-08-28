@@ -651,9 +651,25 @@ export const TopicView = (props: Props) => {
                   <ArticleCardSwiper title={t('Favorite')} slides={favoriteArticles().slice(0, 10)} />
                 </Show>
 
-                {/* ✅ ПРОСТАЯ ЛОГИКА: Остальные статьи */}
+                {/* ✅ ПРОСТАЯ ЛОГИКА: Остальные статьи с оптимизацией через Row3 */}
                 <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
-                  <For each={mainArticles().slice(8)}>{(article) => <Row1 article={article} />}</For>
+                  <For each={mainArticles().slice(8)}>
+                    {(_article, index) => {
+                      const i = index()
+                      // Группируем статьи по 3 для Row3, оставшиеся по 1 для Row1
+                      if (i % 3 === 0) {
+                        const articles = mainArticles().slice(8 + i, 8 + i + 3)
+                        if (articles.length === 3) {
+                          return <Row3 articles={articles} nodate={true} />
+                        } else if (articles.length === 2) {
+                          return <Row2 articles={articles} isEqual={true} />
+                        } else if (articles.length === 1) {
+                          return <Row1 article={articles[0]} />
+                        }
+                      }
+                      return null
+                    }}
+                  </For>
                 </LoadMoreWrapper>
               </Show>
             </Show>

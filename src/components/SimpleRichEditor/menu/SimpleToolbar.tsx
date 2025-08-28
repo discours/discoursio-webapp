@@ -53,7 +53,7 @@ const renderHeadingButton = (option: ToolbarDropdownOption, isActive: boolean, o
  * Показывает список опций, сгруппированных по категориям.
  */
 const ToolbarDropdown: Component<ToolbarDropdownProps> = (props) => {
-  const [isOpen, setIsOpen] = createSignal(false)
+  const [_isOpen, setIsOpen] = createSignal(false)
   const renderOptionButton = (
     option: ToolbarDropdownOption,
     isActive: boolean,
