@@ -383,7 +383,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
       const storageContent = getDraftField(draftId, fieldType) // Используем новую внутреннюю функцию
       if (storageContent !== null) {
-
         // Парсим JSON для body/lead
         const parsedContent =
           fieldType === 'body' || fieldType === 'lead' ? parseJsonContent(storageContent) : storageContent
@@ -399,7 +398,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     if (draft && match) {
       const fieldName = match[2] as keyof Draft
       if (fieldName in draft) {
-
         const draftContent = (draft[fieldName] as string) || ''
         // Обновляем editorsContent для кэширования
         setEditorsContent((prev) => ({ ...prev, [editorId]: draftContent }))
@@ -446,7 +444,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
       // Если это topic_ids, также обновляем topics в currentDraft для синхронизации UI
       if (fieldName === 'topic_ids') {
-
         // Находим соответствующие темы по их ID
         const draft = currentDraft()
         if (draft && draft.id === draftId) {

@@ -1,6 +1,6 @@
 import { Accessor, Component, createContext, createEffect, createResource, JSX, useContext } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { loadTopics, loadTopicsByCommunity } from '~/graphql/api/public'
+import { loadTopicsByCommunity } from '~/graphql/api/public'
 import { QueryGet_Topics_By_CommunityArgs, Topic } from '~/graphql/generated/graphql'
 import { byTopicStatDesc } from '../utils/sort'
 
@@ -71,8 +71,6 @@ export function useTopics() {
 }
 
 export type TopicSort = 'shouts' | 'followers' | 'authors' | 'title'
-
-
 
 // Оптимизированная реализация провайдера
 export const TopicsProvider: Component<{ children: JSX.Element }> = (props) => {

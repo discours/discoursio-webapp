@@ -10,11 +10,11 @@
  * Это единственная точка входа для всей SSE функциональности приложения.
  */
 
+import { EventSource as ExtendedEventSource } from 'extended-eventsource'
 import { createContext, createEffect, createSignal, type JSX, on, onCleanup, onMount, useContext } from 'solid-js'
 import { Awareness } from 'y-protocols/awareness.js'
 import { Doc } from 'yjs'
 import { useSession } from '~/context/session'
-import { EventSource as ExtendedEventSource } from 'extended-eventsource'
 
 // === ТИПЫ ===
 
@@ -122,9 +122,9 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
       const eventSource = new ExtendedEventSource(
         import.meta.env.PUBLIC_REALTIME_EVENTS || 'https://connect.dscrs.site',
         {
-          headers: { Authorization: `Bearer ${token}`},
+          headers: { Authorization: `Bearer ${token}` },
           // Отключаем встроенное переподключение, используем свое
-          retry: 0, 
+          retry: 0,
           // Отключаем логирование
           disableLogger: false,
           // Включаем CORS
@@ -166,7 +166,7 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
         console.error('[Connect] Ошибка SSE соединения:', error)
         setStatus('error')
         setError('Ошибка SSE соединения')
-        
+
         // Закрываем соединение и инициируем переподключение
         eventSource.close()
         sseConnection = null

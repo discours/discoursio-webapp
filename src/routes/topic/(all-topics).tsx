@@ -6,7 +6,6 @@ import { PageLayout } from '~/components/_shared/PageLayout'
 import { AllTopicsView } from '~/components/Views/AllTopicsView'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { loadTopics } from '~/graphql/api/public'
 import { defaultClient } from '~/graphql/client'
 import { QueryGet_Topics_By_CommunityArgs, Topic } from '~/graphql/generated/graphql'
 import loadTopicsByCommunityQuery from '~/graphql/query/core/topics-by-community'
@@ -30,17 +29,6 @@ const fetchTopics = async (sortBy: string, offset = 0, limit = TOPICS_PER_PAGE) 
     const result = resp?.data?.get_topics_by_community as Topic[]
 
     console.log(`[fetchTopics] API returned ${result?.length || 0} topics for ${sortBy}`)
-
-    // Если нет результатов с первого запроса, используем fallback
-    if (!result?.length && offset === 0) {
-      console.log('[fetchTopics] No results from community API, falling back to topics-all')
-      const fallbackLoader = loadTopics()
-      const fallbackTopics = await fallbackLoader()
-      const sortedTopics = (fallbackTopics || []).sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
-      const sliced = sortedTopics.slice(offset, offset + limit)
-      console.log(`[fetchTopics] Fallback returned ${sliced.length} topics`)
-      return sliced
-    }
 
     // Сортируем результат по указанному критерию
     const sortedResult = (result || []).sort(byTopicStatDesc(sortBy) as (a: Topic, b: Topic) => number)
@@ -68,7 +56,7 @@ type AllTopicsData = {
 export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
   const { t } = useLocalize()
   const { setTopicsSort } = useTopics()
-  
+
   // ✅ Устанавливаем сортировку в контексте на основе URL
   createEffect(() => {
     const layout = props.location.query.by || 'shouts'
@@ -85,10 +73,7 @@ export default function AllTopicsPage(props: RouteSectionProps<AllTopicsData>) {
       desc="All topics of the editorial community"
     >
       {/* ✅ Простой роут - компонент получает данные из контекста */}
-      <AllTopicsView 
-        isLoaded={true} 
-        layout={currentLayout() as string} 
-      />
+      <AllTopicsView isLoaded={true} layout={currentLayout() as string} />
     </PageLayout>
   )
 }

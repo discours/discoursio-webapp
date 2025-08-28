@@ -20,7 +20,7 @@ import { loadAuthors, loadShouts, loadTopicAuthors, loadTopicFollowers } from '~
 import { Author, AuthorsBy, LoadShoutsOptions, Shout, Stat, Topic } from '~/graphql/generated/graphql'
 import { getUnixtime } from '~/lib/fromPeriod'
 import styles from '~/styles/views/Topic.module.scss'
-import { FeedDeduplicationContext } from '~/utils/deduplicate'
+
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { Loading } from '../_shared/Loading'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
@@ -63,14 +63,7 @@ export const TopicView = (props: Props) => {
   // Состояние для управления табами
   const [currentTab, setCurrentTab] = createSignal<TopicTab | undefined>()
 
-  // 📊 ОТЛАДКА: Проверим, что приходит в TopicView
-  console.log(`[TopicView] Props for "${props.topicSlug}":`, {
-    hasTopic: !!props.topic,
-    topicTitle: props.topic?.title,
-    topicStat: props.topic?.stat,
-    hasShouts: !!props.shouts,
-    shoutsCount: props.shouts?.length || 0
-  })
+  // Removed console.log for SSR hydration stability
 
   // 1. Обновим сигналы и добавим эффект для начальных данных
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
@@ -80,14 +73,14 @@ export const TopicView = (props: Props) => {
   // 🔧 FALLBACK: Если топик не загрузился через route.load, пытаемся найти в контексте
   createEffect(() => {
     if (!props.topic && topicEntities()[props.topicSlug]) {
-      console.log(`[TopicView] Using fallback topic from context for "${props.topicSlug}"`)
       setTopic(topicEntities()[props.topicSlug])
     }
   })
 
-  // Сигналы для авторов топика с пагинацией
+  // ✅ ИСПРАВЛЕНИЕ: Единый сигнал для авторов топика (без дублирования)
   const [topicAuthorsList, setTopicAuthorsList] = createSignal<Author[]>([])
   const [loadMoreAuthorsHidden, setLoadMoreAuthorsHidden] = createSignal(false)
+  const [authorsInitialized, setAuthorsInitialized] = createSignal(false)
 
   // Эффект для обновления топика из контекста, но только если он еще не установлен или изменился
   createEffect(
@@ -99,11 +92,6 @@ export const TopicView = (props: Props) => {
       // 1. У нас нет текущего топика ИЛИ
       // 2. У текущего топика нет статистики, А у контекстного есть
       if (contextTopic && (!currentTopic || (!currentTopic.stat && contextTopic.stat))) {
-        // Временный лог для отладки - можно убрать позже
-        console.log(`[TopicView] Updating topic "${props.topicSlug}" from context:`, {
-          fromContext: !!contextTopic.stat,
-          current: !!currentTopic?.stat
-        })
         setTopic(contextTopic)
       }
     })
@@ -118,13 +106,7 @@ export const TopicView = (props: Props) => {
       followers: topicData?.stat?.followers ?? 0
     }
 
-    // Временная отладка для проверки статистики
-    console.log(`[TopicView] Stats for "${props.topicSlug}":`, {
-      topicTitle: topicData?.title,
-      hasStat: !!topicData?.stat,
-      rawStat: topicData?.stat,
-      calculatedStats: result
-    })
+    // Removed console.log for SSR hydration stability
 
     return result
   })
@@ -137,6 +119,20 @@ export const TopicView = (props: Props) => {
 
       setSortedFeed(props.shouts)
       setLoadMoreHidden(props.shouts.length < FEED_PAGE_SIZE)
+      
+      // ✅ ДИАГНОСТИКА: Проверяем в dev режиме (без console.log для SSR)
+      if (import.meta.env.DEV && typeof window !== 'undefined') {
+        setTimeout(() => {
+          if (sortedFeed().length === 0) {
+            console.warn('⚠️ TopicView: sortedFeed is still empty after initialization')
+          }
+        }, 100)
+      }
+    } else if (import.meta.env.DEV && typeof window !== 'undefined') {
+      // Предупреждаем если нет пропсов с публикациями
+      setTimeout(() => {
+        console.warn('⚠️ TopicView: No shouts provided in props')
+      }, 100)
     }
   })
 
@@ -145,14 +141,7 @@ export const TopicView = (props: Props) => {
     on(
       () => feedByTopic()[props.topicSlug],
       (topicFeed) => {
-        // Временный лог для отладки - можно убрать позже
-        console.log(`[TopicView] feedByTopic update for "${props.topicSlug}":`, {
-          feedLength: topicFeed?.length || 0,
-          currentSortedFeed: sortedFeed().length,
-          topicStats: stats()
-        })
         if (topicFeed?.length) {
-          console.debug('Feed updated:', topicFeed.length, 'articles')
           setSortedFeed(topicFeed)
           setLoadMoreHidden(topicFeed.length === stats().shouts)
         }
@@ -166,10 +155,12 @@ export const TopicView = (props: Props) => {
     on(
       () => props.topicSlug,
       (newSlug, prevSlug) => {
-        if (newSlug !== prevSlug) {
-          setSortedFeed([]) // Сбрасываем при смене топика
+        if (newSlug !== prevSlug && prevSlug !== undefined) {
+          // ✅ ИСПРАВЛЕНИЕ: Восстанавливаем фид из пропсов при смене топика
+          setSortedFeed(props.shouts || []) 
           setTopicAuthorsList([]) // Сбрасываем авторов при смене топика
           setLoadMoreAuthorsHidden(false)
+          setAuthorsInitialized(false) // Сбрасываем флаг инициализации
         }
       }
     )
@@ -182,12 +173,13 @@ export const TopicView = (props: Props) => {
       ([pathname]) => {
         if (pathname.includes('/authors')) {
           setCurrentTab('authors')
-          // Загружаем авторов если их еще нет
-          if (!topicAuthorsList().length && topic()) {
+          // ✅ ИСПРАВЛЕНИЕ: Загружаем авторов только если не инициализированы
+          if (!authorsInitialized() && topic()) {
             void loadTopicAuthorsWithPagination(0).then((result) => {
               if (result.length) {
                 setTopicAuthorsList(result)
                 setLoadMoreAuthorsHidden(result.length >= stats().authors)
+                setAuthorsInitialized(true)
               }
             })
           }
@@ -227,10 +219,7 @@ export const TopicView = (props: Props) => {
   // Функция для загрузки авторов с пагинацией
   const loadTopicAuthorsWithPagination = async (offset = 0): Promise<Author[]> => {
     try {
-      console.log('[TopicView] Loading topic authors with pagination:', {
-        topic: props.topicSlug,
-        offset
-      })
+      // Loading topic authors with pagination
 
       const by: AuthorsBy = { topic: props.topicSlug }
       const authorsFetcher = loadAuthors({ by, limit: AUTHORS_PER_PAGE, offset })
@@ -310,12 +299,7 @@ export const TopicView = (props: Props) => {
     if (!topic()) return []
 
     try {
-      console.log('[TopicView] Loading topic shouts with filters:', {
-        topic: topic()?.slug,
-        filters: filterState().filters,
-        options: options(),
-        offset
-      })
+      // Loading topic shouts with filters
 
       // Объединяем фильтр топика с другими фильтрами и опциями
       const currentFilters = filterState().filters
@@ -352,7 +336,7 @@ export const TopicView = (props: Props) => {
       (timestamp, prevTimestamp) => {
         // Перезагружаем только если фильтры действительно изменились и топик загружен
         if (timestamp !== prevTimestamp && prevTimestamp !== undefined && topic() && !currentTab()) {
-          console.log('[TopicView] Filters changed, reloading topic feed:', topic()?.slug)
+          // Filters changed, reloading topic feed
 
           // Сбрасываем текущие данные и загружаем заново
           setSortedFeed([])
@@ -392,13 +376,16 @@ export const TopicView = (props: Props) => {
   const loadMoreAuthors = async () => {
     saveScrollPosition()
     try {
-      console.log('[TopicView] Loading more authors for topic:', props.topicSlug, 'offset:', topicAuthorsList().length)
+      // Loading more authors for topic
       const result = await loadTopicAuthorsWithPagination(topicAuthorsList().length)
 
       if (result?.length) {
-        console.log('[TopicView] Loaded more authors:', result.length)
-
-        setTopicAuthorsList((prev) => [...prev, ...result])
+        // ✅ ИСПРАВЛЕНИЕ: Дедупликация авторов по ID
+        setTopicAuthorsList((prev) => {
+          const existingIds = new Set(prev.map(author => author.id))
+          const newAuthors = result.filter(author => !existingIds.has(author.id))
+          return [...prev, ...newAuthors]
+        })
         setLoadMoreAuthorsHidden(topicAuthorsList().length >= stats().authors)
       }
 
@@ -495,44 +482,11 @@ export const TopicView = (props: Props) => {
     return sorted
   })
 
-  // Система дедупликации для предотвращения повторов публикаций
-  const dedupContext = new FeedDeduplicationContext()
-
-  // Мемоизированные дедуплицированные блоки
-  const deduplicatedBlocks = createMemo(() => {
-    // Очищаем контекст при каждом пересчете
-    dedupContext.clear()
-
-    const feedData = sortedFeed() || []
-    const topViewed = topViewedShouts()
-    const reactedArticles = reactedTopMonthArticles() || []
-    const favoriteArticles = favoriteTopArticles() || []
-
-    // Основная лента - приоритет для первых статей
-    const mainFeedFirst = feedData.slice(0, 8) // Row1 + Row2 + Beside + Row2 + Row1
-    dedupContext.addUsedShouts(mainFeedFirst)
-
-    // Дедуплицируем дополнительные блоки
-    const deduplicatedReacted = dedupContext.filterUnused(reactedArticles)
-    const deduplicatedFavorite = dedupContext.filterUnused(favoriteArticles)
-    const deduplicatedTopViewed = dedupContext.filterUnused(topViewed.slice(0, 5))
-
-    // Добавляем использованные из дополнительных блоков
-    dedupContext.addUsedShouts(deduplicatedReacted.slice(0, 10)) // Лимитируем слайдер
-    dedupContext.addUsedShouts(deduplicatedFavorite.slice(0, 10)) // Лимитируем слайдер
-    dedupContext.addUsedShouts(deduplicatedTopViewed)
-
-    // Остальная лента (после первых 8)
-    const remainingFeed = dedupContext.filterUnused(feedData.slice(8))
-
-    return {
-      mainFeedFirst,
-      remainingFeed,
-      topViewed: deduplicatedTopViewed,
-      reactedArticles: deduplicatedReacted,
-      favoriteArticles: deduplicatedFavorite
-    }
-  })
+  // ✅ ПРОСТАЯ ЛОГИКА: Берем статьи как есть
+  const mainArticles = createMemo(() => sortedFeed() || [])
+  const topViewedArticles = createMemo(() => topViewedShouts().slice(0, 5))
+  const reactedArticles = createMemo(() => reactedTopMonthArticles() || [])
+  const favoriteArticles = createMemo(() => favoriteTopArticles() || [])
 
   return (
     <div class={styles.topicPage}>
@@ -621,8 +575,8 @@ export const TopicView = (props: Props) => {
           </Match>
 
           <Match when={!currentTab()}>
-            {/* 🔧 ИСПРАВЛЕНИЕ: Показываем публикации если есть данные ИЛИ статистика показывает больше 0 */}
-            <Show when={sortedFeed().length > 0 || stats().shouts > 0}>
+            {/* ✅ ИСПРАВЛЕНИЕ: Всегда показываем блок публикаций (с fallback для пустого состояния) */}
+            <Show when={true}>
               <Show
                 when={sortedFeed().length > 0}
                 fallback={
@@ -634,6 +588,15 @@ export const TopicView = (props: Props) => {
                             <div>
                               <h3 style="margin-bottom: 1rem; color: #666;">{t('No publications found')}</h3>
                               <p style="color: #999;">{t('Try changing filters or check back later')}</p>
+                              {/* ✅ ДИАГНОСТИКА: Показываем в dev режиме */}
+                              <Show when={import.meta.env.DEV && typeof window !== 'undefined'}>
+                                <div style="margin-top: 1rem; padding: 1rem; background: #f0f0f0; border-radius: 4px; font-size: 12px;">
+                                  <p>Debug info:</p>
+                                  <p>Props shouts: {props.shouts?.length || 0}</p>
+                                  <p>Sorted feed: {sortedFeed().length}</p>
+                                  <p>Topic stats: {stats().shouts}</p>
+                                </div>
+                              </Show>
                             </div>
                           </Show>
                         </div>
@@ -642,88 +605,62 @@ export const TopicView = (props: Props) => {
                   </div>
                 }
               >
-                {/* Основные блоки с приоритетными публикациями */}
-                <Show when={deduplicatedBlocks().mainFeedFirst[0]}>
-                  <Row1 article={deduplicatedBlocks().mainFeedFirst[0]} />
+                {/* ✅ ПРОСТАЯ ЛОГИКА: Показываем статьи по порядку */}
+                <Show when={mainArticles()[0]}>
+                  <Row1 article={mainArticles()[0]} />
                 </Show>
 
-                <Show when={deduplicatedBlocks().mainFeedFirst.slice(1, 3).length > 0}>
-                  <Row2 articles={deduplicatedBlocks().mainFeedFirst.slice(1, 3)} isEqual={true} />
+                <Show when={mainArticles().slice(1, 3).length > 0}>
+                  <Row2 articles={mainArticles().slice(1, 3)} isEqual={true} />
                 </Show>
 
-                <Show when={deduplicatedBlocks().mainFeedFirst[3]}>
+                <Show when={mainArticles()[3]}>
                   <Beside
-                    beside={deduplicatedBlocks().mainFeedFirst[3]}
+                    beside={mainArticles()[3]}
                     title={t('Topic is supported by')}
                     values={topicTopAuthors() || []}
                     wrapper={'author'}
                   />
                 </Show>
 
-                {/* Дедуплицированный блок "Top month" */}
-                <Show when={deduplicatedBlocks().reactedArticles.length > 0} keyed={true}>
+                {/* Top month articles */}
+                <Show when={reactedArticles().length > 0}>
                   <ArticleCardSwiper
                     title={t('Top month')}
-                    slides={deduplicatedBlocks().reactedArticles.slice(0, 10)}
+                    slides={reactedArticles().slice(0, 10)}
                   />
                 </Show>
 
-                {/* Дедуплицированный блок "Top viewed" */}
-                <Show when={deduplicatedBlocks().mainFeedFirst[4]}>
+                {/* Top viewed articles */}
+                <Show when={mainArticles()[4]}>
                   <Beside
-                    beside={deduplicatedBlocks().mainFeedFirst[4]}
+                    beside={mainArticles()[4]}
                     title={t('Top viewed')}
-                    values={deduplicatedBlocks().topViewed}
+                    values={topViewedArticles()}
                     wrapper={'top-article'}
                   />
                 </Show>
 
-                <Show when={deduplicatedBlocks().mainFeedFirst.slice(5, 7).length > 0}>
-                  <Row2 articles={deduplicatedBlocks().mainFeedFirst.slice(5, 7)} isEqual={true} />
+                <Show when={mainArticles().slice(5, 7).length > 0}>
+                  <Row2 articles={mainArticles().slice(5, 7)} isEqual={true} />
                 </Show>
 
-                <Show when={deduplicatedBlocks().mainFeedFirst[7]}>
-                  <Row1 article={deduplicatedBlocks().mainFeedFirst[7]} />
+                <Show when={mainArticles()[7]}>
+                  <Row1 article={mainArticles()[7]} />
                 </Show>
 
-                {/* Дедуплицированный блок "Favorite" */}
-                <Show when={deduplicatedBlocks().favoriteArticles.length > 0} keyed={true}>
+                {/* Favorite articles */}
+                <Show when={favoriteArticles().length > 0}>
                   <ArticleCardSwiper
                     title={t('Favorite')}
-                    slides={deduplicatedBlocks().favoriteArticles.slice(0, 10)}
+                    slides={favoriteArticles().slice(0, 10)}
                   />
                 </Show>
 
-                {/* Оставшиеся публикации (дедуплицированные) */}
-                <Show when={deduplicatedBlocks().remainingFeed.length > 0}>
-                  <Row3 articles={deduplicatedBlocks().remainingFeed.slice(0, 3)} />
-                  <Row2 articles={deduplicatedBlocks().remainingFeed.slice(3, 5)} />
-                </Show>
-
+                {/* ✅ ПРОСТАЯ ЛОГИКА: Остальные статьи */}
                 <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
-                  <For each={deduplicatedBlocks().remainingFeed}>
-                    {(_article, index) => {
-                      const i = index()
-                      // Начинаем с 5 (пропускаем уже отображенные выше)
-                      const adjustedIndex = i + 5
-                      if (adjustedIndex % 3 === 0) {
-                        const articles = deduplicatedBlocks().remainingFeed.slice(adjustedIndex, adjustedIndex + 3)
-                        return (
-                          <Switch>
-                            <Match when={articles.length === 1}>
-                              <Row1 article={articles[0]} noauthor={false} nodate={true} />
-                            </Match>
-                            <Match when={articles.length === 2}>
-                              <Row2 articles={articles} noauthor={false} nodate={true} isEqual={true} />
-                            </Match>
-                            <Match when={articles.length === 3}>
-                              <Row3 articles={articles} noauthor={false} nodate={true} />
-                            </Match>
-                          </Switch>
-                        )
-                      }
-                      return null
-                    }}
+                  <For each={mainArticles().slice(8)}>
+                    {(article) => <Row1 article={article} />}
                   </For>
                 </LoadMoreWrapper>
               </Show>
