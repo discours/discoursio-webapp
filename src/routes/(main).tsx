@@ -1,5 +1,5 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { createEffect } from 'solid-js'
+import { createEffect, createResource } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
@@ -17,24 +17,6 @@ const featuredLoader = (offset?: number) => {
   return loadShouts({
     options: { filters: { featured: true }, limit: FEED_PAGE_SIZE, offset }
   })
-}
-
-// Безопасное логирование для SSR
-// biome-ignore lint/suspicious/noExplicitAny: ok
-const safeLog = (message: string, data?: any) => {
-  try {
-    if (isServer) {
-      // На сервере используем process.stderr для избежания EPIPE
-      process.stderr.write(`[HomePage] ${message}\n`)
-      if (data) {
-        process.stderr.write(`[HomePage] Data: ${JSON.stringify(data)}\n`)
-      }
-    } else {
-      console.log(`[HomePage] ${message}`, data || '')
-    }
-  } catch {
-    // Игнорируем ошибки логирования
-  }
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: SSR
@@ -74,7 +56,7 @@ const loadShoutsSSR = (args: QueryLoad_Shouts_ByArgs) => {
       const response = await loader()
       return response?.load_shouts_by || []
     } catch (error) {
-      safeLog('loadShoutsSSR error:', error)
+      console.log('loadShoutsSSR error:', error)
       return []
     }
   }
@@ -84,8 +66,6 @@ const loadShoutsSSR = (args: QueryLoad_Shouts_ByArgs) => {
 export const route = {
   load: async () => {
     try {
-      safeLog('SSR route.load started')
-
       // Увеличиваем timeout до 20 секунд для стабильной загрузки всех данных
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('SSR timeout - 20s exceeded')), 20000)
@@ -93,7 +73,6 @@ export const route = {
 
       const dataPromise = (async () => {
         // Загружаем все данные для SSR
-        safeLog('Loading home data for SSR...')
 
         // Проверяем доступность API
         try {
@@ -107,10 +86,7 @@ export const route = {
           if (!apiCheck.ok) {
             throw new Error(`API недоступен: ${apiCheck.status} ${apiCheck.statusText}`)
           }
-
-          safeLog('API доступен, начинаем загрузку данных...')
         } catch (apiError) {
-          safeLog('API недоступен:', apiError)
           throw new Error(`API недоступен: ${apiError}`)
         }
 
@@ -162,26 +138,18 @@ export const route = {
         })
         const topViewedShouts = await withRetry(async () => await topViewedLoader(), 2, 300)
 
-        safeLog('SSR all data loaded:', {
-          featured: featuredShouts?.length || 0,
-          topCommented: topCommentedShouts?.length || 0,
-          topMonth: topMonthShouts?.length || 0,
-          topRated: topRatedShouts?.length || 0,
-          topViewed: topViewedShouts?.length || 0
-        })
-
-        return {
+        const result = {
           featuredShouts: featuredShouts || [],
           topCommentedShouts: topCommentedShouts || [],
           topMonthShouts: topMonthShouts || [],
           topRatedShouts: topRatedShouts || [],
           topViewedShouts: topViewedShouts || []
         }
+
+        return result
       })()
 
-      const result = await Promise.race([dataPromise, timeoutPromise])
-      safeLog('SSR route.load completed successfully')
-      return result
+      return await Promise.race([dataPromise, timeoutPromise])
     } catch (error) {
       if (isServer) {
         process.stderr.write(`[HomePage] SSR route.load error: ${error}\n`)
@@ -203,20 +171,26 @@ export const route = {
 
 export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
   const { t } = useLocalize()
-  const { featuredFeed, setFeaturedFeed } = useFeaturedFeed()
+  const { setFeaturedFeed } = useFeaturedFeed()
 
-  // Инициализация с SSR данными
+  // ✅ ПРАВИЛЬНО: createResource с SSR данными (Ryan Carniato pattern)
+  const [featuredShouts] = createResource(
+    () => 'featured', // статический ключ
+    async () => {
+      const loader = featuredLoader()
+      return await loader()
+    },
+    {
+      initialValue: props.data?.featuredShouts || [],
+      ssrLoadFrom: 'initial'
+    }
+  )
+
+  // Синхронизируем контекст с ресурсом только для loadMore
   createEffect(() => {
-    console.log('[HomePage] Initializing with SSR data:', {
-      featuredShouts: props.data?.featuredShouts?.length || 0,
-      topCommented: props.data?.topCommentedShouts?.length || 0,
-      topMonth: props.data?.topMonthShouts?.length || 0,
-      topRated: props.data?.topRatedShouts?.length || 0,
-      topViewed: props.data?.topViewedShouts?.length || 0
-    })
-
-    if (props.data?.featuredShouts?.length) {
-      setFeaturedFeed(props.data.featuredShouts)
+    const data = featuredShouts()
+    if (data?.length) {
+      setFeaturedFeed(data)
     }
   })
 
@@ -225,7 +199,8 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
       const shoutsLoader = featuredLoader(offset)
       const loaded = await shoutsLoader()
       if (loaded && Array.isArray(loaded)) {
-        setFeaturedFeed((prev) => [...(prev || []), ...loaded])
+        // Обновляем и контекст и перезапускаем ресурс
+        setFeaturedFeed((prev) => [...(prev || featuredShouts() || []), ...loaded])
         return loaded as LoadMoreItems
       }
       return [] as LoadMoreItems
@@ -239,7 +214,7 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
     <PageLayout withPadding={true} title={t('Discours')} key="home">
       <LoadMoreWrapper loadFunction={loadMoreFeatured} pageSize={FEED_PAGE_SIZE} hidden={false}>
         <HomeView
-          featuredShouts={props.data?.featuredShouts || featuredFeed() || []}
+          featuredShouts={featuredShouts() || []}
           topMonthShouts={props.data?.topMonthShouts || []}
           topViewedShouts={props.data?.topViewedShouts || []}
           topRatedShouts={props.data?.topRatedShouts || []}

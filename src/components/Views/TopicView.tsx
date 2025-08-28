@@ -119,7 +119,7 @@ export const TopicView = (props: Props) => {
 
       setSortedFeed(props.shouts)
       setLoadMoreHidden(props.shouts.length < FEED_PAGE_SIZE)
-      
+
       // ✅ ДИАГНОСТИКА: Проверяем в dev режиме (без console.log для SSR)
       if (import.meta.env.DEV && typeof window !== 'undefined') {
         setTimeout(() => {
@@ -157,7 +157,7 @@ export const TopicView = (props: Props) => {
       (newSlug, prevSlug) => {
         if (newSlug !== prevSlug && prevSlug !== undefined) {
           // ✅ ИСПРАВЛЕНИЕ: Восстанавливаем фид из пропсов при смене топика
-          setSortedFeed(props.shouts || []) 
+          setSortedFeed(props.shouts || [])
           setTopicAuthorsList([]) // Сбрасываем авторов при смене топика
           setLoadMoreAuthorsHidden(false)
           setAuthorsInitialized(false) // Сбрасываем флаг инициализации
@@ -382,8 +382,8 @@ export const TopicView = (props: Props) => {
       if (result?.length) {
         // ✅ ИСПРАВЛЕНИЕ: Дедупликация авторов по ID
         setTopicAuthorsList((prev) => {
-          const existingIds = new Set(prev.map(author => author.id))
-          const newAuthors = result.filter(author => !existingIds.has(author.id))
+          const existingIds = new Set(prev.map((author) => author.id))
+          const newAuthors = result.filter((author) => !existingIds.has(author.id))
           return [...prev, ...newAuthors]
         })
         setLoadMoreAuthorsHidden(topicAuthorsList().length >= stats().authors)
@@ -625,10 +625,7 @@ export const TopicView = (props: Props) => {
 
                 {/* Top month articles */}
                 <Show when={reactedArticles().length > 0}>
-                  <ArticleCardSwiper
-                    title={t('Top month')}
-                    slides={reactedArticles().slice(0, 10)}
-                  />
+                  <ArticleCardSwiper title={t('Top month')} slides={reactedArticles().slice(0, 10)} />
                 </Show>
 
                 {/* Top viewed articles */}
@@ -651,17 +648,12 @@ export const TopicView = (props: Props) => {
 
                 {/* Favorite articles */}
                 <Show when={favoriteArticles().length > 0}>
-                  <ArticleCardSwiper
-                    title={t('Favorite')}
-                    slides={favoriteArticles().slice(0, 10)}
-                  />
+                  <ArticleCardSwiper title={t('Favorite')} slides={favoriteArticles().slice(0, 10)} />
                 </Show>
 
                 {/* ✅ ПРОСТАЯ ЛОГИКА: Остальные статьи */}
                 <LoadMoreWrapper loadFunction={loadMore} pageSize={FEED_PAGE_SIZE} hidden={loadMoreHidden()}>
-                  <For each={mainArticles().slice(8)}>
-                    {(article) => <Row1 article={article} />}
-                  </For>
+                  <For each={mainArticles().slice(8)}>{(article) => <Row1 article={article} />}</For>
                 </LoadMoreWrapper>
               </Show>
             </Show>

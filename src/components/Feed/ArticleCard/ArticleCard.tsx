@@ -1,6 +1,6 @@
 import { A, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Accessor, createMemo, createSignal, For, Show } from 'solid-js'
+import { Accessor, createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { Image } from '~/components/_shared/Image'
 import { Popover } from '~/components/_shared/Popover'
@@ -103,6 +103,36 @@ export const ArticleCard = (props: ArticleCardProps) => {
   const [isActionPopupActive, setIsActionPopupActive] = createSignal(false)
   const [isCoverImageLoadError, setIsCoverImageLoadError] = createSignal(false)
   const [isCoverImageLoading, setIsCoverImageLoading] = createSignal(true)
+
+  // 🔧 ИСПРАВЛЕНИЕ: Правильно управляем состоянием загрузки
+  createEffect(() => {
+    const articleId = props.article?.id
+    const coverUrl = props.article?.cover
+
+    if (articleId) {
+      setIsCoverImageLoadError(false)
+
+      if (!coverUrl) {
+        // Нет обложки - сразу сбрасываем loading
+        setIsCoverImageLoading(false)
+      } else {
+        // Есть обложка - проверяем загружена ли она уже
+        setIsCoverImageLoading(true)
+
+        // Проверяем кеш браузера
+        if (typeof window !== 'undefined') {
+          const img = document.createElement('img')
+          img.onload = () => setIsCoverImageLoading(false)
+          img.onerror = () => {
+            setIsCoverImageLoadError(true)
+            setIsCoverImageLoading(false)
+          }
+          img.src = coverUrl
+        }
+      }
+    }
+  })
+
   const description = descFromBody(props.article?.body || '')
   const aspectRatio: Accessor<string> = () => LAYOUT_ASPECT[props.article?.layout as string] || ''
   const { title, subtitle } = getTitleAndSubtitle(props.article)

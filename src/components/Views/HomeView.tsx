@@ -41,19 +41,10 @@ export const HomeView = (props: HomeViewProps) => {
   const { topTopics } = useTopics()
   const { randomTopicFeed } = useFeaturedFeed()
 
-  // Детальная диагностика загрузки данных
+  // Диагностика состояния данных
   createEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('🔍 HomeView: Props data received:', {
-        featuredShouts: props.featuredShouts?.length || 0,
-        topRatedShouts: props.topRatedShouts?.length || 0,
-        topMonthShouts: props.topMonthShouts?.length || 0,
-        topViewedShouts: props.topViewedShouts?.length || 0,
-        topCommentedShouts: props.topCommentedShouts?.length || 0,
-        hasFeaturedData: !!props.featuredShouts?.length,
-        hasTopRatedData: !!props.topRatedShouts?.length,
-        hasTopMonthData: !!props.topMonthShouts?.length
-      })
+    if (import.meta.env.DEV && !props.featuredShouts?.length) {
+      console.log('[HomeView] NO DATA RECEIVED FROM PROPS')
     }
   })
 
@@ -77,30 +68,16 @@ export const HomeView = (props: HomeViewProps) => {
     })
   })
 
-  // Fallback для случаев когда SSR данные не загрузились
-  const fallbackShouts = createMemo(() => {
-    if (props.featuredShouts?.length) {
-      return props.featuredShouts
-    }
-
-    // Если нет SSR данных, показываем минимальный контент
-    if (import.meta.env.DEV) {
-      console.warn('⚠️ HomeView: No SSR data available, using fallback')
-    }
-
-    return []
-  })
-
   const pages = createMemo<Shout[][]>(() =>
-    paginate(fallbackShouts() || [], SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, SHOUTS_PER_PAGE)
+    paginate(props.featuredShouts || [], SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, SHOUTS_PER_PAGE)
   )
 
-  // Стабилизируем условие для предотвращения ошибок гидрации
-  // Проверяем наличие данных вместо минимального количества
+  // 🔧 ИСПРАВЛЕНО: Более мягкое условие для предотвращения бесконечных плейсхолдеров
   const hasMoreShouts = createMemo(() => {
     const featured = props.featuredShouts || []
-    // Используем более стабильное условие - проверяем наличие данных
-    return featured.length > 0 && featured.length >= MIN_SHOUTS_FOR_FULL_VIEW
+    // Достаточно если есть хотя бы несколько статей (снижаем порог)
+    const threshold = Math.min(MIN_SHOUTS_FOR_FULL_VIEW, 3) // Минимум 3 вместо 6
+    return featured.length >= threshold
   })
 
   // Система дедупликации для предотвращения повторов публикаций
@@ -109,7 +86,7 @@ export const HomeView = (props: HomeViewProps) => {
       const dedupContext = new FeedDeduplicationContext()
 
       // Используем данные из props (уже загружены на сервере)
-      const featured = fallbackShouts() || []
+      const featured = props.featuredShouts || []
       const topRated = props.topRatedShouts || []
       const topMonth = props.topMonthShouts || []
       const topViewed = props.topViewedShouts || []
@@ -119,16 +96,18 @@ export const HomeView = (props: HomeViewProps) => {
       const randomTopicData = randomTopicFeed()
       const randomTopic = randomTopicData?.shouts || []
 
-      // Проверяем наличие минимального количества данных для стабильности
-      if (featured.length < MIN_SHOUTS_FOR_FULL_VIEW) {
+      // 🔧 ИСПРАВЛЕНО: Снижаем порог для показа контента
+      const threshold = Math.min(MIN_SHOUTS_FOR_FULL_VIEW, 3)
+      if (featured.length < threshold) {
+        // Показываем хотя бы то что есть, вместо полного скрытия
         return {
-          mainFeaturedFirst: featured,
+          mainFeaturedFirst: featured, // Показываем все доступные статьи
           remainingFeatured: [],
-          topRated: [],
-          topMonth: [],
-          topViewed: [],
-          topCommented: [],
-          randomTopic: []
+          topRated: topRated.slice(0, 5), // Показываем хотя бы часть дополнительного контента
+          topMonth: topMonth.slice(0, 5),
+          topViewed: topViewed.slice(0, 3),
+          topCommented: topCommented.slice(0, 3),
+          randomTopic: randomTopic.slice(0, 3)
         }
       }
 
