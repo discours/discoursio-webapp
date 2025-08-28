@@ -1,4 +1,3 @@
-# .cursor/rules/css-modules.mdc
 ---
 description: CSS Modules паттерны и стилизация компонентов
 globs: src/**/*.scss, src/**/*.module.scss, src/**/*.tsx

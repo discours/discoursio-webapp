@@ -1,25 +1,23 @@
 ---
-description: SolidJS реактивность - конкретные паттерны кода и антипаттерны
-globs:
-  - src/**/*.tsx
-  - src/**/*.ts
+description: Полное руководство по SolidJS реактивности, SSR и гидрации
+globs: src/**/*.tsx, src/**/*.ts
 alwaysApply: true
-priority: 2
 ---
 
-# ⚡ SolidJS Реактивность [[memory:3641776]]
+# ⚡ SolidJS Реактивность и SSR [[memory:3641776]]
 
 ## 📂 Project Structure  
 ```
 src/components/_shared/ - переиспользуемые компоненты
 src/graphql/generated/ - НЕ РЕДАКТИРОВАТЬ! Только через codegen.ts
+src/routes/ - роуты с route.load для SSR
 ```
 
 ## 🚨 НЕ React! Принципиально другая модель реактивности
 
-## 🚫 НИКОГДА не делай:
+### 🚫 НИКОГДА не делай:
 ```typescript
-// ❌ Async createEffect - ЛОМАЕТ ГИДРАЦИЮ
+// ❌ Async createEffect - ЛОМАЕТ ГИДРАЦИЮ!
 createEffect(async () => await fetchData())
 
 // ❌ Прямой window доступ в init - SSR error
@@ -29,9 +27,6 @@ const [width] = createSignal(window.innerWidth)
 const { data, isLoading } = props // ❌ Реактивность сломана!
 const MyComponent = ({ data, isLoading }: Props) => {} // ❌ НЕТ!
 
-// ⚠️ Деструктуризация КОНТЕКСТОВ - обычно работает нормально
-const { signIn, session } = useSession() // ✅ OK для контекстов
-
 // ❌ Мутация props - нарушает реактивность
 props.data.push(newItem)
 
@@ -40,13 +35,13 @@ const [loading, setLoading] = createSignal(true)
 const [error, setError] = createSignal<Error>()
 const [data, setData] = createSignal<Data>()
 
-// ❌ createAsync - пока недоступен (вернется в Signals 2.0)
-const data = createAsync(async () => fetchData())
+// ❌ Нестабильные ключи - вызывают ошибки insertBefore
+{ id: Math.random(), text: 'Comment' }
 ```
 
-# ✅ Правильные Паттерны
+## ✅ Правильные Паттерны
 
-## 🔥 Props Reactivity (КРИТИЧЕСКИ ВАЖНО!)
+### 🔥 Props Reactivity (КРИТИЧЕСКИ ВАЖНО!)
 ```typescript
 // ✅ ВСЕГДА используй props.* для сохранения реактивности
 const MyComponent = (props: Props) => {
@@ -58,11 +53,11 @@ createEffect(() => {
   console.log(props.isLoading) // ✅ Реактивно!
 })
 
-// ❌ НЕ деструктурируй - теряется реактивность!
-const { data } = props // ❌ Больше не реактивно!
+// ⚠️ Деструктуризация КОНТЕКСТОВ - обычно работает нормально
+const { signIn, session } = useSession() // ✅ OK для контекстов
 ```
 
-## 🔥 Async Data Loading
+### 🔥 Async Data Loading
 ```typescript
 // ✅ ВСЕГДА createResource для async данных
 const [data, { refetch }] = createResource(
@@ -77,15 +72,15 @@ const [data, { refetch }] = createResource(
   </Show>
 </Show>
 
-// ✅ SSR интеграция
+// ✅ SSR интеграция с initialValue
 const [shouts] = createResource(async () => {
   return props.data.featuredShouts || await loadMoreFeatured()
 }, { initialValue: props.data.featuredShouts })
 ```
 
-## 🔄 Effect Management
+### 🔄 Effect Management
 ```typescript
-// ✅ Async в onMount
+// ✅ Async в onMount (автоматически клиентский)
 onMount(async () => {
   const data = await fetchData()
   setData(data)
@@ -107,11 +102,14 @@ batch(() => {
 const getToken = () => untrack(() => session()?.token)
 ```
 
-## 🧊 Hydration Safety
+### 🧊 SSR и Гидрация
+
+#### Browser API безопасность:
 ```typescript
-// ✅ Безопасный browser API доступ в onMount (автоматически клиентский)
+// ✅ onMount автоматически клиентский - НЕ нужны проверки window
 onMount(() => {
   setWidth(window.innerWidth)
+  document.addEventListener('click', handler)
 })
 
 // ✅ Условная клиентская загрузка в createEffect
@@ -120,12 +118,74 @@ createEffect(() => {
     setWidth(window.innerWidth)
   }
 })
-
-// ✅ Immutable updates
-setData(prev => [...prev, newItem])
 ```
 
-## 🎯 GraphQL Patterns
+#### Правильная работа с route.load:
+```typescript
+export default function PageComponent(props: RouteSectionProps<PageData>) {
+  // ✅ ПРАВИЛЬНО: прямой доступ к данным (props уже реактивны!)
+  const routeData = () => props.data
+  
+  // ✅ ПРАВИЛЬНО: единый эффект для инициализации
+  createEffect(() => {
+    const data = routeData()
+    if (data?.topic) {
+      setCurrentTopic(data.topic)
+      setTitle(`${t('Discours')} :: ${data.topic.title}`)
+    }
+  })
+  
+  // ✅ ПРАВИЛЬНО: createResource с initialValue из SSR
+  const [articles] = createResource(
+    () => props.params.slug,
+    async (slug) => {
+      const data = routeData()
+      return data?.articles || await fetchArticles(slug)
+    },
+    { initialValue: routeData()?.articles }
+  )
+}
+```
+
+#### Стабильная гидрация:
+```typescript
+// ✅ ПРАВИЛЬНО: стабильные ключи
+const items = () => articles().map(article => ({
+  id: `article-${article.id}`, // стабильный ID
+  title: article.title
+}))
+
+// ✅ SolidJS: <For> сам отслеживает изменения, ключи НЕ нужны
+<For each={items()}>{(item) => <div>{item.name}</div>}</For>
+
+// ✅ Используй createUniqueId() для DOM id (SSR-safe)
+import { createUniqueId } from 'solid-js'
+const uniqueId = createUniqueId()
+```
+
+### 🎨 Memoization Strategy (НЕ как useMemo в React!)
+```typescript
+// ✅ createMemo для СЛОЖНЫХ вычислений, НЕ для простых проверок
+const sorted = createMemo(() => {
+  const feed = topicFeed()
+  const isEqual = feed.length === prev().length && 
+    feed.every((item, i) => item.id === prev()[i]?.id)
+  if (isEqual) return prevSorted()
+  return [...feed].sort(byViews)
+})
+
+// ❌ НЕ делай мемо для простых проверок
+const isOwnProfile = createMemo(() => session()?.author?.slug === props.slug) // ЛОМАЕТ!
+
+// ✅ Используй простые функции для легких вычислений
+const isOwnProfile = () => session()?.author?.slug === props.slug
+
+// ✅ Атомарные сигналы
+const [entities, setEntities] = createSignal<Record<string, Topic>>({})
+const [sortBy, setSortBy] = createSignal<TopicSort>('shouts')
+```
+
+### 🎯 GraphQL Patterns
 ```typescript
 // ✅ Client Preset
 import { gql } from '~/graphql/generated'
@@ -141,42 +201,36 @@ export const loadPrivateData = (client) => async () => {
 }
 ```
 
-## 🎨 Memoization Strategy (НЕ как useMemo в React!)
+## 🚨 Критические антипаттерны
+
+### ❌ Async createEffect (ломает гидрацию):
 ```typescript
-// ✅ createMemo для СЛОЖНЫХ вычислений, НЕ для простых проверок
-const sorted = createMemo(() => {
-  const feed = topicFeed()
-  const isEqual = feed.length === prev().length && 
-    feed.every((item, i) => item.id === prev()[i]?.id)
-  if (isEqual) return prevSorted()
-  return [...feed].sort(byViews)
+// НЕ ДЕЛАЙ ТАК:
+createEffect(async () => {
+  const data = await fetchData()
+  setData(data)
 })
 
-// ❌ НЕ делай мемо для простых проверок или зависимостей на сессию
-const isOwnProfile = createMemo(() => session()?.author?.slug === props.slug) // ЛОМАЕТ!
-
-// ✅ Используй простые функции для легких вычислений
-const isOwnProfile = () => session()?.author?.slug === props.slug
-
-// ✅ Атомарные сигналы вместо useState
-const [entities, setEntities] = createSignal<Record<string, Topic>>({})
-const [sortBy, setSortBy] = createSignal<TopicSort>('shouts')
+// ДЕЛАЙ ТАК:
+const [data] = createResource(fetchData)
 ```
 
-# 🚨 Антипаттерны из Рефакторинга
-
-## ❌ Неправильное async состояние
+### ❌ Нестабильные ключи (вызывают ошибки insertBefore):
 ```typescript
-// ❌ Было - множественные состояния
-const [feed, setFeed] = createSignal<Shout[]>([])
-const [loading, setLoading] = createSignal(false)
-createEffect(async () => { setLoading(true); /* fetch */ })
+// НЕ ДЕЛАЙ ТАК:
+const items = () => data().map(item => ({
+  id: Math.random(), // нестабильный ключ!
+  content: item
+}))
 
-// ✅ Стало - createResource
-const [feed] = createResource(() => options(), loadShouts)
+// ДЕЛАЙ ТАК:
+const items = () => data().map((item, index) => ({
+  id: `item-${item.id || index}`, // стабильный ключ
+  content: item
+}))
 ```
 
-## ❌ Деструктуризация props (НОВОЕ!)
+### ❌ Деструктуризация props (НОВОЕ!)
 ```typescript
 // ❌ Было - деструктуризация ломает реактивность
 const MyComponent = ({ data, isLoading }: Props) => {
@@ -189,49 +243,101 @@ const MyComponent = (props: Props) => {
 }
 ```
 
-## ❌ Небезопасные контексты SSR
-```typescript
-// ❌ Было - без try/catch
-const { randomTopicFeed } = useFeaturedFeed()
+## 🔧 Отладка проблем гидрации
 
-// ✅ Стало - безопасный доступ
-const safeTopicFeed = createMemo(() => {
-  try { return useFeaturedFeed().randomTopicFeed() || [] }
-  catch { return [] }
+### Диагностика несоответствий DOM:
+```typescript
+// ✅ Проверка серверного vs клиентского рендеринга
+if (typeof window !== 'undefined') {
+  console.log('Клиентский рендер')
+} else {
+  console.log('Серверный рендер') 
+}
+
+// Логирование состояний
+createEffect(() => {
+  const data = routeData()
+  console.log('[Component] Route data:', {
+    hasData: !!data,
+    hasTopic: !!data?.topic,
+    topicTitle: data?.topic?.title
+  })
 })
 ```
 
-## ❌ Неправильная работа с ключами (НЕ как в React!)
+### Устранение insertBefore ошибок:
+- **Server ↔ Client DOM должен совпадать ТОЧНО**
+- Проверить согласованность условного рендеринга
+- Убедиться что структура DOM одинакова на сервере и клиенте
+- Избегать динамических изменений структуры при гидрации
+
+## 🎯 Шаблон route компонента
+
 ```typescript
-// ❌ Math.random() ключи - нестабильные между сервером и клиентом
-{ id: Math.random(), text: 'Comment' }
+export const route = {
+  load: async ({ params }) => {
+    try {
+      const articles = await fetchArticles(params.slug)
+      const topic = await fetchTopic(params.slug)
+      return { articles, topic }
+    } catch (error) {
+      return { articles: [], topic: null } // Fallback
+    }
+  }
+} satisfies RouteDefinition
 
-// ❌ Принудительные ключи в <For> - не нужны!
-<For each={items()}>{(item) => <div key={item.id}>{item.name}</div>}</For>
-
-// ✅ SolidJS: <For> сам отслеживает изменения, ключи НЕ нужны
-<For each={items()}>{(item) => <div>{item.name}</div>}</For>
-
-// ✅ Используй createUniqueId() для DOM id (SSR-safe)
-import { createUniqueId } from 'solid-js'
-const uniqueId = createUniqueId()
-
-// ✅ Ключи нужны ТОЛЬКО при .map() (но лучше использовать <For>)
-{items().map(item => <div key={item.id}>{item.name}</div>)}
+export default function TopicPage(props: RouteSectionProps<TopicPageData>) {
+  const routeData = () => props.data
+  
+  // Инициализация данных из route.load
+  const [currentTopic, setCurrentTopic] = createSignal<Topic>()
+  
+  createEffect(() => {
+    const data = routeData()
+    if (data?.topic) {
+      setCurrentTopic(data.topic)
+      setTitle(`${t('Discours')} :: ${data.topic.title}`)
+    }
+  })
+  
+  // Ресурсы с SSR данными
+  const [articles] = createResource(
+    () => props.params.slug,
+    async (slug) => {
+      const data = routeData()
+      return data?.articles || await fetchArticles(slug)
+    },
+    { initialValue: routeData()?.articles }
+  )
+  
+  // Клиентская инициализация
+  onMount(() => {
+    trackPageView(currentTopic()?.title)
+  })
+  
+  return (
+    <Show when={currentTopic()}>
+      <TopicView 
+        topic={currentTopic()!}
+        shouts={articles() || []}
+        topicSlug={props.params.slug}
+      />
+    </Show>
+  )
+}
 ```
 
-## ❌ Избыточные вычисления
-```typescript
-// ❌ Было - пересчет при каждом рендере
-const topShouts = () => [...feedByTopic()].sort(byStat('views'))
+## 📋 Чеклист для route компонентов
 
-// ✅ Стало - мемоизация с проверкой изменений
-const topShouts = createMemo(() => {
-  // Проверка равенства + кеширование
-})
-```
+**Перед деплоем проверь:**
+- [ ] Нет async createEffect
+- [ ] Browser API только в onMount или с проверками
+- [ ] Стабильные ID для списков  
+- [ ] createResource с initialValue для SSR данных
+- [ ] Props используются через props.* (не деструктурированы)
+- [ ] Тестирование с отключенным JS (SSR-only)
 
-# 🔄 SolidJS Reactivity Rules (НЕ как в React!)
+## 🔄 SolidJS Reactivity Rules (НЕ как в React!)
 - **onMount ≠ useEffect**: Один раз после DOM, async операции
 - **createEffect ≠ useEffect**: Синхронно, реакция на изменения
 - **createResource ≠ useState+useEffect**: ЕДИНСТВЕННЫЙ способ для async данных
@@ -239,52 +345,18 @@ const topShouts = createMemo(() => {
 - **batch**: Группировка связанных обновлений (нет в React)
 - **untrack**: Чтение без зависимости (нет в React)
 - **props.* ОБЯЗАТЕЛЬНО**: НЕ деструктурируй пропсы!
+- **Props автоматически реактивны**: не нужны дополнительные обертки
 
-# 🧊 SSR Best Practices
-**См. детали:** [006-ssr-hydration](mdc:.cursor/rules/006-ssr-hydration.mdc)
-- `onMount` автоматически клиентский - НЕ нужны проверки window
-- `typeof window !== 'undefined'` для browser API в createEffect
-
-# 💎 Advanced Patterns
-
-## 🎯 Provider порядок (избежание циклических зависимостей)
-```typescript
-<LocalizeProvider>
-  <SessionProvider>
-    <UIProvider>
-      <TopicsProvider>
-        <FeedProvider>{children}</FeedProvider>
-      </TopicsProvider>
-    </UIProvider>
-  </SessionProvider>
-</LocalizeProvider>
-```
-
-## 🔍 Отладка циклов
-```typescript
-createRenderEffect(() => {
-  console.log('[Debug] Render cycle:', ++count)
-  if (count > 100) console.error('Infinite loop detected')
-})
-```
-
-## 🗂️ Caching Strategy  
-```typescript
-// ✅ Кешируется: публичные данные (loadTopics, loadAuthors)
-// ❌ НЕ кешируется: персональные данные (loadReactions)
-```
-
----
-
-# 🚨 Quick Reference - Срочные исправления
+## 🚨 Quick Reference - Срочные исправления
 1. **async createEffect** → `createResource`  
 2. **`const { data } = props`** → `props.data` (ТОЛЬКО для props!)
 3. **деструктуризация контекстов** → работает нормально
 4. **множественные loading/error** → `createResource` 
 5. **window в init** → `onMount(() => window...)`
 6. **ключи в <For>** → НЕ нужны! Используй `createUniqueId()` для DOM id
-
-⚠️ **ВАЖНО**: НЕ путай props и контексты! Деструктуризация контекстов обычно работает корректно.
+7. **console.log в SSR компонентах** → убрать для предотвращения ошибок гидрации
 
 ---
-⚠️ **ВАЖНО**: Это SolidJS, НЕ React! [[memory:3641776]]
+💡 **Главное правило**: если сомневаешься в гидрации - тестируй с отключенным JavaScript. SSR должен работать без JS!
+
+⚠️ **ВАЖНО**: Это SolidJS, НЕ React! Props реактивны автоматически! [[memory:3641776]]

@@ -1,4 +1,3 @@
-# .cursor/rules/code-quality.mdc
 ---
 description: Code quality, testing, and validation standards
 alwaysApply: true
