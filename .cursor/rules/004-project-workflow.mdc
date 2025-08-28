@@ -1,35 +1,28 @@
 ---
-description: Project-specific workflow and documentation rules
+description: Оптимизированный workflow для предотвращения гниения контекста
+globs: **/*
 alwaysApply: true
-priority: 4
 ---
 
-# 📋 Project Workflow
+# 📋 Workflow для Sonnet 4
 
-## 📝 Documentation Updates
-**При каждом изменении:**
+## 📝 Documentation (обязательно)
 ```
-1. CHANGELOG.md - новая версия сверху
-2. docs/README.md - если изменена документация  
-3. features.md - если добавлена/изменена функциональность
-4. docs/progress/<timestamp>-<название>.md - отчёты о прогрессе
+CHANGELOG.md — новая версия сверху
+features.md — изменения функциональности
+docs/progress/<timestamp>-название.md — отчет сессии
 ```
 
-## 📊 Progress Tracking
-
-**Каждый чат должен завершаться:**
+## 📊 Progress Template (краткий)
 ```markdown
-## 🎯 Business Impact: [OUTCOME] - [METRIC] - [DEADLINE]
-## 🛠️ Technical: [PROBLEM] → [SOLUTION] → [QUALITY]
-## ✅ Definition of Done:
-- [ ] Tests pass
-- [ ] Code quality gates passed  
-- [ ] Documentation updated
-- [ ] No regression introduced
+## 🎯 Impact: [ПРОБЛЕМА] → [РЕШЕНИЕ] → [РЕЗУЛЬТАТ]
+## ✅ Done:
+- [ ] Основная задача
+- [ ] Тесты проходят  
+- [ ] Документация обновлена
 ```
 
-## 🎯 Project Context
-- **Tech Stack**: SolidJS + TypeScript + GraphQL + SCSS
-- **Target**: Modern browsers, mobile-first
-- **Performance**: Sub-second loading, smooth interactions
-```
+## 🎯 Context (SolidJS + TypeScript + GraphQL)
+- **Target**: Современные браузеры, mobile-first
+- **Performance**: < 1s загрузка, плавные интеракции
+- **SSR**: Стабильная гидрация критична

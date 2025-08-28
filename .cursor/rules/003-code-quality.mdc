@@ -1,48 +1,41 @@
 ---
-description: Code quality, testing, and validation standards
+description: Минималистичные стандарты качества - оптимизировано для скорости
+globs: **/*.{ts,tsx,js,jsx}
 alwaysApply: true
-priority: 3
 ---
 
-# 🛡️ Code Quality Standards
+# 🛡️ Quality Gates (Быстрые)
 
-## 🧪 Testing Philosophy
+## 📏 Before commit (автоматизировано)
+```bash
+npm run fix && npm run typecheck && npm run build
+```
+
+## 🏗️ Architecture (4 правила)
+- **Single Responsibility**: 1 функция = 1 задача
+- **Pure Functions**: Предсказуемые, тестируемые
+- **Composition > Inheritance**: Расширяем существующее
+- **Explicit > Implicit**: Явные зависимости
+
+## 🧪 Testing (поведение, не реализация)
 ```typescript
-// ✅ Test real behavior, not implementation
-test('user can submit valid form', async () => {
-  await page.fill('[data-testid="email"]', 'test@example.com')
-  await page.click('button[type="submit"]')
+// ✅ Тестируй реальное поведение
+test('user can submit form', async () => {
+  await page.fill('[data-testid="email"]', 'test@test.com')
+  await page.click('[type="submit"]')
   await expect(page.locator('.success')).toBeVisible()
 })
 
-// ❌ Avoid excessive mocking
-// Don't mock everything - test real interactions
+// ❌ НЕ мокай все подряд
 ```
 
-## 📏 Quality Gates
-**Before any commit:**
-```bash
-1. npm run fix              # Biome lint + format
-2. npm run typecheck        # TypeScript проверка типов
-3. npm run test:unit        # Vitest unit тесты
-4. npm run e2e --grep="critical"  # Playwright критические E2E тесты
-5. npm run build            # Проверка сборки SolidJS
-6. npm run codegen:all      # GraphQL типы актуальны
-```
+## 📊 Performance (критичные метрики)
+- **Bundle**: < 500KB gzipped
+- **LCP**: < 2.5s, **FID**: < 100ms
+- **Images**: WebP + lazy loading
+- **GraphQL**: Агрессивное кеширование
 
-## 🏗️ Architecture Rules
-- **Single Responsibility**: Одна функция = одна ответственность
-- **Pure Functions**: Предсказуемые, тестируемые функции
-- **Composition > Inheritance**: Переиспользование через композицию
-- **Explicit > Implicit**: Явные зависимости и побочные эффекты
-## 📊 Performance Standards
-- **Bundle size**: Критические страницы < 500KB gzipped
-- **Core Web Vitals**: LCP < 2.5s, FID < 100ms, CLS < 0.1
-- **Caching**: Агрессивное кеширование GraphQL запросов
-- **Images**: WebP формат, responsive images, lazy loading
-
-## 🔒 Security Standards
-- **Input validation**: Валидация на клиенте И сервере
-- **XSS protection**: Санитизация HTML контента
-- **CSRF**: Токены для форм
-- **Authentication**: JWT + refresh tokens
+## 🔒 Security (минимум)
+- **Input validation**: Клиент И сервер
+- **XSS protection**: Санитизация HTML
+- **JWT**: + refresh tokens

@@ -1,84 +1,41 @@
 ---
-description: CSS Modules паттерны и стилизация компонентов
-globs: src/**/*.scss, src/**/*.module.scss, src/**/*.tsx
+description: CSS Modules - краткие паттерны
+globs: src/**/*.{scss,css}
 alwaysApply: true
 ---
 
-# 🎨 CSS Modules & Styling
+# 🎨 CSS Modules (Быстро)
 
-## ✅ CSS Module Best Practices
-
-### Правильная структура:
+## ✅ Правильно
 ```scss
-// ✅ Используй CSS модули для компонентов
+// Component.module.scss
 .localClass {
   color: red;
-  @extend .baseClass; // DRY через наследование
-}
-
-// ✅ Базовые классы для переиспользования
-.baseBadge {
-  display: inline-flex;
-  padding: 4px 8px;
+  @extend .baseClass; // DRY
 }
 ```
 
-### Импорт и использование:
 ```typescript
-// ✅ Импортируй и используй модульные стили
+// Component.tsx
 import styles from './Component.module.scss'
-
-export const Component = () => {
-  return <div class={styles.localClass}>Content</div>
-}
+export const Component = () => (
+  <div class={styles.localClass}>Content</div>
+)
 ```
 
-## 🚫 Антипаттерны
-
-### ❌ Избегай глобальных стилей:
-```scss
-// НЕ ДЕЛАЙ ТАК:
-:global(.some-class) { /* избегай без крайней необходимости */ }
-
-// ДЕЛАЙ ТАК:
-.localClass { /* модульные стили */ }
-```
-
-### ❌ Избегай прямого CSS в компонентах:
+## 🚫 Избегай
 ```typescript
-// НЕ ДЕЛАЙ ТАК:
-<div style="color: red;">Content</div>
+// ❌ НЕ inline стили
+<div style="color: red;">Bad</div>
 
-// ДЕЛАЙ ТАК:
-<div class={styles.redText}>Content</div>
+// ❌ НЕ глобальные без нужды  
+:global(.some-class) { /* избегай */ }
 ```
 
-## 🔧 Организация стилей
-
-### Структура файлов:
+## 🔧 Структура
 ```
-src/components/MyComponent/
-├── MyComponent.tsx
-├── MyComponent.module.scss
+src/components/Button/
+├── Button.tsx
+├── Button.module.scss  
 └── index.ts
 ```
-
-### Базовые классы:
-```scss
-// src/styles/_mixins.scss
-@mixin button-base {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-// src/components/Button/Button.module.scss
-.button {
-  @include button-base;
-  background: var(--primary-color);
-}
-```
-
----
-💡 **Принцип**: Локальные стили = предсказуемость + переиспользование

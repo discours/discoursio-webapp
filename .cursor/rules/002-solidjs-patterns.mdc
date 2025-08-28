@@ -1,86 +1,69 @@
 ---
-description: Полное руководство по SolidJS реактивности, SSR и гидрации
-globs: src/**/*.tsx, src/**/*.ts
+description: Критичные SolidJS паттерны
+globs: src/**/*.{ts,tsx}
 alwaysApply: true
 ---
 
-# ⚡ SolidJS Реактивность и SSR [[memory:3641776]]
+# ⚡ SolidJS != React (Критичные отличия)
 
-## 📂 Project Structure  
-```
-src/components/_shared/ - переиспользуемые компоненты
-src/graphql/generated/ - НЕ РЕДАКТИРОВАТЬ! Только через codegen.ts
-src/routes/ - роуты с route.load для SSR
-```
-
-## 🚨 НЕ React! Принципиально другая модель реактивности
-
-### 🚫 НИКОГДА не делай:
+## 🚫 НИКОГДА не делай
 ```typescript
-// ❌ Async createEffect - ЛОМАЕТ ГИДРАЦИЮ!
+// ❌ ASYNC createEffect - ломает гидрацию
 createEffect(async () => await fetchData())
 
-// ❌ Прямой window доступ в init - SSR error
+// ❌ Деструктуризация PROPS - теряет реактивность  
+const { data } = props // ❌ НЕТ!
+const Component = ({ data }: Props) => {} // ❌ НЕТ!
+
+// ❌ Window в init - SSR error
 const [width] = createSignal(window.innerWidth)
 
-// ❌ Деструктуризация PROPS - ТЕРЯЕТСЯ РЕАКТИВНОСТЬ!
-const { data, isLoading } = props // ❌ Реактивность сломана!
-const MyComponent = ({ data, isLoading }: Props) => {} // ❌ НЕТ!
-
-// ❌ Мутация props - нарушает реактивность
-props.data.push(newItem)
-
-// ❌ Множественные async состояния - используй createResource
-const [loading, setLoading] = createSignal(true)
-const [error, setError] = createSignal<Error>()
-const [data, setData] = createSignal<Data>()
-
-// ❌ Нестабильные ключи - вызывают ошибки insertBefore
-{ id: Math.random(), text: 'Comment' }
+// ❌ Нестабильные ключи
+{ id: Math.random(), text: 'Item' }
 ```
 
-## ✅ Правильные Паттерны
+## ✅ Правильные паттерны
 
-### 🔥 Props Reactivity (КРИТИЧЕСКИ ВАЖНО!)
+### Props реактивность
 ```typescript
-// ✅ ВСЕГДА используй props.* для сохранения реактивности
-const MyComponent = (props: Props) => {
-  return <div>{props.data}</div> // ✅ Реактивно!
+// ✅ ВСЕГДА props.*
+const Component = (props: Props) => {
+  return <div>{props.data}</div> // Реактивно!
 }
 
-// ✅ В функциях тоже используй props.*
-createEffect(() => {
-  console.log(props.isLoading) // ✅ Реактивно!
-})
-
-// ⚠️ Деструктуризация КОНТЕКСТОВ - обычно работает нормально
-const { signIn, session } = useSession() // ✅ OK для контекстов
+// ✅ В функциях тоже props.*
+createEffect(() => console.log(props.loading))
 ```
 
-### 🔥 Async Data Loading
+### Async данные
 ```typescript
-// ✅ ВСЕГДА createResource для async данных
-const [data, { refetch }] = createResource(
+// ✅ ЕДИНСТВЕННЫЙ способ - createResource
+const [data] = createResource(
   () => params(),
-  async (params) => loadData(params)
+  async (params) => loadData(params),
+  { initialValue: props.data?.items } // SSR данные
 )
-
-// ✅ Обработка состояний
-<Show when={!data.loading} fallback={<Loading />}>
-  <Show when={!data.error} fallback={<Error error={data.error} />}>
-    <DataView data={data()} />
-  </Show>
-</Show>
-
-// ✅ SSR интеграция с initialValue
-const [shouts] = createResource(async () => {
-  return props.data.featuredShouts || await loadMoreFeatured()
-}, { initialValue: props.data.featuredShouts })
 ```
 
-### 🔄 Effect Management
+### SSR + гидрация
 ```typescript
-// ✅ Async в onMount (автоматически клиентский)
+// ✅ Route компонент шаблон
+export default function Page(props: RouteSectionProps<Data>) {
+  const routeData = () => props.data
+  
+  const [items] = createResource(
+    () => props.params.id,
+    async (id) => routeData()?.items || await fetchItems(id),
+    { initialValue: routeData()?.items }
+  )
+  
+  return <Show when={items()}>{/* контент */}</Show>
+}
+```
+
+### Effects правильно
+```typescript
+// ✅ Async в onMount (клиентский)
 onMount(async () => {
   const data = await fetchData()
   setData(data)
@@ -88,275 +71,41 @@ onMount(async () => {
 
 // ✅ Циклические зависимости с defer
 createEffect(on(
-  () => feedByTopic()[props.topicSlug],
-  (feed) => { if (feed?.length) setSortedFeed(feed) },
+  () => feed()[props.slug],
+  (data) => { if (data) setProcessed(data) },
   { defer: true }
 ))
-
-// ✅ Группировка через batch
-batch(() => {
-  setState(prev => ({ ...prev, authors: data.authors || [] }))
-})
-
-// ✅ Изоляция через untrack
-const getToken = () => untrack(() => session()?.token)
 ```
 
-### 🧊 SSR и Гидрация
+## 🔧 Быстрые исправления
+1. **async createEffect** → `createResource`
+2. **`const { data } = props`** → `props.data`
+3. **window в init** → `onMount(() => window...)`
+4. **множественные состояния** → `createResource`
+5. **ключи в For** → НЕ нужны, используй `createUniqueId()`
 
-#### Browser API безопасность:
+## 💡 Мемоизация (НЕ как React)
 ```typescript
-// ✅ onMount автоматически клиентский - НЕ нужны проверки window
-onMount(() => {
-  setWidth(window.innerWidth)
-  document.addEventListener('click', handler)
-})
+// ✅ createMemo для СЛОЖНЫХ вычислений
+const sorted = createMemo(() => 
+  [...items()].sort(byComplexLogic)
+)
 
-// ✅ Условная клиентская загрузка в createEffect
-createEffect(() => {
-  if (typeof window !== 'undefined') {
-    setWidth(window.innerWidth)
-  }
-})
+// ❌ НЕ мемо для простого
+const isActive = createMemo(() => status === 'active') // ПЛОХО!
+
+// ✅ Простые функции
+const isActive = () => status() === 'active'
 ```
 
-#### Правильная работа с route.load:
+## 🎯 GraphQL паттерны
 ```typescript
-export default function PageComponent(props: RouteSectionProps<PageData>) {
-  // ✅ ПРАВИЛЬНО: прямой доступ к данным (props уже реактивны!)
-  const routeData = () => props.data
-  
-  // ✅ ПРАВИЛЬНО: единый эффект для инициализации
-  createEffect(() => {
-    const data = routeData()
-    if (data?.topic) {
-      setCurrentTopic(data.topic)
-      setTitle(`${t('Discours')} :: ${data.topic.title}`)
-    }
-  })
-  
-  // ✅ ПРАВИЛЬНО: createResource с initialValue из SSR
-  const [articles] = createResource(
-    () => props.params.slug,
-    async (slug) => {
-      const data = routeData()
-      return data?.articles || await fetchArticles(slug)
-    },
-    { initialValue: routeData()?.articles }
-  )
-}
-```
+// ✅ Кешируемые загрузчики
+export const loadData = () => createCacheableLoader(query, {}, true)
 
-#### Стабильная гидрация:
-```typescript
-// ✅ ПРАВИЛЬНО: стабильные ключи
-const items = () => articles().map(article => ({
-  id: `article-${article.id}`, // стабильный ID
-  title: article.title
-}))
-
-// ✅ SolidJS: <For> сам отслеживает изменения, ключи НЕ нужны
-<For each={items()}>{(item) => <div>{item.name}</div>}</For>
-
-// ✅ Используй createUniqueId() для DOM id (SSR-safe)
-import { createUniqueId } from 'solid-js'
-const uniqueId = createUniqueId()
-```
-
-### 🎨 Memoization Strategy (НЕ как useMemo в React!)
-```typescript
-// ✅ createMemo для СЛОЖНЫХ вычислений, НЕ для простых проверок
-const sorted = createMemo(() => {
-  const feed = topicFeed()
-  const isEqual = feed.length === prev().length && 
-    feed.every((item, i) => item.id === prev()[i]?.id)
-  if (isEqual) return prevSorted()
-  return [...feed].sort(byViews)
-})
-
-// ❌ НЕ делай мемо для простых проверок
-const isOwnProfile = createMemo(() => session()?.author?.slug === props.slug) // ЛОМАЕТ!
-
-// ✅ Используй простые функции для легких вычислений
-const isOwnProfile = () => session()?.author?.slug === props.slug
-
-// ✅ Атомарные сигналы
-const [entities, setEntities] = createSignal<Record<string, Topic>>({})
-const [sortBy, setSortBy] = createSignal<TopicSort>('shouts')
-```
-
-### 🎯 GraphQL Patterns
-```typescript
-// ✅ Client Preset
-import { gql } from '~/graphql/generated'
-import { ReactionKind } from '~/graphql/generated'
-
-// ✅ Кешируемые загрузчики (публичные данные)
-export const loadTopics = () => createCacheableLoader(query, {}, true)
-
-// ✅ Приватные данные БЕЗ кеширования
-export const loadPrivateData = (client) => async () => {
+// ✅ Приватные данные БЕЗ кеша
+export const loadPrivate = (client) => async () => {
   if (!client) return undefined
   return await client.query(query).toPromise()
 }
 ```
-
-## 🚨 Критические антипаттерны
-
-### ❌ Async createEffect (ломает гидрацию):
-```typescript
-// НЕ ДЕЛАЙ ТАК:
-createEffect(async () => {
-  const data = await fetchData()
-  setData(data)
-})
-
-// ДЕЛАЙ ТАК:
-const [data] = createResource(fetchData)
-```
-
-### ❌ Нестабильные ключи (вызывают ошибки insertBefore):
-```typescript
-// НЕ ДЕЛАЙ ТАК:
-const items = () => data().map(item => ({
-  id: Math.random(), // нестабильный ключ!
-  content: item
-}))
-
-// ДЕЛАЙ ТАК:
-const items = () => data().map((item, index) => ({
-  id: `item-${item.id || index}`, // стабильный ключ
-  content: item
-}))
-```
-
-### ❌ Деструктуризация props (НОВОЕ!)
-```typescript
-// ❌ Было - деструктуризация ломает реактивность
-const MyComponent = ({ data, isLoading }: Props) => {
-  return <div>{data}</div> // ❌ НЕ реактивно!
-}
-
-// ✅ Стало - используй props.*
-const MyComponent = (props: Props) => {
-  return <div>{props.data}</div> // ✅ Реактивно!
-}
-```
-
-## 🔧 Отладка проблем гидрации
-
-### Диагностика несоответствий DOM:
-```typescript
-// ✅ Проверка серверного vs клиентского рендеринга
-if (typeof window !== 'undefined') {
-  console.log('Клиентский рендер')
-} else {
-  console.log('Серверный рендер') 
-}
-
-// Логирование состояний
-createEffect(() => {
-  const data = routeData()
-  console.log('[Component] Route data:', {
-    hasData: !!data,
-    hasTopic: !!data?.topic,
-    topicTitle: data?.topic?.title
-  })
-})
-```
-
-### Устранение insertBefore ошибок:
-- **Server ↔ Client DOM должен совпадать ТОЧНО**
-- Проверить согласованность условного рендеринга
-- Убедиться что структура DOM одинакова на сервере и клиенте
-- Избегать динамических изменений структуры при гидрации
-
-## 🎯 Шаблон route компонента
-
-```typescript
-export const route = {
-  load: async ({ params }) => {
-    try {
-      const articles = await fetchArticles(params.slug)
-      const topic = await fetchTopic(params.slug)
-      return { articles, topic }
-    } catch (error) {
-      return { articles: [], topic: null } // Fallback
-    }
-  }
-} satisfies RouteDefinition
-
-export default function TopicPage(props: RouteSectionProps<TopicPageData>) {
-  const routeData = () => props.data
-  
-  // Инициализация данных из route.load
-  const [currentTopic, setCurrentTopic] = createSignal<Topic>()
-  
-  createEffect(() => {
-    const data = routeData()
-    if (data?.topic) {
-      setCurrentTopic(data.topic)
-      setTitle(`${t('Discours')} :: ${data.topic.title}`)
-    }
-  })
-  
-  // Ресурсы с SSR данными
-  const [articles] = createResource(
-    () => props.params.slug,
-    async (slug) => {
-      const data = routeData()
-      return data?.articles || await fetchArticles(slug)
-    },
-    { initialValue: routeData()?.articles }
-  )
-  
-  // Клиентская инициализация
-  onMount(() => {
-    trackPageView(currentTopic()?.title)
-  })
-  
-  return (
-    <Show when={currentTopic()}>
-      <TopicView 
-        topic={currentTopic()!}
-        shouts={articles() || []}
-        topicSlug={props.params.slug}
-      />
-    </Show>
-  )
-}
-```
-
-## 📋 Чеклист для route компонентов
-
-**Перед деплоем проверь:**
-- [ ] Нет async createEffect
-- [ ] Browser API только в onMount или с проверками
-- [ ] Стабильные ID для списков  
-- [ ] createResource с initialValue для SSR данных
-- [ ] Props используются через props.* (не деструктурированы)
-- [ ] Тестирование с отключенным JS (SSR-only)
-
-## 🔄 SolidJS Reactivity Rules (НЕ как в React!)
-- **onMount ≠ useEffect**: Один раз после DOM, async операции
-- **createEffect ≠ useEffect**: Синхронно, реакция на изменения
-- **createResource ≠ useState+useEffect**: ЕДИНСТВЕННЫЙ способ для async данных
-- **createMemo ≠ useMemo**: Только для СЛОЖНЫХ вычислений
-- **batch**: Группировка связанных обновлений (нет в React)
-- **untrack**: Чтение без зависимости (нет в React)
-- **props.* ОБЯЗАТЕЛЬНО**: НЕ деструктурируй пропсы!
-- **Props автоматически реактивны**: не нужны дополнительные обертки
-
-## 🚨 Quick Reference - Срочные исправления
-1. **async createEffect** → `createResource`  
-2. **`const { data } = props`** → `props.data` (ТОЛЬКО для props!)
-3. **деструктуризация контекстов** → работает нормально
-4. **множественные loading/error** → `createResource` 
-5. **window в init** → `onMount(() => window...)`
-6. **ключи в <For>** → НЕ нужны! Используй `createUniqueId()` для DOM id
-7. **console.log в SSR компонентах** → убрать для предотвращения ошибок гидрации
-
----
-💡 **Главное правило**: если сомневаешься в гидрации - тестируй с отключенным JavaScript. SSR должен работать без JS!
-
-⚠️ **ВАЖНО**: Это SolidJS, НЕ React! Props реактивны автоматически! [[memory:3641776]]
