@@ -486,8 +486,8 @@ export const TopicView = (props: Props) => {
 
     setPrevFeed(feed)
     const sorted = [...feed].sort((a: Shout, b: Shout) => {
-      const aViews = (a.stat as Stat)?.viewed || 0
-      const bViews = (b.stat as Stat)?.viewed || 0
+      const aViews = (a.stat as Stat)?.views_count || 0
+      const bViews = (b.stat as Stat)?.views_count || 0
       return bViews - aViews
     })
     setPrevSorted(sorted)

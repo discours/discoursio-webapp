@@ -326,7 +326,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
               <Show when={props.settings?.withViewed}>
                 <div class={clsx(styles.shoutCardDetailsItem, styles.shoutCardDetailsViewed)}>
                   <Icon name="eye" class={clsx(styles.icon, styles.feedControlIcon)} />
-                  {props.article?.stat?.viewed}
+                  {props.article?.stat?.views_count}
                 </div>
               </Show>
             </div>

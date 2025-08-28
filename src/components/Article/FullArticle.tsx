@@ -346,9 +346,9 @@ export const FullArticle = (props: Props) => {
         )}
       </Popover>
 
-      <Show when={props.article.stat?.viewed}>
+      <Show when={props.article.stat?.views_count}>
         <div class={clsx(styles.shoutStatsItem, styles.shoutStatsItemViews)}>
-          {t('some views', { count: props.article.stat?.viewed || 0 })}
+          {t('some views', { count: props.article.stat?.views_count || 0 })}
         </div>
       </Show>
 

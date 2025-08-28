@@ -17,7 +17,7 @@ export default gql`
       published_at
       featured_at
       stat {
-        viewed
+        views_count
         rating
         comments_count
       }

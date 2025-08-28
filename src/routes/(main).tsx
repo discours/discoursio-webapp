@@ -8,7 +8,7 @@ import { useFeaturedFeed } from '~/context/featured'
 import { FEED_PAGE_SIZE } from '~/context/feed'
 import { loadShouts } from '~/graphql/api/public'
 import { createCacheableLoader } from '~/graphql/client'
-import { QueryLoad_Shouts_ByArgs, Shout } from '~/graphql/generated/graphql'
+import { QueryLoad_Shouts_ByArgs, Shout, ShoutsOrderBy } from '~/graphql/generated/graphql'
 import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
 import { PageLayout } from '../components/_shared/PageLayout'
 import { useLocalize } from '../context/localize'
@@ -114,29 +114,68 @@ export const route = {
           throw new Error(`API недоступен: ${apiError}`)
         }
 
-        // Загружаем только основные данные для начала
+        // Загружаем featured данные для главной страницы
         const featuredLoader = loadShoutsSSR({
           options: {
             filters: { featured: true },
             limit: FEED_PAGE_SIZE
           }
         })
-
-        safeLog('Starting featured data loading...')
-
-        // Загружаем featured данные
         const featuredShouts = await withRetry(async () => await featuredLoader(), 2, 300)
 
-        safeLog('SSR featured data loaded:', {
-          featured: featuredShouts?.length || 0
+        // Загружаем top commented shouts
+        const topCommentedLoader = loadShoutsSSR({
+          options: {
+            filters: {},
+            order_by: ShoutsOrderBy.CommentsCount,
+            limit: 3
+          }
+        })
+        const topCommentedShouts = await withRetry(async () => await topCommentedLoader(), 2, 300)
+
+        // Загружаем top month shouts
+        const topMonthLoader = loadShoutsSSR({
+          options: {
+            filters: {},
+            limit: FEED_PAGE_SIZE
+          }
+        })
+        const topMonthShouts = await withRetry(async () => await topMonthLoader(), 2, 300)
+
+        // Загружаем top rated shouts
+        const topRatedLoader = loadShoutsSSR({
+          options: {
+            filters: {},
+            order_by: ShoutsOrderBy.Rating,
+            limit: FEED_PAGE_SIZE
+          }
+        })
+        const topRatedShouts = await withRetry(async () => await topRatedLoader(), 2, 300)
+
+        // Загружаем top viewed shouts
+        const topViewedLoader = loadShoutsSSR({
+          options: {
+            filters: {},
+            order_by: ShoutsOrderBy.ViewsCount,
+            limit: 5
+          }
+        })
+        const topViewedShouts = await withRetry(async () => await topViewedLoader(), 2, 300)
+
+        safeLog('SSR all data loaded:', {
+          featured: featuredShouts?.length || 0,
+          topCommented: topCommentedShouts?.length || 0,
+          topMonth: topMonthShouts?.length || 0,
+          topRated: topRatedShouts?.length || 0,
+          topViewed: topViewedShouts?.length || 0
         })
 
         return {
           featuredShouts: featuredShouts || [],
-          topCommentedShouts: [],
-          topMonthShouts: [],
-          topRatedShouts: [],
-          topViewedShouts: []
+          topCommentedShouts: topCommentedShouts || [],
+          topMonthShouts: topMonthShouts || [],
+          topRatedShouts: topRatedShouts || [],
+          topViewedShouts: topViewedShouts || []
         }
       })()
 

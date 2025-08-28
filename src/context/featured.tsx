@@ -157,7 +157,7 @@ export const FeaturedFeedProvider = (props: { children: JSX.Element }) => {
   const topViewedFeed = createMemo(() => {
     const feed = featuredFeed()
     if (!feed?.length) return []
-    return [...feed].sort(byStat('viewed') as (a: Shout, b: Shout) => number).slice(0, FEED_PAGE_SIZE)
+    return [...feed].sort(byStat('views_count') as (a: Shout, b: Shout) => number).slice(0, FEED_PAGE_SIZE)
   })
 
   const contextValue = {
