@@ -16,6 +16,7 @@ priority: 1
 - **DRY**: Переиспользование > создание нового
 - **YAGNI**: Решаем текущие проблемы, не гадаем о будущих
 - **Fail Fast**: Ошибки должны быть видны сразу
+- **Implement first**: неиспользуемые переменные нужно использовать
 
 ## 🔍 Pre-Development Search
 **ПЕРВОЕ ПРАВИЛО**: Перед любой разработкой:
@@ -32,6 +33,21 @@ priority: 1
 - **Измеряй, не гадай** - метрики > предположения
 - **Верифицируй утверждения** - 🤷 для недоказанного
 - **Rollback при регрессии** - новые ошибки = откат
+
+## 🔄 Architecture Quality Gates
+
+### 🚨 КРИТИЧЕСКИЕ ПРОВЕРКИ:
+- **Реактивность корректна** - см. [002-solidjs-patterns](mdc:.cursor/rules/002-solidjs-patterns.mdc)
+- **Гидрация стабильна** - см. [006-ssr-hydration](mdc:.cursor/rules/006-ssr-hydration.mdc)  
+- **Комментарии отображаются** - см. [005-comments-reactions](mdc:.cursor/rules/005-comments-reactions.mdc)
+- **Нет циклических зависимостей** - отладка через console.log
+
+### 💡 ANTI-REGRESSION CHECKLIST:
+- [ ] Нет async createEffect  
+- [ ] Нет деструктуризации props
+- [ ] createResource для async данных
+- [ ] Стабильные ключи для списков
+- [ ] Немедленное отображение новых данных
 
 ## 🎭 Communication Style
 - **Язык**: Русский для общения, английский для кода

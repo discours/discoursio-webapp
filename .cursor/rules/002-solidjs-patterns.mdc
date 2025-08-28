@@ -1,19 +1,21 @@
 ---
-description: SolidJS/SolidStart patterns and anti-patterns
+description: SolidJS реактивность - конкретные паттерны кода и антипаттерны
+globs:
+  - src/**/*.tsx
+  - src/**/*.ts
 alwaysApply: true
 priority: 2
 ---
 
-## 📂 Structure & GraphQL
+# ⚡ SolidJS Реактивность [[memory:3641776]]
+
+## 📂 Project Structure  
 ```
-НЕ СОЗДАВАТЬ новые папки без согласования
 src/components/_shared/ - переиспользуемые компоненты
 src/graphql/generated/ - НЕ РЕДАКТИРОВАТЬ! Только через codegen.ts
 ```
 
-# ⚡ SolidJS Critical Anti-Patterns
-
-## 🚨 НЕ React! SolidJS имеет принципиально другую модель реактивности
+## 🚨 НЕ React! Принципиально другая модель реактивности
 
 ## 🚫 НИКОГДА не делай:
 ```typescript
@@ -23,9 +25,12 @@ createEffect(async () => await fetchData())
 // ❌ Прямой window доступ в init - SSR error
 const [width] = createSignal(window.innerWidth)
 
-// ❌ Деструктуризация props - ТЕРЯЕТСЯ РЕАКТИВНОСТЬ!
+// ❌ Деструктуризация PROPS - ТЕРЯЕТСЯ РЕАКТИВНОСТЬ!
 const { data, isLoading } = props // ❌ Реактивность сломана!
 const MyComponent = ({ data, isLoading }: Props) => {} // ❌ НЕТ!
+
+// ⚠️ Деструктуризация КОНТЕКСТОВ - обычно работает нормально
+const { signIn, session } = useSession() // ✅ OK для контекстов
 
 // ❌ Мутация props - нарушает реактивность
 props.data.push(newItem)
@@ -138,7 +143,7 @@ export const loadPrivateData = (client) => async () => {
 
 ## 🎨 Memoization Strategy (НЕ как useMemo в React!)
 ```typescript
-// ✅ createMemo РАБОТАЕТ ИНАЧЕ чем useMemo - кеширует навсегда пока зависимости не изменятся
+// ✅ createMemo для СЛОЖНЫХ вычислений, НЕ для простых проверок
 const sorted = createMemo(() => {
   const feed = topicFeed()
   const isEqual = feed.length === prev().length && 
@@ -146,6 +151,12 @@ const sorted = createMemo(() => {
   if (isEqual) return prevSorted()
   return [...feed].sort(byViews)
 })
+
+// ❌ НЕ делай мемо для простых проверок или зависимостей на сессию
+const isOwnProfile = createMemo(() => session()?.author?.slug === props.slug) // ЛОМАЕТ!
+
+// ✅ Используй простые функции для легких вычислений
+const isOwnProfile = () => session()?.author?.slug === props.slug
 
 // ✅ Атомарные сигналы вместо useState
 const [entities, setEntities] = createSignal<Record<string, Topic>>({})
@@ -190,13 +201,23 @@ const safeTopicFeed = createMemo(() => {
 })
 ```
 
-## ❌ Нестабильные ключи
+## ❌ Неправильная работа с ключами (НЕ как в React!)
 ```typescript
-// ❌ Было - Math.random() ключи (гидратационные ошибки)
+// ❌ Math.random() ключи - нестабильные между сервером и клиентом
 { id: Math.random(), text: 'Comment' }
 
-// ✅ Стало - стабильные идентификаторы
-{ id: 'comment-1', text: 'Comment' }
+// ❌ Принудительные ключи в <For> - не нужны!
+<For each={items()}>{(item) => <div key={item.id}>{item.name}</div>}</For>
+
+// ✅ SolidJS: <For> сам отслеживает изменения, ключи НЕ нужны
+<For each={items()}>{(item) => <div>{item.name}</div>}</For>
+
+// ✅ Используй createUniqueId() для DOM id (SSR-safe)
+import { createUniqueId } from 'solid-js'
+const uniqueId = createUniqueId()
+
+// ✅ Ключи нужны ТОЛЬКО при .map() (но лучше использовать <For>)
+{items().map(item => <div key={item.id}>{item.name}</div>)}
 ```
 
 ## ❌ Избыточные вычисления
@@ -220,12 +241,9 @@ const topShouts = createMemo(() => {
 - **props.* ОБЯЗАТЕЛЬНО**: НЕ деструктурируй пропсы!
 
 # 🧊 SSR Best Practices
-- Server ↔ Client DOM должен совпадать ТОЧНО
-- `route.load` для SSR данных
-- `initialValue` в createResource для гидрации
+**См. детали:** [006-ssr-hydration](mdc:.cursor/rules/006-ssr-hydration.mdc)
+- `onMount` автоматически клиентский - НЕ нужны проверки window
 - `typeof window !== 'undefined'` для browser API в createEffect
-- **onMount автоматически клиентский - НЕ нужны проверки window**
-- Избегай условного рендеринга в корне
 
 # 💎 Advanced Patterns
 
@@ -250,51 +268,23 @@ createRenderEffect(() => {
 })
 ```
 
-## 🗂️ Caching Strategy
+## 🗂️ Caching Strategy  
 ```typescript
-// ✅ Кешируется: статичные публичные данные
-// loadTopics(), loadAuthors(), loadShouts()
-
-// ❌ НЕ кешируется: динамические персональные данные  
-// loadReactions(), авторизованные запросы
-```
-
-# 🎨 CSS Module Best Practices
-```scss
-// ✅ Используй CSS модули вместо глобальных стилей
-.localClass {
-  color: red;
-  @extend .baseClass; // DRY через наследование
-}
-
-// ✅ Базовые классы для переиспользования
-.baseBadge {
-  display: inline-flex;
-  padding: 4px 8px;
-}
-
-// ❌ НЕ используй :global() без крайней необходимости
-:global(.some-class) { /* избегай */ }
-
-// ✅ Импортируй и используй модульные стили
-import styles from './Component.module.scss'
-<div class={styles.localClass}>
-```
-
-# 🚨 Red Flags - Срочные исправления
-1. **Async createEffect** → onMount + createResource
-2. **Деструктуризация props** → props.* ВСЕГДА!
-3. **Множественные loading/error** → createResource states
-4. **window.* в init** → typeof проверки
-5. **window.* в onMount** → БЕЗ проверок (onMount = клиентский код)
-6. **Math.random() keys** → стабильные ID
-7. **Большие stores** → атомарные сигналы
-8. **:global() стили** → CSS модули с @extend для DRY
-9. **Глобальные стили** → модульные классы в компонентах
-
+// ✅ Кешируется: публичные данные (loadTopics, loadAuthors)
+// ❌ НЕ кешируется: персональные данные (loadReactions)
 ```
 
 ---
-💋 При сомнениях выбирай простое решение
-🤖 Базируется на реальных паттернах проекта
-⚠️ **ВАЖНО**: Это SolidJS, НЕ React! Не применяй React-паттерны!
+
+# 🚨 Quick Reference - Срочные исправления
+1. **async createEffect** → `createResource`  
+2. **`const { data } = props`** → `props.data` (ТОЛЬКО для props!)
+3. **деструктуризация контекстов** → работает нормально
+4. **множественные loading/error** → `createResource` 
+5. **window в init** → `onMount(() => window...)`
+6. **ключи в <For>** → НЕ нужны! Используй `createUniqueId()` для DOM id
+
+⚠️ **ВАЖНО**: НЕ путай props и контексты! Деструктуризация контекстов обычно работает корректно.
+
+---
+⚠️ **ВАЖНО**: Это SolidJS, НЕ React! [[memory:3641776]]

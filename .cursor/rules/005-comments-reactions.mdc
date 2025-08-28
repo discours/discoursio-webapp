@@ -1,0 +1,166 @@
+# .cursor/rules/comments-reactions.mdc
+---
+description: Правила работы с комментариями и реакциями для предотвращения проблем отображения
+globs: src/components/Comments/**/*.tsx, src/context/reactions.tsx
+alwaysApply: true
+---
+
+## 💬 Комментарии и Реакции - Паттерны
+
+### 🔄 Архитектура реактивности комментариев
+
+**ВСЕГДА используй:**
+- `createResource` для загрузки комментариев
+- `createMemo` для фильтрации и сортировки
+- `addShoutReactions` для синхронизации с глобальным состоянием
+
+**НИКОГДА не используй:**
+- `async createEffect` для загрузки данных
+- Прямые мутации массивов комментариев
+- Сложную логику внутри JSX-рендеринга
+
+### 🎯 Критические паттерны
+
+#### ✅ Правильная фильтрация комментариев:
+```typescript
+const comments = createMemo(() => {
+  const allReactions = Object.values(reactionEntities())
+  // Проверяем И slug И id для надежности
+  return allReactions.filter(
+    r => r.kind === ReactionKind.Comment && 
+         (r.shout?.slug === props.shoutSlug || r.shout?.id === props.shoutId)
+  )
+})
+```
+
+#### ✅ Немедленное отображение новых комментариев:
+```typescript
+// При успешном создании комментария
+if (result && !('error' in result)) {
+  const serverData = result as Reaction
+  
+  // 1. Обновляем глобальное хранилище
+  addShoutReactions([serverData])
+  
+  // 2. Обновляем локальный массив новых комментариев
+  setNewComments(prev => {
+    const exists = prev.some(c => c.id === serverData.id)
+    return exists ? prev : [...prev, serverData]
+  })
+  
+  // 3. Очищаем форму и показываем успех
+  handleSubmitSuccess()
+  toast.success(t('Comment saved'))
+}
+```
+
+#### ✅ Правильная загрузка комментариев автора:
+```typescript
+const [authorComments] = createResource(
+  () => {
+    const tab = currentTab()
+    const currentAuthor = author()
+    return tab === 'comments' && currentAuthor && !commented().length 
+      ? { authorId: currentAuthor.id, slug: currentAuthor.slug }
+      : null
+  },
+  async (params) => {
+    if (!params) return null
+    const result = await loadReactions({
+      by: { kinds: [ReactionKind.Comment], created_by: params.authorId },
+      limit: COMMENTS_PER_PAGE,
+      offset: 0
+    })()
+    return result
+  }
+)
+```
+
+### 🚨 Распространенные ошибки
+
+#### ❌ Async createEffect для загрузки:
+```typescript
+// НЕ ДЕЛАЙ ТАК:
+createEffect(async () => {
+  const result = await loadComments()
+  setComments(result)
+})
+```
+
+#### ❌ Фильтрация только по slug:
+```typescript
+// НЕ ДЕЛАЙ ТАК:
+r.shout?.slug === props.shoutSlug
+// ДЕЛАЙ ТАК:
+(r.shout?.slug === props.shoutSlug || r.shout?.id === props.shoutId)
+```
+
+#### ❌ Забывание обновления локального состояния:
+```typescript
+// НЕ ДЕЛАЙ ТАК:
+addShoutReactions([serverData])
+// ДЕЛАЙ ТАК:
+addShoutReactions([serverData])
+setNewComments(prev => [...prev, serverData])
+```
+
+### 📊 Отладка комментариев
+
+**Всегда логируй:**
+- Количество загруженных комментариев
+- Параметры фильтрации (shoutSlug, shoutId)
+- Успешность операций создания/обновления
+- Состояние локальных массивов (commented, newComments)
+
+**Проверяй в DevTools:**
+- Состояние `reactionEntities`
+- Результаты мемо `comments()` и `sortedComments()`
+- Консистентность данных между контекстом и компонентом
+
+### 🔧 Шаблоны для копирования
+
+#### Базовая структура компонента комментариев:
+```typescript
+export const CommentsComponent = (props: { shoutId: number; shoutSlug: string }) => {
+  const { reactionEntities, addShoutReactions, createShoutReaction } = useReactions()
+  const [newComments, setNewComments] = createSignal<Reaction[]>([])
+  
+  const comments = createMemo(() => {
+    const allReactions = Object.values(reactionEntities())
+    return allReactions.filter(
+      r => r.kind === ReactionKind.Comment && 
+           (r.shout?.slug === props.shoutSlug || r.shout?.id === props.shoutId)
+    )
+  })
+  
+  const handleSubmitComment = async (content: string, parentId?: number) => {
+    const result = await createShoutReaction({
+      reaction: {
+        body: content,
+        kind: ReactionKind.Comment,
+        shout: props.shoutId,
+        reply_to: parentId
+      }
+    })
+    
+    if (result && !('error' in result)) {
+      addShoutReactions([result])
+      setNewComments(prev => {
+        const exists = prev.some(c => c.id === result.id)
+        return exists ? prev : [...prev, result]
+      })
+    }
+  }
+  
+  return (
+    <Show when={comments().length > 0} fallback={<EmptyState />}>
+      <For each={comments()}>{comment => 
+        <CommentItem comment={comment} onReply={handleSubmitComment} />
+      }</For>
+    </Show>
+  )
+}
+```
+
+---
+💡 **При сомнениях**: всегда предпочитай `createResource` для async операций и проверяй консистентность данных через DevTools

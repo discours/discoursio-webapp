@@ -1,0 +1,85 @@
+# .cursor/rules/css-modules.mdc
+---
+description: CSS Modules паттерны и стилизация компонентов
+globs: src/**/*.scss, src/**/*.module.scss, src/**/*.tsx
+alwaysApply: true
+---
+
+# 🎨 CSS Modules & Styling
+
+## ✅ CSS Module Best Practices
+
+### Правильная структура:
+```scss
+// ✅ Используй CSS модули для компонентов
+.localClass {
+  color: red;
+  @extend .baseClass; // DRY через наследование
+}
+
+// ✅ Базовые классы для переиспользования
+.baseBadge {
+  display: inline-flex;
+  padding: 4px 8px;
+}
+```
+
+### Импорт и использование:
+```typescript
+// ✅ Импортируй и используй модульные стили
+import styles from './Component.module.scss'
+
+export const Component = () => {
+  return <div class={styles.localClass}>Content</div>
+}
+```
+
+## 🚫 Антипаттерны
+
+### ❌ Избегай глобальных стилей:
+```scss
+// НЕ ДЕЛАЙ ТАК:
+:global(.some-class) { /* избегай без крайней необходимости */ }
+
+// ДЕЛАЙ ТАК:
+.localClass { /* модульные стили */ }
+```
+
+### ❌ Избегай прямого CSS в компонентах:
+```typescript
+// НЕ ДЕЛАЙ ТАК:
+<div style="color: red;">Content</div>
+
+// ДЕЛАЙ ТАК:
+<div class={styles.redText}>Content</div>
+```
+
+## 🔧 Организация стилей
+
+### Структура файлов:
+```
+src/components/MyComponent/
+├── MyComponent.tsx
+├── MyComponent.module.scss
+└── index.ts
+```
+
+### Базовые классы:
+```scss
+// src/styles/_mixins.scss
+@mixin button-base {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+// src/components/Button/Button.module.scss
+.button {
+  @include button-base;
+  background: var(--primary-color);
+}
+```
+
+---
+💡 **Принцип**: Локальные стили = предсказуемость + переиспользование
