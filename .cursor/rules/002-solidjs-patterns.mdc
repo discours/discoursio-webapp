@@ -20,6 +20,12 @@ const [width] = createSignal(window.innerWidth)
 
 // ❌ Нестабильные ключи
 { id: Math.random(), text: 'Item' }
+
+// ❌ ИЗБЫТОЧНАЯ МЕМОИЗАЦИЯ (Главная Ошибка!)
+const simpleValue = createMemo(() => props.data || []) // ПЛОХО!
+const isActive = createMemo(() => status() === 'active') // ПЛОХО!
+const finalData = createMemo(() => ssrData || clientData) // ПЛОХО!
+const result = createMemo(() => condition ? a : b) // ПЛОХО!
 ```
 
 ## ✅ Правильные паттерны
@@ -47,17 +53,24 @@ const [data] = createResource(
 
 ### SSR + гидрация
 ```typescript
-// ✅ Route компонент шаблон
+// ⚠️ КРИТИЧНО: props.data может быть Promise в SolidStart!
+// ❌ НИКОГДА - props.data может быть Promise
+const routeData = () => props.data
+const items = routeData()?.featuredShouts // ОШИБКА если Promise!
+
+// ✅ ПРАВИЛЬНО - createResource для props.data
 export default function Page(props: RouteSectionProps<Data>) {
-  const routeData = () => props.data
-  
-  const [items] = createResource(
-    () => props.params.id,
-    async (id) => routeData()?.items || await fetchItems(id),
-    { initialValue: routeData()?.items }
+  const [routeData] = createResource(
+    () => props.data,
+    (data) => data,
+    { 
+      initialValue: typeof props.data === 'object' && !('then' in props.data) 
+        ? props.data 
+        : undefined 
+    }
   )
   
-  return <Show when={items()}>{/* контент */}</Show>
+  return <Show when={routeData()}>{/* контент */}</Show>
 }
 ```
 
@@ -81,21 +94,60 @@ createEffect(on(
 1. **async createEffect** → `createResource`
 2. **`const { data } = props`** → `props.data`
 3. **window в init** → `onMount(() => window...)`
-4. **множественные состояния** → `createResource`
+4. **createMemo для простых операций** → простые функции
 5. **ключи в For** → НЕ нужны, используй `createUniqueId()`
 
+## 🚨 ЗОЛОТОЕ ПРАВИЛО МЕМОИЗАЦИИ
+**Если операция занимает меньше 1мс - используй простую функцию!**
+
+### 🎯 Проверочные вопросы перед createMemo:
+1. Это действительно дорогое вычисление?
+2. Есть ли циклы, сортировка, фильтрация?
+3. Занимает ли операция больше 1мс?
+4. Нельзя ли заменить простой функцией?
+
+Если ответ "НЕТ" хотя бы на один вопрос - используй простую функцию!
+
 ## 💡 Мемоизация (НЕ как React)
+
+### ✅ createMemo ТОЛЬКО для ДОРОГИХ вычислений
 ```typescript
-// ✅ createMemo для СЛОЖНЫХ вычислений
-const sorted = createMemo(() => 
-  [...items()].sort(byComplexLogic)
+// ✅ Сложные трансформации с циклами
+const sortedAndFiltered = createMemo(() => 
+  items()
+    .filter(complexFilter)
+    .sort(expensiveSortFunction)
+    .map(heavyTransformation)
 )
 
-// ❌ НЕ мемо для простого
-const isActive = createMemo(() => status === 'active') // ПЛОХО!
+// ✅ Фильтрация больших массивов
+const filteredItems = createMemo(() => 
+  items().filter(item => complexFilterLogic(item))
+)
+```
 
-// ✅ Простые функции
+### ❌ НЕ мемоизируй простые операции
+```typescript
+// ❌ Простые условия
+const value = createMemo(() => a || b) // ПЛОХО!
+
+// ❌ Доступ к свойствам  
+const name = createMemo(() => user()?.name) // ПЛОХО!
+
+// ❌ Простые вычисления
+const sum = createMemo(() => a() + b()) // ПЛОХО!
+
+// ❌ Логические операции
+const canEdit = createMemo(() => isOwner() && !isLocked()) // ПЛОХО!
+```
+
+### ✅ Простые функции (автоматически реактивны!)
+```typescript
+// ✅ SolidJS делает простые функции реактивными автоматически
+const finalData = () => ssrData() || clientData()
 const isActive = () => status() === 'active'
+const hasData = () => data()?.length > 0
+const result = () => condition() ? valueA() : valueB()
 ```
 
 ## 🎯 GraphQL паттерны

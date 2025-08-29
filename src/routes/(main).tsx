@@ -1,5 +1,5 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
-import { createEffect, createResource } from 'solid-js'
+import { createResource } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
@@ -12,35 +12,6 @@ import { QueryLoad_Shouts_ByArgs, Shout, ShoutsOrderBy } from '~/graphql/generat
 import loadShoutsByQuery from '~/graphql/query/core/articles-load-by'
 import { PageLayout } from '../components/_shared/PageLayout'
 import { useLocalize } from '../context/localize'
-
-const featuredLoader = (offset?: number) => {
-  return loadShouts({
-    options: { filters: { featured: true }, limit: FEED_PAGE_SIZE, offset }
-  })
-}
-
-// biome-ignore lint/suspicious/noExplicitAny: SSR
-const withRetry = async (fn: () => Promise<any>, retries = 2, delay = 1000): Promise<any> => {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      return await fn()
-    } catch (error) {
-      if (isServer) {
-        process.stderr.write(`[HomePage] Attempt ${i + 1} failed: ${error}\n`)
-      } else {
-        console.error(`[withRetry] Attempt ${i + 1} failed:`, error)
-      }
-
-      if (i === retries) {
-        throw error
-      }
-
-      // Экспоненциальная задержка
-      await new Promise((resolve) => setTimeout(resolve, delay * 2 ** i))
-    }
-  }
-  throw new Error('All retry attempts failed')
-}
 
 // Некешируемый загрузчик для SSR
 const loadShoutsSSR = (args: QueryLoad_Shouts_ByArgs) => {
@@ -100,7 +71,7 @@ export const route = {
             limit: FEED_PAGE_SIZE
           }
         })
-        const featuredShouts = await withRetry(async () => await featuredLoader(), 2, 300)
+        const featuredShouts = await featuredLoader()
 
         // Загружаем top commented shouts
         const topCommentedLoader = loadShoutsSSR({
@@ -110,7 +81,7 @@ export const route = {
             limit: 3
           }
         })
-        const topCommentedShouts = await withRetry(async () => await topCommentedLoader(), 2, 300)
+        const topCommentedShouts = await topCommentedLoader()
 
         // Загружаем top month shouts
         const topMonthLoader = loadShoutsSSR({
@@ -122,7 +93,7 @@ export const route = {
             limit: FEED_PAGE_SIZE
           }
         })
-        const topMonthShouts = await withRetry(async () => await topMonthLoader(), 2, 300)
+        const topMonthShouts = await topMonthLoader()
 
         // Загружаем top rated shouts
         const topRatedLoader = loadShoutsSSR({
@@ -132,7 +103,7 @@ export const route = {
             limit: FEED_PAGE_SIZE
           }
         })
-        const topRatedShouts = await withRetry(async () => await topRatedLoader(), 2, 300)
+        const topRatedShouts = await topRatedLoader()
 
         // Загружаем top viewed shouts
         const topViewedLoader = loadShoutsSSR({
@@ -142,7 +113,7 @@ export const route = {
             limit: 5
           }
         })
-        const topViewedShouts = await withRetry(async () => await topViewedLoader(), 2, 300)
+        const topViewedShouts = await topViewedLoader()
 
         const result = {
           featuredShouts: featuredShouts || [],
@@ -177,45 +148,76 @@ export const route = {
 
 export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
   const { t } = useLocalize()
-  const { setFeaturedFeed } = useFeaturedFeed()
+  const { setFeaturedFeed, setTopMonthFeed, setTopFeed, setTopCommentedFeed } = useFeaturedFeed()
 
-  // ✅ ПРАВИЛЬНО: createResource с SSR данными и обработкой ошибок
-  const [featuredShouts] = createResource(
-    () => 'featured', // статический ключ
-    async () => {
-      try {
-        console.log('[HomePage] createResource: starting client load')
-        const loader = featuredLoader()
-        const result = await loader()
-        console.log('[HomePage] createResource: loaded', result?.length || 0, 'items')
-        return result
-      } catch (error) {
-        console.error('[HomePage] createResource failed:', error)
-        // Возвращаем fallback данные вместо undefined
-        return props.data?.featuredShouts || []
+  // ✅ ПАТТЕРН (all-authors): createResource для разрешения Promise из route.load
+  const [resolvedData] = createResource(
+    () => props.data,
+    async (data) => {
+      console.log('[HomePage] Resolving route data:', {
+        hasData: !!data,
+        dataType: typeof data,
+        isPromise: data instanceof Promise
+      })
+
+      // Если это Promise, ждем разрешения
+      const resolved = data instanceof Promise ? await data : data
+
+      console.log('[HomePage] Resolved route data:', {
+        hasResolved: !!resolved,
+        featuredLength: resolved?.featuredShouts?.length,
+        topMonthLength: resolved?.topMonthShouts?.length,
+        topRatedLength: resolved?.topRatedShouts?.length,
+        topCommentedLength: resolved?.topCommentedShouts?.length
+      })
+
+      // ✅ Добавляем данные в контекст после разрешения
+      if (resolved?.featuredShouts?.length) {
+        console.log('[HomePage] Adding SSR featured to context:', resolved.featuredShouts.length)
+        setFeaturedFeed(resolved.featuredShouts)
       }
+
+      if (resolved?.topMonthShouts?.length) {
+        console.log('[HomePage] Adding SSR topMonth to context:', resolved.topMonthShouts.length)
+        setTopMonthFeed(resolved.topMonthShouts)
+      }
+
+      if (resolved?.topRatedShouts?.length) {
+        console.log('[HomePage] Adding SSR topRated to context:', resolved.topRatedShouts.length)
+        setTopFeed(resolved.topRatedShouts)
+      }
+
+      if (resolved?.topCommentedShouts?.length) {
+        console.log('[HomePage] Adding SSR topCommented to context:', resolved.topCommentedShouts.length)
+        setTopCommentedFeed(resolved.topCommentedShouts)
+      }
+
+      return resolved
     },
     {
-      initialValue: props.data?.featuredShouts || [],
-      ssrLoadFrom: 'initial'
+      // ✅ КРИТИЧНО: initialValue для стабильной гидрации
+      initialValue:
+        typeof props.data === 'object' && !('then' in props.data)
+          ? props.data
+          : {
+              featuredShouts: [],
+              topMonthShouts: [],
+              topRatedShouts: [],
+              topCommentedShouts: [],
+              topViewedShouts: []
+            }
     }
   )
 
-  // Синхронизируем контекст с ресурсом только для loadMore
-  createEffect(() => {
-    const data = featuredShouts()
-    if (data?.length) {
-      setFeaturedFeed(data)
-    }
-  })
-
   const loadMoreFeatured = async (offset?: number) => {
     try {
-      const shoutsLoader = featuredLoader(offset)
+      const shoutsLoader = loadShouts({
+        options: { filters: { featured: true }, limit: FEED_PAGE_SIZE, offset }
+      })
       const loaded = await shoutsLoader()
       if (loaded && Array.isArray(loaded)) {
-        // Обновляем и контекст и перезапускаем ресурс
-        setFeaturedFeed((prev) => [...(prev || featuredShouts() || []), ...loaded])
+        // ✅ Простое обновление контекста
+        setFeaturedFeed((prev) => [...(prev || []), ...loaded])
         return loaded as LoadMoreItems
       }
       return [] as LoadMoreItems
@@ -228,12 +230,13 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
   return (
     <PageLayout withPadding={true} title={t('Discours')} key="home">
       <LoadMoreWrapper loadFunction={loadMoreFeatured} pageSize={FEED_PAGE_SIZE} hidden={false}>
+        {/* ✅ Используем resolvedData вместо прямого props.data */}
         <HomeView
-          featuredShouts={featuredShouts() || []}
-          topMonthShouts={props.data?.topMonthShouts || []}
-          topViewedShouts={props.data?.topViewedShouts || []}
-          topRatedShouts={props.data?.topRatedShouts || []}
-          topCommentedShouts={props.data?.topCommentedShouts || []}
+          featuredShouts={resolvedData()?.featuredShouts || []}
+          topMonthShouts={resolvedData()?.topMonthShouts || []}
+          topViewedShouts={resolvedData()?.topViewedShouts || []}
+          topRatedShouts={resolvedData()?.topRatedShouts || []}
+          topCommentedShouts={resolvedData()?.topCommentedShouts || []}
         />
       </LoadMoreWrapper>
     </PageLayout>

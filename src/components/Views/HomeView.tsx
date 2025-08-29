@@ -1,4 +1,4 @@
-import { createEffect, createMemo, For, onMount, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js'
 import { useAuthors } from '~/context/authors'
 import { useFeaturedFeed } from '~/context/featured'
 import { useLocalize } from '~/context/localize'
@@ -41,6 +41,9 @@ export const HomeView = (props: HomeViewProps) => {
   const { topTopics } = useTopics()
   const { randomTopicFeed } = useFeaturedFeed()
 
+  // ✅ Флаг для клиентского рендера randomTopic
+  const [isClient, setIsClient] = createSignal(false)
+
   // Диагностика состояния данных
   createEffect(() => {
     if (import.meta.env.DEV && !props.featuredShouts?.length) {
@@ -60,6 +63,9 @@ export const HomeView = (props: HomeViewProps) => {
   })
 
   onMount(() => {
+    // ✅ Устанавливаем флаг клиентского рендера
+    setIsClient(true)
+
     props.featuredShouts?.forEach((s: Shout) => {
       addAuthors((s?.authors || []) as Author[])
     })
@@ -92,9 +98,7 @@ export const HomeView = (props: HomeViewProps) => {
       const topViewed = props.topViewedShouts || []
       const topCommented = props.topCommentedShouts || []
 
-      // Простой доступ к randomTopicFeed - данные появятся когда загрузятся
-      const randomTopicData = randomTopicFeed()
-      const randomTopic = randomTopicData?.shouts || []
+      // randomTopic теперь чисто клиентский - не участвует в SSR дедупликации
 
       // 🔧 ИСПРАВЛЕНО: Снижаем порог для показа контента
       const threshold = Math.min(MIN_SHOUTS_FOR_FULL_VIEW, 3)
@@ -106,8 +110,7 @@ export const HomeView = (props: HomeViewProps) => {
           topRated: topRated.slice(0, 5), // Показываем хотя бы часть дополнительного контента
           topMonth: topMonth.slice(0, 5),
           topViewed: topViewed.slice(0, 3),
-          topCommented: topCommented.slice(0, 3),
-          randomTopic: randomTopic.slice(0, 3)
+          topCommented: topCommented.slice(0, 3)
         }
       }
 
@@ -120,14 +123,14 @@ export const HomeView = (props: HomeViewProps) => {
       const deduplicatedTopMonth = dedupContext.filterUnused(topMonth)
       const deduplicatedTopViewed = dedupContext.filterUnused(topViewed.slice(0, 5))
       const deduplicatedTopCommented = dedupContext.filterUnused(topCommented.slice(0, 3))
-      const deduplicatedRandomTopic = dedupContext.filterUnused(randomTopic)
+      // randomTopic больше не дедуплицируется - чисто клиентский
 
       // Добавляем использованные из дополнительных блоков
       dedupContext.addUsedShouts(deduplicatedTopRated.slice(0, 10)) // Лимитируем слайдер
       dedupContext.addUsedShouts(deduplicatedTopMonth.slice(0, 10)) // Лимитируем слайдер
       dedupContext.addUsedShouts(deduplicatedTopViewed)
       dedupContext.addUsedShouts(deduplicatedTopCommented)
-      dedupContext.addUsedShouts(deduplicatedRandomTopic.slice(0, 7)) // Лимитируем случайную тему
+      // randomTopic больше не участвует в дедупликации
 
       // Остальная лента (после первых 29)
       const remainingFeatured = dedupContext.filterUnused(featured.slice(29))
@@ -138,8 +141,7 @@ export const HomeView = (props: HomeViewProps) => {
         topRated: deduplicatedTopRated,
         topMonth: deduplicatedTopMonth,
         topViewed: deduplicatedTopViewed,
-        topCommented: deduplicatedTopCommented,
-        randomTopic: deduplicatedRandomTopic
+        topCommented: deduplicatedTopCommented
       }
     },
     {
@@ -148,8 +150,7 @@ export const HomeView = (props: HomeViewProps) => {
       topRated: [],
       topMonth: [],
       topViewed: [],
-      topCommented: [],
-      randomTopic: []
+      topCommented: []
     }
   )
 
@@ -209,19 +210,13 @@ export const HomeView = (props: HomeViewProps) => {
           </Show>
 
           <Show when={deduplicatedBlocks().topCommented.length > 0}>
-            <Row3
-              articles={deduplicatedBlocks().topCommented.slice(0, 3)}
-              header={<h2>{t('Top commented')}</h2>}
-              nodate={true}
-            />
+            <Row3 articles={deduplicatedBlocks().topCommented.slice(0, 3)} nodate={true} />
           </Show>
 
-          {/* Случайная тема - ПРАВИЛЬНО: исключена из гидрации как рекомендует Ryan Carniato */}
-          <Show
-            when={randomTopicFeed()?.shouts && randomTopicFeed()?.topic && deduplicatedBlocks().randomTopic.length > 0}
-          >
+          {/* ✅ Случайная тема - ТОЛЬКО клиентский рендер через onMount флаг */}
+          <Show when={isClient() && randomTopicFeed()?.shouts && randomTopicFeed()?.topic}>
             <TopicShoutsGroup
-              shouts={deduplicatedBlocks().randomTopic.slice(0, 7)}
+              shouts={randomTopicFeed()?.shouts.slice(0, 7) || []}
               topic={randomTopicFeed()?.topic as Topic}
             />
           </Show>
