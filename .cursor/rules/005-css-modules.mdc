@@ -1,9 +1,7 @@
 ---
 description: CSS Modules - краткие паттерны
-globs: src/**/*.{scss,css}
-alwaysApply: true
+alwaysApply: false
 ---
-
 # 🎨 CSS Modules (Быстро)
 
 ## ✅ Правильно

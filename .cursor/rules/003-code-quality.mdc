@@ -1,16 +1,7 @@
 ---
 description: Минималистичные стандарты качества - оптимизировано для скорости
-globs: **/*.{ts,tsx,js,jsx}
-alwaysApply: true
+alwaysApply: false
 ---
-
-# 🛡️ Quality Gates (Быстрые)
-
-## 📏 Before commit (автоматизировано)
-```bash
-npm run fix && npm run typecheck && npm run build
-```
-
 ## 🏗️ Architecture (4 правила)
 - **Single Responsibility**: 1 функция = 1 задача
 - **Pure Functions**: Предсказуемые, тестируемые

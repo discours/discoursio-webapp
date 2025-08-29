@@ -4,8 +4,6 @@ globs: **/*
 alwaysApply: true
 ---
 
-# 📋 Workflow для Sonnet 4
-
 ## 📝 Documentation (обязательно)
 ```
 CHANGELOG.md — новая версия сверху
