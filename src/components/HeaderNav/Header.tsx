@@ -7,7 +7,7 @@ import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import { capitalize } from '~/utils/capitalize'
-import { ClientOnly } from '~/utils/clientonly'
+import { NoHydration } from 'solid-js/web'
 import { ConfirmModal } from '../_shared/ConfirmModal'
 import { Icon } from '../_shared/Icon'
 import { Modal } from '../_shared/Modal'
@@ -498,7 +498,7 @@ export const Header = (props: Props) => {
           </nav>
         </div>
 
-        <ClientOnly>
+        <NoHydration>
           <Toaster
             position="bottom-right"
             toastOptions={{
@@ -531,7 +531,7 @@ export const Header = (props: Props) => {
               gap: '8px'
             }}
           />
-        </ClientOnly>
+        </NoHydration>
       </div>
     </header>
   )

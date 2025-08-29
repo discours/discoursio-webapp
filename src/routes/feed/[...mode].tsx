@@ -9,7 +9,7 @@ import { ReactionsProvider } from '~/context/reactions'
 import { loadShouts } from '~/graphql/api/public'
 import { LoadShoutsFilters, Reaction, ReactionKind, Shout, ShoutsOrderBy } from '~/graphql/generated/graphql'
 import { getTimestampFromPeriod, PeriodType } from '~/lib/fromPeriod'
-import { ClientOnly } from '~/utils/clientonly'
+import { NoHydration } from 'solid-js/web'
 
 export interface RouteData {
   // Основные ленты для всех режимов
@@ -146,7 +146,7 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
     >
       <Suspense fallback={<Loading />}>
         <ReactionsProvider>
-          <ClientOnly fallback={<Loading />}>
+          <NoHydration>
             <FeedView
               recentShouts={feedData().recentShouts || []}
               hotShouts={feedData().hotShouts || []}
@@ -154,7 +154,7 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
               unratedShouts={feedData().unratedShouts || []}
               recentComments={feedData().recentComments || []}
             />
-          </ClientOnly>
+          </NoHydration>
         </ReactionsProvider>
       </Suspense>
     </PageLayout>

@@ -1,6 +1,7 @@
 import { clsx } from 'clsx'
 import type { JSX } from 'solid-js'
 import { createMemo, mergeProps, Show } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
 
 import styles from './Icon.module.scss'
 
@@ -23,24 +24,26 @@ export const Icon = (passedProps: IconProps) => {
   })
 
   return (
-    <div class={clsx('icon', styles.icon, props.class)} style={props.style} data-icon={props['data-icon']}>
-      <img
-        alt={props.title || props.name}
-        class={clsx(props.iconClassName)}
-        src={iconSrc()}
-        onError={(e) => {
-          if (e.currentTarget.src !== '/icons/default.svg') {
-            e.currentTarget.src = '/icons/default.svg'
-          } else {
-            console.warn(`Failed to load icon: ${props.name}`)
-            e.currentTarget.style.display = 'none'
-          }
-        }}
-      />
+    <NoHydration>
+      <div class={clsx('icon', styles.icon, props.class)} style={props.style} data-icon={props['data-icon']}>
+        <img
+          alt={props.title || props.name}
+          class={clsx(props.iconClassName)}
+          src={iconSrc()}
+          onError={(e) => {
+            if (e.currentTarget.src !== '/icons/default.svg') {
+              e.currentTarget.src = '/icons/default.svg'
+            } else {
+              console.warn(`Failed to load icon: ${props.name}`)
+              e.currentTarget.style.display = 'none'
+            }
+          }}
+        />
 
-      <Show when={props.counter > 0}>
-        <div class={styles.notificationsCounter}>{props.counter}</div>
-      </Show>
-    </div>
+        <Show when={props.counter > 0}>
+          <div class={styles.notificationsCounter}>{props.counter}</div>
+        </Show>
+      </div>
+    </NoHydration>
   )
 }

@@ -3,7 +3,7 @@ import type { JSX } from 'solid-js'
 import { createSignal, splitProps } from 'solid-js'
 
 import { getCachedImageSrcSet, getCachedImageUrl } from '~/lib/imageCache'
-import { ClientOnly } from '~/utils/clientonly'
+import { NoHydration } from 'solid-js/web'
 
 type Props = JSX.ImgHTMLAttributes<HTMLImageElement> & {
   width: number
@@ -96,7 +96,7 @@ export const Image = (props: Props) => {
 
       {/* Прогрессивная загрузка: сначала низкое разрешение */}
       {local.progressive && lowResUrl() && (
-        <ClientOnly>
+        <NoHydration>
           <img
             src={lowResUrl()}
             alt=""
@@ -113,7 +113,7 @@ export const Image = (props: Props) => {
             }}
             onLoad={() => setLowResLoaded(true)}
           />
-        </ClientOnly>
+        </NoHydration>
       )}
 
       {/* Основное изображение */}

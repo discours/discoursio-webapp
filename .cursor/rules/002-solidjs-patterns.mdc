@@ -21,11 +21,21 @@ const [width] = createSignal(window.innerWidth)
 // ❌ Нестабильные ключи
 { id: Math.random(), text: 'Item' }
 
+// ❌ JSX в пропсах - вызывает гидрационный мисматч!
+<Component header={<h2>{title}</h2>} /> // ПЛОХО!
+<Row3 header={<div>{text}</div>} />     // ПЛОХО!
+
 // ❌ ИЗБЫТОЧНАЯ МЕМОИЗАЦИЯ (Главная Ошибка!)
 const simpleValue = createMemo(() => props.data || []) // ПЛОХО!
 const isActive = createMemo(() => status() === 'active') // ПЛОХО!
 const finalData = createMemo(() => ssrData || clientData) // ПЛОХО!
 const result = createMemo(() => condition ? a : b) // ПЛОХО!
+
+// ❌ createResource для перезапроса SSR данных - показывает индикатор загрузки
+const [data] = createResource(() => 'key', () => loadData())
+
+// ❌ typeof window для клиентского рендера - ненадежно для гидрации
+<Show when={typeof window !== 'undefined'}>
 ```
 
 ## ✅ Правильные паттерны
@@ -51,27 +61,51 @@ const [data] = createResource(
 )
 ```
 
-### SSR + гидрация
+### 🚨 SSR + гидрация (КРИТИЧНО!)
 ```typescript
 // ⚠️ КРИТИЧНО: props.data может быть Promise в SolidStart!
 // ❌ НИКОГДА - props.data может быть Promise
 const routeData = () => props.data
 const items = routeData()?.featuredShouts // ОШИБКА если Promise!
 
-// ✅ ПРАВИЛЬНО - createResource для props.data
+// ✅ ПРАВИЛЬНО - createResource для разрешения Promise
 export default function Page(props: RouteSectionProps<Data>) {
   const [routeData] = createResource(
     () => props.data,
-    (data) => data,
+    async (data) => data instanceof Promise ? await data : data,
     { 
+      // ✅ КРИТИЧНО: initialValue для стабильной гидрации
       initialValue: typeof props.data === 'object' && !('then' in props.data) 
         ? props.data 
-        : undefined 
+        : { items: [], users: [] } // Fallback структура
     }
   )
   
   return <Show when={routeData()}>{/* контент */}</Show>
 }
+
+// ✅ ПРЯМОЕ использование SSR данных (БЕЗ createResource)
+export default function Page(props: RouteSectionProps<Data>) {
+  const { setItems } = useContext()
+  
+  // ✅ Добавляем SSR данные в контекст синхронно
+  if (props.data?.items?.length) {
+    setItems(props.data.items)
+  }
+  
+  return <Component items={props.data?.items || []} />
+}
+```
+
+### 🛡️ Клиентский рендер без гидрационных мисматчей
+```typescript
+// ✅ onMount флаг для стабильной гидрации
+const [isClient, setIsClient] = createSignal(false)
+onMount(() => setIsClient(true))
+
+<Show when={isClient()}>
+  <ClientOnlyComponent />
+</Show>
 ```
 
 ### Effects правильно
@@ -91,63 +125,28 @@ createEffect(on(
 ```
 
 ## 🔧 Быстрые исправления
-1. **async createEffect** → `createResource`
-2. **`const { data } = props`** → `props.data`
-3. **window в init** → `onMount(() => window...)`
-4. **createMemo для простых операций** → простые функции
-5. **ключи в For** → НЕ нужны, используй `createUniqueId()`
+1. **`const { data } = props`** → `props.data`
+2. **JSX в пропсах** → встроить в компонент
+3. **typeof window** → `onMount()` флаг  
+4. **createResource для SSR** → прямое `props.data`
+5. **избыточный createMemo** → простые функции
 
 ## 🚨 ЗОЛОТОЕ ПРАВИЛО МЕМОИЗАЦИИ
 **Если операция занимает меньше 1мс - используй простую функцию!**
 
-### 🎯 Проверочные вопросы перед createMemo:
-1. Это действительно дорогое вычисление?
-2. Есть ли циклы, сортировка, фильтрация?
-3. Занимает ли операция больше 1мс?
-4. Нельзя ли заменить простой функцией?
-
-Если ответ "НЕТ" хотя бы на один вопрос - используй простую функцию!
+**🎯 createMemo только если:** циклы + фильтрация + >1мс
 
 ## 💡 Мемоизация (НЕ как React)
-
-### ✅ createMemo ТОЛЬКО для ДОРОГИХ вычислений
 ```typescript
-// ✅ Сложные трансформации с циклами
-const sortedAndFiltered = createMemo(() => 
-  items()
-    .filter(complexFilter)
-    .sort(expensiveSortFunction)
-    .map(heavyTransformation)
+// ✅ createMemo ТОЛЬКО для дорогих операций
+const filtered = createMemo(() => 
+  items().filter(fn).sort(fn).map(fn) // Циклы!
 )
 
-// ✅ Фильтрация больших массивов
-const filteredItems = createMemo(() => 
-  items().filter(item => complexFilterLogic(item))
-)
-```
-
-### ❌ НЕ мемоизируй простые операции
-```typescript
-// ❌ Простые условия
-const value = createMemo(() => a || b) // ПЛОХО!
-
-// ❌ Доступ к свойствам  
-const name = createMemo(() => user()?.name) // ПЛОХО!
-
-// ❌ Простые вычисления
-const sum = createMemo(() => a() + b()) // ПЛОХО!
-
-// ❌ Логические операции
-const canEdit = createMemo(() => isOwner() && !isLocked()) // ПЛОХО!
-```
-
-### ✅ Простые функции (автоматически реактивны!)
-```typescript
-// ✅ SolidJS делает простые функции реактивными автоматически
-const finalData = () => ssrData() || clientData()
+// ❌ Простые операции - используй функции
+const name = () => user()?.name // Автореактивно!
+const sum = () => a() + b()
 const isActive = () => status() === 'active'
-const hasData = () => data()?.length > 0
-const result = () => condition() ? valueA() : valueB()
 ```
 
 ## 🎯 GraphQL паттерны
@@ -161,3 +160,10 @@ export const loadPrivate = (client) => async () => {
   return await client.query(query).toPromise()
 }
 ```
+
+## 🩺 Диагностика гидрации
+**Error: Hydration Mismatch** → Ищи:
+1. **JSX в пропсах** (`header={<h2>`)
+2. **createResource без initialValue**  
+3. **typeof window проверки**
+4. **Promise в props.data без обработки**

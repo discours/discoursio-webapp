@@ -1,5 +1,6 @@
 import { clsx } from 'clsx'
 import { batch, createEffect, createSignal, on, onCleanup, onMount, Show, untrack } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
 import toast from 'solid-toast'
 import { debounce } from 'throttle-debounce'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
@@ -70,6 +71,9 @@ export const EditView = (props: { draft?: Draft }) => {
     clearValidationErrors,
     updateDraft
   } = useDrafts()
+  
+  // Инициализируем useConnect на верхнем уровне компонента
+  const { getStatus, reconnect, connect, connectEditor, addHandler } = useConnect()
 
   // Базовые сигналы
   const [subtitleInput, setSubtitleInput] = createSignal<HTMLTextAreaElement>()
@@ -374,7 +378,6 @@ export const EditView = (props: { draft?: Draft }) => {
 
   const handleNetworkStatusChange = () => {
     const draftId = currentDraft()?.id
-    const { getStatus, reconnect } = useConnect() // Вызываем useConnect на верхнем уровне функции
 
     if (typeof window !== 'undefined' && navigator.onLine && draftId) {
       // Синхронизация с сервером при восстановлении соединения
@@ -725,14 +728,13 @@ export const EditView = (props: { draft?: Draft }) => {
         setAwarenessUnsubscribe(null)
       }
 
-      const connectContext = useConnect()
       const editorId = `draft-${draft.id}`
 
       // Подключаем редактор к awareness
-      connectContext.connectEditor(editorId, draft.id)
+      connectEditor(editorId, draft.id)
 
       // Устанавливаем обработчик SSE сообщений
-      const unsubscribe = connectContext.addHandler((message: SSEMessage) => {
+      const unsubscribe = addHandler((message: SSEMessage) => {
         console.log('[EditView] Получено SSE сообщение:', message)
         // Обрабатываем только сообщения, связанные с черновиками
         if (message.entity === 'draft' && message.payload) {
@@ -743,9 +745,9 @@ export const EditView = (props: { draft?: Draft }) => {
       setAwarenessUnsubscribe(() => unsubscribe)
 
       // Проверяем статус соединения
-      if (connectContext.getStatus() !== 'connected') {
+      if (getStatus() !== 'connected') {
         console.log('[EditView] SSE не подключен, пытаемся подключиться')
-        connectContext.connect().catch((error) => {
+        connect().catch((error) => {
           console.error('[EditView] Ошибка подключения SSE:', error)
         })
       }
@@ -1093,10 +1095,12 @@ export const EditView = (props: { draft?: Draft }) => {
       <Modal variant="medium" name="inviteCoauthors">
         <InviteMembers variant={'coauthors'} title={t('Invite experts')} />
       </Modal>
-
-      <Show when={currentDraft()?.id}>
-        <Panel shoutId={currentDraft()?.id} />
-      </Show>
+      
+      <NoHydration>
+        <Show when={currentDraft()?.id}>
+          <Panel shoutId={currentDraft()?.id} />
+        </Show>
+      </NoHydration>
 
       {/* Добавляем панель с кнопкой сохранения */}
       <div class={styles.floatingButtonsPanel}>
