@@ -15,6 +15,13 @@
     color: var(--text-color-dark, #222);
     letter-spacing: -0.02em;
   }
+
+  .draftsSubtitle {
+    margin: 0.5rem 0 0 0;
+    font-size: 1.4rem;
+    color: var(--text-color-light, #666);
+    font-weight: 400;
+  }
 }
 
 .noDrafts {

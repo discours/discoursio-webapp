@@ -568,6 +568,7 @@
   bottom: 20px;
   right: 20px;
   display: flex;
+  flex-direction: row-reverse;
   gap: 10px;
   z-index: 100;
   background-color: rgba(255, 255, 255, 0.9);
@@ -596,6 +597,32 @@
   &:disabled {
     background-color: #d0d0d0;
     cursor: not-allowed;
+  }
+}
+
+// Стили для кнопки восстановления
+.restoreButton {
+  background-color: var(--color-text-tertiary, #6c757d);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  
+  &:hover {
+    background-color: var(--color-text-secondary, #495057);
+  }
+  
+  &:active {
+    background-color: var(--color-text-primary, #343a40);
   }
 }
 

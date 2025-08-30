@@ -18,9 +18,6 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
   const { removeLocalDraft } = useLocalDrafts()
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = createSignal(true)
-  // Сигнал для отслеживания текущего отображаемого черновика (локальный или серверный)
-  const [activeVersions, setActiveVersions] = createSignal<Record<number, 'local' | 'server'>>({})
-
   const handleDraftDelete = async (d: Draft | ExtendedDraft) => {
     // Проверяем наличие ID у черновика
     if (!d.id) {
@@ -33,8 +30,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       const isLocalOnly = (d as ExtendedDraft).isLocalOnly === true
       console.log('[DraftsView] Удаление черновика:', d.id, {
         title: d.title,
-        isLocalOnly,
-        activeVersion: d.id ? activeVersions()[d.id] : undefined
+        isLocalOnly
       })
 
       if (isLocalOnly) {
@@ -120,8 +116,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
       console.log(`[DraftsView] Draft ${draft.id}:`, {
         title: draft.title,
         isLocalOnly: 'isLocalOnly' in draft ? draft.isLocalOnly : false,
-        updated_at: draft.updated_at,
-        activeVersion: draft.id ? activeVersions()[draft.id] || 'server' : 'local'
+        updated_at: draft.updated_at
       })
     })
   })
@@ -252,137 +247,6 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
   }
 
   /**
-   * Находит и возвращает локальную версию черновика по ID серверного черновика
-   * @param {Draft | ExtendedDraft} draft - Серверный черновик
-   * @return {ExtendedDraft | undefined} Локальная версия черновика или undefined
-   */
-  const findLocalVersion = (draft: Draft | ExtendedDraft): ExtendedDraft | undefined => {
-    if (!draft.id) return undefined
-
-    // Ищем локальную версию среди всех черновиков
-    return drafts().find((d) => 'isLocalOnly' in d && d.isLocalOnly === true && d.id === draft.id)
-  }
-
-  /**
-   * Находит и возвращает серверную версию черновика по ID
-   * @param {number} draftId - ID черновика
-   * @return {ExtendedDraft | undefined} Серверная версия черновика или undefined
-   */
-  const findServerVersion = (draftId: number): ExtendedDraft | undefined => {
-    // Ищем серверную версию среди всех черновиков
-    return drafts().find((d) => d.id === draftId && (!('isLocalOnly' in d) || d.isLocalOnly !== true))
-  }
-
-  /**
-   * Проверяет, есть ли рассинхронизация версий (существуют и локальная, и серверная версии)
-   * @param {Draft | ExtendedDraft} draft - Черновик для проверки
-   * @return {boolean} true если есть рассинхронизация версий
-   */
-  const hasVersionSynchronizationIssue = (draft: Draft | ExtendedDraft): boolean => {
-    // Проверяем наличие обеих версий
-    const localDraft = findLocalVersion(draft)
-    const serverDraft = draft.id ? findServerVersion(draft.id) : undefined
-
-    // Если нет одной из версий, то нет проблемы синхронизации
-    if (!localDraft || !serverDraft) {
-      return false
-    }
-
-    // Сравниваем временные метки обновления
-    const localUpdatedAt = localDraft.updated_at || 0
-    const serverUpdatedAt = serverDraft.updated_at || 0
-
-    // Если метки отличаются на более чем 1 секунду, считаем что есть рассинхронизация
-    // (небольшая погрешность нужна для учёта возможной неточности меток времени)
-    const timeDifference = Math.abs(localUpdatedAt - serverUpdatedAt)
-    const hasTimeDifference = timeDifference > 1000 // Разница больше 1 секунды
-
-    // Убираем излишнее логирование
-    return hasTimeDifference
-  }
-
-  /**
-   * Устанавливает активную версию для указанного черновика
-   * @param {number} draftId - ID черновика
-   * @param {'local' | 'server'} version - Версия черновика
-   */
-  const setActiveVersionForDraft = (draftId: number, version: 'local' | 'server') => {
-    // Принудительно обновляем состояние с новой ссылкой на объект, чтобы гарантировать перерисовку
-    setActiveVersions((prev) => {
-      const newState = { ...prev, [draftId]: version }
-      console.log(`[DraftsView] Set active version for draft ${draftId} to ${version}`, newState)
-      return newState
-    })
-
-    // Принудительно запускаем перерисовку списка после небольшой задержки
-    setTimeout(() => {
-      setActiveVersions((prev) => ({ ...prev }))
-    }, 50)
-  }
-
-  /**
-   * Возвращает текущую активную версию черновика
-   * @param {Draft | ExtendedDraft} draft - Черновик
-   * @return {'local' | 'server'} Активная версия
-   */
-  const getActiveVersion = (draft: Draft | ExtendedDraft): 'local' | 'server' => {
-    if (!draft.id) return 'local' // Если нет ID, считаем локальным
-
-    // Если черновик отмечен как isLocalOnly, то это однозначно локальная версия
-    if ('isLocalOnly' in draft && draft.isLocalOnly === true) {
-      return 'local'
-    }
-
-    // Иначе проверяем по сохраненному состоянию
-    const version = activeVersions()[draft.id] || 'server'
-    return version
-  }
-
-  /**
-   * Обработчик переключения на локальную версию черновика
-   * @param {Draft | ExtendedDraft} draft - Серверный черновик
-   */
-  const handleSwitchToLocalVersion = (draft: Draft | ExtendedDraft) => {
-    if (!draft.id) return
-
-    const localDraft = findLocalVersion(draft)
-    if (!localDraft) {
-      toast.error(t('Local version not found'), {
-        style: { 'z-index': 10001 }
-      })
-      return
-    }
-
-    // Отмечаем, что для этого ID активна локальная версия
-    setActiveVersionForDraft(draft.id, 'local')
-    toast.success(t('Switched to local version'), {
-      style: { 'z-index': 10001 }
-    })
-  }
-
-  /**
-   * Обработчик переключения на серверную версию черновика
-   * @param {Draft | ExtendedDraft} draft - Локальный черновик
-   */
-  const handleSwitchToServerVersion = (draft: Draft | ExtendedDraft) => {
-    if (!draft.id) return
-
-    const serverDraft = findServerVersion(draft.id)
-    if (!serverDraft) {
-      toast.error(t('Server version not found'), {
-        style: { 'z-index': 10001 }
-      })
-      return
-    }
-
-    // Отмечаем, что для этого ID активна серверная версия
-    setActiveVersionForDraft(draft.id, 'server')
-    toast.success(t('Switched to server version'), {
-      style: { 'z-index': 10001 }
-    })
-  }
-
-  /**
    * Обработчик публикации черновика с обработкой ошибок
    * @param {number} draftId - ID черновика
    */
@@ -470,38 +334,9 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
           onDelete={() => handleDraftDelete(draft)}
           onUnpublish={() => handleUnpublish(draft)}
           onPublish={() => handleDraftPublish(draft.id)}
-          onSwitchToLocal={undefined}
-          onSwitchToServer={undefined}
         />
       )
     }
-
-    // Определяем текущую активную версию для этого ID
-    const activeVersion = getActiveVersion(draft)
-
-    // Если текущий черновик не совпадает с активной версией, не отображаем его
-    const isLocalDraft = 'isLocalOnly' in draft && draft.isLocalOnly === true
-    if ((isLocalDraft && activeVersion !== 'local') || (!isLocalDraft && activeVersion !== 'server')) {
-      console.log(`[DraftsView] Skipping draft ${draft.id} - version mismatch:`, {
-        isLocalDraft,
-        activeVersion,
-        shouldShow: false
-      })
-      return null
-    }
-
-    console.log(`[DraftsView] Will render draft ${draft.id}:`, {
-      title: draft.title,
-      isLocalDraft,
-      activeVersion
-    })
-
-    // Проверяем наличие рассинхронизации версий
-    const hasSyncIssue = hasVersionSynchronizationIssue(draft)
-
-    // Определяем, какие переключатели показывать, только если есть рассинхронизация
-    const showSwitchToLocal = hasSyncIssue && !isLocalDraft
-    const showSwitchToServer = hasSyncIssue && isLocalDraft
 
     return (
       <div class={styles.draftCardContainer}>
@@ -510,9 +345,6 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
           onDelete={() => handleDraftDelete(draft)}
           onUnpublish={() => handleUnpublish(draft)}
           onPublish={() => handleDraftPublish(draft.id)}
-          onSwitchToLocal={showSwitchToLocal ? () => handleSwitchToLocalVersion(draft) : undefined}
-          onSwitchToServer={showSwitchToServer ? () => handleSwitchToServerVersion(draft) : undefined}
-          activeVersion={activeVersion}
         />
       </div>
     )
@@ -541,7 +373,7 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
 
     // Определяем, какую версию показывать - используем getActiveVersion для первого найденного черновика
     const firstDraft = draftVersions[0]
-    const activeVersion = firstDraft ? getActiveVersion(firstDraft) : 'server'
+    const activeVersion = firstDraft ? 'server' : 'local'
     const draftToShow = activeVersion === 'local' && localVersion ? localVersion : serverVersion
 
     console.log(`[DraftsView] renderDraftById ${draftId}:`, {
@@ -586,7 +418,9 @@ export const DraftsView = (_props: { drafts?: Draft[] }) => {
         <div class="row">
           <div class="col-md-14 col-lg-12 col-xl-10 offset-md-7">
             <div class={styles.draftsHeader}>
-              <h2>{t('Drafts')}</h2>
+              <div>
+                <h2>{t('Drafts')}</h2>
+              </div>
             </div>
 
             <Show

@@ -43,7 +43,8 @@ export const PublishSettings = () => {
     clearValidationErrors,
     updateDraft,
     syncDraft,
-    getEditorContent
+    getEditorContent,
+    isDraftPublished
   } = useDrafts()
   const { showModal } = useUI()
   const { loadTopics } = useTopics()
@@ -324,6 +325,24 @@ export const PublishSettings = () => {
       return
     }
 
+    // Проверяем, не опубликован ли уже этот черновик
+    if (isDraftPublished(finalDraft.id)) {
+      console.warn('❌ ОШИБКА: Черновик уже опубликован')
+      console.log('📝 Состояние черновика:', {
+        id: finalDraft.id,
+        published_at: finalDraft.published_at,
+        shout_published_at: finalDraft.shout?.published_at,
+        slug: finalDraft.slug
+      })
+      console.groupEnd()
+      toast.error(t('This article is already published. You can edit the published version.'))
+      // Перенаправляем на опубликованную статью
+      if (finalDraft.slug) {
+        navigate(`/${finalDraft.slug}`)
+      }
+      return
+    }
+
     // 🔧 ИСПРАВЛЕНИЕ: Автоматически генерируем slug если его нет
     if (!finalDraft.slug || finalDraft.slug.trim() === '') {
       console.log('🔧 [AUTO-FIX] Генерируем slug из заголовка:', finalDraft.title)
@@ -383,6 +402,15 @@ export const PublishSettings = () => {
     }
 
     console.log('✅ Все проверки пройдены, переходим к публикации')
+    console.log('🔧 [FINAL CHECK] Финальное состояние перед публикацией:', {
+      id: finalDraft.id,
+      title: finalDraft.title,
+      slug: finalDraft.slug,
+      published_at: finalDraft.published_at,
+      shout_id: finalDraft.shout?.id,
+      shout_published_at: finalDraft.shout?.published_at,
+      isPublished: isDraftPublished(finalDraft.id)
+    })
     console.groupEnd()
 
     console.log('[PublishSettings] Starting publication process for draft:', {
@@ -426,7 +454,15 @@ export const PublishSettings = () => {
         toast.error(t(result.error.message || 'Error publishing article'))
       } else if (result?.data?.publish_draft?.error) {
         console.error('[PublishSettings] Server error:', result.data.publish_draft.error)
-        toast.error(t(result.data.publish_draft.error))
+
+        // Специальная обработка ошибки дублирующегося slug
+        const errorMessage = result.data.publish_draft.error
+        if (errorMessage.includes('duplicate key value') && errorMessage.includes('slug')) {
+          console.warn('[PublishSettings] Duplicate slug detected - article may already be published')
+          toast.error(t('This article is already published or URL is taken. Please use a different title or URL.'))
+        } else {
+          toast.error(t(errorMessage || 'Error publishing article'))
+        }
       } else {
         console.error('[PublishSettings] Unknown error in result:', result)
         toast.error(t('Error publishing article'))
@@ -584,12 +620,6 @@ export const PublishSettings = () => {
               </button>
             </div>
             <h1>{t('Publish Settings')}</h1>
-            <p class="description">
-              {t(
-                'Choose a title image for the article. You can immediately see how the publication card will look like.'
-              )}
-            </p>
-
             <h4>{t('Slug')}</h4>
             <div class={styles.errorMessage}>{t(validationErrors().slug || '')}</div>
             <div class="pretty-form__item">
@@ -629,6 +659,11 @@ export const PublishSettings = () => {
             <Button variant="primary" onClick={() => showModal('inviteMembers')} value={t('Invite collaborators')} />
 
             <h4>{t('Material card')}</h4>
+            <p class="description">
+              {t(
+                'Choose a title image for the article. You can immediately see how the publication card will look like.'
+              )}
+            </p>
             <div class={styles.articlePreview}>
               <div class={styles.actions}>
                 <Button

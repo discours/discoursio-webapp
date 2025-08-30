@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { createEffect, createSignal, Match, on, Show, Switch } from 'solid-js'
+import { createEffect, createSignal, Match, Show, Switch } from 'solid-js'
 import { Button } from '~/components/_shared/Button'
 import { CheckButton } from '~/components/_shared/CheckButton'
 import { ConditionalWrapper } from '~/components/_shared/ConditionalWrapper'
@@ -34,23 +34,14 @@ export const AuthorBadge = (props: Props) => {
   const { session, requireAuthentication } = useSession()
   const { follows } = useFollowing()
   const [isMobileView, setIsMobileView] = createSignal(false)
-  const [isFollowed, setIsFollowed] = createSignal<boolean>(
-    Boolean(follows?.authors?.some((authorEntity) => Boolean(authorEntity.id === props.author?.id)))
-  )
+
+  // Определяем состояние подписки реактивно на основе контекста
+  const isFollowed = () => {
+    if (!follows?.authors || !props.author?.id) return false
+    return follows.authors.some((authorEntity) => authorEntity.id === props.author.id)
+  }
+
   createEffect(() => setIsMobileView(!mediaMatches.sm))
-  createEffect(
-    on(
-      [() => follows?.authors, () => props.author],
-      ([followingAuthors, currentAuthor]) => {
-        const authorFollowed = Boolean(
-          followingAuthors?.some((followedAuthor) => followedAuthor.id === currentAuthor?.id)
-        )
-        console.log('[AuthorBadge] Follow state updated:', authorFollowed, 'for author:', currentAuthor?.name)
-        setIsFollowed(authorFollowed)
-      },
-      {}
-    )
-  )
 
   const initChat = () => {
     // eslint-disable-next-line solid/reactivity

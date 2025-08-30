@@ -20,30 +20,41 @@ type Props = {
 
 export const FollowingButton = (props: Props) => {
   const { t } = useLocalize()
-  const [caption, setCaption] = createSignal(props.isFollowed ? t('Unfollow') : t('Follow'))
-  const [followed, setFollowed] = createSignal(props.isFollowed)
-  const { changeFollowing } = useFollowing()
+  const { changeFollowing, follows } = useFollowing()
+
+  // Определяем изначальное состояние - приоритет у props.isFollowed
+  const getInitialState = () => {
+    // Если props.isFollowed задан явно, используем его
+    if (props.isFollowed !== undefined) {
+      return props.isFollowed
+    }
+    // Иначе проверяем контекст
+    if (props.entity === FollowingEntity.Author && follows?.authors) {
+      return follows.authors.some((author) => author.slug === props.slug)
+    }
+    return false
+  }
+
+  const [followed, setFollowed] = createSignal(getInitialState())
+  const [caption, setCaption] = createSignal(getInitialState() ? t('Unfollow') : t('Follow'))
 
   const handleFollowClick = async () => {
     const oldState = followed()
-    // Оптимистично обновляем UI
-    setFollowed(!oldState)
 
     try {
+      // НЕ делаем оптимистичные обновления, ждем ответ сервера
       const newState = await changeFollowing(oldState, props.entity, props.slug)
-      // Проверяем, что сервер вернул ожидаемое состояние
-      if (newState !== !oldState) {
-        console.warn('Server returned unexpected follow state:', newState, 'expected:', !oldState)
-        setFollowed(newState)
-      }
+      // Обновляем состояние только на основе реального ответа сервера
+      setFollowed(newState)
       setCaption(newState ? t('Unfollow') : t('Follow'))
+      console.log('[FollowingButton] Updated state from server:', newState, 'for', props.entity, props.slug)
     } catch (error) {
-      // Откатываем изменения при ошибке
-      setFollowed(oldState)
       console.error('Failed to change following state:', error)
+      // Состояние остается прежним при ошибке
     }
   }
 
+  // Синхронизация с пропсами
   createEffect(
     on(
       () => props.isFollowed,
@@ -53,6 +64,20 @@ export const FollowingButton = (props: Props) => {
       }
     )
   )
+
+  // Синхронизация с контекстом подписок - только если нет явного props.isFollowed
+  createEffect(() => {
+    if (props.isFollowed !== undefined) return // Не переопределяем, если есть явное значение
+
+    if (props.entity === FollowingEntity.Author && follows?.authors) {
+      const isFollowedBySlug = follows.authors.some((author) => author.slug === props.slug)
+      if (isFollowedBySlug !== followed()) {
+        console.log('[FollowingButton] Context updated follow state:', isFollowedBySlug, 'for', props.slug)
+        setFollowed(isFollowedBySlug)
+        setCaption(isFollowedBySlug ? t('Unfollow') : t('Follow'))
+      }
+    }
+  })
 
   const FollowedButton = () => (
     <Button
@@ -103,8 +128,8 @@ export const FollowingButton = (props: Props) => {
   return (
     <div class={props.class}>
       <Show when={!props.minimize} fallback={<MiniButton />}>
-        <Show when={followed()} fallback={<FollowedButton />}>
-          <FollowButton />
+        <Show when={followed()} fallback={<FollowButton />}>
+          <FollowedButton />
         </Show>
       </Show>
     </div>

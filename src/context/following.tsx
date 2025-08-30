@@ -115,8 +115,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
         const result = await client()?.query(loadAuthorFollowers, { user: session()?.author?.id }).toPromise()
         if (result?.data) {
           setState((subs: FollowingData) => {
-            if (result.data.authors) subs.authors = result.data.authors as Author[]
-            if (result.data.topics) subs.topics = result.data.topics as Topic[]
+            if (result.data.get_author_followers) subs.authors = result.data.get_author_followers as Author[]
             return subs
           })
         }
@@ -139,15 +138,20 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       if (!resp || resp.error) return
       const result = resp?.data?.follow
       if (!result) return
+
       console.log('[FollowingContext] Follow result:', {
         authorsCount: result.authors?.length || 0,
-        topicsCount: result.topics?.length || 0
+        topicsCount: result.topics?.length || 0,
+        error: result.error
       })
+
+      // Обновляем состояние контекста с данными с сервера (даже при ошибке "already following")
       setState((subs) => {
         if (result.authors) subs['authors'] = result.authors
         if (result.topics) subs['topics'] = result.topics
         return subs
       })
+
       return result
     } catch (error) {
       console.error('[FollowingContext] Follow error:', error)
@@ -210,8 +214,10 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       if (result) {
         // Специальная обработка для ошибки "following was not found" при unfollow
         const isUnfollowNotFound = isFollowed && result.error === 'following was not found'
+        // Специальная обработка для ошибки "already following" при follow
+        const isAlreadyFollowing = !isFollowed && result.error === 'already following'
 
-        if (!result.error || isUnfollowNotFound) {
+        if (!result.error || isUnfollowNotFound || isAlreadyFollowing) {
           // Обновляем состояние контекста с новыми данными с сервера
           setState((subs) => {
             if (result.authors) {
@@ -233,7 +239,16 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
             // Если подписка не найдена при unfollow, значит пользователь не подписан
             newFollowState = false
             console.log('[FollowingContext] Unfollow: following not found, treating as successful unfollow')
+          } else if (isAlreadyFollowing) {
+            // Если пользователь уже подписан, состояние остается true (уже подписан)
+            newFollowState = true
+            console.log('[FollowingContext] Follow: already following, state remains true')
+          } else if (isFollowed) {
+            // Если это была операция отписки (unfollow), то состояние = false
+            newFollowState = false
+            console.log('[FollowingContext] Unfollow: operation successful, state = false')
           } else {
+            // Если это была операция подписки (follow), проверяем по данным сервера
             if (what === 'AUTHOR' && result.authors) {
               newFollowState = result.authors.some((author: Author) => author.slug === slug)
             } else if (what === 'TOPIC' && result.topics) {

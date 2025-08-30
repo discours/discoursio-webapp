@@ -1,6 +1,6 @@
 import { A, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { createSignal, Show } from 'solid-js'
+import { Show } from 'solid-js'
 import { toast } from 'solid-toast'
 import type { ExtendedDraft } from '~/context/drafts'
 import { useDrafts } from '~/context/drafts'
@@ -16,9 +16,6 @@ type Props = {
   onDelete: () => void
   onUnpublish: () => void
   onPublish: () => void
-  onSwitchToLocal?: () => void
-  onSwitchToServer?: () => void
-  activeVersion?: 'local' | 'server'
 }
 
 /**
@@ -31,9 +28,6 @@ type Props = {
  *   onDelete={() => handleDelete(draftId)}
  *   onPublish={() => handlePublish(draftId)}
  *   onUnpublish={() => handleUnpublish(draftId)}
- *   onSwitchToLocal={() => handleSwitchToLocal(draftId)}
- *   onSwitchToServer={() => handleSwitchToServer(draftId)}
- *   activeVersion="server"
  * />
  * ```
  */
@@ -43,9 +37,6 @@ export const DraftCard = (props: Props) => {
   const { showConfirm } = useUI()
   const navigate = useNavigate()
   const { updateDraft, loadDrafts, setCurrentDraft } = useDrafts()
-
-  // Добавляем сигнал для отслеживания видимости переключателя
-  const [isVersionSwitcherVisible, setVersionSwitcherVisible] = createSignal(false)
 
   // Получение URL для редактирования черновика
   const getEditUrl = () => {
@@ -72,8 +63,6 @@ export const DraftCard = (props: Props) => {
       toast.error(t('Cannot publish draft without ID'))
       return
     }
-
-    console.log(`[DraftCard] Начинаем публикацию черновика #${props.draft.id}`)
 
     try {
       // Явно обновляем черновик на сервере со всеми последними изменениями
@@ -200,111 +189,6 @@ export const DraftCard = (props: Props) => {
   }
 
   /**
-   * Определяет, является ли черновик локальной версией
-   */
-  const isLocalVersion = () => {
-    return !props.draft.draft_id || props.activeVersion === 'local'
-  }
-
-  /**
-   * Возвращает заголовок для индикатора переключения версий
-   */
-  const getVersionSwitchTitle = () => {
-    if (props.activeVersion === 'server' && props.onSwitchToLocal) {
-      return t('Switch to local version')
-    }
-    if (props.activeVersion === 'local' && props.onSwitchToServer) {
-      return t('Switch to server version')
-    }
-    if (props.onSwitchToLocal) {
-      return t('Switch to local version')
-    }
-    if (props.onSwitchToServer) {
-      return t('Switch to server version')
-    }
-    return t('This draft has changes since last publication')
-  }
-
-  /**
-   * Возвращает название иконки для индикатора переключения версий
-   */
-  const getVersionSwitchIcon = () => {
-    // Явно отображаем иконку в зависимости от активного состояния
-    if (props.activeVersion === 'local') {
-      return 'file-storage' // Иконка локального хранения
-    }
-    if (props.activeVersion === 'server') {
-      return 'cloud' // Иконка сервера/облака
-    }
-    // Для состояния без активной версии
-    return 'version-branch'
-  }
-
-  /**
-   * Возвращает класс стиля для индикатора переключения версий
-   */
-  const getVersionSwitchClass = () => {
-    if (props.activeVersion === 'local') {
-      return styles.localVersion
-    }
-    if (props.activeVersion === 'server') {
-      return styles.serverVersion
-    }
-    return styles.modifiedIndicator
-  }
-
-  /**
-   * Обработчик клика на кнопку локальной версии
-   */
-  const handleLocalButtonClick = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (props.activeVersion === 'local') {
-      return // Уже активна локальная версия
-    }
-
-    if (props.onSwitchToLocal) {
-      console.log('[DraftCard] Явный вызов переключения на локальную версию')
-      props.onSwitchToLocal()
-    }
-  }
-
-  /**
-   * Обработчик клика на кнопку серверной версии
-   */
-  const handleServerButtonClick = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (props.activeVersion === 'server') {
-      return // Уже активна серверная версия
-    }
-
-    if (props.onSwitchToServer) {
-      console.log('[DraftCard] Явный вызов переключения на серверную версию')
-      props.onSwitchToServer()
-    }
-  }
-
-  /**
-   * Определяет, можно ли кликнуть на индикатор переключения версий
-   */
-  const isVersionSwitchClickable = () => {
-    // Переключение возможно если есть хотя бы один обработчик
-    return !!props.onSwitchToLocal || !!props.onSwitchToServer
-  }
-
-  /**
-   * Обработчик клика на индикатор расхождения версий
-   */
-  const handleVersionIndicatorClick = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setVersionSwitcherVisible(!isVersionSwitcherVisible())
-  }
-
-  /**
    * Обработчик перехода к настройкам с предварительным сохранением черновика
    */
   const handleSettingsClick = async (e: MouseEvent) => {
@@ -315,8 +199,6 @@ export const DraftCard = (props: Props) => {
       toast.error(t('Cannot open settings without draft ID'))
       return
     }
-
-    console.log(`[DraftCard] Подготовка к переходу в настройки черновика #${props.draft.id}`)
 
     try {
       // Обновляем черновик на сервере со всеми последними изменениями
@@ -398,12 +280,6 @@ export const DraftCard = (props: Props) => {
           </A>
           {/* Дата создания и статус */}
           <div class={styles.created}>
-            <Show when={isLocalVersion()}>
-              <span class={styles.localBadge} title={t('This draft is saved only locally')}>
-                <Icon name="file-storage" class={styles.localIcon} />
-              </span>
-            </Show>
-
             {(() => {
               const date = createValidDate(props.draft.created_at)
               if (!date) return ''
@@ -417,48 +293,6 @@ export const DraftCard = (props: Props) => {
         </Show>
 
         <div class={styles.actions}>
-          {/* Кнопка переключения версий */}
-          <Show when={isVersionSwitchClickable()}>
-            <span
-              class={clsx(styles.actionItem, styles.versionSwitcher, getVersionSwitchClass())}
-              title={getVersionSwitchTitle()}
-              onClick={handleVersionIndicatorClick}
-            >
-              {/* Индикатор расхождения версий */}
-              <Show when={isModifiedSincePublish()}>
-                <Icon name="sync-problem" class={styles.versionSyncIcon} />
-              </Show>
-
-              {/* Переключатель версий */}
-              <Show when={isVersionSwitcherVisible()}>
-                <div class={styles.pillSwitch}>
-                  <button
-                    class={clsx(styles.pillOption, styles.localPill, {
-                      [styles.activePill]: props.activeVersion === 'local'
-                    })}
-                    onClick={handleLocalButtonClick}
-                  >
-                    <Icon
-                      name={props.activeVersion === 'local' ? getVersionSwitchIcon() : 'file-storage'}
-                      class={styles.pillIcon}
-                    />
-                  </button>
-                  <button
-                    class={clsx(styles.pillOption, styles.serverPill, {
-                      [styles.activePill]: props.activeVersion === 'server'
-                    })}
-                    onClick={handleServerButtonClick}
-                  >
-                    <Icon
-                      name={props.activeVersion === 'server' ? getVersionSwitchIcon() : 'cloud'}
-                      class={styles.pillIcon}
-                    />
-                  </button>
-                </div>
-              </Show>
-            </span>
-          </Show>
-
           {/* Предпросмотр */}
           <span
             onClick={handleViewClick}

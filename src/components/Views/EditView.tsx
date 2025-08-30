@@ -960,6 +960,29 @@ export const EditView = (props: { draft?: Draft }) => {
     }
   }
 
+  // Функция восстановления контента из localStorage
+  const handleRestoreFromStorage = async () => {
+    const draft = currentDraft()
+    if (!draft?.id) {
+      toast.error(t('No draft to restore'))
+      return
+    }
+
+    try {
+      console.log(`[EditView] Восстанавливаем черновик #${draft.id} из localStorage`)
+      const restored = await syncDraft(draft.id)
+      if (restored) {
+        toast.success(t('Content restored from local storage'))
+        console.log('[EditView] Контент восстановлен из localStorage:', restored.title)
+      } else {
+        toast.custom(t('No changes found in local storage'))
+      }
+    } catch (error) {
+      console.error('[EditView] Ошибка при восстановлении:', error)
+      toast.error(t('Error restoring content'))
+    }
+  }
+
   // Добавляем состояние для отслеживания процесса сохранения
   const [isSaving, setIsSaving] = createSignal(false)
 
@@ -1102,8 +1125,16 @@ export const EditView = (props: { draft?: Draft }) => {
         </Show>
       </NoHydration>
 
-      {/* Добавляем панель с кнопкой сохранения */}
+      {/* Добавляем панель с кнопками сохранения и восстановления */}
       <div class={styles.floatingButtonsPanel}>
+        <button
+          class={styles.saveButton}
+          onClick={handleRestoreFromStorage}
+          title={t('Restore from local storage')}
+          style={{ 'background-color': '#6c757d', 'min-width': '40px' }}
+        >
+          📂
+        </button>
         <button class={styles.saveButton} onClick={handleSaveDraft} disabled={isSaving()}>
           {isSaving() ? t('Saving...') : t('Save draft')}
         </button>

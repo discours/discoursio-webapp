@@ -1,5 +1,5 @@
 import { RouteSectionProps, redirect } from '@solidjs/router'
-import { createEffect, createMemo, on, onMount } from 'solid-js'
+import { createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { AuthGuard } from '~/components/AuthGuard'
 import { EditSettingsView } from '~/components/Views/EditSettingsView'
@@ -15,6 +15,9 @@ export default (props: RouteSectionProps) => {
 
   // Мемоизируем ID черновика, чтобы избежать лишних вычислений
   const draftId = createMemo(() => props.params.id)
+
+  // Отслеживаем, для каких черновиков уже выполнена синхронизация
+  const [syncedDrafts, setSyncedDrafts] = createSignal(new Set<number>())
 
   /**
    * Эффект для загрузки черновика при открытии настроек публикации
@@ -38,7 +41,19 @@ export default (props: RouteSectionProps) => {
         const requestedDraft = draftsArray.find((draft: Draft) => draft.id === parsedId)
 
         if (requestedDraft) {
+          // Проверяем, была ли уже выполнена синхронизация для этого черновика
+          const alreadySynced = syncedDrafts().has(parsedId)
+
+          if (alreadySynced) {
+            console.log(`[EditSettingsRoute] Draft ${parsedId} already synced, skipping...`)
+            setCurrentDraft(requestedDraft)
+            return
+          }
+
           console.log(`[EditSettingsRoute] Found draft: ${requestedDraft.id}, syncing from localStorage...`)
+
+          // Отмечаем, что синхронизация начата
+          setSyncedDrafts((prev) => new Set([...prev, parsedId]))
 
           // 🔧 ИСПРАВЛЕНИЕ: Синхронизируем данные из localStorage только один раз
           try {
@@ -54,6 +69,12 @@ export default (props: RouteSectionProps) => {
           } catch (error) {
             console.error('[EditSettingsRoute] Sync error:', error)
             setCurrentDraft(requestedDraft)
+            // При ошибке убираем из списка синхронизированных, чтобы можно было попробовать снова
+            setSyncedDrafts((prev) => {
+              const newSet = new Set([...prev])
+              newSet.delete(parsedId)
+              return newSet
+            })
           }
         } else {
           console.warn(`[EditSettingsRoute] Draft with id=${parsedId} not found`)

@@ -280,9 +280,31 @@ export const AuthorView = (props: AuthorViewProps) => {
           setFollowersLoaded(true)
 
           const followersResp = await currentClient.query(getAuthorFollowersQuery, { slug }).toPromise()
-          setFollowers(followersResp?.data?.get_author_followers || [])
+          const allFollowers = followersResp?.data?.get_author_followers || []
+
+          // Исключаем текущего пользователя из списка подписчиков
+          const currentUserId = session()?.author?.id
+          const filteredFollowers = currentUserId
+            ? allFollowers.filter((follower: Author) => follower.id !== currentUserId)
+            : allFollowers
+
+          setFollowers(filteredFollowers)
+
+          // Обновляем статистику автора с правильным количеством подписчиков
+          setAuthor((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  stat: {
+                    ...prev.stat,
+                    followers: filteredFollowers.length
+                  }
+                }
+              : prev
+          )
+
           setFollowersLoaded(true)
-          console.log('[AuthorView] Loaded followers:', followersResp?.data?.get_author_followers?.length || 0)
+          console.log('[AuthorView] Loaded followers:', allFollowers.length, 'filtered:', filteredFollowers.length)
         } catch (error) {
           console.error('[AuthorView] Error loading followers/followings:', error)
           // Устанавливаем флаги в true даже при ошибке, чтобы не блокировать отображение

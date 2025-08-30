@@ -58,10 +58,7 @@ export const ArticleCardSwiper = (props: Props) => {
                       centered-slides={true}
                       observer={true}
                       space-between={10}
-                      breakpoints={{
-                        576: { spaceBetween: 20, slidesPerView: 1.5 },
-                        992: { spaceBetween: 52, slidesPerView: 1.5 }
-                      }}
+                      slides-per-view="1.5"
                       round-lengths={true}
                       loop={true}
                       speed={800}

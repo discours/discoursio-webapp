@@ -37,16 +37,15 @@ export const AuthorCard = (props: Props) => {
   const author = createMemo<Author>(() => session()?.author as Author)
   const [authorSubs, setAuthorSubs] = createSignal<Array<Author | Topic | Community>>(props.flatFollows || [])
   const [followsFilter, setFollowsFilter] = createSignal<FollowsFilter>('all')
-  const [isFollowed, setIsFollowed] = createSignal<boolean>()
   const isProfileOwner = createMemo(() => author()?.slug === props.author.slug)
   const { follows } = useFollowing() // viewer's followings
   const { hideModal } = useUI()
 
-  createEffect(() => {
-    if (!(follows && props.author)) return
-    const followed = follows?.authors?.some((authorEntity) => authorEntity.id === props.author?.id)
-    setIsFollowed(followed)
-  })
+  // Определяем состояние подписки реактивно на основе контекста
+  const isFollowed = () => {
+    if (!follows?.authors || !props.author?.id) return false
+    return follows.authors.some((authorEntity) => authorEntity.id === props.author.id)
+  }
 
   const name = createMemo(() => {
     if (lang() !== 'ru' && isCyrillic(props.author?.name || '')) {
@@ -230,7 +229,7 @@ export const AuthorCard = (props: Props) => {
                   <FollowingButton
                     slug={props.author.slug}
                     entity={FollowingEntity.Author}
-                    isFollowed={Boolean(isFollowed())}
+                    isFollowed={isFollowed()}
                     class={clsx({ [stylesButton.followed]: isFollowed() })}
                   />
                   <Show when={props.showMessageButton}>
