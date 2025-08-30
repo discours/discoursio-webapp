@@ -25,12 +25,12 @@ export const TabNavigator = ({ setSearchQuery }: TabNavigatorProps) => {
 
   const getLayoutName = (layout: string) => {
     switch (layout) {
-      case 'shouts':
-        return t('By shouts')
       case 'followers':
         return t('By followers')
-      default:
+      case 'name':
         return t('By name')
+      default:
+        return t('By shouts')
     }
   }
 
@@ -46,7 +46,7 @@ export const TabNavigator = ({ setSearchQuery }: TabNavigatorProps) => {
                 <li
                   class={clsx({
                     'view-switcher__item--selected':
-                      searchParams?.by === layout || (!searchParams?.by && layout === 'name')
+                      searchParams?.by === layout || (!searchParams?.by && layout === 'shouts')
                   })}
                 >
                   <A href={`/author?by=${layout}`}>
@@ -89,7 +89,7 @@ export const AllAuthorsView = (props: Props) => {
   const [loadedAuthors, setLoadedAuthors] = createSignal<Author[]>([])
 
   // ✅ Мемоизированный layout для стабильности
-  const layout = createMemo(() => searchParams.by || 'name')
+  const layout = createMemo(() => searchParams.by || 'shouts')
 
   // ✅ Сбрасываем дозагруженных авторов при смене вкладки
   createEffect(() => {

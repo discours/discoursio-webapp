@@ -12,7 +12,7 @@ const AUTHORS_PER_PAGE = 20
 // ✅ Route definition - загружаем только начальные данные для SSR
 export const route = {
   load: async ({ location: { query } }) => {
-    const layout = query.by || 'name'
+    const layout = query.by || 'shouts'
     console.log('[route.load] 🔍 === ДЕТАЛЬНАЯ ОТЛАДКА ROUTE.LOAD ===')
     console.log('[route.load] Loading initial authors data for layout:', layout)
 
@@ -118,7 +118,7 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
         authors: authorsByName || [],
         authorsByFollowers: authorsByFollowers || [],
         authorsByShouts: authorsByShouts || [],
-        currentLayout: 'name'
+        currentLayout: 'shouts'
       }
     },
     {
@@ -126,7 +126,7 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
       initialValue:
         typeof props.data === 'object' && !('then' in props.data)
           ? props.data
-          : { authors: [], authorsByFollowers: [], authorsByShouts: [], currentLayout: 'name' }
+          : { authors: [], authorsByFollowers: [], authorsByShouts: [], currentLayout: 'shouts' }
     }
   )
 

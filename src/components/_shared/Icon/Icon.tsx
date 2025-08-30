@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import type { JSX } from 'solid-js'
-import { createMemo, mergeProps, Show } from 'solid-js'
+import { mergeProps, Show } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
 
 import styles from './Icon.module.scss'
@@ -18,10 +18,7 @@ type IconProps = {
 export const Icon = (passedProps: IconProps) => {
   const props = mergeProps({ title: '', name: '', counter: 0 }, passedProps)
 
-  const iconSrc = createMemo(() => {
-    const iconName = props.name || 'default'
-    return `/icons/${iconName}.svg`
-  })
+  const iconSrc = () => `/icons/${props.name || 'default'}.svg`
 
   return (
     <NoHydration>
@@ -31,11 +28,21 @@ export const Icon = (passedProps: IconProps) => {
           class={clsx(props.iconClassName)}
           src={iconSrc()}
           onError={(e) => {
-            if (e.currentTarget.src !== '/icons/default.svg') {
+            // ✅ Предотвращаем бесконечный цикл в офлайне
+            const currentSrc = e.currentTarget.src
+            const isAlreadyDefault = currentSrc.includes('/icons/default.svg')
+            const hasTriedFallback = e.currentTarget.dataset.fallbackAttempted === 'true'
+
+            if (!isAlreadyDefault && !hasTriedFallback) {
+              // Первая попытка - пробуем default.svg
+              e.currentTarget.dataset.fallbackAttempted = 'true'
               e.currentTarget.src = '/icons/default.svg'
             } else {
-              console.warn(`Failed to load icon: ${props.name}`)
+              // Вторая попытка или уже default.svg - скрываем иконку
+              console.warn(`Failed to load icon: ${props.name} (offline or missing file)`)
               e.currentTarget.style.display = 'none'
+              // Удаляем обработчик чтобы избежать повторных вызовов
+              e.currentTarget.onerror = null
             }
           }}
         />

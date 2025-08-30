@@ -165,7 +165,7 @@ export const ImageSwiper = (props: Props) => {
                 {(slide, index) => (
                   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                   // @ts-expect-error
-                  <swiper-slide lazy="true" virtual-index={index()} data-hash={index() + 1}>
+                  <swiper-slide lazy="true" virtual-index={index()} data-hash={String(index() + 1)}>
                     <div class={styles.image} onClick={() => handleImageClick(index())}>
                       <Image src={slide.url || ''} alt={slide.title || ''} width={800} />
                     </div>

@@ -7,6 +7,20 @@
     height: 100%;
     display: block;
   }
+
+  // ✅ Fallback для офлайн режима - показываем placeholder вместо сломанной иконки
+  &.iconFailed::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    display: block;
+    pointer-events: none;
+  }
 }
 
 .notificationsCounter {

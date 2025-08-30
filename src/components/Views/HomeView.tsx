@@ -39,7 +39,7 @@ export const HomeView = (props: HomeViewProps) => {
   const { t } = useLocalize()
   const { topAuthors, addAuthors } = useAuthors()
   const { topTopics } = useTopics()
-  const { randomTopicFeed } = useFeaturedFeed()
+  const { featuredFeed, topMonthFeed, topFeed, topCommentedFeed, randomTopicFeed } = useFeaturedFeed()
 
   // ✅ Флаг для клиентского рендера randomTopic
   const [isClient, setIsClient] = createSignal(false)
@@ -74,13 +74,14 @@ export const HomeView = (props: HomeViewProps) => {
     })
   })
 
-  const pages = createMemo<Shout[][]>(() =>
-    paginate(props.featuredShouts || [], SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, SHOUTS_PER_PAGE)
-  )
+  const pages = createMemo<Shout[][]>(() => {
+    const featured = featuredFeed() || props.featuredShouts || []
+    return paginate(featured, SHOUTS_PER_PAGE + CLIENT_LOAD_ARTICLES_COUNT, SHOUTS_PER_PAGE)
+  })
 
   // 🔧 ИСПРАВЛЕНО: Более мягкое условие для предотвращения бесконечных плейсхолдеров
   const hasMoreShouts = createMemo(() => {
-    const featured = props.featuredShouts || []
+    const featured = featuredFeed() || props.featuredShouts || []
     // Достаточно если есть хотя бы несколько статей (снижаем порог)
     const threshold = Math.min(MIN_SHOUTS_FOR_FULL_VIEW, 3) // Минимум 3 вместо 6
     return featured.length >= threshold
@@ -91,12 +92,12 @@ export const HomeView = (props: HomeViewProps) => {
     () => {
       const dedupContext = new FeedDeduplicationContext()
 
-      // Используем данные из props (уже загружены на сервере)
-      const featured = props.featuredShouts || []
-      const topRated = props.topRatedShouts || []
-      const topMonth = props.topMonthShouts || []
-      const topViewed = props.topViewedShouts || []
-      const topCommented = props.topCommentedShouts || []
+      // ✅ Используем данные из контекста (обновляются при дозагрузке) с fallback на props
+      const featured = featuredFeed() || props.featuredShouts || []
+      const topRated = topFeed() || props.topRatedShouts || []
+      const topMonth = topMonthFeed() || props.topMonthShouts || []
+      const topViewed = props.topViewedShouts || [] // Пока только из props
+      const topCommented = topCommentedFeed() || props.topCommentedShouts || []
 
       // randomTopic теперь чисто клиентский - не участвует в SSR дедупликации
 

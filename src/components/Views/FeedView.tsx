@@ -3,11 +3,12 @@ import { clsx } from 'clsx'
 import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, Suspense } from 'solid-js'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Loading } from '~/components/_shared/Loading'
+import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { ShareModal } from '~/components/_shared/ShareModal'
 import { CommentsList, KnowledgeBase, SuggestBox, TopAuthorsList } from '~/components/Feed/AsideComponents'
 import { AsideSection } from '~/components/Feed/AsideComponents/AsideSection'
 import { useAuthors } from '~/context/authors'
-import { useFeed } from '~/context/feed'
+import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { ModalType, useUI } from '~/context/ui'
@@ -49,7 +50,7 @@ export const FeedView = (props: FeedProps) => {
   const loc = useLocation()
   const { showModal } = useUI()
   const { session, client } = useSession()
-  const { isFeedLoading, feedByMode, myFeed, mode, initializeFeed, loadRecentFeed, loadHotFeed, loadTopFeed } =
+  const { isFeedLoading, feedByMode, myFeed, mode, initializeFeed, loadRecentFeed, loadHotFeed, loadTopFeed, options } =
     useFeed()
 
   // Добавляем состояние для мобильного меню
@@ -141,10 +142,14 @@ export const FeedView = (props: FeedProps) => {
       hasValidContextData: currentFeed.shouts?.length > 0 && !currentFeed.isEmpty
     })
 
-    // Если данные есть в контексте и он НЕ пустой и НЕ в состоянии загрузки, используем их
-    if (currentFeed.shouts?.length > 0 && !currentFeed.isEmpty && !currentFeed.isLoading) {
-      console.log('[FeedView] Using context feed data:', currentFeed.shouts.length, 'items')
-      return currentFeed.shouts
+    // ✅ ИСПРАВЛЕНО: Если контекст загружен (не в состоянии загрузки), используем его данные
+    // даже если они пустые (результат фильтрации)
+    if (!currentFeed.isLoading) {
+      console.log('[FeedView] Using context feed data (loaded):', currentFeed.shouts?.length || 0, 'items', {
+        isEmpty: currentFeed.isEmpty,
+        hasShouts: !!currentFeed.shouts?.length
+      })
+      return currentFeed.shouts || []
     }
 
     // Если контекст загружается, но есть SSR данные, используем SSR как fallback
@@ -351,6 +356,35 @@ export const FeedView = (props: FeedProps) => {
     setShareData(shared)
   }
 
+  // ✅ Функция дозагрузки для текущего режима ленты
+  const loadMoreFeed = async (offset: number): Promise<LoadMoreItems> => {
+    try {
+      const currentMode = mode()
+      console.log('[FeedView] Loading more for mode:', currentMode, 'offset:', offset)
+
+      // Вызываем соответствующую функцию загрузки в зависимости от режима
+      switch (currentMode) {
+        case 'recent':
+          await loadRecentFeed({ ...options(), offset })
+          break
+        case 'hot':
+          await loadHotFeed({ ...options(), offset })
+          break
+        case 'top':
+          await loadTopFeed({ ...options(), offset })
+          break
+        default:
+          await loadRecentFeed({ ...options(), offset })
+      }
+
+      // Возвращаем текущие элементы ленты для LoadMoreWrapper
+      return (feedByMode().shouts || []) as LoadMoreItems
+    } catch (error) {
+      console.error('[FeedView] Error loading more feed:', error)
+      return [] as LoadMoreItems
+    }
+  }
+
   // Компонент для рендеринга статей
   const ArticlesList = () => {
     const { topAuthors } = useAuthors()
@@ -510,7 +544,13 @@ export const FeedView = (props: FeedProps) => {
                       </div>
                     }
                   >
-                    <ArticlesList />
+                    <LoadMoreWrapper
+                      loadFunction={loadMoreFeed}
+                      pageSize={FEED_PAGE_SIZE}
+                      hidden={feedByMode().isEmpty || !feedByMode().hasMore}
+                    >
+                      <ArticlesList />
+                    </LoadMoreWrapper>
                   </Show>
                 </div>
               </Show>
