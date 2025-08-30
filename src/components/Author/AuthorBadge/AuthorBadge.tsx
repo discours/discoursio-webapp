@@ -125,7 +125,7 @@ export const AuthorBadge = (props: Props) => {
             <FollowingButton
               entity={FollowingEntity.Author}
               slug={props.author.slug}
-              isFollowed={isFollowed()}
+              // 🔄 НЕ передаем isFollowed - пусть компонент сам определяет из контекста
               minimize={props.minimize}
             />
           </Show>

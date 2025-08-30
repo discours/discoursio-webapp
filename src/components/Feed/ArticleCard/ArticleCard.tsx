@@ -155,7 +155,17 @@ export const ArticleCard = (props: ArticleCardProps) => {
     if (props.onInvite) props.onInvite()
   }
 
-  const mainTopic = createMemo(() => props.article?.main_topic || props.article?.topics?.[0])
+  const mainTopic = createMemo(() => {
+    const topic = props.article?.main_topic || props.article?.topics?.[0]
+    console.log('[ArticleCard] mainTopic:', {
+      article_id: props.article?.id,
+      article_title: props.article?.title,
+      main_topic: props.article?.main_topic,
+      topics: props.article?.topics,
+      resolved_topic: topic
+    })
+    return topic
+  })
   return (
     <section
       data-testid="article-card"

@@ -181,3 +181,107 @@
     transform: rotate(360deg);
   }
 }
+
+// 🔄 Дополнительные специфичные переопределения для SearchModal
+.searchContainer .searchContainer div[class*="TopicBadge"] {
+  * {
+    color: #fff !important;
+  }
+  
+  // Заголовки тем
+  [class*="title"] {
+    color: #fff !important;
+    font-weight: bold !important;
+  }
+  
+  // Описания тем
+  [class*="description"] {
+    color: rgb(255 255 255 / 80%) !important;
+  }
+  
+  // Статистика тем
+  [class*="stats"],
+  [class*="statsItem"] {
+    color: rgb(255 255 255 / 64%) !important;
+  }
+  
+  // Кнопки подписки
+  [class*="subscribeButton"],
+  button {
+    background: rgb(64 64 64 / 50%) !important;
+    color: #fff !important;
+    border: 1px solid rgb(255 255 255 / 20%) !important;
+    outline: none !important;
+    box-shadow: none !important;
+    
+    &:hover {
+      background: #404040 !important;
+      color: #fff !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+    
+    &:focus,
+    &:active {
+      outline: none !important;
+      box-shadow: none !important;
+      border: 1px solid rgb(255 255 255 / 20%) !important;
+    }
+  }
+}
+
+.searchContainer .searchContainer div[class*="AuthorBadge"] {
+  * {
+    color: #fff !important;
+  }
+  
+  // Имена авторов
+  [class*="name"],
+  [class*="name"] span {
+    color: #fff !important;
+    font-weight: 500 !important;
+    
+    &:hover {
+      background: #fff !important;
+      color: #000 !important;
+    }
+  }
+  
+  // Биография и описания
+  [class*="bio"] {
+    color: rgb(255 255 255 / 64%) !important;
+  }
+  
+  // Кнопки действий
+  [class*="actionButton"],
+  button {
+    background: rgb(64 64 64 / 50%) !important;
+    color: #fff !important;
+    border: 1px solid rgb(255 255 255 / 20%) !important;
+    outline: none !important;
+    box-shadow: none !important;
+    
+    &:hover {
+      background: #404040 !important;
+      color: #fff !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+    
+    &:focus,
+    &:active {
+      outline: none !important;
+      box-shadow: none !important;
+      border: 1px solid rgb(255 255 255 / 20%) !important;
+    }
+  }
+  
+  // Ссылки
+  a {
+    color: rgb(255 255 255 / 90%) !important;
+    
+    &:hover {
+      color: #fff !important;
+    }
+  }
+}

@@ -61,7 +61,7 @@
 }
 
 .shoutCardWithBorder {
-  border-top: 2px solid #141414;
+  border-top: 2px solid var(--default-color);
   margin-top: 2.4rem !important;
   padding-top: 2.4rem;
 }
@@ -140,19 +140,21 @@
 
   a:link {
     border: none;
-    color: rgb(0 0 0 / 90%);
+    color: var(--default-color);
+    opacity: 0.9;
     position: relative;
     z-index: 2;
 
     &:hover {
-      color: #fff;
+      color: var(--link-hover-color);
+      opacity: 1;
     }
   }
 }
 
 .shoutDate {
   font-size:1.2rem;
-  color: #9fa1a7;
+  color: var(--placeholder-color);
   font-weight: 500;
 }
 
@@ -175,6 +177,7 @@
   font-weight: 700;
   line-height: 1.2;
   margin-bottom: 0.8rem;
+  color: var(--default-color);
 
   :global(.col-md-12) & {
     font-size:2.6rem;
@@ -204,14 +207,16 @@
 
 .shoutCardSubtitle {
   font-size:1.8rem;
-  color: #141414;
+  color: var(--default-color);
+  opacity: 0.8;
   font-weight: 400;
   line-height: 1.3;
   margin-bottom: 1.4rem;
   transition:
     color 0.2s,
     background-color 0.2s,
-    box-shadow 0.2s;
+    box-shadow 0.2s,
+    opacity 0.2s;
 }
 
 .shoutCardLinkContainer {

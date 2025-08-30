@@ -159,14 +159,20 @@ export const useShoutsResource = (args: QueryLoad_Shouts_ByArgs) => {
  * Поиск статей с кешированием результатов
  */
 export const loadShoutsSearch = (args: QueryLoad_Shouts_SearchArgs) => {
+  console.log('[loadShoutsSearch] Creating loader with args:', args)
   const loader = createCacheableLoader<{ load_shouts_search: Shout[] }, QueryLoad_Shouts_SearchArgs>(
     loadShoutsSearchQuery,
     (args: QueryLoad_Shouts_SearchArgs) => args,
-    true // Кешируем результаты поиска
+    false // 🔄 Временно отключаем кеширование для диагностики
   )(args)
 
   return async () => {
+    console.log('[loadShoutsSearch] Executing loader...')
     const response = await loader()
+    console.log('[loadShoutsSearch] Loader response:', { 
+      hasResponse: !!response, 
+      resultCount: response?.load_shouts_search?.length 
+    })
     return response?.load_shouts_search || []
   }
 }

@@ -229,7 +229,7 @@ export const AuthorCard = (props: Props) => {
                   <FollowingButton
                     slug={props.author.slug}
                     entity={FollowingEntity.Author}
-                    isFollowed={isFollowed()}
+                    // 🔄 НЕ передаем isFollowed - пусть компонент сам определяет из контекста
                     class={clsx({ [stylesButton.followed]: isFollowed() })}
                   />
                   <Show when={props.showMessageButton}>

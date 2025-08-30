@@ -1,5 +1,18 @@
 @use 'sass:math';
 
+.search-page {
+  min-height: 100vh;
+
+  a {
+    
+    &:hover {
+      border-radius: 4px;
+      padding: 0.125rem 0.25rem;
+      margin: -0.125rem -0.25rem;
+    }
+  }
+}
+
 .search-form {
   @include media-breakpoint-down(sm) {
     margin-left: math.div(-$container-padding-x, 2);
@@ -17,32 +30,149 @@
   }
 
   input {
-    font-size:4rem;
+    font-size: 4rem;
     border: none;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 2px solid var(--border-color);
     height: 100%;
+    color: var(--default-color);
+    background: transparent;
+    outline: none;
+    transition: border-color 0.3s ease;
+    
+    &::placeholder {
+      color: var(--placeholder-color);
+      opacity: 0.7;
+    }
+    
+    &:focus {
+      border-bottom-color: var(--color-primary);
+    }
+    
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    &.searching {
+      border-bottom-color: var(--color-primary);
+      opacity: 0.8;
+    }
   }
 
   button {
-    font-size:2rem;
+    font-size: 2rem;
     line-height: 4rem;
+    color: var(--color-primary);
+    background: transparent;
+    border: 2px solid var(--color-primary);
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    
+    &:hover {
+      background: var(--color-primary);
+      color: var(--background-color);
+    }
+    
+    &:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: var(--border-color);
+      color: var(--placeholder-color);
+      border-color: var(--border-color);
+    }
   }
 }
 
 .search__show-more {
-  border: 3px solid !important;
   display: block;
-  padding-bottom: 56.2%;
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  border-radius: 50%;
+  width: 100px;
+  height: 100px;
+  margin: auto;
+  font-size: 1.6rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
   position: relative;
-  text-align: center;
+  
+  &:hover {
+    background: var(--color-primary);
+    color: var(--background-color);
+    transform: scale(1.05);
+  }
+  
+  &:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--border-color);
+    color: var(--placeholder-color);
+    border-color: var(--border-color);
+  }
 }
 
 .search__show-more-inner {
+  display: flex;
   align-items: center;
   justify-content: center;
-  display: flex;
   height: 100%;
-  position: absolute;
-  top: 0;
   width: 100%;
+  color: inherit;
+}
+
+// 🎨 Современные индикаторы поиска
+.search-input-spinner {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  color: var(--color-primary);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: translateY(-50%) rotate(0deg); }
+  to { transform: translateY(-50%) rotate(360deg); }
+}
+
+.search__searching-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--placeholder-color);
+  font-style: italic;
+  gap: 0.5rem;
+  
+  &::before {
+    content: "⏳";
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+// 🔄 Состояние поиска
+.search-form input.searching {
+  border-bottom-color: var(--color-primary);
+  opacity: 0.8;
 }

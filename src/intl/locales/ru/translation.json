@@ -189,6 +189,8 @@
   "Restore from local storage": "Восстановить из локального хранилища",
   "You have a new follower!": "У вас новый подписчик!",
   "Follow updated": "Подписка обновлена",
+  "Enter at least 2 characters to search": "Введите минимум 2 символа для поиска",
+  "Searching": "Ищем...",
   "Drag the image to this area": "Перетащите изображение в эту область",
   "Each image must be no larger than 5 MB.": "Каждое изображение должно быть размером не больше 5 мб.",
   "earlier": "ранее",

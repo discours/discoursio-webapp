@@ -520,7 +520,9 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
 
     try {
       console.debug('[FeedProvider] Calling loadShoutsSearch API...')
-      const result = await loadShoutsSearch({ text, options })()
+      const searchArgs = { text, options }
+      console.debug('[FeedProvider] Search args:', searchArgs)
+      const result = await loadShoutsSearch(searchArgs)()
       console.debug('[FeedProvider] Search API returned:', {
         resultLength: result?.length,
         hasMore: (result || []).length >= (options.limit || FEED_PAGE_SIZE),
