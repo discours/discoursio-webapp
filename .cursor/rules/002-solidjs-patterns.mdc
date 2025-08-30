@@ -6,6 +6,14 @@ alwaysApply: true
 
 # ⚡ SolidJS != React (Критичные отличия)
 
+## ⚡ Quick Quality Gates
+```
+- [ ] Нет async createEffect
+- [ ] Props через props.*, НЕ деструктуризация  
+- [ ] createResource для async + initialValue
+- [ ] Логи лаконичные (НЕ дампы объектов)
+- [ ] props.data из route.load может быть Promise!
+
 ## 🚫 НИКОГДА не делай
 ```typescript
 // ❌ ASYNC createEffect - ломает гидрацию

@@ -1,7 +1,6 @@
-import { Portal } from 'solid-js/web'
+import { NoHydration, Portal } from 'solid-js/web'
 import { NotificationsPanel } from '~/components/NotificationsPanel'
 import { useNotifications } from '~/context/notifications'
-import { NoHydration } from 'solid-js/web'
 import { ShowIfAuthenticated } from './ShowIfAuthenticated'
 
 export const NotificationsPanelPortal = () => {

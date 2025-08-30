@@ -1,5 +1,5 @@
 ---
-description: Самоулучшение rules на основе паттернов кода
+description: Самоулучшение rules на основе паттернов процесса разработки
 globs: .cursor/rules/*.mdc  
 alwaysApply: true
 ---

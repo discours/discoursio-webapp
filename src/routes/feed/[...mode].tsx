@@ -1,5 +1,6 @@
 import { RouteSectionProps } from '@solidjs/router'
 import { createMemo, Suspense } from 'solid-js'
+import { NoHydration } from 'solid-js/web'
 import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { FeedView } from '~/components/Views/FeedView'
@@ -9,7 +10,6 @@ import { ReactionsProvider } from '~/context/reactions'
 import { loadShouts } from '~/graphql/api/public'
 import { LoadShoutsFilters, Reaction, ReactionKind, Shout, ShoutsOrderBy } from '~/graphql/generated/graphql'
 import { getTimestampFromPeriod, PeriodType } from '~/lib/fromPeriod'
-import { NoHydration } from 'solid-js/web'
 
 export interface RouteData {
   // Основные ленты для всех режимов

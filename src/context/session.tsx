@@ -171,6 +171,8 @@ type SessionContextType = {
   requireAuthentication: (callback: (() => Promise<void>) | (() => void), modalSource: ModalSource) => Promise<void>
   /** Обновление токена */
   refreshToken: () => Promise<boolean>
+  /** Обновление GraphQL клиента с актуальным токеном */
+  refreshClient: () => Promise<void>
   /** Загрузка сессии */
   loadSession: () => Promise<AuthPayload | undefined>
   /** Подтверждение email */
@@ -1439,6 +1441,33 @@ export const SessionProvider = (props: {
     }
   }
 
+  /**
+   * Принудительное обновление GraphQL клиента с текущим токеном
+   * Используется в случаях, когда клиент не был правильно инициализирован
+   * @returns Promise, который разрешается, когда клиент обновлен
+   */
+  const refreshClient = () => {
+    return new Promise<void>((resolve) => {
+      const currentToken = session()?.token || ''
+      console.log('[session] Manually refreshing GraphQL client with token:', !!currentToken)
+
+      // Создаем новый клиент с токеном
+      const newClient = graphqlClientCreate(coreApiUrl, currentToken)
+
+      // Обновляем состояние
+      setLastClientToken(currentToken)
+      setClient(() => newClient)
+
+      // Небольшая задержка для гарантии обновления состояния
+      setTimeout(() => {
+        if (!client()) {
+          console.warn('[session] Client still not available after refresh')
+        }
+        resolve()
+      }, 50)
+    })
+  }
+
   const contextValue: SessionContextType = {
     session,
     isSessionLoaded,
@@ -1451,6 +1480,7 @@ export const SessionProvider = (props: {
     signOut,
     requireAuthentication,
     refreshToken,
+    refreshClient,
     loadSession,
     confirmEmail,
     resendVerifyEmail,

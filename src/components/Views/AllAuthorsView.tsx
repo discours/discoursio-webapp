@@ -1,6 +1,6 @@
 import { A, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { createMemo, createSignal, For, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { SearchField } from '~/components/_shared/SearchField'
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
@@ -85,8 +85,18 @@ export const AllAuthorsView = (props: Props) => {
   const [searchParams] = useSearchParams<{ by?: string }>()
   const [searchQuery, setSearchQuery] = createSignal('')
 
+  // ✅ Состояние для дозагруженных авторов (followers/shouts)
+  const [loadedAuthors, setLoadedAuthors] = createSignal<Author[]>([])
+
   // ✅ Мемоизированный layout для стабильности
   const layout = createMemo(() => searchParams.by || 'name')
+
+  // ✅ Сбрасываем дозагруженных авторов при смене вкладки
+  createEffect(() => {
+    const currentLayout = layout()
+    console.log('[AllAuthorsView] Layout changed to:', currentLayout)
+    setLoadedAuthors([])
+  })
 
   // ✅ Реактивные данные для каждой вкладки с приоритетом props.* (SSR данные)
   const getAuthorsForLayout = createMemo(() => {
@@ -94,16 +104,34 @@ export const AllAuthorsView = (props: Props) => {
 
     let result: Author[] = []
     switch (currentLayout) {
-      case 'name':
-        // ✅ Для алфавитного списка используем props.authors (SSR) или контекст
-        result = props.authors.length > 0 ? props.authors : allAuthors()
+      case 'name': {
+        // ✅ Для алфавитного списка приоритет обогащенным данным из контекста
+        const contextAuthors = allAuthors()
+        const propsAuthors = props.authors || []
+
+        // Если в контексте есть авторы со статистикой, используем их
+        // Иначе используем SSR данные как fallback
+        if (contextAuthors.length > 0) {
+          result = contextAuthors
+        } else {
+          result = propsAuthors
+        }
         break
-      case 'followers':
-        result = props.authorsByFollowers || []
+      }
+      case 'followers': {
+        // ✅ Объединяем SSR данные с дозагруженными
+        const followersBase = props.authorsByFollowers || []
+        const followersLoaded = loadedAuthors().filter((a) => !followersBase.some((base) => base.id === a.id))
+        result = [...followersBase, ...followersLoaded]
         break
-      case 'shouts':
-        result = props.authorsByShouts || []
+      }
+      case 'shouts': {
+        // ✅ Объединяем SSR данные с дозагруженными
+        const shoutsBase = props.authorsByShouts || []
+        const shoutsLoaded = loadedAuthors().filter((a) => !shoutsBase.some((base) => base.id === a.id))
+        result = [...shoutsBase, ...shoutsLoaded]
         break
+      }
       default:
         result = props.authorsByShouts || []
     }
@@ -115,6 +143,7 @@ export const AllAuthorsView = (props: Props) => {
       propsFollowers: props.authorsByFollowers?.length || 0,
       propsShouts: props.authorsByShouts?.length || 0,
       contextAuthors: allAuthors().length,
+      loadedAuthors: loadedAuthors().length,
       result: result.length
     })
 
@@ -127,6 +156,14 @@ export const AllAuthorsView = (props: Props) => {
 
     const authors = getAuthorsForLayout()
     if (!authors.length) return {}
+
+    // 🔍 ДИАГНОСТИКА: Проверяем обогащение данных
+    const authorsWithStats = authors.filter((a) => a.stat?.shouts && a.stat.shouts > 0)
+    console.log('[AllAuthorsView] Authors with stats:', {
+      total: authors.length,
+      withStats: authorsWithStats.length,
+      examples: authorsWithStats.slice(0, 3).map((a) => ({ name: a.name, shouts: a.stat?.shouts }))
+    })
 
     // Применяем поиск
     const filteredAuthors = searchQuery().trim()
@@ -193,8 +230,8 @@ export const AllAuthorsView = (props: Props) => {
                           <div class={clsx(styles.topic, 'topic col-sm-12 col-md-8')}>
                             <div class="topic-title">
                               <A href={`/@${author.slug}`}>{author.name}</A>
-                              <Show when={author.stat?.shouts && (author.stat?.shouts || 0) > 0}>
-                                <span class={styles.articlesCounter}>{author.stat?.shouts || 0}</span>
+                              <Show when={author.stat?.shouts && author.stat?.shouts > 0}>
+                                <span class={styles.articlesCounter}>{author.stat?.shouts}</span>
                               </Show>
                             </div>
                           </div>
@@ -227,6 +264,16 @@ export const AllAuthorsView = (props: Props) => {
               limit: 20,
               offset
             })()
+
+            // ✅ Обновляем состояние дозагруженных авторов
+            if (newAuthors && newAuthors.length > 0) {
+              setLoadedAuthors((prev) => {
+                const existingIds = new Set(prev.map((a) => a.id))
+                const uniqueNew = newAuthors.filter((a) => !existingIds.has(a.id))
+                console.log('[AuthorsSortedList] Adding new authors:', uniqueNew.length)
+                return [...prev, ...uniqueNew]
+              })
+            }
 
             return newAuthors || []
           }}

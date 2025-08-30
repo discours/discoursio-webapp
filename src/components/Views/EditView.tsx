@@ -71,7 +71,7 @@ export const EditView = (props: { draft?: Draft }) => {
     clearValidationErrors,
     updateDraft
   } = useDrafts()
-  
+
   // Инициализируем useConnect на верхнем уровне компонента
   const { getStatus, reconnect, connect, connectEditor, addHandler } = useConnect()
 
@@ -1095,7 +1095,7 @@ export const EditView = (props: { draft?: Draft }) => {
       <Modal variant="medium" name="inviteCoauthors">
         <InviteMembers variant={'coauthors'} title={t('Invite experts')} />
       </Modal>
-      
+
       <NoHydration>
         <Show when={currentDraft()?.id}>
           <Panel shoutId={currentDraft()?.id} />

@@ -224,7 +224,7 @@ type DraftsContextType = {
  */
 export const DraftsContext = createContext<DraftsContextType>({} as DraftsContextType)
 export const DraftsProvider = (props: { children: JSX.Element }) => {
-  const { client, session, isSessionLoaded, isSessionValidating } = useSession()
+  const { client, session, isSessionLoaded, isSessionValidating, refreshClient } = useSession()
   const {
     localDrafts: getLocalDrafts,
     loadLocalDrafts: loadLocalDraftsFromContext,
@@ -912,6 +912,16 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         throw new Error('Сессия не готова для публикации')
       }
 
+      // Обновляем клиент с актуальным токеном
+      console.log('[DraftsProvider] Refreshing client with current token...')
+      await refreshClient()
+
+      // Получаем обновленный клиент после refreshClient
+      const currentClient = client()
+      if (!currentClient) {
+        throw new Error('Client is still not initialized after refresh')
+      }
+
       console.log('[DraftsProvider] Session ready, calling GraphQL mutation...')
 
       // 🔍 ФИНАЛЬНАЯ ДИАГНОСТИКА: Логируем что отправляем на сервер
@@ -921,8 +931,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         timestamp: new Date().toISOString()
       })
 
-      // Публикуем черновик
-      const response = await client()!.mutation(publishDraftMutation, { draft_id: draftId }).toPromise()
+      // Публикуем черновик с обновленным клиентом
+      const response = await currentClient.mutation(publishDraftMutation, { draft_id: draftId }).toPromise()
       console.log('[DraftsProvider] GraphQL response:', response)
 
       if (response?.data?.publish_draft?.draft) {

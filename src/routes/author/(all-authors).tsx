@@ -82,20 +82,28 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
   const { t } = useLocalize()
   const { addAuthors } = useAuthors()
 
-  // ✅ Правильный паттерн Carniato: route.load → createResource с initialValue
-  const routeData = () => props.data
-
-  // ✅ createResource для асинхронной загрузки с SSR-данными как initialValue
+  // ✅ КРИТИЧНО: props.data может быть Promise в SolidStart!
   const [data] = createResource(
-    () => routeData(),
-    async (currentData) => {
-      // Если SSR данные уже есть, возвращаем их
+    () => props.data,
+    async (routeData) => {
+      // Разрешаем Promise если это Promise
+      const resolvedData = routeData instanceof Promise ? await routeData : routeData
+
+      console.log('[AllAuthorsPage] Resolved route data:', {
+        hasAuthors: !!resolvedData?.authors?.length,
+        hasFollowers: !!resolvedData?.authorsByFollowers?.length,
+        hasShouts: !!resolvedData?.authorsByShouts?.length
+      })
+
+      // Если SSR данные есть, возвращаем их
       if (
-        currentData &&
-        (currentData.authors?.length || currentData.authorsByFollowers?.length || currentData.authorsByShouts?.length)
+        resolvedData &&
+        (resolvedData.authors?.length ||
+          resolvedData.authorsByFollowers?.length ||
+          resolvedData.authorsByShouts?.length)
       ) {
         console.log('[AllAuthorsPage] Using SSR data from route.load')
-        return currentData
+        return resolvedData
       }
 
       // Иначе загружаем на клиенте
@@ -114,8 +122,11 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
       }
     },
     {
-      // ✅ КРИТИЧНО: SSR данные как initialValue для стабильной гидрации
-      initialValue: routeData()
+      // ✅ КРИТИЧНО: initialValue для стабильной гидрации
+      initialValue:
+        typeof props.data === 'object' && !('then' in props.data)
+          ? props.data
+          : { authors: [], authorsByFollowers: [], authorsByShouts: [], currentLayout: 'name' }
     }
   )
 

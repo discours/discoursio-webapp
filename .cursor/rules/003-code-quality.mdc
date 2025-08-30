@@ -30,3 +30,10 @@ test('user can submit form', async () => {
 - **Input validation**: Клиент И сервер
 - **XSS protection**: Санитизация HTML
 - **JWT**: + refresh tokens
+
+## Descriptive coding
+
+- **Add comments**: Код должен быть качественно описан в комментариях
+- **Add doctests**: Примеры и доктесты для общей стабильноести
+- **TODO and FIXME**: Оставлять и решить задачи из кода
+- **Less noise**: никакого капса и эмоджи, строгие и полезные, не перегружающие лишним шумом, сообщения в комментариях кода
