@@ -117,7 +117,22 @@ export const FeedFiltersControl = () => {
     const featuredChanged = pendingFeaturedFilter() !== currentFeaturedFilter()
     const layoutsChanged = JSON.stringify(pendingLayouts().sort()) !== JSON.stringify(currentLayouts().sort())
 
-    setHasChanges(periodChanged || featuredChanged || layoutsChanged)
+    const hasChangesResult = periodChanged || featuredChanged || layoutsChanged
+
+    console.log('🔍 [FeedFiltersControl] Проверка изменений:', {
+      periodChanged,
+      featuredChanged,
+      layoutsChanged,
+      hasChanges: hasChangesResult,
+      pendingPeriod: pendingPeriod(),
+      currentPeriod: currentPeriod(),
+      pendingFeaturedFilter: pendingFeaturedFilter(),
+      currentFeaturedFilter: currentFeaturedFilter(),
+      pendingLayouts: pendingLayouts(),
+      currentLayouts: currentLayouts()
+    })
+
+    setHasChanges(hasChangesResult)
   }
 
   // Синхронизируем начальные фильтры (только на клиенте, избегаем ошибок гидрации)
@@ -127,6 +142,8 @@ export const FeedFiltersControl = () => {
 
     try {
       const filters = filterState()?.filters as FeedFilters
+      console.log('🔍 [FeedFiltersControl] onMount - начальные фильтры:', filters)
+
       if (!filters) return
 
       // Синхронизация featured фильтра
@@ -134,6 +151,7 @@ export const FeedFiltersControl = () => {
         const featured = filters.featured === true ? 'featured' : filters.featured === false ? 'unfeatured' : 'all'
         setCurrentFeaturedFilter(featured)
         setPendingFeaturedFilter(featured)
+        console.log('🔍 [FeedFiltersControl] Синхронизирован featured фильтр:', featured)
       }
 
       // Синхронизация периода
@@ -142,6 +160,7 @@ export const FeedFiltersControl = () => {
         if (period) {
           setCurrentPeriod(period)
           setPendingPeriod(period)
+          console.log('🔍 [FeedFiltersControl] Синхронизирован период:', period)
         }
       }
 
@@ -150,7 +169,17 @@ export const FeedFiltersControl = () => {
         const layouts = filters.layouts as (ExpoLayoutType | 'article')[]
         setCurrentLayouts(layouts)
         setPendingLayouts(layouts)
+        console.log('🔍 [FeedFiltersControl] Синхронизированы layouts:', layouts)
       }
+
+      console.log('🔍 [FeedFiltersControl] onMount - состояние после синхронизации:', {
+        currentPeriod: currentPeriod(),
+        pendingPeriod: pendingPeriod(),
+        currentFeaturedFilter: currentFeaturedFilter(),
+        pendingFeaturedFilter: pendingFeaturedFilter(),
+        currentLayouts: currentLayouts(),
+        pendingLayouts: pendingLayouts()
+      })
     } catch (error) {
       console.warn('[FeedFiltersControl] Sync error:', error)
     }
@@ -182,12 +211,27 @@ export const FeedFiltersControl = () => {
     if (!opt?.value) return
     const period = opt.value as PeriodType
 
+    console.log('🔍 [FeedFiltersControl] Обработчик периода:', {
+      selectedPeriod: period,
+      previousPendingPeriod: pendingPeriod(),
+      previousCurrentPeriod: currentPeriod()
+    })
+
     setPendingPeriod(period || PeriodType.AllTime)
     checkForChanges()
   }
 
   // Применение фильтров
   const applyFilters = () => {
+    console.log('🔍 [FeedFiltersControl] Применяем фильтры:', {
+      pendingPeriod: pendingPeriod(),
+      pendingFeaturedFilter: pendingFeaturedFilter(),
+      pendingLayouts: pendingLayouts(),
+      currentPeriod: currentPeriod(),
+      currentFeaturedFilter: currentFeaturedFilter(),
+      currentLayouts: currentLayouts()
+    })
+
     setCurrentPeriod(pendingPeriod())
     setCurrentFeaturedFilter(pendingFeaturedFilter())
     setCurrentLayouts(pendingLayouts())
@@ -198,6 +242,8 @@ export const FeedFiltersControl = () => {
       after: pendingPeriod() === PeriodType.AllTime ? undefined : getTimestampFromPeriod(pendingPeriod()),
       layouts: pendingLayouts().length ? pendingLayouts() : undefined
     }
+
+    console.log('🔍 [FeedFiltersControl] Отправляем фильтры в контекст:', filters)
 
     updateFilters(filters)
 

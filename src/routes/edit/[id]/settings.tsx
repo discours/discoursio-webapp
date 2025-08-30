@@ -39,11 +39,11 @@ export default (props: RouteSectionProps) => {
 
         if (requestedDraft) {
           console.log(`[EditSettingsRoute] Found draft: ${requestedDraft.id}, syncing from localStorage...`)
-          
+
           // 🔧 ИСПРАВЛЕНИЕ: Синхронизируем данные из localStorage только один раз
           try {
             const syncedDraft = await syncDraft(parsedId)
-            
+
             if (syncedDraft) {
               console.log(`[EditSettingsRoute] Setting synced draft: ${syncedDraft.id}`)
               setCurrentDraft(syncedDraft)
@@ -52,7 +52,7 @@ export default (props: RouteSectionProps) => {
               setCurrentDraft(requestedDraft)
             }
           } catch (error) {
-            console.error(`[EditSettingsRoute] Sync error:`, error)
+            console.error('[EditSettingsRoute] Sync error:', error)
             setCurrentDraft(requestedDraft)
           }
         } else {

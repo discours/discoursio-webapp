@@ -30,8 +30,6 @@ import { useSession } from './session'
 import { useTopics } from './topics'
 
 export const AUTO_SAVE_DELAY = 1000
-
-const EDITOR_KEY_REGEX = /draft-(\d+)-([a-z]+)/
 const DRAFT_EDITOR_ID_REGEX = /draft-(\d+)-([a-z]+)/
 
 // Storage utility functions moved from storage.ts
@@ -94,7 +92,7 @@ const saveDraftFieldStorage = (
   if (fieldValue === null || fieldValue === undefined) {
     return false
   }
-  
+
   // 🔧 ИСПРАВЛЕНИЕ: Разрешаем пустые строки для очистки полей
   // Пустые строки нужны для очистки содержимого редактора
 
@@ -135,13 +133,13 @@ const saveDraftFieldStorage = (
       if (!existingSlug || existingSlug.trim() === '') {
         const generatedSlug = slugify(valueToStore)
         draft.fields['slug'] = generatedSlug
-        
+
         console.log(`🔧 [AUTO-SLUG] Сгенерирован slug для черновика #${draftId}:`, {
           title: valueToStore.substring(0, 50),
           slug: generatedSlug,
           hasCallback: !!onSlugGenerated
         })
-        
+
         // 🔧 УВЕДОМЛЯЕМ о сгенерированном slug через callback
         if (onSlugGenerated) {
           onSlugGenerated(generatedSlug)
@@ -297,13 +295,11 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         if (currentDraftObj && currentDraftObj.id === Number(draftId)) {
           // Обновляем slug в currentDraft
           setCurrentDraft({ ...currentDraftObj, slug })
-          
+
           // 🔧 ОБНОВЛЯЕМ slug в массиве drafts
-          setDrafts((prev) => 
-            prev.map((d) => d.id === Number(draftId) ? { ...d, slug } : d)
-          )
-          
-          console.log(`🔧 [AUTO-SLUG] Обновлен slug в currentDraft и drafts:`, slug)
+          setDrafts((prev) => prev.map((d) => (d.id === Number(draftId) ? { ...d, slug } : d)))
+
+          console.log('🔧 [AUTO-SLUG] Обновлен slug в currentDraft и drafts:', slug)
         }
       }
     }

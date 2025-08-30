@@ -61,20 +61,22 @@ export const PublishSettings = () => {
       console.log(`[PublishSettings] Синхронизируем черновик #${draft.id} с localStorage...`)
       try {
         await syncDraft(draft.id)
-        console.log(`[PublishSettings] Синхронизация завершена`)
-        
+        console.log('[PublishSettings] Синхронизация завершена')
+
         // 🔧 АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ SLUG при загрузке
         const syncedDraft = await syncDraft(draft.id)
         const finalDraft = syncedDraft || draft
-        
+
         // 🔧 Генерируем slug ТОЛЬКО если его совсем нет и есть заголовок
-        if (finalDraft && 
-            (!finalDraft.slug || finalDraft.slug.trim() === '') && 
-            finalDraft.title && 
-            finalDraft.title.trim() !== '') {
+        if (
+          finalDraft &&
+          (!finalDraft.slug || finalDraft.slug.trim() === '') &&
+          finalDraft.title &&
+          finalDraft.title.trim() !== ''
+        ) {
           console.log('🔧 [AUTO-SLUG] Генерируем slug при загрузке из заголовка:', finalDraft.title)
           const generatedSlug = slugify(finalDraft.title)
-          
+
           if (generatedSlug) {
             // Обновляем slug в черновике
             updateDraftField(finalDraft.id, 'slug', generatedSlug, false)
@@ -86,7 +88,7 @@ export const PublishSettings = () => {
           console.log('🔧 [AUTO-SLUG] Слаг не найден и не может быть сгенерирован (нет заголовка)')
         }
       } catch (error) {
-        console.error(`[PublishSettings] Ошибка синхронизации:`, error)
+        console.error('[PublishSettings] Ошибка синхронизации:', error)
       }
     }
   })
@@ -293,11 +295,11 @@ export const PublishSettings = () => {
 
     // Проверяем наличие заголовка
     const hasTitle = actualContent.title && actualContent.title.trim() !== ''
-    console.log('✅ Проверка заголовка:', { 
-      hasTitle, 
-      titleFromStorage: actualContent.title, 
-      titleFromDraft: finalDraft.title, 
-      trimmed: actualContent.title?.trim() 
+    console.log('✅ Проверка заголовка:', {
+      hasTitle,
+      titleFromStorage: actualContent.title,
+      titleFromDraft: finalDraft.title,
+      trimmed: actualContent.title?.trim()
     })
     if (!hasTitle) {
       console.warn('❌ ОШИБКА: Нет заголовка')

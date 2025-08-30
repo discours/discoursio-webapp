@@ -70,9 +70,9 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
           if (!isLocalDraft) {
             draft = drafts().find((d: ExtendedDraft) => d.local_id === draftId)
           }
-          
+
           // Попробуем найти по числовому ID
-          if (!draft && !isNaN(Number(draftId))) {
+          if (!draft && !Number.isNaN(Number(draftId))) {
             draft = drafts().find((d: ExtendedDraft) => d.id === Number(draftId))
           }
         }
@@ -102,7 +102,7 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
           // Если черновик не найден, показываем уведомление с деталями
           console.error('[DraftPreviewPage] Драфт не найден:', {
             searchedId: draftId,
-            availableDrafts: drafts().map(d => ({ id: d.id, local_id: d.local_id, title: d.title }))
+            availableDrafts: drafts().map((d) => ({ id: d.id, local_id: d.local_id, title: d.title }))
           })
           toast.error(t('Draft not found'))
           navigate('/edit')
