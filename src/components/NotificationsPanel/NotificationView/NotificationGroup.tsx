@@ -56,6 +56,9 @@ const getNotificationText = (n: Group, t: (key: string, params?: Record<string, 
       case PresenceEntityType.Personal:
         return t('Personal notification')
 
+      case PresenceEntityType.Follower:
+        return n.action === PresenceActionType.Create ? t('You have a new follower!') : t('Follow updated')
+
       default:
         return t('Common notification')
     }

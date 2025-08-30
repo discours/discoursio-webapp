@@ -14,7 +14,8 @@ export enum PresenceEntityType {
   Editor = 'editor',
   Cursor = 'cursor',
   Draft = 'draft',
-  Proposal = 'proposal'
+  Proposal = 'proposal',
+  Follower = 'follower' // Новый тип для уведомлений о подписчиках
 }
 
 // Действия, которые могут происходить с сущностями

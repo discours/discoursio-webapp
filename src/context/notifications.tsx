@@ -233,6 +233,18 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
           }
           break
         }
+        case PresenceEntityType.Follower: {
+          // Обработка уведомлений о новых подписчиках
+          console.info('[context.notifications] Follower event', data)
+          if (data.action === PresenceActionType.Create) {
+            // Создаем уведомление для нового подписчика
+            const notification = createNotificationFromSSE(data)
+            if (notification) {
+              addNotification(notification)
+            }
+          }
+          break
+        }
         case PresenceEntityType.Global:
         case PresenceEntityType.Personal: {
           // Глобальные и персональные уведомления
