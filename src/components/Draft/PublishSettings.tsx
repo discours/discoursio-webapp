@@ -42,7 +42,8 @@ export const PublishSettings = () => {
     validateCurrentDraft,
     clearValidationErrors,
     updateDraft,
-    syncDraft
+    syncDraft,
+    getEditorContent
   } = useDrafts()
   const { showModal } = useUI()
   const { loadTopics } = useTopics()
@@ -52,6 +53,60 @@ export const PublishSettings = () => {
   const [isTopicsLoading, setIsTopicsLoading] = createSignal(true)
   const [isLoading, setIsLoading] = createSignal(false)
   const [coverUploadLoading, setCoverUploadLoading] = createSignal(false)
+
+  // 🔧 СИНХРОНИЗАЦИЯ ДАННЫХ при загрузке компонента
+  onMount(async () => {
+    const draft = currentDraft()
+    if (draft?.id) {
+      console.log(`[PublishSettings] Синхронизируем черновик #${draft.id} с localStorage...`)
+      try {
+        await syncDraft(draft.id)
+        console.log(`[PublishSettings] Синхронизация завершена`)
+        
+        // 🔧 АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ SLUG при загрузке
+        const syncedDraft = await syncDraft(draft.id)
+        const finalDraft = syncedDraft || draft
+        
+        // 🔧 Генерируем slug ТОЛЬКО если его совсем нет и есть заголовок
+        if (finalDraft && 
+            (!finalDraft.slug || finalDraft.slug.trim() === '') && 
+            finalDraft.title && 
+            finalDraft.title.trim() !== '') {
+          console.log('🔧 [AUTO-SLUG] Генерируем slug при загрузке из заголовка:', finalDraft.title)
+          const generatedSlug = slugify(finalDraft.title)
+          
+          if (generatedSlug) {
+            // Обновляем slug в черновике
+            updateDraftField(finalDraft.id, 'slug', generatedSlug, false)
+            console.log('🔧 [AUTO-SLUG] Slug сгенерирован и сохранен:', generatedSlug)
+          }
+        } else if (finalDraft?.slug && finalDraft.slug.trim() !== '') {
+          console.log('🔧 [AUTO-SLUG] Используем существующий слаг:', finalDraft.slug)
+        } else {
+          console.log('🔧 [AUTO-SLUG] Слаг не найден и не может быть сгенерирован (нет заголовка)')
+        }
+      } catch (error) {
+        console.error(`[PublishSettings] Ошибка синхронизации:`, error)
+      }
+    }
+  })
+
+  // 🔧 ПОЛУЧАЕМ АКТУАЛЬНОЕ СОДЕРЖИМОЕ с приоритетом localStorage
+  const getActualContent = createMemo(() => {
+    const draft = currentDraft()
+    if (!draft?.id) return { title: '', body: '', lead: '' }
+
+    // Приоритет: localStorage > currentDraft
+    const bodyFromStorage = getEditorContent(`draft-${draft.id}-body`)
+    const titleFromStorage = getEditorContent(`draft-${draft.id}-title`)
+    const leadFromStorage = getEditorContent(`draft-${draft.id}-lead`)
+
+    return {
+      title: titleFromStorage || draft.title || '',
+      body: bodyFromStorage || draft.body || '',
+      lead: leadFromStorage || draft.lead || ''
+    }
+  })
 
   const handleFieldChange = (key: keyof DraftInput, value: string | number | boolean | Topic | Author | Topic[]) => {
     const draft = currentDraft()
@@ -204,6 +259,9 @@ export const PublishSettings = () => {
     const syncedDraft = await syncDraft(draft.id)
     const finalDraft = syncedDraft || draft
 
+    // 🔧 ПОЛУЧАЕМ АКТУАЛЬНОЕ СОДЕРЖИМОЕ с приоритетом localStorage
+    const actualContent = getActualContent()
+
     console.log('📝 Состояние после синхронизации:', {
       id: finalDraft?.id,
       title: finalDraft?.title,
@@ -216,7 +274,11 @@ export const PublishSettings = () => {
       topics: finalDraft?.topics,
       topicsCount: finalDraft?.topics?.length || 0,
       topicsArray: Array.isArray(finalDraft?.topics),
-      hasValidTopics: finalDraft?.topics && Array.isArray(finalDraft?.topics) && finalDraft?.topics.length > 0
+      hasValidTopics: finalDraft?.topics && Array.isArray(finalDraft?.topics) && finalDraft?.topics.length > 0,
+      // 🔧 ДОПОЛНИТЕЛЬНО: Показываем контент из localStorage
+      titleFromStorage: actualContent.title,
+      bodyFromStorage: actualContent.body?.substring(0, 50),
+      bodyLengthFromStorage: actualContent.body?.length || 0
     })
 
     // Проверяем наличие тем перед публикацией
@@ -230,8 +292,13 @@ export const PublishSettings = () => {
     }
 
     // Проверяем наличие заголовка
-    const hasTitle = finalDraft.title && finalDraft.title.trim() !== ''
-    console.log('✅ Проверка заголовка:', { hasTitle, title: finalDraft.title, trimmed: finalDraft.title?.trim() })
+    const hasTitle = actualContent.title && actualContent.title.trim() !== ''
+    console.log('✅ Проверка заголовка:', { 
+      hasTitle, 
+      titleFromStorage: actualContent.title, 
+      titleFromDraft: finalDraft.title, 
+      trimmed: actualContent.title?.trim() 
+    })
     if (!hasTitle) {
       console.warn('❌ ОШИБКА: Нет заголовка')
       console.groupEnd()
@@ -240,11 +307,13 @@ export const PublishSettings = () => {
     }
 
     // Проверяем наличие содержимого
-    const hasContent = finalDraft.body && finalDraft.body.trim() !== '' && finalDraft.body !== '<br>'
+    const hasContent = actualContent.body && actualContent.body.trim() !== '' && actualContent.body !== '<br>'
     console.log('✅ Проверка контента:', {
       hasContent,
-      body: finalDraft.body?.substring(0, 50),
-      trimmed: finalDraft.body?.trim()
+      bodyFromStorage: actualContent.body?.substring(0, 50),
+      bodyFromDraft: finalDraft.body?.substring(0, 50),
+      bodyTrimmed: actualContent.body?.trim(),
+      bodyLength: actualContent.body?.length || 0
     })
     if (!hasContent) {
       console.warn('❌ ОШИБКА: Нет контента')
@@ -307,6 +376,8 @@ export const PublishSettings = () => {
         toast.error(t('Cannot generate URL from title. Please enter a valid title.'))
         return
       }
+    } else {
+      console.log('🔧 [AUTO-FIX] Используем существующий слаг:', finalDraft.slug)
     }
 
     console.log('✅ Все проверки пройдены, переходим к публикации')
@@ -588,7 +659,7 @@ export const PublishSettings = () => {
                   <Show when={draft()?.topics?.length}>
                     <div class={styles.mainTopic}>{draft()?.topics?.[0]?.title || ''}</div>
                   </Show>
-                  <Show when={!draft()?.title?.trim()}>
+                  <Show when={!getActualContent().title?.trim()}>
                     <div class={styles.errorMessage}>{t('⚠️ Please enter a title before publishing')}</div>
                   </Show>
                   <Show
@@ -625,7 +696,7 @@ export const PublishSettings = () => {
                   </Show>
 
                   <Show when={!draft()?.body?.trim() || draft()?.body === '<br>'}>
-                    <div class={styles.errorMessage}>{t('⚠️ Please add content before publishing')}</div>
+                    <div class={styles.errorMessage}>{t('Please add content before publishing')}</div>
                   </Show>
 
                   <Show

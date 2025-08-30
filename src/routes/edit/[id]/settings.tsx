@@ -10,7 +10,7 @@ import { Draft } from '~/graphql/generated/graphql'
 
 export default (props: RouteSectionProps) => {
   const { t } = useLocalize()
-  const { drafts, loadDrafts, setCurrentDraft } = useDrafts()
+  const { drafts, loadDrafts, setCurrentDraft, syncDraft } = useDrafts()
   const { requireAuthentication } = useSession()
 
   // Мемоизируем ID черновика, чтобы избежать лишних вычислений
@@ -18,12 +18,12 @@ export default (props: RouteSectionProps) => {
 
   /**
    * Эффект для загрузки черновика при открытии настроек публикации
-   * Используем defer: true чтобы предотвратить каскадные обновления
+   * Синхронизируем данные из localStorage только один раз
    */
   createEffect(
     on(
       [draftId, drafts],
-      ([id]) => {
+      async ([id]) => {
         const strId = id as string
         if (!strId) {
           redirect('/edit')
@@ -38,8 +38,23 @@ export default (props: RouteSectionProps) => {
         const requestedDraft = draftsArray.find((draft: Draft) => draft.id === parsedId)
 
         if (requestedDraft) {
-          console.log(`[EditSettingsRoute] Setting current draft: ${requestedDraft.id}`)
-          setCurrentDraft(requestedDraft)
+          console.log(`[EditSettingsRoute] Found draft: ${requestedDraft.id}, syncing from localStorage...`)
+          
+          // 🔧 ИСПРАВЛЕНИЕ: Синхронизируем данные из localStorage только один раз
+          try {
+            const syncedDraft = await syncDraft(parsedId)
+            
+            if (syncedDraft) {
+              console.log(`[EditSettingsRoute] Setting synced draft: ${syncedDraft.id}`)
+              setCurrentDraft(syncedDraft)
+            } else {
+              console.log(`[EditSettingsRoute] Sync failed, using original draft: ${requestedDraft.id}`)
+              setCurrentDraft(requestedDraft)
+            }
+          } catch (error) {
+            console.error(`[EditSettingsRoute] Sync error:`, error)
+            setCurrentDraft(requestedDraft)
+          }
         } else {
           console.warn(`[EditSettingsRoute] Draft with id=${parsedId} not found`)
           redirect('/edit')

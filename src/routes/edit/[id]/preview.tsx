@@ -54,12 +54,28 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
         const isLocalDraft = draftId.startsWith('local-') || window.location.pathname.includes('/local/')
         const realDraftId = isLocalDraft ? draftId.replace('local-', '') : draftId
 
-        // Ищем черновик по ID
-        let draft = drafts().find((d: ExtendedDraft) =>
-          isLocalDraft
-            ? d.local_id === realDraftId || (!d.draft_id && d.id === Number(realDraftId))
-            : d.id === Number(realDraftId)
-        )
+        // Ищем черновик по ID с улучшенной логикой
+        let draft = drafts().find((d: ExtendedDraft) => {
+          // Для локальных драфтов
+          if (isLocalDraft) {
+            return d.local_id === realDraftId || (!d.draft_id && d.id === Number(realDraftId))
+          }
+          // Для серверных драфтов
+          return d.id === Number(realDraftId)
+        })
+
+        // Если не найден, попробуем найти по другим критериям
+        if (!draft) {
+          // Попробуем найти по local_id если это не локальный драфт
+          if (!isLocalDraft) {
+            draft = drafts().find((d: ExtendedDraft) => d.local_id === draftId)
+          }
+          
+          // Попробуем найти по числовому ID
+          if (!draft && !isNaN(Number(draftId))) {
+            draft = drafts().find((d: ExtendedDraft) => d.id === Number(draftId))
+          }
+        }
 
         if (draft) {
           // Устанавливаем черновик для предпросмотра сразу (для быстрого отображения)
@@ -69,12 +85,10 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
           try {
             // Синхронизируем черновик для получения последних изменений, но только для нелокальных черновиков
             if (draft.id && draft.draft_id) {
-              console.log(`[DraftPreviewPage] Syncing draft ${draft.id}`)
               const syncedDraft = await syncDraft(draft.id)
 
               // Обновляем данные только если синхронизация успешна
               if (syncedDraft) {
-                console.log(`[DraftPreviewPage] Successfully synced draft ${draft.id}`)
                 draft = syncedDraft
                 setCurrentDraft(draft)
                 setPreviewData(draft)
@@ -85,7 +99,11 @@ export default function DraftPreviewPage(props: RouteSectionProps) {
             // Продолжаем с существующим черновиком, если синхронизация не удалась
           }
         } else {
-          // Если черновик не найден, показываем уведомление
+          // Если черновик не найден, показываем уведомление с деталями
+          console.error('[DraftPreviewPage] Драфт не найден:', {
+            searchedId: draftId,
+            availableDrafts: drafts().map(d => ({ id: d.id, local_id: d.local_id, title: d.title }))
+          })
           toast.error(t('Draft not found'))
           navigate('/edit')
         }

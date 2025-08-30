@@ -85,14 +85,18 @@ const parseJsonContent = (content?: string): string => {
 const saveDraftFieldStorage = (
   draftId: string | number,
   fieldName: string,
-  fieldValue: string | null | undefined
+  fieldValue: string | null | undefined,
+  onSlugGenerated?: (slug: string) => void
 ): boolean => {
   if (!draftId || !fieldName || isServer) return false
 
-  // Если значение пустое, не сохраняем
-  if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+  // Если значение null/undefined, не сохраняем
+  if (fieldValue === null || fieldValue === undefined) {
     return false
   }
+  
+  // 🔧 ИСПРАВЛЕНИЕ: Разрешаем пустые строки для очистки полей
+  // Пустые строки нужны для очистки содержимого редактора
 
   try {
     const key = `draft-fields-${draftId}`
@@ -123,6 +127,29 @@ const saveDraftFieldStorage = (
     // Обновляем поле
     draft.fields[fieldName] = valueToStore
     draft.timestamp = Date.now()
+
+    // 🔧 АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ SLUG при изменении title
+    if (fieldName === 'title' && valueToStore && valueToStore.trim() !== '') {
+      // 🔧 Генерируем slug ТОЛЬКО если его нет или он пустой
+      const existingSlug = draft.fields['slug'] || ''
+      if (!existingSlug || existingSlug.trim() === '') {
+        const generatedSlug = slugify(valueToStore)
+        draft.fields['slug'] = generatedSlug
+        
+        console.log(`🔧 [AUTO-SLUG] Сгенерирован slug для черновика #${draftId}:`, {
+          title: valueToStore.substring(0, 50),
+          slug: generatedSlug,
+          hasCallback: !!onSlugGenerated
+        })
+        
+        // 🔧 УВЕДОМЛЯЕМ о сгенерированном slug через callback
+        if (onSlugGenerated) {
+          onSlugGenerated(generatedSlug)
+        }
+      } else {
+        console.log(`🔧 [AUTO-SLUG] Сохраняем существующий слаг для черновика #${draftId}:`, existingSlug)
+      }
+    }
 
     // Сохраняем обновленный черновик
     localStorage.setItem(key, JSON.stringify(draft))
@@ -254,7 +281,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
   // Создаем дебаунсированную функцию сохранения контента редактора в localStorage
   const debouncedSaveContent = debounce(AUTO_SAVE_DELAY, (editorId: string, content: string) => {
     // Извлекаем draftId и fieldType из editorId
-    const match = editorId.match(EDITOR_KEY_REGEX)
+    const match = editorId.match(DRAFT_EDITOR_ID_REGEX)
     if (!match) {
       console.error(`[DraftsProvider] Could not extract draftId and fieldType from editorId: ${editorId}`)
       return
@@ -263,9 +290,27 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     const draftId = match[1]
     const fieldType = match[2]
 
+    // 🔧 CALLBACK для обновления slug при изменении title
+    const onSlugGenerated = (slug: string) => {
+      if (fieldType === 'title') {
+        const currentDraftObj = currentDraft()
+        if (currentDraftObj && currentDraftObj.id === Number(draftId)) {
+          // Обновляем slug в currentDraft
+          setCurrentDraft({ ...currentDraftObj, slug })
+          
+          // 🔧 ОБНОВЛЯЕМ slug в массиве drafts
+          setDrafts((prev) => 
+            prev.map((d) => d.id === Number(draftId) ? { ...d, slug } : d)
+          )
+          
+          console.log(`🔧 [AUTO-SLUG] Обновлен slug в currentDraft и drafts:`, slug)
+        }
+      }
+    }
+
     // Сохраняем контент напрямую в localStorage
-    saveDraftFieldStorage(draftId, fieldType, content)
-    console.log(`[DraftsProvider] Debounced save for ${editorId}`)
+    const saved = saveDraftFieldStorage(draftId, fieldType, content, onSlugGenerated)
+    console.log(`[DraftsProvider] Debounced save for ${editorId}: ${saved ? 'SUCCESS' : 'FAILED'}`)
   })
 
   // Очистка ресурсов при размонтировании
@@ -412,6 +457,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     // Сохраняем контент как есть, без дополнительных преобразований
     const safeContent = content != null ? String(content) : ''
 
+    console.log(`🔍 [DEBUG] setEditorContent: ${editorId} = "${safeContent.substring(0, 50)}..."`)
+
     // 1. Обновляем локальное состояние UI для мгновенного отклика
     setEditorsContent((prev) => ({ ...prev, [editorId]: safeContent }))
 
@@ -549,11 +596,9 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     try {
       // Получаем локальные черновики через LocalDraftsContext
       const localDrafts = loadLocalDraftsFromContext()
-      console.log(`[DraftsProvider] Загружено ${localDrafts.length} локальных черновиков`)
 
       // Пытаемся получить черновики с сервера
       const sessionReady = isSessionReadyForServer()
-      console.log('[DraftsProvider] Проверка готовности сессии:', { sessionReady })
 
       if (sessionReady) {
         try {
@@ -569,7 +614,6 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
 
           if (Array.isArray(apiDrafts)) {
             const serverDrafts = apiDrafts as Draft[]
-            console.log(`[DraftsProvider] Загружено ${serverDrafts.length} черновиков с сервера`)
 
             // Объединяем серверные и локальные черновики
             const mergedDrafts = [
@@ -586,13 +630,12 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         } catch (error) {
           console.error('[DraftsProvider] Ошибка при загрузке черновиков с сервера:', error)
         }
-      } else {
-        console.log('[DraftsProvider] Сессия не готова, используем только локальные черновики')
       }
 
       // Если не удалось загрузить с сервера, используем только локальные
-      setDrafts(localDrafts.map((d) => d as ExtendedDraft))
-      return localDrafts.map((d) => d as ExtendedDraft)
+      const finalDrafts = localDrafts.map((d) => d as ExtendedDraft)
+      setDrafts(finalDrafts)
+      return finalDrafts
     } catch (error) {
       console.error('[DraftsProvider] Ошибка при загрузке черновиков:', error)
       return []

@@ -877,6 +877,23 @@
       content: '✦';
     }
   }
+
+  .editorModeDisabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+    
+    &:hover {
+      opacity: 0.4;
+    }
+    
+    .editorModeTitle,
+    .editorModeDescription,
+    .editorModeIcon {
+      color: #999;
+      fill: #999;
+    }
+  }
 }
 
 .editorModeTitle {

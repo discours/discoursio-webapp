@@ -321,7 +321,8 @@ const EditingSelector = () => {
   const currentMode = createMemo((): string => {
     const pathname = loc.pathname
     if (pathname === previewPath()) return t('Preview')
-    if (pathname === suggestPath()) return t('Commenting') // Используем 'Commenting' из существующего UI
+    // Режим предложений временно отключен
+    // if (pathname === suggestPath()) return t('Ask and suggest')
     // Режим редактирования - это базовый путь или любой другой подпуть (например, /settings)
     if (pathname.startsWith(basePath())) return t('Editing')
 
@@ -368,16 +369,18 @@ const EditingSelector = () => {
           <div class={styles.editorModeTitle}>{t('Editing')}</div>
           <div class={styles.editorModeDescription}>{t('Edit the text directly in the editor')}</div>
         </li>
-        {/* Режим комментирования/предложений */}
+        {/* Режим предложений правок - временно отключен */}
         <li
-          // Выделяем, если текущий путь совпадает с путем комментирования
-          class={clsx({ [styles.editorModesSelected]: loc.pathname === suggestPath() })}
-          onClick={() => navigateTo(suggestPath())}
+          // Заблюрен до готовности функционала
+          class={clsx({ [styles.editorModesSelected]: loc.pathname === suggestPath() }, 'editorModeDisabled')}
+          onClick={() => {
+            // Временно отключено
+            console.log('Режим предложений правок в разработке')
+          }}
         >
           <Icon name="comment" class={styles.editorModeIcon} />
-          {/* Используем 'Commenting' на основе существующего UI */}
-          <div class={styles.editorModeTitle}>{t('Ask and suggest')}</div>
-          <div class={styles.editorModeDescription}>{t('Suggest edits and comments to make the post better')}</div>
+          <div class={styles.editorModeTitle}>{t('Ask and suggest')} (скоро)</div>
+          <div class={styles.editorModeDescription}>{t('Feature in development')}</div>
         </li>
       </ul>
     </Popup>
