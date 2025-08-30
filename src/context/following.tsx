@@ -17,6 +17,7 @@ import followMutation from '~/graphql/mutation/core/follow'
 import unfollowMutation from '~/graphql/mutation/core/unfollow'
 import loadAuthorFollowers from '~/graphql/query/core/author-followers'
 import loadAuthorFollowsQuery from '~/graphql/query/core/author-follows'
+import { useAuthors } from './authors'
 import { useSession } from './session'
 import { useUI } from './ui'
 
@@ -60,6 +61,7 @@ export interface FollowingData {
 
 export const FollowingProvider: Component<{ children: JSX.Element }> = (props) => {
   const { session, client } = useSession()
+  const { addAuthors } = useAuthors()
   const [followers, setFollowers] = createSignal<Author[]>([])
   const [followingLoading, setFollowingLoading] = createSignal<boolean>(false)
   const { showModal } = useUI()
@@ -152,6 +154,18 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
         return subs
       })
 
+      // 🔄 ВАЖНО: Обновляем статистику авторов в authors context
+      if (result.authors && result.authors.length > 0) {
+        console.log(
+          '[FollowingContext] Updating author stats after follow:',
+          result.authors.map((a: Author) => ({
+            slug: a.slug,
+            followers: a.stat?.followers
+          }))
+        )
+        addAuthors(result.authors)
+      }
+
       return result
     } catch (error) {
       console.error('[FollowingContext] Follow error:', error)
@@ -178,6 +192,19 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
         if (result.topics) subs['topics'] = result.topics || []
         return subs
       })
+
+      // 🔄 ВАЖНО: Обновляем статистику авторов в authors context после unfollow
+      if (result.authors && result.authors.length > 0) {
+        console.log(
+          '[FollowingContext] Updating author stats after unfollow:',
+          result.authors.map((a: Author) => ({
+            slug: a.slug,
+            followers: a.stat?.followers
+          }))
+        )
+        addAuthors(result.authors)
+      }
+
       return result
     } catch (error) {
       console.error('[FollowingContext] Unfollow error:', error)
