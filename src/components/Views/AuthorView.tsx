@@ -96,6 +96,28 @@ export const AuthorView = (props: AuthorViewProps) => {
     if (props.author) {
       console.log('[AuthorView] Setting initial author from props:', props.author.slug, props.author.stat)
       setAuthor(props.author)
+
+      // 🔧 КРИТИЧНО: Если нет комментариев в пропсах, загружаем их
+      if (!props.comments || props.comments.length === 0) {
+        console.log('[AuthorView] No comments in props, loading from API')
+        loadReactions({
+          by: {
+            kinds: [ReactionKind.Comment],
+            created_by: props.author.id
+          },
+          limit: COMMENTS_PER_PAGE,
+          offset: 0
+        })()
+          .then((result: Reaction[]) => {
+            if (result?.length) {
+              console.log('[AuthorView] Loaded comments from API:', result.length)
+              setCommented(result)
+            }
+          })
+          .catch((error: unknown) => {
+            console.error('[AuthorView] Error loading comments:', error)
+          })
+      }
     }
   })
 

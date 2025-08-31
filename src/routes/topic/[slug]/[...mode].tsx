@@ -139,19 +139,19 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   })
 
   // current topic's shouts - get initial data from route
-
   const [articles] = createResource(
     () => props.params.slug,
     async (slug) => {
       try {
-        const data = routeData()
-        console.log('[TopicRoute] createResource - routeData:', {
-          hasData: !!data,
-          hasArticles: !!data?.articles,
-          articlesCount: data?.articles?.length || 0,
-          hasTopic: !!data?.topic
-        })
+        // 🔧 ПРОСТОЕ РЕШЕНИЕ: Сначала проверяем resolvedData
+        const resolved = resolvedData()
+        if (resolved?.articles) {
+          console.log('[TopicRoute] Using resolved articles:', resolved.articles.length)
+          return resolved.articles
+        }
 
+        // 🔧 FALLBACK: Если нет resolved данных, используем props.data
+        const data = routeData()
         if (data?.articles) {
           console.log('[TopicRoute] Using route.load articles:', data.articles.length)
           return data.articles
@@ -170,7 +170,8 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
       }
     },
     {
-      initialValue: routeData()?.articles,
+      // 🔧 КРИТИЧНО: initialValue должен быть массивом для стабильной гидрации
+      initialValue: [],
       ssrLoadFrom: 'initial'
     }
   )

@@ -7,7 +7,8 @@ import {
   MutationUpdate_ReactionArgs,
   QueryLoad_Comments_BranchArgs,
   QueryLoad_Reactions_ByArgs,
-  Reaction
+  Reaction,
+  ReactionKind
 } from '~/graphql/generated/graphql'
 import createReactionMutation from '~/graphql/mutation/core/reaction-create'
 import destroyReactionMutation from '~/graphql/mutation/core/reaction-destroy'
@@ -58,6 +59,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
   const addShoutReactions = (rrr: Reaction[]) => {
     const newReactionEntities = { ...reactionEntities() }
     const newReactionsByShout = { ...reactionsByShout() }
+    const newCommentsByAuthor = { ...commentsByAuthor() }
 
     rrr.forEach((reaction) => {
       // Проверяем валидность данных
@@ -80,15 +82,32 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
       } else {
         newReactionsByShout[reaction.shout.id][existingIndex] = reaction
       }
+
+      // 🔧 КРИТИЧНО: Обновляем комментарии по автору для отображения в профиле
+      if (reaction.kind === ReactionKind.Comment && reaction.created_by?.id) {
+        const authorId = reaction.created_by.id
+        if (!newCommentsByAuthor[authorId]) {
+          newCommentsByAuthor[authorId] = []
+        }
+
+        const existingCommentIndex = newCommentsByAuthor[authorId].findIndex((r) => r.id === reaction.id)
+        if (existingCommentIndex === -1) {
+          newCommentsByAuthor[authorId].push(reaction)
+        } else {
+          newCommentsByAuthor[authorId][existingCommentIndex] = reaction
+        }
+      }
     })
 
     console.log('[ReactionsProvider] Updated state:', {
       entities: Object.keys(newReactionEntities).length,
-      byShout: Object.keys(newReactionsByShout).length
+      byShout: Object.keys(newReactionsByShout).length,
+      commentsByAuthor: Object.keys(newCommentsByAuthor).length
     })
 
     setReactionEntities(newReactionEntities)
     setReactionsByShout(newReactionsByShout)
+    setCommentsByAuthor(newCommentsByAuthor)
   }
 
   const loadReactionsBy = async (opts: QueryLoad_Reactions_ByArgs): Promise<Reaction[]> => {
@@ -122,19 +141,51 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
 
   const createShoutReaction = async (input: MutationCreate_ReactionArgs): Promise<Reaction | undefined> => {
     setReactionsLoading(true)
-    const resp = await client()?.mutation(createReactionMutation, input).toPromise()
-    const result = resp?.data?.create_reaction
-    if (!result) {
-      console.error('[context.reactions] createShoutReaction', result)
-      throw new Error('cannot create reaction')
+
+    try {
+      console.log('[ReactionsProvider] Creating reaction with input:', input)
+
+      // 🔧 ВАЛИДАЦИЯ: проверяем обязательные поля
+      if (!input.reaction?.shout || !input.reaction?.kind) {
+        console.error('[ReactionsProvider] Invalid reaction input:', input)
+        throw new Error('Missing required fields: shout or kind')
+      }
+
+      const resp = await client()?.mutation(createReactionMutation, input).toPromise()
+
+      if (!resp) {
+        console.error('[ReactionsProvider] No response from mutation')
+        throw new Error('No response from server')
+      }
+
+      const result = resp?.data?.create_reaction
+      if (!result) {
+        console.error('[ReactionsProvider] createShoutReaction - no result:', resp)
+        throw new Error('Server returned no data')
+      }
+
+      const { error, reaction } = result
+
+      if (error) {
+        console.error('[ReactionsProvider] Server error:', error)
+        toast.error(t(error))
+        throw new Error(error)
+      }
+
+      if (reaction) {
+        console.log('[ReactionsProvider] Reaction created successfully:', reaction.id)
+        updateShoutInStores(reaction)
+        return reaction
+      } else {
+        console.error('[ReactionsProvider] No reaction in response')
+        throw new Error('Server returned no reaction')
+      }
+    } catch (error) {
+      console.error('[ReactionsProvider] Error in createShoutReaction:', error)
+      throw error
+    } finally {
+      setReactionsLoading(false)
     }
-    const { error, reaction } = result
-    if (error) toast.error(t(error))
-    if (reaction) {
-      updateShoutInStores(reaction)
-    }
-    setReactionsLoading(false)
-    return reaction
   }
 
   const deleteShoutReaction = async (reaction_id: number): Promise<{ error: string; reaction?: string } | null> => {

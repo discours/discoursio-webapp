@@ -1,16 +1,15 @@
 import { useSearchParams } from '@solidjs/router'
-import { createSignal, For, onMount, Show, createEffect, untrack, createMemo } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, onMount, Show, untrack } from 'solid-js'
+import { debounce } from 'throttle-debounce'
 import { useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
-import type { SearchResult } from '~/graphql/generated/graphql'
+import type { SearchResult, Shout } from '~/graphql/generated/graphql'
+import styles from '~/styles/views/Search.module.scss'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
-import { debounce } from 'throttle-debounce'
 import { createSearchOptions, isValidSearchQuery, SEARCH_DEFAULTS } from '~/utils/search'
 import { byScore } from '~/utils/sort'
-import { ArticleCard } from '../Feed/ArticleCard'
-
-import styles from '~/styles/views/Search.module.scss'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
+import { ArticleCard } from '../Feed/ArticleCard'
 
 type Props = {
   query: string
@@ -31,24 +30,21 @@ export const SearchView = (props: Props) => {
   // 🔄 Единая функция выполнения поиска
   const executeSearch = async (searchQuery: string, isLoadMore = false) => {
     console.log('[SearchView] executeSearch called with:', searchQuery, 'isLoadMore:', isLoadMore)
-    
+
     if (!isValidSearchQuery(searchQuery)) {
       console.log('[SearchView] Invalid search query, aborting')
       setIsSearching(false)
       return
     }
-    
-    const searchOptions = createSearchOptions(
-      isLoadMore ? offset() : 0, 
-      SEARCH_DEFAULTS.PAGE_SIZE
-    )
-    
+
+    const searchOptions = createSearchOptions(isLoadMore ? offset() : 0, SEARCH_DEFAULTS.PAGE_SIZE)
+
     console.log('[SearchView] Search options:', searchOptions)
-    
+
     try {
       console.log('[SearchView] Calling loadFeedSearch...')
       await loadFeedSearch(searchQuery, searchOptions)
-      
+
       untrack(() => {
         const { hasMore } = searchFeed()
         console.log('[SearchView] Search completed, hasMore:', hasMore)
@@ -71,7 +67,7 @@ export const SearchView = (props: Props) => {
     const newQuery = searchEl.value
     console.log('[SearchView] Query changed:', newQuery)
     setQuery(newQuery)
-    
+
     // 🔄 Показываем состояние поиска немедленно для отзывчивого UI
     if (isValidSearchQuery(newQuery)) {
       console.log('[SearchView] Valid query, starting search...')
@@ -79,14 +75,14 @@ export const SearchView = (props: Props) => {
     } else {
       console.log('[SearchView] Invalid query, min length:', SEARCH_DEFAULTS.MIN_LENGTH)
     }
-    
+
     void debouncedSearch(newQuery)
   }
 
   // 🔄 Упрощенная функция loadMore
   const loadMore = async () => {
     const currentQuery = query()
-    
+
     if (!isValidSearchQuery(currentQuery)) {
       return [] as LoadMoreItems
     }
@@ -94,7 +90,7 @@ export const SearchView = (props: Props) => {
     saveScrollPosition()
     await executeSearch(currentQuery, true)
     restoreScrollPosition()
-    
+
     return untrack(() => searchFeed().shouts) as LoadMoreItems
   }
 
@@ -109,20 +105,20 @@ export const SearchView = (props: Props) => {
 
   onMount(async () => {
     const q = window.location.pathname.replace('/search/', '') || props.query
-    
+
     // 🔧 Debug: проверяем текущую тему
     console.log('[SearchView] Current theme:', {
       dataTheme: document.documentElement.getAttribute('data-theme'),
       backgroundColorVar: getComputedStyle(document.documentElement).getPropertyValue('--background-color'),
       defaultColorVar: getComputedStyle(document.documentElement).getPropertyValue('--default-color')
     })
-    
+
     // 🔄 Атомарное обновление состояния
     untrack(() => {
       setQuery(q)
       if (searchEl) searchEl.value = q
     })
-    
+
     // 🎯 Если есть результаты в пропсах, инициализируем контекст
     if (props.results.length > 0) {
       console.log('[SearchView] Initializing context with props results:', props.results.length)
@@ -130,7 +126,7 @@ export const SearchView = (props: Props) => {
       // НЕ делаем новый запрос, если данные уже есть
       return
     }
-    
+
     // 🔄 Загружаем начальные результаты если запрос валидный и нет данных в пропсах
     if (isValidSearchQuery(q)) {
       console.log('[SearchView] Loading initial search results for:', q)
@@ -142,39 +138,39 @@ export const SearchView = (props: Props) => {
   // 🔄 Сортировка результатов по выбранному критерию
   const sortedShouts = createMemo(() => {
     // 🎯 Приоритет: сначала проверяем пропсы, потом контекст
-    const shouts = props.results.length > 0 ? props.results : (searchFeed()?.shouts || [])
+    const shouts = props.results.length > 0 ? props.results : searchFeed()?.shouts || []
     const sortBy = searchParams?.by || 'relevance'
-    
-    console.log('[SearchView] Sorting shouts:', { 
-      propsLength: props.results.length, 
+
+    console.log('[SearchView] Sorting shouts:', {
+      propsLength: props.results.length,
       contextLength: searchFeed()?.shouts?.length || 0,
       using: props.results.length > 0 ? 'props' : 'context',
       finalLength: shouts.length
     })
-    
+
     if (shouts.length === 0) return []
-    
+
     // Создаем копию для сортировки
     const sortableShouts = [...shouts]
-    
+
     switch (sortBy) {
       case 'relevance':
         // Используем score если доступен (SearchResult), иначе сортируем по дате
         return sortableShouts.sort((a, b) => {
           // Проверяем, есть ли score у результатов
-          const aScore = (a as any)?.score
-          const bScore = (b as any)?.score
-          
+          const aScore = (a as SearchResult & { score?: number })?.score
+          const bScore = (b as SearchResult & { score?: number })?.score
+
           if (aScore !== undefined && bScore !== undefined) {
             return byScore({ score: aScore }, { score: bScore })
           }
-          
+
           // Fallback: сортировка по дате создания (новые сначала)
           const aDate = a.created_at || 0
           const bDate = b.created_at || 0
           return bDate - aDate
         })
-        
+
       case 'rating':
         // Fallback: сортировка по дате (рейтинг недоступен в SearchResult)
         return sortableShouts.sort((a, b) => {
@@ -182,7 +178,7 @@ export const SearchView = (props: Props) => {
           const bDate = b.created_at || 0
           return bDate - aDate
         })
-        
+
       default:
         return sortableShouts
     }
@@ -200,7 +196,7 @@ export const SearchView = (props: Props) => {
             placeholder={query() || `${t('Enter text')}...`}
             disabled={isSearching()}
             classList={{
-              'searching': isSearching()
+              searching: isSearching()
             }}
           />
           {/* 🔄 Индикатор поиска в поле ввода */}
@@ -209,12 +205,7 @@ export const SearchView = (props: Props) => {
           </Show>
         </div>
         <div class="col-sm-6">
-          <button 
-            class="button" 
-            type="submit" 
-            onClick={loadMore}
-            disabled={isSearching() || searchFeed()?.isLoading}
-          >
+          <button class="button" type="submit" onClick={loadMore} disabled={isSearching() || searchFeed()?.isLoading}>
             <Show when={isSearching() || searchFeed()?.isLoading} fallback={t('Search')}>
               {t('Loading')}...
             </Show>
@@ -239,7 +230,7 @@ export const SearchView = (props: Props) => {
         </li>
       </ul>
 
-      <Show 
+      <Show
         when={searchFeed()?.shouts?.length > 0}
         fallback={
           <div>
@@ -255,19 +246,21 @@ export const SearchView = (props: Props) => {
           </div>
         }
       >
-        <h3>{t('Publications')} ({searchFeed()?.shouts?.length})</h3>
+        <h3>
+          {t('Publications')} ({searchFeed()?.shouts?.length})
+        </h3>
 
         <div class="floor">
           <div class="row">
-            <LoadMoreWrapper 
-              pageSize={SEARCH_DEFAULTS.PAGE_SIZE} 
-              hidden={!isLoadMoreButtonVisible() || isSearching()} 
+            <LoadMoreWrapper
+              pageSize={SEARCH_DEFAULTS.PAGE_SIZE}
+              hidden={!isLoadMoreButtonVisible() || isSearching()}
               loadFunction={loadMore}
             >
               <For each={sortedShouts()}>
                 {(article) => (
                   <div class="col-md-6">
-                    <ArticleCard article={article as any} desktopCoverSize="L" />
+                    <ArticleCard article={article as Shout} desktopCoverSize="L" />
                   </div>
                 )}
               </For>
@@ -275,11 +268,7 @@ export const SearchView = (props: Props) => {
 
             <Show when={isLoadMoreButtonVisible() && !isSearching()}>
               <div class="col-md-6">
-                <button 
-                  onClick={loadMore} 
-                  class="search__show-more"
-                  disabled={searchFeed()?.isLoading}
-                >
+                <button onClick={loadMore} class="search__show-more" disabled={searchFeed()?.isLoading}>
                   <span class="search__show-more-inner">
                     <Show when={searchFeed()?.isLoading} fallback={t('Load more')}>
                       {t('Loading')}...

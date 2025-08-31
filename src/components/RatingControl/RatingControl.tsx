@@ -1,6 +1,7 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { createEffect, createSignal, on, Show } from 'solid-js'
+import { toast } from 'solid-toast'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'
@@ -83,6 +84,14 @@ export const RatingControl = (props: Props) => {
             shout: props.shout,
             comment: props.comment
           })
+          toast.error(t('Cannot vote: invalid article'))
+          return
+        }
+
+        // 🔧 ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: убеждаемся что shoutId это число
+        if (typeof shoutId !== 'number' || shoutId <= 0) {
+          console.error('[RatingControl] Invalid shout id type:', typeof shoutId, shoutId)
+          toast.error(t('Cannot vote: invalid article ID'))
           return
         }
 

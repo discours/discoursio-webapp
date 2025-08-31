@@ -6,7 +6,6 @@ import { CheckButton } from '~/components/_shared/CheckButton'
 import { ConditionalWrapper } from '~/components/_shared/ConditionalWrapper'
 import { FollowingButton } from '~/components/_shared/FollowingButton'
 import { Icon } from '~/components/_shared/Icon'
-import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { Author, FollowingEntity } from '~/graphql/generated/graphql'
@@ -32,14 +31,7 @@ export const AuthorBadge = (props: Props) => {
   const navigate = useNavigate()
   const { t, formatDate, lang } = useLocalize()
   const { session, requireAuthentication } = useSession()
-  const { follows } = useFollowing()
   const [isMobileView, setIsMobileView] = createSignal(false)
-
-  // Определяем состояние подписки реактивно на основе контекста
-  const isFollowed = () => {
-    if (!follows?.authors || !props.author?.id) return false
-    return follows.authors.some((authorEntity) => authorEntity.id === props.author.id)
-  }
 
   createEffect(() => setIsMobileView(!mediaMatches.sm))
 

@@ -169,9 +169,9 @@ export const loadShoutsSearch = (args: QueryLoad_Shouts_SearchArgs) => {
   return async () => {
     console.log('[loadShoutsSearch] Executing loader...')
     const response = await loader()
-    console.log('[loadShoutsSearch] Loader response:', { 
-      hasResponse: !!response, 
-      resultCount: response?.load_shouts_search?.length 
+    console.log('[loadShoutsSearch] Loader response:', {
+      hasResponse: !!response,
+      resultCount: response?.load_shouts_search?.length
     })
     return response?.load_shouts_search || []
   }

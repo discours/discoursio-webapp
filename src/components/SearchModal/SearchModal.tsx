@@ -4,10 +4,10 @@ import { debounce } from 'throttle-debounce'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import modalStyles from '~/components/_shared/Modal/Modal.module.scss'
-import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
+import { useAuthors } from '~/context/authors'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { loadAuthorsSearch } from '~/graphql/api/public'
+import { loadShoutsSearch } from '~/graphql/api/public'
 import type { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { dummyFilter } from '~/intl/dummyFilter'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
@@ -18,9 +18,12 @@ import { SearchNav } from './SearchNav'
 import { SearchShouts } from './SearchShouts'
 import { SearchTopics } from './SearchTopic'
 
+// 🔧 КОНСТАНТА: Размер страницы для поиска
+const SEARCH_PAGE_SIZE = 20
+
 export const SearchModal = () => {
   const { t, lang } = useLocalize()
-  const { loadFeedSearch, searchFeed } = useFeed()
+  const { authorsEntities } = useAuthors()
   const sentinelStyle = { height: '1px', padding: '0', margin: '0', opacity: '0' }
   const [inputValue, setInputValue] = createSignal('')
   const [isLoading, setIsLoading] = createSignal(false)
@@ -52,16 +55,56 @@ export const SearchModal = () => {
     setIsLoadingAuthors(true)
 
     try {
-      const authorsResult = await loadAuthorsSearch({ text: query, limit: FEED_PAGE_SIZE, offset: 0 })()
+      // 🔧 ЛОКАЛЬНЫЙ ПОИСК: Ищем авторов по тексту без API
+      const searchQuery = query.toLowerCase().trim()
+
+      // Получаем всех авторов из контекста
+      const allAuthors = Object.values(authorsEntities())
+
+      // Текстовый поиск по имени и slug
+      const filteredAuthors = allAuthors.filter((author) => {
+        const name = author.name?.toLowerCase() || ''
+        const slug = author.slug?.toLowerCase() || ''
+        const bio = author.bio?.toLowerCase() || ''
+
+        return name.includes(searchQuery) || slug.includes(searchQuery) || bio.includes(searchQuery)
+      })
+
+      // Сортируем по релевантности (точные совпадения в начале)
+      const sortedAuthors = filteredAuthors
+        .sort((a, b) => {
+          const aName = a.name?.toLowerCase() || ''
+          const bName = b.name?.toLowerCase() || ''
+          const aSlug = a.slug?.toLowerCase() || ''
+          const bSlug = b.slug?.toLowerCase() || ''
+
+          // Точные совпадения в начале
+          if (aName === searchQuery || aSlug === searchQuery) return -1
+          if (bName === searchQuery || bSlug === searchQuery) return 1
+
+          // Начинается с поискового запроса
+          if (aName.startsWith(searchQuery) || aSlug.startsWith(searchQuery)) return -1
+          if (bName.startsWith(searchQuery) || bSlug.startsWith(searchQuery)) return 1
+
+          return 0
+        })
+        .slice(0, SEARCH_PAGE_SIZE)
+
+      console.log('[SearchModal] Local author search:', {
+        query: searchQuery,
+        totalAuthors: allAuthors.length,
+        filtered: filteredAuthors.length,
+        result: sortedAuthors.length
+      })
 
       // Only reset authors list if resetResults is true (new search)
       if (resetResults) {
-        setAuthorsResultsList(authorsResult || [])
+        setAuthorsResultsList(sortedAuthors)
       }
 
-      return authorsResult || []
+      return sortedAuthors
     } catch (error) {
-      console.error('[SearchModal] Error fetching authors:', error)
+      console.error('[SearchModal] Error in local author search:', error)
       if (resetResults) {
         setAuthorsResultsList([])
       }
@@ -92,23 +135,38 @@ export const SearchModal = () => {
       void fetchTopicsResults(searchQuery)
     }
 
-    await loadFeedSearch(searchQuery, {
-      offset: currentOffset,
-      limit: FEED_PAGE_SIZE
-    })
+    try {
+      // 🔧 ИСПРАВЛЕНИЕ: Используем прямой API вызов loadShoutsSearch
+      const searchArgs = {
+        text: searchQuery,
+        options: {
+          offset: currentOffset,
+          limit: SEARCH_PAGE_SIZE
+        }
+      }
 
-    const { hasMore: more, shouts: newShouts } = searchFeed()
+      console.log('[SearchModal] Searching shouts with:', searchArgs)
+      const shoutsResult = await loadShoutsSearch(searchArgs)()
 
-    setIsLoading(false)
-    setOffset(currentOffset + (newShouts?.length || 0))
-    setHasMore(more)
+      if (shoutsResult?.length) {
+        setshoutsResultsList(shoutsResult)
+        setOffset(currentOffset + shoutsResult.length)
+        setHasMore(shoutsResult.length >= SEARCH_PAGE_SIZE)
+      } else {
+        setshoutsResultsList([])
+        setHasMore(false)
+      }
 
-    if (newShouts?.length) {
-      setshoutsResultsList(newShouts)
+      return shoutsResult || []
+    } catch (error) {
+      console.error('[SearchModal] Error searching shouts:', error)
+      setshoutsResultsList([])
+      setHasMore(false)
+      return []
+    } finally {
+      setIsLoading(false)
+      restoreScrollPosition()
     }
-
-    restoreScrollPosition()
-    return resetResults ? newShouts || [] : []
   }
 
   const [shoutsResultsList, { mutate: setshoutsResultsList }] = createResource<Shout[]>(fetchShoutsResults, {
@@ -211,16 +269,11 @@ export const SearchModal = () => {
     setIsLoading(true)
     const currentQuery = inputValue().trim()
     try {
-      const authorOffset = authorsResultsList().length
-      const newAuthors = await loadAuthorsSearch({
-        text: currentQuery,
-        limit: FEED_PAGE_SIZE,
-        offset: authorOffset
-      })()
+      const newAuthors = await fetchAuthorsResults(currentQuery, false) // Use local search
 
       if (newAuthors && newAuthors.length > 0) {
         setAuthorsResultsList([...authorsResultsList(), ...newAuthors])
-        setHasMore(newAuthors.length >= FEED_PAGE_SIZE)
+        setHasMore(newAuthors.length >= SEARCH_PAGE_SIZE)
       } else {
         setHasMore(false)
       }
