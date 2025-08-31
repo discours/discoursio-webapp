@@ -1,9 +1,13 @@
+import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { createEffect, createSignal, For, on, Show } from 'solid-js'
+import toast from 'solid-toast'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
+import { useDrafts } from '~/context/drafts'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
+import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import { type Author, FollowingEntity, type Topic } from '~/graphql/generated/graphql'
 import { capitalize } from '~/utils/capitalize'
@@ -27,6 +31,9 @@ const AUTHORS_ON_PAGE = 20
 export const FullTopic = (props: Props) => {
   const { t, lang } = useLocalize()
   const { follows } = useFollowing()
+  const { createDraft, loadDrafts } = useDrafts()
+  const { isAuthenticated } = useSession()
+  const navigate = useNavigate()
   const [followed, setFollowed] = createSignal()
   const [title, setTitle] = createSignal('')
   const { hideModal } = useUI()
@@ -127,6 +134,56 @@ export const FullTopic = (props: Props) => {
     }
   })
 
+  // 🔧 НОВАЯ ФУНКЦИЯ: Создание черновика с выбранной темой
+  const handleWriteAboutTopic = async () => {
+    try {
+      console.log('[FullTopic] Creating draft for topic:', props.topic?.title)
+
+      // Проверяем авторизацию
+      if (!isAuthenticated()) {
+        console.warn('[FullTopic] User not authenticated')
+        toast.error(t('You need to be logged in to create drafts'))
+        return
+      }
+
+      if (!props.topic?.id) {
+        console.error('[FullTopic] No topic ID provided')
+        toast.error(t('Topic not found'))
+        return
+      }
+
+      // Создаем черновик с темой
+      const draftData = {
+        layout: 'article' as const,
+        title: '',
+        subtitle: '',
+        body: '',
+        topic_ids: [props.topic.id],
+        main_topic_id: props.topic.id
+      }
+
+      console.log('[FullTopic] Creating draft with data:', draftData)
+      const result = await createDraft(draftData)
+
+      if (result?.data?.create_draft?.draft) {
+        // Даем время серверу на сохранение черновика
+        console.log('[FullTopic] Draft created successfully, loading drafts...')
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+        await loadDrafts()
+
+        console.log('[FullTopic] Navigating to editor with draft:', result.data.create_draft.draft.id)
+        await navigate(`/edit/${result.data.create_draft.draft.id}`, { replace: true })
+      } else {
+        console.warn('[FullTopic] Failed to create draft:', result)
+        toast.error(t('Failed to create draft. Please try again'))
+      }
+    } catch (error) {
+      console.error('[FullTopic] Error creating draft:', error)
+      toast.error(t('Error creating draft. Please try again'))
+    }
+  }
+
   // 🔧 ОТЛАДКА: Проверим props топика
   console.log('[FullTopic] Props received:', {
     topicTitle: props.topic?.title,
@@ -173,7 +230,7 @@ export const FullTopic = (props: Props) => {
           variant={'bordered'}
           size="S"
           value={t('Write about the topic')}
-          onClick={() => {}}
+          onClick={handleWriteAboutTopic}
           class={clsx(styles.followControl)}
         />
       </div>
