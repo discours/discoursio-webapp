@@ -33,6 +33,13 @@
     margin-top: 1.5rem;
   }
 
+  .memberSince {
+    font-size: 1.4rem;
+    color: var(--black-400);
+    font-weight: 500;
+    margin-top: 0.8rem;
+  }
+
   .authorActions {
     @include media-breakpoint-down(md) {
       justify-content: center;

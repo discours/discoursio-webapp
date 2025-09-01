@@ -85,7 +85,7 @@ export const AuthorBadge = (props: Props) => {
             <Switch
               fallback={
                 <div class={styles.bio}>
-                  {t('Registered since some time', {
+                  {t('member since some time', {
                     date: formatDate(new Date((props.author.created_at || 0) * 1000))
                   })}
                 </div>

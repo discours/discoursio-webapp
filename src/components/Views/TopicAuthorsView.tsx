@@ -14,17 +14,21 @@ type Props = {
 export const TopicAuthorsView = (props: Props) => {
   const { t } = useLocalize()
 
-  // ✅ Состояние для дозагруженных авторов по теме
-  const [loadedAuthors, setLoadedAuthors] = createSignal<Author[]>(props.authors || [])
+  // ✅ Безопасная инициализация авторов
+  const initialAuthors = Array.isArray(props.authors) ? props.authors : []
+  const [loadedAuthors, setLoadedAuthors] = createSignal<Author[]>(initialAuthors)
   const [searchQuery, setSearchQuery] = createSignal('')
 
-  // ✅ Фильтрация авторов по поиску
+  // ✅ Безопасная фильтрация авторов по поиску
   const filteredAuthors = createMemo(() => {
+    const authors = loadedAuthors()
+    const authorsArray = Array.isArray(authors) ? authors : []
     const query = searchQuery().trim().toLowerCase()
-    if (!query) return loadedAuthors()
 
-    return loadedAuthors().filter(
-      (author) => author.name?.toLowerCase().includes(query) || author.slug?.toLowerCase().includes(query)
+    if (!query) return authorsArray
+
+    return authorsArray.filter(
+      (author) => author?.name?.toLowerCase().includes(query) || author?.slug?.toLowerCase().includes(query)
     )
   })
 
@@ -59,11 +63,12 @@ export const TopicAuthorsView = (props: Props) => {
               })()
 
               // ✅ Обновляем состояние дозагруженных авторов
-              if (newAuthors && newAuthors.length > 0) {
+              if (Array.isArray(newAuthors) && newAuthors.length > 0) {
                 setLoadedAuthors((prev) => {
-                  const existingIds = new Set(prev.map((a) => a.id))
+                  const prevArray = Array.isArray(prev) ? prev : []
+                  const existingIds = new Set(prevArray.map((a) => a.id))
                   const uniqueNew = newAuthors.filter((a) => !existingIds.has(a.id))
-                  return [...prev, ...uniqueNew]
+                  return [...prevArray, ...uniqueNew]
                 })
               }
 

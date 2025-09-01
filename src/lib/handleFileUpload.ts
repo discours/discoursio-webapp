@@ -2,8 +2,8 @@ import { UploadFile } from '@solid-primitives/upload'
 import { cdnUrl } from '../config'
 import { validateUploads } from './validateUploads'
 
-// Запасной URL для CDN
-const fallbackCdnUrl = 'https://images.discours.io'
+// Запасной URL для CDN (старый эндпоинт)
+const fallbackCdnUrl = 'https://files.dscrs.site'
 
 // Проверка доступности CDN сервера
 const checkCdnAvailability = async (url: string, token?: string): Promise<boolean> => {
@@ -18,15 +18,17 @@ const checkCdnAvailability = async (url: string, token?: string): Promise<boolea
       }
     }
 
-    // Попытка проверить работоспособность CDN
-    const response = await fetch(`${url}/health`, {
+    // Попытка проверить работоспособность quoter API
+    // Quoter не имеет эндпоинта /health, но отвечает 401 на GET /
+    const response = await fetch(url, {
       method: 'GET',
       headers,
       // Устанавливаем короткий таймаут, чтобы не ждать долго
       signal: AbortSignal.timeout(2000)
     }).catch(() => null)
 
-    return !!response && response.ok
+    // Quoter возвращает 401 для неавторизованного GET, что означает что он доступен
+    return !!response && (response.ok || response.status === 401)
   } catch (error) {
     console.warn('[checkCdnAvailability] Failed to check CDN:', error)
     return false
@@ -103,7 +105,7 @@ export const handleFileUpload = async (
   }
 
   files.forEach((file) => {
-    formData.append(type, file.file, file.name)
+    formData.append('file', file.file, file.name)
   })
 
   // Выбор активного CDN URL - проверяем основной и запасной
@@ -236,13 +238,26 @@ export const handleFileUpload = async (
         throw new Error('Ошибка сервера: сервис временно недоступен. Попробуйте позже.')
       }
 
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
+        // Проверяем тип ошибки 401 - может быть авторизация или квота
+        if (errorText.includes('Quota exceeded')) {
+          throw new Error('Превышена квота загрузки файлов. Обратитесь к администратору для увеличения лимита.')
+        }
         throw new Error('Ошибка авторизации. Пожалуйста, войдите в систему снова.')
+      }
+
+      if (response.status === 403) {
+        throw new Error('Недостаточно прав для загрузки файлов.')
       }
 
       if (response.status === 413) {
         throw new Error('Файл слишком большой. Максимальный размер файла: 5 МБ.')
       }
+
+      if (response.status === 415) {
+        throw new Error('Неподдерживаемый формат файла. Проверьте тип загружаемого файла.')
+      }
+
       if (response.status === 404) {
         throw new Error('Сервис загрузки временно недоступен. Попробуйте позже.')
       }
@@ -251,55 +266,26 @@ export const handleFileUpload = async (
     }
 
     if (type === 'image') {
-      const location = response.headers.get('Location')
-      console.log('[handleFileUpload] Got Location header:', location)
+      // Новый API возвращает имя файла напрямую в теле ответа
+      const responseText = await response.text()
+      console.log('[handleFileUpload] Got filename from response:', responseText)
 
-      if (!location) {
-        console.error('[handleFileUpload] Missing Location header in response')
-        throw new Error('Missing Location header in response')
+      if (!responseText || responseText.trim() === '') {
+        console.error('[handleFileUpload] Empty filename in response')
+        throw new Error('Empty filename in response')
       }
 
-      // Более гибкая обработка формата Location
-      let url = ''
-      let originalFilename = ''
+      const filename = responseText.trim()
 
-      // Проверяем формат Location
-      if (location.startsWith('https')) {
-        // Если это полный URL
-        const locationUrl = new URL(location)
-        const pathParts = locationUrl.pathname.split('/')
-        originalFilename = pathParts[pathParts.length - 1]
-
-        // Получаем путь до папки с изображением без имени файла
-        const _directoryPath = pathParts.slice(0, -1).join('/')
-
-        // Формируем URL - quoter сам обрабатывает пути
-        url = locationUrl.toString().replace(locationUrl.hostname, new URL(cdnUrl).hostname)
-      } else {
-        // Если это относительный путь
-        const lastSlashIndex = location.lastIndexOf('/')
-
-        if (lastSlashIndex === -1) {
-          // Если нет слеша, то это только имя файла
-          originalFilename = location
-          url = `${cdnUrl}/${location}`
-        } else {
-          // Если есть слеш, разделяем на папку и файл
-          originalFilename = location.substring(lastSlashIndex + 1)
-          url = `${cdnUrl}/${location}`
-        }
-      }
-
-      // Дополнительная проверка на undefined в URL
-      if (url.includes('undefined')) {
-        console.error('[handleFileUpload] URL содержит undefined:', url)
-        url = url.replace(/undefined/g, '')
-      }
+      // Новый API возвращает только имя файла, строим URL
+      const originalFilename = filename
+      const url = `${activeCdnUrl}/${filename}`
 
       console.log('[handleFileUpload] Constructed image URL:', {
-        location,
+        filename,
         url,
-        originalFilename
+        originalFilename,
+        activeCdnUrl
       })
 
       // Check image availability
@@ -344,10 +330,12 @@ export const handleFileUpload = async (
         // Продолжаем работу даже если не удалось проверить изображение
       }
 
-      return { url, originalFilename }
+      return { url, originalFilename } as const
     }
 
-    return response.json()
+    // Для остальных типов файлов возвращаем имя файла
+    const responseText = await response.text()
+    return { url: '', originalFilename: responseText.trim() }
   } catch (error) {
     console.error('[handleFileUpload] Error during upload:', error)
     throw error

@@ -6,7 +6,7 @@
   "Invalid email": "Check if your email is correct",
   "Join our maillist": "To receive the best postings, just enter your email",
   "Join the global community of authors!": "Join the global community of authors from all over the world!",
-  "Registered since some time": "Registered since {date}",
+  "member since some time": "member since {date}",
   "shout": "post",
   "some authors": "{count} {count, plural, one {author} other {authors}}",
   "some comments": "{count, plural, =0 {{count} comments} one {{count} comment} few {{count} comments} other {{count} comments}}",

@@ -11,7 +11,6 @@ export default gql`
       stat {
         shouts
         authors
-        # viewed
         followers
       }
     }

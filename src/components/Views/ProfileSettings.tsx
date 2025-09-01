@@ -142,7 +142,7 @@ export const ProfileSettings = () => {
       setIsUserpicUpdating(true)
 
       const result = await handleFileUpload(uploadFile, session()?.token || '', 'image')
-      updateFormField('pic', result.url)
+      updateFormField('pic', result.url || '')
 
       setUserpicFile(undefined)
       setIsUserpicUpdating(false)

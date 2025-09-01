@@ -31,7 +31,7 @@ type Props = {
 }
 
 export const AuthorCard = (props: Props) => {
-  const { t, lang } = useLocalize()
+  const { t, lang, formatDate } = useLocalize()
   const navigate = useNavigate()
   const { session, isSessionLoaded, requireAuthentication } = useSession()
   const { setForm } = useProfile()
@@ -190,6 +190,13 @@ export const AuthorCard = (props: Props) => {
           <div class={styles.authorName}>{name()}</div>
           <Show when={props.author.bio}>
             <div class={styles.authorAbout} innerHTML={props.author.bio || ''} />
+          </Show>
+          <Show when={props.author.created_at}>
+            <div style="font-size: 1.4rem; color: var(--black-400); font-weight: 500; margin-top: 0.8rem;">
+              {t('member since some time', {
+                date: formatDate(new Date((props.author.created_at || 0) * 1000))
+              })}
+            </div>
           </Show>
           <Show when={(props.followers || [])?.length > 0 || (authorSubs() || []).length > 0}>
             <div class={styles.subscribersContainer}>
