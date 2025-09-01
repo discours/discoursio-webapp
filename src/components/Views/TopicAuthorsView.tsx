@@ -10,6 +10,7 @@ type Props = {
   authors: Author[]
   searchQuery?: string
   onSearchChange?: (value: string) => void
+  onLoadMore?: (offset: number) => Promise<Author[]>
 }
 
 export const TopicAuthorsView = (props: Props) => {
@@ -18,7 +19,7 @@ export const TopicAuthorsView = (props: Props) => {
   // ✅ Безопасная инициализация авторов
   const initialAuthors = Array.isArray(props.authors) ? props.authors : []
   const [loadedAuthors, setLoadedAuthors] = createSignal<Author[]>(initialAuthors)
-  
+
   // ⚡ КРИТИЧНО: Обновляем когда приходят новые авторы
   createEffect(() => {
     if (props.authors && props.authors.length > 0) {
@@ -60,6 +61,16 @@ export const TopicAuthorsView = (props: Props) => {
           >
             <LoadMoreWrapper
               loadFunction={async (offset: number) => {
+                console.log(`[TopicAuthorsView] LoadMoreWrapper calling loadFunction with offset: ${offset}`)
+
+                // Используем переданную функцию или fallback
+                if (props.onLoadMore) {
+                  const result = await props.onLoadMore(offset)
+                  console.log(`[TopicAuthorsView] onLoadMore returned ${result?.length} authors`)
+                  return result || []
+                }
+
+                // Fallback - прямой вызов API
                 const newAuthors = await loadAuthors({
                   by: { topic: props.topic.slug },
                   limit: 20,
@@ -67,9 +78,9 @@ export const TopicAuthorsView = (props: Props) => {
                 })()
 
                 if (newAuthors?.length) {
+                  console.log(`[TopicAuthorsView] Fallback loaded ${newAuthors.length} authors`)
                   setLoadedAuthors((prev) => [...prev, ...newAuthors])
                 }
-
                 return newAuthors || []
               }}
               pageSize={20}

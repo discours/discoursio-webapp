@@ -9,7 +9,6 @@ import {
   For,
   Match,
   on,
-  onMount,
   Show,
   Suspense,
   Switch
@@ -18,7 +17,6 @@ import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { loadAuthors, loadShouts, loadTopicAuthors, loadTopicFollowers } from '~/graphql/api/public'
-import { defaultClient } from '~/graphql/client'
 import { Author, AuthorsBy, LoadShoutsOptions, Shout, Stat, Topic } from '~/graphql/generated/graphql'
 import { getUnixtime } from '~/lib/fromPeriod'
 import styles from '~/styles/views/Topic.module.scss'
@@ -46,7 +44,6 @@ interface Props {
 }
 
 export const PRERENDERED_ARTICLES_COUNT = 28
-const AUTHORS_PER_PAGE = 20
 
 // Добавим тип для статистики топика
 type TopicStats = {
@@ -96,7 +93,7 @@ export const TopicView = (props: Props) => {
             by: { topic: slug },
             limit: 20,
             offset: 0
-          })().then(authors => {
+          })().then((authors) => {
             console.log('[TopicView] Authors loaded via createEffect:', authors?.length)
             if (authors?.length) {
               setTopicAuthorsList(authors)
@@ -201,7 +198,7 @@ export const TopicView = (props: Props) => {
   )
 
   // Обновляем эффект для корректной обработки URL и состояния
-    createEffect(
+  createEffect(
     on(
       () => [loc.pathname, params, feedMode()],
       ([pathname, urlParams]) => {
@@ -215,7 +212,7 @@ export const TopicView = (props: Props) => {
               by: { topic: topic()!.slug },
               limit: 20,
               offset: 0
-            })().then(authors => {
+            })().then((authors) => {
               console.log('[TopicView] Authors loaded:', authors?.length)
               if (authors?.length) {
                 setTopicAuthorsList(authors)
@@ -254,25 +251,6 @@ export const TopicView = (props: Props) => {
     return []
   }
   const [topicAuthors, { refetch: refetchAuthors }] = createResource(() => props.topicSlug, getTopicAuthorsList)
-
-  // Функция для загрузки авторов с пагинацией
-  const loadTopicAuthorsWithPagination = async (offset = 0): Promise<Author[]> => {
-    try {
-      // Loading topic authors with pagination
-
-      const by: AuthorsBy = { topic: props.topicSlug }
-      const authorsFetcher = loadAuthors({ by, limit: AUTHORS_PER_PAGE, offset })
-      const result = await authorsFetcher()
-
-      if (result?.length) {
-        return result.sort((a: Author, b: Author) => (b.stat?.shouts || 0) - (a.stat?.shouts || 0))
-      }
-      return []
-    } catch (error) {
-      console.error('[TopicView] Error loading topic authors:', error)
-      return []
-    }
-  }
 
   // Вторая функция для топ-авторов (переименована для ясности)
   const getTopicTopAuthors = async () => {
@@ -411,25 +389,27 @@ export const TopicView = (props: Props) => {
     return result as LoadMoreItems
   }
 
-  // Функция загрузки дополнительных авторов
-  const loadMoreAuthors = async () => {
-    saveScrollPosition()
+  // Функция загрузки дополнительных авторов - используется в TopicAuthorsView
+  const loadMoreAuthors = async (offset: number = topicAuthorsList().length) => {
+    console.log(`[TopicView] loadMoreAuthors called with offset: ${offset}, topic: ${props.topicSlug}`)
     try {
-      // Loading more authors for topic
-      const result = await loadTopicAuthorsWithPagination(topicAuthorsList().length)
+      const newAuthors = await loadAuthors({
+        by: { topic: props.topicSlug },
+        limit: 20,
+        offset
+      })()
 
-      if (result?.length) {
+      if (newAuthors?.length) {
+        console.log(`[TopicView] Loaded ${newAuthors.length} more authors`)
         // ✅ ИСПРАВЛЕНИЕ: Дедупликация авторов по ID
         setTopicAuthorsList((prev) => {
           const existingIds = new Set(prev.map((author) => author.id))
-          const newAuthors = result.filter((author) => !existingIds.has(author.id))
-          return [...prev, ...newAuthors]
+          const dedupedAuthors = newAuthors.filter((author) => !existingIds.has(author.id))
+          return [...prev, ...dedupedAuthors]
         })
-        setLoadMoreHidden(topicAuthorsList().length >= stats().authors)
+        return newAuthors
       }
-
-      restoreScrollPosition()
-      return result as LoadMoreItems
+      return []
     } catch (error) {
       console.error('[TopicView] Error loading more authors:', error)
       return []
@@ -581,6 +561,7 @@ export const TopicView = (props: Props) => {
                 authors={topicAuthorsList()}
                 searchQuery={searchQuery()}
                 onSearchChange={setSearchQuery}
+                onLoadMore={loadMoreAuthors}
               />
             </Show>
           </Match>

@@ -263,9 +263,9 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
       <Show when={!articles.loading} fallback={<Loading />}>
         <Show when={!articles.error} fallback={<div>Error: {articles.error?.message}</div>}>
           <PageLayout key="topic" title={title()} desc={desc()} cover={cover()} topic={currentTopic() as Topic}>
-            <TopicView 
-              topic={currentTopic() as Topic} 
-              shouts={articles()} 
+            <TopicView
+              topic={currentTopic() as Topic}
+              shouts={articles()}
               topicSlug={props.params.slug}
               followers={routeData()?.authors || []}
             />
