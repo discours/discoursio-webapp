@@ -1,6 +1,7 @@
 import { ImageResponse } from '@vercel/og'
 
-// tiny React-like element factory for @vercel/og
+// Легковесная React-like функция для @vercel/og
+// Оптимальна для простых оверлеев без лишнего overhead
 function h(type, props, ...children) {
   return { type, props: { ...(props || {}), children } }
 }
@@ -9,6 +10,10 @@ function h(type, props, ...children) {
 const cdnUrl = 'https://files.dscrs.site'
 const OG_IMAGE_WIDTH = 1200
 const OG_IMAGE_HEIGHT = 630
+
+// Кастомные шрифты для Vercel OG
+const FONT_MULLER_REGULAR = `${cdnUrl}/fonts/Muller-Regular.woff`
+const FONT_MULLER_BOLD = `${cdnUrl}/fonts/Muller-Bold.woff`
 
 // Добавляем CORS заголовки
 const CORS_HEADERS = {
@@ -38,8 +43,11 @@ function getCoverForOG(cover) {
 }
 
 /**
- * Обработчик для генерации OG изображений социальных сетей
- * НЕ смешивается с квотер-оверлеями (те используются для shout в контенте)
+ * Современный обработчик для генерации OG изображений социальных сетей
+ * Использует @vercel/og v1.0+ с поддержкой:
+ * - Кастомных шрифтов
+ * - Продвинутого кэширования
+ * - Оптимизированной производительности
  *
  * Поддерживает пути: /api/og, /api/og/article, /api/og/author, /api/og/topic
  * Размер: строго 1200x630px для Facebook/Twitter/LinkedIn
@@ -72,11 +80,11 @@ export async function GET(request) {
     // Получаем параметры из URL
     const params = Object.fromEntries(searchParams)
 
-    // Логируем запрос для отладки
-    console.log(`[OG] Generating image for type: ${type}, params:`, JSON.stringify(params, null, 2))
-
     // Общие параметры для всех типов
     const title = params.title || ''
+
+    // 💋 Минимальное логирование для production
+    console.log(`[OG] ${type}:`, title ? title.slice(0, 50) : 'basic')
     const description = params.description || ''
     const cover = params.cover || ''
     const isDark = type !== 'basic' && (cover || type === 'article')
@@ -117,15 +125,18 @@ export async function GET(request) {
           width: OG_IMAGE_WIDTH,
           height: OG_IMAGE_HEIGHT,
           headers: {
-            'Cache-Control': 'public, max-age=86400, s-maxage=31536000',
-            'CDN-Cache-Control': 'public, max-age=31536000',
+            // 💋 Улучшенное кэширование для статичного лого
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'CDN-Cache-Control': 'public, max-age=31536000, immutable',
             ...CORS_HEADERS
           }
         })
       }
     }
 
-    // Создаем OG изображение с общей структурой
+    // Создаем OG изображение с оптимизированным кэшированием
+    const cacheKey = `${type}-${Buffer.from(JSON.stringify(params)).toString('base64').slice(0, 16)}`
+
     return new ImageResponse(
       createOGImage({
         title: content.title,
@@ -137,18 +148,64 @@ export async function GET(request) {
       {
         width: OG_IMAGE_WIDTH,
         height: OG_IMAGE_HEIGHT,
+        fonts: await loadCustomFonts(),
         headers: {
-          'Cache-Control': 'public, max-age=86400, s-maxage=31536000',
-          'CDN-Cache-Control': 'public, max-age=31536000',
+          // 💋 Динамическое кэширование на основе контента
+          'Cache-Control': 'public, max-age=86400, s-maxage=2592000',
+          'CDN-Cache-Control': 'public, max-age=2592000',
+          ETag: `"${cacheKey}"`,
+          Vary: 'Accept-Encoding',
           ...CORS_HEADERS
         }
       }
     )
   } catch (error) {
-    console.error('Error generating OG image:', error)
-    return new Response(`Failed to generate image: ${error.message}`, {
-      status: 500
-    })
+    console.error(`[OG] Error for ${type}:`, error.message)
+
+    // 💋 Graceful fallback - возвращаем базовый OG при ошибке
+    try {
+      return new ImageResponse(createBasicOGImage(), {
+        width: OG_IMAGE_WIDTH,
+        height: OG_IMAGE_HEIGHT,
+        headers: {
+          'Cache-Control': 'public, max-age=300', // Короткий кэш для fallback
+          ...CORS_HEADERS
+        }
+      })
+    } catch (fallbackError) {
+      console.error('[OG] Fallback failed:', fallbackError.message)
+      return new Response('OG image generation failed', { status: 500 })
+    }
+  }
+}
+
+/**
+ * Загружает кастомные шрифты для @vercel/og v1.0+
+ */
+async function loadCustomFonts() {
+  try {
+    const [regular, bold] = await Promise.all([
+      fetch(FONT_MULLER_REGULAR).then((res) => res.arrayBuffer()),
+      fetch(FONT_MULLER_BOLD).then((res) => res.arrayBuffer())
+    ])
+
+    return [
+      {
+        name: 'Muller',
+        data: regular,
+        weight: 400,
+        style: 'normal'
+      },
+      {
+        name: 'Muller',
+        data: bold,
+        weight: 700,
+        style: 'normal'
+      }
+    ]
+  } catch (error) {
+    console.warn('Failed to load custom fonts:', error)
+    return [] // Fallback на системные шрифты
   }
 }
 
@@ -198,7 +255,8 @@ function createOGImage({ title, description, cover, topRight = null, theme = 'li
           maxWidth: 900,
           textAlign: 'left',
           color: isDark ? 'white' : '#1f2937',
-          fontWeight: 900,
+          fontFamily: 'Muller, -apple-system, BlinkMacSystemFont, sans-serif',
+          fontWeight: 700,
           fontSize: title.length > 50 ? 50 : 62,
           lineHeight: 1.12,
           textShadow: isDark ? '2px 2px 7px rgba(0,0,0,0.55)' : 'none',
@@ -220,7 +278,8 @@ function createOGImage({ title, description, cover, topRight = null, theme = 'li
             bottom: 44,
             fontSize: 32,
             color: isDark ? 'rgba(255,255,255,0.88)' : 'rgba(31,41,55,0.7)',
-            fontWeight: 300,
+            fontFamily: 'Muller, -apple-system, BlinkMacSystemFont, sans-serif',
+            fontWeight: 400,
             letterSpacing: 0.5,
             textShadow: isDark ? '1px 1px 2px rgba(0,0,0,0.34)' : 'none',
             maxWidth: 900,
@@ -289,6 +348,8 @@ function createTopicBadge(text) {
         color: 'white',
         borderRadius: 30,
         fontSize: 24,
+        fontFamily: 'Muller, -apple-system, BlinkMacSystemFont, sans-serif',
+        fontWeight: 400,
         backdropFilter: 'blur(4px)',
         textShadow: '1px 1px 2px rgba(0,0,0,0.2)'
       }
@@ -315,6 +376,19 @@ function createStatsBar(items) {
         color: 'rgba(255,255,255,0.8)'
       }
     },
-    ...items.map((item, index) => h('div', { key: `stat-${item.text}-${index}`, style: { fontSize: 24 } }, item.text))
+    ...items.map((item, index) =>
+      h(
+        'div',
+        {
+          key: `stat-${item.text}-${index}`,
+          style: {
+            fontSize: 24,
+            fontFamily: 'Muller, -apple-system, BlinkMacSystemFont, sans-serif',
+            fontWeight: 400
+          }
+        },
+        item.text
+      )
+    )
   )
 }
