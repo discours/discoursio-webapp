@@ -1,18 +1,15 @@
 import { NoHydration, Portal } from 'solid-js/web'
 import { NotificationsPanel } from '~/components/NotificationsPanel'
 import { useNotifications } from '~/context/notifications'
-import { ShowIfAuthenticated } from './ShowIfAuthenticated'
 
 export const NotificationsPanelPortal = () => {
   const { isNotificationsPanelOpen, hideNotificationsPanel } = useNotifications()
 
   return (
     <NoHydration>
-      <ShowIfAuthenticated>
-        <Portal>
-          <NotificationsPanel isOpen={isNotificationsPanelOpen()} onClose={hideNotificationsPanel} />
-        </Portal>
-      </ShowIfAuthenticated>
+      <Portal>
+        <NotificationsPanel isOpen={isNotificationsPanelOpen()} onClose={hideNotificationsPanel} />
+      </Portal>
     </NoHydration>
   )
 }

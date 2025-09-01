@@ -6,14 +6,25 @@ import { Icon } from '../_shared/Icon/Icon'
 import styles from './Header.module.scss'
 
 export const NotificationsBell = () => {
-  const { unreadNotificationsCount, showNotificationsPanel } = useNotifications()
+  const { unreadNotificationsCount, showNotificationsPanel, hideNotificationsPanel, isNotificationsPanelOpen } =
+    useNotifications()
 
   const handleBellIconClick = (event: Event) => {
     event.preventDefault()
-    showNotificationsPanel()
+
+    if (isNotificationsPanelOpen()) {
+      hideNotificationsPanel()
+    } else {
+      showNotificationsPanel()
+    }
   }
   return (
-    <div class={styles.userControlItem} onClick={handleBellIconClick}>
+    <div
+      class={clsx(styles.userControlItem, {
+        [styles.active]: isNotificationsPanelOpen()
+      })}
+      onClick={handleBellIconClick}
+    >
       <div class={styles.button}>
         <Icon name="bell-white" counter={unreadNotificationsCount?.() || 0} class={styles.icon} />
         <Icon

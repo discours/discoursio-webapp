@@ -4,6 +4,7 @@ import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid
 import { isServer, NoHydration } from 'solid-js/web'
 import { Toaster } from 'solid-toast'
 import { useLocalize } from '~/context/localize'
+import { useNotifications } from '~/context/notifications'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import { capitalize } from '~/utils/capitalize'
@@ -41,6 +42,7 @@ export const Header = (props: Props) => {
   const loc = useLocation()
   const { modal } = useUI()
   const { session } = useSession()
+  const { isNotificationsPanelOpen } = useNotifications()
   const [searchParams, changeSearchParams] = useSearchParams<HeaderSearchParams>()
   const [getIsScrollingBottom, setIsScrollingBottom] = createSignal(false)
   const [getIsScrolled, setIsScrolled] = createSignal(false)
@@ -498,38 +500,40 @@ export const Header = (props: Props) => {
         </div>
 
         <NoHydration>
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              className: styles.snackbar,
-              duration: 4000,
-              style: {
-                background: 'var(--toast-background)',
-                color: 'var(--toast-text-color)',
-                'border-radius': 'var(--toast-border-radius)',
-                'box-shadow': 'var(--toast-box-shadow)',
-                'font-size': 'var(--toast-font-size)',
-                transform: 'none',
-                position: 'relative',
-                left: 'auto',
-                right: 'auto',
-                bottom: 'auto',
-                top: 'auto',
-                margin: '0'
-              }
-            }}
-            gutter={8}
-            containerClassName={styles.toasterContainer}
-            containerStyle={{
-              position: 'fixed',
-              bottom: '20px',
-              right: '20px',
-              'z-index': 10000,
-              display: 'flex',
-              'flex-direction': 'column-reverse',
-              gap: '8px'
-            }}
-          />
+          <Show when={!isNotificationsPanelOpen()}>
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                className: styles.snackbar,
+                duration: 4000,
+                style: {
+                  background: 'var(--toast-background)',
+                  color: 'var(--toast-text-color)',
+                  'border-radius': 'var(--toast-border-radius)',
+                  'box-shadow': 'var(--toast-box-shadow)',
+                  'font-size': 'var(--toast-font-size)',
+                  transform: 'none',
+                  position: 'relative',
+                  left: 'auto',
+                  right: 'auto',
+                  bottom: 'auto',
+                  top: 'auto',
+                  margin: '0'
+                }
+              }}
+              gutter={8}
+              containerClassName={styles.toasterContainer}
+              containerStyle={{
+                position: 'fixed',
+                bottom: '20px',
+                right: '20px',
+                'z-index': 10000,
+                display: 'flex',
+                'flex-direction': 'column-reverse',
+                gap: '8px'
+              }}
+            />
+          </Show>
         </NoHydration>
       </div>
     </header>

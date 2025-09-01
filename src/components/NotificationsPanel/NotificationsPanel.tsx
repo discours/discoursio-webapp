@@ -50,6 +50,7 @@ export const NotificationsPanel = (props: Props) => {
   const {
     after,
     sortedNotifications,
+
     unreadNotificationsCount,
     loadedNotificationsCount,
     totalNotificationsCount,

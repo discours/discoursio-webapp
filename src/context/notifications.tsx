@@ -2,6 +2,7 @@ import { makePersisted } from '@solid-primitives/storage'
 import type { Accessor, JSX } from 'solid-js'
 import { createContext, createMemo, createSignal, onMount, useContext } from 'solid-js'
 import { createStore } from 'solid-js/store'
+import toast from 'solid-toast'
 import { ARTICLES_PER_PAGE } from '~/constants/pagination'
 import { Author, NotificationGroup, QueryLoad_NotificationsArgs, Shout } from '~/graphql/generated/graphql'
 import markSeenMutation from '~/graphql/mutation/notifier/mark-seen'
@@ -11,6 +12,15 @@ import getNotifications from '~/graphql/query/notifier/notifications-load'
 import { PresenceActionType, PresenceEntityType } from '~/types/notifications'
 import { SSEMessage, useConnect } from './connect'
 import { useSession } from './session'
+
+// Интерфейс для системных уведомлений из toast
+interface SystemNotification {
+  id: string
+  message: string
+  type: 'success' | 'error' | 'info' | 'warning'
+  timestamp: number
+  dismissed?: boolean
+}
 
 // Интерфейс для payload SSE сообщений с типизацией
 interface SSEPayload {
@@ -22,6 +32,7 @@ interface SSEPayload {
 
 type NotificationsContextType = {
   notificationEntities: Record<string, NotificationGroup>
+  systemNotifications: Accessor<SystemNotification[]>
   unreadNotificationsCount: Accessor<number>
   after: Accessor<number | null>
   sortedNotifications: Accessor<NotificationGroup[]>
@@ -33,11 +44,21 @@ type NotificationsContextType = {
   markSeen: (notification_id: number) => Promise<void>
   markSeenThread: (threadId: string) => Promise<void>
   markSeenAll: () => Promise<void>
+  dismissNotification: (threadId: string) => void
+  dismissSystemNotification: (id: string) => void
+  addSystemNotification: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
   loadNotificationsGrouped: (options: QueryLoad_NotificationsArgs) => Promise<NotificationGroup[]>
+  // SolidJS-стиль методы для toast
+  showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
+  showSuccess: (message: string) => void
+  showError: (message: string) => void
+  showWarning: (message: string) => void
+  showInfo: (message: string) => void
 }
 
 const NotificationsContext = createContext<NotificationsContextType>({
   notificationEntities: {},
+  systemNotifications: () => [],
   unreadNotificationsCount: () => 0,
   after: () => null,
   sortedNotifications: () => [],
@@ -49,13 +70,24 @@ const NotificationsContext = createContext<NotificationsContextType>({
   markSeen: async (_id: number) => {},
   markSeenThread: async (_id: string) => {},
   markSeenAll: async () => {},
-  loadNotificationsGrouped: async (_options: QueryLoad_NotificationsArgs) => []
+  dismissNotification: (_threadId: string) => {},
+  dismissSystemNotification: (_id: string) => {},
+  addSystemNotification: (_message: string, _type?: 'success' | 'error' | 'info' | 'warning') => {},
+  loadNotificationsGrouped: async (_options: QueryLoad_NotificationsArgs) => [],
+  // SolidJS-стиль методы для toast
+  showToast: (_message: string, _type?: 'success' | 'error' | 'info' | 'warning') => {},
+  showSuccess: (_message: string) => {},
+  showError: (_message: string) => {},
+  showWarning: (_message: string) => {},
+  showInfo: (_message: string) => {}
 })
 
 export const NotificationsProvider = (props: { children: JSX.Element }) => {
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = createSignal(false)
   const [unreadNotificationsCount, setUnreadNotificationsCount] = createSignal(0)
   const [totalNotificationsCount, setTotalNotificationsCount] = createSignal(0)
+  const [systemNotifications, setSystemNotifications] = createSignal<SystemNotification[]>([])
+  const [dismissedNotifications, setDismissedNotifications] = createSignal<Set<string>>(new Set())
   const [notificationEntities, setNotificationEntities] = createStore<Record<string, NotificationGroup>>({})
   const { session, client } = useSession()
   const { addHandler, getStatus } = useConnect()
@@ -83,7 +115,10 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
   }
 
   const sortedNotifications = createMemo(() => {
-    return Object.values(notificationEntities).sort((a, b) => b.updated_at - a.updated_at)
+    const dismissed = dismissedNotifications()
+    return Object.values(notificationEntities)
+      .filter((notification) => !dismissed.has(notification.thread))
+      .sort((a, b) => b.updated_at - a.updated_at)
   })
 
   const now = Math.floor(Date.now() / 1000)
@@ -327,18 +362,80 @@ export const NotificationsProvider = (props: { children: JSX.Element }) => {
     setIsNotificationsPanelOpen(false)
   }
 
+  // Функции для работы с системными уведомлениями
+  const addSystemNotification = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    const id = `system-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+    const notification: SystemNotification = {
+      id,
+      message,
+      type,
+      timestamp: Date.now(),
+      dismissed: false
+    }
+
+    setSystemNotifications((prev) => [notification, ...prev])
+
+    // Если панель уведомлений НЕ открыта, показываем toast
+    if (!isNotificationsPanelOpen()) {
+      toast(message, {
+        icon: type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️'
+      })
+    }
+  }
+
+  const dismissSystemNotification = (id: string) => {
+    setSystemNotifications((prev) =>
+      prev.map((notification) => (notification.id === id ? { ...notification, dismissed: true } : notification))
+    )
+  }
+
+  // Функция для отклонения обычных уведомлений
+  const dismissNotification = (threadId: string) => {
+    setDismissedNotifications((prev) => new Set([...prev, threadId]))
+  }
+
+  // SolidJS-стиль методы для toast уведомлений
+  const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    addSystemNotification(message, type)
+  }
+
+  const showSuccess = (message: string) => {
+    addSystemNotification(message, 'success')
+  }
+
+  const showError = (message: string) => {
+    addSystemNotification(message, 'error')
+  }
+
+  const showWarning = (message: string) => {
+    addSystemNotification(message, 'warning')
+  }
+
+  const showInfo = (message: string) => {
+    addSystemNotification(message, 'info')
+  }
+
   const actions = {
     showNotificationsPanel,
     hideNotificationsPanel,
     markSeenThread,
     markSeenAll,
     markSeen,
-    loadNotificationsGrouped
+    dismissNotification,
+    addSystemNotification,
+    dismissSystemNotification,
+    loadNotificationsGrouped,
+    showToast,
+    showSuccess,
+    showError,
+    showWarning,
+    showInfo
   }
 
   const value: NotificationsContextType = {
     after,
     notificationEntities,
+    systemNotifications,
     sortedNotifications,
     unreadNotificationsCount,
     loadedNotificationsCount,

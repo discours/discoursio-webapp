@@ -108,3 +108,87 @@ $transition-duration: 200ms;
   font-weight: 500;
   line-height: 14px;
 }
+
+// Системные уведомления
+.systemNotifications {
+  margin-bottom: 1.5rem;
+}
+
+.systemNotification {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: var(--comment-radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--background-color);
+  transition: var(--comment-transition);
+
+  &:hover {
+    background: var(--background-color-secondary);
+  }
+
+  &.type-success {
+    border-left: 4px solid #4CAF50;
+    background: rgb(76 175 80 / 5%);
+  }
+
+  &.type-error {
+    border-left: 4px solid var(--danger-color);
+    background: rgb(255 61 0 / 5%);
+  }
+
+  &.type-warning {
+    border-left: 4px solid #FF9800;
+    background: rgb(255 152 0 / 5%);
+  }
+
+  &.type-info {
+    border-left: 4px solid var(--blue-link);
+    background: rgb(38 56 217 / 5%);
+  }
+}
+
+.systemNotificationContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+}
+
+.systemNotificationIcon {
+  font-size: 16px;
+  line-height: 1;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.systemNotificationMessage {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--default-color);
+  word-break: break-word;
+}
+
+.dismissButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--comment-radius-sm);
+  color: var(--text-color-secondary);
+  transition: var(--comment-transition);
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--background-color-secondary);
+    color: var(--default-color);
+  }
+}
+
+.dismissIcon {
+  width: 16px;
+  height: 16px;
+}
