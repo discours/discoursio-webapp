@@ -18,7 +18,6 @@ import getAuthorFollowsQuery from '~/graphql/query/core/author-follows'
 import styles from '~/styles/views/Author.module.scss'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { AuthorCard } from '../Author/AuthorCard'
-import { AuthorShoutsRating } from '../Author/AuthorShoutsRating'
 import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
 import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
 import { Placeholder } from '../Feed/Placeholder'
@@ -633,14 +632,6 @@ export const AuthorView = (props: AuthorViewProps) => {
                   {/* Пустой div для симметрии когда нет фильтров */}
                   <Show when={currentTab()}>
                     <div class={styles.filtersInline} />
-                  </Show>
-
-                  {/* Рейтинг справа */}
-                  <Show when={typeof author()?.stat?.rating === 'number'}>
-                    <div class={styles.ratingContainer}>
-                      {t('All posts rating')}
-                      <AuthorShoutsRating author={author() as Author} class={styles.ratingControl} />
-                    </div>
                   </Show>
                 </div>
               </div>

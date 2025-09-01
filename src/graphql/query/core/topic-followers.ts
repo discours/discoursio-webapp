@@ -17,7 +17,8 @@ export default gql`
         shouts
         coauthors
         followers
-        rating
+        rating_shouts
+        rating_comments
         comments
       }
     }

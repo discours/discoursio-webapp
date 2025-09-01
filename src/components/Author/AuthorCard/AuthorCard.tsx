@@ -249,6 +249,20 @@ export const AuthorCard = (props: Props) => {
                     {t('some coauthors', { count: props.author.stat?.coauthors })}
                   </span>
                 )}
+                {(props.author?.stat?.followers || 0) > 0 && (
+                  <span
+                    class="statItem"
+                    style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                  >
+                    <Icon
+                      name="subscriptions"
+                      class="statIcon"
+                      style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
+                      title={t('Followers')}
+                    />
+                    {t('some followers', { count: props.author.stat?.followers })}
+                  </span>
+                )}
                 {props.author?.stat?.viewed_shouts && props.author.stat.viewed_shouts > 0 && (
                   <span
                     class="statItem"
@@ -279,7 +293,19 @@ export const AuthorCard = (props: Props) => {
                     <span class="statCount" style="font-weight: 500; color: var(--black-500);">
                       {props.author.stat?.comments}
                     </span>
-                    <span>/</span>
+                  </span>
+                )}
+                {props.author?.stat?.replies_count && props.author.stat.replies_count > 0 && (
+                  <span
+                    class="statItem"
+                    style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                  >
+                    <Icon
+                      name="reply"
+                      class="statIcon"
+                      style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
+                      title={t('Replies')}
+                    />
                     <span class="statCount" style="font-weight: 500; color: var(--black-500);">
                       {props.author.stat?.replies_count}
                     </span>
