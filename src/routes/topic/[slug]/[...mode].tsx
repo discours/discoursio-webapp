@@ -8,7 +8,7 @@ import { TopicView } from '~/components/Views/TopicView'
 import { FEED_PAGE_SIZE } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
-import { loadShouts, loadTopicBySlug } from '~/graphql/api/public'
+import { loadAuthors, loadShouts, loadTopicBySlug } from '~/graphql/api/public'
 import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/generated/graphql'
 import { getFileUrl } from '~/lib/imageCache'
 import { descFromBody } from '~/utils/meta'
@@ -35,17 +35,23 @@ export const route = {
       // Load topic
       const topic = await loadTopicBySlug(params.slug)()
 
-      // Временная отладка загрузки топика
-      console.log(`[TopicRoute] Loaded topic "${params.slug}":`, {
-        found: !!topic,
-        title: topic?.title,
-        hasStat: !!topic?.stat,
-        stat: topic?.stat
+      // ⚡ СРОЧНО: Load authors для SSR
+      const authors = await loadAuthors({
+        by: { topic: params.slug },
+        limit: 20,
+        offset: 0
+      })()
+
+      console.log(`[TopicRoute] Loaded for "${params.slug}":`, {
+        articles: articles?.length || 0,
+        topic: topic?.title,
+        authors: authors?.length || 0
       })
 
       const result = {
         articles,
-        topic
+        topic,
+        authors
       }
 
       console.log('[TopicRoute] route.load RETURNING:', {
@@ -62,7 +68,8 @@ export const route = {
       console.error('Error in topic route loader:', error)
       return {
         articles: [],
-        topic: null
+        topic: null,
+        authors: []
       }
     }
   }
@@ -86,14 +93,14 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   // Define route data accessor FIRST
   const routeData = () => props.data
 
-  // 🔧 ПРОСТОЕ РЕШЕНИЕ: Прямой доступ к данным из route.load через сигнал
+  // Topic data management
   const [currentTopic, setCurrentTopic] = createSignal<Topic | undefined>()
 
-  // 🔧 ПРАВИЛЬНЫЙ ПАТТЕРН: Используем createResource для работы с Promise из route.load
-  const [resolvedData] = createResource(
+  // Initialize topic data from route loader using createResource
+  const [topicData] = createResource(
     () => routeData(),
     async (data) => {
-      console.log('[TopicRoute] Resolving route data:', {
+      console.log('[TopicRoute] Processing route data for topic:', {
         hasData: !!data,
         dataType: typeof data,
         isPromise: data instanceof Promise
@@ -102,67 +109,70 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
       // Если это Promise, ждем разрешения
       const resolved = data instanceof Promise ? await data : data
 
-      console.log('[TopicRoute] Resolved route data:', {
+      console.log('[TopicRoute] Resolved topic data:', {
         hasResolved: !!resolved,
         hasTopic: !!resolved?.topic,
-        topicTitle: resolved?.topic?.title,
-        topicStat: resolved?.topic?.stat
+        topicTitle: resolved?.topic?.title
       })
 
       return resolved
+    },
+    {
+      // Используем SSR данные как initial value
+      initialValue: typeof props.data === 'object' && props.data && !('then' in props.data) ? props.data : undefined
     }
   )
 
-  // Устанавливаем топик когда данные разрешились
-  createEffect(() => {
-    const data = resolvedData()
-    if (data?.topic) {
-      console.log('[TopicRoute] Setting currentTopic:', data.topic.title)
-      setCurrentTopic(data.topic)
-    }
-  })
-
-  // Initialize topic data from route loader
-  createEffect(() => {
-    const data = routeData()
-
-    if (data?.topic) {
-      setCurrentTopic(data.topic)
-      setTitle(`${t('Discours')} :: ${data.topic.title}`)
-      setDesc(
-        data.topic.body
-          ? descFromBody(data.topic.body)
-          : t('The most interesting publications on the topic', { topicName: data.topic.title })
-      )
-      setCover(data.topic.pic ? getFileUrl(data.topic.pic, { width: 1200 }) : '/logo.png')
-    }
-  })
+  // Устанавливаем топик когда данные готовы (с defer для стабильности)
+  createEffect(
+    on(
+      topicData,
+      (resolved) => {
+        if (resolved?.topic) {
+          console.log('[TopicRoute] Setting currentTopic from resolved data:', resolved.topic.title)
+          setCurrentTopic(resolved.topic)
+        }
+      },
+      { defer: true }
+    )
+  )
 
   // current topic's shouts - get initial data from route
   const [articles] = createResource(
-    () => props.params.slug,
-    async (slug) => {
+    () => routeData(),
+    async (data) => {
       try {
-        // 🔧 ПРОСТОЕ РЕШЕНИЕ: Сначала проверяем resolvedData
-        const resolved = resolvedData()
-        if (resolved?.articles) {
-          console.log('[TopicRoute] Using resolved articles:', resolved.articles.length)
+        console.log('[TopicRoute] createResource called with data:', {
+          hasData: !!data,
+          dataType: typeof data,
+          isPromise: data instanceof Promise,
+          hasArticles: data instanceof Promise ? 'pending' : !!data?.articles,
+          articlesCount: data instanceof Promise ? 'pending' : data?.articles?.length || 0
+        })
+
+        // Если это Promise, ждем разрешения
+        const resolved = data instanceof Promise ? await data : data
+
+        console.log('[TopicRoute] Resolved data for articles:', {
+          hasResolved: !!resolved,
+          hasArticles: !!resolved?.articles,
+          articlesCount: resolved?.articles?.length || 0,
+          firstArticleTitle: resolved?.articles?.[0]?.title
+        })
+
+        // Если есть данные из route.load, используем их
+        if (resolved?.articles && resolved.articles.length > 0) {
+          console.log('[TopicRoute] Using SSR articles:', resolved.articles.length)
           return resolved.articles
         }
 
-        // 🔧 FALLBACK: Если нет resolved данных, используем props.data
-        const data = routeData()
-        if (data?.articles) {
-          console.log('[TopicRoute] Using route.load articles:', data.articles.length)
-          return data.articles
-        }
-
-        console.log(`[TopicRoute] No route data, fetching articles for "${slug}"`)
-        const result = await fetchTopicShouts(slug)
+        // Fallback: загружаем с сервера если нет SSR данных
+        console.log(`[TopicRoute] No SSR data, fetching articles for "${props.params.slug}"`)
+        const result = await fetchTopicShouts(props.params.slug, 0)
         if (!result) {
           setLoadingError(true)
         }
-        return result
+        return result || []
       } catch (error) {
         console.error('Error loading topic shouts:', error)
         setLoadingError(true)
@@ -170,8 +180,9 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
       }
     },
     {
-      // 🔧 КРИТИЧНО: initialValue должен быть массивом для стабильной гидрации
-      initialValue: [],
+      // 🔧 КРИТИЧНО: initialValue из SSR данных для стабильной гидрации
+      initialValue:
+        typeof props.data === 'object' && props.data && !('then' in props.data) ? props.data.articles || [] : [],
       ssrLoadFrom: 'initial'
     }
   )
@@ -183,20 +194,25 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   const [viewed, setViewed] = createSignal(false)
   const [topicsAdded, setTopicsAdded] = createSignal(false)
 
-  // 🔧 Установка мета-данных страницы при наличии топика
-  createEffect(() => {
-    const topic = currentTopic()
-    if (topic) {
-      console.log('[TopicRoute] Setting page meta for topic:', topic.title)
-      setTitle(`${t('Discours')} :: ${topic.title}`)
-      setDesc(
-        topic.body
-          ? descFromBody(topic.body)
-          : t('The most interesting publications on the topic', { topicName: topic.title })
-      )
-      setCover(topic.pic ? getFileUrl(topic.pic, { width: 1200 }) : '/logo.png')
-    }
-  })
+  // 🔧 Установка мета-данных страницы при наличии топика (с defer)
+  createEffect(
+    on(
+      currentTopic,
+      (topic) => {
+        if (topic) {
+          console.log('[TopicRoute] Setting page meta for topic:', topic.title)
+          setTitle(`${t('Discours')} :: ${topic.title}`)
+          setDesc(
+            topic.body
+              ? descFromBody(topic.body)
+              : t('The most interesting publications on the topic', { topicName: topic.title })
+          )
+          setCover(topic.pic ? getFileUrl(topic.pic, { width: 1200 }) : '/logo.png')
+        }
+      },
+      { defer: true }
+    )
+  )
 
   createEffect(
     on(
@@ -212,13 +228,7 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
           // Update current topic if not already set from preloaded data
           if (!currentTopic()) {
             setCurrentTopic(tpc)
-            setTitle(`${t('Discours')}${tpc.title ? ` :: ${tpc.title}` : ''}`)
-            setDesc(
-              tpc.body
-                ? descFromBody(tpc.body)
-                : t('The most interesting publications on the topic', { topicName: tpc.title })
-            )
-            setCover(tpc.pic ? getFileUrl(tpc.pic, { width: 1200 }) : '/logo.png')
+            // Мета-данные устанавливаются в основном createEffect для currentTopic
           }
 
           if (!viewed()) {
@@ -250,16 +260,14 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
         </PageLayout>
       }
     >
-      <Show when={!articles.loading && !resolvedData.loading} fallback={<Loading />}>
-        <Show
-          when={!articles.error && !resolvedData.error}
-          fallback={<div>Error: {articles.error?.message || resolvedData.error?.message}</div>}
-        >
+      <Show when={!articles.loading} fallback={<Loading />}>
+        <Show when={!articles.error} fallback={<div>Error: {articles.error?.message}</div>}>
           <PageLayout key="topic" title={title()} desc={desc()} cover={cover()} topic={currentTopic() as Topic}>
-            <TopicView
-              topic={currentTopic() as Topic}
-              shouts={articles() || resolvedData()?.articles || []}
+            <TopicView 
+              topic={currentTopic() as Topic} 
+              shouts={articles()} 
               topicSlug={props.params.slug}
+              followers={routeData()?.authors || []}
             />
           </PageLayout>
         </Show>

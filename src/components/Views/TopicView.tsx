@@ -9,6 +9,7 @@ import {
   For,
   Match,
   on,
+  onMount,
   Show,
   Suspense,
   Switch
@@ -17,6 +18,7 @@ import { FEED_PAGE_SIZE, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { loadAuthors, loadShouts, loadTopicAuthors, loadTopicFollowers } from '~/graphql/api/public'
+import { defaultClient } from '~/graphql/client'
 import { Author, AuthorsBy, LoadShoutsOptions, Shout, Stat, Topic } from '~/graphql/generated/graphql'
 import { getUnixtime } from '~/lib/fromPeriod'
 import styles from '~/styles/views/Topic.module.scss'
@@ -24,8 +26,9 @@ import styles from '~/styles/views/Topic.module.scss'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
 import { Loading } from '../_shared/Loading'
 import { LoadMoreItems, LoadMoreWrapper } from '../_shared/LoadMoreWrapper'
+import { SearchField } from '../_shared/SearchField'
 import { ArticleCardSwiper } from '../_shared/SolidSwiper/ArticleCardSwiper'
-import { AuthorCard } from '../Author/AuthorCard'
+
 import { Beside } from '../Feed/Beside'
 import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
 import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
@@ -33,6 +36,7 @@ import { Row1 } from '../Feed/Row1'
 import { Row2 } from '../Feed/Row2'
 import { Row3 } from '../Feed/Row3'
 import { FullTopic } from '../Topic/Full'
+import { TopicAuthorsView } from './TopicAuthorsView'
 
 interface Props {
   topic: Topic
@@ -78,9 +82,31 @@ export const TopicView = (props: Props) => {
   })
 
   // ✅ ИСПРАВЛЕНИЕ: Единый сигнал для авторов топика (без дублирования)
-  const [topicAuthorsList, setTopicAuthorsList] = createSignal<Author[]>([])
-  const [loadMoreAuthorsHidden, setLoadMoreAuthorsHidden] = createSignal(false)
-  const [authorsInitialized, setAuthorsInitialized] = createSignal(false)
+  const [topicAuthorsList, setTopicAuthorsList] = createSignal<Author[]>(props.followers || [])
+  const [searchQuery, setSearchQuery] = createSignal('')
+
+  // ⚡ ПРАВИЛЬНАЯ ЗАГРУЗКА ПО SOLIDJS ПАТТЕРНАМ
+  createEffect(
+    on(
+      () => props.topicSlug,
+      (slug) => {
+        if (slug) {
+          console.log('[TopicView] Loading authors via createEffect for:', slug)
+          void loadAuthors({
+            by: { topic: slug },
+            limit: 20,
+            offset: 0
+          })().then(authors => {
+            console.log('[TopicView] Authors loaded via createEffect:', authors?.length)
+            if (authors?.length) {
+              setTopicAuthorsList(authors)
+            }
+          })
+        }
+      },
+      { defer: false } // ✅ Срабатывает сразу
+    )
+  )
 
   // Эффект для обновления топика из контекста, но только если он еще не установлен или изменился
   createEffect(
@@ -169,31 +195,34 @@ export const TopicView = (props: Props) => {
           // ✅ ИСПРАВЛЕНИЕ: Восстанавливаем фид из пропсов при смене топика
           setSortedFeed(props.shouts || [])
           setTopicAuthorsList([]) // Сбрасываем авторов при смене топика
-          setLoadMoreAuthorsHidden(false)
-          setAuthorsInitialized(false) // Сбрасываем флаг инициализации
         }
       }
     )
   )
 
   // Обновляем эффект для корректной обработки URL и состояния
-  createEffect(
+    createEffect(
     on(
-      () => [loc.pathname, params.tab, feedMode()],
-      ([pathname]) => {
-        if (pathname.includes('/authors')) {
+      () => [loc.pathname, params, feedMode()],
+      ([pathname, urlParams]) => {
+        console.log('[TopicView] URL effect:', pathname, urlParams)
+        if (pathname && typeof pathname === 'string' && pathname.includes('/authors')) {
           setCurrentTab('authors')
-          // ✅ ИСПРАВЛЕНИЕ: Загружаем авторов только если не инициализированы
-          if (!authorsInitialized() && topic()) {
-            void loadTopicAuthorsWithPagination(0).then((result) => {
-              if (result.length) {
-                setTopicAuthorsList(result)
-                setLoadMoreAuthorsHidden(result.length >= stats().authors)
-                setAuthorsInitialized(true)
+          // ⚡ ПРЯМОЙ ВЫЗОВ load_authors_by
+          console.log('[TopicView] Direct call load_authors_by for:', topic()?.slug)
+          if (topic()?.slug) {
+            void loadAuthors({
+              by: { topic: topic()!.slug },
+              limit: 20,
+              offset: 0
+            })().then(authors => {
+              console.log('[TopicView] Authors loaded:', authors?.length)
+              if (authors?.length) {
+                setTopicAuthorsList(authors)
               }
             })
           }
-        } else if (pathname.includes('/about')) {
+        } else if (pathname && typeof pathname === 'string' && pathname.includes('/about')) {
           setCurrentTab('about')
         } else {
           setCurrentTab(undefined)
@@ -396,7 +425,7 @@ export const TopicView = (props: Props) => {
           const newAuthors = result.filter((author) => !existingIds.has(author.id))
           return [...prev, ...newAuthors]
         })
-        setLoadMoreAuthorsHidden(topicAuthorsList().length >= stats().authors)
+        setLoadMoreHidden(topicAuthorsList().length >= stats().authors)
       }
 
       restoreScrollPosition()
@@ -456,7 +485,7 @@ export const TopicView = (props: Props) => {
 
           // Сбрасываем данные авторов для нового топика
           setTopicAuthorsList([])
-          setLoadMoreAuthorsHidden(false)
+          setLoadMoreHidden(false)
 
           // Обновляем топик из пропсов
           if (newTopic) {
@@ -520,6 +549,13 @@ export const TopicView = (props: Props) => {
                   />
                   <FeedFiltersControl />
                 </Show>
+
+                {/* Поле поиска для вкладки авторов */}
+                <Show when={currentTab() === 'authors'}>
+                  <div style="width: 100%; margin-top: 16px;">
+                    <SearchField onChange={(value) => setSearchQuery(value)} />
+                  </div>
+                </Show>
               </div>
             </div>
           </div>
@@ -539,48 +575,13 @@ export const TopicView = (props: Props) => {
           </Match>
 
           <Match when={currentTab() === 'authors'}>
-            {/* Показываем авторов если статистика показывает больше 0 */}
-            <Show when={stats().authors > 0}>
-              <Show
-                when={topicAuthorsList().length > 0}
-                fallback={
-                  <div class="wide-container">
-                    <div class="row">
-                      <div class="col-md-20 col-lg-18">
-                        <div style="text-align: center; padding: 4rem 2rem;">
-                          <Show when={topic()?.slug} fallback={<Loading />}>
-                            <div>
-                              <h3 style="margin-bottom: 1rem; color: #666;">{t('No authors found')}</h3>
-                              <p style="color: #999;">{t('Try changing filters or check back later')}</p>
-                            </div>
-                          </Show>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                }
-              >
-                <LoadMoreWrapper
-                  loadFunction={loadMoreAuthors}
-                  pageSize={AUTHORS_PER_PAGE}
-                  hidden={loadMoreAuthorsHidden()}
-                >
-                  <div class="wide-container">
-                    <div class="row">
-                      <div class="col-md-20 col-lg-18">
-                        <div
-                          class="authors-grid"
-                          style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; padding: 2rem 0;"
-                        >
-                          <For each={topicAuthorsList()}>
-                            {(author) => <AuthorCard author={author} followers={[]} flatFollows={[]} />}
-                          </For>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </LoadMoreWrapper>
-              </Show>
+            <Show when={topic()} fallback={<Loading />}>
+              <TopicAuthorsView
+                topic={topic() as Topic}
+                authors={topicAuthorsList()}
+                searchQuery={searchQuery()}
+                onSearchChange={setSearchQuery}
+              />
             </Show>
           </Match>
 
