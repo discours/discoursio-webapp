@@ -7,13 +7,13 @@ import { useSession } from '~/context/session'
 import styles from './SocialProviders.module.scss'
 
 const socialProviders = [
-  { name: 'telegram', title: 'Telegram', icon: 'telegram' },
-  { name: 'x.com', title: 'X.com', icon: 'twitter' },
+  // { name: 'telegram', title: 'Telegram', icon: 'telegram' }, // Hidden for now
+  // { name: 'x.com', title: 'X.com', icon: 'twitter' }, // Hidden for now
   { name: 'google', title: 'Google', icon: 'google' },
   { name: 'github', title: 'GitHub', icon: 'github' },
   { name: 'facebook', title: 'Facebook', icon: 'facebook' },
-  { name: 'vk', title: 'VKontakte', icon: 'vk' },
-  { name: 'yandex', title: 'Yandex', icon: 'yandex' }
+  { name: 'vk', title: 'VKontakte', icon: 'vk' }
+  // { name: 'yandex', title: 'Yandex', icon: 'yandex' } // Hidden for now
 ]
 
 export const SocialProviders = () => {
