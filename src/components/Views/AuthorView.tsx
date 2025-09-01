@@ -34,14 +34,6 @@ type AuthorViewProps = {
 }
 
 export const PRERENDERED_ARTICLES_COUNT = 12
-// const LOAD_MORE_PAGE_SIZE = 9
-
-// Добавим тип для статистики автора
-type AuthorStats = {
-  shouts: number
-  comments: number
-  rating?: number
-}
 
 export const AuthorView = (props: AuthorViewProps) => {
   // contexts
@@ -52,7 +44,6 @@ export const AuthorView = (props: AuthorViewProps) => {
   const [currentTab, setCurrentTab] = createSignal<string | undefined>()
 
   const { session, client } = useSession()
-
   const { loadAuthor, authorsEntities } = useAuthors()
 
   // signals
@@ -62,8 +53,25 @@ export const AuthorView = (props: AuthorViewProps) => {
   const [followingArray, setFollowingArray] = createSignal<Array<Author | Topic>>([] as Array<Author | Topic>) // flat AuthorFollowsResult
   const [showExpandBioControl, setShowExpandBioControl] = createSignal(false)
   const [commented, setCommented] = createSignal<Reaction[]>(props.comments || [])
+
+  const [commentsAmount, setCommentsAmount] = createSignal(0)
+  createEffect(
+    on(
+      () => author()?.stat?.comments ?? 0,
+      (amount) => setCommentsAmount(amount)
+    )
+  )
+  const [shoutsAmount, setShoutsAmount] = createSignal(0)
+  createEffect(
+    on(
+      () => author()?.stat?.shouts ?? 0,
+      (amount) => setShoutsAmount(amount)
+    )
+  )
+
   const [followersLoaded, setFollowersLoaded] = createSignal(false)
   const [loadMoreHidden, setLoadMoreHidden] = createSignal(false)
+  const [loadMoreCommentsHidden, setLoadMoreCommentsHidden] = createSignal(false)
 
   // Немедленно инициализируем sortedFeed с пропсами
   const [sortedFeed, setSortedFeed] = createSignal<Shout[]>(props.shouts || [])
@@ -96,28 +104,43 @@ export const AuthorView = (props: AuthorViewProps) => {
     if (props.author) {
       console.log('[AuthorView] Setting initial author from props:', props.author.slug, props.author.stat)
       setAuthor(props.author)
+    }
 
-      // 🔧 КРИТИЧНО: Если нет комментариев в пропсах, загружаем их
-      if (!props.comments || props.comments.length === 0) {
-        console.log('[AuthorView] No comments in props, loading from API')
-        loadReactions({
-          by: {
-            kinds: [ReactionKind.Comment],
-            created_by: props.author.id
-          },
-          limit: COMMENTS_PER_PAGE,
-          offset: 0
-        })()
-          .then((result: Reaction[]) => {
-            if (result?.length) {
-              console.log('[AuthorView] Loaded comments from API:', result.length)
-              setCommented(result)
-            }
-          })
-          .catch((error: unknown) => {
-            console.error('[AuthorView] Error loading comments:', error)
-          })
+    // 🔧 ИСПРАВЛЕНИЕ: Всегда инициализируем комментарии из пропсов и добавляем в стор реакций
+    if (props.comments) {
+      console.log('[AuthorView] Setting initial comments from props:', props.comments.length)
+      setCommented(props.comments)
+      // 🔧 КРИТИЧНО: Добавляем SSR комментарии в стор реакций
+      addShoutReactions(props.comments)
+      // Устанавливаем состояние загрузки дополнительных комментариев
+      if (props.author?.stat?.comments) {
+        setLoadMoreCommentsHidden(props.comments.length >= props.author.stat.comments)
       }
+    } else if (props.author) {
+      // Если комментариев нет в пропсах, но есть автор - загружаем комментарии
+      console.log('[AuthorView] No comments in props, loading from API for author:', props.author.slug)
+      loadReactions({
+        by: {
+          kinds: [ReactionKind.Comment],
+          created_by: props.author.id
+        },
+        limit: COMMENTS_PER_PAGE,
+        offset: 0
+      })()
+        .then((result: Reaction[]) => {
+          console.log('[AuthorView] Loaded comments from API:', result?.length || 0)
+          if (result) {
+            setCommented(result)
+            // 🔧 КРИТИЧНО: Добавляем загруженные комментарии в стор реакций
+            addShoutReactions(result)
+            if (props.author?.stat?.comments) {
+              setLoadMoreCommentsHidden(result.length >= props.author.stat.comments)
+            }
+          }
+        })
+        .catch((error: unknown) => {
+          console.error('[AuthorView] Error loading comments:', error)
+        })
     }
   })
 
@@ -132,93 +155,34 @@ export const AuthorView = (props: AuthorViewProps) => {
     return currentUser && profileAuthor && currentUser.slug === profileAuthor.slug
   })
 
-  // Обновляем мемо для статистики - показываем только данные из stat автора
-  const stats = createMemo<AuthorStats>(() => {
-    const authorData = author()
-    const result = {
-      shouts: authorData?.stat?.shouts ?? 0,
-      comments: authorData?.stat?.comments ?? 0,
-      rating: authorData?.stat?.rating ?? undefined
-    }
-    console.log('[AuthorView] Stats calculated:', result, 'for author:', authorData?.slug)
-    return result
-  })
-
-  // Мемо для определения, нужно ли показывать фильтры и кнопку "Показать еще"
-  const shouldShowFiltersAndLoadMore = createMemo(() => {
+  const shouldShowFiltersAndLoadMore = () => {
     // Показываем фильтры и кнопку только если:
     // 1. Мы на вкладке публикаций (не comments/about)
     // 2. Есть публикации для отображения
     // 3. Не все публикации уже загружены
     if (currentTab()) return false
-    if (stats().shouts === 0) return false
+    if (author()?.stat?.shouts === 0) return false
 
     // Проверяем, загружены ли все публикации автора
-    const allShoutsLoaded = sortedFeed().length >= stats().shouts
+    const allShoutsLoaded = sortedFeed().length >= Number(author()?.stat?.shouts ?? 0)
     return !allShoutsLoaded
-  })
+  }
 
-  // Мемо для определения, нужно ли показывать кнопку "Показать еще"
-  const shouldShowLoadMore = createMemo(() => {
+  const shouldShowLoadMore = () => {
     if (currentTab()) return false
-    if (stats().shouts === 0) return false
+    if (!Number.isInteger(author()?.stat?.shouts) || author()?.stat?.shouts === 0) return false
 
     // Показываем кнопку только если не все публикации загружены
-    const allShoutsLoaded = sortedFeed().length >= stats().shouts
+    const allShoutsLoaded = sortedFeed().length >= Number(author()?.stat?.shouts ?? 0)
     return !allShoutsLoaded && !loadMoreHidden()
-  })
-
-  // Эффект для обработки изменения таба через браузер
-  createEffect(
-    on([currentTab, author], async ([tab, currentAuthor]) => {
-      if (tab === 'comments' && currentAuthor && !commented().length) {
-        try {
-          console.log('[AuthorView] Loading comments for author:', currentAuthor.slug)
-          const result = await loadReactions({
-            by: {
-              kinds: [ReactionKind.Comment],
-              created_by: currentAuthor.id
-            },
-            limit: COMMENTS_PER_PAGE,
-            offset: 0
-          })()
-
-          if (result) {
-            console.log('[AuthorView] Loaded reactions for author:', result.length)
-            // Диагностика: проверяем типы загруженных реакций
-            const reactionTypes = result.map((r) => ({
-              id: r.id,
-              kind: r.kind,
-              body: r.body?.slice(0, 50)
-            }))
-            console.log('[AuthorView] Reaction types loaded:', reactionTypes)
-
-            // Проверяем, есть ли реакции не типа Comment
-            const nonComments = result.filter((r) => r.kind !== ReactionKind.Comment)
-            if (nonComments.length > 0) {
-              console.warn(
-                '[AuthorView] Found non-comment reactions:',
-                nonComments.map((r) => ({ id: r.id, kind: r.kind }))
-              )
-            }
-
-            addShoutReactions(result)
-            setCommented(result)
-            setLoadMoreCommentsHidden(result.length >= (currentAuthor.stat?.comments || 0))
-          }
-        } catch (error) {
-          console.error('[AuthorView] Error loading comments:', error)
-        }
-      }
-    })
-  )
+  }
 
   // Эффект для обновления комментариев при изменении автора или commentsByAuthor
   createEffect(
     on([author, commentsByAuthor], ([a, ccc]) => {
       if (a?.id && ccc?.[a.id]) {
         setCommented(ccc[a.id])
-        setLoadMoreCommentsHidden(ccc[a.id].length >= stats().comments)
+        setLoadMoreCommentsHidden(ccc[a.id].length >= Number(author()?.stat?.comments ?? 0))
       }
     })
   )
@@ -232,9 +196,10 @@ export const AuthorView = (props: AuthorViewProps) => {
         // и если у нас еще нет начальных данных или они пустые
         if (authorFeed?.length && (!sortedFeed().length || authorFeed.length > sortedFeed().length)) {
           setSortedFeed(authorFeed)
-          if (stats().shouts > 0) {
+          const amount = author()?.stat?.shouts ?? 0
+          if (amount > 0) {
             // Скрываем кнопку "Показать еще" если загружены все публикации автора
-            setLoadMoreHidden(authorFeed.length >= stats().shouts)
+            setLoadMoreHidden(authorFeed.length >= amount)
           } else {
             setLoadMoreHidden(authorFeed.length < FEED_PAGE_SIZE)
           }
@@ -252,6 +217,13 @@ export const AuthorView = (props: AuthorViewProps) => {
         targetSlug: slug,
         currentAuthor: author()?.slug
       })
+
+      // 🔧 ИСПРАВЛЕНИЕ: Приоритет для данных из route.load с полной статистикой
+      if (props.author && typeof props.author.stat?.comments === 'number') {
+        console.log('[AuthorView] Using author data from route.load with full stats:', props.author.stat)
+        setAuthor(props.author)
+        return
+      }
 
       // Всегда загружаем автора через API для получения актуальной статистики
       if (slug && (!author() || author()?.slug !== slug)) {
@@ -357,23 +329,7 @@ export const AuthorView = (props: AuthorViewProps) => {
       ([pathname]) => {
         if (pathname.includes('/comments')) {
           setCurrentTab('comments')
-          // Загружаем комментарии если их еще нет
-          if (!commented().length && author()) {
-            void loadReactions({
-              by: {
-                kinds: [ReactionKind.Comment],
-                created_by: author()?.id
-              },
-              limit: COMMENTS_PER_PAGE,
-              offset: 0
-            })().then((result) => {
-              if (result) {
-                addShoutReactions(result)
-                setCommented(result)
-                setLoadMoreCommentsHidden(result.length >= stats().comments)
-              }
-            })
-          }
+          // 🔧 ИСПРАВЛЕНИЕ: Комментарии теперь загружаются заранее в onMount, только устанавливаем вкладку
         } else if (pathname.includes('/about')) {
           setCurrentTab('about')
         } else {
@@ -389,14 +345,14 @@ export const AuthorView = (props: AuthorViewProps) => {
       <ul class="view-switcher">
         <li classList={{ 'view-switcher__item--selected': !currentTab() }}>
           <A href={`/@${props.authorSlug}`}>{t('Publications')}</A>
-          <Show when={author() && stats().shouts > 0}>
-            <span class="view-switcher__counter">{stats().shouts}</span>
+          <Show when={author() && shoutsAmount() > 0}>
+            <span class="view-switcher__counter">{shoutsAmount()}</span>
           </Show>
         </li>
         <li classList={{ 'view-switcher__item--selected': currentTab() === 'comments' }}>
           <A href={`/@${props.authorSlug}/comments`}>{t('Comments')}</A>
-          <Show when={author() && stats().comments > 0}>
-            <span class="view-switcher__counter">{stats().comments}</span>
+          <Show when={author() && commentsAmount() > 0}>
+            <span class="view-switcher__counter">{commentsAmount()}</span>
           </Show>
         </li>
         <li classList={{ 'view-switcher__item--selected': currentTab() === 'about' }}>
@@ -465,8 +421,8 @@ export const AuthorView = (props: AuthorViewProps) => {
             if (result.length) {
               setSortedFeed(result)
               // Скрываем кнопку "Показать еще" если загружены все публикации автора
-              if (stats().shouts > 0) {
-                setLoadMoreHidden(result.length >= stats().shouts)
+              if (shoutsAmount() > 0) {
+                setLoadMoreHidden(result.length >= shoutsAmount())
               } else {
                 setLoadMoreHidden(result.length < FEED_PAGE_SIZE)
               }
@@ -501,8 +457,8 @@ export const AuthorView = (props: AuthorViewProps) => {
             if (result.length) {
               setSortedFeed(result)
               // Скрываем кнопку "Показать еще" если загружены все публикации автора
-              if (stats().shouts > 0) {
-                setLoadMoreHidden(result.length >= stats().shouts)
+              if (shoutsAmount() > 0) {
+                setLoadMoreHidden(result.length >= shoutsAmount())
               } else {
                 setLoadMoreHidden(result.length < FEED_PAGE_SIZE)
               }
@@ -534,8 +490,8 @@ export const AuthorView = (props: AuthorViewProps) => {
         if (newShouts.length) {
           setSortedFeed((prev) => [...prev, ...newShouts])
           // Скрываем кнопку "Показать еще" если загружены все публикации автора
-          if (stats().shouts > 0) {
-            setLoadMoreHidden(sortedFeed().length + newShouts.length >= stats().shouts)
+          if (shoutsAmount() > 0) {
+            setLoadMoreHidden(sortedFeed().length + newShouts.length >= shoutsAmount())
           } else {
             setLoadMoreHidden(newShouts.length < FEED_PAGE_SIZE)
           }
@@ -553,10 +509,6 @@ export const AuthorView = (props: AuthorViewProps) => {
     }
   }
 
-  const [loadMoreCommentsHidden, setLoadMoreCommentsHidden] = createSignal(
-    Boolean(author()?.stat && author()?.stat?.comments === 0)
-  )
-
   // Effect: Reset sortedFeed When Author Slug Changes
   createEffect(
     on(
@@ -568,8 +520,8 @@ export const AuthorView = (props: AuthorViewProps) => {
           const initialShouts = newShouts || []
           setSortedFeed(initialShouts)
           // Скрываем кнопку "Показать еще" если загружены все публикации автора
-          if (stats().shouts > 0) {
-            setLoadMoreHidden(initialShouts.length >= stats().shouts)
+          if (shoutsAmount() > 0) {
+            setLoadMoreHidden(initialShouts.length >= shoutsAmount())
           } else {
             setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
           }
@@ -617,7 +569,7 @@ export const AuthorView = (props: AuthorViewProps) => {
 
         addShoutReactions(result)
         setCommented((prev) => [...prev, ...result])
-        setLoadMoreCommentsHidden(commented().length >= stats().comments)
+        setLoadMoreCommentsHidden(commented().length >= commentsAmount())
       }
 
       restoreScrollPosition()
@@ -639,7 +591,7 @@ export const AuthorView = (props: AuthorViewProps) => {
           ...author()!,
           stat: {
             ...author()!.stat!,
-            comments: Math.max(0, (author()!.stat?.comments || 1) - 1)
+            comments: Math.max(0, (commentsAmount() || 1) - 1)
           }
         }
         setAuthor(updatedAuthor)
@@ -658,6 +610,7 @@ export const AuthorView = (props: AuthorViewProps) => {
                 author={author() as Author}
                 followers={followers() || []}
                 flatFollows={followingArray() || []}
+                showMessageButton={true}
               />
             </div>
             <div class={clsx(styles.groupControls, 'row')}>
@@ -724,29 +677,57 @@ export const AuthorView = (props: AuthorViewProps) => {
         </Match>
 
         <Match when={currentTab() === 'comments'}>
-          {/* Показываем плейсхолдер только если статистика показывает 0 комментариев И это собственный профиль */}
-          <Show when={stats().comments === 0 && author() && isOwnProfile()}>
+          {/* 🔧 ИСПРАВЛЕНИЕ: Показываем комментарии если есть фактические комментарии ИЛИ статистика показывает больше 0 */}
+          <Show when={commented().length > 0 || commentsAmount() > 0}>
+            <div class="wide-container">
+              <div class="row">
+                <div class="col-md-20 col-lg-18">
+                  <Show
+                    when={commented().length > 0}
+                    fallback={
+                      <div style="text-align: center; padding: 4rem 2rem;">
+                        <div>
+                          <h3 style="margin-bottom: 1rem; color: #666;">{t('Loading comments...')}</h3>
+                          <Loading />
+                        </div>
+                      </div>
+                    }
+                  >
+                    <CommentsList
+                      comments={commented()}
+                      showArticleLink={true}
+                      withFilter={true}
+                      sortOrder={commentsOrder()}
+                      onFiltersChange={(filters) => setCommentsOrder(filters.sort || ReactionSort.Newest)}
+                      onDeleteComment={handleDeleteComment}
+                      loadMoreComments={loadMoreComments}
+                      loadMoreHidden={loadMoreCommentsHidden()}
+                      pageSize={COMMENTS_PER_PAGE}
+                    />
+                  </Show>
+                </div>
+              </div>
+            </div>
+          </Show>
+
+          {/* Показываем плейсхолдер если нет комментариев и это собственный профиль */}
+          <Show when={commented().length === 0 && commentsAmount() === 0 && author() && isOwnProfile()}>
             <div class="wide-container">
               <Placeholder type={'comments'} mode="profile" />
             </div>
           </Show>
 
-          {/* Показываем комментарии если статистика показывает больше 0 */}
-          <Show when={stats().comments > 0}>
+          {/* Показываем сообщение "нет комментариев" для чужих профилей */}
+          <Show when={commented().length === 0 && commentsAmount() === 0 && author() && !isOwnProfile()}>
             <div class="wide-container">
               <div class="row">
                 <div class="col-md-20 col-lg-18">
-                  <CommentsList
-                    comments={commented()}
-                    showArticleLink={true}
-                    withFilter={true}
-                    sortOrder={commentsOrder()}
-                    onFiltersChange={(filters) => setCommentsOrder(filters.sort || ReactionSort.Newest)}
-                    onDeleteComment={handleDeleteComment}
-                    loadMoreComments={loadMoreComments}
-                    loadMoreHidden={loadMoreCommentsHidden()}
-                    pageSize={COMMENTS_PER_PAGE}
-                  />
+                  <div style="text-align: center; padding: 4rem 2rem;">
+                    <div>
+                      <h3 style="margin-bottom: 1rem; color: #666;">{t('No comments found')}</h3>
+                      <p style="color: #999;">{t("This author hasn't left any comments yet")}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -755,14 +736,14 @@ export const AuthorView = (props: AuthorViewProps) => {
 
         <Match when={!currentTab()}>
           {/* Показываем плейсхолдер только если статистика показывает 0 публикаций И это собственный профиль */}
-          <Show when={stats().shouts === 0 && author() && isOwnProfile()}>
+          <Show when={shoutsAmount() === 0 && author() && isOwnProfile()}>
             <div class="wide-container">
               <Placeholder type={'author'} mode="profile" />
             </div>
           </Show>
 
           {/* Показываем публикации если статистика показывает больше 0 */}
-          <Show when={stats().shouts > 0}>
+          <Show when={shoutsAmount() > 0}>
             <Show
               when={sortedFeed().length > 0}
               fallback={

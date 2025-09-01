@@ -15,10 +15,14 @@ export default gql`
       last_seen
       stat {
         shouts
-        authors
+        coauthors
         followers
-        rating
+        rating_shouts
+        rating_comments
         comments
+        replies_count
+        viewed_shouts
+        topics
       }
     }
   }

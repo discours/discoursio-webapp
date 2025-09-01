@@ -11,7 +11,7 @@ export default gql`
         created_at
         stat {
           shouts
-          authors
+          coauthors
           followers
         }
     }

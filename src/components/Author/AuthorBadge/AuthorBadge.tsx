@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { createEffect, createSignal, Match, Show, Switch } from 'solid-js'
+import { createEffect, createSignal, Match, Show, Suspense, Switch } from 'solid-js'
 import { Button } from '~/components/_shared/Button'
 import { CheckButton } from '~/components/_shared/CheckButton'
 import { ConditionalWrapper } from '~/components/_shared/ConditionalWrapper'
@@ -97,15 +97,137 @@ export const AuthorBadge = (props: Props) => {
             </Switch>
             <Show when={props.author?.stat && !props.subscriptionsMode}>
               <div class={styles.bio}>
-                <Show when={(props.author?.stat?.shouts || 0) > 0}>
-                  <div>{t('some posts', { count: props.author.stat?.shouts ?? 0 })}</div>
-                </Show>
-                <Show when={(props.author?.stat?.comments || 0) > 0}>
-                  <div>{t('some comments', { count: props.author.stat?.comments ?? 0 })}</div>
-                </Show>
-                <Show when={(props.author?.stat?.followers || 0) > 0}>
-                  <div>{t('some followers', { count: props.author.stat?.followers ?? 0 })}</div>
-                </Show>
+                <Suspense>
+                  <div
+                    class="stats"
+                    style="display: flex; flex-wrap: nowrap; gap: 1rem; margin-top: 0.4rem; color: var(--black-400); font-size: 1.2rem; line-height: 1.3; overflow-x: auto;"
+                  >
+                    {(props.author?.stat?.shouts || 0) > 0 && (
+                      <span
+                        class="statItem"
+                        style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                      >
+                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                          {props.author.stat?.shouts}
+                        </span>
+                        &nbsp;
+                        {props.author.stat?.shouts === 1
+                          ? 'публикация'
+                          : props.author.stat?.shouts && props.author.stat.shouts < 5
+                            ? 'публикации'
+                            : 'публикаций'}
+                      </span>
+                    )}
+                    {(props.author?.stat?.topics || 0) > 0 && (
+                      <span
+                        class="statItem"
+                        style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                      >
+                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                          {props.author.stat?.topics}
+                        </span>
+                        &nbsp;
+                        {props.author.stat?.topics === 1
+                          ? 'тема'
+                          : props.author.stat?.topics && props.author.stat.topics < 5
+                            ? 'темы'
+                            : 'тем'}
+                      </span>
+                    )}
+                    {props.author?.stat?.coauthors && props.author.stat.coauthors > 0 && (
+                      <span
+                        class="statItem"
+                        style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                      >
+                        <Icon
+                          name="feed-collaborate"
+                          class="statIcon"
+                          style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
+                        />
+                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                          {props.author.stat?.coauthors}
+                        </span>
+                      </span>
+                    )}
+                    {(props.author?.stat?.followers || 0) > 0 && (
+                      <span
+                        class="statItem"
+                        style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                      >
+                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                          {props.author.stat?.followers}
+                        </span>
+                        &nbsp;
+                        {props.author.stat?.followers === 1
+                          ? 'подписчик'
+                          : props.author.stat?.followers && props.author.stat.followers < 5
+                            ? 'подписчика'
+                            : 'подписчиков'}
+                      </span>
+                    )}
+                    {props.author?.stat?.replies_count && props.author.stat.replies_count > 0 && (
+                      <span
+                        class="statItem"
+                        style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                      >
+                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                          {props.author.stat?.replies_count}
+                        </span>
+                        &nbsp;
+                        {props.author.stat?.replies_count === 1
+                          ? 'ответ'
+                          : props.author.stat?.replies_count && props.author.stat.replies_count < 5
+                            ? 'ответа'
+                            : 'ответов'}
+                      </span>
+                    )}
+                    {props.author?.stat?.viewed_shouts && props.author.stat.viewed_shouts > 0 && (
+                      <span
+                        class="statItem"
+                        style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                      >
+                        <Icon
+                          name="view"
+                          class="statIcon"
+                          style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
+                        />
+                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                          {props.author.stat?.viewed_shouts}
+                        </span>
+                      </span>
+                    )}
+                    {(props.author?.stat?.comments || 0) > 0 && (
+                      <span
+                        class="statItem"
+                        style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                      >
+                        <Icon
+                          name="comment"
+                          class="statIcon"
+                          style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
+                        />
+                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                          {props.author.stat?.comments}
+                        </span>
+                      </span>
+                    )}
+                    {props.author?.stat &&
+                      ((props.author.stat?.rating_shouts && props.author.stat.rating_shouts !== 0) ||
+                        (props.author.stat?.rating_comments && props.author.stat.rating_comments !== 0)) && (
+                        <span
+                          class="statItem"
+                          style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                        >
+                          <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                            {(props.author.stat?.rating_shouts || 0) > 0 ? '+' : ''}
+                            {props.author.stat?.rating_shouts || 0}/
+                            {(props.author.stat?.rating_comments || 0) > 0 ? '+' : ''}
+                            {props.author.stat?.rating_comments || 0}
+                          </span>
+                        </span>
+                      )}
+                  </div>
+                </Suspense>
               </div>
             </Show>
           </Show>
@@ -125,7 +247,7 @@ export const AuthorBadge = (props: Props) => {
             <Button
               variant={props.iconButtons ? 'secondary' : 'bordered'}
               size="S"
-              value={props.iconButtons ? <Icon name="inbox-white" /> : t('Message')}
+              value={t('Message')}
               onClick={initChat}
               class={clsx(styles.actionButton, { [styles.iconed]: props.iconButtons })}
             />

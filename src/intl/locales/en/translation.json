@@ -11,6 +11,7 @@
   "some authors": "{count} {count, plural, one {author} other {authors}}",
   "some comments": "{count, plural, =0 {{count} comments} one {{count} comment} few {{count} comments} other {{count} comments}}",
   "some followers": "{count} {count, plural, one {follower} other {followers}}",
+  "some topics": "{count} {count, plural, one {topic} few {topics} other {topics}}",
   "some followings": "{count, plural, =0 {no subscriptions} one {{count} subscription} other {{count} subscriptions}}",
   "Some new comments to your publication": "{commentsCount, plural, one {New comment} other {{commentsCount} comments}} to your publication",
   "Some new replies to your comment": "{commentsCount, plural, one {New reply} other {{commentsCount} replays}} to your publication",

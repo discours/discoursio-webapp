@@ -20,7 +20,7 @@ type Props = {
 
 export const FollowingButton = (props: Props) => {
   const { t } = useLocalize()
-  const { changeFollowing, follows, followsResource } = useFollowing()
+  const { changeFollowing, follows } = useFollowing()
 
   // 🔄 Умное начальное состояние - правильно различаем "не загружено" и "не подписан"
   const getInitialState = (): boolean | null => {
@@ -29,17 +29,12 @@ export const FollowingButton = (props: Props) => {
       return props.isFollowed
     }
 
-    // Если ресурс загружается ИЛИ ещё не было первой загрузки, показываем загрузку
-    if (followsResource.loading || !followsResource.latest) {
-      return null
-    }
-
-    // Если данные реально загружены (есть latest), проверяем подписку
-    if (props.entity === FollowingEntity.Author && follows?.authors) {
+    // Если данные следований уже есть, используем их
+    if (follows?.authors) {
       return follows.authors.some((author) => author.slug === props.slug)
     }
 
-    // Если данные загружены, но нет массива авторов - не подписан
+    // По умолчанию не подписан (не показываем загрузку)
     return false
   }
 
@@ -54,12 +49,9 @@ export const FollowingButton = (props: Props) => {
   const handleFollowClick = async () => {
     const oldState = followed()
 
-    // 🔄 Не обрабатываем клики во время загрузки
-    if (oldState === null) return
-
     try {
       // НЕ делаем оптимистичные обновления, ждем ответ сервера
-      const newState = await changeFollowing(oldState, props.entity, props.slug)
+      const newState = await changeFollowing(!!oldState, props.entity, props.slug)
       // Обновляем состояние только на основе реального ответа сервера
       setFollowed(newState)
       console.log('[FollowingButton] Updated state from server:', newState, 'for', props.entity, props.slug)
@@ -85,36 +77,17 @@ export const FollowingButton = (props: Props) => {
   createEffect(() => {
     // Если есть явное значение в пропсах, приоритет у него
     if (props.isFollowed !== undefined) {
-      const currentFollowed = followed()
-      if (currentFollowed !== props.isFollowed) {
-        setFollowed(props.isFollowed)
-      }
+      setFollowed(props.isFollowed)
       return
     }
 
-    // Если загружается ИЛИ нет данных, показываем загрузку
-    if (followsResource.loading || !followsResource.latest) {
-      const currentFollowed = followed()
-      if (currentFollowed !== null) {
-        setFollowed(null)
-      }
-      return
-    }
-
-    // Данные реально загружены - обновляем состояние подписки
-    if (props.entity === FollowingEntity.Author && follows?.authors) {
+    // Если есть данные следований, проверяем подписку
+    if (follows?.authors && props.entity === FollowingEntity.Author) {
       const isFollowedBySlug = follows.authors.some((author) => author.slug === props.slug)
-      const currentFollowed = followed()
-
-      if (currentFollowed !== isFollowedBySlug) {
-        setFollowed(isFollowedBySlug)
-      }
+      setFollowed(isFollowedBySlug)
     } else {
-      // Данные загружены, но нет массива авторов - не подписан
-      const currentFollowed = followed()
-      if (currentFollowed !== false) {
-        setFollowed(false)
-      }
+      // Нет данных - не подписан
+      setFollowed(false)
     }
   })
 
@@ -129,7 +102,7 @@ export const FollowingButton = (props: Props) => {
       }
       onClick={handleFollowClick}
       isSubscribeButton={true}
-      disabled={followed() === null} // 🔄 Отключаем во время загрузки
+      disabled={false}
       class={clsx(styles.actionButton, {
         [styles.iconed]: props.iconButtons,
         [stylesButton.followed]: followed() === true // 🔄 Проверяем именно true
@@ -146,29 +119,20 @@ export const FollowingButton = (props: Props) => {
   )
 
   const FollowButton = () => (
-    <Button
-      variant={props.iconButtons ? 'secondary' : 'bordered'}
-      size="S"
-      value={
-        <Show
-          when={props.iconButtons}
-          fallback={
-            <>
-              <span class={styles.actionButtonLabel}>{caption()}</span>
-              <span class={styles.actionButtonLabelHovered}>{caption()}</span>
-            </>
-          }
-        >
-          <Icon name="author-unsubscribe" class={stylesButton.icon} />
-        </Show>
-      }
-      onClick={handleFollowClick}
-      isSubscribeButton={true}
-      class={clsx(styles.actionButton, {
-        [styles.iconed]: props.iconButtons,
-        [stylesButton.followed]: followed()
-      })}
-    />
+    <>
+      <Button
+        variant={props.iconButtons ? 'secondary' : 'bordered'}
+        size="S"
+        value={props.iconButtons ? '' : caption()}
+        onClick={handleFollowClick}
+        isSubscribeButton={true}
+        class={clsx(styles.actionButton, {
+          [styles.iconed]: props.iconButtons,
+          [stylesButton.followed]: followed()
+        })}
+      />
+      {props.iconButtons && <Icon name="author-unsubscribe" class={stylesButton.icon} />}
+    </>
   )
 
   return (

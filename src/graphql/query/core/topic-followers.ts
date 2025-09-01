@@ -15,7 +15,7 @@ export default gql`
       last_seen
       stat {
         shouts
-        authors
+        coauthors
         followers
         rating
         comments

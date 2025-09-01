@@ -1,11 +1,12 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, on, Show, Suspense } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
 import { Button } from '~/components/_shared/Button'
 import stylesButton from '~/components/_shared/Button/Button.module.scss'
 import { FollowingButton } from '~/components/_shared/FollowingButton'
 import { FollowingCounters } from '~/components/_shared/FollowingCounters/FollowingCounters'
+import { Icon } from '~/components/_shared/Icon'
 import { FollowsFilter, useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { useProfile } from '~/context/profile'
@@ -93,7 +94,6 @@ export const AuthorCard = (props: Props) => {
       { defer: true }
     )
   )
-
   const FollowersModalView = () => (
     <>
       <h2>{t('Followers')}</h2>
@@ -200,6 +200,108 @@ export const AuthorCard = (props: Props) => {
                 followingAmount={authorSubs()?.length || 0}
               />
             </div>
+          </Show>
+          <Show when={props.author?.stat}>
+            <Suspense>
+              <div
+                class="stats"
+                style="display: flex; flex-wrap: nowrap; gap: 1rem; margin-top: 1.5rem; color: var(--black-400); font-size: 1.2rem; line-height: 1.3; overflow-x: auto;"
+              >
+                {(props.author?.stat?.shouts || 0) > 0 && (
+                  <span
+                    class="statItem"
+                    style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                  >
+                    <Icon
+                      name="create-article"
+                      class="statIcon"
+                      style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
+                      title={t('Publications')}
+                    />
+                    {t('some shouts', { count: props.author.stat?.shouts })}
+                  </span>
+                )}
+                {(props.author?.stat?.topics || 0) > 0 && (
+                  <span
+                    class="statItem"
+                    style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                  >
+                    <Icon
+                      name="create-literature"
+                      class="statIcon"
+                      style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
+                      title={t('Topics')}
+                    />
+                    {t('some topics', { count: props.author.stat?.topics })}
+                  </span>
+                )}
+                {props.author?.stat?.coauthors && props.author.stat.coauthors > 0 && (
+                  <span
+                    class="statItem"
+                    style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                  >
+                    <Icon
+                      name="feed-collaborate"
+                      class="statIcon"
+                      style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
+                      title={t('Co-authors')}
+                    />
+                    {t('some coauthors', { count: props.author.stat?.coauthors })}
+                  </span>
+                )}
+                {props.author?.stat?.viewed_shouts && props.author.stat.viewed_shouts > 0 && (
+                  <span
+                    class="statItem"
+                    style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                  >
+                    <Icon
+                      name="view"
+                      class="statIcon"
+                      style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
+                      title={t('Views')}
+                    />
+                    <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                      {props.author.stat?.viewed_shouts}
+                    </span>
+                  </span>
+                )}
+                {(props.author?.stat?.comments || 0) > 0 && (
+                  <span
+                    class="statItem"
+                    style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                  >
+                    <Icon
+                      name="comment"
+                      class="statIcon"
+                      style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
+                      title={t('Comments')}
+                    />
+                    <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                      {props.author.stat?.comments}
+                    </span>
+                    <span>/</span>
+                    <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                      {props.author.stat?.replies_count}
+                    </span>
+                  </span>
+                )}
+                {props.author?.stat &&
+                  ((props.author.stat?.rating_shouts && props.author.stat.rating_shouts !== 0) ||
+                    (props.author.stat?.rating_comments && props.author.stat.rating_comments !== 0)) && (
+                    <span
+                      class="statItem"
+                      style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                    >
+                      <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                        {(props.author.stat?.rating_shouts || 0) > 0 ? '+' : ''}
+                        {props.author.stat?.rating_shouts || 0}/
+                        {(props.author.stat?.rating_comments || 0) > 0 ? '+' : ''}
+                        {props.author.stat?.rating_comments || 0}
+                      </span>
+                    </span>
+                  )}
+              </div>
+            </Suspense>
           </Show>
         </div>
         <NoHydration>

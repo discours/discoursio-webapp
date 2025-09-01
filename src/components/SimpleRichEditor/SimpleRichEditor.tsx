@@ -1495,7 +1495,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           commands={displayedCommands()}
           onAction={handleAction}
           currentFormats={activeFormats()}
-          class={styles.topToolbar}
+          class={clsx(styles.topToolbar, styles.visible)}
           mode={currentToolbarMode() as ToolbarMode}
           editorId={props.editorId}
         />
@@ -1634,7 +1634,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           commands={displayedCommands()}
           onAction={handleAction}
           currentFormats={activeFormats()}
-          class={styles.bottomToolbar}
+          class={clsx(styles.bottomToolbar, styles.visible)}
           mode={currentToolbarMode() as ToolbarMode}
           editorId={props.editorId}
         />
@@ -1644,7 +1644,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           commands={displayedCommands()}
           onAction={handleAction}
           currentFormats={activeFormats()}
-          class={clsx(styles.floatingToolbar)}
+          class={clsx(styles.floatingToolbar, hasSelection() && styles.visible)}
           position={getFloatingToolbarPosition()}
           mode={currentToolbarMode() as ToolbarMode}
           editorId={props.editorId}

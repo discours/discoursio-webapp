@@ -768,12 +768,20 @@
   position: sticky;
   top: 0;
   border-bottom: 1px solid var(--color-border-light);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
 }
 
 .bottomToolbar {
   position: sticky;
   bottom: 0;
   border-top: 1px solid var(--color-border-light);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
 }
 
 .localVersionBox {

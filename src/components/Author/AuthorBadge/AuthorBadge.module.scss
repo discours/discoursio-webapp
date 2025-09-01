@@ -59,11 +59,48 @@
     font-size:1.2rem;
     color: var(--black-400);
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     font-weight: 500;
-    gap: 1rem;
+    gap: 0.6rem;
     max-width: 100%;
     overflow-wrap: break-word;
+    align-self: flex-start;
+  }
+
+  .stats {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 1rem;
+    margin-top: 0.4rem;
+    color: var(--black-400);
+    font-size: 1.2rem;
+    line-height: 1.3;
+    overflow-x: auto;
+  }
+
+  .statItem {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+
+  .statIcon {
+    width: 1.2rem;
+    height: 1.2rem;
+    flex-shrink: 0;
+    color: var(--black-400);
+  }
+
+  .statCount {
+    font-weight: 500;
+    color: var(--black-500);
+  }
+
+  .statLabel {
+    font-weight: 400;
+    color: var(--black-400);
   }
 
   .actions {
@@ -88,6 +125,7 @@
     flex-direction: row;
     margin-left: 5.2rem;
     gap: 1rem;
+    align-self: flex-start;
   }
 
   .actionButton {

@@ -3,7 +3,7 @@
  */
 
 /** Количество комментариев на странице */
-export const COMMENTS_PER_PAGE = 50
+export const COMMENTS_PER_PAGE = 20
 
 /** Количество статей на странице в ленте */
 export const ARTICLES_PER_PAGE = 20

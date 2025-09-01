@@ -11,12 +11,13 @@ export default gql`
       created_at
       stat {
         shouts
-        authors
+        coauthors
         followers
-        rating
-        comments
         rating_shouts
         rating_comments
+        comments
+        replies_count
+        viewed_shouts
       }
     }
   }

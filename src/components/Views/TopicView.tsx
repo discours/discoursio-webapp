@@ -136,6 +136,16 @@ export const TopicView = (props: Props) => {
     }
   })
 
+  // 🔧 ДОПОЛНИТЕЛЬНЫЙ ЭФФЕКТ: Синхронизируем с feedByTopic при изменении
+  createEffect(() => {
+    const topicFeed = feedByTopic()[props.topicSlug]
+    if (topicFeed?.length && sortedFeed().length === 0) {
+      console.log('[TopicView] Syncing with feedByTopic:', topicFeed.length)
+      setSortedFeed(topicFeed)
+      setLoadMoreHidden(topicFeed.length < FEED_PAGE_SIZE)
+    }
+  })
+
   // 3. Обновим эффект для отслеживания изменений в feed
   createEffect(
     on(

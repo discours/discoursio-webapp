@@ -50,11 +50,10 @@ import { FEED_PAGE_SIZE, orderByMode, useFeed } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { ReactionsProvider } from '~/context/reactions'
 import { useSession } from '~/context/session'
-import { loadAuthors, loadReactions, loadShouts, loadTopics } from '~/graphql/api/public'
+import { getAuthor, loadReactions, loadShouts, loadTopics } from '~/graphql/api/public'
 import {
   Author,
   LoadShoutsOptions,
-  QueryLoad_Authors_ByArgs,
   QueryLoad_Reactions_ByArgs,
   Reaction,
   ReactionKind,
@@ -106,9 +105,10 @@ const fetchAllTopics = async () => {
 }
 
 const fetchAuthor = async (slug: string) => {
-  const authorFetcher = loadAuthors({ by: { slug }, limit: 1, offset: 0 } as QueryLoad_Authors_ByArgs)
-  const aaa = await authorFetcher()
-  return aaa?.[0]
+  // 🔧 ИСПРАВЛЕНИЕ: Используем getAuthor для загрузки полной статистики с комментариями
+  const authorFetcher = getAuthor({ slug })
+  const author = await authorFetcher()
+  return author
 }
 
 export const route = {
@@ -242,20 +242,37 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
     }
   )
 
-  // author's comments
+  // author's comments - используем прямой доступ к props.data для SSR стабильности
   const [authorComments] = createResource(
-    () => author(),
-    async (authorData) => {
+    () => props.params.slug, // Зависимость от slug, а не от author для стабильности
+    async (slug) => {
       try {
-        if (!authorData) return []
-        return props.data.comments || (await fetchAuthorComments(authorData, 0))
+        // Сначала возвращаем данные из route.load
+        if (props.data.comments) {
+          console.log('[AuthorRoute] Using comments from route.load:', props.data.comments.length)
+          return props.data.comments
+        }
+
+        // Fallback: загружаем автора и его комментарии
+        const authorData = author()
+        if (!authorData) {
+          console.log('[AuthorRoute] No author data, loading author first')
+          const loadedAuthor = await fetchAuthor(slug)
+          if (loadedAuthor) {
+            return await fetchAuthorComments(loadedAuthor, 0)
+          }
+          return []
+        }
+
+        console.log('[AuthorRoute] Loading comments for author:', authorData.slug)
+        return await fetchAuthorComments(authorData, 0)
       } catch (error) {
         console.error('Error loading author comments:', error)
         return []
       }
     },
     {
-      initialValue: props.data.comments
+      initialValue: props.data.comments || []
     }
   )
 

@@ -136,17 +136,6 @@ export const AllAuthorsView = (props: Props) => {
         result = props.authorsByShouts || []
     }
 
-    // 🔍 ДИАГНОСТИКА
-    console.log('[AllAuthorsView] getAuthorsForLayout:', {
-      layout: currentLayout,
-      propsAuthors: props.authors?.length || 0,
-      propsFollowers: props.authorsByFollowers?.length || 0,
-      propsShouts: props.authorsByShouts?.length || 0,
-      contextAuthors: allAuthors().length,
-      loadedAuthors: loadedAuthors().length,
-      result: result.length
-    })
-
     return result
   })
 
