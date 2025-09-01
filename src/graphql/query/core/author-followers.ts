@@ -11,6 +11,7 @@ export default gql`
       created_at
       stat {
         shouts
+        topics
       }
     }
   }

@@ -144,9 +144,23 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
 
       const fetcher = await getAuthor(queryOptions)
       const author = await fetcher()
+
       if (author) {
-        addAuthor(author as Author)
+        // 🔍 ЗАЩИТА: Проверяем соответствие slug перед добавлением в store
+        if (author.slug === queryOptions.slug) {
+          console.log('[AuthorsProvider] Adding author to store:', author.slug)
+          addAuthor(author as Author)
+          return author
+        } else {
+          console.error('[AuthorsProvider] SLUG MISMATCH - refusing to add wrong author to store!', {
+            requested: queryOptions.slug,
+            received: author.slug,
+            authorId: author.id
+          })
+          return undefined // Возвращаем undefined вместо неправильного автора
+        }
       }
+
       return author
     } catch (error) {
       console.error('[context.authors] Error loading author:', error, 'for opts:', opts)

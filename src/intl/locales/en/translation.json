@@ -16,7 +16,7 @@
   "Some new comments to your publication": "{commentsCount, plural, one {New comment} other {{commentsCount} comments}} to your publication",
   "Some new replies to your comment": "{commentsCount, plural, one {New reply} other {{commentsCount} replays}} to your publication",
   "some shouts": "{count} {count, plural, one {post} few {posts}  other {posts}}",
-  "some replies": "{count} {count, plural, one {reply} few {{count} replies} other {{count} replies}}",
+  "some replies": "{count, plural, =0 {no replies} one {{count} reply} few {{count} replies} other {{count} replies}}",
   "some views": "{count} {count, plural, one {view} few {views} other {views}}",
   "some posts": "{count, plural, =0 {no publications} one {{count} publication} other {{count} publications}}",
   "some publications": "{count} {count, plural, one {publication} few {publications} other {publications}}",

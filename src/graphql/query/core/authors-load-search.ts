@@ -18,6 +18,7 @@ export default gql`
         comments
         replies_count
         viewed_shouts
+        topics
       }
     }
   }

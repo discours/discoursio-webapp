@@ -13,6 +13,7 @@ export default gql`
           shouts
           coauthors
           followers
+          topics
         }
     }
   }

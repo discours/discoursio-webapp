@@ -213,7 +213,7 @@ export const AuthorCard = (props: Props) => {
                     style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
                   >
                     <Icon
-                      name="create-article"
+                      name="feed-all"
                       class="statIcon"
                       style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
                       title={t('Publications')}
@@ -249,20 +249,6 @@ export const AuthorCard = (props: Props) => {
                     {t('some coauthors', { count: props.author.stat?.coauthors })}
                   </span>
                 )}
-                {(props.author?.stat?.followers || 0) > 0 && (
-                  <span
-                    class="statItem"
-                    style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
-                  >
-                    <Icon
-                      name="subscriptions"
-                      class="statIcon"
-                      style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
-                      title={t('Followers')}
-                    />
-                    {t('some followers', { count: props.author.stat?.followers })}
-                  </span>
-                )}
                 {props.author?.stat?.viewed_shouts && props.author.stat.viewed_shouts > 0 && (
                   <span
                     class="statItem"
@@ -274,7 +260,7 @@ export const AuthorCard = (props: Props) => {
                       style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
                       title={t('Views')}
                     />
-                    <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                    <span class="statCount" title={t('some views', { count: props.author.stat?.viewed_shouts })}>
                       {props.author.stat?.viewed_shouts}
                     </span>
                   </span>
@@ -284,29 +270,12 @@ export const AuthorCard = (props: Props) => {
                     class="statItem"
                     style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
                   >
-                    <Icon
-                      name="comment"
-                      class="statIcon"
-                      style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
-                      title={t('Comments')}
-                    />
-                    <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                    <Icon name="comment" class="statIcon" style="width: 1.2rem; height: 1.2rem; flex-shrink: 0;" />
+                    <span title={t('some comments', { count: props.author.stat?.comments })}>
                       {props.author.stat?.comments}
                     </span>
-                  </span>
-                )}
-                {props.author?.stat?.replies_count && props.author.stat.replies_count > 0 && (
-                  <span
-                    class="statItem"
-                    style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
-                  >
-                    <Icon
-                      name="reply"
-                      class="statIcon"
-                      style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
-                      title={t('Replies')}
-                    />
-                    <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                    {' / '}
+                    <span title={t('some replies', { count: props.author.stat?.replies_count })}>
                       {props.author.stat?.replies_count}
                     </span>
                   </span>
@@ -318,11 +287,14 @@ export const AuthorCard = (props: Props) => {
                       class="statItem"
                       style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
                     >
-                      <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                      <span class="statCount" title={t('Rating shouts')}>
                         {(props.author.stat?.rating_shouts || 0) > 0 ? '+' : ''}
-                        {props.author.stat?.rating_shouts || 0}/
-                        {(props.author.stat?.rating_comments || 0) > 0 ? '+' : ''}
-                        {props.author.stat?.rating_comments || 0}
+                        {props.author.stat?.rating_shouts || 0}
+                        {' / '}
+                        <span title={t('Rating comments')}>
+                          {(props.author.stat?.rating_comments || 0) > 0 ? '+' : ''}
+                          {props.author.stat?.rating_comments || 0}
+                        </span>
                       </span>
                     </span>
                   )}

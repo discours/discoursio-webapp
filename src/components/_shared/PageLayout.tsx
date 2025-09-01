@@ -11,7 +11,6 @@ import { getCachedImageUrl } from '~/lib/imageCache'
 import { generateOGMetadata } from '~/lib/openGraph'
 import { FooterView } from '../Discours/Footer'
 import { Header } from '../HeaderNav'
-import { Loading } from './Loading'
 
 import styles from './PageLayout.module.scss'
 
@@ -167,7 +166,7 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
       />
 
       <div class={props.withPadding ? 'container' : ''}>
-        <Suspense fallback={<Loading />}>
+        <Suspense fallback={<div>Загрузка страницы...</div>}>
           {/* Заголовок страницы всегда обновляется */}
           <Title>{pageTitle()}</Title>
           <Meta

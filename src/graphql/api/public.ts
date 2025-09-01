@@ -461,8 +461,42 @@ export const loadCommentsBranch = (opts: QueryLoad_Comments_BranchArgs) => {
  */
 export const getAuthor = (options: QueryGet_AuthorArgs) => {
   return async () => {
+    console.log('[getAuthor] API call with options:', options)
     const resp = await defaultClient.query(getAuthorQuery, options).toPromise()
-    return resp?.data?.get_author || null
+
+    // 🔍 ДИАГНОСТИКА: Детальный анализ ответа от GraphQL
+    console.log('[getAuthor] Raw GraphQL response:', {
+      hasData: !!resp?.data,
+      hasAuthor: !!resp?.data?.get_author,
+      errors: resp?.error,
+      fullResponse: resp
+    })
+
+    const author = resp?.data?.get_author || null
+
+    if (author) {
+      console.log('[getAuthor] API response author details:', {
+        requestedSlug: options.slug,
+        returnedSlug: author.slug,
+        authorId: author.id,
+        authorName: author.name,
+        isSlugMatch: author.slug === options.slug
+      })
+
+      // 🚨 КРИТИЧНО: Проверяем соответствие slug
+      if (author.slug !== options.slug) {
+        console.error('[getAuthor] SLUG MISMATCH - API returned wrong author!', {
+          requested: options.slug,
+          received: author.slug,
+          authorId: author.id,
+          authorName: author.name
+        })
+      }
+    } else {
+      console.log('[getAuthor] API response: null (author not found)')
+    }
+
+    return author
   }
 }
 

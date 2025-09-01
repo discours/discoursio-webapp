@@ -18,6 +18,7 @@ export default gql`
         comments
         rating_shouts
         rating_comments
+        topics
       }
     }
   }

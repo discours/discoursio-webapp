@@ -107,15 +107,7 @@ export const AuthorBadge = (props: Props) => {
                         class="statItem"
                         style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
                       >
-                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
-                          {props.author.stat?.shouts}
-                        </span>
-                        &nbsp;
-                        {props.author.stat?.shouts === 1
-                          ? 'публикация'
-                          : props.author.stat?.shouts && props.author.stat.shouts < 5
-                            ? 'публикации'
-                            : 'публикаций'}
+                        {t('some shouts', { count: props.author.stat?.shouts })}
                       </span>
                     )}
                     {(props.author?.stat?.topics || 0) > 0 && (
@@ -123,15 +115,7 @@ export const AuthorBadge = (props: Props) => {
                         class="statItem"
                         style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
                       >
-                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
-                          {props.author.stat?.topics}
-                        </span>
-                        &nbsp;
-                        {props.author.stat?.topics === 1
-                          ? 'тема'
-                          : props.author.stat?.topics && props.author.stat.topics < 5
-                            ? 'темы'
-                            : 'тем'}
+                        {t('some topics', { count: props.author.stat?.topics })}
                       </span>
                     )}
                     {props.author?.stat?.coauthors && props.author.stat.coauthors > 0 && (
@@ -144,7 +128,7 @@ export const AuthorBadge = (props: Props) => {
                           class="statIcon"
                           style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
                         />
-                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
+                        <span class="statCount" title={t('some coauthors', { count: props.author.stat?.coauthors })}>
                           {props.author.stat?.coauthors}
                         </span>
                       </span>
@@ -154,46 +138,17 @@ export const AuthorBadge = (props: Props) => {
                         class="statItem"
                         style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
                       >
-                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
-                          {props.author.stat?.followers}
-                        </span>
-                        &nbsp;
-                        {props.author.stat?.followers === 1
-                          ? 'подписчик'
-                          : props.author.stat?.followers && props.author.stat.followers < 5
-                            ? 'подписчика'
-                            : 'подписчиков'}
-                      </span>
-                    )}
-                    {props.author?.stat?.replies_count && props.author.stat.replies_count > 0 && (
-                      <span
-                        class="statItem"
-                        style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
-                      >
-                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
-                          {props.author.stat?.replies_count}
-                        </span>
-                        &nbsp;
-                        {props.author.stat?.replies_count === 1
-                          ? 'ответ'
-                          : props.author.stat?.replies_count && props.author.stat.replies_count < 5
-                            ? 'ответа'
-                            : 'ответов'}
+                        {t('some followers', { count: props.author.stat?.followers })}
                       </span>
                     )}
                     {props.author?.stat?.viewed_shouts && props.author.stat.viewed_shouts > 0 && (
                       <span
                         class="statItem"
                         style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
+                        title={t('some views', { count: props.author.stat?.viewed_shouts })}
                       >
-                        <Icon
-                          name="view"
-                          class="statIcon"
-                          style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
-                        />
-                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
-                          {props.author.stat?.viewed_shouts}
-                        </span>
+                        <Icon name="view" class="statIcon" style="width: 1.2rem; height: 1.2rem; flex-shrink: 0;" />
+                        {props.author.stat?.viewed_shouts}
                       </span>
                     )}
                     {(props.author?.stat?.comments || 0) > 0 && (
@@ -201,13 +156,13 @@ export const AuthorBadge = (props: Props) => {
                         class="statItem"
                         style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
                       >
-                        <Icon
-                          name="comment"
-                          class="statIcon"
-                          style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
-                        />
-                        <span class="statCount" style="font-weight: 500; color: var(--black-500);">
-                          {props.author.stat?.comments}
+                        <Icon name="comment" class="statIcon" style="width: 1.2rem; height: 1.2rem; flex-shrink: 0;" />
+                        <span class="statCount" title={t('some comments', { count: props.author.stat?.comments })}>
+                          {props.author.stat?.comments || 0}
+                        </span>
+                        {' / '}
+                        <span class="statCount" title={t('some replies', { count: props.author.stat?.replies_count })}>
+                          {props.author.stat?.replies_count || 0}
                         </span>
                       </span>
                     )}
@@ -218,11 +173,16 @@ export const AuthorBadge = (props: Props) => {
                           class="statItem"
                           style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
                         >
-                          <span class="statCount" style="font-weight: 500; color: var(--black-500);">
-                            {(props.author.stat?.rating_shouts || 0) > 0 ? '+' : ''}
-                            {props.author.stat?.rating_shouts || 0}/
-                            {(props.author.stat?.rating_comments || 0) > 0 ? '+' : ''}
-                            {props.author.stat?.rating_comments || 0}
+                          <span class="statCount">
+                            <span title={t('Rating shouts')}>
+                              {(props.author.stat?.rating_shouts || 0) > 0 ? '+' : ''}
+                              {props.author.stat?.rating_shouts || 0}
+                            </span>
+                            {' / '}
+                            <span title={t('Rating comments')}>
+                              {(props.author.stat?.rating_comments || 0) > 0 ? '+' : ''}
+                              {props.author.stat?.rating_comments || 0}
+                            </span>
                           </span>
                         </span>
                       )}

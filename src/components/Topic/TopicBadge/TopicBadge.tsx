@@ -61,12 +61,7 @@ export const TopicBadge = (props: Props) => {
           <a href={`/topic/${props.topic.slug}`} class={styles.info}>
             <span class={styles.title}>{title()}</span>
 
-            <Show
-              when={props.topic.body}
-              fallback={
-                <div class={styles.description}>{t('some posts', { count: props.topic?.stat?.shouts ?? 0 })}</div>
-              }
-            >
+            <Show when={props.topic.body}>
               <div innerHTML={props.topic?.body || ''} class={clsx('text-truncate', styles.description)} />
             </Show>
           </a>
