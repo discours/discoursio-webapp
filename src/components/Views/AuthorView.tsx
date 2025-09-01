@@ -1,7 +1,7 @@
 import { A, useLocation, useParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { createEffect, createMemo, createSignal, For, Match, on, onMount, Show, Switch } from 'solid-js'
-
+import { Loading } from '~/components/_shared/Loading'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { CommentsList } from '~/components/Comments/CommentsList'
 import { COMMENTS_PER_PAGE } from '~/constants/pagination'
@@ -602,7 +602,7 @@ export const AuthorView = (props: AuthorViewProps) => {
   return (
     <div class={styles.authorPage}>
       <div class="wide-container">
-        <Show when={author()}>
+        <Show when={author()} fallback={<Loading />}>
           <>
             <div class={styles.authorHeader}>
               <AuthorCard
@@ -679,6 +679,7 @@ export const AuthorView = (props: AuthorViewProps) => {
                       <div style="text-align: center; padding: 4rem 2rem;">
                         <div>
                           <h3 style="margin-bottom: 1rem; color: #666;">{t('Loading comments...')}</h3>
+                          <Loading />
                         </div>
                       </div>
                     }
@@ -741,7 +742,7 @@ export const AuthorView = (props: AuthorViewProps) => {
                   <div class="row">
                     <div class="col-md-20 col-lg-18">
                       <div style="text-align: center; padding: 4rem 2rem;">
-                        <Show when={author()}>
+                        <Show when={author()} fallback={<Loading />}>
                           <div>
                             <h3 style="margin-bottom: 1rem; color: #666;">{t('No publications found')}</h3>
                             <p style="color: #999;">{t('Try changing filters or check back later')}</p>

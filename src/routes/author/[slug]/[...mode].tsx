@@ -41,7 +41,6 @@
 
 import { RouteSectionProps, useParams, useSearchParams } from '@solidjs/router'
 import { createEffect, createMemo, createResource, createSignal, ErrorBoundary, on, onMount, Show } from 'solid-js'
-
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { AuthorView } from '~/components/Views/AuthorView'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
@@ -112,17 +111,6 @@ const fetchAuthor = async (slug: string) => {
     const authorFetcher = getAuthor({ slug })
     const author = await authorFetcher()
     console.log('[fetchAuthor] Result:', author ? `Found ${author.slug} (id: ${author.id})` : 'Not found')
-
-    // 🔍 ЗАЩИТА: Проверяем соответствие slug
-    if (author && author.slug !== slug) {
-      console.error('[fetchAuthor] API returned wrong author, rejecting result!', {
-        requested: slug,
-        received: author.slug,
-        authorId: author.id
-      })
-      return null // Возвращаем null вместо неправильного автора
-    }
-
     return author
   } catch (error) {
     console.error('[fetchAuthor] Error:', error)
@@ -172,15 +160,11 @@ export type AuthorPageProps = {
 }
 
 export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
-  console.log('[AuthorPage] Component rendering:', {
-    propsData: {
-      hasAuthor: !!props.data?.author,
-      authorSlug: props.data?.author?.slug,
-      articlesCount: props.data?.articles?.length || 0,
-      commentsCount: props.data?.comments?.length || 0
-    },
-    params: props.params,
-    urlSlug: props.params.slug
+  console.log('[AuthorPage] Component rendering with props.data:', {
+    hasAuthor: !!props.data?.author,
+    authorSlug: props.data?.author?.slug,
+    articlesCount: props.data?.articles?.length || 0,
+    commentsCount: props.data?.comments?.length || 0
   })
 
   const { t } = useLocalize()
@@ -196,21 +180,33 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
     setIsClientMounted(true)
   })
 
-  // 🔧 ИСПРАВЛЕНИЕ: Правильная обработка props.data как Promise из route.load (SolidJS паттерн)
+  // 🔧 ИСПРАВЛЕНИЕ: Правильная обработка props.data как Promise из route.load
   const [resolvedData] = createResource(
     () => props.data,
-    (data) => {
-      console.log('[AuthorPage] Resolving props.data:', {
+    async (data) => {
+      console.log('[AuthorPage] Resolving props.data:', typeof data)
+      // Если это Promise, ждем его разрешения
+      if (data && typeof data === 'object' && 'then' in data) {
+        const resolved = await data
+        console.log('[AuthorPage] Promise resolved:', {
+          hasAuthor: !!resolved.author,
+          authorSlug: resolved.author?.slug
+        })
+        return resolved
+      }
+      // Если это уже разрешенные данные
+      console.log('[AuthorPage] Direct data:', {
         hasAuthor: !!data?.author,
-        authorSlug: data?.author?.slug,
-        articlesCount: data?.articles?.length || 0,
-        commentsCount: data?.comments?.length || 0
+        authorSlug: data?.author?.slug
       })
-      return data // Просто возвращаем resolved данные
+      return data
     },
     {
-      // Если данные уже resolved - используем как initialValue
-      initialValue: typeof props.data === 'object' && !('then' in props.data) ? props.data : undefined
+      // Важно для стабильной гидрации
+      initialValue:
+        typeof props.data === 'object' && !('then' in props.data)
+          ? props.data
+          : { author: undefined, articles: [], comments: [], topics: [] }
     }
   )
 
@@ -303,13 +299,9 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
 
   // author's comments - используем прямой доступ к props.data для SSR стабильности
   const [authorComments] = createResource(
-    () => {
-      console.log('[AuthorRoute] Comments createResource source - props.params.slug:', props.params.slug)
-      return props.params.slug
-    }, // Зависимость от slug, а не от author для стабильности
+    () => props.params.slug, // Зависимость от slug, а не от author для стабильности
     async (slug) => {
       try {
-        console.log('[AuthorRoute] Comments createResource fetcher called with slug:', slug)
         // Сначала возвращаем данные из route.load
         const resolved = resolvedData()
         if (resolved?.comments?.length) {
@@ -320,8 +312,8 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
         // Fallback: загружаем автора и его комментарии
         const authorData = author()
         if (!authorData) {
-          console.log('[AuthorRoute] No author data, loading author first for URL slug:', props.params.slug)
-          const loadedAuthor = await fetchAuthor(props.params.slug)
+          console.log('[AuthorRoute] No author data, loading author first')
+          const loadedAuthor = await fetchAuthor(slug)
           if (loadedAuthor) {
             return await fetchAuthorComments(loadedAuthor, 0)
           }
@@ -345,78 +337,38 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
     return isSessionLoaded() && isClientMounted() && !authorShouts.loading && !authorComments.loading
   })
 
-  // Показываем 404 если нет автора после загрузки
-  const shouldShow404 = createMemo(() => {
-    const ready = isReady()
-    const hasAuthor = !!(resolvedData()?.author || author())
-
-    if (ready && !hasAuthor) {
-      console.log('[AuthorPage] Ready but no author found - showing 404:', {
-        urlSlug: props.params.slug,
-        ready,
-        hasAuthor,
-        hasResolvedData: !!resolvedData(),
-        hasDirectAuthor: !!author()
-      })
-      return true
-    }
-    return false
-  })
-
-  if (shouldShow404()) {
-    return <FourOuFourView />
-  }
-
-  if (!isReady()) {
-    return <div>Загрузка...</div>
-  }
-
   return (
-    <Show when={currentSlug()} keyed>
-      {(_slug) => (
-        <ErrorBoundary
-          fallback={(_err) => {
-            console.error('ErrorBoundary caught an error', _err)
-            return <FourOuFourView />
-          }}
-        >
-          <Show
-            when={
-              !(authorShouts.error || authorComments.error) &&
-              (resolvedData()?.author || author()) &&
-              // 🔍 КРИТИЧНО: Проверяем соответствие slug URL
-              (resolvedData()?.author?.slug === props.params.slug || author()?.slug === props.params.slug)
-            }
-            fallback={(() => {
-              console.log('[AuthorPage] Showing 404 - author not found or slug mismatch:', {
-                urlSlug: props.params.slug,
-                foundAuthorSlug: resolvedData()?.author?.slug || author()?.slug,
-                hasAuthor: !!(resolvedData()?.author || author()),
-                hasErrors: !!(authorShouts.error || authorComments.error)
-              })
+    <Show when={isReady()} fallback={null}>
+      <Show when={currentSlug()} keyed>
+        {(_slug) => (
+          <ErrorBoundary
+            fallback={(_err) => {
+              console.error('ErrorBoundary caught an error', _err)
               return <FourOuFourView />
-            })()}
+            }}
           >
-            <PageLayout
-              title={title()}
-              headerTitle={resolvedData()?.author?.name || author()?.name || ''}
-              slug={resolvedData()?.author?.slug || author()?.slug}
-              desc={desc()}
-              cover={cover()}
-              author={resolvedData()?.author || (author() as Author)}
-            >
-              <ReactionsProvider>
-                <AuthorView
-                  author={resolvedData()?.author || (author() as Author)}
-                  authorSlug={decodeURIComponent(props.params.slug)}
-                  shouts={authorShouts() || []}
-                  comments={authorComments() || []}
-                />
-              </ReactionsProvider>
-            </PageLayout>
-          </Show>
-        </ErrorBoundary>
-      )}
+            <Show when={!(authorShouts.error || authorComments.error)}>
+              <PageLayout
+                title={title()}
+                headerTitle={resolvedData()?.author?.name || author()?.name || ''}
+                slug={resolvedData()?.author?.slug || author()?.slug}
+                desc={desc()}
+                cover={cover()}
+                author={resolvedData()?.author || (author() as Author)}
+              >
+                <ReactionsProvider>
+                  <AuthorView
+                    author={resolvedData()?.author || (author() as Author)}
+                    authorSlug={decodeURIComponent(props.params.slug)}
+                    shouts={authorShouts() || []}
+                    comments={authorComments() || []}
+                  />
+                </ReactionsProvider>
+              </PageLayout>
+            </Show>
+          </ErrorBoundary>
+        )}
+      </Show>
     </Show>
   )
 }

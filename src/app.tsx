@@ -4,6 +4,7 @@ import { FileRoutes } from '@solidjs/start/router'
 import { Component, createEffect, createSignal, ErrorBoundary, type JSX, on, onMount, Suspense } from 'solid-js'
 
 import { sessionStateChanged } from '~/context/session'
+import { Loading } from './components/_shared/Loading'
 import { NotificationsPanelPortal } from './components/_shared/NotificationsPanelPortal'
 import { OfflineStatus } from './components/_shared/OfflineStatus'
 import { AuthorsProvider } from './context/authors'
@@ -191,7 +192,7 @@ export const Providers: Component<{ children?: JSX.Element }> = (props) => {
                           <FeaturedFeedProvider>
                             <FollowingProvider>
                               <MetaProvider>
-                                <Suspense>{props.children}</Suspense>
+                                <Suspense fallback={<Loading />}>{props.children}</Suspense>
                                 <NotificationsPanelPortal />
                               </MetaProvider>
                             </FollowingProvider>
