@@ -22,13 +22,15 @@ export const ImageCropper = (props: CropperProps) => {
   const [cropData, setCropData] = createSignal({
     x: 0,
     y: 0,
-    width: 300,
-    height: 300
+    width: 200,
+    height: 200
   })
   const [isDragging, setIsDragging] = createSignal(false)
   const [dragStart, setDragStart] = createSignal({ x: 0, y: 0 })
   const [imageLoaded, setImageLoaded] = createSignal(false)
   const [imageSize, setImageSize] = createSignal({ width: 0, height: 0 })
+  const [canvasSize, setCanvasSize] = createSignal({ width: 400, height: 400 })
+  const [scale, setScale] = createSignal(1)
 
   const drawImage = () => {
     if (!canvasRef || !imageRef || !imageLoaded()) return
@@ -38,28 +40,53 @@ export const ImageCropper = (props: CropperProps) => {
 
     const canvas = canvasRef
     const img = imageRef
+    const currentScale = scale()
 
     // Очищаем canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // Рисуем изображение
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    // Вычисляем размеры для отображения изображения (масштабированного)
+    const displayWidth = img.naturalWidth * currentScale
+    const displayHeight = img.naturalHeight * currentScale
+    
+    // Центрируем изображение на canvas
+    const offsetX = (canvas.width - displayWidth) / 2
+    const offsetY = (canvas.height - displayHeight) / 2
 
-    // Рисуем затемнение
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
+    // Рисуем изображение с масштабом
+    ctx.drawImage(img, offsetX, offsetY, displayWidth, displayHeight)
+
+    // Рисуем затемнение поверх всего
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Очищаем область обрезки
+    // Очищаем область обрезки (делаем ее прозрачной)
     const crop = cropData()
     ctx.clearRect(crop.x, crop.y, crop.width, crop.height)
 
-    // Рисуем изображение в области обрезки
-    ctx.drawImage(img, crop.x, crop.y, crop.width, crop.height, crop.x, crop.y, crop.width, crop.height)
+    // Перерисовываем изображение в области обрезки
+    ctx.drawImage(img, offsetX, offsetY, displayWidth, displayHeight)
 
-    // Рисуем рамку
+    // Рисуем рамку области обрезки
     ctx.strokeStyle = '#fff'
     ctx.lineWidth = 2
     ctx.strokeRect(crop.x, crop.y, crop.width, crop.height)
+
+    // Добавляем углы для удобства
+    const cornerSize = 10
+    ctx.fillStyle = '#fff'
+    // Левый верхний
+    ctx.fillRect(crop.x - 1, crop.y - 1, cornerSize, 2)
+    ctx.fillRect(crop.x - 1, crop.y - 1, 2, cornerSize)
+    // Правый верхний
+    ctx.fillRect(crop.x + crop.width - cornerSize + 1, crop.y - 1, cornerSize, 2)
+    ctx.fillRect(crop.x + crop.width - 1, crop.y - 1, 2, cornerSize)
+    // Левый нижний
+    ctx.fillRect(crop.x - 1, crop.y + crop.height - 1, cornerSize, 2)
+    ctx.fillRect(crop.x - 1, crop.y + crop.height - cornerSize + 1, 2, cornerSize)
+    // Правый нижний
+    ctx.fillRect(crop.x + crop.width - cornerSize + 1, crop.y + crop.height - 1, cornerSize, 2)
+    ctx.fillRect(crop.x + crop.width - 1, crop.y + crop.height - cornerSize + 1, 2, cornerSize)
   }
 
   const handleMouseDown = (e: MouseEvent) => {
@@ -100,23 +127,45 @@ export const ImageCropper = (props: CropperProps) => {
     if (!canvasRef || !imageRef || !imageLoaded()) return null
 
     const crop = cropData()
-    const scale = imageSize().width / canvasRef.width
+    const currentScale = scale()
+    const img = imageRef
+    
+    // Вычисляем размеры отображения изображения
+    const displayWidth = img.naturalWidth * currentScale
+    const displayHeight = img.naturalHeight * currentScale
+    
+    // Вычисляем смещение изображения на canvas
+    const offsetX = (canvasRef.width - displayWidth) / 2
+    const offsetY = (canvasRef.height - displayHeight) / 2
+
+    // Вычисляем координаты обрезки относительно оригинального изображения
+    const sourceX = (crop.x - offsetX) / currentScale
+    const sourceY = (crop.y - offsetY) / currentScale
+    const sourceWidth = crop.width / currentScale
+    const sourceHeight = crop.height / currentScale
+
+    // Проверяем границы
+    const clampedSourceX = Math.max(0, Math.min(img.naturalWidth - sourceWidth, sourceX))
+    const clampedSourceY = Math.max(0, Math.min(img.naturalHeight - sourceHeight, sourceY))
+    const clampedSourceWidth = Math.min(sourceWidth, img.naturalWidth - clampedSourceX)
+    const clampedSourceHeight = Math.min(sourceHeight, img.naturalHeight - clampedSourceY)
 
     // Создаем новый canvas для обрезанного изображения
     const cropCanvas = document.createElement('canvas')
     const cropCtx = cropCanvas.getContext('2d')
     if (!cropCtx) return null
 
-    cropCanvas.width = crop.width * scale
-    cropCanvas.height = crop.height * scale
+    // Размер выходного изображения
+    cropCanvas.width = 300 // Фиксированный размер вывода
+    cropCanvas.height = 300
 
     // Рисуем обрезанное изображение
     cropCtx.drawImage(
-      imageRef,
-      crop.x * scale,
-      crop.y * scale,
-      crop.width * scale,
-      crop.height * scale,
+      img,
+      clampedSourceX,
+      clampedSourceY,
+      clampedSourceWidth,
+      clampedSourceHeight,
       0,
       0,
       cropCanvas.width,
@@ -135,10 +184,15 @@ export const ImageCropper = (props: CropperProps) => {
         throw new Error('Не удалось создать обрезанное изображение')
       }
 
-      // Конвертируем canvas в blob
+      // Конвертируем canvas в blob, затем в File
       croppedCanvas.toBlob((blob) => {
         if (blob) {
-          props.onSave(blob)
+          // Создаем File объект из blob
+          const file = new File([blob], `cropped-${props.uploadFile.name}`, {
+            type: 'image/png',
+            lastModified: Date.now()
+          })
+          props.onSave(file)
         }
       }, 'image/png')
     } catch (error) {
@@ -149,39 +203,53 @@ export const ImageCropper = (props: CropperProps) => {
   }
 
   onMount(() => {
-    if (!containerRef) return
+    if (!containerRef || !imageRef || !canvasRef) return
 
-    // Создаем изображение
-    const img = new Image()
-    img.onload = () => {
-      setImageSize({ width: img.naturalWidth, height: img.naturalHeight })
+    // Настраиваем обработчики изображения
+    imageRef.onload = () => {
+      if (!imageRef || !canvasRef) return
+      
+      const imgWidth = imageRef.naturalWidth
+      const imgHeight = imageRef.naturalHeight
+      
+      setImageSize({ width: imgWidth, height: imgHeight })
       setImageLoaded(true)
 
-      // Настраиваем canvas
-      if (canvasRef) {
-        canvasRef.width = 400
-        canvasRef.height = 400
+      // Настраиваем canvas размеры
+      const canvasWidth = 500
+      const canvasHeight = 500
+      canvasRef.width = canvasWidth
+      canvasRef.height = canvasHeight
+      setCanvasSize({ width: canvasWidth, height: canvasHeight })
 
-        // Центрируем область обрезки
-        const size = Math.min(canvasRef.width, canvasRef.height) * 0.6
-        setCropData({
-          x: (canvasRef.width - size) / 2,
-          y: (canvasRef.height - size) / 2,
-          width: size,
-          height: size
-        })
+      // Вычисляем масштаб для подгонки изображения в canvas
+      const scaleX = (canvasWidth * 0.9) / imgWidth
+      const scaleY = (canvasHeight * 0.9) / imgHeight
+      const fitScale = Math.min(scaleX, scaleY)
+      setScale(fitScale)
 
-        drawImage()
-      }
+      // Настраиваем область обрезки (квадрат в центре)
+      const cropSize = Math.min(canvasWidth, canvasHeight) * 0.4
+      setCropData({
+        x: (canvasWidth - cropSize) / 2,
+        y: (canvasHeight - cropSize) / 2,
+        width: cropSize,
+        height: cropSize
+      })
+
+      drawImage()
     }
 
-    img.src = URL.createObjectURL(props.uploadFile.file)
-    imageRef = img
+    imageRef.onerror = () => {
+      console.error('Ошибка загрузки изображения для кропинга')
+    }
 
-    // Добавляем обработчики событий
-    const canvas = canvasRef
-    if (canvas) {
-      canvas.addEventListener('mousedown', handleMouseDown)
+    // Загружаем изображение
+    imageRef.src = URL.createObjectURL(props.uploadFile.file)
+
+    // Добавляем обработчики событий для canvas
+    if (canvasRef) {
+      canvasRef.addEventListener('mousedown', handleMouseDown)
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
     }
@@ -193,29 +261,61 @@ export const ImageCropper = (props: CropperProps) => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-    if (imageRef) {
+    if (imageRef?.src) {
       URL.revokeObjectURL(imageRef.src)
     }
   })
 
   return (
-    <div class={styles.cropperContainer}>
+    <div ref={containerRef} class={styles.cropperContainer}>
       <div class={styles.cropperCanvas}>
+        {/* Скрытое изображение для загрузки и расчетов */}
+        <img
+          ref={imageRef}
+          style={{ display: 'none' }}
+          alt="Crop source"
+        />
+        
+        {/* Canvas для отображения и кропинга */}
         <canvas
           ref={canvasRef}
+          class={isDragging() ? 'dragging' : ''}
           style={{
-            border: '1px solid #ccc',
             cursor: isDragging() ? 'grabbing' : 'grab',
             'max-width': '100%',
             'max-height': '400px'
           }}
         />
-        <canvas ref={canvasRef} class={isDragging() ? 'dragging' : ''} />
+      </div>
+
+      {/* Zoom controls */}
+      <div class={styles.cropperControls} style={{ "margin-bottom": "1rem" }}>
+        <Button 
+          variant="secondary" 
+          onClick={() => {
+            const newScale = Math.max(0.1, scale() * 0.8)
+            setScale(newScale)
+            drawImage()
+          }}
+          value="🔍−"
+        />
+        <span style={{ margin: "0 1rem", "font-size": "0.9rem" }}>
+          {Math.round(scale() * 100)}%
+        </span>
+        <Button 
+          variant="secondary" 
+          onClick={() => {
+            const newScale = Math.min(3, scale() * 1.25)
+            setScale(newScale)
+            drawImage()
+          }}
+          value="🔍+"
+        />
       </div>
 
       <div class={styles.cropperControls}>
         <Show when={props.onDecline}>
-          <Button variant="secondary" onClick={props.onDecline} value={t('Decline')} />
+          <Button variant="secondary" onClick={props.onDecline} value={t('Cancel')} />
         </Show>
 
         <Button

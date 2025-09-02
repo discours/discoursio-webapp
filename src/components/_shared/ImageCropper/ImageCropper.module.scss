@@ -30,6 +30,14 @@
   cursor: grabbing;
 }
 
+.zoomControls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .cropperControls {
   display: flex;
   gap: 0.5rem;
