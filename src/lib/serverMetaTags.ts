@@ -1,6 +1,6 @@
 import { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { getPageKeywords } from '~/intl/keywords'
-import { generateOGMetadata, OG_SITE_NAME, OG_TWITTER_SITE } from '~/lib/openGraph'
+import { generatePageSpecificOGMetadata, getPageType, OG_SITE_NAME, OG_TWITTER_SITE } from '~/lib/openGraph'
 
 /**
  * Централизованная функция для генерации всех метатегов на сервере
@@ -20,8 +20,9 @@ export function generateServerMetaTags(
 ): string {
   const { pathname, defaultTitle, defaultDescription, locale, t } = options
 
-  // Генерируем OG метаданные через существующую систему
-  const ogMetadata = generateOGMetadata(contentData, {
+  // Генерируем OG метаданные через новую систему
+  const pageType = getPageType(pathname)
+  const ogMetadata = generatePageSpecificOGMetadata(pageType, contentData, {
     pathname,
     defaultTitle: defaultTitle || t('Discours'),
     defaultDescription: defaultDescription || t('Discours – an open magazine about culture, science and society'),
@@ -85,7 +86,7 @@ export function generateServerMetaTags(
 /**
  * Генерирует метатеги для статей
  */
-function generateArticleMetaTags(ogMetadata: ReturnType<typeof generateOGMetadata>): string {
+function generateArticleMetaTags(ogMetadata: ReturnType<typeof generatePageSpecificOGMetadata>): string {
   if (ogMetadata.type !== 'article') return ''
 
   let articleTags = ''
@@ -120,7 +121,7 @@ function generateArticleMetaTags(ogMetadata: ReturnType<typeof generateOGMetadat
 /**
  * Генерирует метатеги для профилей авторов
  */
-function generateProfileMetaTags(ogMetadata: ReturnType<typeof generateOGMetadata>): string {
+function generateProfileMetaTags(ogMetadata: ReturnType<typeof generatePageSpecificOGMetadata>): string {
   if (ogMetadata.type !== 'profile') return ''
 
   let profileTags = ''

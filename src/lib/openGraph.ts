@@ -5,7 +5,6 @@ import { descFromBody } from '~/utils/meta'
 /**
  * Централизованный модуль для работы с Open Graph метаданными
  * Обеспечивает единый API для генерации OG-тегов и изображений
- * как для компонентов, так и для API-эндпоинтов
  */
 
 // Константы для OG-тегов
@@ -25,13 +24,6 @@ export enum OGContentType {
   WEBSITE = 'website'
 }
 
-// Опции для изображений
-export interface OGImageOptions {
-  width?: number
-  height?: number
-  quality?: number
-}
-
 // Общий интерфейс для метаданных OG
 export interface OGMetadata {
   title: string
@@ -45,281 +37,296 @@ export interface OGMetadata {
   imageHeight?: number
   twitterCard?: string
   logo?: string
-  // Дополнительные метаданные для изображений
   imageAlt?: string
   imageType?: string
   imageSecureUrl?: string
-  // Метаданные для статей
-  articlePublishedTime?: string
-  articleModifiedTime?: string
+  canonicalUrl?: string
+  robots?: string
+
+  // Специфичные метаданные для статей
   articleAuthor?: string
   articleSection?: string
   articleTags?: string[]
-  // Метаданные для профилей авторов
+  articlePublishedTime?: string
+  articleModifiedTime?: string
+
+  // Специфичные метаданные для авторов
   profileFirstName?: string
   profileLastName?: string
   profileUsername?: string
-  // Дополнительные метаданные
-  canonicalUrl?: string
-  robots?: string
 }
 
 /**
- * Определяет тип контента для OG на основе переданного объекта данных
+ * Определяет тип страницы на основе pathname
  */
-export function getOGContentType(data?: Shout | Author | Topic): OGContentType {
-  if (!data) return OGContentType.WEBSITE
-  if ('title' in data && 'body' in data) return OGContentType.ARTICLE
-  if ('name' in data) return OGContentType.PROFILE
-  if ('title' in data) return OGContentType.TOPIC
-  return OGContentType.WEBSITE
+export function getPageType(pathname: string): 'homepage' | 'article' | 'author' | 'topic' | 'website' {
+  if (pathname === '/' || pathname === '/feed') return 'homepage'
+  if (pathname.startsWith('/author/') || pathname.startsWith('/@')) return 'author'
+  if (pathname.startsWith('/topic/') || pathname.startsWith('/!')) return 'topic'
+  if (!pathname.startsWith('/search') && !pathname.startsWith('/settings') && !pathname.startsWith('/edit')) {
+    return 'article'
+  }
+  return 'website'
 }
 
 /**
- * Извлекает заголовок для OG из объекта данных
- */
-export function getOGTitle(data?: Shout | Author | Topic | string, defaultTitle = ''): string {
-  if (!data) return defaultTitle
-  if (typeof data === 'string') return data
-  if ('title' in data) return data.title || defaultTitle
-  if ('name' in data) return data.name || defaultTitle
-  return defaultTitle
-}
-
-/**
- * Извлекает описание для OG из объекта данных
- */
-export function getOGDescription(
-  data?: Shout | Author | Topic,
-  defaultDescription: string = OG_DEFAULT_DESCRIPTION
-): string {
-  if (!data) return defaultDescription
-  if ('body' in data && data.body) return descFromBody(data.body)
-  if ('bio' in data && data.bio) return data.bio
-  if ('about' in data && data.about) return data.about
-  return defaultDescription
-}
-
-/**
- * Формирует полный URL для OG-изображения
- */
-export function getFullImageUrl(relativePath: string): string {
-  return relativePath.startsWith('http') ? relativePath : `${baseUrl}${relativePath}`
-}
-
-/**
- * Формирует полный URL для страницы
+ * Формирует полный URL страницы
  */
 export function getFullPageUrl(pathname: string): string {
   return `${baseUrl}${pathname}`
 }
 
 /**
- * Формирует полный URL для логотипа
+ * Формирует полный URL изображения
  */
-export function getLogoUrl(): string {
-  return `${baseUrl}${OG_LOGO_PATH}`
+export function getFullImageUrl(relativePath: string): string {
+  return `${baseUrl}${relativePath}`
 }
 
 /**
- * Генерирует параметры для OG-метатегов на основе данных
+ * Генерирует специфичные OG метаданные для разных типов страниц
  */
-export function generateOGMetadata(
+export function generatePageSpecificOGMetadata(
+  pageType: 'homepage' | 'article' | 'author' | 'topic' | 'website',
   data?: Shout | Author | Topic,
   options: {
     pathname?: string
     defaultTitle?: string
     defaultDescription?: string
     locale?: string
+    featuredArticles?: Shout[]
   } = {}
 ): OGMetadata {
-  const type = getOGContentType(data)
-  const title = getOGTitle(data, options.defaultTitle || '')
-  const description = getOGDescription(data, options.defaultDescription || OG_DEFAULT_DESCRIPTION)
-  const url = getFullPageUrl(options.pathname || '')
+  const { pathname = '', defaultTitle = '', defaultDescription = OG_DEFAULT_DESCRIPTION, locale = 'ru' } = options
 
-  // Генерируем правильное OG изображение
-  let image: string
-  if (data) {
-    // Для специфичного контента используем динамическое изображение через API
-    const imageRelativePath = generateRelativeImagePath(data)
-    image = getFullImageUrl(imageRelativePath)
-  } else {
-    // Для базового сайта используем статичное изображение
-    image = 'https://files.dscrs.site/production/image/logo_image.png'
-  }
-
-  const logo = 'https://files.dscrs.site/logo_sign.png'
-
-  // Базовые метаданные
-  const metadata: OGMetadata = {
-    title: title || OG_SITE_NAME,
-    description: description || OG_DEFAULT_DESCRIPTION,
-    type,
-    url,
-    image,
-    locale: options.locale || 'ru',
+  // Общие данные
+  const url = getFullPageUrl(pathname)
+  const baseMetadata = {
+    locale,
     siteName: OG_SITE_NAME,
     imageWidth: OG_IMAGE_WIDTH,
     imageHeight: OG_IMAGE_HEIGHT,
     twitterCard: 'summary_large_image',
-    logo,
-    // Дополнительные метаданные для изображений
-    imageAlt: title ? `${title} - ${OG_SITE_NAME}` : OG_SITE_NAME,
+    logo: 'https://files.dscrs.site/logo_sign.png',
     imageType: 'image/png',
-    imageSecureUrl: image.startsWith('https://') ? image : image.replace('http://', 'https://'),
     canonicalUrl: url,
     robots: 'index, follow'
-  }
+  } as const
 
-  // Специфичные метаданные для статей
-  if (type === OGContentType.ARTICLE && data && 'body' in data) {
-    const article = data as Shout
-    metadata.articleAuthor = article.authors?.[0]?.name || ''
-    metadata.articleSection = article.topics?.[0]?.title || ''
-    metadata.articleTags = article.topics?.map((topic) => topic?.title).filter(Boolean) as string[]
+  switch (pageType) {
+    case 'homepage': {
+      const title = defaultTitle || 'Дискурс — открытый журнал о культуре, науке и обществе'
+      let description = defaultDescription
+      let image: string
 
-    // Даты публикации и обновления (timestamps в секундах)
-    if (article.created_at) {
-      metadata.articlePublishedTime = new Date(article.created_at * 1000).toISOString()
+      if (options.featuredArticles && options.featuredArticles.length > 0) {
+        const topTitles = options.featuredArticles
+          .slice(0, 3)
+          .map((a) => a.title)
+          .join(', ')
+        image = `${baseUrl}${OG_BASE_URL}/homepage?featured=${encodeURIComponent(topTitles)}`
+
+        const featuredTitles = options.featuredArticles
+          .slice(0, 2)
+          .map((a) => a.title)
+          .join('" и "')
+        description = `Читайте сейчас: "${featuredTitles}" и другие материалы`
+      } else {
+        image = 'https://files.dscrs.site/production/image/logo_image.png'
+      }
+
+      return {
+        ...baseMetadata,
+        title,
+        description,
+        type: OGContentType.WEBSITE,
+        url,
+        image,
+        imageAlt: `${title} - Главная страница`,
+        imageSecureUrl: image.startsWith('https://') ? image : image.replace('http://', 'https://')
+      }
     }
-    if (article.updated_at && article.updated_at !== article.created_at) {
-      metadata.articleModifiedTime = new Date(article.updated_at * 1000).toISOString()
+
+    case 'article': {
+      const article = data as Shout
+      if (!article) {
+        return {
+          ...baseMetadata,
+          title: defaultTitle || OG_SITE_NAME,
+          description: defaultDescription,
+          type: OGContentType.WEBSITE,
+          url,
+          image: 'https://files.dscrs.site/production/image/logo_image.png',
+          imageAlt: OG_SITE_NAME,
+          imageSecureUrl: 'https://files.dscrs.site/production/image/logo_image.png'
+        }
+      }
+
+      const title = article.title || defaultTitle
+      const description = article.body ? descFromBody(article.body) : defaultDescription
+      const imageParams = new URLSearchParams()
+
+      imageParams.append('title', article.title)
+      imageParams.append('slug', article.slug)
+      if (article.authors?.[0]?.name) {
+        imageParams.append('author', article.authors[0].name)
+      }
+      if (article.topics?.[0]?.title) {
+        imageParams.append('topic', article.topics[0].title)
+      }
+      if (article.cover) {
+        imageParams.append('cover', article.cover)
+      }
+
+      const imageRelativePath = `${OG_BASE_URL}/article?${imageParams.toString()}`
+      const image = getFullImageUrl(imageRelativePath)
+
+      const metadata: OGMetadata = {
+        ...baseMetadata,
+        title,
+        description,
+        type: OGContentType.ARTICLE,
+        url,
+        image,
+        imageAlt: `${title} - ${OG_SITE_NAME}`,
+        imageSecureUrl: image.startsWith('https://') ? image : image.replace('http://', 'https://'),
+        articleAuthor: article.authors?.[0]?.name || '',
+        articleSection: article.topics?.[0]?.title || '',
+        articleTags: article.topics?.map((topic) => topic?.title).filter(Boolean) as string[]
+      }
+
+      if (article.created_at) {
+        metadata.articlePublishedTime = new Date(article.created_at * 1000).toISOString()
+      }
+      if (article.updated_at && article.updated_at !== article.created_at) {
+        metadata.articleModifiedTime = new Date(article.updated_at * 1000).toISOString()
+      }
+
+      return metadata
+    }
+
+    case 'author': {
+      const author = data as Author
+      if (!author) {
+        return {
+          ...baseMetadata,
+          title: defaultTitle || OG_SITE_NAME,
+          description: defaultDescription,
+          type: OGContentType.WEBSITE,
+          url,
+          image: 'https://files.dscrs.site/production/image/logo_image.png',
+          imageAlt: OG_SITE_NAME,
+          imageSecureUrl: 'https://files.dscrs.site/production/image/logo_image.png'
+        }
+      }
+
+      const title = author.name || defaultTitle
+      const description = author.bio || `Автор ${author.name} на Дискурсе`
+
+      const imageParams = new URLSearchParams()
+      imageParams.append('name', author.name || title)
+      if (author.bio) {
+        imageParams.append('bio', author.bio)
+      }
+      if (author.pic) {
+        imageParams.append('avatar', author.pic)
+      }
+      if (author.stat?.shouts) {
+        imageParams.append('articlesCount', author.stat.shouts.toString())
+      }
+      if (author.stat?.followers) {
+        imageParams.append('followersCount', author.stat.followers.toString())
+      }
+
+      const imageRelativePath = `${OG_BASE_URL}/author?${imageParams.toString()}`
+      const image = getFullImageUrl(imageRelativePath)
+
+      const metadata: OGMetadata = {
+        ...baseMetadata,
+        title,
+        description,
+        type: OGContentType.PROFILE,
+        url,
+        image,
+        imageAlt: `${title} - автор на ${OG_SITE_NAME}`,
+        imageSecureUrl: image.startsWith('https://') ? image : image.replace('http://', 'https://')
+      }
+
+      const nameParts = author.name?.split(' ') || []
+      metadata.profileFirstName = nameParts[0] || ''
+      metadata.profileLastName = nameParts.slice(1).join(' ') || ''
+      metadata.profileUsername = author.slug || author.name || ''
+
+      return metadata
+    }
+
+    case 'topic': {
+      const topic = data as Topic
+      if (!topic) {
+        return {
+          ...baseMetadata,
+          title: defaultTitle || OG_SITE_NAME,
+          description: defaultDescription,
+          type: OGContentType.WEBSITE,
+          url,
+          image: 'https://files.dscrs.site/production/image/logo_image.png',
+          imageAlt: OG_SITE_NAME,
+          imageSecureUrl: 'https://files.dscrs.site/production/image/logo_image.png'
+        }
+      }
+
+      const title = topic.title || defaultTitle
+      const description = topic.body
+        ? topic.body
+            .replace(/<[^>]*>/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+        : `Тема "${topic.title}" на Дискурсе`
+
+      const imageParams = new URLSearchParams()
+      imageParams.append('title', topic.title || 'Topic')
+      if (topic.body?.trim()) {
+        const cleanDescription = topic.body
+          .replace(/<[^>]*>/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+        if (cleanDescription) {
+          imageParams.append('description', cleanDescription)
+        }
+      }
+      if (topic.pic) {
+        imageParams.append('cover', topic.pic)
+      }
+      if (topic.stat?.shouts) {
+        imageParams.append('articlesCount', topic.stat.shouts.toString())
+      }
+
+      const imageRelativePath = `${OG_BASE_URL}/topic?${imageParams.toString()}`
+      const image = getFullImageUrl(imageRelativePath)
+
+      return {
+        ...baseMetadata,
+        title,
+        description,
+        type: OGContentType.TOPIC,
+        url,
+        image,
+        imageAlt: `${title} - тема на ${OG_SITE_NAME}`,
+        imageSecureUrl: image.startsWith('https://') ? image : image.replace('http://', 'https://')
+      }
+    }
+
+    default: {
+      return {
+        ...baseMetadata,
+        title: defaultTitle || OG_SITE_NAME,
+        description: defaultDescription,
+        type: OGContentType.WEBSITE,
+        url,
+        image: 'https://files.dscrs.site/production/image/logo_image.png',
+        imageAlt: OG_SITE_NAME,
+        imageSecureUrl: 'https://files.dscrs.site/production/image/logo_image.png'
+      }
     }
   }
-
-  // Специфичные метаданные для авторов
-  if (type === OGContentType.PROFILE && data && 'name' in data) {
-    const author = data as Author
-    const nameParts = author.name?.split(' ') || []
-    metadata.profileFirstName = nameParts[0] || ''
-    metadata.profileLastName = nameParts.slice(1).join(' ') || ''
-    metadata.profileUsername = author.slug || author.name || ''
-  }
-
-  return metadata
-}
-
-/**
- * Генерирует относительный путь к OG-изображению на основе типа объекта
- */
-export function generateRelativeImagePath(
-  content: Shout | Author | Topic | string,
-  options: OGImageOptions = {}
-): string {
-  // Статья
-  if (typeof content === 'object' && 'title' in content && 'body' in content) {
-    return getArticleOGImagePath(content as Shout, options)
-  }
-
-  // Автор
-  if (typeof content === 'object' && 'name' in content) {
-    return getAuthorOGImagePath(content as Author, options)
-  }
-
-  // Тема
-  if (typeof content === 'object' && 'title' in content && !('body' in content)) {
-    return getTopicOGImagePath(content as Topic, options)
-  }
-
-  return OG_BASE_URL
-}
-
-/**
- * Генерирует относительный путь к OG-изображению для статьи
- */
-export function getArticleOGImagePath(article: Shout, options: OGImageOptions = {}): string {
-  const params = new URLSearchParams()
-
-  params.append('title', article.title)
-  params.append('slug', article.slug)
-  if (article.authors?.[0]?.name) {
-    params.append('author', article.authors[0].name)
-  }
-
-  // Добавляем тему если доступна
-  if (article.topics && article.topics.length > 0 && article.topics[0]) {
-    params.append('topic', article.topics[0].title || '')
-  }
-
-  // Добавляем обложку если доступна
-  if (article?.cover) {
-    params.append('cover', article.cover)
-  }
-
-  // Добавляем числовые опции как строки
-  if (options.width) params.append('width', options.width.toString())
-  if (options.height) params.append('height', options.height.toString())
-  if (options.quality) params.append('quality', options.quality.toString())
-
-  return `${OG_BASE_URL}/article?${params.toString()}`
-}
-
-/**
- * Генерирует относительный путь к OG-изображению для автора
- */
-export function getAuthorOGImagePath(author: Author, options: OGImageOptions = {}): string {
-  const params = new URLSearchParams()
-
-  params.append('name', author.name || 'Author')
-  // Включаем био - OG изображение автоматически обрежет его если нужно
-  if (author.bio?.trim()) {
-    params.append('bio', author.bio.trim())
-  } else if (author.about?.trim()) {
-    params.append('bio', author.about.trim())
-  }
-
-  if (author.pic) {
-    params.append('avatar', author.pic)
-  }
-
-  if (author.stat?.shouts) {
-    params.append('articlesCount', author.stat.shouts.toString())
-  }
-
-  if (author.stat?.followers) {
-    params.append('followersCount', author.stat.followers.toString())
-  }
-
-  // Добавляем числовые опции как строки
-  if (options.width) params.append('width', options.width.toString())
-  if (options.height) params.append('height', options.height.toString())
-  if (options.quality) params.append('quality', options.quality.toString())
-
-  return `${OG_BASE_URL}/author?${params.toString()}`
-}
-
-/**
- * Генерирует относительный путь к OG-изображению для темы
- */
-export function getTopicOGImagePath(topic: Topic, options: OGImageOptions = {}): string {
-  const params = new URLSearchParams()
-
-  params.append('title', topic.title || 'Topic')
-  // Включаем описание - OG изображение автоматически обрежет его если нужно
-  if (topic.body?.trim()) {
-    const cleanDescription = topic.body
-      .replace(/<[^>]*>/g, '') // Удаляем HTML теги
-      .replace(/\s+/g, ' ') // Нормализуем пробелы
-      .trim()
-    if (cleanDescription) {
-      params.append('description', cleanDescription)
-    }
-  }
-
-  // Добавляем обложку темы если доступна
-  if (topic.pic) {
-    params.append('cover', topic.pic)
-  }
-
-  if (topic.stat?.shouts) {
-    params.append('articlesCount', topic.stat.shouts.toString())
-  }
-
-  // Добавляем числовые опции как строки
-  if (options.width) params.append('width', options.width.toString())
-  if (options.height) params.append('height', options.height.toString())
-  if (options.quality) params.append('quality', options.quality.toString())
-
-  return `${OG_BASE_URL}/topic?${params.toString()}`
 }

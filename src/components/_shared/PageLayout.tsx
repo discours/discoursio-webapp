@@ -8,7 +8,7 @@ import { useLocalize } from '~/context/localize'
 import { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { getPageKeywords } from '~/intl/keywords'
 import { getCachedImageUrl } from '~/lib/imageCache'
-import { generateOGMetadata } from '~/lib/openGraph'
+import { generatePageSpecificOGMetadata, getPageType } from '~/lib/openGraph'
 import { FooterView } from '../Discours/Footer'
 import { Header } from '../HeaderNav'
 import { Loading } from './Loading'
@@ -25,6 +25,7 @@ type PageLayoutProps = {
   author?: Author // Add author prop for author pages
   topic?: Topic // Add topic prop for topic pages
   cover?: string
+  featuredArticles?: Shout[] // Add featured articles for homepage
   children: JSX.Element
   isHeaderFixed?: boolean
   hideFooter?: boolean
@@ -49,7 +50,7 @@ const PageErrorFallback = (err: any) => {
  * Обновляет метатеги на клиенте через прямое DOM API
  * Обходит проблемы @solidjs/meta с SSR
  */
-function updateServerMetaTags(ogMetadata: ReturnType<typeof generateOGMetadata>, keywords: string) {
+function updateServerMetaTags(ogMetadata: ReturnType<typeof generatePageSpecificOGMetadata>, keywords: string) {
   if (isServer) return // На сервере только базовые теги
 
   try {
@@ -134,15 +135,18 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
     return undefined
   }
 
-  // Оставляем createMemo только для сложной функции generateOGMetadata
-  const ogMetadata = createMemo(() =>
-    generateOGMetadata(content(), {
+  // 🚨 НОВАЯ ЛОГИКА: Используем специфичную генерацию для разных типов страниц
+  const ogMetadata = createMemo(() => {
+    const pageType = getPageType(loc.pathname)
+
+    return generatePageSpecificOGMetadata(pageType, content(), {
       pathname: loc.pathname,
       defaultTitle: t(props.title),
       defaultDescription: props.desc,
-      locale: lang()
+      locale: lang(),
+      featuredArticles: props.featuredArticles // Для главной страницы
     })
-  )
+  })
 
   // Используем более надёжные гарантированные значения
   const pageTitle = () => {

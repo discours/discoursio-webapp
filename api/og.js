@@ -11,9 +11,32 @@ const cdnUrl = 'https://files.dscrs.site'
 const OG_IMAGE_WIDTH = 1200
 const OG_IMAGE_HEIGHT = 630
 
-// Кастомные шрифты для Vercel OG
-const FONT_MULLER_REGULAR = `${cdnUrl}/fonts/Muller-Regular.woff`
-const FONT_MULLER_BOLD = `${cdnUrl}/fonts/Muller-Bold.woff`
+// Переводы для Edge Runtime
+const translations = {
+  ru: {
+    'Discours — open magazine': 'Дискурс — открытый журнал',
+    'About culture, science and society': 'О культуре, науке и обществе',
+    Featured: 'Рекомендуем',
+    'Read now': 'Читайте сейчас',
+    'and other materials': 'и другие материалы',
+    articles: 'статей',
+    followers: 'подписчиков'
+  },
+  en: {
+    'Discours — open magazine': 'Discours — open magazine',
+    'About culture, science and society': 'About culture, science and society',
+    Featured: 'Featured',
+    'Read now': 'Read now',
+    'and other materials': 'and other materials',
+    articles: 'articles',
+    followers: 'followers'
+  }
+}
+
+// Простая функция перевода для Edge Runtime
+function t(key, locale = 'ru') {
+  return translations[locale]?.[key] || translations['ru'][key] || key
+}
 
 // Добавляем CORS заголовки
 const CORS_HEADERS = {
@@ -79,6 +102,7 @@ export async function GET(request) {
 
     // Получаем параметры из URL
     const params = Object.fromEntries(searchParams)
+    const locale = params.locale || 'ru'
 
     // Общие параметры для всех типов
     const title = params.title || ''
@@ -91,7 +115,7 @@ export async function GET(request) {
 
     // Формируем контент в зависимости от типа
     let content
-    let topRight = null
+    let topRight = null // Для дополнительных элементов (бейджи)
 
     switch (type) {
       case 'article': {
@@ -102,8 +126,8 @@ export async function GET(request) {
       case 'author': {
         // Формируем статистику для автора
         const stats = [
-          params.articlesCount && { text: `${params.articlesCount} статей` },
-          params.followersCount && { text: `${params.followersCount} подписчиков` }
+          params.articlesCount && { text: `${params.articlesCount} ${t('articles', locale)}` },
+          params.followersCount && { text: `${params.followersCount} ${t('followers', locale)}` }
         ].filter(Boolean)
 
         topRight = stats.length ? createStatsBar(stats) : null
@@ -115,12 +139,24 @@ export async function GET(request) {
         break
       }
       case 'topic': {
-        topRight = params.articlesCount ? createStatsBar([{ text: `${params.articlesCount} статей` }]) : null
+        topRight = params.articlesCount
+          ? createStatsBar([{ text: `${params.articlesCount} ${t('articles', locale)}` }])
+          : null
         content = { title, description, cover }
         break
       }
+
       default: {
-        // Базовый OG
+        // Базовый OG - включая homepage
+        const featured = params.featured || ''
+        content = {
+          title: t('Discours — open magazine', locale),
+          description: featured
+            ? `${t('Read now', locale)}: ${featured.slice(0, 100)}... ${t('and other materials', locale)}`
+            : t('About culture, science and society', locale),
+          cover: null
+        }
+        topRight = featured ? createFeaturedBadge(t('Featured', locale)) : null
         return new ImageResponse(createBasicOGImage(), {
           width: OG_IMAGE_WIDTH,
           height: OG_IMAGE_HEIGHT,
@@ -148,7 +184,7 @@ export async function GET(request) {
       {
         width: OG_IMAGE_WIDTH,
         height: OG_IMAGE_HEIGHT,
-        fonts: await loadCustomFonts(),
+        // fonts: await loadCustomFonts(), // 💋 Отключено для edge runtime
         headers: {
           // 💋 Динамическое кэширование на основе контента
           'Cache-Control': 'public, max-age=86400, s-maxage=2592000',
@@ -176,36 +212,6 @@ export async function GET(request) {
       console.error('[OG] Fallback failed:', fallbackError.message)
       return new Response('OG image generation failed', { status: 500 })
     }
-  }
-}
-
-/**
- * Загружает кастомные шрифты для @vercel/og v1.0+
- */
-async function loadCustomFonts() {
-  try {
-    const [regular, bold] = await Promise.all([
-      fetch(FONT_MULLER_REGULAR).then((res) => res.arrayBuffer()),
-      fetch(FONT_MULLER_BOLD).then((res) => res.arrayBuffer())
-    ])
-
-    return [
-      {
-        name: 'Muller',
-        data: regular,
-        weight: 400,
-        style: 'normal'
-      },
-      {
-        name: 'Muller',
-        data: bold,
-        weight: 700,
-        style: 'normal'
-      }
-    ]
-  } catch (error) {
-    console.warn('Failed to load custom fonts:', error)
-    return [] // Fallback на системные шрифты
   }
 }
 
@@ -255,7 +261,7 @@ function createOGImage({ title, description, cover, topRight = null, theme = 'li
           maxWidth: 900,
           textAlign: 'left',
           color: isDark ? 'white' : '#1f2937',
-          fontFamily: 'Muller, -apple-system, BlinkMacSystemFont, sans-serif',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif',
           fontWeight: 700,
           fontSize: title.length > 50 ? 50 : 62,
           lineHeight: 1.12,
@@ -278,7 +284,7 @@ function createOGImage({ title, description, cover, topRight = null, theme = 'li
             bottom: 44,
             fontSize: 32,
             color: isDark ? 'rgba(255,255,255,0.88)' : 'rgba(31,41,55,0.7)',
-            fontFamily: 'Muller, -apple-system, BlinkMacSystemFont, sans-serif',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif',
             fontWeight: 400,
             letterSpacing: 0.5,
             textShadow: isDark ? '1px 1px 2px rgba(0,0,0,0.34)' : 'none',
@@ -383,12 +389,37 @@ function createStatsBar(items) {
           key: `stat-${item.text}-${index}`,
           style: {
             fontSize: 24,
-            fontFamily: 'Muller, -apple-system, BlinkMacSystemFont, sans-serif',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif',
             fontWeight: 400
           }
         },
         item.text
       )
     )
+  )
+}
+
+/**
+ * Создает бейдж "Рекомендуем" для главной страницы
+ */
+function createFeaturedBadge(text) {
+  return h(
+    'div',
+    {
+      style: {
+        position: 'absolute',
+        top: 40,
+        right: 60,
+        padding: '8px 16px',
+        background: 'rgba(34, 197, 94, 0.9)', // Зеленый цвет для "рекомендуем"
+        color: 'white',
+        borderRadius: 8,
+        fontSize: 24,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif',
+        fontWeight: 600,
+        textShadow: '1px 1px 2px rgba(0,0,0,0.3)'
+      }
+    },
+    text
   )
 }
