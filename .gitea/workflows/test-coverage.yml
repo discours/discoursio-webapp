@@ -48,19 +48,23 @@ jobs:
           echo "E2E_BASE_URL=http://localhost:3001" >> $GITHUB_ENV
 
       - name: Download Test Results
+        continue-on-error: true
         uses: actions/download-artifact@v3
         with:
           name: e2e-test-results
-          path: ./
-          workflow: ${{ github.event.workflow_run.id }}
+          path: ./test-results/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Test Screenshots
         if: always()
+        continue-on-error: true
         uses: actions/download-artifact@v3
         with:
           name: e2e-screenshots
-          path: ./
-          workflow: ${{ github.event.workflow_run.id }}
+          path: ./test-results/screenshots/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate Coverage Report
         if: success() # Только если предыдущие шаги успешны
@@ -133,10 +137,13 @@ jobs:
           echo "E2E_BASE_URL=http://localhost:3001" >> $GITHUB_ENV
 
       - name: Download Coverage Report
+        continue-on-error: true
         uses: actions/download-artifact@v3
         with:
-          name: coverage-report-${{ github.event.workflow_run.head_branch }}
+          name: test-coverage-report
           path: docs/test-coverage/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate Coverage Summary
         run: |
