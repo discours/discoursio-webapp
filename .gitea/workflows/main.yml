@@ -105,7 +105,7 @@ jobs:
 
       - name: Archive Test Screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: e2e-screenshots
           path: test-results/
@@ -113,7 +113,7 @@ jobs:
 
       - name: Archive Test Videos
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: e2e-videos
           path: test-results/
@@ -136,7 +136,7 @@ jobs:
       # Архивируем отчет о покрытии только если тесты прошли
       - name: Archive Test Coverage Report
         if: success() # Только если предыдущие шаги успешны
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: test-coverage-report
           path: docs/test-coverage/
@@ -163,7 +163,7 @@ jobs:
           fi
 
       - name: Archive Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: build-output
           path: |

@@ -48,7 +48,7 @@ jobs:
           echo "E2E_BASE_URL=http://localhost:3001" >> $GITHUB_ENV
 
       - name: Download Test Results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: e2e-test-results
           path: ./
@@ -56,7 +56,7 @@ jobs:
 
       - name: Download Test Screenshots
         if: always()
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: e2e-screenshots
           path: ./
@@ -74,7 +74,7 @@ jobs:
 
       - name: Upload Coverage Report
         if: success() # Только если анализ успешен
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-report-${{ github.event.workflow_run.head_branch }}
           path: docs/test-coverage/
@@ -133,7 +133,7 @@ jobs:
           echo "E2E_BASE_URL=http://localhost:3001" >> $GITHUB_ENV
 
       - name: Download Coverage Report
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: coverage-report-${{ github.event.workflow_run.head_branch }}
           path: docs/test-coverage/
