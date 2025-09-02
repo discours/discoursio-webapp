@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import type { JSX } from 'solid-js'
-import { createSignal, mergeProps, onMount, Show } from 'solid-js'
+import { createSignal, mergeProps, Show } from 'solid-js'
 
 import styles from './Icon.module.scss'
 
@@ -17,19 +17,15 @@ type IconProps = {
 export const Icon = (passedProps: IconProps) => {
   const props = mergeProps({ title: '', name: '', counter: 0 }, passedProps)
   const [isLoaded, setIsLoaded] = createSignal(false)
-  const [isClient, setIsClient] = createSignal(false)
 
   const iconSrc = () => `/icons/${props.name || 'default'}.svg`
-
-  // ✅ Устанавливаем клиентский флаг для стабильной гидрации
-  onMount(() => setIsClient(true))
 
   return (
     <div class={clsx('icon', styles.icon, props.class)} style={props.style} data-icon={props['data-icon']}>
       <img
         alt={props.title || props.name}
         class={clsx(props.iconClassName, { 
-          loaded: isLoaded() && isClient() 
+          loaded: isLoaded()
         })}
         src={iconSrc()}
         onLoad={() => setIsLoaded(true)}

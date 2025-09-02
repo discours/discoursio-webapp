@@ -9,17 +9,19 @@
     // ✅ Показываем сразу для SSR - стабильная гидрация
     opacity: 1;
     transform: scale(1);
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
     
-    // ✨ Плавная анимация загрузки только в браузере
-    @media (scripting: enabled) {
-      opacity: 0;
-      transform: scale(0.95);
-      transition: opacity 0.15s ease-out, transform 0.15s ease-out;
-      
-      &.loaded {
-        opacity: 1;
-        transform: scale(1);
+    // ✨ Применяем анимацию только для загруженных иконок
+    &:not(.loaded) {
+      @media (scripting: enabled) {
+        opacity: 0.3; // Не полностью прозрачные - видны но неактивные
+        transform: scale(0.95);
       }
+    }
+    
+    &.loaded {
+      opacity: 1;
+      transform: scale(1);
     }
   }
 
