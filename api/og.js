@@ -30,7 +30,6 @@ const getCdnUrl = (url, width) => {
       filename = filename.replace(`.${extension}`, `_${width}.${extension}`)
     }
   }
-  if (!cdnUrl) return `/api/proxy/${filename}`
   return `${cdnUrl}/${filename}`
 }
 
