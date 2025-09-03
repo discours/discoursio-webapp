@@ -184,8 +184,6 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   }
 
   const disconnect = () => {
-    console.log('[Connect] Отключаем SSE соединение')
-
     if (sseConnection) {
       sseConnection.close()
       sseConnection = null
@@ -524,8 +522,6 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
   })
 
   onCleanup(() => {
-    console.log('[Connect] Очистка ConnectProvider')
-
     // Отключаем SSE
     disconnect()
 

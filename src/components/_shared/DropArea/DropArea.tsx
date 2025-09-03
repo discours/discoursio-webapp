@@ -3,8 +3,7 @@ import { clsx } from 'clsx'
 import { createSignal, JSX, Show } from 'solid-js'
 
 import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
-import { handleFileUpload } from '~/lib/handleFileUpload'
+import { useUpload } from '~/context/upload'
 import { validateUploads } from '~/lib/validateUploads'
 
 import styles from './DropArea.module.scss'
@@ -18,16 +17,18 @@ interface Props {
   fileType: FileType
   // biome-ignore lint/suspicious/noExplicitAny: json response
   onUpload?: (value: any[]) => void
+  onUploadProgress?: (progress: number) => void
   description?: string | JSX.Element
   isSquare?: boolean
 }
 
 export const DropArea = (props: Props) => {
   const { t } = useLocalize()
+  const { uploadFiles } = useUpload()
   const [dragActive, setDragActive] = createSignal(false)
   const [dropAreaError, setDropAreaError] = createSignal<string | undefined>()
   const [loading, setLoading] = createSignal(false)
-  const { session } = useSession()
+  const [uploadProgress, setUploadProgress] = createSignal(0)
 
   /**
    * Handle the file upload process
@@ -36,15 +37,15 @@ export const DropArea = (props: Props) => {
   const runUpload = async (files: UploadFile[]) => {
     try {
       setLoading(true)
-      const tkn = session()?.token as string
-      if (tkn) {
-        await Promise.all(files.map((file) => handleFileUpload(file, tkn)))
-        props.onUpload?.(files)
-      }
+      const results = await uploadFiles(files, (progress) => {
+        setUploadProgress(progress)
+        props.onUploadProgress?.(progress)
+      })
+      props.onUpload?.(results)
       setLoading(false)
     } catch (error) {
       setLoading(false)
-      setDropAreaError(t('Upload error'))
+      setDropAreaError(error instanceof Error ? error.message : t('Upload error'))
       console.error('[runUpload]', error)
     }
   }
@@ -102,14 +103,20 @@ export const DropArea = (props: Props) => {
   return (
     <div class={clsx(styles.DropArea, props.class, props.isSquare && styles.square)}>
       <div
-        class={clsx(styles.field, { [styles.active]: dragActive() })}
+        class={clsx(styles.field, {
+          [styles.active]: dragActive(),
+          loading: loading()
+        })}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         ref={dropzoneRef}
         onClick={handleDropFieldClick}
+        style={{
+          '--upload-progress': `${uploadProgress()}%`
+        }}
       >
-        <div class={styles.text}>{loading() ? t('Loading') : props.placeholder}</div>
+        <div class={styles.text}>{loading() ? `${t('Loading')} ${uploadProgress()}%` : props.placeholder}</div>
         <Show when={!loading() && props.isSquare && props.description}>
           <div class={styles.description}>{props.description}</div>
         </Show>

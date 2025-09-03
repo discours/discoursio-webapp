@@ -61,7 +61,8 @@ import {
   Topic
 } from '~/graphql/generated/graphql'
 import { getTimestampFromPeriod, PeriodType } from '~/lib/fromPeriod'
-import { getFileUrl } from '~/lib/imageCache'
+import { getCdnUrl } from '~/lib/imageCache'
+
 import { FeedMode } from '~/types/nav'
 
 const fetchAuthorShouts = async (slug: string, offset?: number) => {
@@ -264,7 +265,7 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
           if (!a) return
           setTitle(() => `${t('Discours')}${a.name ? ` :: ${a.name}` : ''}`)
           setDesc(() => a.about || a.bio || '')
-          setCover(() => (a.pic ? getFileUrl(a.pic || '', { width: 1200 }) : 'log.png'))
+          setCover(() => getCdnUrl(a.pic || '', 1200))
 
           // views google counter increment
           if (!viewed()) {

@@ -1,5 +1,5 @@
 import { RouteSectionProps } from '@solidjs/router'
-import { createMemo, Suspense } from 'solid-js'
+import { Suspense } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
 import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
@@ -23,8 +23,8 @@ export interface RouteData {
 }
 
 export const route = {
-  load: async ({ params, location: { query } }: RouteSectionProps) => {
-    console.log('[FeedPage] SSR route.load started:', { mode: params.mode })
+  load: async ({ location: { query } }: RouteSectionProps) => {
+    // console.log('[FeedPage] SSR route.load started:', { mode: params.mode })
 
     try {
       // Добавляем timeout для SSR запросов (15 секунд для 3 запросов)
@@ -33,7 +33,7 @@ export const route = {
       })
 
       const dataPromise = (async () => {
-        console.log('[FeedPage] Loading all feed modes for instant switching...')
+        // console.log('[FeedPage] Loading all feed modes for instant switching...')
 
         const filters: LoadShoutsFilters = {}
         if (query.period) filters.after = getTimestampFromPeriod(query.period as PeriodType)
@@ -66,12 +66,6 @@ export const route = {
           })()
         ])
 
-        console.log('[FeedPage] SSR all feeds loaded:', {
-          recent: recentShouts?.length || 0,
-          hot: hotShouts?.length || 0,
-          top: topShouts?.length || 0
-        })
-
         return {
           recentShouts,
           hotShouts,
@@ -83,7 +77,7 @@ export const route = {
       })()
 
       const result = await Promise.race([dataPromise, timeoutPromise])
-      console.log('[FeedPage] SSR route.load completed successfully')
+      // console.log('[FeedPage] SSR route.load completed successfully')
       return result
     } catch (error) {
       console.error('[FeedPage] SSR route.load error:', error)
@@ -101,44 +95,6 @@ export const route = {
 export default function FeedPage(props: RouteSectionProps<RouteData>) {
   const { t } = useLocalize()
 
-  console.log('[FeedPage] Component render:', {
-    hasData: !!props.data,
-    recentLength: props.data?.recentShouts?.length || 0,
-    hotLength: props.data?.hotShouts?.length || 0,
-    topLength: props.data?.topShouts?.length || 0,
-    commentsLength: props.data?.recentComments?.length || 0,
-    unratedLength: props.data?.unratedShouts?.length || 0
-  })
-
-  // Используем createMemo для кеширования данных
-  const feedData = createMemo(() => {
-    const data = props.data
-
-    console.log('[FeedPage] feedData memo computation:', {
-      hasData: !!data,
-      dataType: typeof data,
-      isPromise: data && typeof data === 'object' && 'then' in data,
-      recentLength: data?.recentShouts?.length || 0,
-      hotLength: data?.hotShouts?.length || 0,
-      topLength: data?.topShouts?.length || 0
-    })
-
-    // Если данных нет или это промис, возвращаем fallback
-    if (!data || (typeof data === 'object' && 'then' in data)) {
-      console.log('[FeedPage] Using fallback data')
-      return {
-        recentShouts: [] as Shout[],
-        hotShouts: [] as Shout[],
-        topShouts: [] as Shout[],
-        unratedShouts: [] as Shout[],
-        recentComments: [] as Reaction[]
-      }
-    }
-
-    console.log('[FeedPage] Using resolved SSR data')
-    return data
-  })
-
   return (
     <PageLayout
       title={`${t('Discours')} :: ${t('Feed')}`}
@@ -148,11 +104,11 @@ export default function FeedPage(props: RouteSectionProps<RouteData>) {
         <ReactionsProvider>
           <NoHydration>
             <FeedView
-              recentShouts={feedData().recentShouts || []}
-              hotShouts={feedData().hotShouts || []}
-              topShouts={feedData().topShouts || []}
-              unratedShouts={feedData().unratedShouts || []}
-              recentComments={feedData().recentComments || []}
+              recentShouts={props.data?.recentShouts || []}
+              hotShouts={props.data?.hotShouts || []}
+              topShouts={props.data?.topShouts || []}
+              unratedShouts={props.data?.unratedShouts || []}
+              recentComments={props.data?.recentComments || []}
             />
           </NoHydration>
         </ReactionsProvider>

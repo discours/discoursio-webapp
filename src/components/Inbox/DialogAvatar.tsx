@@ -1,7 +1,7 @@
 import { clsx } from 'clsx'
 import { createMemo, Show } from 'solid-js'
+import { getCdnUrl } from '~/lib/imageCache'
 
-import { getFileUrl } from '~/lib/imageCache'
 import './DialogCard.module.scss'
 
 import styles from './DialogAvatar.module.scss'
@@ -52,9 +52,7 @@ const DialogAvatar = (props: Props) => {
         <div
           class={styles.imageHolder}
           style={{
-            'background-image': `url(
-            ${props.url?.includes('discours.io') ? getFileUrl(props.url || '', { width: 40, height: 40 }) : props.url}
-            )`
+            'background-image': `url(${getCdnUrl(props.url || '', 100)})`
           }}
         />
       </Show>

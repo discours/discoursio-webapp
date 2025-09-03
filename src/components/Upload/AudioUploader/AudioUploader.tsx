@@ -1,15 +1,14 @@
 import { Buffer } from 'node:buffer'
 import { UploadFile } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
-import { Show } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { DropArea } from '~/components/_shared/DropArea'
 import { AudioPlayerPreview } from '~/components/Article/AudioPlayer/AudioPlayerPreview'
 import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
+import { useUpload } from '~/context/upload'
 import { MediaItem } from '~/graphql/generated/graphql'
 import { composeMediaItems } from '~/lib/composeMediaItems'
-import { handleFileUpload } from '~/lib/handleFileUpload'
 
 import styles from './AudioUploader.module.scss'
 
@@ -31,7 +30,8 @@ type Props = {
 
 export const AudioUploader = (props: Props) => {
   const { t } = useLocalize()
-  const { session } = useSession()
+  const { uploadFiles } = useUpload()
+  const [uploadProgress, setUploadProgress] = createSignal(0)
 
   const handleMediaItemFieldChange = (
     index: number,
@@ -56,10 +56,16 @@ export const AudioUploader = (props: Props) => {
   }
 
   const handleUpload = async (files: UploadFile[]) => {
-    const result = await handleFileUpload(files, session()?.token || '', 'audio')
+    try {
+      setUploadProgress(0)
+      const result = await uploadFiles(files, (progress) => setUploadProgress(progress))
 
-    if (result) {
-      props.onAudioAdd(composeMediaItems([result]))
+      if (result) {
+        props.onAudioAdd(composeMediaItems([result[0]]))
+      }
+    } finally {
+      // Reset progress after upload completes
+      setTimeout(() => setUploadProgress(0), 1000)
     }
   }
 
@@ -75,9 +81,10 @@ export const AudioUploader = (props: Props) => {
       </Show>
       <DropArea
         isMultiply={true}
-        placeholder={t('Add audio')}
+        placeholder={uploadProgress() > 0 ? `${t('Uploading')} ${uploadProgress()}%` : t('Add audio')}
         description={t('You can download multiple tracks at once in .mp3, .wav or .flac formats')}
         fileType={'audio'}
+        onUploadProgress={(progress) => setUploadProgress(progress)}
         onUpload={handleUpload}
       />
     </div>

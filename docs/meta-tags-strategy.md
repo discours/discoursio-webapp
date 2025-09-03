@@ -44,7 +44,7 @@ src/
 <title>{t('Discours')}</title>
 <meta name="description" content={t('Discours – an open magazine about culture, science and society')} />
 <meta property="og:title" content={t('Discours')} />
-<meta property="og:image" content="https://files.dscrs.site/production/image/logo_image.png" />
+<meta property="og:image" content="https://files.discours.io/production/image/logo_image.png" />
 ```
 
 ### 2. Клиентская часть (`PageLayout.tsx`)

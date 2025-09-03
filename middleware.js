@@ -1,53 +1,16 @@
 /**
- * Middleware для Vercel для управления кешированием
+ * Middleware для Vercel для управления кешированием и проксирования файлов
  * Документация: https://vercel.com/docs/functions/edge-middleware
  */
 
-// Статические ресурсы из public отдаем быстро с долгим кешем
-const IMAGES_EXTENSIONS = /\.(png|jpg|jpeg|gif|svg|webp|ico|bmp|tiff|tif|heic|heif|avif)$/i
-
 // Middleware для обработки запросов и отладки на Vercel
+// works only in vercel
 export default function middleware(request) {
   const url = new URL(request.url)
-  const isProduction = process.env.NODE_ENV === 'production'
-  const isVercel = !!process.env.VERCEL
-
-  // Логируем только в production на Vercel для отладки
-  if (isProduction && isVercel) {
-    console.log(`[Middleware] ${request.method} ${url.pathname}${url.search}`, {
-      userAgent: request.headers.get('user-agent'),
-      referer: request.headers.get('referer'),
-      timestamp: new Date().toISOString(),
-      host: request.headers.get('host')
-    })
-  }
-
-  // Проверяем критичные пути
-  const criticalPaths = ['/', '/api/graphql', '/api/og']
-  const isCriticalPath = criticalPaths.some((path) => url.pathname.startsWith(path))
-
-  if (isCriticalPath) {
-    console.log(`[Middleware] Critical path accessed: ${url.pathname}`)
-
-    // Дополнительная диагностика для главной страницы
-    if (url.pathname === '/' && isVercel) {
-      console.log('[Middleware] Root path request details:', {
-        method: request.method,
-        userAgent: request.headers.get('user-agent'),
-        url: request.url
-      })
-    }
-  }
-
-  if (IMAGES_EXTENSIONS.test(url.pathname)) {
-    console.log(`[Middleware] Static image request: ${url.pathname}`)
-    return null // Пропускаем статические изображения
-  }
-
-  // Middleware должен возвращать null чтобы запрос продолжился к приложению
-  console.log(`[Middleware] Passing through to app: ${url.pathname}`)
-
-  return null // Позволяем запросу продолжиться к SolidStart приложению
+  const filepath = url.pathname.split('discours.io')[1]
+  const filename = filepath.split('/').pop()
+  const proxyUrl = new URL(`/api/proxy/${filename}`)
+  return Response.redirect(proxyUrl.toString(), 302)
 }
 
 // Конфигурация для применения middleware
@@ -60,6 +23,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - files starting with dot (hidden files)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.).*)'
+    '/((?!_next/static|_next/_vercel/image|favicon.ico).*)'
   ]
 }

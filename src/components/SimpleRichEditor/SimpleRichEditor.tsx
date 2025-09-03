@@ -1510,7 +1510,14 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             title={t('You have a newer local version, click to use it')}
           >
             <span class={styles.switcherIcon}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                class="no-transition"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 <path
                   d="M8 2V8L11 11"
                   stroke="currentColor"
@@ -1533,7 +1540,14 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             title={t('Delete local version')}
           >
             <span class={styles.switcherIcon}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                class="no-transition"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
               </svg>
             </span>
@@ -1634,7 +1648,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           commands={displayedCommands()}
           onAction={handleAction}
           currentFormats={activeFormats()}
-          class={clsx(styles.bottomToolbar, styles.visible)}
+          class={clsx(styles.bottomToolbar, {
+            [styles.visible]: hasFocus() && !isEditorEmpty()
+          })}
           mode={currentToolbarMode() as ToolbarMode}
           editorId={props.editorId}
         />

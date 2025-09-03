@@ -3,6 +3,25 @@
 @use 'fonts';
 @use 'sass:math';
 
+// ✨ Глобальные микротранзишны для SVG против FOUC
+svg:not(.no-transition) {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+  
+  // ✅ Автоматическое появление для инлайновых SVG
+  &[width], &[height], &[viewBox] {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// ✨ Специальная анимация для иконок в кнопках
+button svg,
+.icon svg {
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -945,13 +964,6 @@ iframe {
     .icon {
       filter: invert(1);
     }
-  }
-}
-
-// Добавим глобальный стиль для SVG
-[data-theme='dark'] {
-  svg {
-    filter: invert(1);
   }
 }
 

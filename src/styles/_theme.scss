@@ -11,8 +11,10 @@
   --editor-bubble-menu-border: #000;
   --embed-background: #f7f7f8;
   --embed-border: #e9e9ee;
-  --icon-filter-hover: invert(1);
-  --icon-filter: invert(0);
+  --icon-filter-hover: brightness(0.7) saturate(1.2);
+  --icon-filter: brightness(1);
+  --icon-color-default: #000;
+  --icon-color-hover: #2638d9;
   --lightgray-color: rgb(84 16 17 / 6%);
   --link-color: #000;
   --link-hover-background: #000;
@@ -126,8 +128,10 @@
   --default-color-invert: #121416;
   --default-color: #fff;
   --editor-bubble-menu-background: #444;
-  --icon-filter-hover: invert(0);
-  --icon-filter: invert(1);
+  --icon-filter-hover: brightness(1.3) saturate(1.1);
+  --icon-filter: brightness(1);
+  --icon-color-default: #fff;
+  --icon-color-hover: #4361ee;
   --link-color: #fff;
   --link-hover-background: #fff;
   --link-hover-color: #000;

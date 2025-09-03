@@ -1,4 +1,4 @@
-import { baseUrl } from '~/config'
+import { baseUrl, cdnUrl } from '~/config'
 import { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { descFromBody } from '~/utils/meta'
 
@@ -107,7 +107,7 @@ export function generatePageSpecificOGMetadata(
     imageWidth: OG_IMAGE_WIDTH,
     imageHeight: OG_IMAGE_HEIGHT,
     twitterCard: 'summary_large_image',
-    logo: 'https://files.dscrs.site/logo_sign.png',
+    logo: `${cdnUrl}/logo_sign.png`,
     imageType: 'image/png',
     canonicalUrl: url,
     robots: 'index, follow'
@@ -132,7 +132,7 @@ export function generatePageSpecificOGMetadata(
           .join('" и "')
         description = `Читайте сейчас: "${featuredTitles}" и другие материалы`
       } else {
-        image = 'https://files.dscrs.site/production/image/logo_image.png'
+        image = `${cdnUrl}/production/image/logo_image.png`
       }
 
       return {
@@ -156,9 +156,9 @@ export function generatePageSpecificOGMetadata(
           description: defaultDescription,
           type: OGContentType.WEBSITE,
           url,
-          image: 'https://files.dscrs.site/production/image/logo_image.png',
+          image: `${cdnUrl}/production/image/logo_image.png`,
           imageAlt: OG_SITE_NAME,
-          imageSecureUrl: 'https://files.dscrs.site/production/image/logo_image.png'
+          imageSecureUrl: `${cdnUrl}/production/image/logo_image.png`
         }
       }
 
@@ -214,9 +214,9 @@ export function generatePageSpecificOGMetadata(
           description: defaultDescription,
           type: OGContentType.WEBSITE,
           url,
-          image: 'https://files.dscrs.site/production/image/logo_image.png',
+          image: `${cdnUrl}/production/image/logo_image.png`,
           imageAlt: OG_SITE_NAME,
-          imageSecureUrl: 'https://files.dscrs.site/production/image/logo_image.png'
+          imageSecureUrl: `${cdnUrl}/production/image/logo_image.png`
         }
       }
 
@@ -269,9 +269,9 @@ export function generatePageSpecificOGMetadata(
           description: defaultDescription,
           type: OGContentType.WEBSITE,
           url,
-          image: 'https://files.dscrs.site/production/image/logo_image.png',
+          image: `${cdnUrl}/production/image/logo_image.png`,
           imageAlt: OG_SITE_NAME,
-          imageSecureUrl: 'https://files.dscrs.site/production/image/logo_image.png'
+          imageSecureUrl: `${cdnUrl}/production/image/logo_image.png`
         }
       }
 
@@ -323,9 +323,9 @@ export function generatePageSpecificOGMetadata(
         description: defaultDescription,
         type: OGContentType.WEBSITE,
         url,
-        image: 'https://files.dscrs.site/production/image/logo_image.png',
+        image: `${import.meta.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'}/production/image/logo_image.png`,
         imageAlt: OG_SITE_NAME,
-        imageSecureUrl: 'https://files.dscrs.site/production/image/logo_image.png'
+        imageSecureUrl: `${import.meta.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'}/production/image/logo_image.png`
       }
     }
   }

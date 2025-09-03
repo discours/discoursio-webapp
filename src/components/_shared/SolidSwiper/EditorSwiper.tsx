@@ -6,11 +6,10 @@ import SwiperCore from 'swiper'
 import { Manipulation, Navigation, Pagination } from 'swiper/modules'
 import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
+import { useUpload } from '~/context/upload'
 import { MediaItem } from '~/graphql/generated/graphql'
 import { composeMediaItems } from '~/lib/composeMediaItems'
-import { handleFileUpload } from '~/lib/handleFileUpload'
-import { getFileUrl } from '~/lib/imageCache'
+import { getCdnUrl } from '~/lib/imageCache'
 import { validateUploads } from '~/lib/validateUploads'
 import { UploadedFile } from '~/types/upload'
 import { DropArea } from '../DropArea'
@@ -31,10 +30,11 @@ type Props = {
 
 export const EditorSwiper = (props: Props) => {
   const { t } = useLocalize()
+  const { uploadFiles } = useUpload()
   const [loading, setLoading] = createSignal(false)
   const [slideIndex, setSlideIndex] = createSignal(0)
   const [slideBody, setSlideBody] = createSignal<string>()
-  const { session } = useSession()
+  const [uploadProgress, setUploadProgress] = createSignal(0)
   let mainSwipeRef: SwiperRef | null
   let thumbSwipeRef: SwiperRef | null
 
@@ -94,17 +94,13 @@ export const EditorSwiper = (props: Props) => {
 
     try {
       setLoading(true)
-      const results: UploadedFile[] = []
-      for (const file of selectedFiles) {
-        const result = await handleFileUpload(file, session()?.token || '', 'image')
-        results.push(result)
-      }
+      const results = await uploadFiles(selectedFiles, (progress) => setUploadProgress(progress))
       props.onImagesAdd?.(composeMediaItems(results))
       setLoading(false)
       swipeToUploaded()
     } catch (error) {
       console.error('[runUpload]', error)
-      toast.error(t('Error'))
+      toast.error(error instanceof Error ? error.message : t('Error'))
       setLoading(false)
     }
   }
@@ -228,7 +224,7 @@ export const EditorSwiper = (props: Props) => {
                       <div
                         class={clsx(styles.imageThumb)}
                         style={{
-                          'background-image': `url(${getFileUrl(slide.url || '', { width: 110, height: 75 })})`
+                          'background-image': `url(${getCdnUrl(slide.url || '', 110)})`
                         }}
                       >
                         <div class={styles.thumbAction}>
@@ -263,7 +259,15 @@ export const EditorSwiper = (props: Props) => {
 
                 <div class={styles.upload}>
                   <div class={styles.inner} onClick={handleUploadThumb}>
-                    <Show when={!loading()} fallback={<Loading size="small" />}>
+                    <Show
+                      when={!loading()}
+                      fallback={
+                        <div class={styles.upload}>
+                          <Loading size="small" />
+                          <div style="font-size: 10px; margin-top: 4px;">{uploadProgress()}%</div>
+                        </div>
+                      }
+                    >
                       <Icon name="swiper-plus" />
                     </Show>
                   </div>

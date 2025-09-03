@@ -1,4 +1,5 @@
 import { UploadFile } from '@solid-primitives/upload'
+import { clsx } from 'clsx'
 import { createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Button } from '../Button'
@@ -28,8 +29,6 @@ export const ImageCropper = (props: CropperProps) => {
   const [isDragging, setIsDragging] = createSignal(false)
   const [dragStart, setDragStart] = createSignal({ x: 0, y: 0 })
   const [imageLoaded, setImageLoaded] = createSignal(false)
-  const [imageSize, setImageSize] = createSignal({ width: 0, height: 0 })
-  const [canvasSize, setCanvasSize] = createSignal({ width: 400, height: 400 })
   const [scale, setScale] = createSignal(1)
 
   const drawImage = () => {
@@ -48,7 +47,7 @@ export const ImageCropper = (props: CropperProps) => {
     // Вычисляем размеры для отображения изображения (масштабированного)
     const displayWidth = img.naturalWidth * currentScale
     const displayHeight = img.naturalHeight * currentScale
-    
+
     // Центрируем изображение на canvas
     const offsetX = (canvas.width - displayWidth) / 2
     const offsetY = (canvas.height - displayHeight) / 2
@@ -129,11 +128,11 @@ export const ImageCropper = (props: CropperProps) => {
     const crop = cropData()
     const currentScale = scale()
     const img = imageRef
-    
+
     // Вычисляем размеры отображения изображения
     const displayWidth = img.naturalWidth * currentScale
     const displayHeight = img.naturalHeight * currentScale
-    
+
     // Вычисляем смещение изображения на canvas
     const offsetX = (canvasRef.width - displayWidth) / 2
     const offsetY = (canvasRef.height - displayHeight) / 2
@@ -208,11 +207,10 @@ export const ImageCropper = (props: CropperProps) => {
     // Настраиваем обработчики изображения
     imageRef.onload = () => {
       if (!imageRef || !canvasRef) return
-      
+
       const imgWidth = imageRef.naturalWidth
       const imgHeight = imageRef.naturalHeight
-      
-      setImageSize({ width: imgWidth, height: imgHeight })
+
       setImageLoaded(true)
 
       // Настраиваем canvas размеры
@@ -220,7 +218,6 @@ export const ImageCropper = (props: CropperProps) => {
       const canvasHeight = 500
       canvasRef.width = canvasWidth
       canvasRef.height = canvasHeight
-      setCanvasSize({ width: canvasWidth, height: canvasHeight })
 
       // Вычисляем масштаб для подгонки изображения в canvas
       const scaleX = (canvasWidth * 0.9) / imgWidth
@@ -270,12 +267,8 @@ export const ImageCropper = (props: CropperProps) => {
     <div ref={containerRef} class={styles.cropperContainer}>
       <div class={styles.cropperCanvas}>
         {/* Скрытое изображение для загрузки и расчетов */}
-        <img
-          ref={imageRef}
-          style={{ display: 'none' }}
-          alt="Crop source"
-        />
-        
+        <img ref={imageRef} style={{ display: 'none' }} alt="Crop source" />
+
         {/* Canvas для отображения и кропинга */}
         <canvas
           ref={canvasRef}
@@ -289,28 +282,36 @@ export const ImageCropper = (props: CropperProps) => {
       </div>
 
       {/* Zoom controls */}
-      <div class={styles.cropperControls} style={{ "margin-bottom": "1rem" }}>
-        <Button 
-          variant="secondary" 
+      <div class={clsx(styles.cropperControls, 'zoomControls')}>
+        <button
+          class="zoomControl"
           onClick={() => {
             const newScale = Math.max(0.1, scale() * 0.8)
             setScale(newScale)
             drawImage()
           }}
-          value="🔍−"
-        />
-        <span style={{ margin: "0 1rem", "font-size": "0.9rem" }}>
-          {Math.round(scale() * 100)}%
-        </span>
-        <Button 
-          variant="secondary" 
+        >
+          &minus;
+        </button>
+        <button
+          class={clsx('zoomControl', 'zoomControlDefault')}
+          onClick={() => {
+            setScale(1)
+            drawImage()
+          }}
+        >
+          1:1
+        </button>
+        <button
+          class="zoomControl"
           onClick={() => {
             const newScale = Math.min(3, scale() * 1.25)
             setScale(newScale)
             drawImage()
           }}
-          value="🔍+"
-        />
+        >
+          +
+        </button>
       </div>
 
       <div class={styles.cropperControls}>

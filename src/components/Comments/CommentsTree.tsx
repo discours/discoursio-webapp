@@ -634,10 +634,10 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           setEditorContent(draftKey, '')
         }
       } else {
-        // Очищаем основной редактор при отмене нового комментария
+        // Очищаем только контент основного редактора при отмене нового комментария
+        // Но НЕ удаляем сам редактор - оставляем его видимым и пустым
         setLocalContent('')
         setMainEditorContent('')
-        removeDraftByKey(draftKey)
         setEditorContent(draftKey, '')
       }
     })
@@ -953,10 +953,14 @@ export const CommentsTree = (props: CommentsTreeProps) => {
     onCancel: () => void
     isDisabled: boolean
   }) => {
+    // Для нового комментария кнопки показываем только если есть контент
+    // Для редактирования и ответов - всегда показываем
+    const shouldShowButtons = props.mode !== 'new' || !props.isDisabled
+
     return (
       <div
         class={clsx(styles.editingButtonsWrapper, {
-          [styles.hidden]: props.isDisabled
+          [styles.hidden]: !shouldShowButtons
         })}
       >
         <Button variant="secondary" value={t('Cancel')} onClick={props.onCancel} />
@@ -964,7 +968,7 @@ export const CommentsTree = (props: CommentsTreeProps) => {
           value={t(posting() ? 'Saving...' : 'Save')}
           variant="primary"
           onClick={props.onSave}
-          disabled={posting()}
+          disabled={posting() || props.isDisabled}
         />
       </div>
     )

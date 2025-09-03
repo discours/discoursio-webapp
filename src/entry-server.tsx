@@ -2,6 +2,7 @@
 import { createHandler, StartServer } from '@solidjs/start/server'
 import { ErrorBoundary, Suspense } from 'solid-js'
 import { Loading } from './components/_shared/Loading'
+import { cdnUrl } from './config'
 import { useLocalize } from './context/localize'
 
 // biome-ignore lint/suspicious/noExplicitAny: ok
@@ -57,15 +58,15 @@ export default createHandler(() => {
                 property="og:description"
                 content={t('Discours – an open magazine about culture, science and society')}
               />
-              <meta property="og:image" content="https://files.dscrs.site/production/image/logo_image.png" />
+              <meta property="og:image" content={`${cdnUrl}/production/image/logo_image.png`} />
               <meta property="og:url" content="https://discours.io" />
-              <meta property="og:logo" content="https://files.dscrs.site/logo_sign.png" />
+              <meta property="og:logo" content={`${cdnUrl}/logo_sign.png`} />
               <meta property="og:site_name" content={t('Discours')} />
               <meta property="og:locale" content={currentLang} />
               <meta property="og:image:width" content="1200" />
               <meta property="og:image:height" content="630" />
               <meta property="og:image:type" content="image/png" />
-              <meta property="og:image:secure_url" content="https://files.dscrs.site/production/image/logo_image.png" />
+              <meta property="og:image:secure_url" content={`${cdnUrl}/production/image/logo_image.png`} />
               <meta property="og:image:alt" content={t('Discours')} />
 
               {/* ========== TWITTER CARD ТЕГИ ============ */}
@@ -77,7 +78,7 @@ export default createHandler(() => {
                 name="twitter:description"
                 content={t('Discours – an open magazine about culture, science and society')}
               />
-              <meta name="twitter:image" content="https://files.dscrs.site/production/image/logo_image.png" />
+              <meta name="twitter:image" content={`${cdnUrl}/production/image/logo_image.png`} />
               <meta name="twitter:image:alt" content={t('Discours')} />
 
               {/* ========== ДОПОЛНИТЕЛЬНЫЕ МЕТАТЕГИ ============ */}
@@ -92,7 +93,7 @@ export default createHandler(() => {
                 name="vk:description"
                 content={t('Discours – an open magazine about culture, science and society')}
               />
-              <meta name="vk:image" content="https://files.dscrs.site/production/image/logo_image.png" />
+              <meta name="vk:image" content={`${cdnUrl}/production/image/logo_image.png`} />
 
               {assets}
             </head>

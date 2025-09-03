@@ -8,9 +8,8 @@ import { useLocalize } from '~/context/localize'
 import { useProfile } from '~/context/profile'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
+import { useUpload } from '~/context/upload'
 import { ProfileInput } from '~/graphql/generated/graphql'
-import { handleFileUpload } from '~/lib/handleFileUpload'
-import { getFileUrl } from '~/lib/imageCache'
 import { profileSocialLinks } from '~/lib/profileSocialLinks'
 import styles from '~/styles/views/ProfileSettings.module.scss'
 import { clone } from '~/utils/clone'
@@ -52,6 +51,7 @@ export const ProfileSettings = () => {
   const [prevForm, setPrevForm] = createStore<ProfileInput>({} as ProfileInput)
   const { showConfirm } = useUI()
   const { showModal, hideModal } = useUI()
+  const { uploadImage } = useUpload()
   const [loading, setLoading] = createSignal(true)
 
   // Используем createEffect для отслеживания данных сессии и инициализации формы
@@ -141,8 +141,8 @@ export const ProfileSettings = () => {
       setUploadError(false)
       setIsUserpicUpdating(true)
 
-      const result = await handleFileUpload(uploadFile, session()?.token || '', 'image')
-      updateFormField('pic', result.url || '')
+      const url = await uploadImage(uploadFile.file)
+      updateFormField('pic', url)
 
       setUserpicFile(undefined)
       setIsUserpicUpdating(false)
@@ -215,15 +215,7 @@ export const ProfileSettings = () => {
                             <Loading />
                           </Match>
                           <Match when={form.pic}>
-                            <div
-                              class={styles.userpicImage}
-                              style={{
-                                'background-image': `url(${getFileUrl(form.pic || '', {
-                                  width: 180,
-                                  height: 180
-                                })})`
-                              }}
-                            />
+                            <div class={styles.userpicImage} style={{ 'background-image': `url(${form.pic})` }} />
                             <div class={styles.controls}>
                               <Popover content={t('Delete userpic')}>
                                 {(triggerRef: (el: HTMLElement) => void) => (

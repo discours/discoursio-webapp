@@ -5,7 +5,7 @@ import { FollowingButton } from '~/components/_shared/FollowingButton'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { FollowingEntity, Topic } from '~/graphql/generated/graphql'
-import { getFileUrl } from '~/lib/imageCache'
+// getImageUrl больше не нужен - middleware перехватывает CDN запросы
 import { mediaMatches } from '~/lib/mediaQuery'
 import { capitalize } from '~/utils/capitalize'
 
@@ -52,7 +52,7 @@ export const TopicBadge = (props: Props) => {
               })}
               style={
                 (props.topic?.pic || '') && {
-                  'background-image': `url('${getFileUrl(props.topic?.pic || '', { width: 40, height: 40 })}')`
+                  'background-image': `url('${props.topic.pic}')`
                 }
               }
             />

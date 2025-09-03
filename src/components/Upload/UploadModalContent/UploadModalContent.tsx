@@ -6,9 +6,8 @@ import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'
 import { useLocalize } from '~/context/localize'
-import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
-import { handleFileUpload } from '~/lib/handleFileUpload'
+import { useUpload } from '~/context/upload'
 import { UploadedFile } from '~/types/upload'
 import { InlineForm } from '../../_shared/InlineForm'
 
@@ -24,11 +23,12 @@ const verify = (url: string) =>
 export const UploadModalContent = (props: Props) => {
   const { t } = useLocalize()
   const { hideModal } = useUI()
+  const { uploadImage } = useUpload()
   const [isUploading, setIsUploading] = createSignal(false)
   const [uploadError, setUploadError] = createSignal<string | undefined>()
   const [dragActive, setDragActive] = createSignal(false)
   const [dragError, setDragError] = createSignal<string | undefined>()
-  const { session } = useSession()
+  const [uploadProgress, setUploadProgress] = createSignal(0)
   const { selectFiles } = createFileUploader({ multiple: false, accept: 'image/*' })
   const runUpload = async (file: UploadFile) => {
     try {
@@ -36,31 +36,19 @@ export const UploadModalContent = (props: Props) => {
       console.log('[UploadModalContent] Starting file upload:', {
         fileName: file.name,
         fileType: file.file.type,
-        fileSize: file.size,
-        hasToken: !!session()?.token
+        fileSize: file.size
       })
-      const result = await handleFileUpload(file, session()?.token || '', 'image')
+
+      const url = await uploadImage(file.file, (progress) => setUploadProgress(progress))
+      const result: UploadedFile = { url, originalFilename: file.name }
+
       console.log('[UploadModalContent] Upload successful:', result)
-      props.onClose(result.url ? result : undefined)
+      props.onClose(result)
       setIsUploading(false)
     } catch (error) {
       setIsUploading(false)
       const errorMessage = error instanceof Error ? error.message : t('Error')
-
-      if (errorMessage.includes('environment variable not found')) {
-        setUploadError(t('Server configuration error. Please try again later.'))
-      } else if (errorMessage.includes('Failed to fetch')) {
-        setUploadError(t('Network error. Please check your connection.'))
-      } else if (errorMessage.includes('Upload failed with status: 500')) {
-        setUploadError(t('Server error. Please try again later.'))
-      } else if (errorMessage.includes('Upload failed with status: 413')) {
-        setUploadError(t('File is too large. Please reduce its size.'))
-      } else if (errorMessage.includes('Invalid image type')) {
-        setUploadError(t('File format not supported.'))
-      } else {
-        setUploadError(errorMessage)
-      }
-
+      setUploadError(errorMessage)
       console.error('[UploadModalContent] Upload error:', error)
     }
   }
@@ -121,7 +109,15 @@ export const UploadModalContent = (props: Props) => {
 
   return (
     <div class={styles.uploadModalContent}>
-      <Show when={!isUploading()} fallback={<Loading />}>
+      <Show
+        when={!isUploading()}
+        fallback={
+          <div class={styles.uploadModalContent}>
+            <Loading />
+            <div class={styles.text}>{uploadProgress()}%</div>
+          </div>
+        }
+      >
         <>
           <div
             onDragEnter={handleDrag}

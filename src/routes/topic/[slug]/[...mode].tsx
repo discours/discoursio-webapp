@@ -5,12 +5,12 @@ import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { TopicView } from '~/components/Views/TopicView'
-import { getCdnUrl } from '~/config'
 import { FEED_PAGE_SIZE } from '~/context/feed'
 import { useLocalize } from '~/context/localize'
 import { useTopics } from '~/context/topics'
 import { loadAuthors, loadShouts, loadTopicBySlug } from '~/graphql/api/public'
 import { Author, LoadShoutsOptions, Shout, Topic } from '~/graphql/generated/graphql'
+import { getCdnUrl } from '~/lib/imageCache'
 // getImageUrl больше не нужен - middleware перехватывает CDN запросы
 import { descFromBody } from '~/utils/meta'
 

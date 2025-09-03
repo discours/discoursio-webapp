@@ -18,7 +18,7 @@ Open Graph (OG) протокол используется для оптимиз�
 ## Квотер оверлеи
 НЕ ИСПОЛЬЗУЮТСЯ в текущей реализации:
 ```
-# УСТАРЕЛО: https://files.dscrs.site/image/photo_640.jpg?s=12345
+# УСТАРЕЛО: https://files.discours.io/image/photo_640.jpg?s=12345
 ```
 
 **Vercel OG API** генерирует превью для социальных сетей:
@@ -30,7 +30,7 @@ https://discours.io/api/og/article?title=...&author=...
 
 | Назначение | Технология | URL формат | Размер |
 |-----------|-----------|-----------|--------|
-| Изображения в статьях | Квотер (Rust) | `files.dscrs.site/image/name_640.jpg` | Любой |
+| Изображения в статьях | Квотер (Rust) | `files.discours.io/image/name_640.jpg` | Любой |
 | Превью для соцсетей | Vercel OG (JS) | `discours.io/api/og/article?title=...` | 1200x630 |
 
 ### Централизованный модуль openGraph.ts

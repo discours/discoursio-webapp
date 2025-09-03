@@ -19,6 +19,7 @@ import { NotificationsProvider } from './context/notifications'
 import { SessionProvider } from './context/session'
 import { TopicsProvider } from './context/topics'
 import { UIProvider } from './context/ui'
+import { UploadProvider } from './context/upload'
 
 import '~/styles/app.scss'
 import '~/styles/toast.scss'
@@ -181,30 +182,32 @@ export const Providers: Component<{ children?: JSX.Element }> = (props) => {
       <LocalizeProvider>
         <OfflineStatus />
         <SessionProvider onStateChangeCallback={sessionStateChanged}>
-          <ConnectProvider>
-            <NotificationsProvider>
-              <UIProvider>
-                <TopicsProvider>
-                  <AuthorsProvider>
-                    <FeedProvider>
-                      <LocalDraftsProvider>
-                        <DraftsProvider>
-                          <FeaturedFeedProvider>
-                            <FollowingProvider>
-                              <MetaProvider>
-                                <Suspense fallback={<Loading />}>{props.children}</Suspense>
-                                <NotificationsPanelPortal />
-                              </MetaProvider>
-                            </FollowingProvider>
-                          </FeaturedFeedProvider>
-                        </DraftsProvider>
-                      </LocalDraftsProvider>
-                    </FeedProvider>
-                  </AuthorsProvider>
-                </TopicsProvider>
-              </UIProvider>
-            </NotificationsProvider>
-          </ConnectProvider>
+          <UploadProvider>
+            <ConnectProvider>
+              <NotificationsProvider>
+                <UIProvider>
+                  <TopicsProvider>
+                    <AuthorsProvider>
+                      <FeedProvider>
+                        <LocalDraftsProvider>
+                          <DraftsProvider>
+                            <FeaturedFeedProvider>
+                              <FollowingProvider>
+                                <MetaProvider>
+                                  <Suspense fallback={<Loading />}>{props.children}</Suspense>
+                                  <NotificationsPanelPortal />
+                                </MetaProvider>
+                              </FollowingProvider>
+                            </FeaturedFeedProvider>
+                          </DraftsProvider>
+                        </LocalDraftsProvider>
+                      </FeedProvider>
+                    </AuthorsProvider>
+                  </TopicsProvider>
+                </UIProvider>
+              </NotificationsProvider>
+            </ConnectProvider>
+          </UploadProvider>
         </SessionProvider>
       </LocalizeProvider>
     </ErrorBoundary>

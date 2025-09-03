@@ -30,19 +30,41 @@
   cursor: grabbing;
 }
 
-.zoomControls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
 .cropperControls {
   display: flex;
   gap: 0.5rem;
   justify-content: center;
   flex-wrap: wrap;
+
+  &:global(.zoomControls) {
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+}
+
+.zoomControl {
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 24px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #000;
+  }
+
+  &:global(.zoomControlDefault) {
+    font-size: 1.2rem;
+    letter-spacing: 0.15em;
+  }
 }
 
 @media (max-width: 768px) {

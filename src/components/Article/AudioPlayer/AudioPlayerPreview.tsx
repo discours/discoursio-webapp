@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, on, onMount, Show } from 'solid-js'
-
 import { MediaItem } from '~/graphql/generated/graphql'
+import { getCdnUrl } from '~/lib/imageCache'
 import { AudioTimeLine } from './AudioTimeLine'
 import { PlayerHeader } from './PlayerHeader'
 
@@ -154,6 +154,21 @@ export const AudioPlayerPreview = (props: Props) => {
 
   const handleAudioError = (event: Event) => {
     console.error('[AudioPlayerPreview] Audio error:', event)
+    const audioElement = event.target as HTMLAudioElement
+    const currentSrc = audioElement.src
+
+    // Если ошибка с квотером, попробуем оригинальный URL
+    if (currentSrc.includes('files.dscrs.site') && currentTack()?.url) {
+      const originalUrl = currentTack()?.url
+      if (originalUrl && !originalUrl.includes('files.dscrs.site')) {
+        console.log('[AudioPlayerPreview] Retrying with original URL:', originalUrl)
+        // Используем processAudioUrl для правильной обработки URL
+        audioElement.src = originalUrl
+        setAudioError(null)
+        return
+      }
+    }
+
     setAudioError('Audio loading error')
     setIsPlaying(false)
   }
@@ -323,38 +338,6 @@ export const AudioPlayerPreview = (props: Props) => {
     }
   }
 
-  // Генерация правильного URL для аудио
-  const getAudioUrl = (url: string | null | undefined): string => {
-    if (!url) {
-      console.warn('[AudioPlayerPreview] No URL provided for audio')
-      return ''
-    }
-
-    // Заменяем все старые CDN домены на новый
-    let audioUrl = url
-      .replace('https://cdn.discours.io', 'https://files.dscrs.site')
-      .replace('https://images.discours.io', 'https://files.dscrs.site')
-      .replace('cdn.discours.io', 'files.dscrs.site')
-      .replace('images.discours.io', 'files.dscrs.site')
-
-    // Убираем лишние параметры
-    if (audioUrl.includes('?')) {
-      audioUrl = audioUrl.split('?')[0]
-    }
-
-    console.log('[AudioPlayerPreview] Audio URL processing:', {
-      original: url,
-      processed: audioUrl,
-      hasUrl: !!url,
-      urlType: typeof url,
-      replacements: {
-        'images.discours.io': url.includes('images.discours.io'),
-        'cdn.discours.io': url.includes('cdn.discours.io')
-      }
-    })
-    return audioUrl
-  }
-
   // Диагностика медиа данных
   createEffect(() => {
     const media = props.media
@@ -390,7 +373,8 @@ export const AudioPlayerPreview = (props: Props) => {
         <audio
           ref={(el) => (audioRef = el)}
           onTimeUpdate={handleAudioTimeUpdate}
-          src={getAudioUrl(currentTack()?.url)}
+          onLoadStart={handleAudioLoadStart}
+          src={getCdnUrl(currentTack()?.url || '')}
           onCanPlay={() => {
             // start to play the next track on src change
             if (isPlaying() && audioRef) {
@@ -421,7 +405,6 @@ export const AudioPlayerPreview = (props: Props) => {
           }}
           onEnded={handleAudioEnd}
           onError={handleAudioError}
-          onLoadStart={handleAudioLoadStart}
           crossorigin="anonymous"
           preload="metadata"
         />

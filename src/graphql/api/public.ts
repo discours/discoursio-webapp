@@ -97,10 +97,10 @@ export const loadTopicsByCommunity = (args: QueryGet_Topics_By_CommunityArgs) =>
 
   return async () => {
     try {
-      console.log('[loadTopicsByCommunity] Starting API call with args:', args)
+      // console.log('[loadTopicsByCommunity] Starting API call with args:', args)
       const response = await loader()
       const topics = response?.get_topics_by_community || []
-      console.log('[loadTopicsByCommunity] Extracted topics:', topics.length, 'topics')
+      // console.log('[loadTopicsByCommunity] Extracted topics:', topics.length, 'topics')
       return topics
     } catch (error) {
       console.error('[loadTopicsByCommunity] API error:', error)

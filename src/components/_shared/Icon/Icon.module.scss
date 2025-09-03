@@ -9,12 +9,15 @@
     // ✅ Показываем сразу для SSR - стабильная гидрация
     opacity: 1;
     transform: scale(1);
-    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out, filter 0.2s ease;
+    
+    // 🎨 Дефолтные цвета для видимости иконок
+    filter: var(--icon-filter, brightness(1));
     
     // ✨ Применяем анимацию только для загруженных иконок
     &:not(.loaded) {
       @media (scripting: enabled) {
-        opacity: 0.3; // Не полностью прозрачные - видны но неактивные
+        opacity: 0.7; // Более видимые при загрузке
         transform: scale(0.95);
       }
     }

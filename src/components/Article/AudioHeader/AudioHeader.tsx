@@ -4,6 +4,7 @@ import { createSignal, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { Image } from '~/components/_shared/Image'
 import { MediaItem, Topic } from '~/graphql/generated/graphql'
+import { getCdnUrl } from '~/lib/imageCache'
 import { CardTopic } from '../../Feed/CardTopic'
 
 import styles from './AudioHeader.module.scss'
@@ -17,10 +18,24 @@ type Props = {
 
 export const AudioHeader = (props: Props) => {
   const [expandedImage, setExpandedImage] = createSignal(false)
+
+  // Генерируем srcSet для адаптивных изображений
+  const generateSrcSet = (cover: string) => {
+    if (!cover) return ''
+    const sizes = [200, 300, 400, 600]
+    return sizes.map((size) => `${getCdnUrl(cover, size)} ${size}w`).join(', ')
+  }
+
   return (
     <div class={clsx(styles.AudioHeader, { [styles.expandedImage]: expandedImage() })}>
       <div class={styles.cover}>
-        <Image class={styles.image} src={props.cover} alt={props.title} width={100} />
+        <Image
+          class={styles.image}
+          src={getCdnUrl(props.cover || '')}
+          srcSet={generateSrcSet(props.cover || '')}
+          alt={props.title}
+          width={300}
+        />
         <Show when={props.cover}>
           <button type="button" class={styles.expand} onClick={() => setExpandedImage(!expandedImage())}>
             <Icon name="expand-circle" />

@@ -15,7 +15,7 @@ import { ModalType, useUI } from '~/context/ui'
 import { useShoutsMyRates } from '~/graphql/api/private'
 import { loadReactions, loadUnratedShouts } from '~/graphql/api/public'
 import { Author, Reaction, ReactionKind, ReactionSort, Shout } from '~/graphql/generated/graphql'
-import { getCachedImageUrl } from '~/lib/imageCache'
+// getImageUrl больше не нужен - middleware перехватывает CDN запросы
 import styles from '~/styles/views/Feed.module.scss'
 import { Modal } from '../_shared/Modal'
 import { getShareUrl } from '../Article/SharePopup'
@@ -38,14 +38,6 @@ export interface FeedProps {
 }
 
 export const FeedView = (props: FeedProps) => {
-  console.log('[FeedView] Component render started with props:', {
-    recentLength: props.recentShouts?.length || 0,
-    hotLength: props.hotShouts?.length || 0,
-    topLength: props.topShouts?.length || 0,
-    unratedLength: props.unratedShouts?.length || 0,
-    commentsLength: props.recentComments?.length || 0
-  })
-
   const { t } = useLocalize()
   const loc = useLocation()
   const { showModal } = useUI()
@@ -104,24 +96,17 @@ export const FeedView = (props: FeedProps) => {
 
   // Инициализация контекста с SSR данными для всех режимов - заменяем на правильный createEffect
   createEffect(() => {
-    console.log('[FeedView] Initializing feed context with SSR data:', {
-      recent: props.recentShouts?.length || 0,
-      hot: props.hotShouts?.length || 0,
-      top: props.topShouts?.length || 0,
-      currentPath: loc.pathname
-    })
-
     // Инициализируем контекст данными из SSR для всех режимов только если данные есть
     if (props.recentShouts?.length) {
-      console.log('[FeedView] Initializing recent feed with', props.recentShouts.length, 'items')
+      // console.log('[FeedView] Initializing recent feed with', props.recentShouts.length, 'items')
       initializeFeed('recent', props.recentShouts)
     }
     if (props.hotShouts?.length) {
-      console.log('[FeedView] Initializing hot feed with', props.hotShouts.length, 'items')
+      // console.log('[FeedView] Initializing hot feed with', props.hotShouts.length, 'items')
       initializeFeed('hot', props.hotShouts)
     }
     if (props.topShouts?.length) {
-      console.log('[FeedView] Initializing top feed with', props.topShouts.length, 'items')
+      // console.log('[FeedView] Initializing top feed with', props.topShouts.length, 'items')
       initializeFeed('top', props.topShouts)
     }
   })
@@ -131,19 +116,6 @@ export const FeedView = (props: FeedProps) => {
     const currentFeed = feedByMode()
     const currentMode = mode()
 
-    console.log('[FeedView] sortedFeed computation:', {
-      currentMode,
-      contextLength: currentFeed.shouts?.length,
-      contextIsEmpty: currentFeed.isEmpty,
-      contextLoading: currentFeed.isLoading,
-      propsRecentLength: props.recentShouts?.length,
-      propsHotLength: props.hotShouts?.length,
-      propsTopLength: props.topShouts?.length,
-      hasValidContextData: currentFeed.shouts?.length > 0 && !currentFeed.isEmpty
-    })
-
-    // ✅ ИСПРАВЛЕНО: Если контекст загружен (не в состоянии загрузки), используем его данные
-    // даже если они пустые (результат фильтрации)
     if (!currentFeed.isLoading) {
       console.log('[FeedView] Using context feed data (loaded):', currentFeed.shouts?.length || 0, 'items', {
         isEmpty: currentFeed.isEmpty,
@@ -449,7 +421,7 @@ export const FeedView = (props: FeedProps) => {
                 <div
                   class={clsx(styles.comment, styles.unratedArticle)}
                   style={{
-                    'background-image': `url(${getCachedImageUrl(article?.cover || '', { width: 40 })})`
+                    'background-image': `url(${article?.cover || ''})`
                   }}
                 >
                   <Show when={article.main_topic}>

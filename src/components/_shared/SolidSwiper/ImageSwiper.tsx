@@ -5,7 +5,6 @@ import SwiperCore from 'swiper'
 import { HashNavigation, Manipulation, Navigation, Pagination } from 'swiper/modules'
 import { throttle } from 'throttle-debounce'
 import { MediaItem } from '~/graphql/generated/graphql'
-import { getFileUrl } from '~/lib/imageCache'
 import { Icon } from '../Icon'
 import { Image } from '../Image'
 import { Lightbox } from '../Lightbox'
@@ -96,7 +95,7 @@ export const ImageSwiper = (props: Props) => {
 
   const handleImageClick = (imageIndex: number) => {
     const image: MediaItem = props.images[imageIndex]
-    openLightbox(getFileUrl(image.source || ''))
+    openLightbox(image.source || '')
   }
 
   return (
@@ -125,10 +124,7 @@ export const ImageSwiper = (props: Props) => {
                       <div
                         class={clsx(styles.imageThumb)}
                         style={{
-                          'background-image': `url(${getFileUrl(slide.url || '', {
-                            width: 110,
-                            height: 75
-                          })})`
+                          'background-image': `url(${slide.url || ''})`
                         }}
                       />
                     </swiper-slide>

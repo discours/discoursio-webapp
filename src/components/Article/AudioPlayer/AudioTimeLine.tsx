@@ -1,4 +1,4 @@
-import { createSignal, Show } from 'solid-js'
+import { createSignal } from 'solid-js'
 
 import styles from './AudioPlayer.module.scss'
 
@@ -29,28 +29,111 @@ export const AudioTimeLine = (props: {
   currentTime: number
   currentTrackDuration: number
   onScrub: (event: MouseEvent | undefined) => void
+  onPreviewTime?: (time: number | null) => void
 }) => {
   let progressRef: HTMLDivElement | undefined
-  const [isMouseDown, setIsMouseDown] = createSignal(false)
+  const [isPressed, setIsPressed] = createSignal(false)
+  const [hasDragged, setHasDragged] = createSignal(false)
 
-  const handleMouseDown = (e: MouseEvent) => {
-    e.preventDefault()
-    setIsMouseDown(true)
-    props.onScrub(e)
-  }
+  // Вычисляет время из позиции клика/касания
+  const getTimeFromEvent = (e: MouseEvent | TouchEvent): number => {
+    const progressElement = e.currentTarget as HTMLDivElement
+    const rect = progressElement.getBoundingClientRect()
 
-  const handleMouseUp = () => {
-    setIsMouseDown(false)
-  }
+    // Получаем clientX в зависимости от типа события
+    const clientX = 'touches' in e ? e.touches[0]?.clientX || e.changedTouches[0]?.clientX : e.clientX
+    const offsetX = clientX - rect.left
+    const width = rect.width
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isMouseDown()) {
-      props.onScrub(e)
-    }
+    if (width <= 0 || props.currentTrackDuration <= 0) return 0
+
+    return Math.max(0, Math.min((offsetX / width) * props.currentTrackDuration, props.currentTrackDuration))
   }
 
   const handleClick = (e: MouseEvent) => {
+    // Не обрабатываем клик если было перетаскивание
+    if (hasDragged()) {
+      console.log('[AudioTimeLine] handleClick - ignored after drag')
+      setHasDragged(false)
+      return
+    }
+    console.log('[AudioTimeLine] handleClick - processing')
     props.onScrub(e)
+  }
+
+  const handleMouseDown = (e: MouseEvent) => {
+    console.log('[AudioTimeLine] handleMouseDown')
+    e.preventDefault()
+    setIsPressed(true)
+    setHasDragged(false)
+    // Время уже показано в onMouseMove при hover
+  }
+
+  const handleMouseUp = (e: MouseEvent) => {
+    console.log('[AudioTimeLine] handleMouseUp')
+    if (isPressed()) {
+      // Выполняем фактическую перемотку только при mouseUp
+      console.log('[AudioTimeLine] Executing actual scrub')
+      props.onScrub(e)
+    }
+    setIsPressed(false)
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    // Всегда показываем предварительное время при движении мыши
+    const previewTime = getTimeFromEvent(e)
+    console.log('[AudioTimeLine] Preview time on hover/move:', previewTime)
+    props.onPreviewTime?.(previewTime)
+
+    if (isPressed()) {
+      console.log('[AudioTimeLine] handleMouseMove (dragging)')
+      setHasDragged(true)
+    }
+  }
+
+  const handleMouseLeave = () => {
+    console.log('[AudioTimeLine] handleMouseLeave')
+    setIsPressed(false)
+    // Скрываем предварительное время при уходе курсора
+    props.onPreviewTime?.(null)
+  }
+
+  // Touch обработчики
+  const handleTouchStart = (e: TouchEvent) => {
+    console.log('[AudioTimeLine] handleTouchStart')
+    e.preventDefault()
+    setIsPressed(true)
+    setHasDragged(false)
+
+    // Показываем предварительное время
+    const previewTime = getTimeFromEvent(e)
+    console.log('[AudioTimeLine] Preview time (touch):', previewTime)
+    props.onPreviewTime?.(previewTime)
+  }
+
+  const handleTouchEnd = (e: TouchEvent) => {
+    console.log('[AudioTimeLine] handleTouchEnd')
+    if (isPressed()) {
+      // Выполняем фактическую перемотку только при touchEnd
+      console.log('[AudioTimeLine] Executing actual scrub (touch)')
+      // Создаем MouseEvent-подобный объект для совместимости с onScrub
+      // biome-ignore lint/suspicious/noExplicitAny: fake mouse event
+      const fakeMouseEvent = e as any
+      props.onScrub(fakeMouseEvent)
+    }
+    setIsPressed(false)
+  }
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (isPressed()) {
+      console.log('[AudioTimeLine] handleTouchMove (dragging)')
+      setHasDragged(true)
+
+      // Показываем предварительное время во время перетаскивания
+      const previewTime = getTimeFromEvent(e)
+      console.log('[AudioTimeLine] Preview time during touch drag:', previewTime)
+      props.onPreviewTime?.(previewTime)
+    }
   }
 
   // Вычисляем процент прогресса с защитой от деления на ноль
@@ -68,7 +151,11 @@ export const AudioTimeLine = (props: {
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={() => setIsPressed(false)}
       >
         <div
           class={styles.progressFilled}
@@ -79,9 +166,7 @@ export const AudioTimeLine = (props: {
       </div>
       <div class={styles.progressTiming}>
         <span>{getFormattedTime(props.currentTime)}</span>
-        <Show when={props.currentTrackDuration > 0}>
-          <span>{getFormattedTime(props.currentTrackDuration)}</span>
-        </Show>
+        <span>{props.currentTrackDuration > 0 ? getFormattedTime(props.currentTrackDuration) : '00:00'}</span>
       </div>
     </div>
   )

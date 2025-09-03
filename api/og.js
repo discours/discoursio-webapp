@@ -8,6 +8,32 @@ function h(type, props, ...children) {
 
 // Базовые настройки
 const cdnUrl = 'https://files.dscrs.site'
+const defaultImage = `${cdnUrl}/logo_sign.png`
+
+// Функция для правильной обработки CDN URL
+const getCdnUrl = (url, width) => {
+  if (!url) return url
+  let filepath = ''
+  try {
+    filepath = new URL(url).pathname
+  } catch {
+    filepath = url
+  }
+  const fileparts = filepath.split('/')
+  let filename = fileparts.pop() || ''
+  if (!filename) filename = filepath
+  if (filename.toLowerCase() === 'webp') filename = fileparts.pop() || ''
+  if (!filename) return url
+  if (width) {
+    const extension = filename.split('.').pop() || ''
+    if (extension && !filename.includes(`_${width}`)) {
+      filename = filename.replace(`.${extension}`, `_${width}.${extension}`)
+    }
+  }
+  if (!cdnUrl) return `/api/proxy/${filename}`
+  return `${cdnUrl}/${filename}`
+}
+
 const OG_IMAGE_WIDTH = 1200
 const OG_IMAGE_HEIGHT = 630
 
@@ -22,15 +48,7 @@ const translations = {
     articles: 'статей',
     followers: 'подписчиков'
   },
-  en: {
-    'Discours — open magazine': 'Discours — open magazine',
-    'About culture, science and society': 'About culture, science and society',
-    Featured: 'Featured',
-    'Read now': 'Read now',
-    'and other materials': 'and other materials',
-    articles: 'articles',
-    followers: 'followers'
-  }
+  en: {}
 }
 
 // Простая функция перевода для Edge Runtime
@@ -43,26 +61,6 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-}
-
-/**
- * Обрабатывает cover изображения для OG
- */
-function getCoverForOG(cover) {
-  if (!cover) return null
-
-  // Если это относительный путь, делаем абсолютным
-  if (cover.startsWith('/')) {
-    return `${cdnUrl}${cover}`
-  }
-
-  // Если это уже полный URL с нашим CDN, возвращаем как есть
-  if (cover.includes('files.dscrs.site') || cover.includes('cdn.discours.io')) {
-    return cover
-  }
-
-  // Для обычных изображений добавляем CDN префикс
-  return `${cdnUrl}/production/image/${cover}`
 }
 
 /**
@@ -222,7 +220,7 @@ function createOGImage({ title, description, cover, topRight = null, theme = 'li
   const isDark = theme === 'dark'
   const backgroundStyle = cover
     ? {
-        background: `linear-gradient(rgba(0,0,0,0.50), rgba(0,0,0,0.65)), url(${getCoverForOG(cover)})`,
+        background: `linear-gradient(rgba(0,0,0,0.50), rgba(0,0,0,0.65)), url(${getCdnUrl(cover)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center'
       }
@@ -243,7 +241,7 @@ function createOGImage({ title, description, cover, topRight = null, theme = 'li
         }
       },
       h('img', {
-        src: `${cdnUrl}/logo_sign.png`,
+        src: defaultImage,
         width: 60,
         height: 60,
         style: { width: 60, height: 60, objectFit: 'contain', borderRadius: '16px' }
@@ -330,7 +328,7 @@ function createBasicOGImage() {
       }
     },
     h('img', {
-      src: `${cdnUrl}/logo_sign.png`,
+      src: defaultImage,
       width: 200,
       height: 200,
       style: { width: 200, height: 200, objectFit: 'contain' }

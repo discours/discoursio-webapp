@@ -255,20 +255,6 @@ export const preloadImages = async (urls: Array<{ src: string; width?: number }>
 }
 ```
 
-#### `getCachedImageSrcSet(src, widths)`
-Генерирует srcSet для адаптивных изображений:
-
-```typescript
-export const getCachedImageSrcSet = (
-  src: string, 
-  widths: number[] = [400, 800, 1200]
-): string => {
-  return widths
-    .map(width => `${getCachedImageUrl(src, { width })} ${width}w`)
-    .join(', ')
-}
-```
-
 **Умная версия кеша**:
 ```typescript
 // Версия обновляется автоматически при деплоях
@@ -391,24 +377,12 @@ export default function middleware(request) {
 
 ## Оптимизация производительности
 
-### 1. Кеширование на разных уровнях
+### Кеширование на разных уровнях
 
 - **Браузер**: 1 час с stale-while-revalidate 24 часа
 - **CDN**: 1 год для статических ресурсов
 - **Service Worker**: Дополнительное кеширование для offline
 
-### 2. Адаптивные изображения
-
-```typescript
-// Генерация srcSet для разных разрешений
-const srcSet = getCachedImageSrcSet(imageSrc, [400, 800, 1200])
-
-<img 
-  src={getCachedImageUrl(imageSrc, { width: 800 })}
-  srcSet={srcSet}
-  sizes="(max-width: 768px) 400px, (max-width: 1200px) 800px, 1200px"
-/>
-```
 
 ### 3. Предзагрузка критических изображений
 
@@ -518,7 +492,7 @@ const desktopWidth = 800
   src={getCachedImageUrl(imageSrc, { 
     width: window.innerWidth < 768 ? mobileWidth : desktopWidth 
   })}
-  srcSet={getCachedImageSrcSet(imageSrc, [400, 800, 1200])}
+  srcSet={getCdnUrl(imageSrc, 400)}
   sizes="(max-width: 768px) 400px, 800px"
 />
 ```
@@ -553,7 +527,7 @@ const desktopWidth = 800
 Квотер поддерживает следующие паттерны URL для обработки файлов:
 
 ```
-https://files.dscrs.site/{path}
+https://files.discours.io/{path}
 ```
 
 ### Поддерживаемые форматы запросов
@@ -687,7 +661,7 @@ const originalUrl = "https://cdn.discours.io/production/image/photo.jpeg"
 
 // Генерированный URL для квотера  
 const cachedUrl = getCachedImageUrl(originalUrl, { width: 640 })
-// Результат: "https://files.dscrs.site/image/photo_640.webp?v=a1b2c3d4"
+// Результат: "https://files.discours.io/image/photo_640.webp?v=a1b2c3d4"
 ```
 
 #### Автоматические оптимизации:
@@ -708,7 +682,7 @@ supportsWebP = true
 "image/photo_640.webp"
 
 // 4. Финальный URL
-"https://files.dscrs.site/image/photo_640.webp?v=a1b2c3d4"
+"https://files.discours.io/image/photo_640.webp?v=a1b2c3d4"
 ```
 
 ### Обработка ошибок
@@ -869,7 +843,7 @@ return ErrorNotFound("file does not exist")
 //   width: 640, 
 //   shout: shoutId  // Добавляет оверлей через квотер
 // })
-// Результат: https://files.dscrs.site/image/photo_640.jpg?s=12345
+// Результат: https://files.discours.io/image/photo_640.jpg?s=12345
 ```
 
 #### Vercel OG API (для социальных сетей)

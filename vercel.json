@@ -79,53 +79,5 @@
         }
       ]
     }
-  ],
-  "images": {
-    "sizes": [32, 64, 96, 128, 256, 384, 640, 750, 828, 1080, 1200, 1600, 1920],
-    "remotePatterns": [
-      {
-        "protocol": "https",
-        "hostname": "files.dscrs.site"
-      },
-      {
-        "protocol": "https",
-        "hostname": "images.discours.io"
-      },
-      {
-        "protocol": "https",
-        "hostname": "assets.discours.io"
-      },
-      {
-        "protocol": "https",
-        "hostname": "cdn.discours.io"
-      },
-      {
-        "protocol": "https",
-        "hostname": "cdn.dscrs.site"
-      }
-    ],
-    "minimumCacheTTL": 3600,
-    "formats": ["image/webp", "image/avif"],
-    "dangerouslyAllowSVG": true,
-    "contentSecurityPolicy": "default-src 'self'; script-src 'none'; sandbox;"
-  },
-
-  "rewrites": [
-    {
-      "source": "/files.dscrs.site/:path*",
-      "destination": "https://files.dscrs.site/:path*"
-    },
-    {
-      "source": "/cdn.dscrs.site/:path*",
-      "destination": "https://files.dscrs.site/:path*"
-    },
-    {
-      "source": "/cdn.discours.io/:path*",
-      "destination": "https://files.dscrs.site/:path*"
-    },
-    {
-      "source": "/images.discours.io/:path*",
-      "destination": "https://files.dscrs.site/:path*"
-    }
   ]
 }

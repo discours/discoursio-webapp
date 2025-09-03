@@ -3,16 +3,15 @@ import { useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Component, createEffect, createMemo, ErrorBoundary, JSX, on, Show, Suspense } from 'solid-js'
 import { isServer } from 'solid-js/web'
-import { cdnUrl } from '~/config'
+import bannerImage from '~/assets/images/discours-banner.jpg'
 import { useLocalize } from '~/context/localize'
 import { Author, Shout, Topic } from '~/graphql/generated/graphql'
 import { getPageKeywords } from '~/intl/keywords'
-import { getCachedImageUrl } from '~/lib/imageCache'
+// getImageUrl больше не нужен - middleware перехватывает CDN запросы
 import { generatePageSpecificOGMetadata, getPageType } from '~/lib/openGraph'
 import { FooterView } from '../Discours/Footer'
 import { Header } from '../HeaderNav'
 import { Loading } from './Loading'
-
 import styles from './PageLayout.module.scss'
 
 type PageLayoutProps = {
@@ -113,7 +112,6 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
   const isHeaderFixed = props.isHeaderFixed === undefined ? true : props.isHeaderFixed
   const loc = useLocation()
   const { t, lang } = useLocalize()
-  const imageUrl = getCachedImageUrl(props.cover || `${cdnUrl}/production/image/logo_image.png`)
 
   // Простая функция для получения ключевых слов - только для сложных вычислений нужен createMemo
   const keywords = createMemo(() => {
@@ -166,7 +164,7 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
         slug={props.slug}
         title={props.headerTitle}
         desc={props.desc}
-        cover={imageUrl}
+        cover={props.cover || bannerImage}
         isHeaderFixed={isHeaderFixed}
       />
 

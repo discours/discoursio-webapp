@@ -14,6 +14,7 @@ import type { Author, Maybe, Shout, Topic } from '~/graphql/generated/graphql'
 import { MediaItem, ReactionKind } from '~/graphql/generated/graphql'
 import { processPrepositions } from '~/intl/prepositions'
 import { isCyrillic } from '~/intl/translate'
+import { getCdnUrl } from '~/lib/imageCache'
 // ✅ patchBodyUrls удален - больше не нужен
 import { capitalize } from '~/utils/capitalize'
 import { Icon } from '../_shared/Icon'
@@ -510,7 +511,11 @@ export const FullArticle = (props: Props) => {
                   when={props.article?.cover && props.article.layout !== 'video' && props.article.layout !== 'image'}
                 >
                   <figure class={styles.figureAlignColumn}>
-                    <Image width={1200} alt={props.article?.cover_caption || ''} src={props.article?.cover || ''} />
+                    <Image
+                      width={1200}
+                      alt={props.article?.cover_caption || ''}
+                      src={getCdnUrl(props.article?.cover || '')}
+                    />
                     <figcaption innerHTML={props.article?.cover_caption || ''} />
                   </figure>
                 </Show>

@@ -2,7 +2,7 @@ import { Link } from '@solidjs/meta'
 import type { JSX } from 'solid-js'
 import { createSignal, splitProps } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
-import { getCachedImageSrcSet, getCachedImageUrl } from '~/lib/imageCache'
+import { getCdnUrl, getImageSrcSet } from '~/lib/imageCache'
 
 type Props = JSX.ImgHTMLAttributes<HTMLImageElement> & {
   width: number
@@ -19,7 +19,7 @@ export const Image = (props: Props) => {
   const [loaded, setLoaded] = createSignal(false)
   const [lowResLoaded, setLowResLoaded] = createSignal(false)
 
-  // Используем кешированный URL изображения
+  // Используем оптимизированный URL изображения (Vercel API + квотер)
   const imageUrl = () => {
     if (!local.src) return ''
 
@@ -28,9 +28,9 @@ export const Image = (props: Props) => {
       return local.src
     }
 
-    // Для внешних URL используем кеширование через квотер
-    if (local.src.startsWith('http')) {
-      return getCachedImageUrl(local.src, { width: others.width })
+    // Для CDN изображений используем getCdnUrl с размером
+    if (local.src.startsWith('http') && others.width) {
+      return getCdnUrl(local.src, others.width)
     }
 
     // Для остальных случаев возвращаем как есть
@@ -41,21 +41,13 @@ export const Image = (props: Props) => {
   const lowResUrl = () => {
     if (!local.progressive || !local.src?.startsWith('http')) return undefined
 
-    // Создаем версию в 10% от оригинального размера для blur-эффекта
-    const lowResWidth = Math.max(32, Math.round((others.width || 400) * 0.1))
-    return getCachedImageUrl(local.src, { width: lowResWidth })
+    // Используем getCdnUrl для низкого разрешения (например, 200px)
+    return getCdnUrl(local.src, 200)
   }
 
   // Генерируем srcSet для адаптивных изображений
-  const imageSrcSet = () => {
-    if (!local.src || !local.src.startsWith('http') || !others.width) return undefined
-
-    // Генерируем массив ширин на основе переданной ширины
-    const baseWidth = others.width
-    const widths = [baseWidth, baseWidth * 1.5, baseWidth * 2].map((w) => Math.round(w))
-
-    return getCachedImageSrcSet(local.src, widths)
-  }
+  const imageSrcSet = () =>
+    getImageSrcSet(local.src || '', [others.width, others.width / 2, others.width / 4, others.width / 8])
 
   // Обработка ошибок загрузки изображения
   const handleImageError = (e: Event) => {

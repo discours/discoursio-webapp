@@ -24,7 +24,7 @@ export const Icon = (passedProps: IconProps) => {
     <div class={clsx('icon', styles.icon, props.class)} style={props.style} data-icon={props['data-icon']}>
       <img
         alt={props.title || props.name}
-        class={clsx(props.iconClassName, { 
+        class={clsx(props.iconClassName, {
           loaded: isLoaded()
         })}
         src={iconSrc()}

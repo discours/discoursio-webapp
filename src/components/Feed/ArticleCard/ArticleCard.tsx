@@ -14,6 +14,7 @@ import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import type { Author, Maybe, ReactionKind, Shout } from '~/graphql/generated/graphql'
+import { getCdnUrl } from '~/lib/imageCache'
 import { capitalize } from '~/utils/capitalize'
 import { descFromBody } from '~/utils/meta'
 import styles from './ArticleCard.module.scss'
@@ -155,17 +156,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
     if (props.onInvite) props.onInvite()
   }
 
-  const mainTopic = createMemo(() => {
-    const topic = props.article?.main_topic || props.article?.topics?.[0]
-    console.log('[ArticleCard] mainTopic:', {
-      article_id: props.article?.id,
-      article_title: props.article?.title,
-      main_topic: props.article?.main_topic,
-      topics: props.article?.topics,
-      resolved_topic: topic
-    })
-    return topic
-  })
+  const mainTopic = createMemo(() => props.article?.main_topic || props.article?.topics?.[0])
   return (
     <section
       data-testid="article-card"
@@ -200,7 +191,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
               fallback={<CoverImage class={styles.placeholderCoverImage} />}
             >
               <Image
-                src={props.article?.cover || ''}
+                src={getCdnUrl(props.article?.cover || '')}
                 alt={title}
                 width={desktopCoverImageWidths[props.desktopCoverSize || 'M']}
                 onError={() => {
@@ -319,7 +310,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
                   fallback={<CoverImage class={styles.placeholderCoverImage} />}
                 >
                   <Image
-                    src={props.article?.cover || ''}
+                    src={getCdnUrl(props.article?.cover || '')}
                     alt={title}
                     width={600}
                     loading="lazy"

@@ -12,7 +12,6 @@ import {
   Suspense,
   Switch
 } from 'solid-js'
-import { isServer } from 'solid-js/web'
 import { Loading } from '~/components/_shared/Loading'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { gaIdentity } from '~/config'
@@ -27,16 +26,35 @@ import { ReactionsProvider } from '../../context/reactions'
 import AuthorPage, { AuthorPageProps } from '../author/[slug]/[...mode]'
 import TopicPage, { TopicPageProps } from '../topic/[slug]/[...mode]'
 
+// ✨ Служебные пути, которые не являются статьями
+const SKIP_PATHS = ['fonts', 'icons', 'api', 'robots.txt', 'favicon.ico', 'manifest.json', 'sw.js']
+
+const isSkippedPath = (slug: string): boolean => {
+  return (
+    slug.startsWith('@') ||
+    slug.startsWith('!') ||
+    slug.startsWith('_') ||
+    slug.startsWith('.') ||
+    SKIP_PATHS.includes(slug)
+  )
+}
+
 const fetchShout = async (slug: string): Promise<Shout | undefined> => {
-  if (slug.startsWith('@') || slug.startsWith('!') || slug.startsWith('_') || slug.startsWith('.')) {
-    console.log(`[fetchShout] Skipping special slug: "${slug}"`)
+  if (isSkippedPath(slug)) {
     return
   }
 
   console.log(`[fetchShout] Loading article for slug: "${slug}"`)
   try {
     const shoutLoader = getShout({ slug })
-    const result = await shoutLoader()
+
+    // Добавляем таймаут для запроса
+    const timeoutPromise = new Promise<undefined>((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 15000)
+    })
+
+    const result = await Promise.race([shoutLoader(), timeoutPromise])
+
     console.log(`[fetchShout] Result for "${slug}":`, {
       hasResult: !!result,
       title: result?.title,
@@ -53,28 +71,48 @@ const fetchShout = async (slug: string): Promise<Shout | undefined> => {
 
 export const route: RouteDefinition = {
   load: async ({ params }) => {
+    if (isSkippedPath(params.slug)) {
+      return { article: undefined, topics: undefined }
+    }
+
     console.log(`[ArticleRoute] SSR loading for slug: "${params.slug}"`)
 
-    // If this is a topic route (starts with !), preload topics data
-    let topics: Topic[] | undefined
-    if (params.slug.startsWith('!')) {
-      const topicsLoader = loadTopics()
-      topics = await topicsLoader()
-    }
+    try {
+      // If this is a topic route (starts with !), preload topics data
+      let topics: Topic[] | undefined
+      if (params.slug.startsWith('!')) {
+        const topicsLoader = loadTopics()
+        topics = await topicsLoader()
+      }
 
-    const article = await fetchShout(params.slug)
-    console.log('[ArticleRoute] SSR loaded article:', {
-      slug: params.slug,
-      hasArticle: !!article,
-      title: article?.title,
-      id: article?.id
-    })
+      // Загружаем статью с таймаутом
+      const articlePromise = fetchShout(params.slug)
+      const timeoutPromise = new Promise<undefined>((_, reject) => {
+        setTimeout(() => reject(new Error('SSR timeout')), 10000)
+      })
 
-    const data = {
-      article,
-      topics
+      const article = await Promise.race([articlePromise, timeoutPromise])
+
+      console.log('[ArticleRoute] SSR loaded article:', {
+        slug: params.slug,
+        hasArticle: !!article,
+        title: article?.title,
+        id: article?.id
+      })
+
+      return {
+        article,
+        topics
+      }
+    } catch (error) {
+      console.error(`[ArticleRoute] SSR error for slug "${params.slug}":`, error)
+
+      // Возвращаем пустые данные вместо ошибки
+      return {
+        article: undefined,
+        topics: undefined
+      }
     }
-    return data
   }
 }
 
@@ -98,30 +136,55 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   const loc = useLocation()
   const { t } = useLocalize()
 
-  const [data] = createResource(
-    () => props.params.slug,
-    async (slug) => {
-      // 💋 Приоритет SSR данным для OG генерации
-      if (props.data?.article) {
-        console.log(`[ArticlePageContent] Using SSR data for "${slug}":`, {
-          title: props.data.article.title,
-          id: props.data.article.id
-        })
-        return props.data.article
+  // Используем SSR данные напрямую, createResource только для клиентских обновлений
+  const [clientData] = createResource(
+    () => {
+      // ✨ Фильтруем служебные пути
+      if (isSkippedPath(props.params.slug)) {
+        return null
       }
 
-      console.log(`[ArticlePageContent] No SSR data, fetching for "${slug}"`)
-      const result = await fetchShout(slug)
-      return result
+      // Запускаем загрузку только если нет SSR данных
+      if (!props.data?.article) {
+        console.log(`[ArticlePageContent] No SSR data for "${props.params.slug}", fetching on client`)
+        return props.params.slug
+      }
+      return null
     },
-    {
-      // 🚨 КРИТИЧНО: initialValue для стабильной гидрации и OG
-      initialValue: props.data?.article
+    async (slug) => {
+      if (!slug) return undefined
+
+      console.log(`[ArticlePageContent] Fetching for "${slug}"`)
+
+      // Retry логика для клиентской загрузки
+      let retries = 3
+      while (retries > 0) {
+        try {
+          const result = await fetchShout(slug)
+          if (result) {
+            console.log(`[ArticlePageContent] Successfully loaded "${slug}" on attempt ${4 - retries}`)
+            return result
+          }
+        } catch (error) {
+          console.warn(`[ArticlePageContent] Attempt ${4 - retries} failed for "${slug}":`, error)
+        }
+
+        retries--
+        if (retries > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+        }
+      }
+
+      console.error(`[ArticlePageContent] Failed to load "${slug}" after 3 attempts`)
+      return undefined
     }
   )
 
+  // Приоритет: SSR данные > клиентские данные
+  const articleData = () => props.data?.article || clientData()
+
   onMount(async () => {
-    if (gaIdentity && data()?.id) {
+    if (gaIdentity && articleData()?.id) {
       try {
         await loadGAScript(gaIdentity)
         initGA(gaIdentity)
@@ -133,7 +196,7 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
 
   createEffect(
     on(
-      data,
+      articleData,
       (a?: Shout) => {
         if (!a?.id) return
         window?.gtag?.('event', 'page_view', {
@@ -148,39 +211,35 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
 
   // dufok added article in PageLayout props for OG image generation
 
-  // 🚨 КРИТИЧНО: Используем SSR данные для OG генерации на сервере
-  // Приоритет SSR данным, затем клиентским данным
-  const articleData = (() => {
-    const clientData = data()
-    const ssrData = props.data?.article
-
-    // На сервере (для OG) используем SSR данные
-    if (isServer && ssrData) {
-      console.log(`[ArticlePageContent] Using SSR data for OG: "${ssrData.title}"`)
-      return ssrData
-    }
-
-    // На клиенте используем загруженные данные или fallback на SSR
-    return clientData || ssrData
-  })()
+  // Диагностика данных статьи
+  createEffect(() => {
+    console.log('[ArticlePageContent] Article data state:', {
+      slug: props.params.slug,
+      hasSSRData: !!props.data?.article,
+      hasClientData: !!clientData(),
+      finalData: !!articleData(),
+      title: articleData()?.title,
+      id: articleData()?.id
+    })
+  })
 
   return (
     <Suspense fallback={<Loading />}>
-      <Show when={articleData} fallback={<FourOuFourView />}>
-        <ReactionsProvider>
-          <PageLayout
-            title={`${t('Discours')}${articleData?.title ? ' :: ' : ''}${articleData?.title || ''}`}
-            desc={descFromBody(articleData?.body || '')}
-            keywords={keywordsFromTopics((articleData?.topics || []) as { title: string }[])}
-            headerTitle={articleData?.title || ''}
-            slug={articleData?.slug}
-            cover={articleData?.cover || ''}
-            article={articleData}
-          >
-            <FullArticle article={articleData!} />
-          </PageLayout>
-        </ReactionsProvider>
-      </Show>
+      <ReactionsProvider>
+        <PageLayout
+          title={`${t('Discours')}${articleData()?.title ? ' :: ' : ''}${articleData()?.title || props.params.slug}`}
+          desc={descFromBody(articleData()?.body || '')}
+          keywords={keywordsFromTopics((articleData()?.topics || []) as { title: string }[])}
+          headerTitle={articleData()?.title || props.params.slug}
+          slug={articleData()?.slug || props.params.slug}
+          cover={articleData()?.cover || ''}
+          article={articleData()}
+        >
+          <Show when={articleData()} fallback={<Loading />}>
+            <FullArticle article={articleData()!} />
+          </Show>
+        </PageLayout>
+      </ReactionsProvider>
     </Suspense>
   )
 }
