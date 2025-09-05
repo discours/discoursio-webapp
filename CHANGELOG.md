@@ -2,6 +2,26 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.14.10] - 2025-09-05
+
+### 🖼️ OpenGraph Preview Images Investigation
+
+- **🔍 ДИАГНОСТИКА: Исследована проблема с OpenGraph превью картинками**
+  - **API 404 Issue**: Обнаружено что `/api/og/*` возвращает 404 на testing.discours.io
+  - **SSR метатеги**: Добавлены полные OG метатеги в PageLayout.tsx для server-side rendering  
+  - **Конфигурация**: Проверена настройка Edge routes в app.config.ts и vercel.json
+  - **Кастомная h() функция**: Подтверждена корректность существующего подхода для @vercel/og
+
+### 🔧 Technical Changes  
+- **PageLayout.tsx**: Добавлены SSR OG метатеги через @solidjs/meta (og:image, twitter:card и т.д.)
+- **Vercel config**: Проверена конфигурация Edge routes для /api/og/**
+- **api/og.js**: Подтверждена корректность существующего кода с кастомной h() функцией
+
+### 🎯 Next Steps
+- Проверить развертывание Edge функций на testing.discours.io  
+- Убедиться что API endpoints /api/og/* доступны на production домене
+- Протестировать fallback изображения при недоступности OG API
+
 ## [0.14.9] - 2025-09-03
 
 ### 🔧 Comment Editor UX Improvements

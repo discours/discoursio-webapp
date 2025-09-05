@@ -182,6 +182,34 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
             }
           />
 
+          {/* 🔧 ИСПРАВЛЕНИЕ: Добавляем OG метатеги для SSR */}
+          <Meta property="og:type" content={ogMetadata().type} />
+          <Meta property="og:title" content={ogMetadata().title} />
+          <Meta property="og:description" content={ogMetadata().description} />
+          <Meta property="og:url" content={ogMetadata().url} />
+          <Meta property="og:image" content={ogMetadata().image} />
+          <Meta property="og:image:width" content={ogMetadata().imageWidth?.toString() || '1200'} />
+          <Meta property="og:image:height" content={ogMetadata().imageHeight?.toString() || '630'} />
+          <Meta property="og:site_name" content={ogMetadata().siteName} />
+          <Meta property="og:locale" content={ogMetadata().locale} />
+
+          {/* Twitter Card метатеги */}
+          <Meta name="twitter:card" content={ogMetadata().twitterCard || 'summary_large_image'} />
+          <Meta name="twitter:title" content={ogMetadata().title} />
+          <Meta name="twitter:description" content={ogMetadata().description} />
+          <Meta name="twitter:image" content={ogMetadata().image} />
+
+          {/* Дополнительные метатеги для статей */}
+          <Show when={ogMetadata().articleAuthor}>
+            <Meta property="article:author" content={ogMetadata().articleAuthor || ''} />
+          </Show>
+          <Show when={ogMetadata().articleSection}>
+            <Meta property="article:section" content={ogMetadata().articleSection || ''} />
+          </Show>
+          <Show when={ogMetadata().articlePublishedTime}>
+            <Meta property="article:published_time" content={ogMetadata().articlePublishedTime || ''} />
+          </Show>
+
           <main
             class={clsx('main-content', {
               [styles.zeroBottomPadding]: props.zeroBottomPadding

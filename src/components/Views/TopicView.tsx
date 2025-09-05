@@ -80,6 +80,25 @@ export const TopicView = (props: Props) => {
 
   // ✅ ИСПРАВЛЕНИЕ: Единый сигнал для авторов топика (без дублирования)
   const [topicAuthorsList, setTopicAuthorsList] = createSignal<Author[]>(props.followers || [])
+
+  // ⚡ КРИТИЧНО: Обновляем авторов когда приходят новые данные из props
+  createEffect(() => {
+    if (props.followers && props.followers.length > 0) {
+      console.log('[TopicView] Updating authors from props.followers:', props.followers.length)
+      setTopicAuthorsList(props.followers)
+    }
+  })
+
+  // ⚡ ДИАГНОСТИКА: Отслеживаем данные (безопасно для SSR)
+  createEffect(() => {
+    console.log('[TopicView] Data debug:', {
+      shoutsLength: props.shouts?.length || 0,
+      followersLength: props.followers?.length || 0,
+      topicAuthorsListLength: topicAuthorsList().length,
+      currentTab: currentTab(),
+      topicTitle: props.topic?.title
+    })
+  })
   const [searchQuery, setSearchQuery] = createSignal('')
 
   // ⚡ ПРАВИЛЬНАЯ ЗАГРУЗКА ПО SOLIDJS ПАТТЕРНАМ

@@ -142,13 +142,6 @@ export const route = {
       comments
     }
 
-    console.log('[AuthorRoute] route.load returning:', {
-      hasAuthor: !!result.author,
-      authorSlug: result.author?.slug,
-      articlesCount: result.articles?.length || 0,
-      commentsCount: result.comments?.length || 0
-    })
-
     return result
   }
 }

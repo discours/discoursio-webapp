@@ -51,7 +51,15 @@ export const TopicAuthorsView = (props: Props) => {
             when={filteredAuthors().length > 0}
             fallback={
               <div style="text-align: center; padding: 40px; color: #666;">
-                <Show when={searchQuery().trim()}>
+                <Show
+                  when={searchQuery().trim()}
+                  fallback={
+                    <div>
+                      <h3 style="margin-bottom: 1rem; color: #666;">{t('No authors found')}</h3>
+                      <p style="color: #999;">{t('This topic has no authors yet')}</p>
+                    </div>
+                  }
+                >
                   <p>
                     {t('No authors found for')} "{searchQuery()}"
                   </p>
