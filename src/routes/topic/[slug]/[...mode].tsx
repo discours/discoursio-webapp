@@ -19,7 +19,7 @@ const fetchTopicShouts = async (slug: string, offset?: number) => {
 
 export const route = {
   load: async ({ params, location: { query } }: RouteSectionProps<{ articles: Shout[]; topic: Topic }>) => {
-    const offset: number = Number.parseInt(query.offset as string, 10)
+    const offset: number = Number.parseInt(query.offset as string, 10) || 0
 
     try {
       // Load articles

@@ -54,6 +54,16 @@ const getDraftField = (draftId: string | number, fieldName: string): string | nu
 const parseJsonContent = (content?: string): string => {
   if (!content) return ''
 
+  // 🔧 ИСПРАВЛЕНИЕ: Более осторожная обработка HTML контента
+  // Не парсим как JSON если контент содержит HTML теги
+  if (content.includes('<') && content.includes('>')) {
+    // Это HTML контент, возвращаем как есть с минимальной обработкой
+    if (content.includes('\\"')) {
+      return content.replace(/\\"/g, '"')
+    }
+    return content
+  }
+
   if (content.trim().startsWith('{')) {
     try {
       const parsed = JSON.parse(content)

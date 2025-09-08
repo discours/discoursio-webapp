@@ -17,6 +17,7 @@ import getAuthorFollowersQuery from '~/graphql/query/core/author-followers'
 import getAuthorFollowsQuery from '~/graphql/query/core/author-follows'
 import styles from '~/styles/views/Author.module.scss'
 import { restoreScrollPosition, saveScrollPosition } from '~/utils/scroll'
+import { AuthorBadge } from '../Author/AuthorBadge'
 import { AuthorCard } from '../Author/AuthorCard'
 import { FeedFiltersControl } from '../Feed/FeedFiltersControl'
 import { FeedSwitcher } from '../Feed/FeedSwitcher/FeedSwitcher'
@@ -324,13 +325,19 @@ export const AuthorView = (props: AuthorViewProps) => {
   // Обновляем эффект для корректной обработки URL и состояния
   createEffect(
     on(
-      () => [loc.pathname, params.tab, feedMode()],
-      ([pathname]) => {
+      () => [loc.pathname, params.tab, feedMode(), loc.search],
+      ([pathname, , , search]) => {
+        // 🔧 ИСПРАВЛЕНИЕ: Добавляем обработку параметра ?m=followers
+        const searchParams = new URLSearchParams(search)
+        const mode = searchParams.get('m')
+
         if (pathname.includes('/comments')) {
           setCurrentTab('comments')
           // 🔧 ИСПРАВЛЕНИЕ: Комментарии теперь загружаются заранее в onMount, только устанавливаем вкладку
         } else if (pathname.includes('/about')) {
           setCurrentTab('about')
+        } else if (mode === 'followers') {
+          setCurrentTab('followers')
         } else {
           setCurrentTab(undefined)
         }
@@ -352,6 +359,12 @@ export const AuthorView = (props: AuthorViewProps) => {
           <A href={`/@${props.authorSlug}/comments`}>{t('Comments')}</A>
           <Show when={author() && commentsAmount() > 0}>
             <span class="view-switcher__counter">{commentsAmount()}</span>
+          </Show>
+        </li>
+        <li classList={{ 'view-switcher__item--selected': currentTab() === 'followers' }}>
+          <A href={`/@${props.authorSlug}?m=followers`}>{t('Followers')}</A>
+          <Show when={author() && followers().length > 0}>
+            <span class="view-switcher__counter">{followers().length}</span>
           </Show>
         </li>
         <li classList={{ 'view-switcher__item--selected': currentTab() === 'about' }}>
@@ -641,6 +654,26 @@ export const AuthorView = (props: AuthorViewProps) => {
       </div>
 
       <Switch>
+        <Match when={currentTab() === 'followers'}>
+          <div class="wide-container">
+            <div class="row">
+              <div class="col-md-20 col-lg-18">
+                <Show when={followers().length > 0} fallback={<div>{t('No followers yet')}</div>}>
+                  <div class="row">
+                    <For each={followers()}>
+                      {(follower: Author) => (
+                        <div class="col-md-12 col-lg-8">
+                          <AuthorBadge author={follower} />
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </Show>
+              </div>
+            </div>
+          </div>
+        </Match>
+
         <Match when={currentTab() === 'about'}>
           <div class="wide-container">
             <div class="row">

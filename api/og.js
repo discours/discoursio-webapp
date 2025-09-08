@@ -223,10 +223,10 @@ export async function GET(request) {
       topRight,
       theme
     }
-    console.log(`[OG] Creating OG image with props:`, ogImageProps)
+    console.log('[OG] Creating OG image with props:', ogImageProps)
 
     const ogImage = createOGImage(ogImageProps)
-    console.log(`[OG] OG image created:`, ogImage)
+    console.log('[OG] OG image created:', ogImage)
 
     const response = new ImageResponse(ogImage, {
       width: OG_IMAGE_WIDTH,
@@ -242,24 +242,24 @@ export async function GET(request) {
       }
     })
 
-    console.log(`[OG] ===== REQUEST SUCCESS =====`)
+    console.log('[OG] ===== REQUEST SUCCESS =====')
     console.log(`[OG] Duration: ${Date.now() - startTime}ms`)
-    console.log(`[OG] Response headers:`, response.headers)
+    console.log('[OG] Response headers:', response.headers)
 
     return response
   } catch (error) {
-    console.error(`[OG] ===== REQUEST ERROR =====`)
+    console.error('[OG] ===== REQUEST ERROR =====')
     console.error(`[OG] Error type: ${error.constructor.name}`)
     console.error(`[OG] Error message: ${error.message}`)
-    console.error(`[OG] Error stack:`, error.stack)
+    console.error('[OG] Error stack:', error.stack)
     console.error(`[OG] Duration before error: ${Date.now() - startTime}ms`)
 
     // 💋 Graceful fallback - возвращаем базовый OG при ошибке
     try {
-      console.log(`[OG] Attempting fallback with basic image...`)
+      console.log('[OG] Attempting fallback with basic image...')
       const fallbackImage = createBasicOGImage()
-      console.log(`[OG] Fallback image created:`, fallbackImage)
-      
+      console.log('[OG] Fallback image created:', fallbackImage)
+
       const fallbackResponse = new ImageResponse(fallbackImage, {
         width: OG_IMAGE_WIDTH,
         height: OG_IMAGE_HEIGHT,
@@ -268,19 +268,18 @@ export async function GET(request) {
           ...CORS_HEADERS
         }
       })
-      
-      console.log(`[OG] ===== FALLBACK SUCCESS =====`)
+
+      console.log('[OG] ===== FALLBACK SUCCESS =====')
       console.log(`[OG] Fallback duration: ${Date.now() - startTime}ms`)
       return fallbackResponse
-      
     } catch (fallbackError) {
-      console.error(`[OG] ===== FALLBACK ERROR =====`)
+      console.error('[OG] ===== FALLBACK ERROR =====')
       console.error(`[OG] Fallback error type: ${fallbackError.constructor.name}`)
       console.error(`[OG] Fallback error message: ${fallbackError.message}`)
-      console.error(`[OG] Fallback error stack:`, fallbackError.stack)
+      console.error('[OG] Fallback error stack:', fallbackError.stack)
       console.error(`[OG] Total duration: ${Date.now() - startTime}ms`)
-      
-      return new Response('OG image generation failed', { 
+
+      return new Response('OG image generation failed', {
         status: 500,
         headers: CORS_HEADERS
       })
@@ -292,8 +291,8 @@ export async function GET(request) {
  * Создает основную структуру OG-изображения
  */
 function createOGImage({ title, description, cover, topRight = null, theme = 'light' }) {
-  console.log(`[OG] createOGImage called with:`, { title, description, cover, topRight: !!topRight, theme })
-  
+  console.log('[OG] createOGImage called with:', { title, description, cover, topRight: !!topRight, theme })
+
   const isDark = theme === 'dark'
   console.log(`[OG] isDark: ${isDark}`)
   const backgroundStyle = cover
@@ -305,9 +304,9 @@ function createOGImage({ title, description, cover, topRight = null, theme = 'li
     : {
         background: isDark ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white'
       }
-      
-  console.log(`[OG] Background style:`, backgroundStyle)
-  
+
+  console.log('[OG] Background style:', backgroundStyle)
+
   if (cover) {
     const processedCoverUrl = getCdnUrl(cover)
     console.log(`[OG] Cover URL: "${cover}" -> processed: "${processedCoverUrl}"`)
@@ -406,9 +405,9 @@ function createOGImage({ title, description, cover, topRight = null, theme = 'li
  * Создает базовое OG-изображение с центрированным логотипом
  */
 function createBasicOGImage() {
-  console.log(`[OG] createBasicOGImage called`)
+  console.log('[OG] createBasicOGImage called')
   console.log(`[OG] Using default image: "${defaultImage}"`)
-  
+
   const result = h(
     'div',
     {
@@ -428,8 +427,8 @@ function createBasicOGImage() {
       style: { width: 200, height: 200, objectFit: 'contain' }
     })
   )
-  
-  console.log(`[OG] Basic image result:`, result)
+
+  console.log('[OG] Basic image result:', result)
   return result
 }
 
