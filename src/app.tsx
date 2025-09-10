@@ -68,7 +68,7 @@ const ErrorFallback: Component<{ error: any; reset: () => void }> = (props) => {
     console.groupEnd()
 
     // Отправка ошибки в систему мониторинга (если настроена)
-    if (typeof window !== 'undefined' && window.gtag) {
+    if (window?.gtag) {
       window.gtag('event', 'exception', {
         description: props.error?.message || 'Unknown error',
         fatal: true

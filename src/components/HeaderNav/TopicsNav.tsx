@@ -38,6 +38,11 @@ export const TopicsNav = (props: { fixed?: boolean; inSubnavigation?: boolean })
       'ms-auto d-none d-lg-block': isRight // правый элемент
     })
 
+  const getButtonClasses = () =>
+    clsx(styles.topicButton, {
+      [styles.topicButtonActive]: false // можно добавить логику для активного состояния
+    })
+
   return (
     <div class={clsx('wide-container', styles.Topics)}>
       <ul class={listClasses}>
@@ -53,9 +58,11 @@ export const TopicsNav = (props: { fixed?: boolean; inSubnavigation?: boolean })
             const topic = sortedTopics()?.find((t: Topic) => t.slug === slug)
             return (
               <li class={getItemClasses(false)}>
-                <A href={`/topic/${slug}`}>
+                <A href={`/topic/${slug}`} class={getButtonClasses()}>
                   <span>
-                    #{capitalize((lang() === 'ru' && topic?.title) || t(capitalize(slug)) || slug.replace('-', ' '))}
+                    {props.inSubnavigation
+                      ? capitalize((lang() === 'ru' && topic?.title) || t(capitalize(slug)) || slug.replace('-', ' '))
+                      : `#${capitalize((lang() === 'ru' && topic?.title) || t(capitalize(slug)) || slug.replace('-', ' '))}`}
                   </span>
                 </A>
               </li>
@@ -63,7 +70,7 @@ export const TopicsNav = (props: { fixed?: boolean; inSubnavigation?: boolean })
           }}
         </For>
         <li class={getItemClasses(true)}>
-          <A href="/topics">
+          <A href="/topics" class={getButtonClasses()}>
             {t('All topics')}
             <Icon name="arrow-right-black" class={clsx(styles.icon, styles.rightItemIcon)} />
           </A>

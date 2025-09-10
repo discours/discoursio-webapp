@@ -169,9 +169,41 @@ export const loadPrivate = (client) => async () => {
 }
 ```
 
+## 🚨 SolidStart роутинг (КРИТИЧНО!)
+```typescript
+// ⚠️ КРИТИЧНО: route.load ТОЛЬКО для SSR!
+export const route = {
+  load: async ({ params }) => {
+    // Выполняется ТОЛЬКО на сервере
+    // НЕ вызывается при клиентском роутинге!
+    return await loadData(params.slug)
+  }
+}
+
+// ❌ НИКОГДА не рассчитывай на route.load для клиентских переходов
+export default function Page(props: RouteSectionProps<Data>) {
+  // При клиентском роутинге props.data НЕ обновляется!
+  // Нужен createResource с отслеживанием параметров URL
+}
+
+// ✅ ПРАВИЛЬНО - createResource для клиентских переходов
+const [data] = createResource(
+  () => ({ slug: params.slug, data: props.data }), // Отслеживаем изменения slug
+  async ({ slug, data }) => {
+    // Если slug изменился - загружаем новые данные
+    if (slug && slug !== prevSlug) {
+      return await loadData(slug)
+    }
+    // Иначе используем SSR данные
+    return data instanceof Promise ? await data : data
+  }
+)
+```
+
 ## 🩺 Диагностика гидрации
 **Error: Hydration Mismatch** → Ищи:
 1. **JSX в пропсах** (`header={<h2>`)
 2. **createResource без initialValue**  
 3. **typeof window проверки**
 4. **Promise в props.data без обработки**
+5. **route.load ожидание при клиентском роутинге**

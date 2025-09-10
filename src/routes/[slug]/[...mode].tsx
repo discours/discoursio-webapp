@@ -16,7 +16,7 @@ import { Loading } from '~/components/_shared/Loading'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { gaIdentity } from '~/config'
 import { useLocalize } from '~/context/localize'
-import { getShout, loadTopics } from '~/graphql/api/public'
+import { getAuthor, getShout, loadShouts, loadTopicAuthors, loadTopicBySlug, loadTopics } from '~/graphql/api/public'
 import type { Author, Reaction, Shout, Topic } from '~/graphql/generated/graphql'
 import { initGA, loadGAScript } from '~/utils/ga'
 import { descFromBody, keywordsFromTopics } from '~/utils/meta'
@@ -30,13 +30,7 @@ import TopicPage, { TopicPageProps } from '../topic/[slug]/[...mode]'
 const SKIP_PATHS = ['fonts', 'icons', 'api', 'robots.txt', 'favicon.ico', 'manifest.json', 'sw.js']
 
 const isSkippedPath = (slug: string): boolean => {
-  return (
-    slug.startsWith('@') ||
-    slug.startsWith('!') ||
-    slug.startsWith('_') ||
-    slug.startsWith('.') ||
-    SKIP_PATHS.includes(slug)
-  )
+  return slug.startsWith('_') || slug.startsWith('.') || SKIP_PATHS.includes(slug)
 }
 
 const fetchShout = async (slug: string): Promise<Shout | undefined> => {
@@ -71,6 +65,12 @@ const fetchShout = async (slug: string): Promise<Shout | undefined> => {
 
 export const route: RouteDefinition = {
   load: async ({ params }) => {
+    // ✅ Валидация slug параметра
+    if (!params.slug || params.slug === 'undefined') {
+      console.warn('[ArticleRoute] Invalid slug:', params.slug)
+      return { article: undefined, topics: undefined }
+    }
+
     if (isSkippedPath(params.slug)) {
       return { article: undefined, topics: undefined }
     }
@@ -78,6 +78,71 @@ export const route: RouteDefinition = {
     console.log(`[ArticleRoute] SSR loading for slug: "${params.slug}"`)
 
     try {
+      // ✅ Обработка тем (!topic-slug)
+      if (params.slug.startsWith('!')) {
+        const topicSlug = params.slug.slice(1) // Убираем !
+        console.log(`[ArticleRoute] Loading topic data for: "${topicSlug}"`)
+
+        const [topic, topics, authors] = await Promise.all([
+          loadTopicBySlug(topicSlug)(),
+          loadTopics(),
+          loadTopicAuthors({ slug: topicSlug })()
+        ])
+
+        const articles = await loadShouts({
+          options: {
+            filters: { topic: topicSlug },
+            limit: 20,
+            offset: 0
+          }
+        })()
+
+        console.log('[ArticleRoute] Topic data loaded:', {
+          topic: topic?.title,
+          articlesCount: articles?.length || 0,
+          authorsCount: authors?.length || 0
+        })
+
+        return {
+          article: undefined,
+          topics: topics || [],
+          topic,
+          authors,
+          articles
+        }
+      }
+
+      // ✅ Обработка авторов (@author-slug)
+      if (params.slug.startsWith('@')) {
+        const authorSlug = params.slug.slice(1) // Убираем @
+        console.log(`[ArticleRoute] Loading author data for: "${authorSlug}"`)
+
+        const [author, topics, articles] = await Promise.all([
+          getAuthor({ slug: authorSlug })(),
+          loadTopics(),
+          loadShouts({
+            options: {
+              filters: { author: authorSlug },
+              limit: 20,
+              offset: 0
+            }
+          })()
+        ])
+
+        console.log('[ArticleRoute] Author data loaded:', {
+          author: author?.name,
+          articlesCount: articles?.length || 0
+        })
+
+        return {
+          article: undefined,
+          topics: topics || [],
+          author,
+          articles
+        }
+      }
+
+      // ✅ Обработка обычных статей
       // If this is a topic route (starts with !), preload topics data
       let topics: Topic[] | undefined
       if (params.slug.startsWith('!')) {
@@ -122,6 +187,9 @@ export type ArticlePageProps = {
   votes?: Reaction[]
   author?: Author
   topics?: Topic[]
+  topic?: Topic
+  authors?: Author[]
+  articles?: Shout[]
 }
 
 export type SlugPageProps = {
@@ -130,6 +198,9 @@ export type SlugPageProps = {
   votes?: Reaction[]
   author?: Author
   topics?: Topic[]
+  topic?: Topic
+  authors?: Author[]
+  articles?: Shout[]
 }
 
 function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
@@ -264,6 +335,12 @@ export default function ArticlePage(props: RouteSectionProps<SlugPageProps>) {
             params: {
               ...props.params,
               slug: currentSlug().slice(1)
+            },
+            data: {
+              ...props.data,
+              author: props.data?.author,
+              articles: props.data?.articles || [],
+              topics: props.data?.topics || []
             }
           } as RouteSectionProps<AuthorPageProps>)}
         />
@@ -278,7 +355,10 @@ export default function ArticlePage(props: RouteSectionProps<SlugPageProps>) {
             },
             data: {
               ...props.data,
-              topics: props.data?.topics || []
+              topics: props.data?.topics || [],
+              topic: props.data?.topic,
+              authors: props.data?.authors || [],
+              articles: props.data?.articles || []
             }
           } as RouteSectionProps<TopicPageProps>)}
         />

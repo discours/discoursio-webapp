@@ -1,6 +1,8 @@
 import clsx from 'clsx'
 
 import { useNotifications } from '~/context/notifications'
+import { useSession } from '~/context/session'
+import { useUI } from '~/context/ui'
 import { Icon } from '../_shared/Icon/Icon'
 
 import styles from './Header.module.scss'
@@ -8,28 +10,44 @@ import styles from './Header.module.scss'
 export const NotificationsBell = () => {
   const { unreadNotificationsCount, showNotificationsPanel, hideNotificationsPanel, isNotificationsPanelOpen } =
     useNotifications()
+  const { session } = useSession()
+  const { showModal } = useUI()
+
+  const isAuthorized = () => Boolean(session()?.token && session()?.author)
 
   const handleBellIconClick = (event: Event) => {
     event.preventDefault()
 
+    // Если пользователь не авторизован, показываем модаль авторизации
+    if (!isAuthorized()) {
+      console.log('[NotificationsBell] Guest user clicked, showing auth modal')
+      showModal('auth')
+      return
+    }
+
+    // Если авторизован, работаем с панелью уведомлений
+    console.log('[NotificationsBell] Authorized user clicked, current state:', isNotificationsPanelOpen())
+
     if (isNotificationsPanelOpen()) {
+      console.log('[NotificationsBell] Hiding panel')
       hideNotificationsPanel()
     } else {
+      console.log('[NotificationsBell] Showing panel')
       showNotificationsPanel()
     }
   }
   return (
     <div
       class={clsx(styles.userControlItem, {
-        [styles.active]: isNotificationsPanelOpen()
+        [styles.active]: isAuthorized() && isNotificationsPanelOpen()
       })}
       onClick={handleBellIconClick}
     >
       <div class={styles.button}>
-        <Icon name="bell-white" counter={unreadNotificationsCount?.() || 0} class={styles.icon} />
+        <Icon name="bell-white" counter={isAuthorized() ? unreadNotificationsCount?.() || 0 : 0} class={styles.icon} />
         <Icon
           name="bell-white-hover"
-          counter={unreadNotificationsCount?.() || 0}
+          counter={isAuthorized() ? unreadNotificationsCount?.() || 0 : 0}
           class={clsx(styles.icon, styles.iconHover)}
         />
       </div>

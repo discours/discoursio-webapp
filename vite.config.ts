@@ -49,12 +49,13 @@ export default defineConfig({
     },
     preprocessorOptions: {
       scss: {
-        // Форсируем JS sass в CI для избежания падений embedded
-        api: process.env.CI ? 'modern-compiler' : 'legacy',
-        // В CI принудительно используем обычный sass вместо embedded
-        ...(process.env.CI && { implementation: 'sass' }),
+        // Используем modern-compiler API везде для избежания deprecation warnings
+        api: 'modern-compiler',
         quietDeps: true,
-        silenceDeprecations: ['mixed-decls', 'legacy-js-api'],
+        silenceDeprecations: ['mixed-decls', 'legacy-js-api', 'import', 'global-builtin', 'color-4-api'],
+        logger: {
+          warn: () => {} // Полностью отключаем warnings от Sass
+        },
         additionalData: (content: string) => `@use '~/styles/global' as *;\n${content}`,
         includePaths: ['./public', './src/styles', './node_modules']
       }

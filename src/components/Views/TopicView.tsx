@@ -251,6 +251,12 @@ export const TopicView = (props: Props) => {
   // Loading Followers and Authors for the topics
 
   const getTopicFollowers = async () => {
+    // ✅ Валидация slug перед запросом
+    if (!props.topicSlug || props.topicSlug.trim() === '') {
+      console.warn('[TopicView] getTopicFollowers: empty topicSlug, returning empty array')
+      return []
+    }
+
     const topicFollowers = await loadTopicFollowers({ slug: props.topicSlug })()
     // sorting by maximum shouts
     if (topicFollowers) {
@@ -258,10 +264,19 @@ export const TopicView = (props: Props) => {
     }
     return []
   }
-  const [topicFollowers, { refetch: refetchFollowers }] = createResource(() => props.topicSlug, getTopicFollowers)
+  const [topicFollowers, { refetch: refetchFollowers }] = createResource(
+    () => (props.topicSlug?.trim() ? props.topicSlug : undefined),
+    getTopicFollowers
+  )
 
   // Первая функция для авторов топика (переименована во избежание конфликта)
   const getTopicAuthorsList = async () => {
+    // ✅ Валидация slug перед запросом
+    if (!props.topicSlug || props.topicSlug.trim() === '') {
+      console.warn('[TopicView] getTopicAuthorsList: empty topicSlug, returning empty array')
+      return []
+    }
+
     const topicAuthors = await loadTopicAuthors({ slug: props.topicSlug })()
     // sorting by maximum shouts
     if (topicAuthors) {
@@ -269,16 +284,28 @@ export const TopicView = (props: Props) => {
     }
     return []
   }
-  const [topicAuthors, { refetch: refetchAuthors }] = createResource(() => props.topicSlug, getTopicAuthorsList)
+  const [topicAuthors, { refetch: refetchAuthors }] = createResource(
+    () => (props.topicSlug?.trim() ? props.topicSlug : undefined),
+    getTopicAuthorsList
+  )
 
   // Вторая функция для топ-авторов (переименована для ясности)
   const getTopicTopAuthors = async () => {
+    // ✅ Валидация slug перед запросом
+    if (!props.topicSlug || props.topicSlug.trim() === '') {
+      console.warn('[TopicView] getTopicTopAuthors: empty topicSlug, returning empty array')
+      return []
+    }
+
     const by: AuthorsBy = { topic: props.topicSlug }
     const topicTopAuthorsFetcher = await loadAuthors({ by, limit: 4, offset: 0 })
     const result = await topicTopAuthorsFetcher()
     return result || []
   }
-  const [topicTopAuthors, { refetch: refetchTopAuthors }] = createResource(() => props.topicSlug, getTopicTopAuthors)
+  const [topicTopAuthors, { refetch: refetchTopAuthors }] = createResource(
+    () => (props.topicSlug?.trim() ? props.topicSlug : undefined),
+    getTopicTopAuthors
+  )
 
   // Load Favorite and Reacted Top Month Articles
   const loadFavoriteTopArticles = async () => {

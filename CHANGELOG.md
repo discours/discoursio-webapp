@@ -2,6 +2,60 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.14.12] - 2025-09-10
+
+### 🎯 Critical GraphQL Fix - Topic Authors Query + localStorage Quota
+
+- **✅ ИСПРАВЛЕНА ошибка get_topic_authors() missing slug argument**: GraphQL запрос требовал обязательный параметр
+  - **Bug**: `TopicAuthorsQuery` объявлял `$slug: String` как опциональный, но бекенд требует обязательный
+  - **Fix**: Изменено на `$slug: String!` в GraphQL схеме
+  - **Result**: Устранена ошибка при клиентском роутинге на страницы тем
+
+- **✅ ДОБАВЛЕНА валидация slug параметров**: Предотвращение вызовов с пустыми значениями
+  - **Protection**: Валидация `topicSlug` в `TopicView` компоненте перед GraphQL запросами
+  - **Functions**: `getTopicFollowers`, `getTopicAuthorsList`, `getTopicTopAuthors`
+  - **createResource**: Изменена логика - возвращаем `undefined` вместо `false` для предотвращения выполнения запросов
+  - **route.load**: Добавлена проверка на undefined/пустой slug в роутах
+  - **GraphQL API**: Валидация slug в `loadTopicAuthors`, `loadTopicFollowers` и `loadTopicBySlug` перед созданием loader
+  - **Result**: Защита от ошибок при undefined/пустых slug параметрах на всех уровнях
+
+- **✅ ИСПРАВЛЕНО переполнение localStorage**: QuotaExceededError от GraphQL кеширования
+  - **Bug**: Кеш GraphQL запросов переполнял localStorage и блокировал работу приложения  
+  - **Fix**: Отключено кеширование во всех GraphQL API функциях (loadShouts, loadTopicAuthors, loadTopicFollowers, loadTopicBySlug и др.)
+  - **Impact**: Устранена блокировка рендера, приложение работает стабильно
+  - **Performance**: Небольшое снижение скорости из-за отсутствия кеша, но стабильность важнее
+  - **Future**: Реализация SmartCache с LRU cleanup, мониторингом квоты localStorage и сжатием данных
+
+### 🎯 Critical Editor Styles Fix - Text Highlighting
+
+- **✅ ИСПРАВЛЕНА потеря стилей при сохранении**: Стили выделения текста теперь сохраняются корректно
+  - **Bug**: DOMPurify удалял теги `mark`, `highlight`, `span` и атрибуты `style`, `class`
+  - **Fix**: Добавлены недостающие теги и атрибуты в конфигурацию DOMPurify
+  - **Result**: Выделенный текст и inline стили сохраняются при публикации
+
+- **✅ УЛУЧШЕНА обработка HTML контента**: Исправлена логика определения HTML vs JSON
+  - **Bug**: `cleanupJsonContent` неправильно обрабатывала HTML контент как JSON
+  - **Fix**: Добавлена дополнительная проверка на наличие HTML тегов
+  - **Result**: HTML контент не теряет форматирование при обработке
+
+
+### 🎯 Critical Routing Fix - Direct Links
+
+- **✅ ИСПРАВЛЕНЫ прямые ссылки на темы и авторов**: Критическая ошибка в `isSkippedPath` функции
+  - **Bug**: `@author-slug` и `!topic-slug` блокировались как skipped paths
+  - **Fix**: Убраны `@` и `!` префиксы из `isSkippedPath`, добавлена правильная обработка в `route.load`
+  - **Result**: Прямые ссылки на темы и авторов теперь работают корректно
+
+- **✅ УЛУЧШЕНА SSR загрузка данных**: Добавлена параллельная загрузка для тем и авторов
+  - **Topics**: `loadTopicBySlug`, `loadTopicAuthors`, `loadShouts` с фильтрацией
+  - **Authors**: `getAuthor`, `loadShouts` с фильтрацией по автору
+  - **Performance**: Использован `Promise.all` для параллельной загрузки
+
+- **✅ ОБНОВЛЕНА передача данных**: Специализированные компоненты получают SSR данные
+  - **TopicPage**: Получает `topic`, `authors`, `articles` из SSR
+  - **AuthorPage**: Получает `author`, `articles` из SSR
+  - **Types**: Обновлены `ArticlePageProps` и `SlugPageProps`
+
 ## [0.14.11] - 2025-09-08
 
 ### 🔧 Critical Route & Editor Fixes

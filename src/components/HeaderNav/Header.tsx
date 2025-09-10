@@ -345,6 +345,10 @@ export const Header = (props: Props) => {
               </div>
             </div>
 
+            <div class={clsx('col-auto', styles.createPostLink)}>
+              <A href="/edit/new">{t('Create post')}</A>
+            </div>
+
             <div class={clsx('col-auto')}>
               <HeaderControls showInboxButton={false} setIsProfilePopupVisible={setIsProfilePopupVisible} />
             </div>

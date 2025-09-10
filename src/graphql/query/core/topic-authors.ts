@@ -1,7 +1,7 @@
 import { gql } from 'graphql-tag'
 
 export default gql`
-  query TopicAuthorsQuery($slug: String) {
+  query TopicAuthorsQuery($slug: String!) {
     get_topic_authors(slug: $slug) {
       id
       slug

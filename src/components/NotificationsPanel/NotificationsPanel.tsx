@@ -48,6 +48,11 @@ const isEarlier = (date: Date) => {
 export const NotificationsPanel = (props: Props) => {
   const [isLoading, setIsLoading] = createSignal(false)
   const [useSmartGroupingEnabled, setUseSmartGroupingEnabled] = createSignal(true) // 🚀 Demo toggle
+
+  // Debug logging
+  createEffect(() => {
+    console.log('[NotificationsPanel] isOpen changed:', props.isOpen)
+  })
   const { session } = useSession()
   const { t } = useLocalize()
   const {

@@ -166,19 +166,12 @@ const AuthorizedHeader = (props: Props) => {
   const { t } = useLocalize()
   const { session, isSessionValidating } = useSession()
   const { showModal } = useUI()
-  const navigate = useNavigate()
   const loc = useLocation()
   const author = createMemo(() => session()?.author || null)
   const matchProfile = createMemo(() => {
     const authorSlug = author()?.slug
     return authorSlug ? loc.pathname.endsWith(authorSlug) : false
   })
-  const matchInbox = createMemo(() => loc.pathname.endsWith('inbox'))
-
-  const handleCreatePostClick = (event: Event) => {
-    event.preventDefault()
-    navigate('/edit/new')
-  }
 
   const handleSearchClick = (event: Event) => {
     event.preventDefault()
@@ -187,7 +180,6 @@ const AuthorizedHeader = (props: Props) => {
 
   return (
     <>
-      {/* Кнопка поиска согласно дизайну */}
       <div class={clsx(styles.userControlItem, styles.userControlItemSearch)}>
         <button class={styles.button} onClick={handleSearchClick} title={t('Search')}>
           <Icon name="search" />
@@ -195,25 +187,6 @@ const AuthorizedHeader = (props: Props) => {
       </div>
 
       <NotificationsBell />
-
-      <div class={clsx(styles.userControlItem, styles.userControlItemVerbose, styles.userControlItemCreate)}>
-        <button onClick={handleCreatePostClick}>
-          <span class={styles.textLabel}>{t('Create post')}</span>
-          <Icon name="pencil-outline" class={styles.icon} />
-          <Icon name="pencil-outline-hover" class={clsx(styles.icon, styles.iconHover)} />
-        </button>
-      </div>
-
-      <Show when={props.showInboxButton}>
-        <div class={clsx(styles.userControlItem, styles.userControlItemInbox)}>
-          <A href={'/inbox'}>
-            <div classList={{ entered: Boolean(matchInbox()) }}>
-              <Icon name="inbox-white" class={styles.icon} />
-              <Icon name="inbox-white-hover" class={clsx(styles.icon, styles.iconHover)} />
-            </div>
-          </A>
-        </div>
-      </Show>
 
       <Suspense>
         <ProfilePopup
@@ -245,11 +218,6 @@ const GuestHeader = () => {
   const { t } = useLocalize()
   const { showModal } = useUI()
 
-  const handleCreatePostClick = (event: Event) => {
-    event.preventDefault()
-    showModal('auth')
-  }
-
   const handleSearchClick = (event: Event) => {
     event.preventDefault()
     showModal('search')
@@ -257,20 +225,13 @@ const GuestHeader = () => {
 
   return (
     <>
-      {/* Кнопка поиска согласно дизайну */}
       <div class={clsx(styles.userControlItem, styles.userControlItemSearch)}>
         <button class={styles.button} onClick={handleSearchClick} title={t('Search')}>
           <Icon name="search" />
         </button>
       </div>
 
-      <div class={clsx(styles.userControlItem, styles.userControlItemVerbose, styles.userControlItemCreate)}>
-        <button onClick={handleCreatePostClick}>
-          <span class={styles.textLabel}>{t('Create post')}</span>
-          <Icon name="pencil-outline" class={styles.icon} />
-          <Icon name="pencil-outline-hover" class={clsx(styles.icon, styles.iconHover)} />
-        </button>
-      </div>
+      <NotificationsBell />
 
       <div class={clsx(styles.userControlItem, styles.userControlItemVerbose, 'loginbtn')}>
         <A href="?m=auth&mode=login">

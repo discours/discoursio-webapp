@@ -53,7 +53,7 @@ export const loadTopics = () => {
   const loader = createCacheableLoader<{ get_topics_all: Topic[] }, void>(
     loadTopicsQuery,
     () => ({}) as QueryGet_TopicArgs,
-    true // Включаем браузерное кеширование для топиков
+    false // ⚡ Кеширование отключено - localStorage переполняется
   )(undefined)
 
   return async () => {
@@ -79,7 +79,7 @@ export const useTopicsResource = () => {
   return createCacheableQueryResource<{ get_topics_all: Topic[] }, void>(
     loadTopicsQuery,
     () => ({}),
-    true, // Включаем браузерное кеширование
+    false, // ⚡ ВРЕМЕННО отключаем кеширование - переполнение localStorage
     defaultClient,
     true // withAbort
   )(undefined)
@@ -130,7 +130,7 @@ export const loadShouts = (args: QueryLoad_Shouts_ByArgs) => {
   const loader = createCacheableLoader<{ load_shouts_by: Shout[] }, QueryLoad_Shouts_ByArgs>(
     loadShoutsByQuery,
     (args: QueryLoad_Shouts_ByArgs) => args,
-    true // Включаем кеширование для публичных статей
+    false // ⚡ Кеширование отключено - localStorage переполняется
   )(args)
 
   return async () => {
@@ -149,7 +149,7 @@ export const useShoutsResource = (args: QueryLoad_Shouts_ByArgs) => {
   return createCacheableQueryResource<{ load_shouts_by: Shout[] }, QueryLoad_Shouts_ByArgs>(
     loadShoutsByQuery,
     (args: QueryLoad_Shouts_ByArgs) => args,
-    true, // Включаем кеширование
+    false, // ⚡ ВРЕМЕННО отключаем кеширование - переполнение localStorage
     defaultClient,
     true // withAbort
   )(args)
@@ -198,7 +198,7 @@ export const loadAuthors = (options: QueryLoad_Authors_ByArgs) => {
   const loader = createCacheableLoader<{ load_authors_by: Author[] }, QueryLoad_Authors_ByArgs>(
     loadAuthorsByQuery,
     (options: QueryLoad_Authors_ByArgs) => options,
-    true // Включаем кеширование для авторов
+    false // ⚡ Кеширование отключено - localStorage переполняется
   )(options)
 
   return async () => {
@@ -217,7 +217,7 @@ export const useAuthorsResource = (options: QueryLoad_Authors_ByArgs) => {
   return createCacheableQueryResource<{ load_authors_by: Author[] }, QueryLoad_Authors_ByArgs>(
     loadAuthorsByQuery,
     (options: QueryLoad_Authors_ByArgs) => options,
-    true, // Включаем кеширование
+    false, // ⚡ ВРЕМЕННО отключаем кеширование - переполнение localStorage
     defaultClient,
     true // withAbort
   )(options)
@@ -247,7 +247,7 @@ export const loadAuthorsAll = () => {
   const loader = createCacheableLoader<{ get_authors_all: Author[] }, void>(
     loadAuthorsAllQuery,
     () => ({}),
-    true // Включаем кеширование для списка всех авторов
+    false // ⚡ Кеширование отключено - localStorage переполняется
   )(undefined)
 
   return async () => {
@@ -292,7 +292,7 @@ export const useReactionsResource = (options: QueryLoad_Reactions_ByArgs) => {
   return createCacheableQueryResource<{ load_reactions_by: Reaction[] }, QueryLoad_Reactions_ByArgs>(
     loadReactionsByQuery,
     (options) => options,
-    true, // Включаем кеширование
+    false, // ⚡ ВРЕМЕННО отключаем кеширование - переполнение localStorage
     defaultClient,
     true // withAbort
   )(options)
@@ -321,7 +321,7 @@ export const useShout = (options: QueryGet_ShoutArgs) => {
   return createCacheableQueryResource<{ get_shout: Shout }, QueryGet_ShoutArgs>(
     getShoutQuery,
     () => options,
-    true, // Включаем кеширование для статей
+    false, // ⚡ ВРЕМЕННО отключаем кеширование - переполнение localStorage для статей
     defaultClient,
     true // withAbort
   )(options)
@@ -348,7 +348,7 @@ export const useAuthor = (options: QueryGet_AuthorArgs) => {
   return createCacheableQueryResource<{ get_author: Author }, QueryGet_AuthorArgs>(
     getAuthorQuery,
     () => options,
-    true, // Включаем кеширование для авторов
+    false, // ⚡ ВРЕМЕННО отключаем кеширование - переполнение localStorage для авторов
     defaultClient,
     true // withAbort
   )(options)
@@ -390,19 +390,20 @@ export const loadUnratedShouts = (options: LoadShoutsOptions) => {
  * Кешируемая загрузка авторов по топику
  */
 export const loadTopicAuthors = (args: QueryGet_AuthorArgs) => {
+  // ✅ Валидация slug перед созданием loader
+  if (!args?.slug || args.slug.trim() === '' || args.slug === 'undefined') {
+    console.warn('[loadTopicAuthors] Invalid slug:', args?.slug)
+    return async () => []
+  }
+
   const loader = createCacheableLoader<{ get_topic_authors: Author[] }, QueryGet_AuthorArgs>(
     getAuthorsByTopicQuery,
     () => args,
-    true // Кешируем авторов по топику
+    false // ⚡ Кеширование отключено - localStorage переполняется
   )(args)
 
   return async () => {
-    console.log('[loadTopicAuthors] Loading authors for topic:', args.slug)
     const response = await loader()
-    console.log('[loadTopicAuthors] Response:', {
-      hasResponse: !!response,
-      authorsCount: response?.get_topic_authors?.length || 0
-    })
     return response?.get_topic_authors || []
   }
 }
@@ -411,19 +412,19 @@ export const loadTopicAuthors = (args: QueryGet_AuthorArgs) => {
  * Кешируемая загрузка подписчиков топика
  */
 export const loadTopicFollowers = (args: QueryGet_AuthorArgs) => {
+  // ✅ Валидация slug перед созданием loader
+  if (!args?.slug || args.slug.trim() === '') {
+    return async () => []
+  }
+
   const loader = createCacheableLoader<{ get_topic_followers: Author[] }, QueryGet_AuthorArgs>(
     getFollowersByTopicQuery,
     () => args,
-    true // Кешируем подписчиков топика
+    false // ⚡ Кеширование отключено - localStorage переполняется
   )(args)
 
   return async () => {
-    console.log('[loadTopicFollowers] Loading followers for topic:', args.slug)
     const response = await loader()
-    console.log('[loadTopicFollowers] Response:', {
-      hasResponse: !!response,
-      followersCount: response?.get_topic_followers?.length || 0
-    })
     return response?.get_topic_followers || []
   }
 }
@@ -497,25 +498,20 @@ export const getShout = (options: QueryGet_ShoutArgs) => {
  * ```
  */
 export const loadTopicBySlug = (slug: string) => {
+  // ✅ Валидация slug перед созданием loader
+  if (!slug || slug.trim() === '' || slug === 'undefined') {
+    return async () => null
+  }
+
   const loader = createCacheableLoader<{ get_topic: Topic }, QueryGet_TopicArgs>(
     topicBySlugQuery,
     (args: QueryGet_TopicArgs) => args,
-    false // Временно отключаем кеширование для отладки
+    false // ⚡ Кеширование отключено - localStorage переполняется
   )({ slug })
 
   return async () => {
-    // Временная отладка
-    console.log(`[loadTopicBySlug] Loading topic: "${slug}"`)
     try {
       const response = await loader()
-      console.log(`[loadTopicBySlug] Raw response for "${slug}":`, response)
-      console.log(`[loadTopicBySlug] Parsed response for "${slug}":`, {
-        hasResponse: !!response,
-        hasTopic: !!response?.get_topic,
-        topicTitle: response?.get_topic?.title,
-        topicStat: response?.get_topic?.stat,
-        fullTopic: response?.get_topic
-      })
       return response?.get_topic || null
     } catch (error) {
       console.error(`[loadTopicBySlug] Error loading topic "${slug}":`, error)
@@ -532,7 +528,7 @@ export const useTopicBySlug = (slug: string) => {
   return createCacheableQueryResource<{ get_topic: Topic }, QueryGet_TopicArgs>(
     topicBySlugQuery,
     () => ({ slug }),
-    true, // Включаем кеширование
+    false, // ⚡ ВРЕМЕННО отключаем кеширование - переполнение localStorage
     defaultClient,
     true // withAbort
   )({ slug })

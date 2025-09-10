@@ -19,7 +19,7 @@ const loadShoutsSSR = (args: QueryLoad_Shouts_ByArgs) => {
   const loader = createCacheableLoader<{ load_shouts_by: Shout[] }, QueryLoad_Shouts_ByArgs>(
     loadShoutsByQuery,
     (args: QueryLoad_Shouts_ByArgs) => args,
-    true // Включаем кеширование для SSR
+    false // ⚡ Кеширование отключено - localStorage переполняется
   )(args)
 
   return async () => {

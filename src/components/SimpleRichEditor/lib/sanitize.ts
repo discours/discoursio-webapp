@@ -20,6 +20,10 @@ const ALLOWED_TAGS = [
   'em',
   'u',
   'strike',
+  // Выделение текста
+  'mark',
+  'highlight',
+  'span',
   // Ссылки и медиа
   'a',
   'img',
@@ -40,7 +44,10 @@ const ALLOWED_ATTR = [
   'width',
   'height',
   'frameborder',
-  'allowfullscreen'
+  'allowfullscreen',
+  // Стили и форматирование
+  'style',
+  'class'
 ]
 
 // Базовая конфигурация согласно документации DOMPurify

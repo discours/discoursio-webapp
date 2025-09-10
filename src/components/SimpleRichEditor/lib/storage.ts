@@ -1,6 +1,7 @@
 import { isServer } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
 import type { Draft, DraftInput } from '~/graphql/generated/graphql'
+import { sanitizeHtml } from './sanitize'
 import { EditorFieldType } from './types'
 
 /**
@@ -114,9 +115,9 @@ export const cleanupJsonContent = (content: string | null | undefined | Record<s
   const contentStr = String(content)
 
   // Проверяем, не начинается ли строка с фрагмента HTML
-  // Если это очевидно HTML, возвращаем как есть
+  // Если это очевидно HTML, санитизируем и возвращаем
   if (contentStr.trim().startsWith('<') && contentStr.trim().endsWith('>')) {
-    return contentStr
+    return sanitizeHtml(contentStr)
   }
 
   try {

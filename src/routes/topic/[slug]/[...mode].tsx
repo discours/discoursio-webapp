@@ -1,4 +1,4 @@
-import { RouteSectionProps } from '@solidjs/router'
+import { RouteSectionProps, useParams } from '@solidjs/router'
 import { createEffect, createResource, createSignal, on, Show } from 'solid-js'
 import { Loading } from '~/components/_shared/Loading'
 import { PageLayout } from '~/components/_shared/PageLayout'
@@ -20,6 +20,16 @@ const fetchTopicShouts = async (slug: string, offset?: number) => {
 export const route = {
   load: async ({ params, location: { query } }: RouteSectionProps<{ articles: Shout[]; topic: Topic }>) => {
     const offset: number = Number.parseInt(query.offset as string, 10) || 0
+
+    // ✅ Валидация slug параметра
+    if (!params.slug || params.slug === 'undefined') {
+      console.warn('[TopicRoute] Invalid slug:', params.slug)
+      return {
+        articles: [],
+        topic: null,
+        authors: []
+      }
+    }
 
     try {
       // Load articles
@@ -65,6 +75,10 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   // all topics
   const { addTopics } = useTopics()
 
+  // ✅ Получаем актуальный slug из URL параметров
+  const params = useParams()
+  const currentSlug = () => params.slug || props.params.slug
+
   // Initialize topics from preloaded data if available
   createEffect(() => {
     if (props.data?.topics && props.data.topics.length > 0) {
@@ -75,31 +89,31 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
   // Topic мета-данные
   const currentTopic = () => topicData()?.topic
 
-  // ✅ ПРАВИЛЬНО: createResource для разрешения Promise от route.load
+  // ✅ ПРАВИЛЬНО: createResource для клиентского роутинга
   const [topicData] = createResource(
-    () => props.data,
-    async (data) => {
-      // Разрешаем Promise если это Promise
+    () => ({ slug: currentSlug(), data: props.data }),
+    async ({ slug, data }) => {
+      // Для клиентского роутинга загружаем новые данные
+      if (slug && slug !== 'undefined') {
+        try {
+          const [topic, articles, authors] = await Promise.all([
+            loadTopicBySlug(slug)(),
+            loadShouts({ options: { filters: { topic: slug }, limit: 20, offset: 0 } })(),
+            loadTopicAuthors({ slug })()
+          ])
+          return { topic, articles, authors }
+        } catch (error) {
+          console.error('[TopicPage] Error loading data:', error)
+          return { articles: [], topic: null, authors: [] }
+        }
+      }
+
+      // Для SSR используем данные из route.load
       const resolved = data instanceof Promise ? await data : data
-
-      console.log('[TopicRoute] Resolved data:', {
-        hasArticles: !!resolved?.articles,
-        articlesCount: resolved?.articles?.length || 0,
-        hasAuthors: !!resolved?.authors,
-        authorsCount: resolved?.authors?.length || 0,
-        hasTopic: !!resolved?.topic,
-        topicTitle: resolved?.topic?.title,
-        authorsData: resolved?.authors?.slice(0, 3)?.map((a: Author) => ({ id: a.id, name: a.name })) || 'none'
-      })
-
-      return resolved
+      return resolved || { articles: [], topic: null, authors: [] }
     },
     {
-      // ✅ КРИТИЧНО: initialValue для стабильной гидрации
-      initialValue:
-        typeof props.data === 'object' && !('then' in props.data)
-          ? props.data
-          : { articles: [], topic: null, authors: [] } // Fallback структура
+      initialValue: { articles: [], topic: null, authors: [] }
     }
   )
 
@@ -118,7 +132,7 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
       currentTopic,
       (topic) => {
         if (topic && !viewed()) {
-          if (typeof window !== 'undefined' && window.gtag) {
+          if (window?.gtag) {
             window.gtag('event', 'page_view', {
               page_title: topic.title,
               page_location: window.location.href,
@@ -138,7 +152,7 @@ export default function TopicPage(props: RouteSectionProps<TopicPageProps>) {
         <TopicView
           topic={topicData()!.topic}
           shouts={articles()}
-          topicSlug={props.params.slug}
+          topicSlug={currentSlug()}
           followers={topicData()?.authors || []}
         />
       </PageLayout>
