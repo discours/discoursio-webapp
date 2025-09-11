@@ -81,23 +81,23 @@ export const AuthorView = (props: AuthorViewProps) => {
   onMount(() => {
     const initialShouts = props.shouts || []
     console.log('[AuthorView] onMount - initial shouts:', initialShouts.length)
-    if (initialShouts.length > 0) {
-      setSortedFeed(initialShouts)
-      console.log('[AuthorView] Set initial feed:', initialShouts.length, 'items')
 
-      // Инициализируем флаг loadMoreHidden на основе статистики автора
-      if (props.author?.stat?.shouts) {
-        const allShoutsLoaded = initialShouts.length >= props.author.stat.shouts
-        setLoadMoreHidden(allShoutsLoaded)
-        console.log(
-          '[AuthorView] Initial loadMoreHidden set to:',
-          allShoutsLoaded,
-          'based on stats:',
-          props.author.stat.shouts
-        )
-      } else {
-        setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
-      }
+    // 🔧 ИСПРАВЛЕНИЕ: Всегда устанавливаем sortedFeed, даже если пустой
+    setSortedFeed(initialShouts)
+    console.log('[AuthorView] Set initial feed:', initialShouts.length, 'items')
+
+    // Инициализируем флаг loadMoreHidden на основе статистики автора
+    if (props.author?.stat?.shouts) {
+      const allShoutsLoaded = initialShouts.length >= props.author.stat.shouts
+      setLoadMoreHidden(allShoutsLoaded)
+      console.log(
+        '[AuthorView] Initial loadMoreHidden set to:',
+        allShoutsLoaded,
+        'based on stats:',
+        props.author.stat.shouts
+      )
+    } else {
+      setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
     }
 
     // Инициализируем автора из пропсов если доступен
@@ -209,6 +209,39 @@ export const AuthorView = (props: AuthorViewProps) => {
     )
   )
 
+  // 🔧 ИСПРАВЛЕНИЕ: Эффект начальной загрузки публикаций если их нет
+  createEffect(
+    on(
+      () => [author()?.slug, shoutsAmount(), props.authorSlug] as const,
+      ([authorSlug, shouts, propsSlug]) => {
+        // Загружаем публикации если:
+        // 1. Автор загружен И соответствует текущему slug из props
+        // 2. Статистика показывает публикации > 0
+        // 3. Список пустой
+        // 4. Мы на вкладке публикаций
+        const needsLoad =
+          authorSlug && authorSlug === propsSlug && shouts > 0 && sortedFeed().length === 0 && !currentTab()
+
+        if (needsLoad) {
+          console.log('[AuthorView] Initial load needed for author:', authorSlug, 'expected shouts:', shouts)
+
+          void loadAuthorShouts(0).then((result) => {
+            if (result?.length) {
+              console.log('[AuthorView] Initial load successful:', result.length, 'shouts')
+              setSortedFeed(result)
+              // Скрываем кнопку "Показать еще" если загружены все публикации автора
+              setLoadMoreHidden(result.length >= shouts)
+            } else {
+              console.warn('[AuthorView] Initial load returned no results for author:', authorSlug)
+              setLoadMoreHidden(true)
+            }
+          })
+        }
+      },
+      { defer: true }
+    )
+  )
+
   // Эффект для загрузки данных автора
   createEffect(
     on([() => session()?.author, () => props.authorSlug], async ([meData, slug]) => {
@@ -220,22 +253,32 @@ export const AuthorView = (props: AuthorViewProps) => {
 
       // 🔧 ИСПРАВЛЕНИЕ: Приоритет для данных из route.load с полной статистикой
       if (props.author && typeof props.author.stat?.comments === 'number') {
-        console.log('[AuthorView] Using author data from route.load with full stats:', props.author.stat)
         setAuthor(props.author)
         return
       }
 
-      // Всегда загружаем автора через API для получения актуальной статистики
+      // 🔧 ИСПРАВЛЕНИЕ: Проверяем кеш ПЕРЕД API запросом
+      const cachedAuthor = authorsEntities()[slug]
+      if (cachedAuthor && cachedAuthor.slug === slug) {
+        console.log('[AuthorView] Using cached author data:', {
+          slug: cachedAuthor.slug,
+          stats: cachedAuthor.stat
+        })
+        setAuthor(cachedAuthor)
+        return
+      }
+
+      // Загружаем автора через API только если нет в кеше
       if (slug && (!author() || author()?.slug !== slug)) {
-        console.log('[AuthorView] Loading author from API:', slug)
+        console.log('[AuthorView] Loading author from API (cache miss):', slug)
         await loadAuthor({ slug })
         const foundAuthor = authorsEntities()[slug]
 
         if (foundAuthor) {
-          console.log('[AuthorView] Author loaded successfully:', foundAuthor.slug, foundAuthor.stat)
+          console.log(`[AuthorView] Author loaded successfully: ${foundAuthor.slug} (id: ${foundAuthor.id})`)
           setAuthor(foundAuthor)
         } else {
-          console.warn('[AuthorView] Author not found:', slug)
+          console.warn(`[AuthorView] Author not found: ${slug}`)
           // Fallback для собственного профиля если API не вернул данные
           if (meData?.slug === slug) {
             console.log('[AuthorView] Using session author as fallback')
@@ -361,12 +404,6 @@ export const AuthorView = (props: AuthorViewProps) => {
             <span class="view-switcher__counter">{commentsAmount()}</span>
           </Show>
         </li>
-        <li classList={{ 'view-switcher__item--selected': currentTab() === 'followers' }}>
-          <A href={`/@${props.authorSlug}?m=followers`}>{t('Followers')}</A>
-          <Show when={author() && followers().length > 0}>
-            <span class="view-switcher__counter">{followers().length}</span>
-          </Show>
-        </li>
         <li classList={{ 'view-switcher__item--selected': currentTab() === 'about' }}>
           <A onClick={() => checkBioHeight()} href={`/@${props.authorSlug}/about`}>
             {t('About')}
@@ -419,10 +456,19 @@ export const AuthorView = (props: AuthorViewProps) => {
   // Эффект для перезагрузки публикаций автора при изменении фильтров
   createEffect(
     on(
-      () => filterState().timestamp,
-      (timestamp, prevTimestamp) => {
-        // Перезагружаем только если фильтры действительно изменились и автор загружен
-        if (timestamp !== prevTimestamp && prevTimestamp !== undefined && author() && !currentTab()) {
+      () => [filterState().timestamp, currentTab()] as const,
+      ([timestamp, tab], prevValues) => {
+        const prevTimestamp = prevValues?.[0]
+        const prevTab = prevValues?.[1]
+
+        // 🔧 ИСПРАВЛЕНИЕ: Перезагружаем только если:
+        // 1. Фильтры действительно изменились (не при переключении вкладок)
+        // 2. Мы на вкладке публикаций (!currentTab)
+        // 3. Автор загружен
+        const filtersChanged = timestamp !== prevTimestamp && prevTimestamp !== undefined
+        const stayedOnPublications = tab === prevTab && !tab // оставались на вкладке публикаций
+
+        if (filtersChanged && stayedOnPublications && author()) {
           console.log('[AuthorView] Filters changed, reloading author feed:', author()?.slug)
 
           // Сбрасываем текущие данные и загружаем заново
@@ -451,10 +497,19 @@ export const AuthorView = (props: AuthorViewProps) => {
   // Дополнительный эффект для перезагрузки при изменении сортировки (order_by)
   createEffect(
     on(
-      () => options().order_by,
-      (orderBy, prevOrderBy) => {
-        // Перезагружаем только если сортировка действительно изменилась и автор загружен
-        if (orderBy !== prevOrderBy && prevOrderBy !== undefined && author() && !currentTab()) {
+      () => [options().order_by, currentTab()] as const,
+      ([orderBy, tab], prevValues) => {
+        const prevOrderBy = prevValues?.[0]
+        const prevTab = prevValues?.[1]
+
+        // 🔧 ИСПРАВЛЕНИЕ: Перезагружаем только если:
+        // 1. Сортировка действительно изменилась (не при переключении вкладок)
+        // 2. Мы на вкладке публикаций (!currentTab)
+        // 3. Автор загружен
+        const sortingChanged = orderBy !== prevOrderBy && prevOrderBy !== undefined
+        const stayedOnPublications = tab === prevTab && !tab // оставались на вкладке публикаций
+
+        if (sortingChanged && stayedOnPublications && author()) {
           console.log('[AuthorView] Sorting changed, reloading author feed:', {
             author: author()?.slug,
             orderBy,
@@ -528,20 +583,33 @@ export const AuthorView = (props: AuthorViewProps) => {
       ([newSlug, newShouts], prevValues) => {
         const prevSlug = prevValues?.[0]
         if (newSlug !== prevSlug) {
+          console.log('[AuthorView] Author changed from', prevSlug, 'to', newSlug)
+
           // Сбрасываем и сразу устанавливаем начальные данные для нового автора
           const initialShouts = newShouts || []
           setSortedFeed(initialShouts)
-          // Скрываем кнопку "Показать еще" если загружены все публикации автора
-          if (shoutsAmount() > 0) {
-            setLoadMoreHidden(initialShouts.length >= shoutsAmount())
+          console.log('[AuthorView] Reset sortedFeed for new author:', initialShouts.length, 'items')
+
+          // 🔧 ИСПРАВЛЕНИЕ: При клиентском роутинге props.shouts может быть пустым
+          // Принудительно загружаем публикации если нет начальных данных
+          if (initialShouts.length === 0 && !currentTab()) {
+            console.log('[AuthorView] No initial shouts for new author, will load from API')
+            // Не загружаем сразу, дадим эффекту начальной загрузки сработать
+            setLoadMoreHidden(false)
           } else {
-            setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
+            // Скрываем кнопку "Показать еще" если загружены все публикации автора
+            if (shoutsAmount() > 0) {
+              setLoadMoreHidden(initialShouts.length >= shoutsAmount())
+            } else {
+              setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
+            }
           }
 
           // Сбрасываем флаги загрузки фолловеров для нового автора
           setFollowersLoaded(false)
           setFollowers([])
           setFollowingArray([])
+          console.log('[AuthorView] Clearing old feed data for previous author:', prevSlug)
         }
       },
       { defer: true }

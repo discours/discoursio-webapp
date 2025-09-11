@@ -215,6 +215,11 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
         return null
       }
 
+      // 🔧 ИСПРАВЛЕНИЕ: НЕ загружаем авторские и топиковые страницы как статьи
+      if (props.params.slug.startsWith('@') || props.params.slug.startsWith('!')) {
+        return null
+      }
+
       // Запускаем загрузку только если нет SSR данных
       if (!props.data?.article) {
         console.log(`[ArticlePageContent] No SSR data for "${props.params.slug}", fetching on client`)

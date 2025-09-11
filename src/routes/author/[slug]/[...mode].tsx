@@ -108,7 +108,6 @@ const fetchAllTopics = async () => {
 const fetchAuthor = async (slug: string) => {
   try {
     console.log('[fetchAuthor] Starting fetch for slug:', slug)
-    // 🔧 ИСПРАВЛЕНИЕ: Используем getAuthor для загрузки полной статистики с комментариями
     const authorFetcher = getAuthor({ slug })
     const author = await authorFetcher()
     console.log('[fetchAuthor] Result:', author ? `Found ${author.slug} (id: ${author.id})` : 'Not found')
@@ -142,6 +141,8 @@ export const route = {
       comments
     }
 
+    console.log('[AuthorRoute] Route loading completed for author:', params.slug)
+
     return result
   }
 }
@@ -174,35 +175,12 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
     setIsClientMounted(true)
   })
 
-  // 🔧 ИСПРАВЛЕНИЕ: Правильная обработка props.data как Promise из route.load
-  const [resolvedData] = createResource(
-    () => props.data,
-    async (data) => {
-      console.log('[AuthorPage] Resolving props.data:', typeof data)
-      // Если это Promise, ждем его разрешения
-      if (data && typeof data === 'object' && 'then' in data) {
-        const resolved = await data
-        console.log('[AuthorPage] Promise resolved:', {
-          hasAuthor: !!resolved.author,
-          authorSlug: resolved.author?.slug
-        })
-        return resolved
-      }
-      // Если это уже разрешенные данные
-      console.log('[AuthorPage] Direct data:', {
-        hasAuthor: !!data?.author,
-        authorSlug: data?.author?.slug
-      })
-      return data
-    },
-    {
-      // Важно для стабильной гидрации
-      initialValue:
-        typeof props.data === 'object' && !('then' in props.data)
-          ? props.data
-          : { author: undefined, articles: [], comments: [], topics: [] }
-    }
-  )
+  // 🔧 ИСПРАВЛЕНИЕ: Упрощенная обработка - props.data уже resolved в SolidStart
+  const resolvedData = createMemo(() => {
+    const data = props.data
+    // В SolidStart props.data уже resolved, не нужен createResource
+    return data || { author: undefined, articles: [], comments: [], topics: [] }
+  })
 
   // everything from address bar to route feed filters
   createEffect(
@@ -275,19 +253,24 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
     )
   )
 
-  // author's shouts
+  // author's shouts - используем данные из route.load
   const [authorShouts] = createResource(
-    () => props.params.slug,
-    async (slug) => {
+    () => ({ slug: props.params.slug, data: resolvedData() }),
+    async ({ slug, data }) => {
       try {
-        return props.data.articles || (await fetchAuthorShouts(slug, 0))
+        // Приоритет route.load данным
+        if (data?.articles?.length) {
+          return data.articles
+        }
+
+        return await fetchAuthorShouts(slug, 0)
       } catch (error) {
         console.error('Error loading author shouts:', error)
         return []
       }
     },
     {
-      initialValue: []
+      initialValue: resolvedData()?.articles || []
     }
   )
 

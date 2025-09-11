@@ -249,9 +249,19 @@ export const FullArticle = (props: Props) => {
       }
 
       const handleDocumentClick = (e: MouseEvent) => {
+        const startTime = performance.now()
+        const target = e.target as HTMLElement
+
+        // ✅ Быстрый выход для навигационных элементов
+        if (target.closest('a[href^="/@"]') || target.closest('a[rel="author"]')) {
+          return
+        }
+
         if (isTooltipVisible && e.target !== element && e.target !== tooltip) {
           tooltip.style.visibility = 'hidden'
           isTooltipVisible = false
+          const endTime = performance.now()
+          console.debug(`[FullArticle] Tooltip hidden: ${(endTime - startTime).toFixed(2)}ms`)
         }
       }
 
@@ -273,15 +283,42 @@ export const FullArticle = (props: Props) => {
   })
 
   const handleArticleBodyClick = (event: MouseEvent) => {
+    const startTime = performance.now()
     const target = event.target as HTMLElement
 
-    if (target.closest('.mediaItems')) {
+    // 🔍 Диагностика: логируем все клики для анализа
+    console.debug('[FullArticle] Click detected:', {
+      tagName: target.tagName,
+      className: target.className,
+      href: (target as HTMLAnchorElement).href,
+      closest_author_link: target.closest('a[href^="/@"]'),
+      closest_rel_author: target.closest('a[rel="author"]'),
+      performance_start: startTime
+    })
+
+    // ✅ Быстрый выход для ссылок авторов и других навигационных элементов
+    if (target.closest('a[href^="/@"]') || target.closest('a[rel="author"]')) {
+      const endTime = performance.now()
+      console.debug(`[FullArticle] Author link detected, early exit: ${(endTime - startTime).toFixed(2)}ms`)
       return
     }
 
+    if (target.closest('.mediaItems')) {
+      const endTime = performance.now()
+      console.debug(`[FullArticle] Media item click, early exit: ${(endTime - startTime).toFixed(2)}ms`)
+      return
+    }
+
+    // ✅ Только для изображений - останавливаем всплытие события
     if (target.tagName === 'IMG') {
+      const endTime = performance.now()
+      console.debug(`[FullArticle] Image click processed: ${(endTime - startTime).toFixed(2)}ms`)
+      event.stopPropagation()
       setSelectedImage((target as HTMLImageElement).src)
     }
+
+    const endTime = performance.now()
+    console.debug(`[FullArticle] Total click handler time:${(endTime - startTime).toFixed(2)}ms`)
   }
 
   // Check iframes size
@@ -476,7 +513,6 @@ export const FullArticle = (props: Props) => {
               'col-md-16 col-lg-14 col-xl-12 offset-md-5',
               styles[`${props.article.layout}Layout` as keyof typeof styles]
             )}
-            onClick={handleArticleBodyClick}
             aria-labelledby="article-title"
             aria-describedby="article-content"
           >
@@ -507,62 +543,64 @@ export const FullArticle = (props: Props) => {
                     )}
                   </For>
                 </div>
-                <Show
-                  when={props.article?.cover && props.article.layout !== 'video' && props.article.layout !== 'image'}
-                >
-                  <figure class={styles.figureAlignColumn}>
-                    <Image
-                      width={1200}
-                      alt={props.article?.cover_caption || ''}
-                      src={getCdnUrl(props.article?.cover || '')}
-                    />
-                    <figcaption innerHTML={props.article?.cover_caption || ''} />
-                  </figure>
-                </Show>
               </header>
             </Show>
 
-            <Show when={props.article.lead}>
-              <section class={styles.lead} innerHTML={processPrepositions(props.article.lead || '')} />
-            </Show>
+            {/* 🔧 ИСПРАВЛЕНИЕ: Оптимизированный обработчик кликов только для изображений */}
+            <div onClick={handleArticleBodyClick}>
+              <Show when={props.article?.cover && props.article.layout !== 'video' && props.article.layout !== 'image'}>
+                <figure class={styles.figureAlignColumn}>
+                  <Image
+                    width={1200}
+                    alt={props.article?.cover_caption || ''}
+                    src={getCdnUrl(props.article?.cover || '')}
+                  />
+                  <figcaption innerHTML={props.article?.cover_caption || ''} />
+                </figure>
+              </Show>
 
-            <Show when={props.article.layout === 'audio'}>
-              <AudioHeader
-                title={props.article.title || ''}
-                cover={props.article?.cover || ''}
-                artistData={media()?.[0]}
-                topic={props.article.main_topic as Topic}
-              />
-              <Show when={media().length > 0}>
+              <Show when={props.article.lead}>
+                <section class={styles.lead} innerHTML={processPrepositions(props.article.lead || '')} />
+              </Show>
+
+              <Show when={props.article.layout === 'audio'}>
+                <AudioHeader
+                  title={props.article.title || ''}
+                  cover={props.article?.cover || ''}
+                  artistData={media()?.[0]}
+                  topic={props.article.main_topic as Topic}
+                />
+                <Show when={media().length > 0}>
+                  <div class="mediaItems">
+                    <AudioPlayer media={media()} articleSlug={props.article.slug || ''} body={body()} />
+                  </div>
+                </Show>
+              </Show>
+
+              <Show when={media() && props.article.layout === 'video'}>
                 <div class="mediaItems">
-                  <AudioPlayer media={media()} articleSlug={props.article.slug || ''} body={body()} />
+                  <For each={media() || []}>
+                    {(m: MediaItem) => (
+                      <div class={styles.shoutMediaBody}>
+                        <VideoPlayer
+                          articleView={true}
+                          videoUrl={m.url || ''}
+                          title={m.title || ''}
+                          description={m.body || ''}
+                        />
+                        <Show when={m?.body}>
+                          <div innerHTML={m.body || ''} />
+                        </Show>
+                      </div>
+                    )}
+                  </For>
                 </div>
               </Show>
-            </Show>
 
-            <Show when={media() && props.article.layout === 'video'}>
-              <div class="mediaItems">
-                <For each={media() || []}>
-                  {(m: MediaItem) => (
-                    <div class={styles.shoutMediaBody}>
-                      <VideoPlayer
-                        articleView={true}
-                        videoUrl={m.url || ''}
-                        title={m.title || ''}
-                        description={m.body || ''}
-                      />
-                      <Show when={m?.body}>
-                        <div innerHTML={m.body || ''} />
-                      </Show>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </Show>
-
-            <Show when={body() && props.article.layout !== 'audio' && props.article.layout !== 'video'}>
-              <div id="shoutBody" class={styles.shoutBody} innerHTML={body()} />
-            </Show>
+              <Show when={body() && props.article.layout !== 'audio' && props.article.layout !== 'video'}>
+                <div id="shoutBody" class={styles.shoutBody} innerHTML={body()} />
+              </Show>
+            </div>
           </article>
 
           <Show when={body() && props.article.layout !== 'audio' && props.article.layout !== 'video'}>

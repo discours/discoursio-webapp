@@ -1037,7 +1037,8 @@
 
       &:hover {
         background: transparent;
-        color: var(--link-hover-color);
+        color: var(--link-color); // ✅ Сохраняем исходный цвет текста
+        border-bottom: 1px solid var(--link-color); // ✅ Добавляем underline
       }
     }
   }
