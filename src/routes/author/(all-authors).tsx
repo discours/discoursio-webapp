@@ -82,7 +82,7 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
   const { t } = useLocalize()
   const { addAuthors } = useAuthors()
 
-  // ✅ КРИТИЧНО: props.data может быть Promise в SolidStart!
+  // ✅  props.data может быть Promise в SolidStart!
   const [data] = createResource(
     () => props.data,
     async (routeData) => {
@@ -122,7 +122,7 @@ export default function AllAuthorsPage(props: RouteSectionProps<AllAuthorsData>)
       }
     },
     {
-      // ✅ КРИТИЧНО: initialValue для стабильной гидрации
+      // ✅  initialValue для стабильной гидрации
       initialValue:
         typeof props.data === 'object' && !('then' in props.data)
           ? props.data

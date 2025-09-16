@@ -182,7 +182,7 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
             }
           />
 
-          {/* 🔧 ИСПРАВЛЕНИЕ: Добавляем OG метатеги для SSR */}
+          {/* 🔧  Добавляем OG метатеги для SSR */}
           <Meta property="og:type" content={ogMetadata().type} />
           <Meta property="og:title" content={ogMetadata().title} />
           <Meta property="og:description" content={ogMetadata().description} />

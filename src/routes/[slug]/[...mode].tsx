@@ -215,7 +215,7 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
         return null
       }
 
-      // 🔧 ИСПРАВЛЕНИЕ: НЕ загружаем авторские и топиковые страницы как статьи
+      // 🔧  НЕ загружаем авторские и топиковые страницы как статьи
       if (props.params.slug.startsWith('@') || props.params.slug.startsWith('!')) {
         return null
       }

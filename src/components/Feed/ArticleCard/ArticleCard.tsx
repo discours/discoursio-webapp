@@ -105,7 +105,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
   const [isCoverImageLoadError, setIsCoverImageLoadError] = createSignal(false)
   const [isCoverImageLoading, setIsCoverImageLoading] = createSignal(true)
 
-  // 🔧 ИСПРАВЛЕНИЕ: Правильно управляем состоянием загрузки
+  // 🔧  Правильно управляем состоянием загрузки
   createEffect(() => {
     const articleId = props.article?.id
     const coverUrl = props.article?.cover

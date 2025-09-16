@@ -81,10 +81,36 @@ export const AuthorView = (props: AuthorViewProps) => {
   onMount(() => {
     const initialShouts = props.shouts || []
     console.log('[AuthorView] onMount - initial shouts:', initialShouts.length)
+    console.log('[AuthorView] onMount - author:', props.author?.slug, 'stat:', props.author?.stat)
+    console.log('[AuthorView] onMount - authorSlug from props:', props.authorSlug)
 
-    // 🔧 ИСПРАВЛЕНИЕ: Всегда устанавливаем sortedFeed, даже если пустой
+    // Всегда устанавливаем sortedFeed, даже если пустой
     setSortedFeed(initialShouts)
     console.log('[AuthorView] Set initial feed:', initialShouts.length, 'items')
+
+    // Если есть публикации в props, показываем их сразу без дополнительной загрузки
+    if (initialShouts.length > 0) {
+      console.log('[AuthorView] Found', initialShouts.length, 'publications in props, displaying immediately')
+      setLoadMoreHidden(true) // Скрываем кнопку загрузки если есть данные
+    }
+
+    // Если у автора нет статистики, но есть публикации - инициализируем её
+    if (props.author && !props.author.stat && initialShouts.length > 0) {
+      console.log('[AuthorView] Author missing stats, initializing from props:', {
+        shouts: initialShouts.length,
+        author: props.author.slug
+      })
+      // Устанавливаем минимальную статистику на основе данных
+      props.author.stat = {
+        shouts: initialShouts.length,
+        comments: 0,
+        replies_count: 0,
+        rating_shouts: 0,
+        rating_comments: 0,
+        viewed_shouts: 0,
+        topics: 0
+      }
+    }
 
     // Инициализируем флаг loadMoreHidden на основе статистики автора
     if (props.author?.stat?.shouts) {
@@ -106,41 +132,17 @@ export const AuthorView = (props: AuthorViewProps) => {
       setAuthor(props.author)
     }
 
-    // 🔧 ИСПРАВЛЕНИЕ: Всегда инициализируем комментарии из пропсов и добавляем в стор реакций
+    // Убираем загрузку комментариев - это делается в route
+    // Только инициализируем из пропсов
     if (props.comments) {
       console.log('[AuthorView] Setting initial comments from props:', props.comments.length)
       setCommented(props.comments)
-      // 🔧 КРИТИЧНО: Добавляем SSR комментарии в стор реакций
+      // Добавляем SSR комментарии в стор реакций
       addShoutReactions(props.comments)
       // Устанавливаем состояние загрузки дополнительных комментариев
       if (props.author?.stat?.comments) {
         setLoadMoreCommentsHidden(props.comments.length >= props.author.stat.comments)
       }
-    } else if (props.author) {
-      // Если комментариев нет в пропсах, но есть автор - загружаем комментарии
-      console.log('[AuthorView] No comments in props, loading from API for author:', props.author.slug)
-      loadReactions({
-        by: {
-          kinds: [ReactionKind.Comment],
-          created_by: props.author.id
-        },
-        limit: COMMENTS_PER_PAGE,
-        offset: 0
-      })()
-        .then((result: Reaction[]) => {
-          console.log('[AuthorView] Loaded comments from API:', result?.length || 0)
-          if (result) {
-            setCommented(result)
-            // 🔧 КРИТИЧНО: Добавляем загруженные комментарии в стор реакций
-            addShoutReactions(result)
-            if (props.author?.stat?.comments) {
-              setLoadMoreCommentsHidden(result.length >= props.author.stat.comments)
-            }
-          }
-        })
-        .catch((error: unknown) => {
-          console.error('[AuthorView] Error loading comments:', error)
-        })
     }
   })
 
@@ -187,6 +189,27 @@ export const AuthorView = (props: AuthorViewProps) => {
     })
   )
 
+  // 🔧  Добавляем эффект для обновления комментариев из props
+  createEffect(
+    on(
+      () => [props.comments?.length, props.authorSlug] as const,
+      ([commentsLength, authorSlug]) => {
+        // Обновляем комментарии только если есть новые данные из props
+        if (commentsLength && commentsLength > 0) {
+          console.log('[AuthorView] Updating comments from props:', commentsLength, 'comments for', authorSlug)
+          setCommented(props.comments || [])
+          addShoutReactions(props.comments || [])
+
+          // Устанавливаем состояние загрузки дополнительных комментариев
+          if (props.author?.stat?.comments) {
+            setLoadMoreCommentsHidden(commentsLength >= props.author.stat.comments)
+          }
+        }
+      },
+      { defer: true }
+    )
+  )
+
   // Эффект для обновления статей при изменении feedByAuthor
   createEffect(
     on(
@@ -209,33 +232,23 @@ export const AuthorView = (props: AuthorViewProps) => {
     )
   )
 
-  // 🔧 ИСПРАВЛЕНИЕ: Эффект начальной загрузки публикаций если их нет
+  // 🔧  Убираем избыточную загрузку - данные загружаются в route
+  // Оставляем только обновление состояния на основе props
   createEffect(
     on(
-      () => [author()?.slug, shoutsAmount(), props.authorSlug] as const,
-      ([authorSlug, shouts, propsSlug]) => {
-        // Загружаем публикации если:
-        // 1. Автор загружен И соответствует текущему slug из props
-        // 2. Статистика показывает публикации > 0
-        // 3. Список пустой
-        // 4. Мы на вкладке публикаций
-        const needsLoad =
-          authorSlug && authorSlug === propsSlug && shouts > 0 && sortedFeed().length === 0 && !currentTab()
+      () => [props.shouts?.length, props.authorSlug] as const,
+      ([shoutsLength, authorSlug]) => {
+        // Обновляем состояние только если есть новые данные из props
+        if (shoutsLength && shoutsLength > 0) {
+          console.log('[AuthorView] Updating feed from props:', shoutsLength, 'shouts for', authorSlug)
+          setSortedFeed(props.shouts || [])
 
-        if (needsLoad) {
-          console.log('[AuthorView] Initial load needed for author:', authorSlug, 'expected shouts:', shouts)
-
-          void loadAuthorShouts(0).then((result) => {
-            if (result?.length) {
-              console.log('[AuthorView] Initial load successful:', result.length, 'shouts')
-              setSortedFeed(result)
-              // Скрываем кнопку "Показать еще" если загружены все публикации автора
-              setLoadMoreHidden(result.length >= shouts)
-            } else {
-              console.warn('[AuthorView] Initial load returned no results for author:', authorSlug)
-              setLoadMoreHidden(true)
-            }
-          })
+          // Скрываем кнопку "Показать еще" если загружены все публикации автора
+          if (shoutsAmount() > 0) {
+            setLoadMoreHidden(shoutsLength >= shoutsAmount())
+          } else {
+            setLoadMoreHidden(shoutsLength < FEED_PAGE_SIZE)
+          }
         }
       },
       { defer: true }
@@ -251,13 +264,13 @@ export const AuthorView = (props: AuthorViewProps) => {
         currentAuthor: author()?.slug
       })
 
-      // 🔧 ИСПРАВЛЕНИЕ: Приоритет для данных из route.load с полной статистикой
+      // 🔧  Приоритет для данных из route.load с полной статистикой
       if (props.author && typeof props.author.stat?.comments === 'number') {
         setAuthor(props.author)
         return
       }
 
-      // 🔧 ИСПРАВЛЕНИЕ: Проверяем кеш ПЕРЕД API запросом
+      // 🔧  Проверяем кеш ПЕРЕД API запросом
       const cachedAuthor = authorsEntities()[slug]
       if (cachedAuthor && cachedAuthor.slug === slug) {
         console.log('[AuthorView] Using cached author data:', {
@@ -370,13 +383,13 @@ export const AuthorView = (props: AuthorViewProps) => {
     on(
       () => [loc.pathname, params.tab, feedMode(), loc.search],
       ([pathname, , , search]) => {
-        // 🔧 ИСПРАВЛЕНИЕ: Добавляем обработку параметра ?m=followers
+        // 🔧  Добавляем обработку параметра ?m=followers
         const searchParams = new URLSearchParams(search)
         const mode = searchParams.get('m')
 
         if (pathname.includes('/comments')) {
           setCurrentTab('comments')
-          // 🔧 ИСПРАВЛЕНИЕ: Комментарии теперь загружаются заранее в onMount, только устанавливаем вкладку
+          // 🔧  Комментарии теперь загружаются заранее в onMount, только устанавливаем вкладку
         } else if (pathname.includes('/about')) {
           setCurrentTab('about')
         } else if (mode === 'followers') {
@@ -461,7 +474,7 @@ export const AuthorView = (props: AuthorViewProps) => {
         const prevTimestamp = prevValues?.[0]
         const prevTab = prevValues?.[1]
 
-        // 🔧 ИСПРАВЛЕНИЕ: Перезагружаем только если:
+        // 🔧  Перезагружаем только если:
         // 1. Фильтры действительно изменились (не при переключении вкладок)
         // 2. Мы на вкладке публикаций (!currentTab)
         // 3. Автор загружен
@@ -502,7 +515,7 @@ export const AuthorView = (props: AuthorViewProps) => {
         const prevOrderBy = prevValues?.[0]
         const prevTab = prevValues?.[1]
 
-        // 🔧 ИСПРАВЛЕНИЕ: Перезагружаем только если:
+        // 🔧  Перезагружаем только если:
         // 1. Сортировка действительно изменилась (не при переключении вкладок)
         // 2. Мы на вкладке публикаций (!currentTab)
         // 3. Автор загружен
@@ -590,7 +603,7 @@ export const AuthorView = (props: AuthorViewProps) => {
           setSortedFeed(initialShouts)
           console.log('[AuthorView] Reset sortedFeed for new author:', initialShouts.length, 'items')
 
-          // 🔧 ИСПРАВЛЕНИЕ: При клиентском роутинге props.shouts может быть пустым
+          // 🔧  При клиентском роутинге props.shouts может быть пустым
           // Принудительно загружаем публикации если нет начальных данных
           if (initialShouts.length === 0 && !currentTab()) {
             console.log('[AuthorView] No initial shouts for new author, will load from API')
@@ -769,7 +782,7 @@ export const AuthorView = (props: AuthorViewProps) => {
         </Match>
 
         <Match when={currentTab() === 'comments'}>
-          {/* 🔧 ИСПРАВЛЕНИЕ: Показываем комментарии если есть фактические комментарии ИЛИ статистика показывает больше 0 */}
+          {/* 🔧  Показываем комментарии если есть фактические комментарии ИЛИ статистика показывает больше 0 */}
           <Show when={commented().length > 0 || commentsAmount() > 0}>
             <div class="wide-container">
               <div class="row">

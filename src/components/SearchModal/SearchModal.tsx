@@ -136,7 +136,7 @@ export const SearchModal = () => {
     }
 
     try {
-      // 🔧 ИСПРАВЛЕНИЕ: Используем прямой API вызов loadShoutsSearch
+      // 🔧  Используем прямой API вызов loadShoutsSearch
       const searchArgs = {
         text: searchQuery,
         options: {

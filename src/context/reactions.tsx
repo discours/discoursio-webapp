@@ -83,7 +83,7 @@ export const ReactionsProvider = (props: { children: JSX.Element }) => {
         newReactionsByShout[reaction.shout.id][existingIndex] = reaction
       }
 
-      // 🔧 КРИТИЧНО: Обновляем комментарии по автору для отображения в профиле
+      // 🔧  Обновляем комментарии по автору для отображения в профиле
       if (reaction.kind === ReactionKind.Comment && reaction.created_by?.id) {
         const authorId = reaction.created_by.id
         if (!newCommentsByAuthor[authorId]) {

@@ -20,7 +20,7 @@ export const TopicAuthorsView = (props: Props) => {
   const initialAuthors = Array.isArray(props.authors) ? props.authors : []
   const [loadedAuthors, setLoadedAuthors] = createSignal<Author[]>(initialAuthors)
 
-  // ⚡ КРИТИЧНО: Обновляем когда приходят новые авторы
+  // ⚡  Обновляем когда приходят новые авторы
   createEffect(() => {
     if (props.authors && props.authors.length > 0) {
       setLoadedAuthors(props.authors)

@@ -175,11 +175,21 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
     setIsClientMounted(true)
   })
 
-  // 🔧 ИСПРАВЛЕНИЕ: Упрощенная обработка - props.data уже resolved в SolidStart
+  // 🔧  Упрощенная обработка - props.data уже resolved в SolidStart
   const resolvedData = createMemo(() => {
     const data = props.data
+    console.log('[AuthorPage] resolvedData - raw props.data:', data)
+    console.log('[AuthorPage] resolvedData - type:', typeof data, 'isPromise:', data instanceof Promise)
+
     // В SolidStart props.data уже resolved, не нужен createResource
-    return data || { author: undefined, articles: [], comments: [], topics: [] }
+    const result = data || { author: undefined, articles: [], comments: [], topics: [] }
+    console.log('[AuthorPage] resolvedData - final result:', {
+      hasAuthor: !!result.author,
+      authorSlug: result.author?.slug,
+      articlesCount: result.articles?.length || 0,
+      commentsCount: result.comments?.length || 0
+    })
+    return result
   })
 
   // everything from address bar to route feed filters
@@ -255,57 +265,49 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
 
   // author's shouts - используем данные из route.load
   const [authorShouts] = createResource(
-    () => ({ slug: props.params.slug, data: resolvedData() }),
-    async ({ slug, data }) => {
+    () => props.params.slug, // 🔧  Отслеживаем только slug для клиентского роутинга
+    async (slug) => {
       try {
-        // Приоритет route.load данным
-        if (data?.articles?.length) {
-          return data.articles
-        }
-
-        return await fetchAuthorShouts(slug, 0)
+        // 🔧  При клиентском роутинге props.data не обновляется
+        // Всегда загружаем данные через API
+        console.log('[AuthorRoute] Loading shouts for slug:', slug)
+        const articles = await fetchAuthorShouts(slug, 0)
+        console.log('[AuthorRoute] Loaded shouts:', articles?.length || 0)
+        return articles
       } catch (error) {
         console.error('Error loading author shouts:', error)
         return []
       }
     },
     {
-      initialValue: resolvedData()?.articles || []
+      initialValue: resolvedData()?.articles || [] // SSR данные как initialValue
     }
   )
 
   // author's comments - используем прямой доступ к props.data для SSR стабильности
   const [authorComments] = createResource(
-    () => props.params.slug, // Зависимость от slug, а не от author для стабильности
+    () => props.params.slug, // 🔧  Отслеживаем только slug для клиентского роутинга
     async (slug) => {
       try {
-        // Сначала возвращаем данные из route.load
-        const resolved = resolvedData()
-        if (resolved?.comments?.length) {
-          console.log('[AuthorRoute] Using comments from route.load:', resolved.comments.length)
-          return resolved.comments
-        }
-
-        // Fallback: загружаем автора и его комментарии
-        const authorData = author()
-        if (!authorData) {
-          console.log('[AuthorRoute] No author data, loading author first')
-          const loadedAuthor = await fetchAuthor(slug)
-          if (loadedAuthor) {
-            return await fetchAuthorComments(loadedAuthor, 0)
-          }
+        // 🔧  При клиентском роутинге props.data не обновляется
+        // Всегда загружаем автора и его комментарии через API
+        console.log('[AuthorRoute] Loading comments for slug:', slug)
+        const loadedAuthor = await fetchAuthor(slug)
+        if (!loadedAuthor) {
+          console.log('[AuthorRoute] Author not found for slug:', slug)
           return []
         }
 
-        console.log('[AuthorRoute] Loading comments for author:', authorData.slug)
-        return await fetchAuthorComments(authorData, 0)
+        const comments = await fetchAuthorComments(loadedAuthor, 0)
+        console.log('[AuthorRoute] Loaded comments:', comments?.length || 0)
+        return comments
       } catch (error) {
         console.error('Error loading author comments:', error)
         return []
       }
     },
     {
-      initialValue: resolvedData()?.comments || []
+      initialValue: resolvedData()?.comments || [] // SSR данные как initialValue
     }
   )
 
@@ -335,7 +337,7 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
               >
                 <ReactionsProvider>
                   <AuthorView
-                    author={resolvedData()?.author || (author() as Author)}
+                    author={author() || resolvedData()?.author}
                     authorSlug={decodeURIComponent(props.params.slug)}
                     shouts={authorShouts() || []}
                     comments={authorComments() || []}

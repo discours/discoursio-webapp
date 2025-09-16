@@ -54,7 +54,7 @@ const getDraftField = (draftId: string | number, fieldName: string): string | nu
 const parseJsonContent = (content?: string): string => {
   if (!content) return ''
 
-  // 🔧 ИСПРАВЛЕНИЕ: Более осторожная обработка HTML контента
+  // 🔧  Более осторожная обработка HTML контента
   // Не парсим как JSON если контент содержит HTML теги
   if (content.includes('<') && content.includes('>')) {
     // Это HTML контент, возвращаем как есть с минимальной обработкой
@@ -103,7 +103,7 @@ const saveDraftFieldStorage = (
     return false
   }
 
-  // 🔧 ИСПРАВЛЕНИЕ: Разрешаем пустые строки для очистки полей
+  // 🔧  Разрешаем пустые строки для очистки полей
   // Пустые строки нужны для очистки содержимого редактора
 
   try {
@@ -1430,7 +1430,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
    * Создает DraftInput из черновика (устраняет дублирование)
    */
   const createDraftInput = (draft: ExtendedDraft): DraftInput => {
-    // 🔧 ИСПРАВЛЕНИЕ: Автоматически генерируем slug если его нет
+    // 🔧  Автоматически генерируем slug если его нет
     let slug = draft.slug || ''
     if (!slug || slug.trim() === '') {
       slug = slugify(draft.title || '')

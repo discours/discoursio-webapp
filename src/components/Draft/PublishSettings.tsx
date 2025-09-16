@@ -343,7 +343,7 @@ export const PublishSettings = () => {
       return
     }
 
-    // 🔧 ИСПРАВЛЕНИЕ: Автоматически генерируем slug если его нет
+    // 🔧  Автоматически генерируем slug если его нет
     if (!finalDraft.slug || finalDraft.slug.trim() === '') {
       console.log('🔧 [AUTO-FIX] Генерируем slug из заголовка:', finalDraft.title)
       const generatedSlug = slugify(finalDraft.title || '')
@@ -484,7 +484,7 @@ export const PublishSettings = () => {
     const draft = currentDraft()
     if (!draft?.id) return
 
-    // 🔧 ИСПРАВЛЕНИЕ: Используем ID шаута, а не ID черновика
+    // 🔧  Используем ID шаута, а не ID черновика
     const shoutId = draft.shout?.id
     if (!shoutId) {
       console.error('[PublishSettings] Не найден ID шаута для снятия с публикации')

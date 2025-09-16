@@ -55,7 +55,7 @@ export default (props: RouteSectionProps) => {
           // Отмечаем, что синхронизация начата
           setSyncedDrafts((prev) => new Set([...prev, parsedId]))
 
-          // 🔧 ИСПРАВЛЕНИЕ: Синхронизируем данные из localStorage только один раз
+          // 🔧  Синхронизируем данные из localStorage только один раз
           try {
             const syncedDraft = await syncDraft(parsedId)
 

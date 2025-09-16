@@ -546,7 +546,7 @@ export const FullArticle = (props: Props) => {
               </header>
             </Show>
 
-            {/* 🔧 ИСПРАВЛЕНИЕ: Оптимизированный обработчик кликов только для изображений */}
+            {/* 🔧  Оптимизированный обработчик кликов только для изображений */}
             <div onClick={handleArticleBodyClick}>
               <Show when={props.article?.cover && props.article.layout !== 'video' && props.article.layout !== 'image'}>
                 <figure class={styles.figureAlignColumn}>

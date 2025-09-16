@@ -195,7 +195,7 @@ export default function HomePage(props: RouteSectionProps<HomeViewProps>) {
       return resolved
     },
     {
-      // ✅ КРИТИЧНО: initialValue для стабильной гидрации
+      // ✅  initialValue для стабильной гидрации
       initialValue:
         typeof props.data === 'object' && !('then' in props.data)
           ? props.data

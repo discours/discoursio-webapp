@@ -78,10 +78,10 @@ export const TopicView = (props: Props) => {
     }
   })
 
-  // ✅ ИСПРАВЛЕНИЕ: Единый сигнал для авторов топика (без дублирования)
+  // ✅  Единый сигнал для авторов топика (без дублирования)
   const [topicAuthorsList, setTopicAuthorsList] = createSignal<Author[]>(props.followers || [])
 
-  // ⚡ КРИТИЧНО: Обновляем авторов когда приходят новые данные из props
+  // ⚡  Обновляем авторов когда приходят новые данные из props
   createEffect(() => {
     if (props.followers && props.followers.length > 0) {
       console.log('[TopicView] Updating authors from props.followers:', props.followers.length)
@@ -130,7 +130,7 @@ export const TopicView = (props: Props) => {
       const contextTopic = ttt[props.topicSlug]
       const currentTopic = topic()
 
-      // 🔧 ИСПРАВЛЕНИЕ: Обновляем топик из контекста только если:
+      // 🔧  Обновляем топик из контекста только если:
       // 1. У нас нет текущего топика ИЛИ
       // 2. У текущего топика нет статистики, А у контекстного есть
       if (contextTopic && (!currentTopic || (!currentTopic.stat && contextTopic.stat))) {
@@ -156,7 +156,7 @@ export const TopicView = (props: Props) => {
   // 2. Добавим эффект для обработки начальных данных
   createEffect(() => {
     if (props.shouts?.length) {
-      // 🔧 ИСПРАВЛЕНИЕ: Инициализируем фид в контексте с SSR данными
+      // 🔧  Инициализируем фид в контексте с SSR данными
       initializeFeed(feedMode() || 'recent', props.shouts)
 
       setSortedFeed(props.shouts)
@@ -208,7 +208,7 @@ export const TopicView = (props: Props) => {
       () => props.topicSlug,
       (newSlug, prevSlug) => {
         if (newSlug !== prevSlug && prevSlug !== undefined) {
-          // ✅ ИСПРАВЛЕНИЕ: Восстанавливаем фид из пропсов при смене топика
+          // ✅  Восстанавливаем фид из пропсов при смене топика
           setSortedFeed(props.shouts || [])
           setTopicAuthorsList([]) // Сбрасываем авторов при смене топика
         }
@@ -447,7 +447,7 @@ export const TopicView = (props: Props) => {
 
       if (newAuthors?.length) {
         console.log(`[TopicView] Loaded ${newAuthors.length} more authors`)
-        // ✅ ИСПРАВЛЕНИЕ: Дедупликация авторов по ID
+        // ✅  Дедупликация авторов по ID
         setTopicAuthorsList((prev) => {
           const existingIds = new Set(prev.map((author) => author.id))
           const dedupedAuthors = newAuthors.filter((author) => !existingIds.has(author.id))
@@ -613,7 +613,7 @@ export const TopicView = (props: Props) => {
           </Match>
 
           <Match when={!currentTab()}>
-            {/* ✅ ИСПРАВЛЕНИЕ: Всегда показываем блок публикаций (с fallback для пустого состояния) */}
+            {/* ✅  Всегда показываем блок публикаций (с fallback для пустого состояния) */}
             <Show when={true}>
               <Show
                 when={sortedFeed().length > 0}
