@@ -20,29 +20,57 @@ function createElement(type: any, props: any, ...children: any[]) {
 const h = createElement
 
 // Базовые настройки
-const cdnUrl = 'https://files.dscrs.site'
+const cdnUrl = process.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
 const defaultImage = `${cdnUrl}/logo_sign.png`
+
+// 🔍 ДИАГНОСТИКА: Логируем CDN конфигурацию
+console.log('[OG] CDN Configuration:', {
+  cdnUrl,
+  hasEnvVar: !!process.env.PUBLIC_CDN_URL,
+  envValue: process.env.PUBLIC_CDN_URL
+})
 
 // Функция для правильной обработки CDN URL
 const getCdnUrl = (url: string, width?: number) => {
   if (!url) return url
+
+  // Если URL уже полный (начинается с http), возвращаем как есть
+  if (url.startsWith('http')) {
+    return url
+  }
+
+  // Если CDN URL не настроен, возвращаем исходный URL
+  if (!cdnUrl) {
+    console.warn('[OG] CDN URL not configured, returning original URL:', url)
+    return url
+  }
+
+  // Если URL начинается с /, добавляем CDN URL
+  if (url.startsWith('/')) {
+    return `${cdnUrl}${url}`
+  }
+
+  // Обрабатываем относительные пути
   let filepath = ''
   try {
     filepath = new URL(url).pathname
   } catch {
     filepath = url
   }
+
   const fileparts = filepath.split('/')
   let filename = fileparts.pop() || ''
   if (!filename) filename = filepath
   if (filename.toLowerCase() === 'webp') filename = fileparts.pop() || ''
   if (!filename) return url
+
   if (width) {
     const extension = filename.split('.').pop() || ''
     if (extension && !filename.includes(`_${width}`)) {
       filename = filename.replace(`.${extension}`, `_${width}.${extension}`)
     }
   }
+
   return `${cdnUrl}/${filename}`
 }
 
@@ -97,6 +125,8 @@ export async function GET(request: Request) {
   console.log(`[OG] Timestamp: ${new Date().toISOString()}`)
   console.log(`[OG] Method: ${request.method}`)
   console.log(`[OG] URL: ${request.url}`)
+  console.log(`[OG] CDN URL: ${cdnUrl}`)
+  console.log(`[OG] Default image: ${defaultImage}`)
   // biome-ignore lint/suspicious/noExplicitAny: og
   console.log('[OG] Headers:', Object.fromEntries(request.headers as any))
 
@@ -250,6 +280,13 @@ export async function GET(request: Request) {
     console.log(`[OG] Duration: ${Date.now() - startTime}ms`)
     console.log('[OG] Response created successfully')
 
+    // 🔍 ДИАГНОСТИКА: Проверяем финальные URL изображений
+    if (content?.cover) {
+      const finalCoverUrl = getCdnUrl(content.cover)
+      console.log(`[OG] Final cover URL for social media: "${finalCoverUrl}"`)
+    }
+    console.log(`[OG] Default image URL: "${defaultImage}"`)
+
     return response
     // biome-ignore lint/suspicious/noExplicitAny: og
   } catch (error: any) {
@@ -324,7 +361,13 @@ function createOGImage({
 
   if (cover) {
     const processedCoverUrl = getCdnUrl(cover)
-    console.log(`[OG] Cover URL: "${cover}" -> processed: "${processedCoverUrl}"`)
+    console.log('[OG] Cover URL processing:')
+    console.log(`[OG]   Original: "${cover}"`)
+    console.log(`[OG]   Processed: "${processedCoverUrl}"`)
+    console.log(`[OG]   Type: ${typeof cover}`)
+    console.log(`[OG]   Starts with http: ${cover.startsWith('http')}`)
+    console.log(`[OG]   Starts with /: ${cover.startsWith('/')}`)
+    console.log(`[OG]   CDN URL: "${cdnUrl}"`)
   }
 
   const children = [
