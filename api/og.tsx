@@ -1,17 +1,30 @@
 import { ImageResponse } from '@vercel/og'
 
-// Легковесная React-like функция для @vercel/og
-// Оптимальна для простых оверлеев без лишнего overhead
-function h(type, props, ...children) {
-  return { type, props: { ...(props || {}), children } }
+// 🚨 FIX: Минимальная React-compatible реализация createElement
+// @vercel/og v1.0.0 требует совместимость с React.createElement API
+// biome-ignore lint/suspicious/noExplicitAny: og
+function createElement(type: any, props: any, ...children: any[]) {
+  // Фильтруем undefined children
+  const validChildren = children.filter((child) => child !== undefined && child !== null)
+
+  return {
+    type,
+    props: {
+      ...props,
+      children: validChildren.length === 0 ? undefined : validChildren.length === 1 ? validChildren[0] : validChildren
+    }
+  }
 }
+
+// Алиас для совместимости
+const h = createElement
 
 // Базовые настройки
 const cdnUrl = 'https://files.dscrs.site'
 const defaultImage = `${cdnUrl}/logo_sign.png`
 
 // Функция для правильной обработки CDN URL
-const getCdnUrl = (url, width) => {
+const getCdnUrl = (url: string, width?: number) => {
   if (!url) return url
   let filepath = ''
   try {
@@ -51,8 +64,12 @@ const translations = {
 }
 
 // Простая функция перевода для Edge Runtime
-function t(key, locale = 'ru') {
-  return translations[locale]?.[key] || translations['ru'][key] || key
+function t(key: string, locale = 'ru') {
+  return (
+    (translations as Record<string, Record<string, string>>)[locale]?.[key] ||
+    (translations as Record<string, Record<string, string>>)['ru'][key] ||
+    key
+  )
 }
 
 // Добавляем CORS заголовки
@@ -72,7 +89,7 @@ const CORS_HEADERS = {
  * Поддерживает пути: /api/og, /api/og/article, /api/og/author, /api/og/topic
  * Размер: строго 1200x630px для Facebook/Twitter/LinkedIn
  */
-export async function GET(request) {
+export async function GET(request: Request) {
   const startTime = Date.now()
 
   // 🔍 ДИАГНОСТИКА: Начальные логи
@@ -80,7 +97,8 @@ export async function GET(request) {
   console.log(`[OG] Timestamp: ${new Date().toISOString()}`)
   console.log(`[OG] Method: ${request.method}`)
   console.log(`[OG] URL: ${request.url}`)
-  console.log('[OG] Headers:', Object.fromEntries(request.headers.entries()))
+  // biome-ignore lint/suspicious/noExplicitAny: og
+  console.log('[OG] Headers:', Object.fromEntries(request.headers as any))
 
   // Обработка CORS для preflight запросов
   if (request.method === 'OPTIONS') {
@@ -134,8 +152,9 @@ export async function GET(request) {
     const isDark = type !== 'basic' && (cover || type === 'article')
 
     // Формируем контент в зависимости от типа
-    let content
-    let topRight = null // Для дополнительных элементов (бейджи)
+    let content: { title: string; description: string; cover: string | null } | null = null
+    // biome-ignore lint/suspicious/noExplicitAny: og
+    let topRight: number | null | { type: any; props: any } = null // Для дополнительных элементов (бейджи)
 
     console.log(`[OG] Switching on type: "${type}"`)
 
@@ -153,7 +172,7 @@ export async function GET(request) {
         const stats = [
           params.articlesCount && { text: `${params.articlesCount} ${t('articles', locale)}` },
           params.followersCount && { text: `${params.followersCount} ${t('followers', locale)}` }
-        ].filter(Boolean)
+        ].filter(Boolean) as Array<{ text: string }>
 
         console.log('[OG] Author stats:', stats)
         topRight = stats.length ? createStatsBar(stats) : null
@@ -195,13 +214,7 @@ export async function GET(request) {
 
         const response = new ImageResponse(basicImage, {
           width: OG_IMAGE_WIDTH,
-          height: OG_IMAGE_HEIGHT,
-          headers: {
-            // 💋 Улучшенное кэширование для статичного лого
-            'Cache-Control': 'public, max-age=31536000, immutable',
-            'CDN-Cache-Control': 'public, max-age=31536000, immutable',
-            ...CORS_HEADERS
-          }
+          height: OG_IMAGE_HEIGHT
         })
 
         console.log(`[OG] Returning basic response, duration: ${Date.now() - startTime}ms`)
@@ -230,24 +243,16 @@ export async function GET(request) {
 
     const response = new ImageResponse(ogImage, {
       width: OG_IMAGE_WIDTH,
-      height: OG_IMAGE_HEIGHT,
-      // fonts: await loadCustomFonts(), // 💋 Отключено для edge runtime
-      headers: {
-        // 💋 Динамическое кэширование на основе контента
-        'Cache-Control': 'public, max-age=86400, s-maxage=2592000',
-        'CDN-Cache-Control': 'public, max-age=2592000',
-        ETag: `"${cacheKey}"`,
-        Vary: 'Accept-Encoding',
-        ...CORS_HEADERS
-      }
+      height: OG_IMAGE_HEIGHT
     })
 
     console.log('[OG] ===== REQUEST SUCCESS =====')
     console.log(`[OG] Duration: ${Date.now() - startTime}ms`)
-    console.log('[OG] Response headers:', response.headers)
+    console.log('[OG] Response created successfully')
 
     return response
-  } catch (error) {
+    // biome-ignore lint/suspicious/noExplicitAny: og
+  } catch (error: any) {
     console.error('[OG] ===== REQUEST ERROR =====')
     console.error(`[OG] Error type: ${error.constructor.name}`)
     console.error(`[OG] Error message: ${error.message}`)
@@ -262,17 +267,14 @@ export async function GET(request) {
 
       const fallbackResponse = new ImageResponse(fallbackImage, {
         width: OG_IMAGE_WIDTH,
-        height: OG_IMAGE_HEIGHT,
-        headers: {
-          'Cache-Control': 'public, max-age=300', // Короткий кэш для fallback
-          ...CORS_HEADERS
-        }
+        height: OG_IMAGE_HEIGHT
       })
 
       console.log('[OG] ===== FALLBACK SUCCESS =====')
       console.log(`[OG] Fallback duration: ${Date.now() - startTime}ms`)
       return fallbackResponse
-    } catch (fallbackError) {
+      // biome-ignore lint/suspicious/noExplicitAny: og
+    } catch (fallbackError: any) {
       console.error('[OG] ===== FALLBACK ERROR =====')
       console.error(`[OG] Fallback error type: ${fallbackError.constructor.name}`)
       console.error(`[OG] Fallback error message: ${fallbackError.message}`)
@@ -290,7 +292,20 @@ export async function GET(request) {
 /**
  * Создает основную структуру OG-изображения
  */
-function createOGImage({ title, description, cover, topRight = null, theme = 'light' }) {
+function createOGImage({
+  title,
+  description,
+  cover,
+  topRight = null,
+  theme = 'light'
+}: {
+  title: string
+  description: string
+  cover: string | null | undefined
+  // biome-ignore lint/suspicious/noExplicitAny: og
+  topRight?: number | null | { type: any; props: any }
+  theme?: string
+}) {
   console.log('[OG] createOGImage called with:', { title, description, cover, topRight: !!topRight, theme })
 
   const isDark = theme === 'dark'
@@ -435,7 +450,7 @@ function createBasicOGImage() {
 /**
  * Создает бейдж для темы
  */
-function createTopicBadge(text) {
+function createTopicBadge(text: string) {
   return h(
     'div',
     {
@@ -461,7 +476,7 @@ function createTopicBadge(text) {
 /**
  * Создает панель статистики для правого верхнего угла
  */
-function createStatsBar(items) {
+function createStatsBar(items: Array<{ text: string }>) {
   if (!items || items.length === 0) return null
 
   return h(
@@ -476,7 +491,7 @@ function createStatsBar(items) {
         color: 'rgba(255,255,255,0.8)'
       }
     },
-    ...items.map((item, index) =>
+    ...items.map((item: { text: string }, index: number) =>
       h(
         'div',
         {
@@ -496,7 +511,7 @@ function createStatsBar(items) {
 /**
  * Создает бейдж "Рекомендуем" для главной страницы
  */
-function createFeaturedBadge(text) {
+function createFeaturedBadge(text: string) {
   return h(
     'div',
     {
