@@ -39,7 +39,7 @@ git clone https://github.com/discours/discoursio-webapp.git
 cd discoursio-webapp
 
 # Установка зависимостей
-bun install  # или npm/pnpm/yarn
+npm install  # или bun/pnpm/yarn
 
 # Настройка переменных окружения
 cp .env.example .env
@@ -58,26 +58,26 @@ sudo mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
 mkcert -install
 
 # Запуск сервера разработки
-bun dev
+npm run dev  # или bun dev
 ```
 
 ### ⚡ Основные команды
 
 ```bash
 # Разработка
-bun run dev         # 🚀 Запуск сервера разработки
-bun run build       # 📦 Сборка для продакшена
-bun run preview     # 👀 Предпросмотр сборки
+npm run dev         # 🚀 Запуск сервера разработки
+npm run build       # 📦 Сборка для продакшена
+npm run preview     # 👀 Предпросмотр сборки
 
 # Качество кода
-bun run typecheck   # 🔍 Проверка типов TypeScript
-bun run lint        # 🧹 Линтинг кода
-bun run fix         # 🔧 Автоисправление стилей
-bun run format      # 💅 Форматирование кода
+npm run typecheck   # 🔍 Проверка типов TypeScript
+npm run lint        # 🧹 Линтинг кода
+npm run fix         # 🔧 Автоисправление стилей
+npm run format      # 💅 Форматирование кода
 
 # Дополнительно
-bun run storybook   # 📚 Запуск Storybook
-bun run analyze     # 📊 Анализ бандла
+npm run storybook   # 📚 Запуск Storybook
+npm run analyze     # 📊 Анализ бандла
 ```
 
 ### 📖 Важное

@@ -2,8 +2,7 @@ import { ImageResponse } from '@vercel/og'
 
 // 🚨 FIX: Минимальная React-compatible реализация createElement
 // @vercel/og v1.0.0 требует совместимость с React.createElement API
-// biome-ignore lint/suspicious/noExplicitAny: og
-function createElement(type: any, props: any, ...children: any[]) {
+function createElement(type, props, ...children) {
   // Фильтруем undefined children
   const validChildren = children.filter((child) => child !== undefined && child !== null)
 
@@ -19,6 +18,11 @@ function createElement(type: any, props: any, ...children: any[]) {
 // Алиас для совместимости
 const h = createElement
 
+// Конфигурация для Edge Runtime
+export const config = {
+  runtime: 'edge'
+}
+
 // Базовые настройки
 const cdnUrl = process.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
 const defaultImage = `${cdnUrl}/logo_sign.png`
@@ -31,7 +35,7 @@ console.log('[OG] CDN Configuration:', {
 })
 
 // Функция для правильной обработки CDN URL
-const getCdnUrl = (url: string, width?: number) => {
+const getCdnUrl = (url, width) => {
   if (!url) return url
 
   // Если URL уже полный (начинается с http), возвращаем как есть
@@ -92,12 +96,8 @@ const translations = {
 }
 
 // Простая функция перевода для Edge Runtime
-function t(key: string, locale = 'ru') {
-  return (
-    (translations as Record<string, Record<string, string>>)[locale]?.[key] ||
-    (translations as Record<string, Record<string, string>>)['ru'][key] ||
-    key
-  )
+function t(key, locale = 'ru') {
+  return translations[locale]?.[key] || translations['ru'][key] || key
 }
 
 // Добавляем CORS заголовки
@@ -117,7 +117,7 @@ const CORS_HEADERS = {
  * Поддерживает пути: /api/og, /api/og/article, /api/og/author, /api/og/topic
  * Размер: строго 1200x630px для Facebook/Twitter/LinkedIn
  */
-export async function GET(request: Request) {
+export async function GET(request) {
   const startTime = Date.now()
 
   // 🔍 ДИАГНОСТИКА: Начальные логи
@@ -127,8 +127,7 @@ export async function GET(request: Request) {
   console.log(`[OG] URL: ${request.url}`)
   console.log(`[OG] CDN URL: ${cdnUrl}`)
   console.log(`[OG] Default image: ${defaultImage}`)
-  // biome-ignore lint/suspicious/noExplicitAny: og
-  console.log('[OG] Headers:', Object.fromEntries(request.headers as any))
+  console.log('[OG] Headers:', Object.fromEntries(request.headers))
 
   // Обработка CORS для preflight запросов
   if (request.method === 'OPTIONS') {
@@ -182,9 +181,8 @@ export async function GET(request: Request) {
     const isDark = type !== 'basic' && (cover || type === 'article')
 
     // Формируем контент в зависимости от типа
-    let content: { title: string; description: string; cover: string | null } | null = null
-    // biome-ignore lint/suspicious/noExplicitAny: og
-    let topRight: number | null | { type: any; props: any } = null // Для дополнительных элементов (бейджи)
+    let content = null
+    let topRight = null // Для дополнительных элементов (бейджи)
 
     console.log(`[OG] Switching on type: "${type}"`)
 
@@ -202,7 +200,7 @@ export async function GET(request: Request) {
         const stats = [
           params.articlesCount && { text: `${params.articlesCount} ${t('articles', locale)}` },
           params.followersCount && { text: `${params.followersCount} ${t('followers', locale)}` }
-        ].filter(Boolean) as Array<{ text: string }>
+        ].filter(Boolean)
 
         console.log('[OG] Author stats:', stats)
         topRight = stats.length ? createStatsBar(stats) : null
@@ -238,9 +236,26 @@ export async function GET(request: Request) {
         console.log('[OG] Basic content:', content)
         topRight = featured ? createFeaturedBadge(t('Featured', locale)) : null
 
-        console.log('[OG] Creating basic OG image...')
-        const basicImage = createBasicOGImage()
-        console.log('[OG] Basic image created:', basicImage)
+        // Создаем базовое изображение напрямую
+        const basicImage = h(
+          'div',
+          {
+            style: {
+              height: '100%',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'white'
+            }
+          },
+          h('img', {
+            src: defaultImage,
+            width: 200,
+            height: 200,
+            style: { width: 200, height: 200, objectFit: 'contain' }
+          })
+        )
 
         const response = new ImageResponse(basicImage, {
           width: OG_IMAGE_WIDTH,
@@ -269,7 +284,7 @@ export async function GET(request: Request) {
     console.log('[OG] Creating OG image with props:', ogImageProps)
 
     const ogImage = createOGImage(ogImageProps)
-    console.log('[OG] OG image created:', ogImage)
+    console.log('[OG] OG image created successfully')
 
     const response = new ImageResponse(ogImage, {
       width: OG_IMAGE_WIDTH,
@@ -288,8 +303,7 @@ export async function GET(request: Request) {
     console.log(`[OG] Default image URL: "${defaultImage}"`)
 
     return response
-    // biome-ignore lint/suspicious/noExplicitAny: og
-  } catch (error: any) {
+  } catch (error) {
     console.error('[OG] ===== REQUEST ERROR =====')
     console.error(`[OG] Error type: ${error.constructor.name}`)
     console.error(`[OG] Error message: ${error.message}`)
@@ -310,8 +324,7 @@ export async function GET(request: Request) {
       console.log('[OG] ===== FALLBACK SUCCESS =====')
       console.log(`[OG] Fallback duration: ${Date.now() - startTime}ms`)
       return fallbackResponse
-      // biome-ignore lint/suspicious/noExplicitAny: og
-    } catch (fallbackError: any) {
+    } catch (fallbackError) {
       console.error('[OG] ===== FALLBACK ERROR =====')
       console.error(`[OG] Fallback error type: ${fallbackError.constructor.name}`)
       console.error(`[OG] Fallback error message: ${fallbackError.message}`)
@@ -329,20 +342,7 @@ export async function GET(request: Request) {
 /**
  * Создает основную структуру OG-изображения
  */
-function createOGImage({
-  title,
-  description,
-  cover,
-  topRight = null,
-  theme = 'light'
-}: {
-  title: string
-  description: string
-  cover: string | null | undefined
-  // biome-ignore lint/suspicious/noExplicitAny: og
-  topRight?: number | null | { type: any; props: any }
-  theme?: string
-}) {
+function createOGImage({ title, description, cover, topRight = null, theme = 'light' }) {
   console.log('[OG] createOGImage called with:', { title, description, cover, topRight: !!topRight, theme })
 
   const isDark = theme === 'dark'
@@ -466,7 +466,7 @@ function createBasicOGImage() {
   console.log('[OG] createBasicOGImage called')
   console.log(`[OG] Using default image: "${defaultImage}"`)
 
-  const result = h(
+  return h(
     'div',
     {
       style: {
@@ -485,15 +485,12 @@ function createBasicOGImage() {
       style: { width: 200, height: 200, objectFit: 'contain' }
     })
   )
-
-  console.log('[OG] Basic image result:', result)
-  return result
 }
 
 /**
  * Создает бейдж для темы
  */
-function createTopicBadge(text: string) {
+function createTopicBadge(text) {
   return h(
     'div',
     {
@@ -519,7 +516,7 @@ function createTopicBadge(text: string) {
 /**
  * Создает панель статистики для правого верхнего угла
  */
-function createStatsBar(items: Array<{ text: string }>) {
+function createStatsBar(items) {
   if (!items || items.length === 0) return null
 
   return h(
@@ -534,7 +531,7 @@ function createStatsBar(items: Array<{ text: string }>) {
         color: 'rgba(255,255,255,0.8)'
       }
     },
-    ...items.map((item: { text: string }, index: number) =>
+    ...items.map((item, index) =>
       h(
         'div',
         {
@@ -554,7 +551,7 @@ function createStatsBar(items: Array<{ text: string }>) {
 /**
  * Создает бейдж "Рекомендуем" для главной страницы
  */
-function createFeaturedBadge(text: string) {
+function createFeaturedBadge(text) {
   return h(
     'div',
     {

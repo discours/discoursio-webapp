@@ -44,7 +44,7 @@ git clone https://github.com/discours/discoursio-webapp.git
 cd discoursio-webapp
 
 # Install dependencies
-bun install  # or npm/pnpm/yarn
+npm install  # or bun/pnpm/yarn
 
 # Configure environment variables
 cp .env.example .env
@@ -63,28 +63,27 @@ sudo mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
 mkcert -install
 
 # Start development server
-bun dev
+npm run dev  # or bun dev
 ```
 
 ### ⚡ Main Commands
 
 ```bash
 # Development
-bun run dev         # 🚀 Start development server
-bun run build       # 📦 Build for production
-bun run preview     # 👀 Preview build
+npm run dev         # 🚀 Start development server
+npm run build       # 📦 Build for production
+npm run preview     # 👀 Preview build
 
 # Code Quality
-bun run typecheck   # 🔍 TypeScript type checking
-bun run lint        # 🧹 Code linting
-bun run fix         # 🔧 Auto-fix styles
-bun run format      # 💅 Code formatting
+npm run typecheck   # 🔍 TypeScript type checking
+npm run lint        # 🧹 Code linting
+npm run fix         # 🔧 Auto-fix styles
+npm run format      # 💅 Code formatting
 
 # Additional
-bun run storybook   # 📚 Start Storybook
-bun run analyze     # 📊 Bundle analysis
+npm run storybook   # 📚 Start Storybook
+npm run analyze     # 📊 Bundle analysis
 ```
-
 
 ## 📚 Documentation
 

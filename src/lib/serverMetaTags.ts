@@ -77,6 +77,12 @@ export function generateServerMetaTags(
     <meta name="twitter:image:width" content="${ogMetadata.imageWidth || 1200}" />
     <meta name="twitter:image:height" content="${ogMetadata.imageHeight || 630}" />
     <meta name="twitter:image:alt" content="${escapeHtml(ogMetadata.imageAlt || ogMetadata.title)}" />
+    
+    <!-- ========== VK И ДРУГИЕ СОЦСЕТИ ============ -->
+    <meta name="vk:title" content="${escapeHtml(ogMetadata.title)}" />
+    <meta name="vk:description" content="${escapeHtml(ogMetadata.description)}" />
+    <meta name="vk:image" content="${escapeHtml(ogMetadata.image)}" />
+    
     ${generateArticleMetaTags(ogMetadata)}
     ${generateProfileMetaTags(ogMetadata)}`.trim()
 

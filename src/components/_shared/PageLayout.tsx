@@ -1,17 +1,14 @@
-import { Meta, Title } from '@solidjs/meta'
+import { Title } from '@solidjs/meta'
 import { useLocation } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Component, createEffect, createMemo, ErrorBoundary, JSX, on, Show, Suspense } from 'solid-js'
-import { isServer } from 'solid-js/web'
+import { Component, ErrorBoundary, JSX, Show, Suspense } from 'solid-js'
 import bannerImage from '~/assets/images/discours-banner.jpg'
 import { useLocalize } from '~/context/localize'
 import { Author, Shout, Topic } from '~/graphql/generated/graphql'
-import { getPageKeywords } from '~/intl/keywords'
-// getImageUrl больше не нужен - middleware перехватывает CDN запросы
-import { generatePageSpecificOGMetadata, getPageType } from '~/lib/openGraph'
 import { FooterView } from '../Discours/Footer'
 import { Header } from '../HeaderNav'
 import { Loading } from './Loading'
+import { MetaTags } from './MetaTags'
 import styles from './PageLayout.module.scss'
 
 type PageLayoutProps = {
@@ -45,87 +42,12 @@ const PageErrorFallback = (err: any) => {
   )
 }
 
-/**
- * Обновляет метатеги на клиенте через прямое DOM API
- * Обходит проблемы @solidjs/meta с SSR
- */
-function updateServerMetaTags(ogMetadata: ReturnType<typeof generatePageSpecificOGMetadata>, keywords: string) {
-  if (isServer) return // На сервере только базовые теги
-
-  try {
-    // Обновляем title
-    if (document.title !== ogMetadata.title) {
-      document.title = ogMetadata.title
-    }
-
-    // Функция для обновления/создания метатега
-    const updateMetaTag = (selector: string, content: string) => {
-      let meta = document.querySelector(selector)
-      if (!meta) {
-        meta = document.createElement('meta')
-
-        // Определяем атрибут по селектору
-        if (selector.includes('property=')) {
-          const property = selector.match(/property="([^"]+)"/)?.[1]
-          if (property) meta.setAttribute('property', property)
-        } else if (selector.includes('name=')) {
-          const name = selector.match(/name="([^"]+)"/)?.[1]
-          if (name) meta.setAttribute('name', name)
-        }
-
-        document.head.appendChild(meta)
-      }
-      meta.setAttribute('content', content)
-    }
-
-    // Обновляем базовые метатеги
-    updateMetaTag('meta[name="description"]', ogMetadata.description)
-    updateMetaTag('meta[name="keywords"]', keywords)
-
-    // Обновляем OG теги
-    updateMetaTag('meta[property="og:type"]', ogMetadata.type)
-    updateMetaTag('meta[property="og:title"]', ogMetadata.title)
-    updateMetaTag('meta[property="og:description"]', ogMetadata.description)
-    updateMetaTag('meta[property="og:url"]', ogMetadata.url)
-    updateMetaTag('meta[property="og:image"]', ogMetadata.image)
-    updateMetaTag('meta[property="og:locale"]', ogMetadata.locale)
-
-    // Обновляем Twitter Card теги
-    updateMetaTag('meta[name="twitter:title"]', ogMetadata.title)
-    updateMetaTag('meta[name="twitter:description"]', ogMetadata.description)
-    updateMetaTag('meta[name="twitter:image"]', ogMetadata.image)
-
-    // Обновляем canonical URL
-    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement
-    if (!canonical) {
-      canonical = document.createElement('link')
-      canonical.rel = 'canonical'
-      document.head.appendChild(canonical)
-    }
-    canonical.href = ogMetadata.canonicalUrl || ogMetadata.url
-  } catch (error) {
-    console.error('[PageLayout] Error updating meta tags:', error)
-  }
-}
-
 export const PageLayout: Component<PageLayoutProps> = (props) => {
   const isHeaderFixed = props.isHeaderFixed === undefined ? true : props.isHeaderFixed
   const loc = useLocation()
-  const { t, lang } = useLocalize()
+  const { t } = useLocalize()
 
-  // Простая функция для получения ключевых слов - только для сложных вычислений нужен createMemo
-  const keywords = createMemo(() => {
-    if (props.keywords) return props.keywords
-
-    const contentInfo = {
-      type: props.article ? 'article' : props.author ? 'author' : props.topic ? 'topic' : 'website',
-      data: props.article || props.author || props.topic || null
-    }
-
-    return getPageKeywords(contentInfo, loc.pathname, lang())
-  })
-
-  // Простая функция для определения контента - избегаем createMemo для простых условий
+  // Определяем контент для метатегов
   const content = () => {
     if (props.article) return props.article
     if (props.author) return props.author
@@ -133,30 +55,10 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
     return undefined
   }
 
-  // 🚨 НОВАЯ ЛОГИКА: Используем специфичную генерацию для разных типов страниц
-  const ogMetadata = createMemo(() => {
-    const pageType = getPageType(loc.pathname)
-
-    return generatePageSpecificOGMetadata(pageType, content(), {
-      pathname: loc.pathname,
-      defaultTitle: t(props.title),
-      defaultDescription: props.desc,
-      locale: lang(),
-      featuredArticles: props.featuredArticles // Для главной страницы
-    })
-  })
-
   // Используем более надёжные гарантированные значения
   const pageTitle = () => {
-    return props.article?.title || t(props.title) || ogMetadata().title || t('Discours')
+    return props.article?.title || t(props.title) || t('Discours')
   }
-
-  // Обновляем метатеги на клиенте
-  createEffect(
-    on([ogMetadata, keywords], ([ogData, keywords]) => {
-      updateServerMetaTags(ogData, keywords)
-    })
-  )
 
   return (
     <ErrorBoundary fallback={PageErrorFallback}>
@@ -170,45 +72,15 @@ export const PageLayout: Component<PageLayoutProps> = (props) => {
 
       <div class={props.withPadding ? 'container' : ''}>
         <Suspense fallback={<Loading />}>
-          {/* Заголовок страницы всегда обновляется */}
           <Title>{pageTitle()}</Title>
-          <Meta
-            name="description"
-            content={
-              ogMetadata().description ||
-              props.desc ||
-              t('Discours – an open magazine about culture, science and society') ||
-              ''
-            }
+          <MetaTags
+            content={content()}
+            pathname={loc.pathname}
+            title={t(props.title)}
+            description={props.desc}
+            keywords={props.keywords}
+            featuredArticles={props.featuredArticles}
           />
-
-          {/* 🔧  Добавляем OG метатеги для SSR */}
-          <Meta property="og:type" content={ogMetadata().type} />
-          <Meta property="og:title" content={ogMetadata().title} />
-          <Meta property="og:description" content={ogMetadata().description} />
-          <Meta property="og:url" content={ogMetadata().url} />
-          <Meta property="og:image" content={ogMetadata().image} />
-          <Meta property="og:image:width" content={ogMetadata().imageWidth?.toString() || '1200'} />
-          <Meta property="og:image:height" content={ogMetadata().imageHeight?.toString() || '630'} />
-          <Meta property="og:site_name" content={ogMetadata().siteName} />
-          <Meta property="og:locale" content={ogMetadata().locale} />
-
-          {/* Twitter Card метатеги */}
-          <Meta name="twitter:card" content={ogMetadata().twitterCard || 'summary_large_image'} />
-          <Meta name="twitter:title" content={ogMetadata().title} />
-          <Meta name="twitter:description" content={ogMetadata().description} />
-          <Meta name="twitter:image" content={ogMetadata().image} />
-
-          {/* Дополнительные метатеги для статей */}
-          <Show when={ogMetadata().articleAuthor}>
-            <Meta property="article:author" content={ogMetadata().articleAuthor || ''} />
-          </Show>
-          <Show when={ogMetadata().articleSection}>
-            <Meta property="article:section" content={ogMetadata().articleSection || ''} />
-          </Show>
-          <Show when={ogMetadata().articlePublishedTime}>
-            <Meta property="article:published_time" content={ogMetadata().articlePublishedTime || ''} />
-          </Show>
 
           <main
             class={clsx('main-content', {
