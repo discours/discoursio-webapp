@@ -18,7 +18,7 @@ type MetaTagsProps = {
 /**
  * Единый компонент для генерации всех метатегов
  */
-export const MetaTags = (props: MetaTagsProps) => { 
+export const MetaTags = (props: MetaTagsProps) => {
   const { t, lang } = useLocalize()
 
   // Определяем контент для генерации метаданных

@@ -2,6 +2,21 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.14.14] - 2025-01-17
+
+### 🔧 OpenGraph & MetaTags Fixes
+
+- **✅ ИСПРАВЛЕНА совместимость с @vercel/og v1.0.0**: Обновлена реализация createElement для React-compatible API
+  - **Bug**: @vercel/og v1.0.0 требует совместимость с React.createElement API
+  - **Fix**: Добавлена минимальная React-compatible реализация createElement в `api/og.js`
+  - **Technical**: Фильтрация undefined children, правильная структура props.children
+  - **Impact**: OpenGraph изображения теперь генерируются корректно с новой версией библиотеки
+
+- **✅ ИСПРАВЛЕНО форматирование MetaTags**: Убрана лишняя пробельная строка в компоненте
+  - **Bug**: Лишний пробел в объявлении функции MetaTags
+  - **Fix**: Удален лишний пробел в `src/components/_shared/MetaTags.tsx`
+  - **Impact**: Улучшена читаемость кода и соответствие стандартам форматирования
+
 ## [0.14.13] - 2025-09-11
 
 ### 🎯 Performance & Navigation Fixes

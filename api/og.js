@@ -190,7 +190,11 @@ export async function GET(request) {
       case 'article': {
         console.log(`[OG] Processing article with topic: "${params.topic}", author: "${params.author}"`)
         topRight = params.topic ? createTopicBadge(params.topic) : null
-        content = { title, description: params.author, cover }
+        content = {
+          title,
+          description: params.author,
+          cover: params.cover || cover // 🔧 FIX: Используем params.cover
+        }
         console.log('[OG] Article content:', content)
         break
       }
@@ -217,7 +221,11 @@ export async function GET(request) {
         topRight = params.articlesCount
           ? createStatsBar([{ text: `${params.articlesCount} ${t('articles', locale)}` }])
           : null
-        content = { title, description, cover }
+        content = {
+          title,
+          description,
+          cover: params.cover || cover // 🔧 FIX: Используем params.cover
+        }
         console.log('[OG] Topic content:', content)
         break
       }
