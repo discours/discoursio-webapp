@@ -1,9 +1,9 @@
 import { Accessor, createEffect, createSignal, onCleanup } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
+import { hasFormatting } from '../format/format'
 import { MENU_GROUPS } from './commands'
 import { isEmptyContent } from './empty'
-import { hasFormatting } from './format'
 import { CommandGroupType, CommandType, Position, SelectionState } from './types'
 import { trackSelectionAndCursor } from './utils'
 
@@ -90,36 +90,8 @@ export const isSelectionInElement = (element: HTMLElement | null): boolean => {
   return element.contains(range.commonAncestorContainer)
 }
 
-/**
- * Получает позицию курсора в редакторе
- * @param editor Редактор
- * @returns Позиция курсора относительно редактора или null
- */
-export const getCursorPosition = (editor: HTMLElement | null): Position | null => {
-  if (!editor || typeof window === 'undefined') return null
-
-  const selection = window.getSelection()
-  if (!selection || selection.rangeCount === 0) return null
-
-  const range = selection.getRangeAt(0)
-
-  // Проверяем, что выделение внутри редактора
-  if (!editor.contains(range.commonAncestorContainer)) return null
-
-  const editorRect = editor.getBoundingClientRect()
-
-  // Получаем координаты выделения
-  const rect = range.getClientRects()[0] || range.getBoundingClientRect()
-
-  if (rect) {
-    return {
-      top: rect.top - editorRect.top,
-      left: rect.left - editorRect.left
-    }
-  }
-
-  return null
-}
+// getCursorPosition перенесен в utils.ts для избежания дублирования
+export { getCursorPosition } from './utils'
 
 /**
  * Расширенный хук для работы с выделением, курсором и состоянием тулбара.

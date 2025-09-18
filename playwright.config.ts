@@ -9,11 +9,12 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: 0, // ❌ Убираем retries чтобы видеть реальные проблемы
   workers: isCI ? 2 : 2, // ⚡ Меньше воркеров для стабильности
-  reporter: isCI ? [['github'], ['json', { outputFile: 'test-results/results.json' }]] : 'html',
+  reporter: isCI ? [['github'], ['json', { outputFile: './test-results/results.json' }]] : 'html',
+  outputDir: './test-results',
   timeout: 30000, // ⏱️ Стандартный таймаут без маскировки проблем
   // В CI используем более надежные настройки
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
+    baseURL: process.env.E2E_BASE_URL || 'https://localhost:3001',
     // Для работы с прокси на /graphql
     headless: !!isCI,
     ignoreHTTPSErrors: true,

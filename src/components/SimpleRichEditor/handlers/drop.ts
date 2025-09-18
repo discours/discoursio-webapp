@@ -14,10 +14,10 @@ import { useLocalize } from '~/context/localize'
  *
  * @example
  * ```tsx
- * const { handleDropFiles, restoreSelection } = useDropFiles()
+ * const { handleDropFiles } = useDropFiles()
  *
  * return (
- *   <div onDrop={(e) => handleDropFiles(e.dataTransfer.files)}>
+ *   <div onDrop={handleDropFiles}>
  *     {content}
  *   </div>
  * )
@@ -27,9 +27,7 @@ export const useDropFiles = () => {
   const { t } = useLocalize()
   const [selection, setSelection] = createSignal<Range | null>(null)
 
-  /**
-   * Save current selection before upload
-   */
+  // Используем локальные функции для сохранения/восстановления выделения
   const saveSelection = () => {
     const sel = window.getSelection()
     if (sel?.rangeCount) {
@@ -37,15 +35,12 @@ export const useDropFiles = () => {
     }
   }
 
-  /**
-   * Restore saved selection after upload
-   */
   const restoreSelection = () => {
     const sel = selection()
     if (sel) {
-      const selection = window.getSelection()
-      selection?.removeAllRanges()
-      selection?.addRange(sel)
+      const windowSelection = window.getSelection()
+      windowSelection?.removeAllRanges()
+      windowSelection?.addRange(sel)
       return true
     }
     return false
@@ -79,15 +74,21 @@ export const useDropFiles = () => {
     }
 
     try {
+      console.log('[useDropFiles] Processing dropped images:', imageFiles.length)
+
+      // Показываем уведомление о начале загрузки
       toast.loading(t('Uploading images...'))
 
-      // Здесь должна быть логика загрузки файлов
-      // Например:
-      // await uploadImages(imageFiles)
+      // TODO: Интеграция с реальной системой загрузки
+      // В будущем здесь будет вызов API загрузки:
+      // const uploadResults = await uploadImages(imageFiles)
+
+      // Пока что просто эмулируем успешную загрузку
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       toast.success(t('Images uploaded successfully'))
     } catch (error) {
-      console.error('Upload error:', error)
+      console.error('[useDropFiles] Upload error:', error)
       toast.error(t('Failed to upload images'))
     }
   }

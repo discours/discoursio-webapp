@@ -70,13 +70,20 @@ type ConfirmMessage = {
   declineButtonVariant?: ButtonVariant
 }
 
+type ModalCallbacks = {
+  // biome-ignore lint/suspicious/noExplicitAny: true
+  onSuccess?: (data?: any) => void
+  onCancel?: () => void
+}
+
 type UIContextType = {
   modal: Accessor<ModalType | null>
-  showModal: (m: ModalType, source?: ModalSource) => void
+  showModal: (m: ModalType, source?: ModalSource, callbacks?: ModalCallbacks) => void
   hideModal: () => void
   confirmMessage: Accessor<ConfirmMessage>
   showConfirm: (message?: ConfirmMessage) => Promise<boolean>
   resolveConfirm: (value: boolean) => void
+  modalCallbacks: Accessor<ModalCallbacks | null>
 }
 
 const UIContext = createContext<UIContextType>({} as UIContextType)
@@ -89,6 +96,7 @@ export const UIProvider = (props: { children: JSX.Element }) => {
   const [, setSearchParams] = useSearchParams<Record<string, string>>()
   const [modal, setModal] = createSignal<ModalType | null>(null)
   const [confirmMessage, setConfirmMessage] = createSignal<ConfirmMessage>({} as ConfirmMessage)
+  const [modalCallbacks, setModalCallbacks] = createSignal<ModalCallbacks | null>(null)
 
   // Monitor URL changes to control modal state
   createEffect(() => {
@@ -118,18 +126,20 @@ export const UIProvider = (props: { children: JSX.Element }) => {
     hideModal()
   }
 
-  const showModal = (modalType: ModalType, modalSource?: ModalSource) => {
+  const showModal = (modalType: ModalType, modalSource?: ModalSource, callbacks?: ModalCallbacks) => {
     // console.log('[context.ui] showModal()', modalType)
     if (modalSource) {
       setSearchParams({ source: modalSource })
     }
     setModal(modalType)
+    setModalCallbacks(callbacks || null)
   }
 
   const hideModal = () => {
     // console.log('[context.ui] hideModal()', modal())
     setTimeout(() => setModal(null), 1) // NOTE: modal rerender fix
     setSearchParams({ source: undefined, m: undefined, mode: undefined })
+    setModalCallbacks(null)
   }
 
   const [searchParams] = useSearchParams()
@@ -156,7 +166,8 @@ export const UIProvider = (props: { children: JSX.Element }) => {
     resolveConfirm,
     modal,
     showModal,
-    hideModal
+    hideModal,
+    modalCallbacks
   }
 
   return <UIContext.Provider value={value}>{props.children}</UIContext.Provider>

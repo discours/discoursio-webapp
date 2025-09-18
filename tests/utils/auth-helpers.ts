@@ -34,8 +34,8 @@ export interface MockUser {
  */
 export const TEST_USERS = {
   VALID: {
-    email: process.env.E2E_TEST_USERNAME || 'test@example.com',
-    password: process.env.E2E_TEST_PASSWORD || 'testPassword123!',
+    email: process.env.TEST_USERNAME || 'test@example.com',
+    password: process.env.TEST_PASSWORD || 'testPassword123!',
     fullName: 'Тестовый Пользователь'
   },
   NEW: {
@@ -443,68 +443,48 @@ export async function registerNewTestAccount(
 }
 
 /**
- * Проверка существования аккаунта и регистрация нового если нужно
+ * Простая авторизация с существующим аккаунтом
  */
 export async function ensureTestAccount(page: Page): Promise<{ email: string; password: string; isNew: boolean }> {
   try {
-    console.log('[ensureTestAccount] Проверяем существующий тестовый аккаунт...')
+    console.log('[ensureTestAccount] Простая авторизация с существующим аккаунтом...')
 
-    // Сначала пробуем войти с существующими данными
     const existingUsername = process.env.TEST_USERNAME || 'guests@discours.io'
-    const existingPassword = process.env.TEST_PASSWORD
-    if (!existingPassword) {
-      throw new Error('TEST_PASSWORD is not set')
-    }
+    const existingPassword = process.env.TEST_PASSWORD || 'test123'
 
-    console.log(`[ensureTestAccount] Пробуем войти с: ${existingUsername}`)
+    console.log(`[ensureTestAccount] Логин: ${existingUsername}`)
 
-    // Проверяем что страница загружена
-    const title = await page.title()
-    console.log('[ensureTestAccount] Заголовок страницы:', title)
-
-    // Проверяем наличие кнопки входа
-    const loginButton = page.locator(
-      'a:has-text("Войти"), a:has-text("Enter"), .loginbtn a, [class*="userControlItem"] a'
-    )
-    const buttonCount = await loginButton.count()
-    console.log('[ensureTestAccount] Найдено кнопок входа:', buttonCount)
-
-    if (buttonCount === 0) {
-      console.log('[ensureTestAccount] Кнопка входа не найдена, возвращаем fallback')
-      return { email: existingUsername, password: existingPassword, isNew: false }
-    }
-
-    // Открываем форму входа
-    const authModal = new AuthModal(page)
-    await authModal.openLoginForm()
-
-    // Заполняем форму входа
-    await authModal.fillLoginForm(existingUsername, existingPassword)
-    await authModal.submitForm()
-
-    // Ждем результат авторизации
+    // Переходим напрямую к форме авторизации
+    await page.goto(`${baseUrl}?m=auth`, { waitUntil: 'domcontentloaded' })
     await page.waitForTimeout(2000)
+
+    // Ждем появления формы входа
+    await page.waitForSelector('input[placeholder="Почта"]', { timeout: 10000 })
+
+    // Заполняем форму входа используя правильные placeholder'ы
+    console.log('[ensureTestAccount] Заполняем форму входа...')
+    await page.fill('input[placeholder="Почта"]', existingUsername)
+    await page.fill('input[placeholder="Пароль"]', existingPassword)
+
+    // Отправляем форму
+    await page.click('button[type="submit"]')
+
+    // Ждем результата авторизации
+    await page.waitForTimeout(5000)
 
     // Проверяем статус авторизации
     const loginStatus = await isUserLoggedIn(page)
-    console.log('[ensureTestAccount] Статус входа с существующим аккаунтом:', loginStatus)
+    console.log('[ensureTestAccount] Статус входа:', loginStatus)
 
     if (loginStatus) {
-      console.log('[ensureTestAccount] Успешный вход с существующим аккаунтом')
+      console.log('[ensureTestAccount] ✅ Успешная авторизация!')
       return { email: existingUsername, password: existingPassword, isNew: false }
     } else {
-      console.log('[ensureTestAccount] Вход не удался, регистрируем новый аккаунт')
-
-      // Регистрируем новый аккаунт
-      const newAccount = await registerNewTestAccount(page)
-      return {
-        email: newAccount.email,
-        password: newAccount.password,
-        isNew: newAccount.success
-      }
+      console.log('[ensureTestAccount] ❌ Авторизация не удалась')
+      throw new Error('Не удалось авторизоваться. Проверьте TEST_USERNAME и TEST_PASSWORD в .env файле')
     }
   } catch (error) {
-    console.error('[ensureTestAccount] Ошибка проверки аккаунта:', error)
-    return { email: '', password: '', isNew: false }
+    console.error('[ensureTestAccount] Ошибка авторизации:', error)
+    throw error
   }
 }

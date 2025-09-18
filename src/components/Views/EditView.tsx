@@ -11,9 +11,11 @@ import { Panel } from '~/components/Sidebar/Sidebar'
 import { saveDraftField as saveDraftFieldToStorage } from '~/components/SimpleRichEditor/lib/storage'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
+import { useUI } from '~/context/ui'
 import type { Draft, DraftInput, MediaItem, Topic } from '~/graphql/generated/graphql'
 import { slugify } from '~/intl/translit'
 import styles from '~/styles/views/EditView.module.scss'
+import { UploadedFile } from '~/types/upload'
 import { type SSEMessage, useConnect } from '../../context/connect'
 import { AudioProfile } from '../Draft/DraftAudio'
 import { SubtitleComponent, TitleSection } from '../Draft/DraftEditorHead'
@@ -22,6 +24,7 @@ import { isEmptyContent } from '../SimpleRichEditor/lib/empty'
 import { CommandType, EditorData } from '../SimpleRichEditor/lib/types'
 import { SimpleRichEditor } from '../SimpleRichEditor/SimpleRichEditor'
 import { AudioUploader } from '../Upload/AudioUploader'
+import { UploadModalContent } from '../Upload/UploadModalContent'
 import { VideoUploader } from '../Upload/VideoUploader'
 
 export const EMPTY_TOPIC: Topic = {
@@ -1117,6 +1120,36 @@ export const EditView = (props: { draft?: Draft }) => {
 
       <Modal variant="medium" name="inviteCoauthors">
         <InviteMembers variant={'coauthors'} title={t('Invite experts')} />
+      </Modal>
+
+      {/* Глобальные модалы для SimpleRichEditor */}
+      <Modal variant="narrow" name="uploadImage">
+        <UploadModalContent
+          onClose={(uploadedFile?: UploadedFile) => {
+            const { modalCallbacks } = useUI()
+            const callbacks = modalCallbacks()
+            if (callbacks?.onSuccess) {
+              callbacks.onSuccess(uploadedFile)
+            } else if (callbacks?.onCancel) {
+              callbacks.onCancel()
+            }
+          }}
+        />
+      </Modal>
+
+      <Modal variant="medium" name="uploadAudio">
+        <AudioUploader
+          audio={[]}
+          onAudioAdd={(audioItems: MediaItem[]) => {
+            const { modalCallbacks } = useUI()
+            const callbacks = modalCallbacks()
+            if (callbacks?.onSuccess) {
+              callbacks.onSuccess(audioItems)
+            }
+          }}
+          onAudioChange={() => {}}
+          onAudioSorted={() => {}}
+        />
       </Modal>
 
       <NoHydration>

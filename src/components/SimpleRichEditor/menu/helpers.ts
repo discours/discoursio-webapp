@@ -6,7 +6,7 @@
  */
 
 import { isEmptyContent } from '../lib/empty'
-import { getEditorPosition } from '../lib/helpers'
+import { getEditorPosition } from '../lib/media'
 import { EditorFieldType, Position } from '../lib/types'
 
 /**

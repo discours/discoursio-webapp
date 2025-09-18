@@ -329,26 +329,8 @@ export function getNodesInRange(range: Range): Node[] {
   return nodes
 }
 
-/**
- * Получает текущую позицию курсора
- * @returns Позиция курсора {top, left} или null
- */
-export function cursorPosition(): { top: number; left: number } | null {
-  const selection = window.getSelection()
-  if (!selection || !selection.rangeCount) return null
-
-  const range = selection.getRangeAt(0)
-  const rect = range.getBoundingClientRect()
-
-  if (rect) {
-    return {
-      top: rect.top,
-      left: rect.left
-    }
-  }
-
-  return null
-}
+// cursorPosition упрощенная версия - используем getCursorPosition из utils.ts
+export { getCursorPosition as cursorPosition } from './utils'
 
 /**
  * Пустой объект активных форматов

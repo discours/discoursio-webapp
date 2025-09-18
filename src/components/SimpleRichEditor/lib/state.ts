@@ -1,8 +1,8 @@
-import { Accessor, createMemo, createSignal } from 'solid-js'
+import { Accessor, createSignal } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { debounce } from 'throttle-debounce'
+import { applyFormatting as applyFormat, getActiveFormats, removeFormatting, resetFormat } from '../format/format'
 import { getCommandType } from './commands'
-import { applyFormatting as applyFormat, getActiveFormats, removeFormatting, resetFormat } from './format'
 import { CommandType, HistoryJournal, Position } from './types'
 
 /**
@@ -114,7 +114,7 @@ export const useEditor = (props: EditorProps) => {
   const [counter, setCounter] = createSignal(0)
 
   // Ключ для автосохранения
-  const storageKey = createMemo(() => (props.id ? `editor-${props.id}` : ''))
+  const storageKey = () => (props.id ? `editor-${props.id}` : '')
 
   // Начальное состояние
   const [state, setState] = createStore<EditorState>({

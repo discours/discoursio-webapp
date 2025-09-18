@@ -1,7 +1,7 @@
 import styles from './embed.module.scss'
+import { createVideoEmbed, VIMEO_URL_REGEX, YOUTUBE_URL_REGEX } from './media'
 import { CommandType } from './types'
 import { replaceSelection } from './utils'
-import { VIMEO_URL_REGEX, YOUTUBE_URL_REGEX } from './video'
 
 export const IMAGE_URL_REGEX = /\.(jpe?g|png|gif|webp|avif)$/i
 export const AUDIO_URL_REGEX = /\.(mp3|wav|ogg|m4a)$/i
@@ -65,20 +65,8 @@ export const normalizeUrl = (url: string): string => {
   return url.startsWith('http') ? url : `https://${url}`
 }
 
-/**
- * Создает HTML разметку для встраивания видео
- */
-export const createVideoEmbed = (videoId: string, platform: 'youtube' | 'vimeo'): string => {
-  const wrapper = createElement('div', { class: styles['video-embed'] })
-  const iframe = createElement('iframe', {
-    src:
-      platform === 'youtube' ? `https://www.youtube.com/embed/${videoId}` : `https://player.vimeo.com/video/${videoId}`,
-    frameborder: '0',
-    allowfullscreen: 'true'
-  })
-  wrapper.appendChild(iframe)
-  return wrapper.outerHTML
-}
+// createVideoEmbed перенесен в video.ts для избежания дублирования
+export { createVideoEmbed } from './media'
 
 /**
  * Создает HTML разметку для встраивания изображения
@@ -199,7 +187,7 @@ export const handleContentPaste = (
       return false // Не распознали специальный тип контента
     }
 
-    let embedHtml = ''
+    let embedHtml: string | null = ''
     showLoading?.()
 
     if (action === 'video') {
@@ -213,8 +201,8 @@ export const handleContentPaste = (
 
           if (match?.[1]) {
             const videoId = match[1]
-            embedHtml = createVideoEmbed(videoId, platform)
-            insertHtml(embedHtml)
+            embedHtml = createVideoEmbed(videoId || '')
+            embedHtml && insertHtml(embedHtml)
             return true
           }
         }
@@ -227,8 +215,8 @@ export const handleContentPaste = (
 
           if (match?.[1]) {
             const videoId = match[1]
-            embedHtml = createVideoEmbed(videoId, platform)
-            insertHtml(embedHtml)
+            embedHtml = createVideoEmbed(videoId || '')
+            embedHtml && insertHtml(embedHtml)
             return true
           }
         }

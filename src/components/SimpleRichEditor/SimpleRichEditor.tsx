@@ -1,21 +1,18 @@
 import { clsx } from 'clsx'
-import { Component, createEffect, createMemo, createRoot, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
+import { Component, createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import { isServer, Portal } from 'solid-js/web'
-import { debounce } from 'throttle-debounce'
 import { InlineForm } from '~/components/_shared/InlineForm/InlineForm'
-import { AudioUploader } from '~/components/Upload/AudioUploader'
 import { useLocalize } from '~/context/localize'
-import { MODALS, useUI } from '~/context/ui'
-import { MediaItem } from '~/graphql/generated/graphql'
-import { UploadedFile } from '~/types/upload'
-import { validateVideoUrl, validateWebUrl } from '../../lib/validateDraft'
-import { handleAudioUploaderResult } from './lib/audio'
+import { executeCommand, type FormatContext } from './format/common'
+import { type SelectionState } from './format/format'
+import { useDropFiles } from './handlers/drop'
+import { createEventHandlers } from './handlers/events'
+import { createFormHandlers } from './handlers/forms'
+import { createKeyboardHandlers } from './handlers/keyboard'
+import { createUIHelpers } from './handlers/ui'
 import { isGroup } from './lib/commands'
-import { createVideoEmbed, detectVideoPlatform, handleContentPaste } from './lib/embed'
 import { isEmptyContent } from './lib/empty'
-import { applyFormatting, removeFormatting, type SelectionState, toggleFormatting } from './lib/format'
-import { getEditorPosition, isTouchDevice } from './lib/helpers'
-import { validateUrl } from './lib/link'
+import { createMediaHandlers } from './lib/media'
 import { useSelection } from './lib/selection'
 import {
   ContentVersion,
@@ -34,20 +31,15 @@ import {
   EditorData,
   EditorFieldType,
   FormType,
-  InlineFormOptions,
   Position,
   ToolbarMode
 } from './lib/types'
-import { replaceSelection } from './lib/utils'
+import { switchFieldInDraft } from './menu/helpers'
 import { handlePlusMenuAction, handleSquibFormatting, PlusMenu } from './menu/PlusMenu'
 import { SimpleToolbar } from './menu/SimpleToolbar'
 import { SquibMenu } from './menu/SquibMenu'
 
 import styles from './SimpleRichEditor.module.scss'
-
-// Типы для форм
-const noop = () => undefined
-const DRAFT_REGEX = /draft-(\d+)-/
 
 export interface SimpleRichEditorProps {
   onChange: (data: EditorData) => void
@@ -69,8 +61,7 @@ export interface SimpleRichEditorProps {
 
 export const CURSOR_UPDATE_PERIOD = 1000
 
-// Для хранения опций форм между вызовами
-let editorFormOptions: InlineFormOptions | null = null
+// Для хранения опций форм между вызовами - перенесено в handlers/forms.ts
 
 /**
  * Универсальный rich text редактор с различными режимами отображения
@@ -126,11 +117,11 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   console.log('[SimpleRichEditor] Creating editor:', {
     editorId: props.editorId,
     fieldType: props.fieldType,
-    toolbar: props.toolbar
+    toolbar: props.toolbar,
+    isServer
   })
 
   const { t } = useLocalize()
-  const { showModal, hideModal } = useUI()
   const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
 
   // Сигналы для работы с ресурсами редактора (Keep footnote signals if footnote editor is used)
@@ -139,24 +130,71 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   // const [footnoteContent, setFootnoteContent] = createSignal<string>('')
   const [localVersion, setLocalVersion] = createSignal()
 
-  // Instantiate useSelection hook early
-  const {
-    saveSelection,
-    restoreSelection,
-    activeFormats,
-    selectionInfo,
-    cursorPosition,
-    handleTrackSelectionAndCursor: trackSelectionAndCursor
-  } = useSelection(
-    editorRef,
-    () => props.toolbar || 'bottom',
-    () => props.editorId
-  )
+  // ⚡ ОПТИМИЗАЦИЯ: Создаем хуки только когда редактор готов к рендерингу
+  const selectionHooks = createMemo(() => {
+    if (isServer) return null
+
+    return useSelection(
+      editorRef,
+      () => props.toolbar || 'bottom',
+      () => props.editorId
+    )
+  })
+
+  // Получаем функции из хуков с fallback и отладкой
+  const saveSelection = () => {
+    const hooks = selectionHooks()
+    if (!hooks) {
+      console.warn('[saveSelection] Selection hooks not available')
+      return false
+    }
+    return hooks.saveSelection?.() || false
+  }
+
+  const restoreSelection = () => {
+    const hooks = selectionHooks()
+    if (!hooks) {
+      console.warn('[restoreSelection] Selection hooks not available')
+      return false
+    }
+    return hooks.restoreSelection?.() || false
+  }
+
+  const activeFormats = () => {
+    const hooks = selectionHooks()
+    return hooks?.activeFormats?.() || new Set()
+  }
+
+  const selectionInfo = () => {
+    const hooks = selectionHooks()
+    return hooks?.selectionInfo?.() || { text: '', isEmpty: true }
+  }
+
+  const cursorPosition = () => {
+    const hooks = selectionHooks()
+    return hooks?.cursorPosition?.() || null
+  }
+
+  const trackSelectionAndCursor = () => {
+    const hooks = selectionHooks()
+    if (!hooks) {
+      console.warn('[trackSelectionAndCursor] Selection hooks not available')
+      return
+    }
+    console.log('[trackSelectionAndCursor] Calling handleTrackSelectionAndCursor')
+    hooks.handleTrackSelectionAndCursor?.()
+  }
+
+  // ⚡ ОПТИМИЗАЦИЯ: Создаем drop handler только когда нужен
+  const dropHooks = createMemo(() => {
+    if (isServer) return null
+    return useDropFiles()
+  })
+
+  const handleDropFilesHook = (e: DragEvent) => dropHooks()?.handleDropFiles?.(e) || Promise.resolve()
 
   // Local state signals (ensure all needed are here and only defined once)
   const [showSquibEditor, setShowSquibEditor] = createSignal(false)
-  // Footnote editor removed
-  // const [showFootnoteEditor, setShowFootnoteEditor] = createSignal(false)
   const [hasFocus, setHasFocus] = createSignal(false)
   const [showForm, setShowForm] = createSignal<FormType>(null)
   const [formPosition, setFormPosition] = createSignal<Position | null>(null)
@@ -164,9 +202,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [currentSquib, setCurrentSquib] = createSignal<HTMLElement | null>(null)
   const [editingImage, setEditingImage] = createSignal<HTMLElement | null>(null)
   const [showLocalVersionLink, setShowLocalVersionLink] = createSignal(false)
-  const [shouldShowPlaceholderState, setShouldShowPlaceholderState] = createSignal(false)
+  const [shouldShowPlaceholderState, _setShouldShowPlaceholderState] = createSignal(false)
   const [isInitialFocusDone, setIsInitialFocusDone] = createSignal(false)
-  // Воркэраунд для Lightning CSS: отслеживаем выделение через класс
   const [hasSelection, setHasSelection] = createSignal(false)
 
   let blurTimerRef = 0
@@ -178,164 +215,45 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   // Base state for content
   const [content, setContent] = createSignal(initialContent || '')
 
-  // --- Memoized values ---
-  const currentToolbarMode = createMemo((): ToolbarMode => props.toolbar || 'float')
-
-  // --- Helper Functions ---
-  const isClickInsideToolbar = (e: FocusEvent): boolean => {
-    if (!e.relatedTarget) return false
-    const target = e.relatedTarget as HTMLElement
-    return target.closest(`.${styles.toolbar}`) !== null || target.closest('[data-toolbar="true"]') !== null
-  }
-
-  const isEditorEmpty = () => {
-    const editor = editorRef()
-    if (!editor) return true
-    const currentSignalContent = content()
-    if (isEmptyContent(currentSignalContent)) return true
-    const contentHtml = editor.innerHTML.trim()
-    if (contentHtml === '<p><br></p>' || contentHtml === '<p></p>') return true
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = contentHtml
-    const textContent = tempDiv.textContent?.trim() || ''
-    return textContent === ''
-  }
-
-  const isCursorOnEmptyLine = (): boolean => {
-    const selection = window.getSelection()
-    if (!selection || !selection.rangeCount) return true
-    const range = selection.getRangeAt(0)
-    const node = range.startContainer
-    const editorNode = editorRef()
-    if (!editorNode || !editorNode.contains(node)) return false
-    const currentNode = node.nodeType === Node.TEXT_NODE ? node : (node as Element)
-    const parentElement = node.nodeType === Node.TEXT_NODE ? node.parentElement : (currentNode as HTMLElement)
-
-    if (node.nodeType === Node.TEXT_NODE) {
-      const textBeforeCursor = node.textContent?.slice(0, range.startOffset) || ''
-      return textBeforeCursor.trim() === ''
-    }
-
-    if (parentElement) {
-      if (
-        parentElement.innerHTML === '' ||
-        parentElement.innerHTML === '<br>' ||
-        parentElement.textContent?.trim() === '' ||
-        ((node as Element).textContent?.trim() === '' && parentElement.innerHTML.includes('<img'))
-      ) {
-        return true
-      }
-      if (range.startOffset === 0 && parentElement.textContent?.trim()) {
-        return true
-      }
-    }
-
-    if (range.startOffset === 0 && (node === editorNode || parentElement === editorNode)) {
-      return true
-    }
-    return false
-  }
-
-  const shouldShowPlusMenu = createMemo(() => {
-    const isNewLine = isCursorOnEmptyLine()
-    const isEditorInFocus = hasFocus()
-    const isNoOtherMenuOpen = !showForm() && !showSquibEditor()
-    const isPlusEnabled = props.plus
-    return isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen
+  // Create UI helpers
+  const uiHelpers = createUIHelpers({
+    editorRef,
+    props,
+    hasFocus,
+    showForm,
+    showSquibEditor,
+    content
   })
 
-  const getFloatingToolbarPosition = (): Position => {
-    return getEditorPosition(editorRef() || null, {
-      type: 'float',
-      placement: 'top',
-      offset: 40,
-      centerHorizontally: isTouchDevice()
-    })
-  }
+  // Create event handlers
+  const eventHandlers = createEventHandlers({
+    editorRef,
+    props,
+    setContent,
+    setHasFocus,
+    isEditorEmpty: uiHelpers.isEditorEmpty,
+    updatePlaceholderState: uiHelpers.updatePlaceholderState,
+    saveSelection,
+    restoreSelection,
+    selectionInfo,
+    cursorPosition,
+    handleDropFilesHook
+  })
 
-  const getPlusMenuPosition = (): { top: number; left: number; isVisible?: boolean } => {
-    const editor = editorRef()
-    const selection = window.getSelection()
-    if (!editor || !selection || !selection.rangeCount || !selection.isCollapsed) {
-      return { top: 0, left: 0, isVisible: false }
-    }
+  // Use helpers from UI module
+  const {
+    currentToolbarMode,
+    isClickInsideToolbar,
+    isEditorEmpty,
+    isCursorOnEmptyLine,
+    shouldShowPlusMenu,
+    getFloatingToolbarPosition,
+    getPlusMenuPosition,
+    findLinkAncestor,
+    updatePlaceholderState
+  } = uiHelpers
 
-    const range = selection.getRangeAt(0)
-    const node = range.startContainer
-
-    // Find the closest block element (typically <p>) containing the cursor
-    let blockElement = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node) as HTMLElement | null
-    while (
-      blockElement &&
-      blockElement !== editor &&
-      !['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE'].includes(blockElement.nodeName)
-    ) {
-      blockElement = blockElement.parentElement
-    }
-
-    // Ensure the block element is empty and directly within the editor content area
-    if (!blockElement || !editor.contains(blockElement) || blockElement.closest('.ProseMirror') !== editor) {
-      // Check it belongs to *this* editor instance
-      // Check if the direct parent is the editor itself (cursor might be directly in the root)
-      if (node.parentElement === editor && (editor.innerHTML === '' || editor.innerHTML === '<br>')) {
-        blockElement = editor // Treat editor as the block if it is empty
-      } else {
-        return { top: 0, left: 0, isVisible: false } // Not in a valid block
-      }
-    }
-
-    // Additional check for emptiness might be redundant if shouldShowPlusMenu already covers it,
-    // but can be added for robustness:
-    // const isEmpty = blockElement.textContent?.trim() === '' || blockElement.innerHTML === '<br>' || blockElement.innerHTML === '';
-    // if (!isEmpty && blockElement !== editor) {
-    //    return { top: 0, left: 0, isVisible: false };
-    // }
-
-    const rect = blockElement.getBoundingClientRect()
-    const editorRect = editor.getBoundingClientRect() // Get editor bounds for relative positioning
-    const scrollTop = window.scrollY
-    const scrollLeft = window.scrollX
-    const offsetLeft = 20 // Adjust this value to control distance from the left edge
-
-    return {
-      // Position vertically centered to the block element
-      top: rect.top + scrollTop + rect.height / 2 - 12, // Assuming button height is ~24px
-      // Position to the left of the editor's content area
-      left: editorRect.left + scrollLeft - offsetLeft,
-      isVisible: true
-    }
-  }
-
-  const findLinkAncestor = (node: Node | null): HTMLAnchorElement | null => {
-    if (!node) return null
-    let currentNode = node
-    const rootNode = editorRef() // Get editor boundary
-    while (currentNode && currentNode !== rootNode) {
-      if (currentNode.nodeName === 'A') {
-        return currentNode as HTMLAnchorElement
-      }
-      // Stop traversal if parentNode is null or we reach outside the editor
-      if (!currentNode.parentNode || currentNode.parentNode === document.body) break
-      currentNode = currentNode.parentNode
-    }
-    return null
-  }
-
-  // --- Placeholder Logic ---
-  const updatePlaceholderState = () => {
-    const isEmpty = isEditorEmpty()
-    if (isEmpty !== shouldShowPlaceholderState()) {
-      setShouldShowPlaceholderState(isEmpty)
-    }
-    const editorElement = editorRef()
-    if (editorElement) {
-      if (isEmpty) {
-        editorElement.classList.add(styles.empty, 'placeholder-visible')
-      } else {
-        editorElement.classList.remove(styles.empty, 'placeholder-visible')
-      }
-    }
-  }
+  // Используем функции из handlers вместо дублированных
 
   createEffect(() => {
     const editor = editorRef()
@@ -580,19 +498,51 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     props.onChange(editorData)
   }
 
-  // Debounced version for input events
-  const debouncedHandleAfterFormat = debounce(150, () =>
-    handleChange(props.fieldType ? String(props.fieldType) : 'content')
-  )
+  // Debounced version for input events - перенесено в handlers/events.ts
 
-  // --- Event Handlers ---
-  const handleInput = (_e: InputEvent) => {
-    // Call the debounced version after input
-    debouncedHandleAfterFormat()
-  }
+  // Use event handlers from events module
+  const {
+    handleInput,
+    handleFocus: handleFocusBase,
+    handleBlur: handleBlurBase,
+    handlePaste,
+    handleDropFiles
+  } = eventHandlers
 
+  // Create form handlers
+  const formHandlers = createFormHandlers({
+    editorRef,
+    props,
+    showForm,
+    setShowForm,
+    formPosition,
+    setFormPosition,
+    formInitialValue,
+    setFormInitialValue,
+    editingImage,
+    setEditingImage,
+    saveSelection,
+    restoreSelection,
+    cursorPosition,
+    handleChange
+  })
+
+  // Create media handlers
+  const { handleContentClick } = createMediaHandlers({
+    editorRef,
+    props,
+    setEditingImage,
+    setCurrentSquib,
+    setShowSquibEditor,
+    showInlineForm: formHandlers.showInlineForm,
+    showImageUploadModal: formHandlers.showImageUploadModal,
+    handleInsertLink: formHandlers.handleInsertLink,
+    saveSelection
+  })
+
+  // Extend base handlers with additional logic
   const handleFocus = () => {
-    setHasFocus(true)
+    handleFocusBase()
 
     // Показываем тулбары для режимов top и bottom
     const toolbar = props.toolbar || 'float'
@@ -604,461 +554,37 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       }
     }
 
-    const editor = editorRef()
-    if (editor) {
-      const editorIsEmpty = isEmptyContent(editor.innerHTML)
-      updatePlaceholderState()
-      if (isCursorOnEmptyLine() && !editorIsEmpty) {
-        editor.classList.add('show-placeholder-on-new-line')
-      } else {
-        editor.classList.remove('show-placeholder-on-new-line')
-      }
-    }
-
-    // 2. Set initial focus flag
+    // Set initial focus flag
     if (!isInitialFocusDone()) {
       setIsInitialFocusDone(true)
     }
-
-    if (props.onFocus) props.onFocus()
   }
 
   const handleBlur = (e: FocusEvent) => {
-    // Проверяем, что клик не был внутри тулбара
-    if (isClickInsideToolbar(e)) return
+    handleBlurBase(e)
 
-    setHasFocus(false)
-
-    const editor = editorRef()
-    if (editor?.contains(e.relatedTarget as Node)) return // Focus moved within editor/toolbar
-
-    if (editor) {
-      updatePlaceholderState()
-      editor.classList.remove('show-placeholder-on-new-line')
-    }
     blurTimerRef = window.setTimeout(() => {
       blurTimerRef = 0
     }, blurTimeout)
-    if (props.onBlur) props.onBlur()
   }
 
-  const handlePaste = async (e: ClipboardEvent) => {
-    e.preventDefault()
-    const html = e.clipboardData?.getData('text/html')
-    const text = e.clipboardData?.getData('text')
-    if (!text && !html) return
-
-    saveSelection()
-    let pasted = false
-    if (html) {
-      console.log('Pasting HTML')
-      const tempDiv = document.createElement('div')
-      tempDiv.innerHTML = html
-      tempDiv.querySelectorAll('i').forEach((tag) => {
-        /* normalize */ const em = document.createElement('em')
-        while (tag.firstChild) em.appendChild(tag.firstChild)
-        Array.from(tag.attributes).forEach((attr) => {
-          em.setAttribute(attr.name, attr.value)
-        })
-        tag.parentNode?.replaceChild(em, tag)
-      })
-      tempDiv.querySelectorAll('b').forEach((tag) => {
-        /* normalize */ const strong = document.createElement('strong')
-        while (tag.firstChild) strong.appendChild(tag.firstChild)
-        Array.from(tag.attributes).forEach((attr) => {
-          strong.setAttribute(attr.name, attr.value)
-        })
-        tag.parentNode?.replaceChild(strong, tag)
-      })
-      tempDiv.querySelectorAll('em:empty, strong:empty, i:empty, b:empty, span:empty').forEach((tag) => {
-        if (!tag.textContent || tag.textContent === '\u200B') tag.remove()
-      })
-      const cleanHtml = tempDiv.innerHTML
-      if (restoreSelection()) {
-        pasted = replaceSelection(cleanHtml, editorRef() || null)
-      }
-    }
-
-    if (!pasted && text) {
-      console.log('Pasting TEXT')
-      if (restoreSelection()) {
-        handleContentPaste(text, {
-          insertText: (textToInsert) => {
-            const selection = window.getSelection()
-            if (!selection || !selection.rangeCount) return false
-            const range = selection.getRangeAt(0)
-            const textNode = document.createTextNode(textToInsert)
-            range.deleteContents()
-            range.insertNode(textNode)
-            range.setStartAfter(textNode) // Move cursor after inserted text
-            range.collapse(true)
-            selection.removeAllRanges()
-            selection.addRange(range)
-            return true
-          },
-          insertHtml: (htmlToInsert) => {
-            return replaceSelection(htmlToInsert, editorRef() || null)
-          }
-        })
-        pasted = true
-      }
-    }
-
-    if (pasted) {
-      handleChange(props.fieldType ? String(props.fieldType) : 'content') // Update state after successful paste
-    }
-  }
-
-  const handleDropFiles = async (e: DragEvent) => {
-    e.preventDefault()
-    if (!editorRef() || props.readOnly) return
-
-    const files = Array.from(e.dataTransfer?.files || [])
-    if (files.length === 0) return
-
-    console.log('[SimpleRichEditor] Dropped files:', files)
-    saveSelection() // Save selection before inserting content
-
-    // Example: Handle image uploads
-    const imageFiles = files.filter((f) => f.type.startsWith('image/'))
-    if (imageFiles.length > 0) {
-      console.warn('Dropped image handling needs implementation via upload modal or direct upload.')
-      // showImageUploadModal(imageFiles); // Hypothetical
-    }
-
-    // Example: Insert other files
-    const otherFiles = files.filter((f) => !f.type.startsWith('image/'))
-    let insertedHtml = false
-    if (otherFiles.length > 0 && restoreSelection()) {
-      let htmlToInsert = ''
-      for (const file of otherFiles) {
-        htmlToInsert += `<p>Dropped file: ${file.name}</p>`
-      }
-      if (htmlToInsert) {
-        insertedHtml = replaceSelection(htmlToInsert, editorRef() || null)
-      }
-    }
-
-    if (insertedHtml) {
-      handleChange(props.fieldType ? String(props.fieldType) : 'content')
-    } else {
-      restoreSelection()
-    }
-    editorRef()?.focus()
-  }
-
-  const handleContentClick = (e: MouseEvent) => {
-    if (isServer || !editorRef() || props.readOnly) return
-    const target = e.target as HTMLElement
-
-    // Обработка клика по ссылке
-    if (target.tagName === 'A' || target.closest('a')) {
-      e.preventDefault() // Предотвращаем переход по ссылке внутри редактора
-      const link = target.tagName === 'A' ? target : target.closest('a')
-
-      // Если это внутренняя ссылка на сноску
-      /* if (link?.getAttribute('data-footnote')) {
-        const footnoteId = link?.getAttribute('data-footnote')
-        if (!footnoteId) return
-        if (!editorRef()) return
-        const footnote = getFootnoteById(editorRef()!, footnoteId)
-        if (footnote) {
-          openFootnoteEditor(footnote.marker as HTMLElement)
-        }
-        return
-      } */
-
-      // Для обычных ссылок - показываем форму редактирования
-      const href = link?.getAttribute('href') || ''
-
-      // Выделяем ссылку для правильного редактирования
-      if (link) {
-        const selection = window.getSelection()
-        if (selection) {
-          const range = document.createRange()
-          range.selectNodeContents(link)
-          selection.removeAllRanges()
-          selection.addRange(range)
-          // Сохраняем выделение для последующего применения изменений
-          saveSelection()
-        }
-      }
-
-      // Показываем форму с текущим URL ссылки
-      showInlineForm('link', (url) => handleInsertLink(url), href)
-      return
-    }
-
-    // Обработка клика по изображению
-    if (target.tagName === 'IMG') {
-      e.preventDefault()
-      setEditingImage(target)
-      showImageUploadModal()
-      return
-    }
-
-    // Custom <tooltip> clicks are regular links/content; no separate editor
-
-    // Обработка клика по врезке (squib)
-    if (target.closest('[data-type="squib"]')) {
-      e.preventDefault()
-      const squib = target.closest('[data-type="squib"]')
-      if (squib) {
-        setCurrentSquib(squib as HTMLElement)
-        setShowSquibEditor(true)
-      }
-      return
-    }
-  }
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    const isMac = navigator.platform.includes('Mac')
-    const cmdKey = isMac ? e.metaKey : e.ctrlKey
-
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-      setTimeout(trackSelectionAndCursor, 0)
-      return // Don't process further for simple navigation
-    }
-
-    // Formatting shortcuts
-    if (cmdKey && !e.shiftKey && !e.altKey) {
-      const shortcuts: { [key: string]: CommandType } = {
-        b: 'bold',
-        i: 'italic',
-        k: 'link',
-        '1': 'h1',
-        '2': 'h2',
-        '3': 'h3',
-        q: 'blockquote'
-      }
-      if (shortcuts[e.key]) {
-        e.preventDefault()
-        handleAction(shortcuts[e.key])
-        return
-      }
-    }
-
-    // Draft navigation
-    if (e.key === 'Tab' && props.fieldType && props.editorId?.startsWith('draft-')) {
-      e.preventDefault()
-      const currentField = props.fieldType
-      let prevField: EditorFieldType | null = null
-      let nextField: EditorFieldType | null = null
-      if (currentField === 'title') {
-        nextField = 'lead'
-      } else if (currentField === 'lead') {
-        prevField = 'title'
-        nextField = 'body'
-      } else if (currentField === 'body') {
-        prevField = 'lead'
-      }
-      if (e.shiftKey && prevField) handleNavigation(prevField)
-      else if (!e.shiftKey && nextField) handleNavigation(nextField)
-      return
-    }
-
-    // Shift+Enter for <br> in specific fields
-    if (e.shiftKey && e.key === 'Enter') {
-      if (props.fieldType === 'lead') {
-        e.preventDefault()
-        if (restoreSelection()) {
-          // Ensure selection is valid
-          replaceSelection('<br>', editorRef() || null) // Use replaceSelection for consistency
-          handleChange(props.fieldType ? String(props.fieldType) : 'content')
-        }
-        return
-      }
-      // Allow default Shift+Enter in body (will create new paragraph)
-      setTimeout(handleChange, 0) // Update state after default action
-      return
-    }
-
-    // Enter key handling
-    if (e.key === 'Enter') {
-      // Navigate on Cmd/Ctrl+Enter in lead/description
-      if (props.fieldType === 'lead' && cmdKey) {
-        e.preventDefault()
-        const nextField = 'body'
-        handleNavigation(nextField)
-        return
-      }
-      // Insert <br> on Enter in lead/description
-      if (props.fieldType === 'lead') {
-        e.preventDefault()
-        if (restoreSelection()) {
-          replaceSelection('<br>', editorRef() || null)
-          handleChange(props.fieldType ? String(props.fieldType) : 'content')
-        }
-        return
-      }
-
-      // Body field: Handle block element exit/split
-      if (props.fieldType === 'body') {
-        const selection = window.getSelection()
-        if (!selection || !selection.rangeCount) return
-        const range = selection.getRangeAt(0)
-        const container = range.startContainer
-        const editorRoot = editorRef()
-        if (!editorRoot) return
-
-        const blockElement = (
-          container.nodeType === Node.TEXT_NODE
-            ? container.parentElement
-            : container instanceof Element
-              ? container
-              : null
-        )?.closest('blockquote, h1, h2, h3, ul, ol, div[data-type]')
-
-        if (blockElement && editorRoot.contains(blockElement)) {
-          const isEmptyBlock =
-            blockElement.textContent?.trim() === '' ||
-            blockElement.innerHTML === '<br>' ||
-            blockElement.innerHTML === ''
-
-          // Check if cursor is effectively at the end of the block content
-          const isAtEndOfBlock = (() => {
-            if (!range.collapsed) return false
-            let node: Node | null = range.startContainer
-            let offset = range.startOffset
-            // Traverse up until the block element or editor root
-            while (node && node !== blockElement && node !== editorRoot) {
-              // Check if there are non-empty sibling nodes after the current position
-              while (node.nextSibling) {
-                node = node.nextSibling
-                if (node.textContent?.trim() !== '') return false // Content after cursor in this block
-              }
-              // Move to parent and check from its position
-              const parent: Node | null = node.parentNode
-              if (!parent || parent === editorRoot) {
-                node = parent
-                break
-              }
-              // Ensure node is not null before accessing parentNode
-              if (!node) break
-
-              // Find the index of the original node within its parent
-              const childIndex = Array.from(parent.childNodes).indexOf(node as ChildNode)
-
-              if (parent) {
-                // Check parent is not null before assignment
-                node = parent // Move up
-              } else {
-                break // Should not happen if parent was checked above, but safer
-              }
-
-              offset = childIndex + 1
-              // container = node; // Update container only if needed? Check usage below
-            }
-            // Check if we ended up at the block element and the effective offset is at the end
-            return node === blockElement && offset === node.childNodes.length
-          })()
-
-          if (isEmptyBlock || isAtEndOfBlock) {
-            e.preventDefault()
-            // Exit block: Create new paragraph after
-            const p = document.createElement('p')
-            p.innerHTML = '<br>'
-            // Безопасная проверка перед insertBefore для избежания NotFoundError
-            if (blockElement.parentNode && blockElement.nextSibling && blockElement.parentNode.contains(blockElement)) {
-              blockElement.parentNode.insertBefore(p, blockElement.nextSibling)
-            } else {
-              console.warn('[SimpleRichEditor] Cannot safely insert element: parent or sibling not found')
-              return
-            }
-
-            // Move cursor to new paragraph
-            range.selectNodeContents(p)
-            range.collapse(true)
-            selection.removeAllRanges()
-            selection.addRange(range)
-            handleChange(props.fieldType ? String(props.fieldType) : 'content')
-            return
-          }
-          // If not empty and not at end, let default Enter split the block (like a list item)
-          // But we need to update state after the browser handles it
-          setTimeout(handleChange, 0)
-          return
-        }
-
-        // Default Enter behavior (creates new paragraph in contentEditable)
-        // Update state after browser handles Enter
-        setTimeout(handleChange, 0)
-        return // Prevent further processing if Enter was handled
-      }
-    }
-
-    // Backspace/Delete key handling for block elements
-    if (e.key === 'Backspace' || e.key === 'Delete') {
-      const selection = window.getSelection()
-      if (!selection || !selection.rangeCount || !editorRef() || !selection.isCollapsed) {
-        // If not collapsed, let default backspace/delete handle selection removal
-        setTimeout(handleChange, 0) // Update state after default action
-        return
-      }
-
-      const range = selection.getRangeAt(0)
-      const editor = editorRef()!
-      const container = range.startContainer
-
-      // Check if cursor is at the start of a block element for Backspace
-      if (e.key === 'Backspace' && range.startOffset === 0) {
-        const blockElement = (
-          container.nodeType === Node.TEXT_NODE
-            ? container.parentElement
-            : container instanceof Element
-              ? container
-              : null
-        )?.closest('blockquote, h1, h2, h3, ul, ol, div[data-type]')
-
-        // Check if the block is the first element OR if the cursor is truly at the beginning of the block
-        if (blockElement && editor.contains(blockElement)) {
-          let isAtVeryStart = false
-          if (
-            container === blockElement ||
-            (container.nodeType === Node.TEXT_NODE && container.parentElement === blockElement)
-          ) {
-            isAtVeryStart = true
-          } else {
-            // Check if there's any content before the cursor within the block
-            const tempRange = document.createRange()
-            tempRange.setStart(blockElement, 0)
-            tempRange.setEnd(range.startContainer, range.startOffset)
-            if (tempRange.toString().trim() === '') {
-              isAtVeryStart = true
-            }
-          }
-
-          if (isAtVeryStart) {
-            e.preventDefault()
-            // Pass a minimal SelectionState object with position
-            const currentSelection = window.getSelection()
-            const currentRange = currentSelection?.rangeCount ? currentSelection.getRangeAt(0) : null
-            applyFormatting('p', {
-              range: currentRange,
-              text: currentSelection?.toString() || '',
-              isEmpty: !currentSelection || currentSelection.isCollapsed,
-              position: { top: 0, left: 0 }
-            })
-            handleChange(props.fieldType ? String(props.fieldType) : 'content')
-            return
-          }
-        }
-      }
-
-      // Let default Backspace/Delete handle other cases (removing text, merging paragraphs)
-      // Update state after browser action
-      setTimeout(handleChange, 0)
-      return // Prevent further processing if handled
-    }
-
-    // If key wasn't handled above, let default behavior occur, but update state after timeout
-    // This catches things like typing characters, etc.
-    // setTimeout(handleChange, 0); // Potentially redundant with handleInput? handleInput covers typing.
+  // Draft navigation function (должна быть объявлена ДО keyboard handlers)
+  const handleNavigation = (nextField: EditorFieldType) => {
+    return switchFieldInDraft({
+      nextField,
+      editorId: props.editorId,
+      fieldType: props.fieldType
+    })
   }
 
   const handleAction = (action: CommandType | CommandGroupType) => {
+    console.log(`[handleAction] START - Processing action: ${action}`)
+
     // Не обрабатываем группы команд напрямую
-    if (isGroup(action)) return
+    if (isGroup(action)) {
+      console.log(`[handleAction] Skipping group action: ${action}`)
+      return
+    }
 
     const command = action as CommandType
     const editor = editorRef()
@@ -1069,27 +595,51 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       return
     }
 
-    // Восстанавливаем выделение (если есть)
-    restoreSelection()
+    // Получаем текущее выделение (НЕ восстанавливаем старое!)
     const activeSelection = window.getSelection()
     if (!activeSelection || activeSelection.rangeCount === 0) {
-      console.warn('[handleAction] Selection could not be restored or is invalid')
-      // В некоторых случаях можно продолжить без выделения (например, применить блок к пустой строке)
-      // Но для безопасности пока выйдем
+      console.warn('[handleAction] No active selection found')
       return
     }
 
-    const state: SelectionState = {
-      range: activeSelection.getRangeAt(0),
+    // Проверяем, что выделение находится в редакторе
+    const range = activeSelection.getRangeAt(0)
+    if (!editor.contains(range.commonAncestorContainer)) {
+      console.warn('[handleAction] Selection is not within editor')
+      return
+    }
+
+    console.log('[handleAction] Selection details:', {
+      text: activeSelection.toString(),
+      isCollapsed: activeSelection.isCollapsed,
+      rangeCount: activeSelection.rangeCount,
+      startContainer: range.startContainer.nodeName,
+      endContainer: range.endContainer.nodeName,
+      startOffset: range.startOffset,
+      endOffset: range.endOffset
+    })
+
+    const selectionState: SelectionState = {
+      range: range,
       text: activeSelection.toString(),
       isEmpty: activeSelection.isCollapsed,
       position: cursorPosition() || { top: 0, left: 0 }
     }
 
-    // Сохраняем выделение перед модификацией
+    // Создаем контекст для унифицированной системы форматирования
+    const formatContext: FormatContext = {
+      editor,
+      selection: selectionState,
+      editorId: props.editorId
+    }
+
+    // Сохраняем текущее выделение для возможного восстановления
     saveSelection()
 
-    // --- Специальная обработка для ссылок, медиа, сносок ---
+    // --- Используем унифицированную систему форматирования ---
+    console.log(`[handleAction] Processing command: ${command}`)
+
+    // Специальная обработка для команд, требующих UI взаимодействия
     if (['link', 'image', 'video', 'audio'].includes(command)) {
       if (command === 'link') {
         const linkElement = findLinkAncestor(activeSelection.anchorNode)
@@ -1109,216 +659,68 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         showAudioUploader()
         return
       }
-      // footnote command removed
-    } else {
-      // --- Унифицированная обработка форматирования ---
-      console.log(`[handleAction] Processing command: ${command}`)
+    }
 
-      // Используем универсальный обработчик форматирования
-      const result = toggleFormatting(command, state, editor)
+    // Проверяем валидность выделения перед выполнением команды
+    if (!selectionState.range) {
+      console.warn('[handleAction] No valid range for formatting command')
+      return
+    }
 
-      if (!result.success) {
-        console.error(`[handleAction] Error processing command ${command}:`, result.error)
-      }
+    // Выполняем команду через унифицированную систему
+    console.log(`[handleAction] Executing command: ${command}`)
+    const result = executeCommand(command, formatContext)
+    console.log('[handleAction] Command result:', result)
+
+    if (!result.success) {
+      console.error(`[handleAction] Error processing command ${command}:`, result.error)
+      return
     }
 
     // --- Финальное обновление состояния ---
-    // Реализуем трехэтапное обновление UI для большей надежности
+    // 1. Обновление данных редактора (если команда требует обновления)
+    if (result.needsUpdate) {
+      // Используем handleChange из events module
+      const { handleChange } = eventHandlers
+      handleChange(props.fieldType ? String(props.fieldType) : 'content')
+    }
 
-    // 1. Фокус обратно на редактор
-    editor.focus()
-
-    // 2. Обновление данных редактора
-    handleChange(props.fieldType ? String(props.fieldType) : 'content')
-
-    // 3. С задержкой отслеживаем активное форматирование, когда DOM обновился
+    // 2. Минимальная задержка для обновления DOM, без принудительного восстановления
     setTimeout(() => {
-      // Проверяем, какое форматирование сейчас активно
-      console.log('[handleAction] Updating active formats after DOM update')
+      console.log('[handleAction] Post-command timeout - updating state only')
+
+      // Только обновляем активное форматирование (выделение уже восстановлено в format функциях)
       trackSelectionAndCursor()
-      const currentFormats = activeFormats()
-      console.log('[handleAction] Current formats after update:', currentFormats)
 
       // Скрываем все активные меню/формы
       setShowForm(null)
       setShowSquibEditor(false)
-    }, 300) // Увеличиваем задержку до 300 мс для надежной синхронизации с DOM
+
+      console.log('[handleAction] COMPLETE - Command processing finished')
+    }, 10) // Минимальная задержка только для обновления состояния
   }
 
-  // --- Form Handling ---
-  const showInlineForm = (type: FormType, onSubmit: (value: string) => void, initialValue?: string) => {
-    if (!type) return
+  // Create keyboard handlers (ПОСЛЕ объявления handleAction и handleNavigation)
+  const { handleKeyDown } = createKeyboardHandlers({
+    editorRef,
+    props,
+    trackSelectionAndCursor,
+    handleAction,
+    handleChange,
+    restoreSelection,
+    handleNavigation
+  })
 
-    // Получаем текущую позицию курсора для точного позиционирования формы
-    const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
-
-      // Устанавливаем позицию формы относительно курсора
-      setFormPosition({
-        top: rect.bottom + window.scrollY + 5, // 5px отступ от курсора
-        left: rect.left + window.scrollX
-      })
-    } else {
-      // Запасной вариант, если нет выделения
-      const cursorPos = cursorPosition()
-      if (cursorPos) {
-        setFormPosition({
-          top: cursorPos.top + window.scrollY + 5,
-          left: cursorPos.left + window.scrollX
-        })
-      } else {
-        // Если нет информации о курсоре, используем центр редактора
-        const editorRect = editorRef()?.getBoundingClientRect()
-        if (editorRect) {
-          setFormPosition({
-            top: editorRect.top + window.scrollY + editorRect.height / 2,
-            left: editorRect.left + window.scrollX + editorRect.width / 2
-          })
-        }
-      }
-    }
-
-    // Если initialValue передан явно, используем его
-    if (initialValue !== undefined) {
-      console.log('[SimpleRichEditor] Using provided initial value for form:', initialValue)
-      setFormInitialValue(initialValue)
-    } else {
-      // Иначе пытаемся определить текущий URL из выделенной ссылки
-      const currentLink = findLinkAncestor(window.getSelection()?.focusNode ?? null)
-      const linkUrl = currentLink?.getAttribute('href') || ''
-      console.log('[SimpleRichEditor] Using detected link URL:', linkUrl)
-      setFormInitialValue(linkUrl)
-    }
-
-    // Показываем форму нужного типа
-    setShowForm(type)
-
-    // Устанавливаем опции формы
-    editorFormOptions = {
-      onSubmit,
-      validate: type === 'video' ? (url: string) => validateVideoUrl(url) : (url: string) => validateWebUrl(url)
-    }
-  }
-
-  const handleInlineFormSubmit = (type: FormType, url: string) => {
-    setShowForm(null)
-    if (restoreSelection()) {
-      if (type === 'link') {
-        const currentSelection = window.getSelection()
-        const currentRange = currentSelection?.rangeCount ? currentSelection.getRangeAt(0) : null
-
-        if (url === '') {
-          // If URL is cleared, remove the link// Using 1 argument for removeFormatting, expecting error or optional arg
-          removeFormatting('link', {
-            range: currentRange,
-            text: currentSelection?.toString() || '',
-            isEmpty: !currentSelection || currentSelection.isCollapsed,
-            position: { top: 0, left: 0 }
-          })
-        } else if (validateUrl(url)) {
-          const caption = currentSelection?.toString() || ''
-          // Using 2 arguments for link with URL, expecting error or special handling
-          applyFormatting('link', {
-            range: currentRange,
-            text: `<a href="${url}">${caption}</a>`,
-            isEmpty: !currentSelection || currentSelection.isCollapsed,
-            position: { top: 0, left: 0 }
-          })
-        } else {
-          console.warn('Invalid URL for link:', url)
-        }
-      } else if (type === 'video' && validateVideoUrl(url)) {
-        const platform = detectVideoPlatform(url)
-        if (platform) {
-          const embedHtml = createVideoEmbed(url, platform)
-          replaceSelection(embedHtml, editorRef() || null)
-        }
-      } else {
-        console.warn(`Invalid URL for ${type}:`, url)
-      }
-      handleChange(props.fieldType ? String(props.fieldType) : 'content') // Update state after potential change
-      editorRef()?.focus()
-    } else {
-      console.warn('Could not restore selection for inline form submission.')
-      editorRef()?.focus()
-    }
-  }
-
-  const handleInsertLink = (url: string) => handleInlineFormSubmit('link', url)
-  const handleInsertVideo = (url: string) => handleInlineFormSubmit('video', url)
-
-  // --- Media Handling ---
-  const handleAudioUpload = (audioItems: MediaItem[]) => {
-    saveSelection()
-    if (handleAudioUploaderResult(audioItems, editorRef() || null)) {
-      handleChange(props.fieldType ? String(props.fieldType) : 'content')
-    }
-    editorRef()?.focus()
-    restoreSelection()
-    hideModal()
-  }
-
-  const showAudioUploader = () => {
-    saveSelection()
-    let dispose: () => void
-    createRoot((dispose_: () => void) => {
-      dispose = dispose_
-      const [isOpen, setIsOpen] = createSignal(true)
-      const handleClose = () => {
-        setIsOpen(false)
-        restoreSelection()
-        setTimeout(dispose, 300)
-      }
-      return (
-        <Portal>
-          <div class="modal" style={{ display: isOpen() ? 'flex' : 'none' }}>
-            <div class="modal-backdrop" onClick={handleClose} />
-            <div class="modal-content">
-              <AudioUploader audio={[]} onAudioAdd={handleAudioUpload} onAudioChange={noop} onAudioSorted={noop} />
-            </div>
-          </div>
-        </Portal>
-      )
-    })
-  }
-
-  const handleUploadSuccess = (uploadedFile?: UploadedFile) => {
-    if (!uploadedFile) return
-    const currentImage = editingImage()
-    if (currentImage) {
-      // @ts-expect-error - Linter error seems incorrect for simple property assignment
-      ;(currentImage as HTMLImageElement).src = uploadedFile.url(currentImage as HTMLImageElement).alt =
-        uploadedFile.originalFilename || 'Uploaded image'
-      setEditingImage(null)
-      handleChange(props.fieldType ? String(props.fieldType) : 'content')
-    } else if (restoreSelection()) {
-      replaceSelection(
-        `<img src="${uploadedFile.url}" alt="${uploadedFile.originalFilename || 'Uploaded image'}" />`,
-        editorRef() || null
-      )
-      handleChange(props.fieldType ? String(props.fieldType) : 'content')
-    }
-    hideModal()
-    editorRef()?.focus()
-  }
-
-  const showImageUploadModal = () => {
-    saveSelection()
-    showModal(MODALS.uploadImage)
-    // @ts-expect-error
-    window.__imageUploadParams = {
-      onSuccess: handleUploadSuccess,
-      onCancel: () => {
-        hideModal()
-        editorRef()?.focus()
-        restoreSelection()
-      }
-    }
-  }
-
-  // Footnote handling removed
+  // Use form handlers
+  const {
+    showInlineForm,
+    handleInlineFormSubmit,
+    handleInsertLink,
+    handleInsertVideo,
+    showAudioUploader,
+    showImageUploadModal,
+    editorFormOptions
+  } = formHandlers
 
   // This manual update might conflict with the createMemo above. Let's rely on the memo.
   // const updateFootnotes = (footnotes: Array<{ id: string; content: string; marker: Element }>) => {
@@ -1338,29 +740,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   //   })
   // )
 
-  // openFootnoteEditor removed
-
-  // handleFootnoteSubmit removed
-
-  // --- Draft Navigation ---
-  const switchFieldInDraft = (nextField: EditorFieldType, editorId?: string, fieldType?: EditorFieldType) => {
-    if (!editorId || !fieldType) return false
-    const draftIdMatch = editorId.match(DRAFT_REGEX)
-    if (!draftIdMatch) return false
-    const draftId = draftIdMatch[1]
-    const nextEditorId = `draft-${draftId}-${nextField}`
-    const nextEditor = document.querySelector(`[data-editor-id="${nextEditorId}"]`) as HTMLElement | null
-    if (nextEditor) {
-      nextEditor.focus()
-      nextEditor.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      return true
-    }
-    return false
-  }
-
-  const handleNavigation = (nextField: EditorFieldType) => {
-    return switchFieldInDraft(nextField, props.editorId, props.fieldType)
-  }
+  // Draft navigation function удалена из конца файла - уже объявлена выше
 
   // --- Initialization ---
   const initEditor = (element: HTMLDivElement) => {
@@ -1487,221 +867,243 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     }
   })
 
-  return (
-    <div class={clsx(styles.editorWrapper)} data-field-type={props.fieldType}>
-      {/* Toolbars */}
-      <Show when={currentToolbarMode() === 'top'}>
-        <SimpleToolbar
-          commands={displayedCommands()}
-          onAction={handleAction}
-          currentFormats={activeFormats()}
-          class={clsx(styles.topToolbar, styles.visible)}
-          mode={currentToolbarMode() as ToolbarMode}
-          editorId={props.editorId}
-        />
-      </Show>
-
-      {/* Переключатель локальной версии */}
-      <Show when={showLocalVersionLink()}>
-        <div class={styles.localVersionSwitcher}>
-          <button
-            onClick={loadLocalVersion}
-            class={styles.switcherBtn}
-            title={t('You have a newer local version, click to use it')}
-          >
-            <span class={styles.switcherIcon}>
-              <svg
-                class="no-transition"
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M8 2V8L11 11"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M8 15C11.866 15 15 11.866 15 8C15 4.13401 11.866 1 8 1C4.13401 1 1 4.13401 1 8C1 11.866 4.13401 15 8 15Z"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                />
-              </svg>
-            </span>
-            {t('Use local version')}
-          </button>
-          <button
-            onClick={handleClearLocalVersion}
-            class={clsx(styles.switcherBtn, styles.clearBtn)}
-            title={t('Delete local version')}
-          >
-            <span class={styles.switcherIcon}>
-              <svg
-                class="no-transition"
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              </svg>
-            </span>
-          </button>
+  // Показываем редактор только на клиенте для избежания проблем гидрации
+  if (isServer) {
+    return (
+      <div class={clsx(styles.editorWrapper)} data-field-type={props.fieldType}>
+        <div class={styles.editor}>
+          <div class={styles.content}>{props.placeholder || t('Start typing...')}</div>
         </div>
-      </Show>
-
-      {/* Footnote editor removed */}
-
-      {/* Inline Forms */}
-      <Show when={showForm() === 'link'}>
-        <div
-          class={styles.inlineFormWrapper}
-          style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
-        >
-          <InlineForm
-            placeholder={t('Enter URL')}
-            initialValue={formInitialValue()}
-            onSubmit={handleInsertLink}
-            onClose={() => {
-              setShowForm(null)
-              editorRef()?.focus()
-              restoreSelection()
-            }}
-            validate={editorFormOptions?.validate || (() => '')}
-          />
-        </div>
-      </Show>
-      <Show when={showForm() === 'video'}>
-        <div
-          class={styles.inlineFormWrapper}
-          style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
-        >
-          <InlineForm
-            placeholder={t('Enter video URL (YouTube, Vimeo)')}
-            initialValue={formInitialValue()}
-            onSubmit={handleInsertVideo}
-            onClose={() => {
-              setShowForm(null)
-              editorRef()?.focus()
-              restoreSelection()
-            }}
-            validate={editorFormOptions?.validate || (() => '')}
-          />
-        </div>
-      </Show>
-
-      {/* Plus Menu */}
-      <Show when={shouldShowPlusMenu()}>
-        <PlusMenu
-          onAction={(action) => {
-            handlePlusMenuAction(action, editorRef()!, {
-              showLinkForm: () => showInlineForm('link', handleInsertLink),
-              showVideoForm: () => showInlineForm('video', handleInsertVideo, ''),
-              showImageUploadModal,
-              showAudioUploader,
-              handleChange
-            })
-          }}
-          position={getPlusMenuPosition()}
-          isVisible={!showForm() && !showSquibEditor() && hasFocus() && isCursorOnEmptyLine()}
-          editorId={props.editorId}
-        />
-      </Show>
-
-      {/* Editor Content */}
-      <div
-        class={clsx(styles.editor, {
-          [styles.empty]: isEditorEmpty(),
-          [styles.withTopToolbar]: currentToolbarMode() === 'top',
-          [styles.withBottomToolbar]: currentToolbarMode() === 'bottom',
-          [styles.focused]: hasFocus(),
-          [styles.hasSelection]: hasSelection()
-        })}
-        data-editor-id={props.editorId}
-        data-field-type={props.fieldType}
-      >
-        <div
-          ref={initEditor}
-          class={clsx(styles.content, {
-            [styles['placeholder-visible']]: shouldShowPlaceholderState()
-          })}
-          contentEditable={!props.readOnly}
-          data-placeholder={props.placeholder}
-          onInput={handleInput}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          onPaste={handlePaste}
-          onDrop={handleDropFiles}
-          onClick={handleContentClick}
-          onKeyDown={handleKeyDown}
-        />
       </div>
+    )
+  }
 
-      {/* Other UI Elements */}
-      <Show when={currentToolbarMode() === 'bottom'}>
-        <SimpleToolbar
-          commands={displayedCommands()}
-          onAction={handleAction}
-          currentFormats={activeFormats()}
-          class={clsx(styles.bottomToolbar, {
-            [styles.visible]: hasFocus() && !isEditorEmpty()
-          })}
-          mode={currentToolbarMode() as ToolbarMode}
-          editorId={props.editorId}
-        />
-      </Show>
-      <Show when={currentToolbarMode() === 'float'}>
-        <SimpleToolbar
-          commands={displayedCommands()}
-          onAction={handleAction}
-          currentFormats={activeFormats()}
-          class={clsx(styles.floatingToolbar, hasSelection() && styles.visible)}
-          position={getFloatingToolbarPosition()}
-          mode={currentToolbarMode() as ToolbarMode}
-          editorId={props.editorId}
-        />
-      </Show>
-      <Show when={showSquibEditor() && currentSquib()}>
-        <SquibMenu
-          commands={props.commands as CommandType[]}
-          currentFormats={activeFormats()}
-          isVisible={true}
-          onAction={(action) => {
-            const squibElement = currentSquib()
-            if (squibElement && handleSquibFormatting(action as string)) {
-              handleChange(props.fieldType ? String(props.fieldType) : 'content')
-              editorRef()?.focus()
-            }
-          }}
-          onClose={() => {
-            setShowSquibEditor(false)
-            setCurrentSquib(null)
-          }}
-          position={{ top: 50, left: 50 } as Position}
-        />
-      </Show>
-
-      {/* Forms and Modal Portals */}
-      <Portal mount={document.body}>
-        <Show when={showForm() !== null}>
-          <InlineForm
-            onBlur={(e: FocusEvent) => {
-              if (isClickInsideToolbar(e)) return
-              setShowForm(null)
-              editorRef()?.focus()
-            }}
-            onClose={() => setShowForm(null)}
-            onSubmit={(value) => handleInlineFormSubmit(showForm()!, value)}
-            initialValue={formInitialValue()}
-            placeholder={showForm() === 'video' ? t('Enter video URL (YouTube, Vimeo)') : t('Enter URL')}
+  return (
+    <Show
+      when={!isServer}
+      fallback={
+        <div class={clsx(styles.editorWrapper)} data-field-type={props.fieldType}>
+          <div class={styles.editor}>
+            <div class={styles.content}>{props.placeholder || t('Loading editor...')}</div>
+          </div>
+        </div>
+      }
+    >
+      <div class={clsx(styles.editorWrapper)} data-field-type={props.fieldType}>
+        {/* Toolbars */}
+        <Show when={currentToolbarMode() === 'top'}>
+          <SimpleToolbar
+            commands={displayedCommands()}
+            onAction={handleAction}
+            currentFormats={activeFormats()}
+            class={clsx(styles.topToolbar, styles.visible)}
+            mode={currentToolbarMode() as ToolbarMode}
+            editorId={props.editorId}
           />
         </Show>
-      </Portal>
-    </div>
+
+        {/* Переключатель локальной версии */}
+        <Show when={showLocalVersionLink()}>
+          <div class={styles.localVersionSwitcher}>
+            <button
+              onClick={loadLocalVersion}
+              class={styles.switcherBtn}
+              title={t('You have a newer local version, click to use it')}
+            >
+              <span class={styles.switcherIcon}>
+                <svg
+                  class="no-transition"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M8 2V8L11 11"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M8 15C11.866 15 15 11.866 15 8C15 4.13401 11.866 1 8 1C4.13401 1 1 4.13401 1 8C1 11.866 4.13401 15 8 15Z"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                  />
+                </svg>
+              </span>
+              {t('Use local version')}
+            </button>
+            <button
+              onClick={handleClearLocalVersion}
+              class={clsx(styles.switcherBtn, styles.clearBtn)}
+              title={t('Delete local version')}
+            >
+              <span class={styles.switcherIcon}>
+                <svg
+                  class="no-transition"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+              </span>
+            </button>
+          </div>
+        </Show>
+
+        {/* Footnote editor removed */}
+
+        {/* Inline Forms */}
+        <Show when={showForm() === 'link'}>
+          <div
+            class={styles.inlineFormWrapper}
+            style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
+          >
+            <InlineForm
+              placeholder={t('Enter URL')}
+              initialValue={formInitialValue()}
+              onSubmit={handleInsertLink}
+              onClose={() => {
+                setShowForm(null)
+                editorRef()?.focus()
+                restoreSelection()
+              }}
+              validate={editorFormOptions()?.validate || (() => '')}
+            />
+          </div>
+        </Show>
+        <Show when={showForm() === 'video'}>
+          <div
+            class={styles.inlineFormWrapper}
+            style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
+          >
+            <InlineForm
+              placeholder={t('Enter video URL (YouTube, Vimeo)')}
+              initialValue={formInitialValue()}
+              onSubmit={handleInsertVideo}
+              onClose={() => {
+                setShowForm(null)
+                editorRef()?.focus()
+                restoreSelection()
+              }}
+              validate={editorFormOptions()?.validate || (() => '')}
+            />
+          </div>
+        </Show>
+
+        {/* Plus Menu */}
+        <Show when={shouldShowPlusMenu()}>
+          <PlusMenu
+            onAction={(action) => {
+              handlePlusMenuAction(action, editorRef()!, {
+                showLinkForm: () => showInlineForm('link', handleInsertLink),
+                showVideoForm: () => showInlineForm('video', handleInsertVideo, ''),
+                showImageUploadModal,
+                showAudioUploader,
+                handleChange
+              })
+            }}
+            position={getPlusMenuPosition()}
+            isVisible={!showForm() && !showSquibEditor() && hasFocus() && isCursorOnEmptyLine()}
+            editorId={props.editorId}
+          />
+        </Show>
+
+        {/* Editor Content */}
+        <div
+          class={clsx(styles.editor, {
+            [styles.empty]: isEditorEmpty(),
+            [styles.withTopToolbar]: currentToolbarMode() === 'top',
+            [styles.withBottomToolbar]: currentToolbarMode() === 'bottom',
+            [styles.focused]: hasFocus(),
+            [styles.hasSelection]: hasSelection()
+          })}
+          data-editor-id={props.editorId}
+          data-field-type={props.fieldType}
+        >
+          <div
+            ref={initEditor}
+            class={clsx(styles.content, {
+              [styles['placeholder-visible']]: shouldShowPlaceholderState()
+            })}
+            contentEditable={!props.readOnly}
+            data-placeholder={props.placeholder}
+            onInput={handleInput}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onPaste={handlePaste}
+            onDrop={handleDropFiles}
+            onClick={handleContentClick}
+            onKeyDown={handleKeyDown}
+          />
+        </div>
+
+        {/* Other UI Elements */}
+        <Show when={currentToolbarMode() === 'bottom'}>
+          <SimpleToolbar
+            commands={displayedCommands()}
+            onAction={handleAction}
+            currentFormats={activeFormats()}
+            class={clsx(styles.bottomToolbar, {
+              [styles.visible]: hasFocus() && !isEditorEmpty()
+            })}
+            mode={currentToolbarMode() as ToolbarMode}
+            editorId={props.editorId}
+          />
+        </Show>
+        <Show when={currentToolbarMode() === 'float'}>
+          <SimpleToolbar
+            commands={displayedCommands()}
+            onAction={handleAction}
+            currentFormats={activeFormats()}
+            class={clsx(styles.floatingToolbar, hasSelection() && styles.visible)}
+            position={getFloatingToolbarPosition()}
+            mode={currentToolbarMode() as ToolbarMode}
+            editorId={props.editorId}
+          />
+        </Show>
+        <Show when={showSquibEditor() && currentSquib()}>
+          <SquibMenu
+            commands={props.commands as CommandType[]}
+            currentFormats={activeFormats()}
+            isVisible={true}
+            onAction={(action) => {
+              const squibElement = currentSquib()
+              if (squibElement && handleSquibFormatting(action as string)) {
+                handleChange(props.fieldType ? String(props.fieldType) : 'content')
+                editorRef()?.focus()
+              }
+            }}
+            onClose={() => {
+              setShowSquibEditor(false)
+              setCurrentSquib(null)
+            }}
+            position={{ top: 50, left: 50 } as Position}
+          />
+        </Show>
+
+        {/* Forms and Modal Portals */}
+        <Portal mount={document.body}>
+          <Show when={showForm() !== null}>
+            <InlineForm
+              onBlur={(e: FocusEvent) => {
+                if (isClickInsideToolbar(e)) return
+                setShowForm(null)
+                editorRef()?.focus()
+              }}
+              onClose={() => setShowForm(null)}
+              onSubmit={(value) => handleInlineFormSubmit(showForm()!, value)}
+              initialValue={formInitialValue()}
+              placeholder={showForm() === 'video' ? t('Enter video URL (YouTube, Vimeo)') : t('Enter URL')}
+            />
+          </Show>
+        </Portal>
+      </div>
+    </Show>
   )
 }

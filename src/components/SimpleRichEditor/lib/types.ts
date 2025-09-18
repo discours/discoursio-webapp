@@ -23,6 +23,7 @@ export type CommandType =
   | 'bold'
   | 'italic'
   | 'link'
+  | 'unlink'
   | 'blockquote'
   | 'image'
   | 'video'
@@ -74,7 +75,7 @@ export interface CommandConfig {
  * Состояние выделения текста
  */
 export interface SelectionState {
-  range: Range
+  range: Range | null
   text: string
   isEmpty: boolean
   position: Position

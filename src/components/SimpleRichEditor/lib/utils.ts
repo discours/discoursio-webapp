@@ -301,17 +301,15 @@ export const getAbsoluteOffset = (node: Node, offset: number, editorNode: Node):
 }
 
 /**
- * Заменяет текущее выделение HTML контентом
- * @param html HTML строка для вставки
+ * Получает текущее выделение или создает новое в конце редактора
  * @param editor Ссылка на редактор
- * @returns true если замена успешна
+ * @returns Selection и Range или null
  */
-export const replaceSelection = (html: string, editor: HTMLElement | null): boolean => {
-  if (!editor || typeof window === 'undefined') return false
+export const getOrCreateSelection = (editor: HTMLElement | null): { selection: Selection; range: Range } | null => {
+  if (!editor || typeof window === 'undefined') return null
 
-  // Получаем текущее выделение
   const selection = window.getSelection()
-  if (!selection) return false
+  if (!selection) return null
 
   // Если нет выделения, создаем новое в конце редактора
   if (!selection.rangeCount) {
@@ -330,13 +328,25 @@ export const replaceSelection = (html: string, editor: HTMLElement | null): bool
     selection.addRange(range)
   }
 
-  // Теперь должно быть доступно выделение
   if (!selection.rangeCount) {
     console.error('Не удалось создать выделение в редакторе')
-    return false
+    return null
   }
 
-  const range = selection.getRangeAt(0)
+  return { selection, range: selection.getRangeAt(0) }
+}
+
+/**
+ * Заменяет текущее выделение HTML контентом
+ * @param html HTML строка для вставки
+ * @param editor Ссылка на редактор
+ * @returns true если замена успешна
+ */
+export const replaceSelection = (html: string, editor: HTMLElement | null): boolean => {
+  const selectionData = getOrCreateSelection(editor)
+  if (!selectionData) return false
+
+  const { selection, range } = selectionData
 
   // Создаем временный контейнер для HTML
   const temp = document.createElement('div')
@@ -359,6 +369,34 @@ export const replaceSelection = (html: string, editor: HTMLElement | null): bool
   selection.addRange(range)
 
   return true
+}
+
+/**
+ * Проверяет, является ли узел текстовым
+ * @param node Узел для проверки
+ * @returns true если узел текстовый
+ */
+export const isTextNode = (node: Node | null): node is Text => {
+  return node?.nodeType === Node.TEXT_NODE
+}
+
+/**
+ * Проверяет, является ли узел элементом
+ * @param node Узел для проверки
+ * @returns true если узел элемент
+ */
+export const isElementNode = (node: Node | null): node is Element => {
+  return node?.nodeType === Node.ELEMENT_NODE
+}
+
+/**
+ * Получает родительский элемент для узла
+ * @param node Узел
+ * @returns Родительский элемент или null
+ */
+export const getParentElement = (node: Node | null): HTMLElement | null => {
+  if (!node) return null
+  return isTextNode(node) ? node.parentElement : (node as HTMLElement)
 }
 
 /**
@@ -385,43 +423,20 @@ export const moveCursorToEnd = (editor: HTMLElement | null): void => {
   selection.addRange(range)
 }
 
-export const createEditorConfig = ({
-  isServer,
-  isEmptyContent,
-  toolbarMode,
-  editorId // Опциональный идентификатор редактора
-}: {
-  isServer: boolean
-  isEmptyContent: (content: string) => boolean
-  toolbarMode?: 'fixed' | 'floating' | 'bottom' | 'none'
-  editorId?: string
-}) => {
-  // Получаем сохраненные настройки для этого редактора, если они есть
-  let savedConfig = {}
-  if (!isServer && editorId) {
-    try {
-      const savedConfigStr = localStorage.getItem(`editor-config-${editorId}`)
-      if (savedConfigStr) {
-        savedConfig = JSON.parse(savedConfigStr)
-        console.log(`[EditorConfig] Loaded config for editor ${editorId}`, savedConfig)
-      }
-    } catch (e) {
-      console.warn('[EditorConfig] Error loading saved config:', e)
-    }
-  }
+/**
+ * Регулярное выражение для проверки URL
+ */
+export const URL_REGEX =
+  /^(https?:\/\/)?(www\.)?[a-zA-Z0-9]+([-.]{1}[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}(:[0-9]{1,5})?(\/[^\s]*)?$/
 
-  // Объединяем со стандартными настройками
-  return {
-    // Базовые настройки
-    toolbarMode: toolbarMode || 'fixed',
-    placeholder: '',
-
-    // Вспомогательные функции
-    isEmptyContentFn: isEmptyContent,
-
-    // Сохраненные пользовательские настройки
-    ...savedConfig
-  }
+/**
+ * Валидирует URL
+ * @param url URL для проверки
+ * @returns true если URL валидный
+ */
+export const validateUrl = (url: string): boolean => {
+  if (!url) return false
+  return URL_REGEX.test(url)
 }
 
 /**
@@ -439,6 +454,7 @@ export const createEditorConfig = ({
  * }
  * ```
  */
+
 export const isCursorOnEmptyLine = (editorNode: HTMLElement | null): boolean => {
   if (!editorNode) return true
 
