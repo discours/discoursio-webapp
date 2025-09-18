@@ -47,6 +47,9 @@
   max-width: 800px; /* Ограничиваем максимальную ширину редактора для всех типов */
   margin: 0 auto; /* Центрируем по горизонтали */
   
+  /* Убираем overflow: hidden чтобы формы были видны */
+  overflow: visible;
+  
   &:hover {
     border-color: var(--color-border-hover);
   }
@@ -543,17 +546,23 @@
 
 .inlineFormWrapper {
   position: fixed;
-  z-index: 1000;
+  z-index: 10000; /* Увеличиваем z-index для отображения поверх всех элементов */
   max-width: 300px;
   width: auto;
-  box-shadow: 0 2px 10px rgb(0 0 0 / 10%);
-  border-radius: 4px;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 15%);
+  border-radius: 6px;
   background: var(--color-bg-light, #fff);
+  border: 1px solid var(--color-border-light, #e5e7eb);
+  
+  /* Обеспечиваем видимость поверх overflow: hidden */
+  transform: translateZ(0);
+  will-change: transform;
 
   .inlineForm {
     border-color: var(--color-border-light, #e5e7eb);
     background: var(--color-bg-light, #fff);
     width: 100%;
+    border: none; /* Убираем дублирующий border */
   }
 }
 

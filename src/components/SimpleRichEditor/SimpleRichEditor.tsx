@@ -240,6 +240,31 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     handleDropFilesHook
   })
 
+  // Добавляем глобальный обработчик selectionchange для обновления состояния кнопок
+  onMount(() => {
+    const handleSelectionChange = () => {
+      const editor = editorRef()
+      if (!editor) return
+
+      const selection = window.getSelection()
+      if (!selection || !selection.rangeCount) return
+
+      const range = selection.getRangeAt(0)
+      // Проверяем, что выделение в нашем редакторе
+      if (editor.contains(range.commonAncestorContainer)) {
+        console.log('[SimpleRichEditor] Selection changed, updating toolbar state')
+        trackSelectionAndCursor()
+      }
+    }
+
+    // Добавляем обработчик на document для отслеживания изменений выделения
+    document.addEventListener('selectionchange', handleSelectionChange)
+
+    onCleanup(() => {
+      document.removeEventListener('selectionchange', handleSelectionChange)
+    })
+  })
+
   // Use helpers from UI module
   const {
     currentToolbarMode,
@@ -685,19 +710,26 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       handleChange(props.fieldType ? String(props.fieldType) : 'content')
     }
 
-    // 2. Минимальная задержка для обновления DOM, без принудительного восстановления
+    // 2. Задержка для стабилизации DOM и обновления состояния кнопок
     setTimeout(() => {
-      console.log('[handleAction] Post-command timeout - updating state only')
+      console.log('[handleAction] Post-command timeout - updating toolbar state')
 
-      // Только обновляем активное форматирование (выделение уже восстановлено в format функциях)
+      // Принудительно обновляем активное форматирование для корректного отображения кнопок
+      console.log('[handleAction] Updating active formats for toolbar buttons...')
       trackSelectionAndCursor()
+
+      // Дополнительная проверка через небольшую задержку
+      setTimeout(() => {
+        console.log('[handleAction] Secondary toolbar state update')
+        trackSelectionAndCursor()
+      }, 5)
 
       // Скрываем все активные меню/формы
       setShowForm(null)
       setShowSquibEditor(false)
 
       console.log('[handleAction] COMPLETE - Command processing finished')
-    }, 10) // Минимальная задержка только для обновления состояния
+    }, 50) // Увеличиваем задержку для стабильного обновления состояния кнопок
   }
 
   // Create keyboard handlers (ПОСЛЕ объявления handleAction и handleNavigation)

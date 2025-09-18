@@ -80,6 +80,12 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
     })
   }
 
+  // Убеждаемся, что новый блок может быть редактируемым
+  if (newTag === 'blockquote') {
+    // Blockquote должен наследовать contentEditable от родителя
+    console.log('[toggleBlockFormat] Creating blockquote element')
+  }
+
   // Перемещаем содержимое из старого блока в новый
   while (blockElement.firstChild) {
     newBlock.appendChild(blockElement.firstChild)
@@ -100,41 +106,68 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
 
   // Восстанавливаем позицию курсора в новом блоке
   try {
-    const newRange = document.createRange()
-    const selection = window.getSelection()
+    console.log('[toggleBlockFormat] Starting selection restoration...')
 
-    if (selection) {
-      // Ищем текстовый узел или ставим курсор в начало блока
-      const firstTextNode = findFirstTextNode(newBlock)
-      if (firstTextNode?.textContent) {
-        // Сохраняем позицию курсора относительно начала текста
-        const originalOffset = Math.min(state.range.startOffset, firstTextNode.textContent.length)
-        newRange.setStart(firstTextNode, originalOffset)
-        newRange.setEnd(firstTextNode, originalOffset)
-        console.log('[toggleBlockFormat] Cursor positioned at offset:', originalOffset)
-      } else {
-        // Если нет текстовых узлов, ставим курсор в начало блока
-        newRange.setStart(newBlock, 0)
-        newRange.setEnd(newBlock, 0)
-        console.log('[toggleBlockFormat] Cursor positioned at block start')
-      }
+    // Принудительно фокусируемся на редакторе СНАЧАЛА
+    editorRoot.focus()
 
-      selection.removeAllRanges()
-      selection.addRange(newRange)
+    // Небольшая задержка для стабилизации DOM
+    setTimeout(() => {
+      try {
+        const newRange = document.createRange()
+        const selection = window.getSelection()
 
-      // Фокус на редакторе (без принуждения)
-      if (editorRoot && document.activeElement !== editorRoot) {
+        if (selection && editorRoot.contains(newBlock)) {
+          console.log('[toggleBlockFormat] New block is in DOM, restoring selection...')
+
+          // Ищем текстовый узел или ставим курсор в начало блока
+          const firstTextNode = findFirstTextNode(newBlock)
+          if (firstTextNode?.textContent) {
+            // Сохраняем позицию курсора относительно начала текста
+            const originalOffset = Math.min(state.range?.startOffset || 0, firstTextNode.textContent.length)
+            newRange.setStart(firstTextNode, originalOffset)
+            newRange.setEnd(firstTextNode, originalOffset)
+            console.log('[toggleBlockFormat] Cursor positioned at text offset:', originalOffset)
+          } else if (newBlock.childNodes.length > 0) {
+            // Если есть дочерние элементы, ставим курсор в первый
+            const firstChild = newBlock.childNodes[0]
+            if (firstChild.nodeType === Node.TEXT_NODE) {
+              newRange.setStart(firstChild, 0)
+              newRange.setEnd(firstChild, 0)
+            } else {
+              newRange.setStart(newBlock, 0)
+              newRange.setEnd(newBlock, 0)
+            }
+            console.log('[toggleBlockFormat] Cursor positioned at first child')
+          } else {
+            // Если блок пустой, ставим курсор в начало блока
+            newRange.setStart(newBlock, 0)
+            newRange.setEnd(newBlock, 0)
+            console.log('[toggleBlockFormat] Cursor positioned at empty block start')
+          }
+
+          selection.removeAllRanges()
+          selection.addRange(newRange)
+
+          // Убеждаемся, что редактор все еще в фокусе
+          if (document.activeElement !== editorRoot) {
+            editorRoot.focus()
+          }
+
+          console.log('[toggleBlockFormat] Selection and focus restored successfully')
+        } else {
+          console.error('[toggleBlockFormat] New block not found in DOM or selection unavailable')
+          editorRoot.focus()
+        }
+      } catch (innerError) {
+        console.error('[toggleBlockFormat] Error in delayed restoration:', innerError)
         editorRoot.focus()
       }
-
-      console.log('[toggleBlockFormat] Selection and focus restored successfully')
-    }
+    }, 5) // Минимальная задержка для стабилизации DOM
   } catch (e) {
     console.error('[toggleBlockFormat] Error restoring selection:', e)
     // Запасной вариант - просто фокус
-    if (editorRoot) {
-      editorRoot.focus()
-    }
+    editorRoot.focus()
   }
 }
 

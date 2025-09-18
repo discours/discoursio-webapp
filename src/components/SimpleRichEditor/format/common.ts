@@ -84,15 +84,23 @@ export const executeCommand = (command: CommandType, context: FormatContext): Fo
 
     // Инлайн форматирование (bold, italic, highlight и т.д.)
     console.log(`[executeCommand] Processing inline command: ${command}`)
+    console.log('[executeCommand] Selection state:', {
+      text: selection.text,
+      isEmpty: selection.isEmpty,
+      range: selection.range
+    })
+
     const isActive = hasFormatting(command, selection)
-    console.log(`[executeCommand] Command ${command} is currently active: ${isActive}`)
+    console.log(`[executeCommand] ⭐ Command ${command} is currently active: ${isActive}`)
 
     if (isActive) {
-      console.log(`[executeCommand] Removing formatting: ${command}`)
+      console.log(`[executeCommand] 🗑️ REMOVING formatting: ${command}`)
       removeInlineFormatting(command, selection)
+      console.log(`[executeCommand] ✅ Formatting ${command} removed`)
     } else {
-      console.log(`[executeCommand] Applying formatting: ${command}`)
+      console.log(`[executeCommand] ➕ APPLYING formatting: ${command}`)
       applyInlineFormatting(command, selection)
+      console.log(`[executeCommand] ✅ Formatting ${command} applied`)
     }
 
     console.log(`[executeCommand] SUCCESS - Inline formatting completed for: ${command}`)

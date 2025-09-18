@@ -147,30 +147,45 @@ export const applyInlineFormatting = (command: CommandType, state: SelectionStat
  * Удаляет инлайн форматирование выделенного текста
  */
 export const removeInlineFormatting = (command: CommandType, state: SelectionState) => {
+  console.log(`[removeInlineFormatting] START - Command: ${command}`, state)
+
   // Специальная обработка для unlink - удаляем ссылку полностью
   if (command === 'unlink') {
+    console.log('[removeInlineFormatting] Handling unlink command')
     return removeLink(state)
   }
-  if (!state.range) return
+  if (!state.range) {
+    console.warn('[removeInlineFormatting] No range in state')
+    return
+  }
 
   const range = state.range.cloneRange()
   const config = FORMAT_CONFIG[command]
 
   if (!config) {
-    console.log('No config found for command:', command)
+    console.warn('[removeInlineFormatting] No config found for command:', command)
     return
   }
 
+  console.log(`[removeInlineFormatting] Config found for ${command}:`, config)
+
   // Если пустое выделение (курсор)
   if (state.isEmpty) {
+    console.log('[removeInlineFormatting] Processing cursor position (empty selection)')
     const container = range.startContainer
     const element = container.nodeType === Node.ELEMENT_NODE ? (container as HTMLElement) : container.parentElement
 
-    if (!element) return
+    if (!element) {
+      console.warn('[removeInlineFormatting] No element found for cursor')
+      return
+    }
 
+    console.log(`[removeInlineFormatting] Looking for closest ${config.tag} from element:`, element.tagName)
     const formattedParent = element.closest(config.tag)
+    console.log('[removeInlineFormatting] Found formatted parent:', formattedParent?.tagName)
 
     if (formattedParent) {
+      console.log(`[removeInlineFormatting] Removing ${config.tag} formatting from cursor position`)
       // Запоминаем предыдущий или родительский узел перед удалением
       const prevNode = formattedParent.previousSibling || (formattedParent.parentNode as Node)
       const nodeOffset = prevNode === formattedParent.previousSibling ? prevNode.textContent?.length || 0 : 0
@@ -211,20 +226,27 @@ export const removeInlineFormatting = (command: CommandType, state: SelectionSta
       } catch (error) {
         console.error('[removeInlineFormatting] Error restoring selection:', error)
       }
+
+      console.log(`[removeInlineFormatting] ✅ Successfully removed ${config.tag} formatting from cursor`)
+    } else {
+      console.log(`[removeInlineFormatting] No ${config.tag} parent found - nothing to remove`)
     }
     return
   }
 
   // Алгоритм для выделения текста
+  console.log('[removeInlineFormatting] Processing text selection')
   const fragment = range.extractContents()
   const tempDiv = document.createElement('div')
   tempDiv.appendChild(fragment)
 
   // Находим все элементы с заданным форматированием
   const formattedElements = tempDiv.querySelectorAll(config.tag)
+  console.log(`[removeInlineFormatting] Found ${formattedElements.length} ${config.tag} elements to remove`)
 
   // Заменяем форматированные элементы их содержимым
-  formattedElements.forEach((el) => {
+  formattedElements.forEach((el, index) => {
+    console.log(`[removeInlineFormatting] Removing ${config.tag} element ${index + 1}/${formattedElements.length}`)
     const parent = el.parentNode
     if (parent) {
       const contentFragment = document.createDocumentFragment()
@@ -263,6 +285,8 @@ export const removeInlineFormatting = (command: CommandType, state: SelectionSta
   } catch (error) {
     console.error('[removeInlineFormatting] Error restoring selection:', error)
   }
+
+  console.log(`[removeInlineFormatting] ✅ COMPLETE - Successfully processed ${command} removal`)
 }
 
 /**
