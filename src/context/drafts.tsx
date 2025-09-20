@@ -507,8 +507,11 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
           // Фильтруем topics, оставляя только те, которые есть в topicIds
           const filteredTopics = topics.filter((topic): topic is Topic => Boolean(topic?.id && topicIds.has(topic.id)))
 
-          // Обновляем черновик с отфильтрованными темами
-          setCurrentDraft({ ...draft, topics: filteredTopics })
+          // Обновляем черновик с отфильтрованными темами, сохраняя все остальные поля
+          setCurrentDraft((prevDraft) => {
+            if (!prevDraft || prevDraft.id !== draftId) return prevDraft
+            return { ...prevDraft, topics: filteredTopics }
+          })
 
           // Синхронизируем с сервером
           batch(async () => {

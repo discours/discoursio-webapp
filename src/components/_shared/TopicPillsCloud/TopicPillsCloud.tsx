@@ -158,11 +158,8 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
       newTopics.map((t) => ({ id: t.id, title: t.title }))
     )
 
-    // Мгновенно обновляем UI через контекст черновика
-    if (draft && draft.id === props.draftId) {
-      draft.topics = newTopics
-      console.log('[TopicPillsCloud] Updated draft topics in UI')
-    }
+    // Мгновенно обновляем UI через контекст черновика (избегаем прямой мутации)
+    console.log('[TopicPillsCloud] Topics will be updated via debouncedTopicChange to avoid mutation issues')
 
     // Отправляем обновление на сервер через debouncedTopicChange
     debouncedTopicChange(newTopics)
@@ -207,11 +204,8 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
       newSelectedTopics = [...currentSelected, topic]
     }
 
-    // Мгновенно обновляем UI через контекст черновика
-    const draft = currentDraft()
-    if (draft) {
-      draft.topics = newSelectedTopics
-    }
+    // Обновление UI произойдет через debouncedTopicChange для избежания мутации
+    console.log('[TopicPillsCloud] Topics will be updated via debouncedTopicChange')
 
     // Обновляем локальное состояние для selectedIds
     setSelectedIds(new Set(newSelectedTopics.map((t) => Number(t.id))))
