@@ -5,14 +5,11 @@ import { InlineForm } from '~/components/_shared/InlineForm/InlineForm'
 import { useLocalize } from '~/context/localize'
 import { executeCommand, type FormatContext } from './format/common'
 import { type SelectionState } from './format/format'
-import { useDropFiles } from './handlers/drop'
 import { createEventHandlers } from './handlers/events'
 import { createFormHandlers } from './handlers/forms'
 import { createKeyboardHandlers } from './handlers/keyboard'
 import { createUIHelpers } from './handlers/ui'
-import { isGroup } from './lib/commands'
 import { isEmptyContent } from './lib/empty'
-import { createMediaHandlers } from './lib/media'
 import { useSelection } from './lib/selection'
 import {
   ContentVersion,
@@ -34,6 +31,9 @@ import {
   Position,
   ToolbarMode
 } from './lib/types'
+import { createMediaHandlers } from './media'
+import { useDropFiles } from './media/upload'
+import { isGroup } from './menu/config'
 import { switchFieldInDraft } from './menu/helpers'
 import { handlePlusMenuAction, handleSquibFormatting, PlusMenu } from './menu/PlusMenu'
 import { SimpleToolbar } from './menu/SimpleToolbar'
@@ -240,28 +240,77 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     handleDropFilesHook
   })
 
-  // Добавляем глобальный обработчик selectionchange для обновления состояния кнопок
+  // Единый оптимизированный обработчик selectionchange (заменяет 3 дублирующихся)
   onMount(() => {
-    const handleSelectionChange = () => {
-      const editor = editorRef()
-      if (!editor) return
+    const editor = editorRef()
+    if (!editor) return
 
-      const selection = window.getSelection()
-      if (!selection || !selection.rangeCount) return
+    let rafId: number | null = null
+    let _mouseX = 0
+    let _mouseY = 0
 
-      const range = selection.getRangeAt(0)
-      // Проверяем, что выделение в нашем редакторе
-      if (editor.contains(range.commonAncestorContainer)) {
-        console.log('[SimpleRichEditor] Selection changed, updating toolbar state')
-        trackSelectionAndCursor()
-      }
+    // Отслеживаем позицию мыши
+    const trackMousePosition = (e: MouseEvent) => {
+      _mouseX = e.clientX
+      _mouseY = e.clientY
     }
 
-    // Добавляем обработчик на document для отслеживания изменений выделения
-    document.addEventListener('selectionchange', handleSelectionChange)
+    // Единый обработчик с debouncing через RAF для предотвращения мерцания
+    const handleSelectionChange = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId)
+      }
+
+      rafId = requestAnimationFrame(() => {
+        const selection = window.getSelection()
+        if (!selection || selection.rangeCount === 0) return
+
+        const range = selection.getRangeAt(0)
+        if (!editor.contains(range.commonAncestorContainer)) return
+
+        console.log('[SimpleRichEditor] Selection changed, updating toolbar state')
+
+        // 1. Обновляем состояние кнопок тулбара
+        trackSelectionAndCursor()
+
+        // 2. Обновляем состояние выделения
+        const hasActiveSelection = !selection.isCollapsed && selection.toString().trim() !== ''
+        setHasSelection(hasActiveSelection)
+
+        // 3. Обновляем floating toolbar
+        const floatToolbar = document.querySelector(`.${styles.floatingToolbar}[data-editor-id="${props.editorId}"]`)
+        if (floatToolbar && floatToolbar instanceof HTMLElement) {
+          if (hasActiveSelection) {
+            const rect = range.getBoundingClientRect()
+            if (rect) {
+              floatToolbar.style.position = 'fixed'
+              floatToolbar.style.top = `${Math.max(10, rect.top - 40)}px`
+              floatToolbar.style.left = `${rect.left + rect.width / 2}px`
+              floatToolbar.classList.add(styles.visible)
+            }
+          } else {
+            floatToolbar.classList.remove(styles.visible)
+          }
+        }
+
+        rafId = null
+      })
+    }
+
+    // Добавляем обработчики с passive: true для лучшей производительности
+    document.addEventListener('mousemove', trackMousePosition, { passive: true })
+    document.addEventListener('selectionchange', handleSelectionChange, { passive: true })
+    editor.addEventListener('mouseup', handleSelectionChange, { passive: true })
+    editor.addEventListener('keyup', handleSelectionChange, { passive: true })
 
     onCleanup(() => {
+      if (rafId) {
+        cancelAnimationFrame(rafId)
+      }
+      document.removeEventListener('mousemove', trackMousePosition)
       document.removeEventListener('selectionchange', handleSelectionChange)
+      editor.removeEventListener('mouseup', handleSelectionChange)
+      editor.removeEventListener('keyup', handleSelectionChange)
     })
   })
 
@@ -424,7 +473,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   createEffect(() => {
     if (isServer) return
 
-    const updateSelectionState = () => {
+    const _updateSelectionState = () => {
       const selection = window.getSelection()
       const editor = editorRef()
 
@@ -440,25 +489,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       setHasSelection(hasActiveSelection)
     }
 
-    const handleSelectionChange = () => updateSelectionState()
-
-    // Добавляем слушатель изменений выделения
-    document.addEventListener('selectionchange', handleSelectionChange)
-
-    // Также проверяем при изменении фокуса
-    const editor = editorRef()
-    if (editor) {
-      editor.addEventListener('mouseup', updateSelectionState)
-      editor.addEventListener('keyup', updateSelectionState)
-    }
-
-    onCleanup(() => {
-      document.removeEventListener('selectionchange', handleSelectionChange)
-      if (editor) {
-        editor.removeEventListener('mouseup', updateSelectionState)
-        editor.removeEventListener('keyup', updateSelectionState)
-      }
-    })
+    // Удален дублирующийся обработчик - теперь используется единый в onMount выше
   })
 
   // --- Core Logic --- Needed before event handlers
@@ -820,68 +851,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     })
   }
 
-  onMount(() => {
-    const editor = editorRef()
-    if (!editor) return
-
-    let mouseX = 0
-    let mouseY = 0
-
-    // Отслеживаем позицию мыши для более точного позиционирования
-    const trackMousePosition = (e: MouseEvent) => {
-      mouseX = e.clientX
-      mouseY = e.clientY
-    }
-
-    // Обработчик для отслеживания выделения текста
-    const handleSelectionChange = () => {
-      const selection = window.getSelection()
-      const hasValidSelection =
-        selection && selection.rangeCount > 0 && !selection.isCollapsed && selection.toString().trim() !== ''
-
-      // Проверяем, есть ли выделение внутри нашего редактора
-      const isSelectionInEditor = hasValidSelection && editor.contains(selection?.getRangeAt(0).commonAncestorContainer)
-
-      // Находим тулбар с режимом float
-      const floatToolbar = document.querySelector(`.${styles.floatingToolbar}[data-editor-id="${props.editorId}"]`)
-
-      if (floatToolbar && floatToolbar instanceof HTMLElement) {
-        if (isSelectionInEditor) {
-          // Используем более простой способ позиционирования
-          // Показываем тулбар прямо над выделением текста или над курсором мыши
-          const range = selection?.getRangeAt(0)
-          const rect = range?.getBoundingClientRect()
-
-          if (rect) {
-            // Используем координаты выделения
-            floatToolbar.style.position = 'fixed'
-            floatToolbar.style.top = `${Math.max(10, rect.top - 40)}px`
-            floatToolbar.style.left = `${rect.left + rect.width / 2}px`
-            floatToolbar.classList.add(styles.visible)
-          } else if (mouseX > 0 && mouseY > 0) {
-            // Запасной вариант - используем позицию мыши
-            floatToolbar.style.position = 'fixed'
-            floatToolbar.style.top = `${Math.max(10, mouseY - 40)}px`
-            floatToolbar.style.left = `${mouseX}px`
-            floatToolbar.classList.add(styles.visible)
-          }
-        } else {
-          floatToolbar.classList.remove(styles.visible)
-        }
-      }
-    }
-
-    // Добавляем обработчики событий
-    document.addEventListener('mousemove', trackMousePosition)
-    document.addEventListener('selectionchange', handleSelectionChange)
-    document.addEventListener('mouseup', handleSelectionChange)
-
-    onCleanup(() => {
-      document.removeEventListener('mousemove', trackMousePosition)
-      document.removeEventListener('selectionchange', handleSelectionChange)
-      document.removeEventListener('mouseup', handleSelectionChange)
-    })
-  })
+  // Удален третий дублирующийся onMount - функциональность перенесена в единый обработчик выше
 
   // --- Render ---
   // 3. Create memo for displayed commands

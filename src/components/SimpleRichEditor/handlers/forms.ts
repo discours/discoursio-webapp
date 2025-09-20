@@ -9,10 +9,9 @@ import { MediaItem } from '~/graphql/generated/graphql'
 import { UploadedFile } from '~/types/upload'
 import { validateVideoUrl, validateWebUrl } from '../../../lib/validateDraft'
 import { applyFormatting, removeFormatting } from '../format/format'
-import { createVideoEmbed, detectVideoPlatform } from '../lib/embed'
-import { handleAudioUploaderResult } from '../lib/media'
 import { EditorFieldType, FormType, InlineFormOptions, Position } from '../lib/types'
 import { replaceSelection, validateUrl } from '../lib/utils'
+import { createVideoEmbed, detectVideoPlatform, handleAudioUploaderResult } from '../media'
 
 export interface FormHandlersContext {
   editorRef: Accessor<HTMLDivElement | undefined>

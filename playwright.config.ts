@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test'
 const isCI = process.env.CI === 'true'
 
 export default defineConfig({
-  globalSetup: './tests/e2e/global-setup.ts',
+  // globalSetup: './tests/e2e/global-setup.ts', // Временно отключено для отладки
   testDir: './tests/e2e',
   fullyParallel: true, // ✅ Включаем параллельность для скорости
   forbidOnly: isCI,
@@ -14,7 +14,7 @@ export default defineConfig({
   timeout: 30000, // ⏱️ Стандартный таймаут без маскировки проблем
   // В CI используем более надежные настройки
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'https://localhost:3001',
+    baseURL: process.env.E2E_BASE_URL || 'https://localhost:3000',
     // Для работы с прокси на /graphql
     headless: !!isCI,
     ignoreHTTPSErrors: true,
@@ -48,11 +48,11 @@ export default defineConfig({
     }
   ],
 
-  // Запускаем отдельный тестовый сервер на порту 3001
+  // Запускаем отдельный тестовый сервер на порту 3000 (для CORS)
   webServer: {
-    command: 'E2E=true PORT=3001 npm run dev',
-    // command: 'npm run build && npx vinxi preview --port 3001',
-    port: 3001,
+    command: 'E2E=true PORT=3000 npm run dev',
+    // command: 'npm run build && npx vinxi preview --port 3000',
+    port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: isCI ? 120000 : 180000, // ⏱️ Увеличиваем таймаут для билда в CI
     stdout: 'pipe',

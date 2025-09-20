@@ -20,7 +20,7 @@ export class TestUtils {
    * Переход на страницу с улучшенной обработкой ошибок
    */
   async goto(path = '/') {
-    const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3001'
+    const baseUrl = process.env.E2E_BASE_URL || 'https://localhost:3000'
     const sBaseUrl = `http${process.env.CI ? '' : 's'}://${baseUrl.split('://')[1]}`
     const fullUrl = `${sBaseUrl}${path}`
     console.log(`Переход на: ${fullUrl}`)
@@ -49,7 +49,7 @@ export class TestUtils {
    */
   async checkServerHealth(): Promise<boolean> {
     try {
-      const response = await this.page.request.get('https://localhost:3001')
+      const response = await this.page.request.get('https://localhost:3000')
       return response.status() === 200
     } catch {
       return false
@@ -262,7 +262,7 @@ export async function initializeTestEnvironment(browser: Browser, testName: stri
 
   // Проверяем доступность сервера
   console.log('Проверка доступности сервера...')
-  const response = await page.request.get('https://localhost:3001')
+  const response = await page.request.get('https://localhost:3000')
 
   if (response.status() !== 200) {
     throw new Error(`Сервер недоступен: ${response.status()} ${response.statusText()}`)
@@ -271,7 +271,7 @@ export async function initializeTestEnvironment(browser: Browser, testName: stri
   console.log('Сервер доступен и отвечает')
 
   // Проверяем что страница загружается
-  await page.goto('https://localhost:3001', { waitUntil: 'domcontentloaded' })
+  await page.goto('https://localhost:3000', { waitUntil: 'domcontentloaded' })
   await expect(page).toHaveTitle(/Discours|Дискурс/, { timeout: 10000 })
 
   console.log(`Тесты ${testName} инициализированы успешно!`)
@@ -293,7 +293,7 @@ export async function cleanupTestEnvironment(page: Page | null, testName: string
  */
 export async function checkServerWithoutStarting(page: Page): Promise<boolean> {
   try {
-    const response = await page.request.get('https://localhost:3001')
+    const response = await page.request.get('https://localhost:3000')
     return response.status() === 200
   } catch {
     return false

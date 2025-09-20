@@ -1,7 +1,7 @@
 {
   "name": "discoursio-webapp",
   "private": true,
-  "version": "0.14.15",
+  "version": "0.14.17",
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
@@ -29,6 +29,11 @@
     "dev:e2e": "PORT=3001 vinxi dev --port 3001",
     "e2e:report": "playwright show-report",
     "test:editor": "node scripts/test-editor.js",
+    "test:editor-auth": "npx playwright test tests/e2e/90-editor-auth-test.spec.ts --reporter=list",
+    "test:editor-format": "npx playwright test tests/e2e/91-editor-formatting-test.spec.ts --reporter=list",
+    "test:editor-upload": "npx playwright test tests/e2e/92-editor-upload-test.spec.ts --reporter=list",
+    "test:editor-workflow": "npx playwright test tests/e2e/93-editor-full-workflow-test.spec.ts --reporter=list",
+    "test:editor-all": "npx playwright test tests/e2e/9*-editor-*.spec.ts --reporter=list",
     "test:editor:debug": "node scripts/test-editor.js --debug --headed",
     "test:editor:ui": "node scripts/test-editor.js --ui",
     "e2e:clean": "rm -rf test-results/ playwright-report/",

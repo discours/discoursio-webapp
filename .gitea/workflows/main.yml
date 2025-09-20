@@ -48,6 +48,11 @@ jobs:
           mkdir -p test-results
           mkdir -p playwright-report
           mkdir -p playwright/.cache
+          # Создаем директории для Vinxi build
+          mkdir -p .vinxi/build/server-fns/_server
+          mkdir -p .output/server
+          # Создаем пустой manifest.json как workaround для Vinxi
+          echo '{}' > .vinxi/build/server-fns/_server/manifest.json
 
       - name: Lint Code
         run: npx @biomejs/biome check src/
@@ -59,7 +64,14 @@ jobs:
       - name: Build Project
         env:
           SASS_FORCE_JS: true
-        run: npm run build
+          CI: true
+          NODE_ENV: production
+          VINXI_DEBUG: false
+        run: |
+          # Очищаем предыдущие сборки
+          rm -rf .vinxi/build .output dist
+          # Запускаем сборку
+          npm run build
 
       # Определяем тип тестов в зависимости от ветки
       - name: Determine Test Strategy

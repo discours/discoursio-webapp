@@ -61,7 +61,19 @@ export default defineConfig({
     // Настройки для правильной работы с Vercel
     rollupConfig: {
       external: ['@vercel/og']
-    }
+    },
+    // Исправление для CI: принудительная генерация manifest.json
+    ...(isCI && {
+      experimental: {
+        wasm: false
+      },
+      storage: {
+        fs: {
+          driver: 'fs',
+          base: './.vinxi'
+        }
+      }
+    })
   },
   // Edge runtime ТОЛЬКО для OG routes
   routeRules: {
@@ -78,6 +90,24 @@ export default defineConfig({
       inlineDynamicImports: false
     }
   },
+  // Исправление для CI: обеспечиваем создание всех необходимых директорий
+  ...(isCI && {
+    routers: [
+      {
+        name: 'public',
+        type: 'static',
+        dir: './public',
+        base: '/'
+      },
+      {
+        name: 'server-fns',
+        type: 'http',
+        handler: './src/entry-server.tsx',
+        target: 'server',
+        base: '/_server'
+      }
+    ]
+  }),
   ssr: true,
   server: {
     preset,

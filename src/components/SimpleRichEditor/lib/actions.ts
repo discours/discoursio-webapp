@@ -4,7 +4,7 @@
  */
 
 import { applyFormatting, createSelectionState, hasFormatting, removeFormatting } from '../format/format'
-import { createVideoEmbed, detectVideoPlatform, insertAudio } from './media'
+import { createVideoEmbed, detectVideoPlatform, insertAudio } from '../media'
 import { CommandType, FormType } from './types'
 import { replaceSelection } from './utils'
 

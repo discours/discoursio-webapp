@@ -3,9 +3,10 @@
  * @description Проверка активного форматирования в выделении
  */
 
-import { type ActiveFormatsType, findAncestor, getNodesInRange } from '../lib/helpers'
+import { findAncestor, getNodesInRange } from '../lib/dom-utils'
 import { CommandType, SelectionState } from '../lib/types'
 import { FORMAT_CONFIG } from './config'
+import { ActiveFormatsType } from './types'
 import { getAncestorNodes, getCommonFormatAncestors } from './utils'
 
 /**

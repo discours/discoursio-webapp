@@ -287,19 +287,6 @@ export interface SelectionManagerProps {
   onSelectionChange?: (state: SelectionState) => void
 }
 
-export interface EditorData {
-  content: string // HTML контент
-  plainText: string // Чистый текст
-  length: number // Длина текста
-  isEmpty: boolean // Пустой ли редактор
-  selection?: {
-    // Информация о выделении
-    text: string
-    isEmpty: boolean
-    position?: Position
-  }
-}
-
 export interface HistoryJournal {
   undo: string[]
   redo: string[]

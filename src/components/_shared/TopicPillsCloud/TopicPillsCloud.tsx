@@ -125,29 +125,53 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
     e.preventDefault()
     e.stopPropagation()
 
+    console.log('[TopicPillsCloud] handleMainTopicClick called for topic:', topic.id, topic.title)
+
     // Блокируем действие на уже выбранной главной теме
-    if (isMainTopic(topic)) return
+    if (isMainTopic(topic)) {
+      console.log('[TopicPillsCloud] Topic is already main, ignoring click')
+      return
+    }
 
     // Получаем текущие темы и перемещаем выбранную тему на первое место
     const draft = currentDraft()
-    if (!draft) return
+    if (!draft) {
+      console.warn('[TopicPillsCloud] No current draft found')
+      return
+    }
 
     const topics = localSelectedTopics()
     const topicIndex = topics.findIndex((t) => Number(t.id) === Number(topic.id))
 
-    if (topicIndex === -1) return // Тема не найдена в списке
+    if (topicIndex === -1) {
+      console.warn('[TopicPillsCloud] Topic not found in selected topics list')
+      return // Тема не найдена в списке
+    }
+
+    console.log('[TopicPillsCloud] Moving topic from index', topicIndex, 'to position 0')
 
     // Создаем новый массив с выбранной темой на первом месте
     const newTopics = [topics[topicIndex], ...topics.slice(0, topicIndex), ...topics.slice(topicIndex + 1)]
 
-    // Мгновенно обновляем UI
-    if (draft) {
+    console.log(
+      '[TopicPillsCloud] New topics order:',
+      newTopics.map((t) => ({ id: t.id, title: t.title }))
+    )
+
+    // Мгновенно обновляем UI через контекст черновика
+    if (draft && draft.id === props.draftId) {
       draft.topics = newTopics
+      console.log('[TopicPillsCloud] Updated draft topics in UI')
     }
 
     // Отправляем обновление на сервер через debouncedTopicChange
     debouncedTopicChange(newTopics)
+
+    // Также обновляем main_topic_id напрямую
+    updateDraftField(props.draftId, 'main_topic_id', `${topic.id}`, false)
+
     toast.success(t('Main topic selected'), { duration: 1500 })
+    console.log('[TopicPillsCloud] Main topic updated successfully')
   }
 
   const handleToggleTopic = (topic: Topic, e: MouseEvent) => {
@@ -245,13 +269,25 @@ export const TopicPillsCloud = (props: TopicPillsCloudProps) => {
 
     // Если есть поисковый запрос минимальной длины, дополнительно фильтруем
     if (search.length >= MIN_SEARCH_LENGTH) {
+      const beforeSearchFilter = filtered.length
       filtered = filtered.filter((topic: Topic) => {
         const topicName = topic.title?.toLowerCase() || ''
-        return topicName.includes(search)
+        const matches = topicName.includes(search)
+        if (search === 'общество' && topic.title?.toLowerCase().includes('общество')) {
+          console.log('[TopicPillsCloud] Found matching topic:', topic.title, 'matches:', matches)
+        }
+        return matches
       })
-      console.log('[TopicPillsCloud] Filtering by search term:', search)
+      console.log(
+        '[TopicPillsCloud] Filtering by search term:',
+        search,
+        'before:',
+        beforeSearchFilter,
+        'after:',
+        filtered.length
+      )
     } else {
-      console.log('[TopicPillsCloud] Showing initial topics without search filter')
+      console.log('[TopicPillsCloud] Showing initial topics without search filter, count:', filtered.length)
     }
 
     // Ограничиваем количество результатов

@@ -2,7 +2,7 @@ import { Accessor, createSignal } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { debounce } from 'throttle-debounce'
 import { applyFormatting as applyFormat, getActiveFormats, removeFormatting, resetFormat } from '../format/format'
-import { getCommandType } from './commands'
+import { getCommandType } from '../menu/config'
 import { CommandType, HistoryJournal, Position } from './types'
 
 /**

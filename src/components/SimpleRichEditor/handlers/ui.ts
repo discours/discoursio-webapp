@@ -5,7 +5,7 @@
 
 import { Accessor } from 'solid-js'
 import { isEmptyContent } from '../lib/empty'
-import { getEditorPosition, isTouchDevice } from '../lib/media'
+import { getEditorPosition, isTouchDevice } from '../lib/positioning'
 import { Position, ToolbarMode } from '../lib/types'
 
 export interface UIHelpersContext {

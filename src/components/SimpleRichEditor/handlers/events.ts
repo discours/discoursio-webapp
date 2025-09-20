@@ -5,11 +5,11 @@
 
 import { Accessor } from 'solid-js'
 import { debounce } from 'throttle-debounce'
-import { handleContentPaste } from '../lib/embed'
 import { isEmptyContent } from '../lib/empty'
 import { cleanupJsonContent } from '../lib/storage'
 import { EditorData, EditorFieldType } from '../lib/types'
 import { replaceSelection } from '../lib/utils'
+import { handleContentPaste } from '../media'
 
 export interface EventHandlersContext {
   editorRef: Accessor<HTMLDivElement | undefined>
@@ -188,8 +188,8 @@ export const createEventHandlers = (context: EventHandlersContext) => {
     if (!pasted && text) {
       console.log('Pasting TEXT')
       if (restoreSelection()) {
-        handleContentPaste(text, {
-          insertText: (textToInsert) => {
+        await handleContentPaste(text, {
+          insertText: async (textToInsert) => {
             const selection = window.getSelection()
             if (!selection || !selection.rangeCount) return false
             const range = selection.getRangeAt(0)
@@ -202,7 +202,7 @@ export const createEventHandlers = (context: EventHandlersContext) => {
             selection.addRange(range)
             return true
           },
-          insertHtml: (htmlToInsert) => {
+          insertHtml: async (htmlToInsert) => {
             return replaceSelection(htmlToInsert, editorRef() || null)
           }
         })

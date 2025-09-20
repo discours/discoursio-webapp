@@ -6,8 +6,8 @@
  */
 
 import { isEmptyContent } from '../lib/empty'
-import { getEditorPosition } from '../lib/media'
-import { EditorFieldType, Position } from '../lib/types'
+import { getEditorPosition } from '../lib/positioning'
+import { EditorFieldType } from '../lib/types'
 
 /**
  * Обновляет состояние тулбара в зависимости от режима редактора и выделения
@@ -65,40 +65,11 @@ export const updatePlaceholderStyle = (params: {
   }
 }
 
-/**
- * Расчет позиции плавающего тулбара
- *
- * @param editorRef Ref на DOM-элемент редактора
- * @returns Объект с позицией тулбара
- */
-export const getFloatingToolbarPosition = (editorRef: () => HTMLDivElement | undefined): Position => {
-  return getEditorPosition(editorRef() || null, {
-    type: 'float',
-    placement: 'top',
-    offset: 40,
-    centerHorizontally: true
-  })
-}
-
-/**
- * Расчет позиции плюс-меню
- *
- * @param editorRef Ref на DOM-элемент редактора
- * @returns Объект с позицией меню
- */
-export const getPlusMenuPosition = (
-  editorRef: () => HTMLDivElement | undefined
-): {
-  top: number
-  left: number
-  isVisible?: boolean
-} => {
-  return getEditorPosition(editorRef() || null, {
-    type: 'plus',
-    placement: 'left',
-    offset: 30
-  })
-}
+// Функции позиционирования перенесены в ../lib/positioning.ts
+export {
+  getFloatingToolbarPosition,
+  getPlusMenuPosition
+} from '../lib/positioning'
 
 /**
  * Регулярное выражение для извлечения ID черновика из editorId

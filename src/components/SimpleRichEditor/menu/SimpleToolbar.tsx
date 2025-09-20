@@ -5,8 +5,8 @@ import { Popover } from '~/components/_shared/Popover'
 import { Popup } from '~/components/_shared/Popup'
 import { useLocalize } from '~/context/localize'
 import { capitalize } from '~/utils/capitalize'
-import { isGroup, MENU_GROUPS } from '../lib/commands'
 import { CommandGroupType, CommandType, Position } from '../lib/types'
+import { isGroup, MENU_GROUPS } from './config'
 
 import styles from './SimpleToolbar.module.scss'
 

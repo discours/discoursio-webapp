@@ -49,6 +49,14 @@ export const FORMAT_CONFIG: Record<CommandType, { tag: string; attributes?: Reco
 } as const
 
 /**
+ * Возвращает HTML тег для команды форматирования (из FORMAT_CONFIG)
+ */
+export const getTagForCommand = (cmd: CommandType): string => {
+  const config = FORMAT_CONFIG[cmd as keyof typeof FORMAT_CONFIG]
+  return config?.tag || 'span'
+}
+
+/**
  * Создает элемент с правильными атрибутами для заданной команды
  */
 export const createElement = (command: CommandType): HTMLElement => {
