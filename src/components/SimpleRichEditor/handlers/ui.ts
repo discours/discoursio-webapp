@@ -19,6 +19,7 @@ export interface UIHelpersContext {
   showForm: Accessor<string | null>
   showSquibEditor: Accessor<boolean>
   content: Accessor<string>
+  cursorPosition: Accessor<{ top: number; left: number } | null>
 }
 
 /**
@@ -50,11 +51,17 @@ export const createUIHelpers = (context: UIHelpersContext) => {
 
   const isCursorOnEmptyLine = (): boolean => {
     const selection = window.getSelection()
-    if (!selection || !selection.rangeCount) return true
+    if (!selection || !selection.rangeCount) {
+      console.log('[PlusMenu Debug] isCursorOnEmptyLine: no selection')
+      return true
+    }
     const range = selection.getRangeAt(0)
     const node = range.startContainer
     const editorNode = editorRef()
-    if (!editorNode || !editorNode.contains(node)) return false
+    if (!editorNode || !editorNode.contains(node)) {
+      console.log('[PlusMenu Debug] isCursorOnEmptyLine: node not in editor')
+      return false
+    }
     const currentNode = node.nodeType === Node.TEXT_NODE ? node : (node as Element)
     const parentElement = node.nodeType === Node.TEXT_NODE ? node.parentElement : (currentNode as HTMLElement)
 
@@ -78,8 +85,11 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     }
 
     if (range.startOffset === 0 && (node === editorNode || parentElement === editorNode)) {
+      console.log('[PlusMenu Debug] isCursorOnEmptyLine: cursor at start of editor - TRUE')
       return true
     }
+
+    console.log('[PlusMenu Debug] isCursorOnEmptyLine: no conditions met - FALSE')
     return false
   }
 
@@ -88,6 +98,18 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     const isEditorInFocus = hasFocus()
     const isNoOtherMenuOpen = !showForm() && !showSquibEditor()
     const isPlusEnabled = props.plus
+
+    // Отладочная информация
+    console.log('[PlusMenu Debug] shouldShowPlusMenu conditions:', {
+      isNewLine,
+      isEditorInFocus,
+      isNoOtherMenuOpen,
+      isPlusEnabled,
+      showForm: showForm(),
+      showSquibEditor: showSquibEditor(),
+      result: isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen
+    })
+
     return isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen
   }
 
@@ -102,45 +124,48 @@ export const createUIHelpers = (context: UIHelpersContext) => {
 
   const getPlusMenuPosition = (): { top: number; left: number; isVisible?: boolean } => {
     const editor = editorRef()
-    const selection = window.getSelection()
-    if (!editor || !selection || !selection.rangeCount || !selection.isCollapsed) {
+    if (!editor) {
       return { top: 0, left: 0, isVisible: false }
     }
 
-    const range = selection.getRangeAt(0)
-    const node = range.startContainer
+    const editorRect = editor.getBoundingClientRect()
+    const selection = window.getSelection()
 
-    // Find the closest block element containing the cursor
-    let blockElement = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node) as HTMLElement | null
-    while (
-      blockElement &&
-      blockElement !== editor &&
-      !['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE'].includes(blockElement.nodeName)
-    ) {
-      blockElement = blockElement.parentElement
-    }
+    // Используем прямое получение позиции курсора из selection
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const rangeRect = range.getBoundingClientRect()
 
-    // Ensure the block element is empty and directly within the editor content area
-    if (!blockElement || !editor.contains(blockElement) || blockElement.closest('.ProseMirror') !== editor) {
-      // Check if the direct parent is the editor itself
-      if (node.parentElement === editor && (editor.innerHTML === '' || editor.innerHTML === '<br>')) {
-        blockElement = editor // Treat editor as the block if it is empty
-      } else {
-        return { top: 0, left: 0, isVisible: false }
+      if (rangeRect.height > 0) {
+        // ИСПРАВЛЕННАЯ логика: используем viewport координаты напрямую
+        const position = {
+          top: rangeRect.top + rangeRect.height / 2 - 16, // Центр строки в viewport
+          left: editorRect.left - 45, // Слева от редактора в viewport
+          isVisible: true
+        }
+
+        console.log('[getPlusMenuPosition] FIXED position calculation:', {
+          rangeRect: { top: rangeRect.top, left: rangeRect.left, height: rangeRect.height },
+          editorRect: { top: editorRect.top, left: editorRect.left },
+          windowScroll: { x: window.scrollX, y: window.scrollY },
+          calculated: position,
+          'position type': 'fixed viewport coordinates'
+        })
+
+        return position
       }
     }
 
-    const rect = blockElement.getBoundingClientRect()
-    const editorRect = editor.getBoundingClientRect()
-    const scrollTop = window.scrollY
-    const scrollLeft = window.scrollX
-    const offsetLeft = 20
-
-    return {
-      top: rect.top + scrollTop + rect.height / 2 - 12, // Assuming button height is ~24px
-      left: editorRect.left + scrollLeft - offsetLeft,
+    // Fallback: позиция в начале редактора (viewport координаты)
+    const fallbackPosition = {
+      top: editorRect.top + 10,
+      left: editorRect.left - 45,
       isVisible: true
     }
+
+    console.log('[getPlusMenuPosition] Fallback position (viewport):', fallbackPosition)
+
+    return fallbackPosition
   }
 
   const findLinkAncestor = (node: Node | null): HTMLAnchorElement | null => {

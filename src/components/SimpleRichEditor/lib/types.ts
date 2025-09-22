@@ -14,7 +14,7 @@ export type EditorFieldType = 'body' | 'lead' | 'about' | 'comment' | 'title'
 /**
  * Типы форм для вставки контента
  */
-export type FormType = 'link' | 'video' | 'audio' | null
+export type FormType = 'link' | 'video' | 'audio' | 'tooltip' | null
 
 /**
  * Тип команды для меню, включает все возможные типы команд
@@ -48,6 +48,7 @@ export type CommandType =
   | 'bulletList'
   | 'orderedList'
   | 'punchline'
+  | 'tooltip'
 
 /**
  * Типы групп команд редактора

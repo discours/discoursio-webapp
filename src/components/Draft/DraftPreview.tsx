@@ -13,7 +13,7 @@ export const DraftPreview = (props: { previewData: Accessor<ExtendedDraft | null
           <article class={styles.article}>
             <Show when={props.previewData()?.cover}>
               <div class={styles.articleCover}>
-                <img src={props.previewData()?.cover || ''} alt={props.previewData()?.title || ''} />
+                <img src={props.previewData()!.cover!} alt={props.previewData()?.title || ''} />
               </div>
             </Show>
 

@@ -1,4 +1,4 @@
-import { Accessor, createEffect, createSignal, onCleanup } from 'solid-js'
+import { Accessor, createEffect, createSignal } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
 import { hasFormatting } from '../format/format'
@@ -243,25 +243,26 @@ export const useSelection = (
     }
   }
 
-  createEffect(() => {
-    const editor = editorRef()
-    if (editor) {
-      const observer = new MutationObserver((_mutations) => {
-        try {
-          handleTrackSelectionAndCursor()
-        } catch (error) {
-          console.error('[SimpleRichEditor] Error handling mutation:', error)
-        }
-      })
-      observer.observe(editor, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-        attributes: false
-      })
-      onCleanup(() => observer.disconnect())
-    }
-  })
+  // ОТКЛЮЧЕНО: MutationObserver создает конфликт с единым обработчиком в SimpleRichEditor
+  // createEffect(() => {
+  //   const editor = editorRef()
+  //   if (editor) {
+  //     const observer = new MutationObserver((_mutations) => {
+  //       try {
+  //         handleTrackSelectionAndCursor()
+  //       } catch (error) {
+  //         console.error('[SimpleRichEditor] Error handling mutation:', error)
+  //       }
+  //     })
+  //     observer.observe(editor, {
+  //       childList: true,
+  //       subtree: true,
+  //       characterData: true,
+  //       attributes: false
+  //     })
+  //     onCleanup(() => observer.disconnect())
+  //   }
+  // })
 
   createEffect(() => {
     const currentToolbarMode = toolbarMode()

@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import { Component, createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
-import { Icon } from '~/components/_shared/Icon'
+// import { Icon } from '~/components/_shared/Icon'
 import { useLocalize } from '~/context/localize'
 import { replaceSelection } from '../lib/empty'
 import { CommandType } from '../lib/types'
@@ -17,6 +17,7 @@ export const handlePlusMenuAction = (
   editor: HTMLElement | null,
   callbacks: {
     showLinkForm?: (onSubmit: (url: string) => void) => void
+    showTooltipForm?: () => void
     showVideoForm?: (onSubmit: (url: string) => void) => void
     showAudioUploader?: () => void
     showImageUploadModal?: () => void
@@ -48,6 +49,11 @@ export const handlePlusMenuAction = (
             if (callbacks.handleChange) callbacks.handleChange()
           }
         })
+      }
+      break
+    case 'tooltip':
+      if (callbacks.showTooltipForm) {
+        callbacks.showTooltipForm()
       }
       break
     case 'audio':
@@ -140,6 +146,9 @@ export const PlusMenu: Component<{
   onAction: (action: CommandType) => void
   editorId?: string
 }> = (props) => {
+  console.log('[PlusMenu] Component created with props:', props)
+  console.log('[PlusMenu] Position:', props.position)
+  console.log('[PlusMenu] isVisible:', props.isVisible)
   const [isOpen, setIsOpen] = createSignal(false)
   const [menuRef, setMenuRef] = createSignal<HTMLDivElement>()
   const [isAppearing, setIsAppearing] = createSignal(false)
@@ -148,9 +157,9 @@ export const PlusMenu: Component<{
     left: props.position.left
   })
 
-  // Эффект плавного появления меню
+  // Эффект плавного появления меню - упрощенная логика
   createEffect(() => {
-    if (props.isVisible && props.position.isVisible !== false) {
+    if (props.isVisible) {
       // Установим флаг появления с небольшой задержкой для анимации
       setTimeout(() => setIsAppearing(true), 50)
     } else {
@@ -160,96 +169,15 @@ export const PlusMenu: Component<{
 
   // Эффект для обновления позиции при изменении props.position
   createEffect(() => {
-    if (props.position && props.position.isVisible !== false) {
-      // Обновляем координаты с сохранением левой позиции из начальных настроек
-      setCurrentPosition((prev) => ({
+    if (props.position) {
+      setCurrentPosition({
         top: props.position.top,
-        left: prev.left || props.position.left
-      }))
+        left: props.position.left
+      })
     }
   })
 
-  // Следим за положением курсора в родительском компоненте и обновляем позицию меню
-  createEffect(() => {
-    if (!props.editorId || !props.isVisible) return
-
-    const trackCursorPosition = () => {
-      const editor = document.querySelector(`[data-editor-id="${props.editorId}"]`) as HTMLElement
-      if (!editor) return
-
-      const selection = window.getSelection()
-      if (!selection || selection.rangeCount === 0) return
-
-      const range = selection.getRangeAt(0)
-
-      // Проверяем, что курсор находится в редакторе
-      if (editor.contains(range.commonAncestorContainer)) {
-        const rangeRect = range.getBoundingClientRect()
-
-        // Получаем текущую позицию скролла
-        const scrollTop = window.scrollY || document.documentElement.scrollTop
-        const scrollLeft = window.scrollX || document.documentElement.scrollLeft
-
-        // Если у нас пустая строка и высота rangeRect равна 0,
-        // получаем координаты родительского элемента (параграфа или блока)
-        if (rangeRect.height === 0) {
-          const container = range.startContainer
-          let currentNode = container
-
-          // Поднимаемся до родительского блочного элемента
-          while (currentNode && currentNode.nodeType === Node.TEXT_NODE) {
-            currentNode = currentNode.parentNode as Node
-          }
-
-          if (currentNode && currentNode instanceof Element) {
-            const blockRect = currentNode.getBoundingClientRect()
-            const editorRect = editor.getBoundingClientRect()
-
-            // меню всегда должно быть слева от начала строки
-            setCurrentPosition({
-              top: blockRect.top + scrollTop + blockRect.height / 2 - 10,
-              left: editorRect.left + scrollLeft - 30, // Всегда располагаем слева от контента
-              isVisible: true
-            })
-            return
-          }
-        }
-
-        // озиционируем меню всегда слева от редактора
-        const editorRect = editor.getBoundingClientRect()
-        setCurrentPosition({
-          top: rangeRect.top + scrollTop + rangeRect.height / 2 - 10,
-          left: editorRect.left + scrollLeft - 30, // Всегда располагаем слева от контента
-          isVisible: true
-        })
-      }
-    }
-
-    // Активное отслеживание изменений положения курсора
-    document.addEventListener('selectionchange', trackCursorPosition)
-    document.addEventListener('keyup', trackCursorPosition)
-    document.addEventListener('click', trackCursorPosition)
-    document.addEventListener('mouseup', trackCursorPosition)
-
-    // Добавляем отслеживание скролла
-    document.addEventListener('scroll', trackCursorPosition, { passive: true })
-
-    // Запускаем обновление позиции при монтировании
-    requestAnimationFrame(trackCursorPosition)
-
-    // Создаем интервал для периодического обновления позиции
-    // Это гарантирует актуальность положения меню
-    const intervalId = setInterval(trackCursorPosition, 200)
-
-    return () => {
-      document.removeEventListener('selectionchange', trackCursorPosition)
-      document.removeEventListener('keyup', trackCursorPosition)
-      document.removeEventListener('click', trackCursorPosition)
-      document.removeEventListener('mouseup', trackCursorPosition)
-      document.removeEventListener('scroll', trackCursorPosition)
-      clearInterval(intervalId)
-    }
-  })
+  // Упрощенная логика - используем только props.position без внутреннего отслеживания
 
   // Закрываем меню только при клике вне компонента
   const handleClickOutside = (e: MouseEvent) => {
@@ -273,12 +201,44 @@ export const PlusMenu: Component<{
   const handlePlusClick = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+
+    // Сохраняем текущую селекцию перед открытием меню
+    const selection = window.getSelection()
+    const savedRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null
+
     setIsOpen(!isOpen())
+
+    // Восстанавливаем селекцию после небольшой задержки
+    if (savedRange) {
+      setTimeout(() => {
+        const newSelection = window.getSelection()
+        if (newSelection) {
+          newSelection.removeAllRanges()
+          newSelection.addRange(savedRange)
+        }
+      }, 0)
+    }
   }
 
   const handleMenuItemClick = (action: string) => {
+    // Сохраняем селекцию перед выполнением действия
+    const selection = window.getSelection()
+    const savedRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null
+
     props.onAction(action === 'horizontal-rule' ? ('hr' as CommandType) : (action as CommandType))
     setIsOpen(false)
+
+    // Восстанавливаем селекцию после выполнения действия
+    if (savedRange) {
+      setTimeout(() => {
+        const newSelection = window.getSelection()
+        if (newSelection) {
+          newSelection.removeAllRanges()
+          newSelection.addRange(savedRange)
+        }
+      }, 0)
+    }
+
     if (props.onClose) props.onClose()
   }
 
@@ -313,8 +273,10 @@ export const PlusMenu: Component<{
     setIsOpen(false)
   }
 
-  // Определяем реальную видимость меню по обоим параметрам: isVisible и position.isVisible
-  const isReallyVisible = () => props.isVisible && props.position.isVisible !== false
+  // Определяем реальную видимость меню - упрощенная логика как в Notion
+  const isReallyVisible = () => {
+    return props.isVisible
+  }
 
   // Показываем плейсхолдер только если меню видимо, не открыто подменю и курсор на пустой строке
   const shouldShowPlaceholder = () => isReallyVisible() && !isOpen() && props.onEmpty === true
@@ -335,9 +297,18 @@ export const PlusMenu: Component<{
     position: 'fixed' as const
   }
 
-  // Telegraph использует ограниченный набор элементов меню
-  const telegraphMenuItems = ['link', 'image', 'video']
+  // Editor использует ограниченный набор элементов меню
+  const editorMenuItems = ['link', 'image', 'video']
   const { t } = useLocalize()
+
+  // Отладочная информация
+  console.log('[PlusMenu] Render:', {
+    isVisible: props.isVisible,
+    isReallyVisible: isReallyVisible(),
+    isAppearing: isAppearing(),
+    position: currentPosition(),
+    menuStyle
+  })
 
   return (
     <div
@@ -346,17 +317,31 @@ export const PlusMenu: Component<{
         [styles.visible]: isReallyVisible(),
         [styles.appearing]: isAppearing()
       })}
-      style={menuStyle}
-      data-editor-id={props.editorId}
-      data-position={JSON.stringify(currentPosition())}
+      style={{
+        position: 'fixed',
+        top: `${props.position.top}px`,
+        left: `${props.position.left}px`,
+        'z-index': 1000
+      }}
     >
       <div class={styles.menuWrapper}>
         <button
           class={clsx(styles.plusButton, { [styles.active]: isOpen() })}
           onClick={handlePlusClick}
+          onMouseDown={(e) => e.preventDefault()} // Предотвращаем потерю фокуса редактора
           title="Добавить контент"
         >
-          <Icon name="editor-plus" />
+          <span
+            style={{
+              'font-size': '20px',
+              'font-weight': 'bold',
+              color: '#333',
+              'line-height': '1',
+              display: 'block'
+            }}
+          >
+            +
+          </span>
         </button>
       </div>
 
@@ -368,8 +353,12 @@ export const PlusMenu: Component<{
       </Show>
 
       <Show when={isOpen()}>
-        <div class={clsx(styles.menuItems, 'visible')} onClick={(e) => e.stopPropagation()}>
-          <For each={telegraphMenuItems}>
+        <div
+          class={clsx(styles.menuItems, styles.visible)}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.preventDefault()} // Предотвращаем потерю фокуса
+        >
+          <For each={editorMenuItems}>
             {(action) => (
               <ToolbarControl
                 action={action as CommandType}

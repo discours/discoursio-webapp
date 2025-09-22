@@ -35,11 +35,11 @@ import { createMediaHandlers } from './media'
 import { useDropFiles } from './media/upload'
 import { isGroup } from './menu/config'
 import { switchFieldInDraft } from './menu/helpers'
-import { handlePlusMenuAction, handleSquibFormatting, PlusMenu } from './menu/PlusMenu'
+import { handlePlusMenuAction, handleSquibFormatting } from './menu/PlusMenu'
 import { SimpleToolbar } from './menu/SimpleToolbar'
 import { SquibMenu } from './menu/SquibMenu'
-
 import styles from './SimpleRichEditor.module.scss'
+import { EditorUILayer } from './ui/EditorUILayer'
 
 export interface SimpleRichEditorProps {
   onChange: (data: EditorData) => void
@@ -130,68 +130,20 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   // const [footnoteContent, setFootnoteContent] = createSignal<string>('')
   const [localVersion, setLocalVersion] = createSignal()
 
-  // ⚡ ОПТИМИЗАЦИЯ: Создаем хуки только когда редактор готов к рендерингу
-  const selectionHooks = createMemo(() => {
-    if (isServer) return null
+  const {
+    saveSelection,
+    restoreSelection,
+    activeFormats,
+    selectionInfo,
+    cursorPosition,
+    handleTrackSelectionAndCursor: trackSelectionAndCursor
+  } = useSelection(
+    editorRef,
+    () => props.toolbar || 'bottom',
+    () => props.editorId
+  )
 
-    return useSelection(
-      editorRef,
-      () => props.toolbar || 'bottom',
-      () => props.editorId
-    )
-  })
-
-  // Получаем функции из хуков с fallback и отладкой
-  const saveSelection = () => {
-    const hooks = selectionHooks()
-    if (!hooks) {
-      console.warn('[saveSelection] Selection hooks not available')
-      return false
-    }
-    return hooks.saveSelection?.() || false
-  }
-
-  const restoreSelection = () => {
-    const hooks = selectionHooks()
-    if (!hooks) {
-      console.warn('[restoreSelection] Selection hooks not available')
-      return false
-    }
-    return hooks.restoreSelection?.() || false
-  }
-
-  const activeFormats = () => {
-    const hooks = selectionHooks()
-    return hooks?.activeFormats?.() || new Set()
-  }
-
-  const selectionInfo = () => {
-    const hooks = selectionHooks()
-    return hooks?.selectionInfo?.() || { text: '', isEmpty: true }
-  }
-
-  const cursorPosition = () => {
-    const hooks = selectionHooks()
-    return hooks?.cursorPosition?.() || null
-  }
-
-  const trackSelectionAndCursor = () => {
-    const hooks = selectionHooks()
-    if (!hooks) {
-      console.warn('[trackSelectionAndCursor] Selection hooks not available')
-      return
-    }
-    console.log('[trackSelectionAndCursor] Calling handleTrackSelectionAndCursor')
-    hooks.handleTrackSelectionAndCursor?.()
-  }
-
-  // ⚡ ОПТИМИЗАЦИЯ: Создаем drop handler только когда нужен
-  const dropHooks = createMemo(() => {
-    if (isServer) return null
-    return useDropFiles()
-  })
-
-  const handleDropFilesHook = (e: DragEvent) => dropHooks()?.handleDropFiles?.(e) || Promise.resolve()
+  const { handleDropFiles: handleDropFilesHook } = useDropFiles()
 
   // Local state signals (ensure all needed are here and only defined once)
   const [showSquibEditor, setShowSquibEditor] = createSignal(false)
@@ -205,6 +157,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [shouldShowPlaceholderState, _setShouldShowPlaceholderState] = createSignal(false)
   const [isInitialFocusDone, setIsInitialFocusDone] = createSignal(false)
   const [hasSelection, setHasSelection] = createSignal(false)
+
+  // Сигнал для обновления Plus-меню из единого обработчика
+  const [updatePlusMenuTrigger, setUpdatePlusMenuTrigger] = createSignal(0)
 
   let blurTimerRef = 0
   const blurTimeout = 150
@@ -222,7 +177,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     hasFocus,
     showForm,
     showSquibEditor,
-    content
+    content,
+    cursorPosition
   })
 
   // Create event handlers
@@ -293,6 +249,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           }
         }
 
+        // 4. Обновляем Plus-меню через сигнал (без дублирования обработчиков)
+        setUpdatePlusMenuTrigger((prev) => prev + 1)
+
         rafId = null
       })
     }
@@ -319,10 +278,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     currentToolbarMode,
     isClickInsideToolbar,
     isEditorEmpty,
-    isCursorOnEmptyLine,
-    shouldShowPlusMenu,
     getFloatingToolbarPosition,
-    getPlusMenuPosition,
     findLinkAncestor,
     updatePlaceholderState
   } = uiHelpers
@@ -593,6 +549,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     showInlineForm: formHandlers.showInlineForm,
     showImageUploadModal: formHandlers.showImageUploadModal,
     handleInsertLink: formHandlers.handleInsertLink,
+    handleInsertTooltip: formHandlers.handleInsertTooltip,
     saveSelection
   })
 
@@ -696,11 +653,17 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     console.log(`[handleAction] Processing command: ${command}`)
 
     // Специальная обработка для команд, требующих UI взаимодействия
-    if (['link', 'image', 'video', 'audio'].includes(command)) {
+    if (['link', 'tooltip', 'image', 'video', 'audio'].includes(command)) {
       if (command === 'link') {
         const linkElement = findLinkAncestor(activeSelection.anchorNode)
         const initialUrl = linkElement ? linkElement.getAttribute('href') || '' : ''
         showInlineForm('link', handleInsertLink, initialUrl)
+        return
+      }
+      if (command === 'tooltip') {
+        const tooltipElement = activeSelection.anchorNode?.parentElement?.closest('tooltip')
+        const initialText = tooltipElement ? tooltipElement.textContent || '' : ''
+        showInlineForm('tooltip', handleInsertTooltip, initialText)
         return
       }
       if (command === 'video') {
@@ -780,6 +743,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     handleInlineFormSubmit,
     handleInsertLink,
     handleInsertVideo,
+    handleInsertTooltip,
     showAudioUploader,
     showImageUploadModal,
     editorFormOptions
@@ -814,6 +778,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     if (props.fieldType) element.setAttribute('data-field-type', props.fieldType)
     if (props.editorId) element.setAttribute('data-editor-id', props.editorId)
     updatePlaceholderState() // Initial check
+
+    // Tooltip иконки теперь управляются через CSS :not(:has(tooltip))
 
     if (props.autofocus) {
       element.focus()
@@ -869,153 +835,134 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     }
   })
 
-  // Показываем редактор только на клиенте для избежания проблем гидрации
+  // Редактор рендерится только на клиенте - никакого SSR
   if (isServer) {
-    return (
-      <div class={clsx(styles.editorWrapper)} data-field-type={props.fieldType}>
-        <div class={styles.editor}>
-          <div class={styles.content}>{props.placeholder || t('Start typing...')}</div>
-        </div>
-      </div>
-    )
+    return null
   }
 
   return (
-    <Show
-      when={!isServer}
-      fallback={
-        <div class={clsx(styles.editorWrapper)} data-field-type={props.fieldType}>
-          <div class={styles.editor}>
-            <div class={styles.content}>{props.placeholder || t('Loading editor...')}</div>
-          </div>
+    <div class={clsx(styles.editorWrapper)} data-field-type={props.fieldType}>
+      {/* Toolbars */}
+      <Show when={currentToolbarMode() === 'top'}>
+        <SimpleToolbar
+          commands={displayedCommands()}
+          onAction={handleAction}
+          currentFormats={activeFormats()}
+          class={clsx(styles.topToolbar, styles.visible)}
+          mode={currentToolbarMode() as ToolbarMode}
+          editorId={props.editorId}
+        />
+      </Show>
+      {/* Переключатель локальной версии */}
+      <Show when={showLocalVersionLink()}>
+        <div class={styles.localVersionSwitcher}>
+          <button
+            onClick={loadLocalVersion}
+            class={styles.switcherBtn}
+            title={t('You have a newer local version, click to use it')}
+          >
+            <span class={styles.switcherIcon}>
+              <svg
+                class="no-transition"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M8 2V8L11 11"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M8 15C11.866 15 15 11.866 15 8C15 4.13401 11.866 1 8 1C4.13401 1 1 4.13401 1 8C1 11.866 4.13401 15 8 15Z"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                />
+              </svg>
+            </span>
+            {t('Use local version')}
+          </button>
+          <button
+            onClick={handleClearLocalVersion}
+            class={clsx(styles.switcherBtn, styles.clearBtn)}
+            title={t('Delete local version')}
+          >
+            <span class={styles.switcherIcon}>
+              <svg
+                class="no-transition"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+            </span>
+          </button>
         </div>
-      }
-    >
-      <div class={clsx(styles.editorWrapper)} data-field-type={props.fieldType}>
-        {/* Toolbars */}
-        <Show when={currentToolbarMode() === 'top'}>
-          <SimpleToolbar
-            commands={displayedCommands()}
-            onAction={handleAction}
-            currentFormats={activeFormats()}
-            class={clsx(styles.topToolbar, styles.visible)}
-            mode={currentToolbarMode() as ToolbarMode}
-            editorId={props.editorId}
-          />
-        </Show>
-
-        {/* Переключатель локальной версии */}
-        <Show when={showLocalVersionLink()}>
-          <div class={styles.localVersionSwitcher}>
-            <button
-              onClick={loadLocalVersion}
-              class={styles.switcherBtn}
-              title={t('You have a newer local version, click to use it')}
-            >
-              <span class={styles.switcherIcon}>
-                <svg
-                  class="no-transition"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M8 2V8L11 11"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M8 15C11.866 15 15 11.866 15 8C15 4.13401 11.866 1 8 1C4.13401 1 1 4.13401 1 8C1 11.866 4.13401 15 8 15Z"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                  />
-                </svg>
-              </span>
-              {t('Use local version')}
-            </button>
-            <button
-              onClick={handleClearLocalVersion}
-              class={clsx(styles.switcherBtn, styles.clearBtn)}
-              title={t('Delete local version')}
-            >
-              <span class={styles.switcherIcon}>
-                <svg
-                  class="no-transition"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                </svg>
-              </span>
-            </button>
-          </div>
-        </Show>
-
-        {/* Footnote editor removed */}
-
-        {/* Inline Forms */}
-        <Show when={showForm() === 'link'}>
-          <div
-            class={styles.inlineFormWrapper}
-            style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
-          >
-            <InlineForm
-              placeholder={t('Enter URL')}
-              initialValue={formInitialValue()}
-              onSubmit={handleInsertLink}
-              onClose={() => {
-                setShowForm(null)
-                editorRef()?.focus()
-                restoreSelection()
-              }}
-              validate={editorFormOptions()?.validate || (() => '')}
-            />
-          </div>
-        </Show>
-        <Show when={showForm() === 'video'}>
-          <div
-            class={styles.inlineFormWrapper}
-            style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
-          >
-            <InlineForm
-              placeholder={t('Enter video URL (YouTube, Vimeo)')}
-              initialValue={formInitialValue()}
-              onSubmit={handleInsertVideo}
-              onClose={() => {
-                setShowForm(null)
-                editorRef()?.focus()
-                restoreSelection()
-              }}
-              validate={editorFormOptions()?.validate || (() => '')}
-            />
-          </div>
-        </Show>
-
-        {/* Plus Menu */}
-        <Show when={shouldShowPlusMenu()}>
-          <PlusMenu
-            onAction={(action) => {
-              handlePlusMenuAction(action, editorRef()!, {
-                showLinkForm: () => showInlineForm('link', handleInsertLink),
-                showVideoForm: () => showInlineForm('video', handleInsertVideo, ''),
-                showImageUploadModal,
-                showAudioUploader,
-                handleChange
-              })
+      </Show>
+      {/* Footnote editor removed */}
+      {/* Inline Forms */}
+      <Show when={showForm() === 'link'}>
+        <div
+          class={styles.inlineFormWrapper}
+          style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
+        >
+          <InlineForm
+            placeholder={t('Enter URL')}
+            initialValue={formInitialValue()}
+            onSubmit={handleInsertLink}
+            onClose={() => {
+              setShowForm(null)
+              editorRef()?.focus()
+              restoreSelection()
             }}
-            position={getPlusMenuPosition()}
-            isVisible={!showForm() && !showSquibEditor() && hasFocus() && isCursorOnEmptyLine()}
-            editorId={props.editorId}
+            validate={editorFormOptions()?.validate || (() => '')}
           />
-        </Show>
-
+        </div>
+      </Show>
+      <Show when={showForm() === 'video'}>
+        <div
+          class={styles.inlineFormWrapper}
+          style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
+        >
+          <InlineForm
+            placeholder={t('Enter video URL (YouTube, Vimeo)')}
+            initialValue={formInitialValue()}
+            onSubmit={handleInsertVideo}
+            onClose={() => {
+              setShowForm(null)
+              editorRef()?.focus()
+              restoreSelection()
+            }}
+            validate={editorFormOptions()?.validate || (() => '')}
+          />
+        </div>
+      </Show>
+      <Show when={showForm() === 'tooltip'}>
+        <div
+          class={styles.inlineFormWrapper}
+          style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
+        >
+          <InlineForm
+            placeholder={t('Enter tooltip text')}
+            initialValue={formInitialValue()}
+            onSubmit={handleInsertTooltip}
+            onClose={() => {
+              setShowForm(null)
+              editorRef()?.focus()
+              restoreSelection()
+            }}
+          />
+        </div>
+      </Show>
+      {/* Editor Container with UI Layer */}
+      <div style={{ position: 'relative' }}>
         {/* Editor Content */}
         <div
           class={clsx(styles.editor, {
@@ -1090,8 +1037,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         </Show>
 
         {/* Forms and Modal Portals */}
-        <Portal mount={document.body}>
-          <Show when={showForm() !== null}>
+        <Show when={!isServer && showForm() !== null}>
+          <Portal mount={document.body}>
             <InlineForm
               onBlur={(e: FocusEvent) => {
                 if (isClickInsideToolbar(e)) return
@@ -1103,9 +1050,30 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
               initialValue={formInitialValue()}
               placeholder={showForm() === 'video' ? t('Enter video URL (YouTube, Vimeo)') : t('Enter URL')}
             />
-          </Show>
-        </Portal>
+          </Portal>
+        </Show>
+
+        {/* UI Layer поверх редактора */}
+        <Show when={props.plus}>
+          <EditorUILayer
+            editorRef={() => editorRef()?.querySelector('[contenteditable="true"]') as HTMLDivElement}
+            showPlusMenu={true}
+            onPlusAction={(action) => {
+              console.log('[SimpleRichEditor] Plus menu action:', action)
+              handlePlusMenuAction(action, editorRef()!, {
+                showLinkForm: () => showInlineForm('link', handleInsertLink),
+                showTooltipForm: () => showInlineForm('tooltip', handleInsertTooltip, ''),
+                showVideoForm: () => showInlineForm('video', handleInsertVideo, ''),
+                showImageUploadModal,
+                showAudioUploader,
+                handleChange
+              })
+            }}
+            editorId={props.editorId}
+            updateTrigger={updatePlusMenuTrigger()}
+          />
+        </Show>
       </div>
-    </Show>
+    </div>
   )
 }

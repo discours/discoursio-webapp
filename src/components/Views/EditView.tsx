@@ -232,10 +232,12 @@ export const EditView = (props: { draft?: Draft }) => {
       console.error('[EditView] Error during awareness cleanup:', error)
     }
 
-    // Удаляем слушатели событий
-    window.removeEventListener('scroll', handleScroll)
-    window.removeEventListener('online', handleNetworkStatusChange)
-    window.removeEventListener('offline', handleNetworkStatusChange)
+    // Удаляем слушатели событий (только в браузере)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('online', handleNetworkStatusChange)
+      window.removeEventListener('offline', handleNetworkStatusChange)
+    }
   })
 
   // Эффекты
@@ -1094,23 +1096,25 @@ export const EditView = (props: { draft?: Draft }) => {
                 if (!draft?.id) return null
 
                 return (
-                  <SimpleRichEditor
-                    editorId={`draft-${draft.id}-body`}
-                    fieldType="body"
-                    toolbar="float"
-                    commands={featuredEditorCommands as readonly (CommandType | readonly CommandType[])[]}
-                    content={getEditorContent(`draft-${draft.id}-body`) || draft.body || ''}
-                    onChange={(data) => untrack(() => handleInputChange('body', data))}
-                    onInit={(instance) => {
-                      setBodyEditorRef(instance.editor)
-                      if (instance.editor) {
-                        instance.editor.addEventListener('input', handleEditorInput)
-                      }
-                    }}
-                    onFocus={() => handleBodyEditorFocus(true)}
-                    onBlur={() => handleBodyEditorFocus(false)}
-                    plus={true}
-                  />
+                  <NoHydration>
+                    <SimpleRichEditor
+                      editorId={`draft-${draft.id}-body`}
+                      fieldType="body"
+                      toolbar="float"
+                      commands={featuredEditorCommands as readonly (CommandType | readonly CommandType[])[]}
+                      content={getEditorContent(`draft-${draft.id}-body`) || draft.body || ''}
+                      onChange={(data) => untrack(() => handleInputChange('body', data))}
+                      onInit={(instance) => {
+                        setBodyEditorRef(instance.editor)
+                        if (instance.editor) {
+                          instance.editor.addEventListener('input', handleEditorInput)
+                        }
+                      }}
+                      onFocus={() => handleBodyEditorFocus(true)}
+                      onBlur={() => handleBodyEditorFocus(false)}
+                      plus={true}
+                    />
+                  </NoHydration>
                 )
               })()}
             </div>

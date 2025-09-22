@@ -94,7 +94,7 @@ export const TopicCard = (props: TopicProps) => {
           <Show when={props.topic.pic}>
             <div class={styles.topicAvatar}>
               <a href={`/topic/${props.topic.slug}`}>
-                <img src={props.topic?.pic || ''} alt={title()} />
+                <img src={props.topic.pic || ''} alt={title()} />
               </a>
             </div>
           </Show>

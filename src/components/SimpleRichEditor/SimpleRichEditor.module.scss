@@ -614,6 +614,40 @@
 // Стиль для активной (выбранной) врезки
 .activeSquib {
   border: 2px solid #4285f4 !important; // Синий бордер для активной врезки
+}
+
+// Стили для tooltip тега - простой подход
+:global(tooltip) {
+  display: inline;
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted #999;
+  color: inherit;
+  
+  // Hover эффект
+  &:hover {
+    border-bottom-color: #333;
+  }
+}
+
+// Иконка добавляется только к tooltip, которые НЕ содержат других tooltip
+:global(tooltip:not(:has(tooltip)))::after {
+  content: "ⓘ";
+  display: inline;
+  margin-left: 2px;
+  font-size: 0.8em;
+  color: #666;
+  font-weight: normal;
+  vertical-align: super;
+  white-space: nowrap;
+}
+
+:global(tooltip:not(:has(tooltip)):hover)::after {
+  color: #333;
+}
+
+// Стиль для режима редактирования врезки
+.editingSquib {
   box-shadow: 0 0 5px rgb(66 133 244 / 30%);
   position: relative;
 

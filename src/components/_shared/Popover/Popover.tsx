@@ -1,4 +1,5 @@
 import { createSignal, JSX, onMount, Show } from 'solid-js'
+import { Portal } from 'solid-js/web'
 import usePopper from 'solid-popper'
 
 import styles from './Popover.module.scss'
@@ -68,12 +69,14 @@ export const Popover = (props: Props) => {
   return (
     <>
       {props.children(setAnchorWithAria)}
-      <Show when={show() && !props.disabled}>
-        <div ref={setPopper} class={styles.tooltip} role="tooltip" id={tooltipId} aria-hidden={!show()}>
-          {props.content}
-          <div class={styles.arrow} data-popper-arrow={true} />
-        </div>
-      </Show>
+      <Portal>
+        <Show when={show() && !props.disabled}>
+          <div ref={setPopper} class={styles.tooltip} role="tooltip" id={tooltipId} aria-hidden={!show()}>
+            {props.content}
+            <div class={styles.arrow} data-popper-arrow={true} />
+          </div>
+        </Show>
+      </Portal>
     </>
   )
 }

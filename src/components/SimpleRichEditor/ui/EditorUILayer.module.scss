@@ -1,0 +1,19 @@
+.editorUILayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none; /* Не блокируем взаимодействие с редактором */
+  z-index: 10;
+  
+  /* Отладочная рамка */
+  // border: 1px dashed rgba(0, 255, 0, 0.3);
+}
+
+.plusMenuContainer {
+  pointer-events: all; /* Включаем взаимодействие только для Plus-меню */
+  
+  /* Отладочная рамка */
+  // border: 1px solid rgba(255, 0, 0, 0.5);
+  // background: rgba(255, 0, 0, 0.1);
+}
+

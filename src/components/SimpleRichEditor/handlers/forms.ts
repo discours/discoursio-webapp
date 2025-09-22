@@ -158,8 +158,29 @@ export const createFormHandlers = (context: FormHandlersContext) => {
             replaceSelection(embedHtml, editor)
           }
         }
+      } else if (type === 'tooltip') {
+        const currentSelection = window.getSelection()
+        const currentRange = currentSelection?.rangeCount ? currentSelection.getRangeAt(0) : null
+
+        if (url.trim() === '') {
+          // Удаляем tooltip
+          removeFormatting('tooltip', {
+            range: currentRange,
+            text: currentSelection?.toString() || '',
+            isEmpty: !currentSelection || currentSelection.isCollapsed,
+            position: { top: 0, left: 0 }
+          })
+        } else {
+          const caption = currentSelection?.toString() || url
+          applyFormatting('tooltip', {
+            range: currentRange,
+            text: `<tooltip>${caption}</tooltip>`,
+            isEmpty: !currentSelection || currentSelection.isCollapsed,
+            position: { top: 0, left: 0 }
+          })
+        }
       } else {
-        console.warn(`Invalid URL for ${type}:`, url)
+        console.warn(`Invalid content for ${type}:`, url)
       }
       handleChange(props.fieldType ? String(props.fieldType) : 'content')
       editorRef()?.focus()
@@ -171,6 +192,7 @@ export const createFormHandlers = (context: FormHandlersContext) => {
 
   const handleInsertLink = (url: string) => handleInlineFormSubmit('link', url)
   const handleInsertVideo = (url: string) => handleInlineFormSubmit('video', url)
+  const handleInsertTooltip = (text: string) => handleInlineFormSubmit('tooltip', text)
 
   // Media handling
   const handleAudioUpload = (audioItems: MediaItem[]) => {
@@ -236,6 +258,7 @@ export const createFormHandlers = (context: FormHandlersContext) => {
     handleInlineFormSubmit,
     handleInsertLink,
     handleInsertVideo,
+    handleInsertTooltip,
     showAudioUploader,
     showImageUploadModal,
     handleUploadSuccess,

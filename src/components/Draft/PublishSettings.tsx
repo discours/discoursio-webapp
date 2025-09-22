@@ -689,7 +689,7 @@ export const PublishSettings = () => {
               >
                 <Show when={coverImage()?.url}>
                   <div class={styles.shoutCardCover}>
-                    <Image src={coverImage()?.url || ''} alt={draft()?.title || ''} width={800} />
+                    <Image src={coverImage()!.url!} alt={draft()?.title || ''} width={800} />
                   </div>
                 </Show>
                 <div class={styles.text}>

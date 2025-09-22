@@ -22,19 +22,11 @@ export function hasFormatting(format: CommandType, state: SelectionState): boole
 
   const config = FORMAT_CONFIG[format]
   if (!config) {
-    console.warn(`[hasFormatting] No config found for format: ${format}`)
+    // console.warn(`[hasFormatting] No config found for format: ${format}`)
     return false
   }
 
   const tag = config.tag.toUpperCase()
-  console.log(`[hasFormatting] Checking format: ${format}, tag: ${tag}, isEmpty: ${state.isEmpty}`)
-
-  // Дополнительная отладочная информация для кнопок тулбара
-  if (state.range) {
-    const container = state.range.startContainer
-    const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as HTMLElement)
-    console.log('[hasFormatting] Current element:', element?.tagName, element?.className)
-  }
 
   // Если нет выделения, проверяем текущую позицию курсора
   if (state.isEmpty) {
@@ -47,31 +39,29 @@ export function hasFormatting(format: CommandType, state: SelectionState): boole
       // Проверяем текущий элемент и его предков на соответствие требуемому тегу
       if (tag === 'MARK') {
         const result = hasTagOrStyle(element, 'MARK', null, 'background-color')
-        console.log(`[hasFormatting] MARK check (cursor) result: ${result}`)
+        // console.log(`[hasFormatting] MARK check (cursor) result: ${result}`)
         return result
       } else if (tag === 'STRONG') {
         const result = hasTagOrStyle(element, 'B', 'STRONG', 'font-weight', 'bold', '700')
-        console.log(`[hasFormatting] STRONG check (cursor) result: ${result}`)
+        // console.log(`[hasFormatting] STRONG check (cursor) result: ${result}`)
         return result
       } else if (tag === 'EM') {
         const result = hasTagOrStyle(element, 'I', 'EM', 'font-style', 'italic')
-        console.log(`[hasFormatting] EM check (cursor) result: ${result}`)
+        // console.log(`[hasFormatting] EM check (cursor) result: ${result}`)
         return result
       } else if (tag === 'A') {
         const result = element.tagName === 'A' || !!findAncestor(element, 'A')
-        console.log(`[hasFormatting] A check (cursor) result: ${result}`)
+        // console.log(`[hasFormatting] A check (cursor) result: ${result}`)
         return result
       } else if (['H1', 'H2', 'H3', 'BLOCKQUOTE', 'P'].includes(tag)) {
         // Для блочных элементов проверяем ближайший блочный родитель
         const blockParent = element.closest('h1, h2, h3, blockquote, p, div')
         const result = blockParent?.tagName === tag
-        console.log(
-          `[hasFormatting] Block check - looking for ${tag}, found: ${blockParent?.tagName}, result: ${result}`
-        )
+        // console.log(`[hasFormatting] Block check - looking for ${tag}, found: ${blockParent?.tagName}, result: ${result}`)
         return result
       } else {
         const result = !!element.closest(tag.toLowerCase()) || !!findAncestor(element, (el) => el.tagName === tag)
-        console.log(`[hasFormatting] Element check - looking for ${tag}, result: ${result}`)
+        // console.log(`[hasFormatting] Element check - looking for ${tag}, result: ${result}`)
         return result
       }
     }
@@ -98,7 +88,7 @@ export function hasFormatting(format: CommandType, state: SelectionState): boole
       } else if (['H1', 'H2', 'H3', 'BLOCKQUOTE', 'P'].includes(tag)) {
         // Для блочных элементов проверяем ближайший блочный родитель
         const blockParent = element.closest('h1, h2, h3, blockquote, p, div')
-        console.log(`[hasFormatting] Block check - looking for ${tag}, found: ${blockParent?.tagName}`)
+        // console.log(`[hasFormatting] Block check - looking for ${tag}, found: ${blockParent?.tagName}`)
         return blockParent?.tagName === tag
       } else {
         return !!element.closest(tag.toLowerCase()) || !!findAncestor(element, (el) => el.tagName === tag)
@@ -106,7 +96,7 @@ export function hasFormatting(format: CommandType, state: SelectionState): boole
     })
   }
 
-  console.log(`[hasFormatting] FINAL RESULT for ${format}: false (no conditions matched)`)
+  // console.log(`[hasFormatting] FINAL RESULT for ${format}: false (no conditions matched)`)
   return false
 }
 

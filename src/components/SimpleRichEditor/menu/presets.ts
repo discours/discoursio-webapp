@@ -25,7 +25,7 @@ export const FULL_COMMANDS = [
 
   // разделитель
 
-  ['link'], // в строку
+  ['link', 'tooltip'], // в строку
 
   // разделитель
 

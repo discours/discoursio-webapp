@@ -107,11 +107,9 @@ export default function Page(props: RouteSectionProps<Data>) {
 
 ### 🛡️ Клиентский рендер без гидрационных мисматчей
 ```typescript
-// ✅ onMount флаг для стабильной гидрации
-const [isClient, setIsClient] = createSignal(false)
-onMount(() => setIsClient(true))
+// ✅ isServer для детекта SSR
 
-<Show when={isClient()}>
+<Show when={!isServer}>
   <ClientOnlyComponent />
 </Show>
 ```

@@ -24,6 +24,7 @@ export interface MediaHandlersContext {
   showInlineForm: (type: 'link' | 'video', onSubmit: (value: string) => void, initialValue?: string) => void
   showImageUploadModal: () => void
   handleInsertLink: (url: string) => void
+  handleInsertTooltip: (text: string) => void
   // Utility functions
   saveSelection: () => void
 }

@@ -45,7 +45,8 @@ export const FORMAT_CONFIG: Record<CommandType, { tag: string; attributes?: Reco
   'bg-yellow': { tag: 'div', attributes: { 'data-bg': 'yellow' } },
   'bg-red': { tag: 'div', attributes: { 'data-bg': 'red' } },
   'bg-green': { tag: 'div', attributes: { 'data-bg': 'green' } },
-  'bg-color': { tag: 'div', attributes: { 'data-bg': '' } }
+  'bg-color': { tag: 'div', attributes: { 'data-bg': '' } },
+  tooltip: { tag: 'tooltip', attributes: {} }
 } as const
 
 /**

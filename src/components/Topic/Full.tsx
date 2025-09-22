@@ -226,7 +226,7 @@ export const FullTopic = (props: Props) => {
 
       <Show when={props.topic?.pic}>
         <div class={styles.topicImage}>
-          <img src={props.topic?.pic || ''} alt={props.topic?.title || ''} />
+          <img src={props.topic!.pic!} alt={props.topic?.title || ''} />
         </div>
       </Show>
 

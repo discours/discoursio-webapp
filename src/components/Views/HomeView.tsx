@@ -1,4 +1,5 @@
-import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js'
+import { createEffect, createMemo, For, onMount, Show } from 'solid-js'
+import { isServer } from 'solid-js/web'
 import { useAuthors } from '~/context/authors'
 import { useFeaturedFeed } from '~/context/featured'
 import { useLocalize } from '~/context/localize'
@@ -41,9 +42,6 @@ export const HomeView = (props: HomeViewProps) => {
   const { topTopics } = useTopics()
   const { featuredFeed, topMonthFeed, topFeed, topCommentedFeed, randomTopicFeed } = useFeaturedFeed()
 
-  // ✅ Флаг для клиентского рендера randomTopic
-  const [isClient, setIsClient] = createSignal(false)
-
   // Диагностика состояния данных
   createEffect(() => {
     if (import.meta.env.DEV && !props.featuredShouts?.length) {
@@ -63,9 +61,6 @@ export const HomeView = (props: HomeViewProps) => {
   })
 
   onMount(() => {
-    // ✅ Устанавливаем флаг клиентского рендера
-    setIsClient(true)
-
     props.featuredShouts?.forEach((s: Shout) => {
       addAuthors((s?.authors || []) as Author[])
     })
@@ -215,7 +210,7 @@ export const HomeView = (props: HomeViewProps) => {
           </Show>
 
           {/* ✅ Случайная тема - ТОЛЬКО клиентский рендер через onMount флаг */}
-          <Show when={isClient() && randomTopicFeed()?.shouts && randomTopicFeed()?.topic}>
+          <Show when={!isServer && randomTopicFeed()?.shouts && randomTopicFeed()?.topic}>
             <TopicShoutsGroup
               shouts={randomTopicFeed()?.shouts.slice(0, 7) || []}
               topic={randomTopicFeed()?.topic as Topic}

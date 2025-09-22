@@ -4,8 +4,8 @@
   font-size: 1.2rem;
   color: #fff;
   border-radius: 4px;
-  position: relative;
-  z-index: 100;
+  position: absolute; /* Изменено с relative на absolute для Portal */
+  z-index: 10001; /* Выше чем inlineFormWrapper (10000) для видимости тултипов */
 
   .arrow,
   .arrow::before {
