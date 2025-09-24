@@ -540,7 +540,7 @@ export const SessionProvider = (props: {
               // 🚨 ВРЕМЕННОЕ ИСПРАВЛЕНИЕ: Продолжаем без проверки state
               // В продакшене нужно требовать state для безопасности
               console.info('[SessionProvider] Proceeding with OAuth token without state validation')
-              
+
               batch(() => {
                 // Сохраняем access_token
                 if (!isServer) {
