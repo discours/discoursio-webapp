@@ -12,6 +12,7 @@
 - 🔧 **OAuth Debug**: Добавлена отладочная информация для диагностики OAuth параметров
 - 🚨 **OAuth Errors**: Добавлена обработка ошибок OAuth (error=auth_failed, access_denied и др.)
 - 🎯 **OAuth Success**: Исправлена обработка успешной авторизации для разных форматов URL (GitHub: m=auth&mode=login)
+- 🔍 **OAuth Debug Enhanced**: Добавлена расширенная отладка для диагностики проблем с OAuth на всех страницах
 
 ### Fixed
 - **GitHub OAuth**: Исправлен redirect_uri для localhost:3000 development

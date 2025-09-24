@@ -225,7 +225,14 @@ export const SessionProvider = (props: {
     access_token?: string
     scope?: string
     error?: string
+    source?: string
   }>()
+
+  // 🚨 КРИТИЧЕСКАЯ ОТЛАДКА: Проверяем что SessionProvider монтируется
+  if (!isServer) {
+    console.log('[SessionProvider] 🚨 MOUNTED! Current URL:', window.location.href)
+    console.log('[SessionProvider] 🚨 Search params:', searchParams)
+  }
 
   // Атомарные сигналы для fine-grained reactivity
   const [sessionToken, setSessionToken] = createSignal<string | undefined>()
@@ -526,14 +533,19 @@ export const SessionProvider = (props: {
         () => searchParams?.error
       ],
       ([state, access_token, token, error]) => {
-        // Отладка OAuth параметров
-        console.log('[OAuth Debug] URL params:', {
-          state,
-          access_token: access_token ? `${access_token.substring(0, 20)}...` : null,
-          token: token ? `${token.substring(0, 20)}...` : null,
-          error,
-          searchParams: searchParams
-        })
+        // 🚨 КРИТИЧЕСКАЯ ОТЛАДКА: Проверяем что createEffect срабатывает
+        if (!isServer) {
+          console.log('[OAuth Debug] 🚨 CREATE EFFECT TRIGGERED!')
+          console.log('[OAuth Debug] Current URL:', window.location.href)
+          console.log('[OAuth Debug] URL params:', {
+            state,
+            access_token: access_token ? `${access_token.substring(0, 20)}...` : null,
+            token: token ? `${token.substring(0, 20)}...` : null,
+            error,
+            searchParams: searchParams,
+            isServer
+          })
+        }
 
         // Обработка OAuth ошибок
         if (error) {
@@ -562,8 +574,22 @@ export const SessionProvider = (props: {
         const isOAuthCallback =
           (state && access_token) || (access_token && searchParams?.m === 'auth' && searchParams?.mode === 'login')
 
+        console.log('[OAuth Debug] 🚨 Checking OAuth callback conditions:', {
+          'state && access_token': !!(state && access_token),
+          'access_token && m=auth && mode=login': !!(
+            access_token &&
+            searchParams?.m === 'auth' &&
+            searchParams?.mode === 'login'
+          ),
+          isOAuthCallback,
+          state: !!state,
+          access_token: !!access_token,
+          m: searchParams?.m,
+          mode: searchParams?.mode
+        })
+
         if (isOAuthCallback) {
-          console.info('[SessionProvider] Processing OAuth callback')
+          console.info('[SessionProvider] 🚨 Processing OAuth callback - SUCCESS PATH!')
 
           try {
             const storedStateData = isServer ? null : localStorage.getItem('oauth_state')
