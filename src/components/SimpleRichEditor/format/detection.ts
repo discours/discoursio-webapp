@@ -218,6 +218,12 @@ export const getActiveFormats = (selection?: Selection, editor?: HTMLDivElement)
         node.nodeName === 'OL' || (node.nodeName === 'LI' && ancestorNodes.some((n) => n.nodeName === 'OL'))
     )
 
+    // Проверка заголовков
+    formats.h1 = ancestorNodes.some((node: Node) => node.nodeName === 'H1')
+    formats.h2 = ancestorNodes.some((node: Node) => node.nodeName === 'H2')
+    formats.h3 = ancestorNodes.some((node: Node) => node.nodeName === 'H3')
+    formats.p = ancestorNodes.some((node: Node) => node.nodeName === 'P')
+
     // Проверка специальных блоков
     formats.punchline = ancestorNodes.some(
       (node: Node) => node.nodeName === 'DIV' && node.parentElement?.classList.contains('punchline')
@@ -241,6 +247,13 @@ export const getActiveFormats = (selection?: Selection, editor?: HTMLDivElement)
     formats.blockquote = commonAncestors.some((node) => node.nodeName === 'BLOCKQUOTE')
     formats.bulletList = document.queryCommandState('insertUnorderedList')
     formats.orderedList = document.queryCommandState('insertOrderedList')
+
+    // Проверка заголовков для выделенного текста
+    formats.h1 = commonAncestors.some((node) => node.nodeName === 'H1')
+    formats.h2 = commonAncestors.some((node) => node.nodeName === 'H2')
+    formats.h3 = commonAncestors.some((node) => node.nodeName === 'H3')
+    formats.p = commonAncestors.some((node) => node.nodeName === 'P')
+
     formats.punchline = commonAncestors.some(
       (node) => node.nodeName === 'DIV' && node.parentElement?.classList.contains('punchline')
     )

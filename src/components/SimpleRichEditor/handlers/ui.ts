@@ -117,7 +117,7 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     return getEditorPosition(editorRef() || null, {
       type: 'float',
       placement: 'top',
-      offset: 40,
+      offset: 60, // Увеличиваем отступ для лучшего позиционирования
       centerHorizontally: isTouchDevice()
     })
   }

@@ -63,7 +63,7 @@ export const getEditorPosition = (
 
     // Базовое позиционирование для всех устройств - над серединой выделения
     return {
-      top: Math.max(10, rect.top - 40), // Минимум 10px от верха
+      top: Math.max(10, rect.top - 60), // Увеличиваем отступ до 60px от верха
       left: rect.left + rect.width / 2 // Центрируем над выделением
     }
   }

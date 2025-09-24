@@ -129,7 +129,7 @@ GOOGLE_USERINFO_URL=https://www.googleapis.com/oauth2/v2/userinfo
 # Environment Variables
 GITHUB_CLIENT_ID=your_client_id
 GITHUB_CLIENT_SECRET=your_client_secret
-GITHUB_REDIRECT_URI=https://yourdomain.com/oauth/github/callback
+GITHUB_REDIRECT_URI=http://localhost:3000/oauth/github/callback
 
 # OAuth URLs  
 GITHUB_AUTH_URL=https://github.com/login/oauth/authorize

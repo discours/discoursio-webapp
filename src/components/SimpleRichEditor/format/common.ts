@@ -58,7 +58,7 @@ export const executeCommand = (command: CommandType, context: FormatContext): Fo
     console.log(`[executeCommand] Config found for ${command}:`, config)
 
     // Определяем тип команды
-    const isBlockCommand = ['h1', 'h2', 'h3', 'blockquote', 'p'].includes(command)
+    const isBlockCommand = ['h1', 'h2', 'h3', 'blockquote', 'p', 'punchline'].includes(command)
     const isListCommand = ['bulletList', 'orderedList'].includes(command)
     const isMediaCommand = ['image', 'video', 'audio'].includes(command)
     const isLinkCommand = command === 'link'

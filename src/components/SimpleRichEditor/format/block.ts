@@ -45,7 +45,7 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
   const defaultTag = 'p'
 
   // Только поддерживаемые блочные типы
-  if (!config || !['h1', 'h2', 'h3', 'blockquote', 'p'].includes(config.tag)) {
+  if (!config || !['h1', 'h2', 'h3', 'blockquote', 'p', 'punchline'].includes(config.tag)) {
     console.warn(`[toggleBlockFormat] Command ${command} ('${config?.tag}') is not a supported block type.`)
     return
   }
@@ -61,7 +61,32 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
   }
 
   const currentTag = blockElement.tagName.toLowerCase()
-  const newTag = currentTag === targetTag ? defaultTag : targetTag
+
+  // Логика взаимоисключения для блочных элементов
+  let newTag = targetTag
+
+  // Если применяем заголовок, а уже есть другой заголовок - заменяем
+  if (['h1', 'h2', 'h3'].includes(targetTag) && ['h1', 'h2', 'h3'].includes(currentTag)) {
+    newTag = currentTag === targetTag ? defaultTag : targetTag
+  }
+  // Если применяем punchline к blockquote или наоборот - заменяем (они взаимоисключающие)
+  else if (
+    (targetTag === 'punchline' && currentTag === 'blockquote') ||
+    (targetTag === 'blockquote' && currentTag === 'punchline')
+  ) {
+    newTag = targetTag
+  }
+  // Если применяем заголовок к punchline или наоборот - заменяем
+  else if (
+    (['h1', 'h2', 'h3'].includes(targetTag) && currentTag === 'punchline') ||
+    (targetTag === 'punchline' && ['h1', 'h2', 'h3'].includes(currentTag))
+  ) {
+    newTag = targetTag
+  }
+  // Заголовки и blockquote НЕ взаимоисключающие - обычная toggle логика
+  else {
+    newTag = currentTag === targetTag ? defaultTag : targetTag
+  }
 
   // Избегаем изменений если уже корректно
   if (currentTag === newTag) return

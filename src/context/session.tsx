@@ -1322,7 +1322,7 @@ export const SessionProvider = (props: {
         state,
         provider: provider.toLowerCase(),
         timestamp,
-        redirectUri: window.location.origin
+        redirectUri: window.location.href // Полный URL для возврата
       }
 
       localStorage.setItem('oauth_state', JSON.stringify(oauthState))
@@ -1330,7 +1330,7 @@ export const SessionProvider = (props: {
       // Формируем URL для OAuth с дополнительными параметрами безопасности
       const oauthParams = new URLSearchParams({
         state,
-        redirect_uri: encodeURIComponent(window.location.origin),
+        redirect_uri: encodeURIComponent(window.location.href), // Полный URL
         timestamp: timestamp.toString()
       })
 

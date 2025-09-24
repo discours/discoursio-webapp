@@ -298,7 +298,7 @@ export const PlusMenu: Component<{
   }
 
   // Editor использует ограниченный набор элементов меню
-  const editorMenuItems = ['link', 'image', 'video']
+  const editorMenuItems = ['image', 'video', 'separator']
   const { t } = useLocalize()
 
   // Отладочная информация
@@ -318,7 +318,7 @@ export const PlusMenu: Component<{
         [styles.appearing]: isAppearing()
       })}
       style={{
-        position: 'fixed',
+        position: 'absolute',
         top: `${props.position.top}px`,
         left: `${props.position.left}px`,
         'z-index': 1000
@@ -331,24 +331,40 @@ export const PlusMenu: Component<{
           onMouseDown={(e) => e.preventDefault()} // Предотвращаем потерю фокуса редактора
           title="Добавить контент"
         >
-          <span
-            style={{
-              'font-size': '20px',
-              'font-weight': 'bold',
-              color: '#333',
-              'line-height': '1',
-              display: 'block'
-            }}
-          >
-            +
-          </span>
+          <svg width="21" height="22" viewBox="0 0 21 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M21 9L0 9L1.50847e-07 13L21 13V9Z" fill="currentColor" />
+            <path
+              fill-rule="evenodd"
+              clip-rule="evenodd"
+              d="M12.5 21.5L12.5 0.5L8.5 0.5L8.5 21.5H12.5Z"
+              fill="currentColor"
+            />
+          </svg>
         </button>
       </div>
 
       <Show when={shouldShowPlaceholder()}>
         <div class={styles.placeholder} onClick={handlePlaceholderClick}>
           {t('Write something or click')}
-          {' +'}
+          <span style={{ margin: '0 4px' }}>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 21 22"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{ display: 'inline-block' }}
+            >
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M21 9L0 9L1.50847e-07 13L21 13V9Z" fill="currentColor" />
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M12.5 21.5L12.5 0.5L8.5 0.5L8.5 21.5H12.5Z"
+                fill="currentColor"
+              />
+            </svg>
+          </span>
+          {t('to add media')}
         </div>
       </Show>
 

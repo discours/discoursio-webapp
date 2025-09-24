@@ -187,8 +187,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     props,
     setContent,
     setHasFocus,
-    isEditorEmpty: uiHelpers.isEditorEmpty,
-    updatePlaceholderState: uiHelpers.updatePlaceholderState,
+    ...uiHelpers, // Spread UI helpers instead of duplicating
     saveSelection,
     restoreSelection,
     selectionInfo,
@@ -274,14 +273,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   })
 
   // Use helpers from UI module
-  const {
-    currentToolbarMode,
-    isClickInsideToolbar,
-    isEditorEmpty,
-    getFloatingToolbarPosition,
-    findLinkAncestor,
-    updatePlaceholderState
-  } = uiHelpers
+  const { currentToolbarMode, isClickInsideToolbar, getFloatingToolbarPosition, findLinkAncestor } = uiHelpers
 
   // Используем функции из handlers вместо дублированных
 
@@ -299,7 +291,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     () => {
       const editor = editorRef()
       if (!editor || isServer) return
-      updatePlaceholderState() // Set initial state
+      uiHelpers.updatePlaceholderState() // Set initial state
     },
     { defer: true }
   )
@@ -313,7 +305,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     editorRef()!.innerHTML = cleanContent
     setContent(cleanContent)
     setShowLocalVersionLink(false)
-    updatePlaceholderState()
+    uiHelpers.updatePlaceholderState()
     const plainText = editorRef()!.innerText || ''
     const isEmpty = isEmptyContent(cleanContent)
     if (!isEmpty) {
@@ -347,7 +339,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           if (currentHTML !== '') {
             editorElement.innerHTML = ''
             setContent('')
-            updatePlaceholderState()
+            uiHelpers.updatePlaceholderState()
           }
           if (editorId) {
             const storageKey = getStorageKey(editorId, fieldType as EditorFieldType)
@@ -395,10 +387,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           saveSelection()
           editorElement.innerHTML = contentToUse
           setContent(contentToUse)
-          updatePlaceholderState()
+          uiHelpers.updatePlaceholderState()
           restoreSelection()
         } else if (!contentToUse && !editorElement.innerHTML) {
-          updatePlaceholderState()
+          uiHelpers.updatePlaceholderState()
         }
         if (showLocalVersionWarning && localVer) {
           setLocalVersion(localVer)
@@ -420,7 +412,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         saveSelection()
         editorRef()!.innerHTML = newContent
         restoreSelection()
-        updatePlaceholderState()
+        uiHelpers.updatePlaceholderState()
       }
     })
   )
@@ -474,10 +466,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     const editor = editorRef()
     if (!editor) return
 
-    updatePlaceholderState()
+    uiHelpers.updatePlaceholderState()
 
     const contentHtml = getHTML(editor)
-    const editorIsEmpty = isEditorEmpty()
+    const editorIsEmpty = uiHelpers.isEditorEmpty()
 
     // Обновляем UI состояние если редактор пуст
     if (editorIsEmpty) {
@@ -777,7 +769,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     if (props.placeholder) element.setAttribute('data-placeholder', props.placeholder)
     if (props.fieldType) element.setAttribute('data-field-type', props.fieldType)
     if (props.editorId) element.setAttribute('data-editor-id', props.editorId)
-    updatePlaceholderState() // Initial check
+    uiHelpers.updatePlaceholderState() // Initial check
 
     // Tooltip иконки теперь управляются через CSS :not(:has(tooltip))
 
@@ -966,7 +958,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         {/* Editor Content */}
         <div
           class={clsx(styles.editor, {
-            [styles.empty]: isEditorEmpty(),
+            [styles.empty]: uiHelpers.isEditorEmpty(),
             [styles.withTopToolbar]: currentToolbarMode() === 'top',
             [styles.withBottomToolbar]: currentToolbarMode() === 'bottom',
             [styles.focused]: hasFocus(),
@@ -993,19 +985,19 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         </div>
 
         {/* Other UI Elements */}
-        <Show when={currentToolbarMode() === 'bottom'}>
+        <Show when={currentToolbarMode() === 'bottom' && !showForm()}>
           <SimpleToolbar
             commands={displayedCommands()}
             onAction={handleAction}
             currentFormats={activeFormats()}
             class={clsx(styles.bottomToolbar, {
-              [styles.visible]: hasFocus() && !isEditorEmpty()
+              [styles.visible]: hasFocus() && !uiHelpers.isEditorEmpty()
             })}
             mode={currentToolbarMode() as ToolbarMode}
             editorId={props.editorId}
           />
         </Show>
-        <Show when={currentToolbarMode() === 'float'}>
+        <Show when={currentToolbarMode() === 'float' && !showForm()}>
           <SimpleToolbar
             commands={displayedCommands()}
             onAction={handleAction}
@@ -1057,7 +1049,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         <Show when={props.plus}>
           <EditorUILayer
             editorRef={() => editorRef()?.querySelector('[contenteditable="true"]') as HTMLDivElement}
-            showPlusMenu={true}
+            showPlusMenu={uiHelpers.shouldShowPlusMenu() || false}
             onPlusAction={(action) => {
               console.log('[SimpleRichEditor] Plus menu action:', action)
               handlePlusMenuAction(action, editorRef()!, {

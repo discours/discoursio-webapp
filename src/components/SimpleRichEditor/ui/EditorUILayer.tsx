@@ -66,34 +66,53 @@ export const EditorUILayer: Component<EditorUILayerProps> = (props) => {
     const editor = props.editorRef()
     const uiLayer = uiLayerRef()
 
-    if (!editor || !uiLayer) return
+    if (!editor || !uiLayer) {
+      console.log('[EditorUILayer] No editor or UI layer found')
+      return
+    }
 
     const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) {
+    if (!selection) {
+      console.log('[EditorUILayer] No selection found')
       setPlusMenuPosition({ top: 0, visible: false })
       return
     }
 
-    const range = selection.getRangeAt(0)
+    // Для плюс-меню нам нужна позиция курсора, даже если нет выделения
+    let range: Range
+    if (selection.rangeCount > 0) {
+      range = selection.getRangeAt(0)
+    } else {
+      // Создаем range в текущей позиции курсора
+      range = document.createRange()
+      if (selection.anchorNode) {
+        range.setStart(selection.anchorNode, selection.anchorOffset || 0)
+        range.collapse(true)
+      } else {
+        // Fallback: используем начало редактора
+        range.setStart(editor, 0)
+        range.collapse(true)
+      }
+    }
+
     const rangeRect = range.getBoundingClientRect()
     const editorRect = editor.getBoundingClientRect()
 
-    if (rangeRect.height > 0) {
-      // Позиция относительно UI-слоя
-      const relativeTop = rangeRect.top - editorRect.top + rangeRect.height / 2
+    // Позиция относительно UI-слоя
+    const relativeTop = rangeRect.top - editorRect.top + (rangeRect.height || 20) / 2
 
-      setPlusMenuPosition({
-        top: relativeTop,
-        visible: true
-      })
+    setPlusMenuPosition({
+      top: relativeTop,
+      visible: true
+    })
 
-      console.log('[EditorUILayer] Plus menu position updated:', {
-        rangeRect: { top: rangeRect.top, height: rangeRect.height },
-        editorRect: { top: editorRect.top },
-        relativeTop,
-        finalPosition: { top: relativeTop, visible: true }
-      })
-    }
+    console.log('[EditorUILayer] Plus menu position updated:', {
+      hasSelection: selection.rangeCount > 0,
+      rangeRect: { top: rangeRect.top, height: rangeRect.height },
+      editorRect: { top: editorRect.top },
+      relativeTop,
+      finalPosition: { top: relativeTop, visible: true }
+    })
   }
 
   // Отслеживание изменений в редакторе
@@ -131,23 +150,16 @@ export const EditorUILayer: Component<EditorUILayerProps> = (props) => {
 
   return (
     <div ref={setUILayerRef} class={styles.editorUILayer}>
-      <Show when={props.showPlusMenu && plusMenuPosition().visible}>
-        <div
-          class={styles.plusMenuContainer}
-          style={{
-            position: 'absolute',
-            top: `${plusMenuPosition().top - 16}px`, // Центрируем по вертикали
-            left: '-50px', // Слева от редактора
-            'z-index': 1000
+      <Show when={props.showPlusMenu}>
+        <PlusMenu
+          position={{
+            top: (plusMenuPosition().top || 20) - 16,
+            left: -50
           }}
-        >
-          <PlusMenu
-            position={{ top: 0, left: 0 }} // Позиция относительно контейнера
-            isVisible={true}
-            onAction={props.onPlusAction}
-            editorId={props.editorId}
-          />
-        </div>
+          isVisible={true}
+          onAction={props.onPlusAction}
+          editorId={props.editorId}
+        />
       </Show>
     </div>
   )
