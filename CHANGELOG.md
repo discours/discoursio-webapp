@@ -10,6 +10,8 @@
 ### Fixed (Critical)
 - 🚨 **OAuth Callback**: Исправлена критическая проблема - токены в URL не распознавались из-за отсутствия oauth_state в localStorage
 - 🔧 **OAuth Debug**: Добавлена отладочная информация для диагностики OAuth параметров
+- 🚨 **OAuth Errors**: Добавлена обработка ошибок OAuth (error=auth_failed, access_denied и др.)
+- 🎯 **OAuth Success**: Исправлена обработка успешной авторизации для разных форматов URL (GitHub: m=auth&mode=login)
 
 ### Fixed
 - **GitHub OAuth**: Исправлен redirect_uri для localhost:3000 development

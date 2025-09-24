@@ -224,6 +224,7 @@ export const SessionProvider = (props: {
     token?: string
     access_token?: string
     scope?: string
+    error?: string
   }>()
 
   // Атомарные сигналы для fine-grained reactivity
@@ -518,18 +519,50 @@ export const SessionProvider = (props: {
   // Обработка OAuth параметров (эффект с defer для предотвращения каскадных обновлений)
   createEffect(
     on(
-      [() => searchParams?.state, () => searchParams?.access_token, () => searchParams?.token],
-      ([state, access_token, token]) => {
+      [
+        () => searchParams?.state,
+        () => searchParams?.access_token,
+        () => searchParams?.token,
+        () => searchParams?.error
+      ],
+      ([state, access_token, token, error]) => {
         // Отладка OAuth параметров
         console.log('[OAuth Debug] URL params:', {
           state,
           access_token: access_token ? `${access_token.substring(0, 20)}...` : null,
           token: token ? `${token.substring(0, 20)}...` : null,
+          error,
           searchParams: searchParams
         })
 
-        // OAuth обработка
-        if (state && access_token) {
+        // Обработка OAuth ошибок
+        if (error) {
+          console.error('[SessionProvider] OAuth error received:', error)
+
+          const errorMessages = {
+            auth_failed: t('OAuth authorization failed'),
+            access_denied: t('Access denied by user'),
+            invalid_request: t('Invalid OAuth request'),
+            server_error: t('OAuth server error'),
+            temporarily_unavailable: t('OAuth service temporarily unavailable')
+          }
+
+          const errorMessage = errorMessages[error as keyof typeof errorMessages] || t('OAuth authorization failed')
+          setAuthError(errorMessage)
+
+          // Очищаем URL от ошибки
+          changeSearchParams({ error: undefined }, { replace: true })
+
+          // Показываем уведомление об ошибке
+          toast.error(errorMessage)
+          return
+        }
+
+        // OAuth обработка - проверяем разные форматы
+        const isOAuthCallback =
+          (state && access_token) || (access_token && searchParams?.m === 'auth' && searchParams?.mode === 'login')
+
+        if (isOAuthCallback) {
           console.info('[SessionProvider] Processing OAuth callback')
 
           try {
