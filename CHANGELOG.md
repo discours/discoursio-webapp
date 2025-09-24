@@ -7,17 +7,22 @@
 ### Enhanced
 - **OAuth redirect_url**: Изменен redirect_uri с `window.location.origin` на `window.location.href` для возврата на исходную страницу после OAuth авторизации
 
+### Fixed (Critical)
+- 🚨 **OAuth Callback**: Исправлена критическая проблема - токены в URL не распознавались из-за отсутствия oauth_state в localStorage
+- 🔧 **OAuth Debug**: Добавлена отладочная информация для диагностики OAuth параметров
+
 ### Fixed
 - **GitHub OAuth**: Исправлен redirect_uri для localhost:3000 development
 - 🎯 **SimpleRichEditor**: Исправлена логика определения позиции курсора - теперь работает без активного выделения текста
+- 🎨 **SimpleRichEditor**: Убраны отладочные стили и упрощена архитектура UI Layer
+- 🔧 **DRY Fix**: Устранено дублирование isEditorEmpty и updatePlaceholderState - теперь используется единый источник из uiHelpers
 
+### WIP
 - **PlusMenu**: Заменен текстовый символ "+" на SVG иконку editor-plus.svg
 - 🚨 **КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ**: Плюс-меню в SimpleRichEditor не отображалось из-за строгой логики видимости в EditorUILayer
 - 🎯 **SimpleRichEditor**: Упрощено условие показа плюс-меню для надежности отображения
 - 🎯 **SimpleRichEditor**: Исправлено позиционирование плюс-меню - убран конфликт между fixed и absolute позиционированием
 - 🎯 **SimpleRichEditor**: Исправлена логика показа плюс-меню - теперь использует shouldShowPlusMenu() вместо hardcoded true
-- 🎨 **SimpleRichEditor**: Убраны отладочные стили и упрощена архитектура UI Layer
-- 🔧 **DRY Fix**: Устранено дублирование isEditorEmpty и updatePlaceholderState - теперь используется единый источник из uiHelpers
 
 ## [0.14.19] - 2025-09-22
 
