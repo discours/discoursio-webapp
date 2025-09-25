@@ -128,7 +128,7 @@ export const route = {
 
       return await Promise.race([dataPromise, timeoutPromise])
     } catch (error) {
-      if (isServer) {
+      if (isServer && typeof process !== 'undefined' && process.stderr) {
         process.stderr.write(`[HomePage] SSR route.load error: ${error}\n`)
       } else {
         console.error('[HomePage] SSR route.load error:', error)

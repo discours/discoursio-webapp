@@ -549,17 +549,28 @@ export const SessionProvider = (props: {
 
         // Обработка OAuth ошибок
         if (error) {
-          console.error('[SessionProvider] OAuth error received:', error)
+          console.error('[SessionProvider] 🚨 OAuth error received:', error)
+          console.error('[SessionProvider] 🚨 Full URL:', window.location.href)
+          console.error('[SessionProvider] 🚨 All search params:', searchParams)
 
           const errorMessages = {
             auth_failed: t('OAuth authorization failed'),
             access_denied: t('Access denied by user'),
             invalid_request: t('Invalid OAuth request'),
             server_error: t('OAuth server error'),
-            temporarily_unavailable: t('OAuth service temporarily unavailable')
+            temporarily_unavailable: t('OAuth service temporarily unavailable'),
+            invalid_client: t('Invalid OAuth client configuration'),
+            unsupported_response_type: t('Unsupported OAuth response type'),
+            invalid_scope: t('Invalid OAuth scope'),
+            oauth_expired: t('OAuth session expired'),
+            oauth_invalid: t('OAuth validation failed'),
+            oauth_failed: t('OAuth process failed')
           }
 
-          const errorMessage = errorMessages[error as keyof typeof errorMessages] || t('OAuth authorization failed')
+          const errorMessage = errorMessages[error as keyof typeof errorMessages] || t(`OAuth error: ${error}`)
+
+          console.error('[SessionProvider] 🚨 Error message to show:', errorMessage)
+
           setAuthError(errorMessage)
 
           // Очищаем URL от ошибки
@@ -590,7 +601,17 @@ export const SessionProvider = (props: {
 
         if (isOAuthCallback) {
           console.info('[SessionProvider] 🚨 Processing OAuth callback - SUCCESS PATH!')
+        } else if (state || access_token || searchParams?.m === 'auth') {
+          console.warn('[SessionProvider] 🚨 Partial OAuth data detected but not processing:', {
+            hasState: !!state,
+            hasAccessToken: !!access_token,
+            hasM: searchParams?.m === 'auth',
+            hasMode: searchParams?.mode === 'login',
+            reason: 'Conditions not met for OAuth callback'
+          })
+        }
 
+        if (isOAuthCallback) {
           try {
             const storedStateData = isServer ? null : localStorage.getItem('oauth_state')
 
