@@ -2,7 +2,10 @@ import type { CodegenConfig } from '@graphql-codegen/cli'
 
 const config: CodegenConfig = {
   overwrite: true,
-  schema: 'https://v3.dscrs.site/graphql',
+  schema: [
+    'https://v3.dscrs.site/graphql',
+    'https://staging.discours.io/graphql'
+  ],
   documents: [
     'src/graphql/queries/**/*.ts',
     'src/**/*.{ts,tsx}',
