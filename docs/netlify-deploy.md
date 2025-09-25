@@ -30,12 +30,6 @@ PUBLIC_INBOX_ENDPOINT=https://inbox.dscrs.site
 # CDN
 PUBLIC_CDN_URL=https://files.dscrs.site
 
-# OAuth (если нужно)
-PUBLIC_OAUTH_GITHUB_CLIENT_ID=your_github_client_id
-PUBLIC_OAUTH_VK_CLIENT_ID=your_vk_client_id
-PUBLIC_OAUTH_GOOGLE_CLIENT_ID=your_google_client_id
-PUBLIC_OAUTH_FACEBOOK_CLIENT_ID=your_facebook_client_id
-
 # Email (для API функций)
 MAILGUN_API_KEY=your_mailgun_key
 
