@@ -15,6 +15,7 @@
 - 🔍 **OAuth Debug Enhanced**: Добавлена расширенная отладка для диагностики проблем с OAuth на всех страницах
 - 🚨 **OAuth Error Analysis**: Расширен список обрабатываемых ошибок OAuth и улучшена диагностика бекенд проблем
 - 🚨 **Critical JS Fix**: Исправлена ошибка "properties of undefined (reading 'write')" которая ломала обработку OAuth токенов
+- 🚨 **Article Loading Fix**: Исправлена бесконечная загрузка на страницах статей - добавлена правильная обработка Promise данных из route.load
 
 ### Fixed
 - **GitHub OAuth**: Исправлен redirect_uri для localhost:3000 development

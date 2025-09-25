@@ -207,6 +207,21 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   const loc = useLocation()
   const { t } = useLocalize()
 
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обработка Promise данных из route.load
+  const [ssrData] = createResource(
+    () => props.data,
+    async (data) => {
+      if (data instanceof Promise) {
+        console.log(`[ArticlePageContent] Resolving Promise data for "${props.params.slug}"`)
+        return await data
+      }
+      return data
+    },
+    {
+      initialValue: props.data instanceof Promise ? undefined : props.data
+    }
+  )
+
   // Используем SSR данные напрямую, createResource только для клиентских обновлений
   const [clientData] = createResource(
     () => {
@@ -220,8 +235,11 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
         return null
       }
 
+      // Используем разрешенные SSR данные
+      const data = ssrData()
+
       // Запускаем загрузку только если нет SSR данных
-      if (!props.data?.article) {
+      if (!data?.article) {
         console.log(`[ArticlePageContent] No SSR data for "${props.params.slug}", fetching on client`)
         return props.params.slug
       }
@@ -256,8 +274,11 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
     }
   )
 
-  // Приоритет: SSR данные > клиентские данные
-  const articleData = () => props.data?.article || clientData()
+  // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильная обработка Promise данных
+  const articleData = () => {
+    // Приоритет: разрешенные SSR данные > клиентские данные
+    return ssrData()?.article || clientData()
+  }
 
   onMount(async () => {
     if (gaIdentity && articleData()?.id) {
@@ -291,7 +312,8 @@ function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   createEffect(() => {
     console.log('[ArticlePageContent] Article data state:', {
       slug: props.params.slug,
-      hasSSRData: !!props.data?.article,
+      propsDataIsPromise: props.data instanceof Promise,
+      hasSSRData: !!ssrData()?.article,
       hasClientData: !!clientData(),
       finalData: !!articleData(),
       title: articleData()?.title,
