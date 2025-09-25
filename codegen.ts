@@ -2,7 +2,6 @@ import type { CodegenConfig } from '@graphql-codegen/cli'
 
 const config: CodegenConfig = {
   overwrite: true,
-  // Используем только core схему для основной генерации
   schema: 'https://v3.dscrs.site/graphql',
   documents: [
     'src/graphql/queries/**/*.ts',
