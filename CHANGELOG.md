@@ -16,6 +16,7 @@
 - 🚨 **OAuth Error Analysis**: Расширен список обрабатываемых ошибок OAuth и улучшена диагностика бекенд проблем
 - 🚨 **Critical JS Fix**: Исправлена ошибка "properties of undefined (reading 'write')" которая ломала обработку OAuth токенов
 - 🚨 **Article Loading Fix**: Исправлена бесконечная загрузка на страницах статей - добавлена правильная обработка Promise данных из route.load
+- 🚨 **Vercel Build Fix**: Убрана проблемная проверка process.stderr которая могла влиять на билд процесс
 
 ### Fixed
 - **GitHub OAuth**: Исправлен redirect_uri для localhost:3000 development
