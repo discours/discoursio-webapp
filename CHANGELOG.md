@@ -17,6 +17,11 @@
 - 🚨 **Critical JS Fix**: Исправлена ошибка "properties of undefined (reading 'write')" которая ломала обработку OAuth токенов
 - 🚨 **Article Loading Fix**: Исправлена бесконечная загрузка на страницах статей - добавлена правильная обработка Promise данных из route.load
 - 🚨 **Vercel Build Fix**: Убрана проблемная проверка process.stderr которая могла влиять на билд процесс
+- 🚀 **Netlify Deploy**: Добавлена конфигурация для деплоя на Netlify с правильной настройкой SolidStart SSR
+- 🔧 **Netlify API Functions**: Переписаны все API функции (feedback, newsletter, og) для совместимости с Netlify Functions
+- 📚 **Netlify Deploy Guide**: Добавлена подробная инструкция по деплою на Netlify с настройками и troubleshooting
+- 🎨 **Netlify OG Images**: Добавлена поддержка оверлея с кавером для генерации OG изображений через SVG
+- 🔧 **Unified API**: Единая кодовая база для Vercel и Netlify функций в папке api/ с простыми адаптерами (DRY, YAGNI, KISS)
 
 ### Fixed
 - **GitHub OAuth**: Исправлен redirect_uri для localhost:3000 development

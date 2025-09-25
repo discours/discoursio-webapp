@@ -1,6 +1,5 @@
 import { type RouteDefinition, type RouteSectionProps } from '@solidjs/router'
 import { createResource } from 'solid-js'
-import { isServer } from 'solid-js/web'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { HomeView, HomeViewProps } from '~/components/Views/HomeView'
 import { coreApiUrl } from '~/config'

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
+    "build:netlify": "npm run codegen:all && vinxi build",
     "start": "NODE_ENV=production node --no-deprecation .output/server/index.mjs",
     "start:debug": "NODE_ENV=production node --inspect-brk --enable-source-maps .output/server/index.mjs",
     "prestart": "npm run build",

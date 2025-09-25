@@ -1,0 +1,66 @@
+[build]
+  publish = ".output/public"
+  command = "npm run build:netlify"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--production=false"
+
+# SolidStart SSR функции
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/render"
+  status = 200
+
+# API функции
+[[redirects]]
+  from = "/api/feedback"
+  to = "/.netlify/functions/feedback"
+  status = 200
+
+[[redirects]]
+  from = "/api/newsletter"
+  to = "/.netlify/functions/newsletter"
+  status = 200
+
+[[redirects]]
+  from = "/api/og"
+  to = "/.netlify/functions/og"
+  status = 200
+
+[[redirects]]
+  from = "/api/og/*"
+  to = "/.netlify/functions/og"
+  status = 200
+
+[functions]
+  directory = ".netlify/functions"
+  node_bundler = "esbuild"
+
+# Настройки для SolidStart
+[build.processing]
+  skip_processing = false
+
+[build.processing.css]
+  bundle = true
+  minify = true
+
+[build.processing.js]
+  bundle = true
+  minify = true
+
+# Headers для статических ресурсов
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

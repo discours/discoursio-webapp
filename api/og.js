@@ -18,10 +18,20 @@ function createElement(type, props, ...children) {
 // Алиас для совместимости
 const h = createElement
 
-// Конфигурация для Edge Runtime
+// Конфигурация для Edge Runtime (Vercel)
 export const config = {
   runtime: 'edge'
 }
+
+// Netlify handler - простой адаптер
+export const handler = (event) =>
+  GET(
+    new Request(
+      `https://${event.headers.host || 'localhost'}${event.path}?${new URLSearchParams(event.queryStringParameters || {}).toString()}`
+    )
+  )
+    .then(async (res) => ({ statusCode: res.status, headers: Object.fromEntries(res.headers), body: await res.text() }))
+    .catch(() => ({ statusCode: 500, body: 'Error' }))
 
 // Базовые настройки
 const cdnUrl = process.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
