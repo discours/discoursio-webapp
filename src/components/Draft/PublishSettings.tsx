@@ -8,6 +8,7 @@ import { Image } from '~/components/_shared/Image'
 import { InviteMembers } from '~/components/_shared/InviteMembers/InviteMembers'
 import { type EditorData } from '~/components/SimpleRichEditor/lib/types'
 import { UploadModalContent } from '~/components/Upload/UploadModalContent/UploadModalContent'
+import { isReservedRoute } from '~/constants/reserved-routes'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
@@ -630,6 +631,15 @@ export const PublishSettings = () => {
                 value={draft()?.slug || ''}
                 onInput={(e) => {
                   const input = e.target as HTMLInputElement
+                  const slug = input.value.trim()
+
+                  // Простая валидация зарезервированных роутов
+                  if (slug && isReservedRoute(slug)) {
+                    input.setCustomValidity('This URL is reserved by the system')
+                  } else {
+                    input.setCustomValidity('')
+                  }
+
                   handleFieldChange('slug', input.value)
                 }}
               />

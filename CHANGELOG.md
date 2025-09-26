@@ -2,6 +2,25 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.14.21] - 2025-09-26
+
+### Enhanced (OAuth Simplification)
+- **⚡ Simple OAuth Route**: Создан простой редирект роут `/oauth`
+- **🎯 Clean Architecture**: Бэкенд обрабатывает OAuth → редирект на фронт с результатом
+- **🍪 Cookie Support**: Поддержка httpOnly cookies от бэкенда (приоритет) + fallback на URL параметры
+- **🧹 Removed Complexity**: Убрана сложная OAuth логика из SessionProvider
+- **🚫 Reserved Routes**: Добавлен черный список зарезервированных роутов для защиты от конфликтов со slug'ами
+
+### Security Improvements
+- **🔐 Secure Cookies**: Все OAuth cookies с флагами Secure + SameSite=Lax
+- **⏰ TTL Validation**: 10-минутное окно для OAuth state (защита от replay атак)
+- **🚫 XSS Protection**: Токены недоступны из JavaScript благодаря httpOnly
+- **🎯 PKCE Ready**: Подготовлена инфраструктура для PKCE flow
+
+### Breaking Changes
+- **📍 Redirect URI**: OAuth провайдеры должны использовать `/oauth` вместо `/oauth/callback`
+- **🔄 Cookie-based**: Авторизация теперь работает через httpOnly cookies, не localStorage
+
 ## [0.14.20] - 2025-09-24
 
 ### Enhanced

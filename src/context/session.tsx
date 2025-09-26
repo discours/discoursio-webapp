@@ -218,13 +218,7 @@ export const SessionProvider = (props: {
   const [searchParams, changeSearchParams] = useSearchParams<{
     mode?: string
     m?: string
-    state?: string
-    redirectURL?: string
-    redirect_uri?: string
     token?: string
-    access_token?: string
-    scope?: string
-    error?: string
     source?: string
   }>()
 
@@ -523,226 +517,11 @@ export const SessionProvider = (props: {
     }
   }
 
-  // Обработка OAuth параметров (эффект с defer для предотвращения каскадных обновлений)
+  // Обработка токена сброса пароля (OAuth теперь обрабатывается в /oauth/callback)
   createEffect(
     on(
-      [
-        () => searchParams?.state,
-        () => searchParams?.access_token,
-        () => searchParams?.token,
-        () => searchParams?.error
-      ],
-      ([state, access_token, token, error]) => {
-        // 🚨 КРИТИЧЕСКАЯ ОТЛАДКА: Проверяем что createEffect срабатывает
-        if (!isServer) {
-          console.log('[OAuth Debug] 🚨 CREATE EFFECT TRIGGERED!')
-          console.log('[OAuth Debug] Current URL:', window.location.href)
-          console.log('[OAuth Debug] URL params:', {
-            state,
-            access_token: access_token ? `${access_token.substring(0, 20)}...` : null,
-            token: token ? `${token.substring(0, 20)}...` : null,
-            error,
-            searchParams: searchParams,
-            isServer
-          })
-        }
-
-        // Обработка OAuth ошибок
-        if (error) {
-          console.error('[SessionProvider] 🚨 OAuth error received:', error)
-          console.error('[SessionProvider] 🚨 Full URL:', window.location.href)
-          console.error('[SessionProvider] 🚨 All search params:', searchParams)
-
-          const errorMessages = {
-            auth_failed: t('OAuth authorization failed'),
-            access_denied: t('Access denied by user'),
-            invalid_request: t('Invalid OAuth request'),
-            server_error: t('OAuth server error'),
-            temporarily_unavailable: t('OAuth service temporarily unavailable'),
-            invalid_client: t('Invalid OAuth client configuration'),
-            unsupported_response_type: t('Unsupported OAuth response type'),
-            invalid_scope: t('Invalid OAuth scope'),
-            oauth_expired: t('OAuth session expired'),
-            oauth_invalid: t('OAuth validation failed'),
-            oauth_failed: t('OAuth process failed')
-          }
-
-          const errorMessage = errorMessages[error as keyof typeof errorMessages] || t(`OAuth error: ${error}`)
-
-          console.error('[SessionProvider] 🚨 Error message to show:', errorMessage)
-
-          setAuthError(errorMessage)
-
-          // Очищаем URL от ошибки
-          changeSearchParams({ error: undefined }, { replace: true })
-
-          // Показываем уведомление об ошибке
-          toast.error(errorMessage)
-          return
-        }
-
-        // OAuth обработка - проверяем разные форматы
-        const isOAuthCallback =
-          (state && access_token) || (access_token && searchParams?.m === 'auth' && searchParams?.mode === 'login')
-
-        console.log('[OAuth Debug] 🚨 Checking OAuth callback conditions:', {
-          'state && access_token': !!(state && access_token),
-          'access_token && m=auth && mode=login': !!(
-            access_token &&
-            searchParams?.m === 'auth' &&
-            searchParams?.mode === 'login'
-          ),
-          isOAuthCallback,
-          state: !!state,
-          access_token: !!access_token,
-          m: searchParams?.m,
-          mode: searchParams?.mode
-        })
-
-        if (isOAuthCallback) {
-          console.info('[SessionProvider] 🚨 Processing OAuth callback - SUCCESS PATH!')
-        } else if (state || access_token || searchParams?.m === 'auth') {
-          console.warn('[SessionProvider] 🚨 Partial OAuth data detected but not processing:', {
-            hasState: !!state,
-            hasAccessToken: !!access_token,
-            hasM: searchParams?.m === 'auth',
-            hasMode: searchParams?.mode === 'login',
-            reason: 'Conditions not met for OAuth callback'
-          })
-        }
-
-        if (isOAuthCallback) {
-          try {
-            const storedStateData = isServer ? null : localStorage.getItem('oauth_state')
-
-            if (!storedStateData) {
-              console.warn('[SessionProvider] No stored OAuth state found - proceeding without state validation')
-              // 🚨 ВРЕМЕННОЕ ИСПРАВЛЕНИЕ: Продолжаем без проверки state
-              // В продакшене нужно требовать state для безопасности
-              console.info('[SessionProvider] Proceeding with OAuth token without state validation')
-
-              batch(() => {
-                // Сохраняем access_token
-                if (!isServer) {
-                  localStorage.setItem(AUTH_TOKEN_KEY, access_token)
-                }
-                setSessionToken(access_token)
-                setIsSessionValidating(true)
-                changeSearchParams({ mode: 'confirm-email', m: 'auth' }, { replace: true })
-              })
-
-              // Загружаем данные пользователя
-              loadSessionData(access_token)
-                .then((sessionData) => {
-                  if (sessionData) {
-                    updateSession(sessionData)
-                    toast.success(t('Successfully logged in'))
-                  } else {
-                    console.error('[SessionProvider] Failed to load user data after OAuth')
-                    setAuthError('Failed to complete OAuth login')
-                    updateSession(undefined)
-                  }
-                })
-                .catch((error) => {
-                  console.error('[SessionProvider] Error loading session data:', error)
-                  setAuthError('Failed to complete OAuth login')
-                  updateSession(undefined)
-                })
-              return
-            }
-
-            // Парсим сохраненное состояние OAuth с типизацией
-            interface OAuthState {
-              state: string
-              provider?: string
-              timestamp?: number
-              redirectUri?: string
-            }
-
-            let oauthState: OAuthState
-            try {
-              oauthState = JSON.parse(storedStateData) as OAuthState
-            } catch (_parseError) {
-              console.warn('[SessionProvider] Invalid OAuth state format, using legacy format')
-              // Обратная совместимость со старым форматом (просто строка)
-              oauthState = { state: storedStateData }
-            }
-
-            // Проверяем state
-            if (oauthState.state !== state) {
-              console.warn('[SessionProvider] OAuth state mismatch:', {
-                stored: `${oauthState.state?.substring(0, 8)}...`,
-                received: `${state?.substring(0, 8)}...`
-              })
-              setAuthError('OAuth security validation failed')
-              changeSearchParams({ error: 'oauth_invalid' }, { replace: true })
-              return
-            }
-
-            // Проверяем TTL (10 минут)
-            if (oauthState.timestamp) {
-              const now = Date.now()
-              const stateAge = now - oauthState.timestamp
-              const maxAge = 10 * 60 * 1000 // 10 минут
-
-              if (stateAge > maxAge) {
-                console.warn('[SessionProvider] OAuth state expired:', {
-                  age: Math.round(stateAge / 1000),
-                  maxAge: Math.round(maxAge / 1000)
-                })
-                setAuthError('OAuth session expired')
-                changeSearchParams({ error: 'oauth_expired' }, { replace: true })
-                if (!isServer) localStorage.removeItem('oauth_state')
-                return
-              }
-            }
-
-            console.info('[SessionProvider] OAuth state verified successfully')
-
-            batch(() => {
-              // Сохраняем access_token для дальнейшей обработки
-              if (!isServer) {
-                localStorage.setItem(AUTH_TOKEN_KEY, access_token)
-              }
-
-              // Устанавливаем временную сессию
-              setSessionToken(access_token)
-              setIsSessionValidating(true)
-
-              // Переходим к подтверждению email или завершению авторизации
-              changeSearchParams({ mode: 'confirm-email', m: 'auth' }, { replace: true })
-
-              // Очищаем OAuth state
-              if (!isServer) localStorage.removeItem('oauth_state')
-            })
-
-            // Асинхронно загружаем данные пользователя
-            loadSessionData(access_token)
-              .then((sessionData) => {
-                if (sessionData) {
-                  updateSession(sessionData)
-                  toast.success(t('Successfully logged in'))
-                } else {
-                  console.error('[SessionProvider] Failed to load user data after OAuth')
-                  setAuthError('Failed to complete OAuth login')
-                  updateSession(undefined)
-                }
-              })
-              .catch((error) => {
-                console.error('[SessionProvider] Error loading OAuth user data:', error)
-                setAuthError('Failed to complete OAuth login')
-                updateSession(undefined)
-              })
-
-            return
-          } catch (error) {
-            console.error('[SessionProvider] Error processing OAuth callback:', error)
-            setAuthError('OAuth login failed')
-            changeSearchParams({ error: 'oauth_failed' }, { replace: true })
-            return
-          }
-        }
-
+      () => searchParams?.token,
+      (token) => {
         // Обработка токена сброса пароля
         if (token) {
           console.info('[SessionProvider] Processing password reset token')
@@ -753,17 +532,51 @@ export const SessionProvider = (props: {
     )
   )
 
+  // Проверка ошибок OAuth (роут /oauth уже обработал токен)
+  createEffect(() => {
+    if (!isServer) {
+      const urlParams = new URLSearchParams(window.location.search)
+      const oauthError = urlParams.get('oauth_error')
+
+      if (oauthError) {
+        console.error('[SessionProvider] OAuth error:', oauthError)
+
+        const errorMessages = {
+          auth_failed: t('OAuth authorization failed'),
+          access_denied: t('Access denied by user'),
+          invalid_request: t('Invalid OAuth request'),
+          server_error: t('OAuth server error'),
+          invalid_client: t('Invalid OAuth client'),
+          oauth_expired: t('OAuth session expired'),
+          oauth_invalid: t('OAuth validation failed')
+        }
+
+        const errorMessage = errorMessages[oauthError as keyof typeof errorMessages] || t(`OAuth error: ${oauthError}`)
+
+        toast.error(errorMessage)
+
+        // Очищаем ошибку из URL
+        urlParams.delete('oauth_error')
+        const newUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`
+        window.history.replaceState({}, '', newUrl)
+      }
+    }
+  })
+
   // Инициализация сессии при монтировании (используем defer для стабильности)
   onMount(async () => {
     // Инициализируем базовый клиент
     let initialToken: string | null = null
 
     if (!isServer) {
-      // 1. Сначала проверяем localStorage
+      // 1. Проверяем localStorage (может быть реальный токен или флаг httpOnly)
       const lsToken = localStorage.getItem(AUTH_TOKEN_KEY)
-      if (lsToken) {
+      if (lsToken && lsToken !== 'httponly_cookie') {
         initialToken = lsToken
         console.log('[SessionProvider] Токен найден в localStorage')
+      } else if (lsToken === 'httponly_cookie') {
+        console.log('[SessionProvider] Используем httpOnly cookie для авторизации')
+        // initialToken остается null, GraphQL клиент использует cookies
       } else {
         // 2. Если localStorage пустой, проверяем httpOnly cookies
         // Для httpOnly cookies мы не можем прочитать значение, но можем попробовать
@@ -817,21 +630,6 @@ export const SessionProvider = (props: {
       updateSession(undefined, true)
     }
   })
-
-  // Обработка OAuth состояния при монтировании
-  createEffect(
-    on(
-      () => searchParams?.state,
-      (state) => {
-        if (state) {
-          const scope = searchParams?.scope?.toString().split(' ') || ['openid', 'profile', 'email']
-          console.info('[SessionProvider] OAuth scope:', scope)
-          changeSearchParams({ mode: 'confirm-email', m: 'auth' }, { replace: true })
-        }
-      },
-      { defer: true }
-    )
-  )
 
   // Настройка автоматического обновления токена
   const setupSessionTimer = (intervalMinutes = TOKEN_REFRESH_INTERVAL) => {
@@ -1432,23 +1230,14 @@ export const SessionProvider = (props: {
     try {
       // Генерируем безопасный state для OAuth с дополнительными данными
       const state = crypto.randomUUID()
-      const timestamp = Date.now()
 
-      // Сохраняем состояние OAuth с timestamp для проверки TTL
-      const oauthState = {
-        state,
-        provider: provider.toLowerCase(),
-        timestamp,
-        redirectUri: window.location.href // Полный URL для возврата
-      }
+      // Формируем callback URL для OAuth (фронтенд роут для получения данных от бэкенда)
+      const callbackUrl = `${window.location.origin}/oauth`
 
-      localStorage.setItem('oauth_state', JSON.stringify(oauthState))
-
-      // Формируем URL для OAuth с дополнительными параметрами безопасности
+      // Формируем URL для OAuth - бэкенд создаст сессию и запомнит откуда пришли
       const oauthParams = new URLSearchParams({
-        state,
-        redirect_uri: encodeURIComponent(window.location.href), // Полный URL
-        timestamp: timestamp.toString()
+        redirect_uri: encodeURIComponent(callbackUrl) // Фронтенд роут для получения результата
+        // Бэкенд сам определит redirect URL из Referer заголовка или сессии
       })
 
       // Обрабатываем специальный случай для x.com (нормализуем до twitter для API)
