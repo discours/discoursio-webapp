@@ -11,8 +11,8 @@ import { type Page } from '@playwright/test'
  */
 export async function checkRealApiConnection(page: Page): Promise<boolean> {
   try {
-    // Проверяем что GraphQL endpoint отвечает
-    const response = await page.request.post('/graphql', {
+    // Проверяем что GraphQL endpoint отвечает (прямо к API)
+    const response = await page.request.post('https://v3.dscrs.site/graphql', {
       data: {
         query: `
           query HealthCheck {

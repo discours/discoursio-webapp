@@ -48,11 +48,6 @@ export function GET() {
 
     console.log('[OAuth] Success - token in httpOnly cookie, redirecting')
 
-    // Устанавливаем флаг что есть httpOnly cookie (для совместимости)
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('auth_token', 'httponly_cookie')
-    }
-
     // Чистый редирект без OAuth параметров в URL
     return redirect(redirectUrl)
   }

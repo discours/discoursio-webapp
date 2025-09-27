@@ -2,6 +2,21 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.14.22] - 2025-09-27
+
+### Removed (YAGNI Cleanup)
+- **🗑️ GraphQL Proxy Removal**: Удален неиспользуемый GraphQL прокси роут `/graphql`
+- **🔧 OAuth Token Handling**: Убран фейковый токен `'httponly_cookie'` из localStorage после OAuth
+- **🧹 Test Cleanup**: Обновлены тесты для использования прямых API запросов
+- **📚 Documentation Update**: Обновлена документация с правильными URL API
+
+### Technical Details
+- Удален файл `src/routes/graphql.ts` (неиспользуемый прокси)
+- Упрощена логика OAuth редиректа в `src/routes/oauth.ts`
+- Обновлены тесты в `tests/utils/auth-helpers.ts` и `tests/utils/real-api-helpers.ts`
+- Обновлена документация в `docs/solidstart-urql-best-practices.md`
+- Все GraphQL запросы идут прямо к `v3.dscrs.site/graphql` с `credentials: 'include'`
+
 ## [0.14.21] - 2025-09-26
 
 ### Enhanced (OAuth Simplification)

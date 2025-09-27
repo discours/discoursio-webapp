@@ -476,6 +476,7 @@ export const SessionProvider = (props: {
       console.log('[loadSession] localStorage пустой, пытаемся восстановить из httpOnly cookie')
 
       try {
+        // Создаем клиент без токена - сервер должен проверить httpOnly cookie
         const cookieClient = graphqlClientCreate(coreApiUrl)
         const sessionData = await loadSessionDataWithClient(cookieClient)
 
@@ -569,21 +570,18 @@ export const SessionProvider = (props: {
     let initialToken: string | null = null
 
     if (!isServer) {
-      // 1. Проверяем localStorage (может быть реальный токен или флаг httpOnly)
+      // 1. Проверяем localStorage на реальный токен
       const lsToken = localStorage.getItem(AUTH_TOKEN_KEY)
-      if (lsToken && lsToken !== 'httponly_cookie') {
+      if (lsToken) {
         initialToken = lsToken
         console.log('[SessionProvider] Токен найден в localStorage')
-      } else if (lsToken === 'httponly_cookie') {
-        console.log('[SessionProvider] Используем httpOnly cookie для авторизации')
-        // initialToken остается null, GraphQL клиент использует cookies
       } else {
         // 2. Если localStorage пустой, проверяем httpOnly cookies
         // Для httpOnly cookies мы не можем прочитать значение, но можем попробовать
         // загрузить сессию с пустым токеном - сервер проверит cookie
         console.log('[SessionProvider] localStorage пустой, проверяем httpOnly cookies')
 
-        // Создаем клиент без токена - сервер проверит httpOnly cookie
+        // Создаем клиент без токена - сервер должен проверить httpOnly cookie
         const cookieClient = graphqlClientCreate(coreApiUrl)
 
         try {

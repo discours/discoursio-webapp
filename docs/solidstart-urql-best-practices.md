@@ -18,7 +18,7 @@ sessionStorage.setItem(cacheKey, hugeGraphQLResponse)
 import { cacheExchange, createClient, ssrExchange } from '@urql/core'
 
 const client = createClient({
-  url: '/graphql',
+  url: 'https://v3.dscrs.site/graphql', // Прямо к API
   exchanges: [
     cacheExchange, // 🎯 Основной кеш URQL в памяти
     ssrExchange({ isClient: !isServer }),

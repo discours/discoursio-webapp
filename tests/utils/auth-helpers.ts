@@ -50,13 +50,12 @@ export const TEST_USERS = {
  */
 export async function checkApiConnection(page: Page): Promise<boolean> {
   try {
-    // Сначала пробуем локальный прокси, потом внешний API
-    const localApiUrl = '/graphql'
+    // Проверяем только внешний API (прокси удален)
     const externalApiUrl = 'https://v3.dscrs.site/graphql'
 
-    console.log(`[API Test] Проверка подключения к локальному GraphQL прокси: ${localApiUrl}`)
+    console.log(`[API Test] Проверка подключения к GraphQL API: ${externalApiUrl}`)
 
-    const localResult = await page.evaluate(async (url) => {
+    const result = await page.evaluate(async (url) => {
       try {
         const response = await fetch(url, {
           method: 'POST',
@@ -73,56 +72,23 @@ export async function checkApiConnection(page: Page): Promise<boolean> {
         }
 
         const data = await response.json()
-        console.log('[API Test] Успешный ответ от локального прокси:', data)
+        console.log('[API Test] Успешный ответ от API:', data)
         return true
       } catch (error) {
-        console.warn('[API Test] Ошибка проверки локального прокси:', error)
-        return false
-      }
-    }, localApiUrl)
-
-    if (localResult) {
-      console.log(`[API Test] Локальный GraphQL прокси доступен по адресу ${localApiUrl}`)
-      return true
-    }
-
-    // Если локальный прокси недоступен, проверяем внешний API
-    console.log(`[API Test] Локальный прокси недоступен, проверяем внешний API: ${externalApiUrl}`)
-
-    const externalResult = await page.evaluate(async (url) => {
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            query: '{ __typename }'
-          })
-        })
-
-        if (!response.ok) {
-          return false
-        }
-
-        const data = await response.json()
-        console.log('[API Test] Успешный ответ от внешнего API:', data)
-        return true
-      } catch (error) {
-        console.warn('[API Test] Ошибка проверки внешнего API:', error)
+        console.warn('[API Test] Ошибка проверки API:', error)
         return false
       }
     }, externalApiUrl)
 
-    if (externalResult) {
-      console.log(`[API Test] Внешний GraphQL API доступен по адресу ${externalApiUrl}`)
+    if (result) {
+      console.log(`[API Test] GraphQL API доступен по адресу ${externalApiUrl}`)
       return true
     }
 
-    console.log('[API Test] Ни локальный прокси, ни внешний API недоступны')
+    console.log('[API Test] GraphQL API недоступен')
     return false
   } catch (error) {
-    console.warn('[API Test] Ошибка проверки локального GraphQL прокси:', error)
+    console.warn('[API Test] Ошибка проверки GraphQL API:', error)
     return false
   }
 }
@@ -134,8 +100,8 @@ export async function performLogin(page: Page): Promise<boolean> {
   try {
     console.log('[performLogin] Начинаем процесс авторизации...')
 
-    // API доступен через сервер (не напрямую из браузера из-за CORS)
-    console.log('[performLogin] Используем авторизацию через сервер')
+    // API доступен напрямую с credentials: 'include'
+    console.log('[performLogin] Используем прямую авторизацию к API')
 
     // Проверяем существующий аккаунт или создаем новый
     const account = await ensureTestAccount(page)
@@ -151,7 +117,7 @@ export async function performLogin(page: Page): Promise<boolean> {
     await page.evaluate(() => {
       window.addEventListener('error', (event) => {
         if (event.message.includes('graphql') || event.message.includes('API')) {
-          console.log('[signIn] Локальный GraphQL прокси недоступен, авторизация невозможна')
+          console.log('[signIn] GraphQL API недоступен, авторизация невозможна')
           console.log('[signIn] URL запроса:', event.filename || 'unknown')
           console.log('[signIn] Ошибка:', event.message)
           console.log('[signIn] Стек:', event.error?.stack || 'no stack')
@@ -427,12 +393,12 @@ export async function registerNewTestAccount(
 
     console.log(`[registerNewTestAccount] Регистрируем: ${testEmail}`)
 
-    // Проверяем доступность локального GraphQL прокси
+    // Проверяем доступность GraphQL API
     const apiAvailable = await checkApiConnection(page)
     if (!apiAvailable) {
-      console.log('[registerNewTestAccount] Локальный GraphQL прокси недоступен, но попробуем регистрацию')
+      console.log('[registerNewTestAccount] GraphQL API недоступен, но попробуем регистрацию')
     } else {
-      console.log('[registerNewTestAccount] Локальный GraphQL прокси доступен, регистрация возможна')
+      console.log('[registerNewTestAccount] GraphQL API доступен, регистрация возможна')
     }
 
     // Открываем форму регистрации
