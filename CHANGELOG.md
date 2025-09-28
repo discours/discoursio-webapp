@@ -2,9 +2,23 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.14.23] - 2025-09-28
+
+### Fixed (OAuth Session Recovery)
+- **🔄 OAuth Flow Enhancement**: Добавлена приоритетная проверка httpOnly cookies после OAuth редиректа
+- **🎯 Smart Session Detection**: SessionProvider теперь автоматически обнаруживает OAuth редиректы
+- **⚡ Instant Token Recovery**: Токен из httpOnly cookie сразу сохраняется в localStorage для последующих запросов
+- **🛡️ Session Persistence**: Улучшена стабильность восстановления сессии после OAuth авторизации
+
+### Technical Details
+- Добавлена проверка `oauth_in_progress` флага в sessionStorage
+- Приоритетная обработка OAuth редиректов в SessionProvider.onMount
+- Автоматическое извлечение токена из httpOnly cookie и сохранение в localStorage
+- Fallback логика для обычного восстановления сессии остается без изменений
+
 ## [0.14.22] - 2025-09-27
 
-### Removed (YAGNI Cleanup)
+### Removed
 - **🗑️ GraphQL Proxy Removal**: Удален неиспользуемый GraphQL прокси роут `/graphql`
 - **🔧 OAuth Token Handling**: Убран фейковый токен `'httponly_cookie'` из localStorage после OAuth
 - **🧹 Test Cleanup**: Обновлены тесты для использования прямых API запросов

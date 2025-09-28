@@ -566,66 +566,22 @@ export const SessionProvider = (props: {
 
   // Инициализация сессии при монтировании (используем defer для стабильности)
   onMount(async () => {
-    // Инициализируем базовый клиент
-    let initialToken: string | null = null
-
     if (!isServer) {
-      // 1. Проверяем localStorage на реальный токен
-      const lsToken = localStorage.getItem(AUTH_TOKEN_KEY)
-      if (lsToken) {
-        initialToken = lsToken
+      // Проверяем localStorage на токен
+      const storedToken = localStorage.getItem(AUTH_TOKEN_KEY)
+      
+      if (storedToken) {
         console.log('[SessionProvider] Токен найден в localStorage')
+        // Инициализируем клиент с токеном
+        initializeClient(storedToken)
+        // Загружаем сессию с токеном
+        await loadSession()
       } else {
-        // 2. Если localStorage пустой, проверяем httpOnly cookies
-        // Для httpOnly cookies мы не можем прочитать значение, но можем попробовать
-        // загрузить сессию с пустым токеном - сервер проверит cookie
-        console.log('[SessionProvider] localStorage пустой, проверяем httpOnly cookies')
-
-        // Создаем клиент без токена - сервер должен проверить httpOnly cookie
-        const cookieClient = graphqlClientCreate(coreApiUrl)
-
-        try {
-          // Пытаемся загрузить сессию с пустым токеном
-          // Сервер должен проверить httpOnly cookie и вернуть данные
-          const sessionData = await loadSessionDataWithClient(cookieClient)
-          if (sessionData) {
-            console.log('[SessionProvider] Сессия восстановлена из httpOnly cookie')
-            // Сохраняем токен в localStorage для последующих запросов
-            localStorage.setItem(AUTH_TOKEN_KEY, sessionData.token)
-            updateSession(sessionData, true)
-            return // Выходим, так как сессия уже загружена
-          }
-        } catch (error) {
-          console.log('[SessionProvider] Не удалось восстановить сессию из cookie:', error)
-        }
-      }
-    }
-
-    // Инициализируем клиент с найденным токеном
-    initializeClient(initialToken || undefined)
-
-    // Проверяем наличие токена
-    const storedToken = initialToken
-
-    if (storedToken) {
-      // Устанавливаем флаг валидации только когда действительно есть токен
-      setIsSessionValidating(true)
-
-      // Асинхронно загружаем полные данные сессии
-      try {
-        const sessionData = await loadSessionData(storedToken)
-        updateSession(sessionData, true) // Сбрасываем флаг валидации после загрузки
-      } catch (error) {
-        console.error('[SessionProvider] Error during session initialization:', error)
-        // Не удаляем токен из localStorage при временной ошибке загрузки сессии
+        console.log('[SessionProvider] Нет токена в localStorage')
+        // Инициализируем клиент без токена
+        initializeClient(undefined)
         updateSession(undefined, true, false)
-        // Повторная попытка фоновой загрузки
-        setTimeout(() => {
-          void loadSession()
-        }, 1500)
       }
-    } else {
-      updateSession(undefined, true)
     }
   })
 

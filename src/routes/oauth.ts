@@ -18,9 +18,10 @@ export function GET() {
   // Обрабатываем OAuth данные прямо здесь
   const error = searchParams.get('error')
   const state = searchParams.get('state')
+  const token = searchParams.get('token') // 🔑 ТОКЕН ИЗ URL
   const redirectUrl = searchParams.get('redirect_url') || '/'
 
-  console.log('[OAuth] Processing:', { error, redirectUrl })
+  console.log('[OAuth] Processing:', { error, hasToken: !!token, redirectUrl })
 
   // Обработка ошибок OAuth
   if (error) {
@@ -31,8 +32,8 @@ export function GET() {
     return redirect(errorUrl.toString())
   }
 
-  // Успешная авторизация (нет ошибки = успех, токен в httpOnly cookie)
-  if (!error) {
+  // Успешная авторизация - токен передан через URL
+  if (!error && token) {
     // CSRF Protection: проверяем state если есть
     if (state && typeof localStorage !== 'undefined') {
       const storedState = localStorage.getItem('oauth_state')
@@ -46,7 +47,13 @@ export function GET() {
       localStorage.removeItem('oauth_state')
     }
 
-    console.log('[OAuth] Success - token in httpOnly cookie, redirecting')
+    console.log('[OAuth] Success - saving token to localStorage')
+    
+    // 🔑 СОХРАНЯЕМ ТОКЕН В LOCALSTORAGE
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('auth_token', token)
+      console.log('[OAuth] Token saved to localStorage')
+    }
 
     // Чистый редирект без OAuth параметров в URL
     return redirect(redirectUrl)
