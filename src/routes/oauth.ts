@@ -6,8 +6,8 @@ import { redirect } from '@solidjs/router'
  * Архитектура:
  * 1. GitHub → БЭКЕНД /oauth/github/callback
  * 2. БЭКЕНД обрабатывает code → access_token
- * 3. БЭКЕНД → редирект сюда: /oauth?success=true (+ httpOnly cookie)
- * 4. Этот роут → редирект на главную с флагом успеха
+ * 3. БЭКЕНД → редирект сюда: /oauth?access_token=JWT_TOKEN&state=STATE
+ * 4. Этот роут → сохраняет токен в localStorage → редирект на главную
  *
  * Простота = надежность! 🚀
  */
@@ -18,7 +18,7 @@ export function GET() {
   // Обрабатываем OAuth данные прямо здесь
   const error = searchParams.get('error')
   const state = searchParams.get('state')
-  const token = searchParams.get('token') // 🔑 ТОКЕН ИЗ URL
+  const token = searchParams.get('access_token') // 🔑 ПРАВИЛЬНЫЙ ПАРАМЕТР ОТ БЭКЕНДА
   const redirectUrl = searchParams.get('redirect_url') || '/'
 
   console.log('[OAuth] Processing:', { error, hasToken: !!token, redirectUrl })
@@ -48,10 +48,10 @@ export function GET() {
     }
 
     console.log('[OAuth] Success - saving token to localStorage')
-    
+
     // 🔑 СОХРАНЯЕМ ТОКЕН В LOCALSTORAGE
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('auth_token', token)
+      localStorage.setItem('auth-token', token) // Используем правильный ключ
       console.log('[OAuth] Token saved to localStorage')
     }
 

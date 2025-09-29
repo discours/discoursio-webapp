@@ -569,7 +569,7 @@ export const SessionProvider = (props: {
     if (!isServer) {
       // Проверяем localStorage на токен
       const storedToken = localStorage.getItem(AUTH_TOKEN_KEY)
-      
+
       if (storedToken) {
         console.log('[SessionProvider] Токен найден в localStorage')
         // Инициализируем клиент с токеном
