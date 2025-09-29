@@ -604,8 +604,38 @@ export const SessionProvider = (props: {
 
         // Инициализируем клиент с новым токеном
         initializeClient(oauthToken)
-        // Загружаем данные сессии
-        await loadSession()
+
+        // 🚨 FIX: Загружаем сессию БЕЗ автоматического setupSessionTimer
+        try {
+          setIsSessionValidating(true)
+          const sessionData = await loadSessionData(oauthToken)
+          if (sessionData) {
+            // Обновляем сессию БЕЗ setupSessionTimer для предотвращения цикла
+            batch(() => {
+              setSessionToken(sessionData.token)
+              setSessionAuthor(sessionData.author)
+              setAuthError('')
+
+              if (sessionData.token !== lastClientToken()) {
+                initializeClient(sessionData.token)
+              }
+
+              untrack(() => props.onStateChangeCallback(sessionData))
+              setIsSessionValidating(false)
+              setIsSessionLoaded(true)
+            })
+
+            // Устанавливаем таймер с задержкой для стабилизации
+            setTimeout(() => setupSessionTimer(), 5000)
+            console.log('[SessionProvider] ✅ OAuth session loaded successfully')
+          } else {
+            console.error('[SessionProvider] Failed to load OAuth session')
+            updateSession(undefined, true, false)
+          }
+        } catch (error) {
+          console.error('[SessionProvider] OAuth session error:', error)
+          updateSession(undefined, true, false)
+        }
         return
       }
 
@@ -640,13 +670,14 @@ export const SessionProvider = (props: {
             if (success) {
               setupSessionTimer(intervalMinutes)
             } else {
-              console.warn('[SessionProvider] Token refresh failed, attempting reload')
-              await loadSession()
+              console.warn('[SessionProvider] Token refresh failed, will retry later')
+              // 🚨 FIX: НЕ вызываем loadSession в таймере - это создает цикл!
+              // Просто перезапускаем таймер с увеличенным интервалом
               setupSessionTimer(Math.max(5, intervalMinutes / 2))
             }
           } else {
-            console.warn('[SessionProvider] No session found, attempting reload')
-            await loadSession()
+            console.warn('[SessionProvider] No session found in timer, will retry later')
+            // 🚨 FIX: НЕ вызываем loadSession в таймере - это создает цикл!
             setupSessionTimer(Math.max(5, intervalMinutes / 2))
           }
         } catch (error) {

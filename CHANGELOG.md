@@ -2,6 +2,19 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.14.24] - 2025-09-29
+
+### Fixed (OAuth Infinite Loading)
+- **🚨 Critical Fix**: Устранен бесконечный цикл загрузки после OAuth авторизации
+- **🔄 Session Timer**: Исправлен циклический вызов `loadSession()` в `setupSessionTimer()`
+- **⏰ OAuth Delay**: Добавлена 5-секундная задержка перед запуском session timer после OAuth
+- **🛡️ Cycle Prevention**: Убраны вызовы `loadSession()` из таймера обновления токенов
+
+### Technical Details
+- Исправлен цикл: OAuth → loadSession → updateSession → setupSessionTimer → loadSession
+- OAuth теперь использует прямое обновление состояния без вызова updateSession
+- Session timer больше не вызывает loadSession при ошибках refresh
+
 ## [0.14.23] - 2025-09-28
 
 ### Fixed (OAuth Session Recovery)
