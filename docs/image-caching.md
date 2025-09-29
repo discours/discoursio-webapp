@@ -527,7 +527,7 @@ const desktopWidth = 800
 Квотер поддерживает следующие паттерны URL для обработки файлов:
 
 ```
-https://files.discours.io/{path}
+https://files.dscrs.site/{path}
 ```
 
 ### Поддерживаемые форматы запросов
@@ -661,7 +661,7 @@ const originalUrl = "https://cdn.discours.io/production/image/photo.jpeg"
 
 // Генерированный URL для квотера  
 const cachedUrl = getCachedImageUrl(originalUrl, { width: 640 })
-// Результат: "https://files.discours.io/image/photo_640.webp?v=a1b2c3d4"
+// Результат: "https://files.dscrs.site/image/photo_640.webp?v=a1b2c3d4"
 ```
 
 #### Автоматические оптимизации:
@@ -682,7 +682,7 @@ supportsWebP = true
 "image/photo_640.webp"
 
 // 4. Финальный URL
-"https://files.discours.io/image/photo_640.webp?v=a1b2c3d4"
+"https://files.dscrs.site/image/photo_640.webp?v=a1b2c3d4"
 ```
 
 ### Обработка ошибок
@@ -843,7 +843,7 @@ return ErrorNotFound("file does not exist")
 //   width: 640, 
 //   shout: shoutId  // Добавляет оверлей через квотер
 // })
-// Результат: https://files.discours.io/image/photo_640.jpg?s=12345
+// Результат: https://files.dscrs.site/image/photo_640.jpg?s=12345
 ```
 
 #### Vercel OG API (для социальных сетей)

@@ -17,10 +17,10 @@
 ### **Endpoint Configuration**
 ```typescript
 // src/config.ts
-export const cdnUrl = import.meta.env.PUBLIC_CDN_URL || 'https://files.discours.io'
+export const cdnUrl = import.meta.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
 
 // Environment var
-PUBLIC_CDN_URL=https://files.discours.io // Production
+PUBLIC_CDN_URL=https://files.dscrs.site // Production
 ```
 
 ### **Upload Flow**
@@ -377,7 +377,7 @@ export function generatePageSpecificOGMetadata(
   locale: string = 'ru'
 ): OGMetadata {
   const baseUrl = import.meta.env.PUBLIC_BASE_URL || 'https://discours.io'
-  const cdnUrl = import.meta.env.PUBLIC_CDN_URL || 'https://files.discours.io'
+  const cdnUrl = import.meta.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
   
   let ogImage = `${baseUrl}/api/og?type=${pageType}&locale=${locale}`
   
@@ -422,7 +422,7 @@ export function generatePageSpecificOGMetadata(
       },
       {
         "protocol": "https", 
-        "hostname": "files.discours.io",
+        "hostname": "files.dscrs.site",
         "pathname": "/**"
       }
     ]
