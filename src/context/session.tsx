@@ -222,10 +222,9 @@ export const SessionProvider = (props: {
     source?: string
   }>()
 
-  // 🚨 КРИТИЧЕСКАЯ ОТЛАДКА: Проверяем что SessionProvider монтируется
+  // Проверяем что SessionProvider монтируется
   if (!isServer) {
-    console.log('[SessionProvider] 🚨 MOUNTED! Current URL:', window.location.href)
-    console.log('[SessionProvider] 🚨 Search params:', searchParams)
+    console.log('[SessionProvider] Mounted. URL:', window.location.href)
   }
 
   // Атомарные сигналы для fine-grained reactivity
@@ -564,7 +563,7 @@ export const SessionProvider = (props: {
     }
   })
 
-  // Инициализация сессии при монтировании (используем defer для стабильности)
+  // Инициализация сессии при монтировании
   onMount(async () => {
     if (!isServer) {
       // 🔑 ПРИОРИТЕТ: Проверяем OAuth токен в URL (на любом роуте)
@@ -572,8 +571,14 @@ export const SessionProvider = (props: {
       const oauthToken = urlParams.get('access_token')
       const oauthError = urlParams.get('oauth_error')
 
+      console.log('[SessionProvider] Checking URL for OAuth params:', {
+        hasToken: !!oauthToken,
+        hasError: !!oauthError,
+        url: window.location.href
+      })
+
       if (oauthError) {
-        console.error('🚨 [SessionProvider] OAuth error:', oauthError)
+        console.error('[SessionProvider] OAuth error:', oauthError)
         setAuthError(t(`OAuth error: ${oauthError}`))
         // Очищаем URL от ошибки
         urlParams.delete('oauth_error')
@@ -583,19 +588,19 @@ export const SessionProvider = (props: {
       }
 
       if (oauthToken) {
-        console.log('🎯 [SessionProvider] OAuth token received in URL')
-        console.log(`🔍 [SessionProvider] Token preview: ${oauthToken.substring(0, 20)}...`)
+        console.log('[SessionProvider] 🎯 OAuth token found in URL!')
+        console.log(`[SessionProvider] Token preview: ${oauthToken.substring(0, 20)}...`)
 
         // Сохраняем токен в localStorage
         localStorage.setItem(AUTH_TOKEN_KEY, oauthToken)
-        console.log('✅ [SessionProvider] OAuth token saved to localStorage')
+        console.log('[SessionProvider] ✅ Token saved to localStorage')
 
         // Очищаем URL от токена (безопасность)
         urlParams.delete('access_token')
         urlParams.delete('state')
         const cleanUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`
         window.history.replaceState({}, '', cleanUrl)
-        console.log('🔄 [SessionProvider] URL cleaned from OAuth params')
+        console.log('[SessionProvider] 🔄 URL cleaned from OAuth params')
 
         // Инициализируем клиент с новым токеном
         initializeClient(oauthToken)
@@ -608,14 +613,11 @@ export const SessionProvider = (props: {
       const storedToken = localStorage.getItem(AUTH_TOKEN_KEY)
 
       if (storedToken) {
-        console.log('[SessionProvider] Токен найден в localStorage')
-        // Инициализируем клиент с токеном
+        console.log('[SessionProvider] Token found in localStorage')
         initializeClient(storedToken)
-        // Загружаем сессию с токеном
         await loadSession()
       } else {
-        console.log('[SessionProvider] Нет токена в localStorage')
-        // Инициализируем клиент без токена
+        console.log('[SessionProvider] No token found')
         initializeClient(undefined)
         updateSession(undefined, true, false)
       }
