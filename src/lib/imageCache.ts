@@ -58,5 +58,7 @@ export const preloadImages = async (urls: Array<{ src: string; width?: number }>
 }
 
 export const getImageSrcSet = (src: string, widths: number[] = [400, 800, 1200]): string => {
-  return widths.map((width) => `${getCdnUrl(src, width)} ${width}w`).join(', ')
+  // Округляем ширины до целых чисел для валидных w дескрипторов
+  const validWidths = widths.map((width) => Math.round(width)).filter((width) => width > 0)
+  return validWidths.map((width) => `${getCdnUrl(src, width)} ${width}w`).join(', ')
 }

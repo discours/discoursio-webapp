@@ -567,7 +567,44 @@ export const SessionProvider = (props: {
   // Инициализация сессии при монтировании (используем defer для стабильности)
   onMount(async () => {
     if (!isServer) {
-      // Проверяем localStorage на токен
+      // 🔑 ПРИОРИТЕТ: Проверяем OAuth токен в URL (на любом роуте)
+      const urlParams = new URLSearchParams(window.location.search)
+      const oauthToken = urlParams.get('access_token')
+      const oauthError = urlParams.get('oauth_error')
+
+      if (oauthError) {
+        console.error('🚨 [SessionProvider] OAuth error:', oauthError)
+        setAuthError(t(`OAuth error: ${oauthError}`))
+        // Очищаем URL от ошибки
+        urlParams.delete('oauth_error')
+        const cleanUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`
+        window.history.replaceState({}, '', cleanUrl)
+        return
+      }
+
+      if (oauthToken) {
+        console.log('🎯 [SessionProvider] OAuth token received in URL')
+        console.log(`🔍 [SessionProvider] Token preview: ${oauthToken.substring(0, 20)}...`)
+
+        // Сохраняем токен в localStorage
+        localStorage.setItem(AUTH_TOKEN_KEY, oauthToken)
+        console.log('✅ [SessionProvider] OAuth token saved to localStorage')
+
+        // Очищаем URL от токена (безопасность)
+        urlParams.delete('access_token')
+        urlParams.delete('state')
+        const cleanUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`
+        window.history.replaceState({}, '', cleanUrl)
+        console.log('🔄 [SessionProvider] URL cleaned from OAuth params')
+
+        // Инициализируем клиент с новым токеном
+        initializeClient(oauthToken)
+        // Загружаем данные сессии
+        await loadSession()
+        return
+      }
+
+      // Обычная проверка localStorage на токен
       const storedToken = localStorage.getItem(AUTH_TOKEN_KEY)
 
       if (storedToken) {

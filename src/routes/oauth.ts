@@ -15,13 +15,17 @@ export function GET() {
   const url = new URL(globalThis.location?.href || 'http://localhost:3000')
   const searchParams = url.searchParams
 
-  // 🔍 ДЕТАЛЬНАЯ ДИАГНОСТИКА OAuth
-  console.log('🔍 [OAuth Debug] Full URL:', url.href)
-  console.log('🔍 [OAuth Debug] Search params:', url.search)
+  // 🔍 ПРОСТАЯ ДИАГНОСТИКА OAuth (только в dev режиме)
+  const isDebug = searchParams.get('debug') === '1' || !import.meta.env.PROD
 
-  // Показываем ВСЕ параметры URL
-  const allParams = Object.fromEntries(searchParams.entries())
-  console.log('🔍 [OAuth Debug] All URL params:', allParams)
+  if (isDebug) {
+    console.log('🔍 [OAuth Debug] Full URL:', url.href)
+    console.log('🔍 [OAuth Debug] Search params:', url.search)
+
+    // Показываем ВСЕ параметры URL
+    const allParams = Object.fromEntries(searchParams.entries())
+    console.log('🔍 [OAuth Debug] All URL params:', allParams)
+  }
 
   // Обрабатываем OAuth данные прямо здесь
   const error = searchParams.get('error')
@@ -99,8 +103,19 @@ export function GET() {
     return redirect(redirectUrl)
   }
 
-  // 🚨 НЕОЖИДАННОЕ СОСТОЯНИЕ
+  // 🚨 НЕОЖИДАННОЕ СОСТОЯНИЕ - НО ПРОВЕРИМ ТОКЕН В LOCALSTORAGE
   console.error('❌ [OAuth Debug] Unexpected state - no token and no error!')
   console.error('❌ [OAuth Debug] This should not happen. Check backend OAuth implementation.')
+
+  // 🔍 ВРЕМЕННАЯ ПРОВЕРКА: Может токен уже есть в localStorage?
+  if (typeof localStorage !== 'undefined') {
+    const existingToken = localStorage.getItem('auth-token')
+    if (existingToken) {
+      console.log(`✅ [OAuth Debug] Found existing token in localStorage: ${existingToken.substring(0, 20)}...`)
+    } else {
+      console.log('❌ [OAuth Debug] No token in localStorage either')
+    }
+  }
+
   return redirect('/')
 }
