@@ -29,7 +29,6 @@ export const APP_ROUTES = [
   'settings', // settings/*
   'topic', // topic/[slug]/[...mode]
   'topics', // topics.tsx
-  'oauth', // oauth.ts (наш новый роут)
 
   // Вложенные роуты из settings/
   'security', // settings/security.tsx

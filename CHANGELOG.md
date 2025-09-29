@@ -14,6 +14,7 @@
 - Исправлен цикл: OAuth → loadSession → updateSession → setupSessionTimer → loadSession
 - OAuth теперь использует прямое обновление состояния без вызова updateSession
 - Session timer больше не вызывает loadSession при ошибках refresh
+- OAuth обрабатывается автоматически в SessionProvider без отдельного роута
 
 ## [0.14.23] - 2025-09-28
 
