@@ -595,12 +595,28 @@ export const SessionProvider = (props: {
         localStorage.setItem(AUTH_TOKEN_KEY, oauthToken)
         console.log('[SessionProvider] ✅ Token saved to localStorage')
 
-        // Очищаем URL от токена (безопасность)
+        // 🎯 Обрабатываем state для получения redirect URL
+        const stateParam = urlParams.get('state')
+        let redirectUrl = window.location.pathname // Fallback на текущую страницу
+
+        if (stateParam) {
+          try {
+            const stateData = JSON.parse(atob(stateParam))
+            if (stateData.redirect_url) {
+              redirectUrl = new URL(stateData.redirect_url).pathname + new URL(stateData.redirect_url).search
+              console.log('[SessionProvider] 🔄 Redirect URL from state:', redirectUrl)
+            }
+          } catch (error) {
+            console.warn('[SessionProvider] Failed to parse state parameter:', error)
+          }
+        }
+
+        // Очищаем URL от токена и переходим на redirect URL
         urlParams.delete('access_token')
         urlParams.delete('state')
-        const cleanUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`
+        const cleanUrl = redirectUrl
         window.history.replaceState({}, '', cleanUrl)
-        console.log('[SessionProvider] 🔄 URL cleaned from OAuth params')
+        console.log('[SessionProvider] 🔄 Redirected to original page:', cleanUrl)
 
         // Инициализируем клиент с новым токеном
         initializeClient(oauthToken)
@@ -1252,16 +1268,20 @@ export const SessionProvider = (props: {
     }
 
     try {
-      // Генерируем безопасный state для OAuth с дополнительными данными
-      const state = crypto.randomUUID()
+      // 🎯 Надежное решение: передаем redirect URL через state параметр
+      // Избегаем проблем с ненадежным Referer header
+      const currentUrl = window.location.href
+      const stateData = {
+        uuid: crypto.randomUUID(),
+        redirect_url: currentUrl,
+        timestamp: Date.now()
+      }
 
-      // Формируем callback URL для OAuth (фронтенд роут для получения данных от бэкенда)
-      const callbackUrl = `${window.location.origin}/oauth`
+      // Кодируем state как base64 для безопасной передачи
+      const state = btoa(JSON.stringify(stateData))
 
-      // Формируем URL для OAuth - бэкенд создаст сессию и запомнит откуда пришли
       const oauthParams = new URLSearchParams({
-        redirect_uri: encodeURIComponent(callbackUrl) // Фронтенд роут для получения результата
-        // Бэкенд сам определит redirect URL из Referer заголовка или сессии
+        state: state // Передаем текущую страницу через state
       })
 
       // Обрабатываем специальный случай для x.com (нормализуем до twitter для API)

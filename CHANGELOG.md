@@ -4,13 +4,21 @@
 
 ## [0.14.24] - 2025-09-29
 
-### Fixed (OAuth Infinite Loading)
+### Fixed (OAuth Redirect URI)
+- **🚨 Critical Fix**: Исправлена проблема с ненадежным Referer header в OAuth
+- **🎯 State Parameter**: Redirect URL теперь передается через безопасный state параметр
+- **🛡️ Reliability**: Избегаем проблем с блокировщиками рекламы и настройками приватности
+- **🔄 Smart Redirect**: Автоматический возврат на исходную страницу после OAuth авторизации
+
+### Fixed (OAuth Infinite Loading) 
 - **🚨 Critical Fix**: Устранен бесконечный цикл загрузки после OAuth авторизации
 - **🔄 Session Timer**: Исправлен циклический вызов `loadSession()` в `setupSessionTimer()`
 - **⏰ OAuth Delay**: Добавлена 5-секундная задержка перед запуском session timer после OAuth
 - **🛡️ Cycle Prevention**: Убраны вызовы `loadSession()` из таймера обновления токенов
 
 ### Technical Details
+- Redirect URL передается через base64-кодированный state параметр вместо ненадежного Referer
+- State содержит: uuid, redirect_url, timestamp для безопасности и отладки
 - Исправлен цикл: OAuth → loadSession → updateSession → setupSessionTimer → loadSession
 - OAuth теперь использует прямое обновление состояния без вызова updateSession
 - Session timer больше не вызывает loadSession при ошибках refresh
