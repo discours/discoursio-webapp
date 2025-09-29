@@ -3,13 +3,13 @@ import { redirect } from '@solidjs/router'
 /**
  * OAuth callback роут - простой редирект после обработки бэкендом
  *
- * Архитектура:
+ * Процесс:
  * 1. GitHub → БЭКЕНД /oauth/github/callback
  * 2. БЭКЕНД обрабатывает code → access_token
  * 3. БЭКЕНД → редирект сюда: /oauth?access_token=JWT_TOKEN&state=STATE
  * 4. Этот роут → сохраняет токен в localStorage → редирект на главную
  *
- * Простота = надежность! 🚀
+ * Простота = надежность!
  */
 export function GET() {
   const url = new URL(globalThis.location?.href || 'http://localhost:3000')
