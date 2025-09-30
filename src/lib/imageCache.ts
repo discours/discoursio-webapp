@@ -1,25 +1,35 @@
 import { cdnUrl } from '~/config'
 
-// Функция для преобразования URL для CDN
+// Функция для преобразования URL для CDN - извлекает только filename
 export const getCdnUrl = (url: string, width?: number): string => {
   if (!url) return url
+
+  // Извлекаем путь из URL
   let filepath = ''
   try {
     filepath = new URL(url).pathname
   } catch {
     filepath = url
   }
+
+  // Разбиваем на части по слешам
   const fileparts = filepath.split('/')
   let filename = fileparts.pop() || ''
   if (!filename) filename = filepath
+
+  // Обработка legacy /webp суффикса
   if (filename.toLowerCase() === 'webp') filename = fileparts.pop() || ''
   if (!filename) return url
+
+  // Применяем width трансформацию если нужно
   if (width) {
     const extension = filename.split('.').pop() || ''
     if (extension && !filename.includes(`_${width}`)) {
       filename = filename.replace(`.${extension}`, `_${width}.${extension}`)
     }
   }
+
+  // Возвращаем только filename с CDN доменом
   return `${cdnUrl}/${filename}`
 }
 

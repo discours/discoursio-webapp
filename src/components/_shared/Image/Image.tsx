@@ -29,7 +29,8 @@ export const Image = (props: Props) => {
     }
 
     // Для CDN изображений используем getCdnUrl с размером
-    if (local.src.startsWith('http') && others.width) {
+    // NOTE: getCdnUrl извлекает только filename, убирая production/image/ префиксы
+    if (local.src.startsWith('http')) {
       return getCdnUrl(local.src, others.width)
     }
 
@@ -46,8 +47,11 @@ export const Image = (props: Props) => {
   }
 
   // Генерируем srcSet для адаптивных изображений
-  const imageSrcSet = () =>
-    getImageSrcSet(local.src || '', [others.width, others.width / 2, others.width / 4, others.width / 8])
+  // NOTE: Используем только основную ширину для стабильности гидрации
+  const imageSrcSet = () => {
+    if (!local.src || !others.width) return ''
+    return getImageSrcSet(local.src || '', [others.width, Math.floor(others.width * 0.5)])
+  }
 
   // Обработка ошибок загрузки изображения
   const handleImageError = (e: Event) => {

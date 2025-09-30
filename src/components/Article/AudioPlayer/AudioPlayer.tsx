@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, on, onMount, Show } from 'solid-js'
 import { MediaItem } from '~/graphql/generated/graphql'
-import { getCdnUrl } from '~/lib/imageCache'
+import { getCdnUrl } from '~/lib/imageCache' // NOTE: для аудио файлов getCdnUrl работает корректно
 import { AudioTimeLine } from './AudioTimeLine'
 import { PlayerHeader } from './PlayerHeader'
 import { PlayerPlaylist } from './PlayerPlaylist'
@@ -346,7 +346,7 @@ export const AudioPlayer = (props: Props) => {
           ref={(el) => (audioRef = el)}
           onTimeUpdate={handleAudioTimeUpdate}
           onLoadStart={handleAudioLoadStart}
-          src={getCdnUrl(currentTack()?.url || '')}
+          src={getCdnUrl(currentTack()?.url || '')} // NOTE: аудио файлы используют getCdnUrl для корректных путей
           onCanPlay={() => {
             console.log('[AudioPlayer] onCanPlay:', {
               currentTime: audioRef?.currentTime

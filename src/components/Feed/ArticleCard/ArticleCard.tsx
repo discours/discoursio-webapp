@@ -14,7 +14,7 @@ import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import type { Author, Maybe, ReactionKind, Shout } from '~/graphql/generated/graphql'
-import { getCdnUrl } from '~/lib/imageCache'
+// NOTE: getCdnUrl больше не нужен - Image компонент сам применяет трансформацию
 import { capitalize } from '~/utils/capitalize'
 import { descFromBody } from '~/utils/meta'
 import styles from './ArticleCard.module.scss'
@@ -191,7 +191,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
               fallback={<CoverImage class={styles.placeholderCoverImage} />}
             >
               <Image
-                src={getCdnUrl(props.article?.cover || '')}
+                src={props.article?.cover || ''}
                 alt={title}
                 width={desktopCoverImageWidths[props.desktopCoverSize || 'M']}
                 onError={() => {
@@ -310,7 +310,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
                   fallback={<CoverImage class={styles.placeholderCoverImage} />}
                 >
                   <Image
-                    src={getCdnUrl(props.article?.cover || '')}
+                    src={props.article?.cover || ''}
                     alt={title}
                     width={600}
                     loading="lazy"
