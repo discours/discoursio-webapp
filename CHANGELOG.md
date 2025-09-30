@@ -2,6 +2,28 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.14.25] - 2025-09-30
+
+### Fixed (Static Files & Image Loading)
+- **🖼️ Image Hydration Fix**: Исправлена перерисовка изображений при SSR гидрации
+- **🔄 URL Normalization**: `getCdnUrl()` теперь извлекает только filename, убирая `production/image/` префиксы
+- **⚡ Stable Hydration**: SSR и клиент используют одинаковые URL → нет повторной загрузки изображений
+- **🎯 OAuth Avatars**: Внешние OAuth аватарки (Google/Telegram) теперь корректно отображаются
+- **🧩 Smart Detection**: `Userpic.tsx` определяет тип аватарки (внешняя/локальная) и применяет правильную обработку
+
+### Fixed (Avatar Upload in ProfileSettings)
+- **🐛 Double Modal Fix**: Убран двойной вызов модалки выбора файла
+- **✅ Upload Feedback**: Добавлены toast уведомления об успехе/ошибке загрузки
+- **📝 Better Logging**: Улучшено логирование для отладки процесса загрузки
+- **🎨 UX Improvement**: Модалка автоматически закрывается после успешной загрузки
+
+### Technical Details
+- `imageCache.ts`: Упрощена логика `getCdnUrl()` - только извлечение filename
+- `Image.tsx`: Применяет `getCdnUrl()` для всех HTTP URL, не только с width
+- `Userpic.tsx`: Внешние OAuth аватарки используют `<img>`, локальные - `<Image>` компонент
+- `ProfileSettings.tsx`: Исправлен event propagation для предотвращения двойного вызова
+- `AudioHeader.tsx`: Обновлено использование `getImageSrcSet()` вместо устаревшей функции
+
 ## [0.14.24] - 2025-09-29
 
 ### Fixed (OAuth Redirect URI)
