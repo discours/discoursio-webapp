@@ -30,7 +30,7 @@ import TopicPage, { TopicPageProps } from '../topic/[slug]/[...mode]'
 const SKIP_PATHS = ['fonts', 'icons', 'api', 'robots.txt', 'favicon.ico', 'manifest.json', 'sw.js']
 
 // ✨ Расширения файлов изображений и статики
-const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.css', '.js', '.json', '.xml', '.txt']
+const STATIC_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.css', '.js', '.json', '.xml', '.txt']
 
 const isSkippedPath = (slug: string): boolean => {
   // Проверяем служебные пути
@@ -40,7 +40,7 @@ const isSkippedPath = (slug: string): boolean => {
   
   // Проверяем расширения файлов изображений
   const lowerSlug = slug.toLowerCase()
-  if (IMAGE_EXTENSIONS.some(ext => lowerSlug.endsWith(ext))) {
+  if (STATIC_EXTENSIONS.some(ext => lowerSlug.endsWith(ext))) {
     return true
   }
   
@@ -220,6 +220,11 @@ export type SlugPageProps = {
 function ArticlePageContent(props: RouteSectionProps<ArticlePageProps>) {
   const loc = useLocation()
   const { t } = useLocalize()
+
+  // ✨ РАННИЙ ВЫХОД: Не обрабатываем статические файлы
+  if (isSkippedPath(props.params.slug)) {
+    return <HttpStatusCode code={404} />
+  }
 
   // 🚨 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обработка Promise данных из route.load
   const [ssrData] = createResource(
