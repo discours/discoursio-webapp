@@ -29,8 +29,22 @@ import TopicPage, { TopicPageProps } from '../topic/[slug]/[...mode]'
 // ✨ Служебные пути, которые не являются статьями
 const SKIP_PATHS = ['fonts', 'icons', 'api', 'robots.txt', 'favicon.ico', 'manifest.json', 'sw.js']
 
+// ✨ Расширения файлов изображений и статики
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.css', '.js', '.json', '.xml', '.txt']
+
 const isSkippedPath = (slug: string): boolean => {
-  return slug.startsWith('_') || slug.startsWith('.') || SKIP_PATHS.includes(slug)
+  // Проверяем служебные пути
+  if (slug.startsWith('_') || slug.startsWith('.') || SKIP_PATHS.includes(slug)) {
+    return true
+  }
+  
+  // Проверяем расширения файлов изображений
+  const lowerSlug = slug.toLowerCase()
+  if (IMAGE_EXTENSIONS.some(ext => lowerSlug.endsWith(ext))) {
+    return true
+  }
+  
+  return false
 }
 
 const fetchShout = async (slug: string): Promise<Shout | undefined> => {
