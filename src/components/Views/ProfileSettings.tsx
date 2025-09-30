@@ -129,10 +129,19 @@ export const ProfileSettings = () => {
   const handleCropAvatar = () => {
     const { selectFiles } = createFileUploader({ multiple: false, accept: 'image/*' })
 
-    selectFiles(([uploadFile]) => {
-      setUserpicFile(uploadFile as UploadFile)
+    // NOTE: Временно отключаем beforeunload warning при выборе файла
+    // Иначе браузер показывает "Закрыть сайт?" при открытии file picker
+    const prevReturnValue = window.onbeforeunload
+    window.onbeforeunload = null
 
-      showModal('cropImage')
+    selectFiles(([uploadFile]) => {
+      // Восстанавливаем beforeunload после выбора файла
+      window.onbeforeunload = prevReturnValue
+
+      if (uploadFile) {
+        setUserpicFile(uploadFile as UploadFile)
+        showModal('cropImage')
+      }
     })
   }
 
