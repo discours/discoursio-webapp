@@ -45,54 +45,23 @@ npm install  # или bun/pnpm/yarn
 cp .env.example .env
 ```
 
-### 🔐 Настройка HTTPS для локальной разработки
+### 🔐 HTTPS для локальной разработки (автоматически)
 
-Приложение автоматически использует HTTPS, если найдет сертификаты `cert.pem` и `key.pem` в корне проекта.
-
-#### Установка mkcert
-
-**macOS:**
-```shell
-brew install mkcert
-brew install nss  # для Firefox
-```
-
-**Windows (PowerShell с правами администратора):**
-```powershell
-choco install mkcert
-# или
-scoop bucket add extras
-scoop install mkcert
-```
-
-**Linux (Ubuntu/Debian):**
-```shell
-sudo apt install libnss3-tools
-curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
-chmod +x mkcert-v*-linux-amd64
-sudo mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
-```
-
-#### Генерация сертификатов
+При первом запуске `npm run dev` приложение **автоматически**:
+1. Проверит и установит `mkcert` (macOS/Linux)
+2. Создаст локальный CA и сертификаты
+3. Запустится на `https://localhost:3000`
 
 ```shell
-# 1. Установить локальный CA (один раз)
-mkcert -install
-
-# 2. Создать сертификаты для localhost
-mkcert localhost 127.0.0.1 ::1
-
-# 3. Переименовать сертификаты
-mv localhost+2-key.pem key.pem
-mv localhost+2.pem cert.pem
-
-# 4. Запустить dev сервер (автоматически найдет сертификаты)
-npm run dev
+npm run dev  # 🔒 Автоматически настроит HTTPS (если mkcert установлен)
+             # 🌐 или HTTP (если mkcert не установлен)
 ```
 
-Приложение будет доступно по адресу `https://localhost:3000`
-
-> **Примечание**: Если сертификаты не найдены, сервер запустится по HTTP на `http://localhost:3000`
+**Windows:** При первом запуске увидите инструкцию:
+1. Установите [Chocolatey](https://chocolatey.org/install) (если нет)
+2. Запустите PowerShell **от администратора**
+3. Выполните: `choco install mkcert -y`
+4. Перезапустите `npm run dev`
 
 ### ⚡ Основные команды
 
