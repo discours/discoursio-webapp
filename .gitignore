@@ -57,3 +57,5 @@ playwright
 docs/test-coverage/*
 .kiro
 .qoder
+
+*.pem
