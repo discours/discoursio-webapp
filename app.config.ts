@@ -24,7 +24,7 @@ if (existsSync(envPath)) {
 import viteConfig, { isDev } from './vite.config'
 
 console.log(`[app.config] vite ${isDev ? 'dev' : 'prod'} mode`)
-console.log('[app.config] connected to api: ', process.env.PUBLIC_CORE_API)
+console.log('[app.config] connected to api: ', process.env.PUBLIC_CORE_API || 'https://v3.dscrs.site/graphql')
 
 // certs for local development
 const __filename = fileURLToPath(import.meta.url)
