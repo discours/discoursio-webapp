@@ -47,19 +47,48 @@ cp .env.example .env
 
 ### 🔐 Настройка HTTPS для локальной разработки
 
+Приложение автоматически использует HTTPS, если найдет сертификаты `localhost.pem` и `localhost-key.pem` в корне проекта.
+
+#### Установка mkcert
+
+**macOS:**
 ```shell
-# Установка mkcert (Ubuntu/Debian)
+brew install mkcert
+brew install nss  # для Firefox
+```
+
+**Windows (PowerShell с правами администратора):**
+```powershell
+choco install mkcert
+# или
+scoop bucket add extras
+scoop install mkcert
+```
+
+**Linux (Ubuntu/Debian):**
+```shell
 sudo apt install libnss3-tools
 curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
 chmod +x mkcert-v*-linux-amd64
 sudo mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+```
 
-# Создание локального CA
+#### Генерация сертификатов
+
+```shell
+# 1. Установить локальный CA (один раз)
 mkcert -install
 
-# Запуск сервера разработки
-npm run dev  # или bun dev
+# 2. Создать сертификаты для localhost
+mkcert localhost 127.0.0.1 ::1
+
+# 3. Запустить dev сервер (автоматически найдет сертификаты)
+npm run dev
 ```
+
+Приложение будет доступно по адресу `https://localhost:3000`
+
+> **Примечание**: Если сертификаты не найдены, сервер запустится по HTTP на `http://localhost:3000`
 
 ### ⚡ Основные команды
 
