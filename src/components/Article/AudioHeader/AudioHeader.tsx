@@ -4,7 +4,7 @@ import { createSignal, Show } from 'solid-js'
 import { Icon } from '~/components/_shared/Icon'
 import { Image } from '~/components/_shared/Image'
 import { MediaItem, Topic } from '~/graphql/generated/graphql'
-import { getCdnUrl } from '~/lib/imageCache' // NOTE: используется для генерации srcSet
+import { getImageSrcSet } from '~/lib/imageCache'
 import { CardTopic } from '../../Feed/CardTopic'
 
 import styles from './AudioHeader.module.scss'
@@ -19,16 +19,13 @@ type Props = {
 export const AudioHeader = (props: Props) => {
   const [expandedImage, setExpandedImage] = createSignal(false)
 
-  // NOTE: srcSet генерация перенесена в getImageSrcSet из imageCache
-  // Оставляем для обратной совместимости, но Image компонент сам применит трансформацию
-
   return (
     <div class={clsx(styles.AudioHeader, { [styles.expandedImage]: expandedImage() })}>
       <div class={styles.cover}>
         <Image
           class={styles.image}
-          src={getCdnUrl(props.cover || '')}
-          srcSet={generateSrcSet(props.cover || '')}
+          src={props.cover || ''}
+          srcSet={getImageSrcSet(props.cover || '', [200, 300, 400, 600])}
           alt={props.title}
           width={300}
         />

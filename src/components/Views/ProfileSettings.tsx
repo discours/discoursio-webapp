@@ -141,14 +141,21 @@ export const ProfileSettings = () => {
       setUploadError(false)
       setIsUserpicUpdating(true)
 
+      console.log('[ProfileSettings] Starting avatar upload:', uploadFile.name)
       const url = await uploadImage(uploadFile.file)
-      updateFormField('pic', url)
+      console.log('[ProfileSettings] Upload successful, URL:', url)
 
+      updateFormField('pic', url)
       setUserpicFile(undefined)
+      hideModal()
       setIsUserpicUpdating(false)
+
+      toast.success(t('Avatar uploaded successfully'))
     } catch (error) {
       setUploadError(true)
-      console.error('[upload avatar] error', error)
+      setIsUserpicUpdating(false)
+      console.error('[ProfileSettings] Upload avatar error:', error)
+      toast.error(error instanceof Error ? error.message : t('Upload error'))
     }
   }
 
@@ -209,7 +216,7 @@ export const ProfileSettings = () => {
                   <form enctype="multipart/form-data" autocomplete="off">
                     <h4>{t('Userpic')}</h4>
                     <div class="pretty-form__item">
-                      <div class={clsx(styles.userpic, { [styles.hasControls]: form.pic })} onClick={handleCropAvatar}>
+                      <div class={clsx(styles.userpic, { [styles.hasControls]: form.pic })}>
                         <Switch>
                           <Match when={isUserpicUpdating()}>
                             <Loading />
@@ -229,10 +236,17 @@ export const ProfileSettings = () => {
                                 )}
                               </Popover>
 
-                              {/* @@TODO inspect popover below. onClick causes page refreshing */}
+                              {/* NOTE: onClick на кнопке без propagation */}
                               <Popover content={t('Upload userpic')}>
                                 {(triggerRef: (el: HTMLElement) => void) => (
-                                  <button ref={triggerRef} class={styles.control} onClick={() => handleCropAvatar()}>
+                                  <button
+                                    ref={triggerRef}
+                                    class={styles.control}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleCropAvatar()
+                                    }}
+                                  >
                                     <Icon name="user-image-black" />
                                   </button>
                                 )}
@@ -240,8 +254,10 @@ export const ProfileSettings = () => {
                             </div>
                           </Match>
                           <Match when={!form.pic}>
-                            <Icon name="user-image-gray" />
-                            {t('Here you can upload your photo')}
+                            <div onClick={handleCropAvatar} style={{ cursor: 'pointer', width: '100%' }}>
+                              <Icon name="user-image-gray" />
+                              {t('Here you can upload your photo')}
+                            </div>
                           </Match>
                         </Switch>
                       </div>

@@ -4,6 +4,7 @@ import { createMemo, Show } from 'solid-js'
 import { ConditionalWrapper } from '~/components/_shared/ConditionalWrapper'
 import { Image } from '~/components/_shared/Image'
 import { Loading } from '~/components/_shared/Loading'
+import { cdnUrl } from '~/config'
 
 import styles from './Userpic.module.scss'
 
@@ -45,6 +46,15 @@ export const Userpic = (props: Props) => {
     }
   })
 
+  // NOTE: Определяем тип аватарки
+  // OAuth аватарки (с внешних сервисов) - обычный <img>
+  // Локальные CDN аватарки - <Image> компонент с оптимизацией
+  const isExternalAvatar = createMemo(() => {
+    if (!props.userpic) return false
+    // OAuth аватарки и legacy assets.discours.io
+    return !props.userpic.startsWith(cdnUrl) && !props.userpic.startsWith('/')
+  })
+
   return (
     <div
       class={clsx(styles.Userpic, props.class, styles[props.size ?? 'M'], {
@@ -58,7 +68,19 @@ export const Userpic = (props: Props) => {
           wrapper={(children) => <a href={`/@${props.slug}`}>{children}</a>}
         >
           <Show keyed={true} when={props.userpic} fallback={<div class={styles.letters}>{letters()}</div>}>
-            <Image src={props.userpic} width={avatarSize()} height={avatarSize()} alt={props.name} />
+            <Show
+              when={isExternalAvatar()}
+              fallback={<Image src={props.userpic} width={avatarSize()} height={avatarSize()} alt={props.name} />}
+            >
+              {/* NOTE: Внешние OAuth аватарки - без обработки getCdnUrl */}
+              <img
+                src={props.userpic}
+                width={avatarSize()}
+                height={avatarSize()}
+                alt={props.name}
+                style={{ 'border-radius': '50%', 'object-fit': 'cover' }}
+              />
+            </Show>
           </Show>
         </ConditionalWrapper>
       </Show>
