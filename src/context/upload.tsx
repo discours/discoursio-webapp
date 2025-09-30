@@ -60,8 +60,10 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
         if (xhr.status >= 200 && xhr.status < 300) {
           const filename = xhr.responseText.trim()
           if (!filename) return reject(new Error(t('Empty response from server')))
+          console.log('[Upload] Success:', filename)
           resolve(filename)
         } else {
+          console.error('[Upload] Error:', xhr.status, xhr.responseText)
           const errorText = xhr.responseText || 'Unknown error'
           const statusErrors: Record<number, string> = {
             401: errorText.includes('Quota exceeded')
@@ -85,8 +87,17 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
       xhr.timeout = UPLOAD_TIMEOUT
 
       // Set headers
+      const currentToken = token()
+      console.log('[Upload] Token available:', !!currentToken, 'cdnUrl:', cdnUrl)
+
       const headers: Record<string, string> = { Accept: 'application/json' }
-      if (token()) headers.Authorization = token()!.startsWith('Bearer ') ? token()! : `Bearer ${token()!}`
+      if (currentToken) {
+        const bearerToken = currentToken.startsWith('Bearer ') ? currentToken : `Bearer ${currentToken}`
+        headers.Authorization = bearerToken
+        console.log(`[Upload] Authorization header set: ${bearerToken.substring(0, 20)}...`)
+      } else {
+        console.error('[Upload] NO TOKEN AVAILABLE!')
+      }
 
       Object.entries(headers).forEach(([key, value]) => {
         xhr.setRequestHeader(key, value)
