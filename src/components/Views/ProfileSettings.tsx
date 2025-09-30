@@ -53,6 +53,7 @@ export const ProfileSettings = () => {
   const { showModal, hideModal } = useUI()
   const { uploadImage } = useUpload()
   const [loading, setLoading] = createSignal(true)
+  const [isSelectingFile, setIsSelectingFile] = createSignal(false)
 
   // Используем createEffect для отслеживания данных сессии и инициализации формы
   createEffect(() => {
@@ -129,20 +130,21 @@ export const ProfileSettings = () => {
   const handleCropAvatar = () => {
     const { selectFiles } = createFileUploader({ multiple: false, accept: 'image/*' })
 
-    // NOTE: Временно отключаем beforeunload warning при выборе файла
-    // Иначе браузер показывает "Закрыть сайт?" при открытии file picker
-    const prevReturnValue = window.onbeforeunload
-    window.onbeforeunload = null
+    // NOTE: Устанавливаем флаг что идет выбор файла
+    setIsSelectingFile(true)
 
     selectFiles(([uploadFile]) => {
-      // Восстанавливаем beforeunload после выбора файла
-      window.onbeforeunload = prevReturnValue
+      // Сбрасываем флаг после выбора
+      setIsSelectingFile(false)
 
       if (uploadFile) {
         setUserpicFile(uploadFile as UploadFile)
         showModal('cropImage')
       }
     })
+
+    // Таймаут на случай если пользователь закрыл диалог без выбора
+    setTimeout(() => setIsSelectingFile(false), 1000)
   }
 
   const handleUploadAvatar = async (uploadFile: UploadFile) => {
@@ -173,6 +175,11 @@ export const ProfileSettings = () => {
 
     // eslint-disable-next-line unicorn/consistent-function-scoping
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // NOTE: Не показываем предупреждение если идет выбор файла
+      if (isSelectingFile()) {
+        return
+      }
+
       if (!deepEqual(form, prevForm)) {
         event.returnValue = t(
           'There are unsaved changes in your profile settings. Are you sure you want to leave the page without saving?'
