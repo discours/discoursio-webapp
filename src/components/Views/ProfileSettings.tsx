@@ -127,24 +127,47 @@ export const ProfileSettings = () => {
     isConfirmed && setForm(clone(prevForm))
   }
 
-  const handleCropAvatar = () => {
-    const { selectFiles } = createFileUploader({ multiple: false, accept: 'image/*' })
+  // Создаем file uploader один раз
+  const { selectFiles } = createFileUploader({ multiple: false, accept: 'image/*' })
+
+  const handleCropAvatar = (event?: Event) => {
+    if (event) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    console.log('[ProfileSettings] handleCropAvatar called')
 
     // NOTE: Устанавливаем флаг что идет выбор файла
     setIsSelectingFile(true)
+    console.log('[ProfileSettings] Opening file picker')
 
-    selectFiles(([uploadFile]) => {
+    selectFiles((files) => {
+      console.log('[ProfileSettings] File picker callback, files:', files)
+
       // Сбрасываем флаг после выбора
       setIsSelectingFile(false)
 
-      if (uploadFile) {
+      if (files && files.length > 0) {
+        const uploadFile = files[0]
+        console.log('[ProfileSettings] File selected:', uploadFile.name)
         setUserpicFile(uploadFile as UploadFile)
-        showModal('cropImage')
+
+        // Небольшая задержка перед показом модалки для стабильности
+        setTimeout(() => {
+          console.log('[ProfileSettings] Showing crop modal')
+          showModal('cropImage')
+        }, 100)
+      } else {
+        console.log('[ProfileSettings] No file selected')
       }
     })
 
     // Таймаут на случай если пользователь закрыл диалог без выбора
-    setTimeout(() => setIsSelectingFile(false), 1000)
+    setTimeout(() => {
+      console.log('[ProfileSettings] Timeout reached, resetting isSelectingFile')
+      setIsSelectingFile(false)
+    }, 2000)
   }
 
   const handleUploadAvatar = async (uploadFile: UploadFile) => {
@@ -258,9 +281,11 @@ export const ProfileSettings = () => {
                                   <button
                                     ref={triggerRef}
                                     class={styles.control}
+                                    type="button"
                                     onClick={(e) => {
+                                      e.preventDefault()
                                       e.stopPropagation()
-                                      handleCropAvatar()
+                                      handleCropAvatar(e)
                                     }}
                                   >
                                     <Icon name="user-image-black" />
@@ -270,7 +295,7 @@ export const ProfileSettings = () => {
                             </div>
                           </Match>
                           <Match when={!form.pic}>
-                            <div onClick={handleCropAvatar} style={{ cursor: 'pointer', width: '100%' }}>
+                            <div onClick={(e) => handleCropAvatar(e)} style={{ cursor: 'pointer', width: '100%' }}>
                               <Icon name="user-image-gray" />
                               {t('Here you can upload your photo')}
                             </div>
@@ -427,24 +452,36 @@ export const ProfileSettings = () => {
             </div>
           </div>
         </Show>
-        <Modal variant="medium" name="cropImage" onClose={() => setUserpicFile(undefined)}>
+        <Modal
+          variant="medium"
+          name="cropImage"
+          onClose={() => {
+            console.log('[ProfileSettings] Modal onClose triggered')
+            setUserpicFile(undefined)
+          }}
+        >
           <h2>{t('Crop image')}</h2>
 
           <Show when={Boolean(userpicFile())}>
             <ImageCropper
               uploadFile={userpicFile() as UploadFile}
-              onSave={(data: File) => {
+              onSave={async (data: File) => {
+                console.log('[ProfileSettings] ImageCropper onSave called', data.name)
                 const uploadFile: UploadFile = {
                   source: data.name,
                   file: data,
                   name: data.name,
                   size: data.size
                 }
-                void handleUploadAvatar(uploadFile)
-
+                // NOTE: Сначала загружаем, ПОТОМ закрываем модалку
+                await handleUploadAvatar(uploadFile)
+                console.log('[ProfileSettings] Upload completed, closing modal')
                 hideModal()
               }}
-              onDecline={() => hideModal()}
+              onDecline={() => {
+                console.log('[ProfileSettings] Crop declined')
+                hideModal()
+              }}
             />
           </Show>
         </Modal>
