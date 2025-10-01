@@ -72,3 +72,28 @@ export const getImageSrcSet = (src: string, widths: number[] = [400, 800, 1200])
   const validWidths = widths.map((width) => Math.round(width)).filter((width) => width > 0)
   return validWidths.map((width) => `${getCdnUrl(src, width)} ${width}w`).join(', ')
 }
+
+/**
+ * Заменяет все URL картинок в HTML на правильный CDN
+ * Нужно для обработки контента, рендерящегося через innerHTML
+ * @param html - HTML строка с картинками
+ * @returns HTML с обновленными URL
+ */
+export const replaceImageUrls = (html: string): string => {
+  if (!html) return html
+
+  // Заменяем src в img тегах
+  return html.replace(/<img([^>]+)src\s*=\s*["']([^"']+)["']/gi, (match, beforeSrc, url) => {
+    // Если URL содержит cdn.discours.io - заменяем на новый CDN
+    if (url.includes('cdn.discours.io')) {
+      const newUrl = getCdnUrl(url)
+      return `<img${beforeSrc}src="${newUrl}"`
+    }
+    // Для других URL тоже применяем getCdnUrl (для единообразия)
+    if (url.startsWith('http')) {
+      const newUrl = getCdnUrl(url)
+      return `<img${beforeSrc}src="${newUrl}"`
+    }
+    return match
+  })
+}

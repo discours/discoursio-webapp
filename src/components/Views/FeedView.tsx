@@ -15,7 +15,7 @@ import { ModalType, useUI } from '~/context/ui'
 import { useShoutsMyRates } from '~/graphql/api/private'
 import { loadReactions, loadUnratedShouts } from '~/graphql/api/public'
 import { Author, Reaction, ReactionKind, ReactionSort, Shout } from '~/graphql/generated/graphql'
-// getImageUrl больше не нужен - middleware перехватывает CDN запросы
+import { getCdnUrl } from '~/lib/imageCache'
 import styles from '~/styles/views/Feed.module.scss'
 import { Modal } from '../_shared/Modal'
 import { getShareUrl } from '../Article/SharePopup'
@@ -421,7 +421,7 @@ export const FeedView = (props: FeedProps) => {
                 <div
                   class={clsx(styles.comment, styles.unratedArticle)}
                   style={{
-                    'background-image': `url(${article?.cover || ''})`
+                    'background-image': `url(${getCdnUrl(article?.cover || '')})`
                   }}
                 >
                   <Show when={article.main_topic}>

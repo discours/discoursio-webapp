@@ -7,6 +7,7 @@ import { useDrafts } from '~/context/drafts'
 import { createValidDate, useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
 import { Author, DraftInput, Maybe, Topic } from '~/graphql/generated/graphql'
+import { getCdnUrl } from '~/lib/imageCache'
 import { Icon } from '../_shared/Icon'
 
 import styles from './DraftCard.module.scss'
@@ -289,7 +290,10 @@ export const DraftCard = (props: Props) => {
         </div>
 
         <Show when={props.draft?.cover}>
-          <div class={styles.coverOverlay} style={{ 'background-image': `url(${props.draft.cover})` }} />
+          <div
+            class={styles.coverOverlay}
+            style={{ 'background-image': `url(${getCdnUrl(props.draft.cover || '')})` }}
+          />
         </Show>
 
         <div class={styles.actions}>

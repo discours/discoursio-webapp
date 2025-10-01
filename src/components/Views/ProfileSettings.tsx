@@ -10,6 +10,7 @@ import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import { useUpload } from '~/context/upload'
 import { ProfileInput } from '~/graphql/generated/graphql'
+import { getCdnUrl } from '~/lib/imageCache'
 import { profileSocialLinks } from '~/lib/profileSocialLinks'
 import styles from '~/styles/views/ProfileSettings.module.scss'
 import { clone } from '~/utils/clone'
@@ -261,7 +262,10 @@ export const ProfileSettings = () => {
                             <Loading />
                           </Match>
                           <Match when={form.pic}>
-                            <div class={styles.userpicImage} style={{ 'background-image': `url(${form.pic})` }} />
+                            <div
+                              class={styles.userpicImage}
+                              style={{ 'background-image': `url(${getCdnUrl(form.pic || '')})` }}
+                            />
                             <div class={styles.controls}>
                               <Popover content={t('Delete userpic')}>
                                 {(triggerRef: (el: HTMLElement) => void) => (

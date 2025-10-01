@@ -14,8 +14,7 @@ import type { Author, Maybe, Shout, Topic } from '~/graphql/generated/graphql'
 import { MediaItem, ReactionKind } from '~/graphql/generated/graphql'
 import { processPrepositions } from '~/intl/prepositions'
 import { isCyrillic } from '~/intl/translate'
-// NOTE: getCdnUrl больше не нужен - Image компонент сам применяет трансформацию
-// ✅ patchBodyUrls удален - больше не нужен
+import { replaceImageUrls } from '~/lib/imageCache'
 import { capitalize } from '~/utils/capitalize'
 import { Icon } from '../_shared/Icon'
 import { Image } from '../_shared/Image'
@@ -90,7 +89,8 @@ export const FullArticle = (props: Props) => {
   const body = createMemo(() => {
     let body = props.article.body || ''
     if (canEdit()) body = processPrepositions(body)
-    // ✅ patchBodyUrls удален - больше не нужен
+    // Заменяем cdn.discours.io на files.dscrs.site в картинках
+    body = replaceImageUrls(body)
     return body
   })
 
@@ -551,12 +551,15 @@ export const FullArticle = (props: Props) => {
               <Show when={props.article?.cover && props.article.layout !== 'video' && props.article.layout !== 'image'}>
                 <figure class={styles.figureAlignColumn}>
                   <Image width={1200} alt={props.article?.cover_caption || ''} src={props.article?.cover || ''} />
-                  <figcaption innerHTML={props.article?.cover_caption || ''} />
+                  <figcaption innerHTML={replaceImageUrls(props.article?.cover_caption || '')} />
                 </figure>
               </Show>
 
               <Show when={props.article.lead}>
-                <section class={styles.lead} innerHTML={processPrepositions(props.article.lead || '')} />
+                <section
+                  class={styles.lead}
+                  innerHTML={replaceImageUrls(processPrepositions(props.article.lead || ''))}
+                />
               </Show>
 
               <Show when={props.article.layout === 'audio'}>
@@ -585,7 +588,7 @@ export const FullArticle = (props: Props) => {
                           description={m.body || ''}
                         />
                         <Show when={m?.body}>
-                          <div innerHTML={m.body || ''} />
+                          <div innerHTML={replaceImageUrls(m.body || '')} />
                         </Show>
                       </div>
                     )}

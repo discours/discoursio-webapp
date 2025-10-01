@@ -5,6 +5,7 @@ import SwiperCore from 'swiper'
 import { HashNavigation, Manipulation, Navigation, Pagination } from 'swiper/modules'
 import { throttle } from 'throttle-debounce'
 import { MediaItem } from '~/graphql/generated/graphql'
+import { getCdnUrl } from '~/lib/imageCache'
 import { Icon } from '../Icon'
 import { Image } from '../Image'
 import { Lightbox } from '../Lightbox'
@@ -124,7 +125,7 @@ export const ImageSwiper = (props: Props) => {
                       <div
                         class={clsx(styles.imageThumb)}
                         style={{
-                          'background-image': `url(${slide.url || ''})`
+                          'background-image': `url(${getCdnUrl(slide.url || '')})`
                         }}
                       />
                     </swiper-slide>

@@ -5,10 +5,10 @@ import { FollowingButton } from '~/components/_shared/FollowingButton'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { FollowingEntity, Topic } from '~/graphql/generated/graphql'
+import { getCdnUrl } from '~/lib/imageCache'
 // getImageUrl больше не нужен - middleware перехватывает CDN запросы
 import { mediaMatches } from '~/lib/mediaQuery'
 import { capitalize } from '~/utils/capitalize'
-
 import styles from './TopicBadge.module.scss'
 
 type Props = {
@@ -62,7 +62,7 @@ export const TopicBadge = (props: Props) => {
               })}
               style={
                 (props.topic?.pic || '') && {
-                  'background-image': `url('${props.topic.pic}')`
+                  'background-image': `url('${getCdnUrl(props.topic.pic || '')}')`
                 }
               }
             />

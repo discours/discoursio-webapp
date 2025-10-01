@@ -1,7 +1,7 @@
 import { Show, untrack } from 'solid-js'
 import { useLocalize } from '~/context/localize'
 import { Draft, MediaItem } from '~/graphql/generated/graphql'
-// getImageUrl больше не нужен - middleware перехватывает CDN запросы
+import { getCdnUrl } from '~/lib/imageCache'
 import styles from '~/styles/views/EditView.module.scss'
 import { DropArea } from '../_shared/DropArea'
 import { Icon } from '../_shared/Icon'
@@ -72,7 +72,7 @@ export const AudioProfile = (props: {
         <div
           class={styles.cover}
           style={{
-            'background-image': `url(${props.draft?.cover || ''})`
+            'background-image': `url(${getCdnUrl(props.draft?.cover || '')})`
           }}
         >
           <Popover content={t('Delete cover')}>
