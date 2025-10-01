@@ -1,22 +1,5 @@
 # 🌟 Discours Webapp
 
-![Version](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.version&label=Version&color=blue)
-![Lines](https://img.shields.io/badge/Lines-50K+-informational?style=flat&logo=typescript&logoColor=white)
-![Files](https://img.shields.io/badge/Files-600+-informational?style=flat&logo=git&logoColor=white)
-![Components](https://img.shields.io/badge/Components-130+-success?style=flat&logo=solid&logoColor=white&color=blue)
-![CI/CD](https://img.shields.io/badge/CI/CD-Passing-blue?style=flat&logo=github-actions&logoColor=white)
-
-
-![TypeScript](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.typescript&label=TypeScript&color=3178c6&logo=typescript&logoColor=white)
-![SolidJS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.solid-js&label=SolidJS&color=2c4f7c&logo=solid&logoColor=white)
-![SolidStart](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.@solidjs/start&label=SolidStart&color=2c4f7c&logo=solid&logoColor=white)
-![SCSS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.sass&label=SCSS&color=cf649a&logo=sass&logoColor=white)
-![Lightning CSS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.lightningcss&label=Lightning&color=ffd700&logo=lightning&logoColor=white)
-![GraphQL](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.graphql&label=GraphQL&color=e10098&logo=graphql&logoColor=white)
-![i18next](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.i18next&label=i18next&color=orange&logo=i18next&logoColor=white)
-![Playwright](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.@playwright/test&label=Playwright&color=2EAD33&logo=microsoft&logoColor=white)
-![Biome](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/discours/discoursio-webapp/dev/package.json&query=$.devDependencies.@biomejs/biome&label=Biome&color=60a5fa&logo=biome&logoColor=white)
-
 **Современный веб-интерфейс** для платформы Discours — открытого журнала о культуре, науке и обществе.
 
 ## 📋 Содержание
@@ -84,18 +67,18 @@ npm run analyze     # 📊 Анализ бандла
 
 ### 📖 Важное
 
-- 📋 **[Основная документация](docs/README.md)** — Обзор всех возможностей
-- 🧪 **[Тестирование](docs/testing.md)** - Гид по автоматизации контроля качества
-- 🎨 **[Open Graph система](docs/open-graph.md)** — Метатеги и социальные сети  
-- 🏗️ **[Архитектура](docs/architecture.md)** — Структура и паттерны
-- 🔌 **[API функции](docs/api-functions.md)** — Серверные функции
-- 🖼️ **[Система изображений](docs/image-caching.md)** — Кеширование и оптимизация
+- 📚 **[Документация](docs/README.md)** — Полный обзор проекта
+- 🏗️ **[Архитектура](docs/architecture/overview.md)** — Структура и технологии
+- ⚡ **[Разработка](docs/development/workflow.md)** — Процессы разработки
+- 🎨 **[Функциональность](docs/features/auth.md)** — Основные возможности
+- 🛠️ **[Справочники](docs/reference/commands.md)** — Команды и настройки
+- 🧪 **[Тестирование](docs/development/testing.md)** — Автоматизация качества
 
 ---
 
 ## 🤝 Участие в разработке
 
-**Мы приветствуем участие!** Пожалуйста, ознакомьтесь с [руководством по участию](docs/contributing.md) перед отправкой PR.
+**Мы приветствуем участие!** Пожалуйста, ознакомьтесь с [руководством по участию](docs/development/contributing.md) перед отправкой PR.
 
 ![Last Commit](https://img.shields.io/badge/dynamic/json?url=https://api.github.com/repos/discours/discoursio-webapp&query=$.updated_at&label=Last%20Update&color=blue&logo=github&logoColor=white)
 ![Repository Size](https://img.shields.io/badge/dynamic/json?url=https://api.github.com/repos/discours/discoursio-webapp&query=$.size&label=Repo%20Size&color=informational&logo=github&logoColor=white)

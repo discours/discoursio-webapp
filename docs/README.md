@@ -1,214 +1,90 @@
-# Документация проекта
+# 📚 Документация Discours.io
 
-## Основные документы
+## 🎯 Обзор
 
-- [README проекта](../README.md) - Основная информация о проекте
-- [CHANGELOG](../CHANGELOG.md) - История изменений
-- [Lightning CSS Integration](lightning-css-integration.md) - Подробное руководство по интеграции Lightning CSS
-- [NPM Scripts](npm-scripts.md) - Документация по npm командам проекта
-- [Архитектура](architecture.md) - Техническая архитектура проекта
+**Discours.io** — платформа для публикации и обсуждения контента о культуре, науке и обществе. Веб-приложение построено на современных технологиях с акцентом на производительность и пользовательский опыт.
 
-## Разработка
+**Технологии:** SolidJS + TypeScript + GraphQL + SCSS + Lightning CSS
 
-- [Git Workflow](git-workflow.md) - Правила работы с Git
-- [Code Style](code-style.md) - Стандарты кодирования
-- [Testing](testing.md) - Стратегия тестирования
-- [Deployment](deployment.md) - Процесс деплоя
+## 📋 Структура документации
 
-## API
+### 🏗️ [Архитектура](architecture/)
+- **[Обзор](./architecture/overview.md)** — Система и технологии
+- **[Структура](./architecture/structure.md)** — Организация кода
+- **[GraphQL Codegen плагины](./architecture/graphql-codegen-plugins.md)** — Конфигурация генерации
+### ⚡ [Развертывание](deployment/)
+-
 
-- [GraphQL Schema](../src/graphql/schema/) - Схемы GraphQL
-- [API Documentation](api.md) - REST API документация
+### ⚡ [Разработка](development/)
+- **[Рабочий процесс](./development/workflow.md)** — Процессы разработки
+- **[Стандарты кода](./development/standards.md)** — Правила и соглашения
+- **[Тестирование](./development/testing.md)** — Автоматизация качества
+- **[Деплой](./development/deployment.md)** — Развертывание
+- **[CI интеграция](./development/ci-integration.md)** — Автоматизированное тестирование
+- **[Участие](./development/contributing.md)** — Руководство для контрибьюторов
 
-## Компоненты
+### 🎨 [Функциональность](features/)
+- **[Обзор](./features/overview.md)** — Основные возможности
+- **[Аутентификация](./features/auth.md)** — Регистрация и OAuth
+- **[Редактор](./features/editor.md)** — Создание контента
+- **[Черновики](./features/drafts.md)** — Работа с черновиками
+- **[Лента](./features/feed-components.md)** — Персонализированный контент
+- **[Комментарии](./features/branch-pagination.md)** — Система комментариев
 
-- [UI Components](components.md) - Библиотека компонентов
-- [Styling Guide](styling.md) - Руководство по стилизации
-- [Icons](../src/components/_shared/Icon/icons/) - Иконки проекта
-- [Система кеширования изображений](image-caching.md) - Полное руководство по кешированию изображений
+### 🚀 [Быстрый старт](getting-started/)
+- **[Установка](./getting-started/quick-start.md)** — Настройка проекта
 
-# Документация  фронтенда discours.io
+### 🛠️ [Справочники](reference/)
+- **[Команды](./reference/commands.md)** — NPM скрипты
+- **[Конфигурация](./reference/configuration.md)** — Переменные окружения
+- **[Изображения](./reference/images.md)** — Оптимизация и кеширование
+- **[Аналитика](./reference/analytics.md)** — Метрики и мониторинг
+- **[Безопасность](./reference/security.md)** — Рекомендации
 
-Проект использует: SolidJS, Typescript, GraphQL, SASS
-
-- [Функциональные возможности](features.md)
-- [Аналитика и метрики](analytics.md)
-- Как работает [счётчик просмотров](views-counter.md)
-- [Кеширование загружаемых данных](caching.md)
-- [Система кеширования изображений](image-caching.md) - Многоуровневое кеширование, обработка ошибок, заглушки
-- [Легковесный нативный редактор](../src/components/SimpleRichEditor/README.md)
-- [Система аутентификации](auth.md)
-
-## Ленты
-
-- [Общие механики лент](feed-components.md)
-- [Фильтрация и сортировка](feed-components.md#фильтрация-и-сортировка)
-- [Работа с `FeedProvider`](feed-components.md#работа-с-feedprovider)
-- [Работа с `FeedSwitcher` и `FeedFilter`](feed-components.md#работа-с-feedswitcher-и-feedfilter)
-- [Оптимизация SSR](feed-components.md#оптимизация-ssr)
-- [Управление состояниями](feed-components.md#управление-состояниями)
-
-## SEO и социальные сети
-
-- [Open Graph теги](open-graph.md)
-- [Генерация динамических OG-изображений](open-graph.md#генерация-динамических-og-изображений)
-- [Оптимизация мета-тегов](open-graph.md#оптимизация-мета-тегов)
-- [Twitter Cards](open-graph.md#twitter-cards)
-
-## Комментарии
-
-- [Фильтры комментариев](comments-filter.md)
-- [Фильтрация и сортировка](comments-filter.md#фильтрация-и-сортировка)
-- [Управление состоянием](comments-filter.md#управление-состоянием)
-
-## Статьи про SolidJS
-
-- Как работают [асинхронные наблюдатели](solid-async.md)
-- [Кешируемое состояние компонентов](solid-memo.md)
-- [Паттерны загрузки данных](api-patterns.md)
-- [Борьба с циклическими эффектами](solid-effects.md)
-
-## Статьи про процесс разработки
-
-- [Как проходит ревью PR](pr-review.md)
-- [Порядок ревью запросов на добавление PR](pr-review.md#порядок-ревью-запросов-на-добавление-pr)
-- [Условия принятия PR](pr-review.md#условия-принятия-pr)
-
-## Компоненты
-- [Работа с топиками](./topics.md)
-- [Облако тегов для выбора тем](./topic-pills-cloud.md)
-- [Система черновиков и публикации](./drafts.md)
-
-## Авторизация и безопасность
-- [OAuth Implementation Guide](./oauth-implementation.md) - Полное руководство по реализации OAuth
-- [OAuth Deployment Checklist](./oauth-deployment.md) - Чеклист для развертывания OAuth
-
-## Архитектура
-- [SolidJS Fine-grained Reactivity](./solid-memo.md) - Принципы реактивности
-- [State Management](./state-management.md) - Управление состоянием приложения
-
-## Тестирование  
-- [E2E Testing OAuth](../tests/oauth.spec.ts) - Автоматические тесты OAuth
-- [Component Testing](./testing.md) - Тестирование компонентов
-
-## API и интеграции
-- [GraphQL Schema](../src/graphql/schema/) - Схема GraphQL API
-- [Context Providers](../src/context/) - Контекстные провайдеры
-
-## Компоненты
-- [UI Components](../src/components/) - Переиспользуемые компоненты
-- [Form Components](../src/components/AuthModal/) - Компоненты форм
-
-# Документация discoursio-webapp
-
-Техническая документация для проекта discoursio-webapp на SolidJS.
-
-## 📚 Содержание
-
-### Основная документация
-- [README.md](../README.md) - Основная информация о проекте
-- [README.en.md](../README.en.md) - Project documentation in English
-- [features.md](features.md) - Описание функциональности проекта
-
-### Техническая документация
-- [Service Worker](service-worker.md) - Offline-функциональность и кэширование
-- [Lightning CSS Integration](lightning-css-integration.md) - CSS оптимизация
-- [Solid Signals 2.0](solid-signals-20.md) - Будущее реактивности
-
-### Архитектура и интеграции
-- Система кэширования и PWA возможности
-- GraphQL с URQL клиентом
-- i18next интернационализация
-- SolidJS реактивность
-- Vite + Vinxi сборка
-- **Lightning CSS** - Сверхбыстрый CSS обработчик на Rust (50-100x быстрее PostCSS)
-- **Biome** - All-in-one линтер и форматтер (заменил ESLint + Prettier)
-- [Open Graph и социальные сети](open-graph.md) - Динамические OG-изображения и мета-теги
+### 🧪 [Тестирование](testing/)
+- **[Сценарии](./testing/test-use-cases.md)** — Тестовые кейсы
+- **[Автоматизация](./testing/testing.md)** — E2E и интеграционные тесты
 
 ## 🚀 Быстрый старт
 
-1. **Установка зависимостей**
-   ```bash
-   bun install
-   ```
-
-2. **Настройка окружения**
-   ```bash
-   cp .env.example .env
-   # Отредактируйте .env файл
-   ```
-
-3. **Запуск разработки**
-   ```bash
-   bun run dev
-   ```
-
-4. **Сборка для продакшена**
-   ```bash
-   bun run build
-   ```
-
-## 📱 PWA возможности
-
-Приложение поддерживает **Progressive Web App** функциональность:
-
-- **Service Worker** - автоматическое кэширование и offline-режим
-- **Responsive Design** - адаптивный дизайн для всех устройств  
-- **Push Notifications** - уведомления от сервера
-- **Background Sync** - синхронизация данных в фоне
-
-Подробнее в [Service Worker документации](service-worker.md).
-
-## 🛠 Разработка
-
-### Структура проекта
-```
-src/
-├── components/     # Компоненты UI
-├── graphql/       # GraphQL схемы и запросы
-├── routes/        # Роутинг приложения
-├── context/       # Контексты и провайдеры
-├── utils/         # Утилиты и хелперы
-└── styles/        # Глобальные стили
-
-public/
-├── sw.js          # Service Worker
-├── offline.html   # Offline страница
-└── icons/         # Иконки приложения
-```
-
-### Основные команды
-- `bun run dev` - разработка
-- `bun run build` - сборка
-- `bun run lint` - проверка кода
-- `bun run typecheck` - проверка типов
-- `bun run e2e` - E2E тесты
-
-### Полезные ресурсы
-- [SolidJS Docs](https://www.solidjs.com/docs)
-- [SolidStart Guide](https://start.solidjs.com/)
-- [URQL Documentation](https://formidable.com/open-source/urql/)
-- [Vite Guide](https://vitejs.dev/guide/)
-
-## 🔧 Настройки
-
-### Переменные окружения
+### Установка
 ```bash
-# API настройки
-PUBLIC_GRAPHQL_ENDPOINT=...
-PUBLIC_API_URL=...
-
-# Конфигурация сборки
-NODE_ENV=development
+git clone https://github.com/discours/discoursio-webapp.git
+cd discoursio-webapp
+npm install
 ```
 
-### Service Worker
-Service Worker автоматически регистрируется и обеспечивает:
-- Кэширование статических ресурсов
-- Offline-функциональность
-- Push-уведомления
-- Фоновую синхронизацию
+### Разработка
+```bash
+npm run dev      # Запуск сервера разработки
+npm run build    # Сборка для продакшена
+npm run typecheck # Проверка типов
+npm run fix      # Автоисправление кода
+```
 
-## 📖 Дополнительная информация
+### Тестирование
+```bash
+npm run e2e:tests  # E2E тесты
+npm run test:coverage # Покрытие кода
+```
 
-Для получения более подробной информации о конкретных аспектах проекта, обращайтесь к соответствующим разделам документации выше.
+## 📊 Статус проекта
+
+**Версия:** v0.14.25
+**Статус:** Активная разработка
+
+## 🤝 Участие
+
+Изучите [руководство по участию](development/contributing.md) перед отправкой изменений.
+
+## 📚 Полезные ресурсы
+
+- [SolidJS Docs](https://www.solidjs.com/docs)
+- [GraphQL Guide](https://graphql.org/learn/)
+- [Vite Docs](https://vitejs.dev/)
+- [Biome Linter](https://biomejs.dev/)
+- [Lightning CSS](https://lightningcss.dev/)
+
+---
+
+*Документация обновляется автоматически с развитием проекта*
