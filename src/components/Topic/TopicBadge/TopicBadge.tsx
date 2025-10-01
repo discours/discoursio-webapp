@@ -16,6 +16,7 @@ type Props = {
   minimize?: boolean
   showStat?: boolean
   subscriptionsMode?: boolean
+  onClick?: () => void
 }
 
 export const TopicBadge = (props: Props) => {
@@ -39,8 +40,17 @@ export const TopicBadge = (props: Props) => {
 
   const title = () => (lang() === 'en' ? capitalize(props.topic.slug.replaceAll('-', ' ')) : props.topic.title)
 
+  const handleClick = (_e: MouseEvent) => {
+    if (props.onClick) {
+      props.onClick()
+    }
+  }
+
   return (
-    <div class={clsx(styles.TopicBadge, { [styles.TopicBadgeSubscriptionsMode]: props.subscriptionsMode })}>
+    <div
+      class={clsx(styles.TopicBadge, { [styles.TopicBadgeSubscriptionsMode]: props.subscriptionsMode })}
+      onClick={handleClick}
+    >
       <div class={styles.content}>
         <div class={styles.basicInfo}>
           <Show when={props.subscriptionsMode}>

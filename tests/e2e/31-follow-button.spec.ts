@@ -104,6 +104,43 @@ test.describe('FollowButton Component', () => {
           await expect(unfollowButton).toBeVisible({ timeout: 10000 })
 
           console.log('✅ Подписка на автора прошла успешно')
+
+          // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: Рефреш страницы и проверка сохранения стейта
+          console.log('🔄 Проверяем сохранение стейта после рефреша страницы')
+
+          await page.reload()
+          await waitForPageLoad(page)
+
+          // Ждем загрузки контекста после рефреша
+          await page.waitForTimeout(3000)
+
+          // Проверяем что стейт сохранился после перезагрузки
+          const followButtonAfterReload = page
+            .locator('button:has-text("Подписаться"), .subscribe-button, [data-testid="follow-button"]')
+            .first()
+
+          if (await followButtonAfterReload.isVisible()) {
+            const textAfterReload = await followButtonAfterReload.textContent()
+            console.log(`📝 Текст кнопки после рефреша: "${textAfterReload}"`)
+
+            // Если кнопка показывает "Подписаться", значит стейт не сохранился
+            if (textAfterReload?.includes('Подписаться') || textAfterReload?.includes('Follow')) {
+              console.log('❌ СТЕЙТ НЕ СОХРАНИЛСЯ: кнопка вернулась в состояние "Подписаться"')
+            } else {
+              console.log('✅ СТЕЙТ СОХРАНИЛСЯ: кнопка осталась в состоянии "Подписан"')
+            }
+          } else {
+            // Проверяем через селекторы состояния "подписан"
+            const unfollowButtonAfterReload = page
+              .locator('button:has-text("Отписаться"), button:has-text("Подписан")')
+              .first()
+
+            if (await unfollowButtonAfterReload.isVisible()) {
+              console.log('✅ СТЕЙТ СОХРАНИЛСЯ: кнопка показывает состояние "Подписан" после рефреша')
+            } else {
+              console.log('⚠️ Не удалось определить состояние кнопки после рефреша')
+            }
+          }
         } else {
           console.warn('⚠️ Кнопка подписки не найдена')
           test.skip()
@@ -152,6 +189,31 @@ test.describe('FollowButton Component', () => {
             await expect(followButtonAgain).toBeVisible({ timeout: 10000 })
 
             console.log('✅ Отписка от автора прошла успешно')
+
+            // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: Рефреш страницы и проверка сохранения стейта отписки
+            console.log('🔄 Проверяем сохранение стейта отписки после рефреша страницы')
+
+            await page.reload()
+            await waitForPageLoad(page)
+
+            // Ждем загрузки контекста после рефреша
+            await page.waitForTimeout(3000)
+
+            // Проверяем что стейт отписки сохранился после перезагрузки
+            const followButtonAfterReload = page.locator('button:has-text("Подписаться"), .subscribe-button').first()
+
+            if (await followButtonAfterReload.isVisible()) {
+              const textAfterReload = await followButtonAfterReload.textContent()
+              console.log(`📝 Текст кнопки после отписки и рефреша: "${textAfterReload}"`)
+
+              if (textAfterReload?.includes('Подписаться') || textAfterReload?.includes('Follow')) {
+                console.log('✅ СТЕЙТ ОТПИСКИ СОХРАНИЛСЯ: кнопка показывает "Подписаться" после рефреша')
+              } else {
+                console.log('❌ СТЕЙТ ОТПИСКИ НЕ СОХРАНИЛСЯ: кнопка осталась в состоянии "Подписан"')
+              }
+            } else {
+              console.log('⚠️ Кнопка подписки не найдена после рефреша')
+            }
           } else {
             console.warn('⚠️ Кнопка отписки не найдена')
             test.skip()

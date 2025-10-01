@@ -17,15 +17,13 @@ interface SearchTopicsProps {
 export const SearchTopics = (props: SearchTopicsProps) => {
   const { hideModal } = useUI()
 
-  const handleTopicClick = () => {
-    hideModal()
-  }
-
   return (
     <>
       <Show when={props.topicsList.length > 0}>
-        <div class={styles.searchResults} onClick={handleTopicClick}>
-          <For each={props.topicsList}>{(topic) => <TopicBadge topic={topic} showStat={true} />}</For>
+        <div class={styles.searchResults}>
+          <For each={props.topicsList}>
+            {(topic) => <TopicBadge topic={topic} showStat={true} onClick={hideModal} />}
+          </For>
         </div>
 
         {/* Sentinel element for infinite scrolling */}

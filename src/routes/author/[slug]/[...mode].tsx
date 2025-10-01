@@ -214,22 +214,56 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
 
   // load author's profile
   const { addAuthor, authorsEntities } = useAuthors()
-  const [author, setAuthor] = createSignal<Author | undefined>(props.data.author)
-  createEffect(
-    on(
-      author,
-      async (profile) => {
-        // update only if no profile loaded
-        if (!profile) {
-          const loadedAuthor = authorsEntities()[props.params.slug] || (await fetchAuthor(props.params.slug))
-          if (loadedAuthor) {
-            addAuthor(loadedAuthor)
-            setAuthor(loadedAuthor)
-          }
-        }
-      },
-      { defer: true }
-    )
+
+  // ✅ КРИТИЧНО для клиентского роутинга: отслеживаем изменение slug
+  const [author] = createResource(
+    () => ({ slug: params.slug, ssrData: props.data.author }),
+    async ({ slug, ssrData }) => {
+      console.log('[AuthorPage] Loading author for slug:', slug, {
+        hasSsrData: !!ssrData,
+        ssrDataSlug: ssrData?.slug,
+        ssrDataStats: ssrData?.stat
+      })
+
+      // ✅ КРИТИЧНО: Если есть SSR данные с полной статистикой - используем их
+      if (ssrData && ssrData.slug === slug && typeof ssrData.stat?.comments === 'number') {
+        console.log('[AuthorPage] Using SSR data with full stats:', {
+          slug: ssrData.slug,
+          stats: ssrData.stat
+        })
+        addAuthor(ssrData)
+        return ssrData
+      }
+
+      // Проверяем кеш в контексте
+      const cached = authorsEntities()[slug]
+      if (cached && cached.slug === slug) {
+        console.log('[AuthorPage] Using cached author:', {
+          slug: cached.slug,
+          stats: cached.stat
+        })
+        return cached
+      }
+
+      // Загружаем нового автора при клиентском роутинге
+      console.log('[AuthorPage] Loading author from API:', slug)
+      const loadedAuthor = await fetchAuthor(slug)
+      if (loadedAuthor) {
+        addAuthor(loadedAuthor)
+        console.log('[AuthorPage] Loaded author from API:', {
+          slug: loadedAuthor.slug,
+          stats: loadedAuthor.stat
+        })
+        return loadedAuthor
+      }
+
+      console.warn('[AuthorPage] Author not found:', slug)
+      return undefined
+    },
+    {
+      // Используем SSR данные как начальные
+      initialValue: props.data.author
+    }
   )
 
   // author's data, view counter
@@ -337,10 +371,10 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
               >
                 <ReactionsProvider>
                   <AuthorView
-                    author={author() || resolvedData()?.author}
+                    author={author() || resolvedData()?.author || props.data.author}
                     authorSlug={decodeURIComponent(props.params.slug)}
-                    shouts={authorShouts() || []}
-                    comments={authorComments() || []}
+                    shouts={authorShouts() || resolvedData()?.articles || []}
+                    comments={authorComments() || resolvedData()?.comments || []}
                   />
                 </ReactionsProvider>
               </PageLayout>

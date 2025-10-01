@@ -3,7 +3,6 @@ import { clsx } from 'clsx'
 import { createEffect, createMemo, createSignal, For, on, Show, Suspense } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
 import { Button } from '~/components/_shared/Button'
-import stylesButton from '~/components/_shared/Button/Button.module.scss'
 import { FollowingButton } from '~/components/_shared/FollowingButton'
 import { FollowingCounters } from '~/components/_shared/FollowingCounters/FollowingCounters'
 import { Icon } from '~/components/_shared/Icon'
@@ -21,6 +20,7 @@ import { getShareUrl, SharePopup } from '../../Article/SharePopup'
 import { TopicBadge } from '../../Topic/TopicBadge'
 import { AuthorBadge } from '../AuthorBadge'
 import { Userpic } from '../Userpic'
+import stylesButton from '~/components/_shared/Button/Button.module.scss'
 import styles from './AuthorCard.module.scss'
 
 type Props = {
@@ -38,7 +38,7 @@ export const AuthorCard = (props: Props) => {
   const author = createMemo<Author>(() => session()?.author as Author)
   const [authorSubs, setAuthorSubs] = createSignal<Array<Author | Topic | Community>>(props.flatFollows || [])
   const [followsFilter, setFollowsFilter] = createSignal<FollowsFilter>('all')
-  const isProfileOwner = createMemo(() => author()?.slug === props.author.slug)
+  const isProfileOwner = () => author()?.slug === props.author.slug
   const { follows } = useFollowing() // viewer's followings
   const { hideModal } = useUI()
 
@@ -48,15 +48,16 @@ export const AuthorCard = (props: Props) => {
     return follows.authors.some((authorEntity) => authorEntity.id === props.author.id)
   }
 
-  const name = createMemo(() => {
-    if (lang() !== 'ru' && isCyrillic(props.author?.name || '')) {
-      if (props.author.name === 'Дискурс') {
+  const name = () => {
+    const authorName = props.author?.name || ''
+    if (lang() !== 'ru' && isCyrillic(authorName)) {
+      if (authorName === 'Дискурс') {
         return 'Discours'
       }
-      return translit(props.author?.name || '')
+      return translit(authorName)
     }
-    return props.author.name
-  })
+    return authorName
+  }
 
   const initChat = () => {
     // eslint-disable-next-line solid/reactivity
@@ -69,14 +70,15 @@ export const AuthorCard = (props: Props) => {
     console.log('Attempting to navigate to settings')
     console.log('Session state:', session())
     requireAuthentication(() => {
-      if (author() && setForm) {
+      const currentAuthor = author()
+      if (currentAuthor && setForm) {
         setForm({
-          name: author()?.name || '',
-          slug: author()?.slug || '',
-          bio: author()?.bio || '',
-          about: author()?.about || '',
-          pic: author()?.pic || '',
-          links: author()?.links || []
+          name: currentAuthor.name || '',
+          slug: currentAuthor.slug || '',
+          bio: currentAuthor.bio || '',
+          about: currentAuthor.about || '',
+          pic: currentAuthor.pic || '',
+          links: currentAuthor.links || []
         })
       }
       console.log('Authentication successful, navigating...')
@@ -163,7 +165,7 @@ export const AuthorCard = (props: Props) => {
                   'name' in subscription ? (
                     <AuthorBadge author={subscription as Author} subscriptionsMode={true} onClick={() => hideModal()} />
                   ) : (
-                    <TopicBadge topic={subscription as Topic} subscriptionsMode={true} />
+                    <TopicBadge topic={subscription as Topic} subscriptionsMode={true} onClick={() => hideModal()} />
                   )
                 }
               </For>
@@ -225,7 +227,7 @@ export const AuthorCard = (props: Props) => {
                       style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
                       title={t('Publications')}
                     />
-                    {t('some shouts', { count: props.author.stat?.shouts })}
+                    {t('some shouts', { count: props.author?.stat?.shouts })}
                   </span>
                 )}
                 {(props.author?.stat?.topics || 0) > 0 && (
@@ -239,10 +241,10 @@ export const AuthorCard = (props: Props) => {
                       style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
                       title={t('Topics')}
                     />
-                    {t('some topics', { count: props.author.stat?.topics })}
+                    {t('some topics', { count: props.author?.stat?.topics })}
                   </span>
                 )}
-                {props.author?.stat?.coauthors && props.author.stat.coauthors > 0 && (
+                {props.author?.stat?.coauthors && props.author?.stat?.coauthors > 0 && (
                   <span
                     class="statItem"
                     style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
@@ -253,10 +255,10 @@ export const AuthorCard = (props: Props) => {
                       style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
                       title={t('Co-authors')}
                     />
-                    {t('some coauthors', { count: props.author.stat?.coauthors })}
+                    {t('some coauthors', { count: props.author?.stat?.coauthors })}
                   </span>
                 )}
-                {props.author?.stat?.viewed_shouts && props.author.stat.viewed_shouts > 0 && (
+                {props.author?.stat?.viewed_shouts && props.author?.stat?.viewed_shouts > 0 && (
                   <span
                     class="statItem"
                     style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
@@ -267,8 +269,8 @@ export const AuthorCard = (props: Props) => {
                       style="width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--black-400);"
                       title={t('Views')}
                     />
-                    <span class="statCount" title={t('some views', { count: props.author.stat?.viewed_shouts })}>
-                      {props.author.stat?.viewed_shouts}
+                    <span class="statCount" title={t('some views', { count: props.author?.stat?.viewed_shouts })}>
+                      {props.author?.stat?.viewed_shouts}
                     </span>
                   </span>
                 )}
@@ -278,29 +280,29 @@ export const AuthorCard = (props: Props) => {
                     style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
                   >
                     <Icon name="comment" class="statIcon" style="width: 1.2rem; height: 1.2rem; flex-shrink: 0;" />
-                    <span title={t('some comments', { count: props.author.stat?.comments })}>
-                      {props.author.stat?.comments}
+                    <span title={t('some comments', { count: props.author?.stat?.comments })}>
+                      {props.author?.stat?.comments}
                     </span>
                     {' / '}
-                    <span title={t('some replies', { count: props.author.stat?.replies_count })}>
-                      {props.author.stat?.replies_count}
+                    <span title={t('some replies', { count: props.author?.stat?.replies_count })}>
+                      {props.author?.stat?.replies_count}
                     </span>
                   </span>
                 )}
                 {props.author?.stat &&
-                  ((props.author.stat?.rating_shouts && props.author.stat.rating_shouts !== 0) ||
-                    (props.author.stat?.rating_comments && props.author.stat.rating_comments !== 0)) && (
+                  ((props.author?.stat?.rating_shouts && props.author?.stat?.rating_shouts !== 0) ||
+                    (props.author?.stat?.rating_comments && props.author?.stat?.rating_comments !== 0)) && (
                     <span
                       class="statItem"
                       style="display: inline-flex; align-items: center; white-space: nowrap; gap: 0.3rem; flex-shrink: 0;"
                     >
                       <span class="statCount" title={t('Rating shouts')}>
-                        {(props.author.stat?.rating_shouts || 0) > 0 ? '+' : ''}
-                        {props.author.stat?.rating_shouts || 0}
+                        {(props.author?.stat?.rating_shouts || 0) > 0 ? '+' : ''}
+                        {props.author?.stat?.rating_shouts || 0}
                         {' / '}
                         <span title={t('Rating comments')}>
-                          {(props.author.stat?.rating_comments || 0) > 0 ? '+' : ''}
-                          {props.author.stat?.rating_comments || 0}
+                          {(props.author?.stat?.rating_comments || 0) > 0 ? '+' : ''}
+                          {props.author?.stat?.rating_comments || 0}
                         </span>
                       </span>
                     </span>

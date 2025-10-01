@@ -94,24 +94,6 @@ export const AuthorView = (props: AuthorViewProps) => {
       setLoadMoreHidden(true) // Скрываем кнопку загрузки если есть данные
     }
 
-    // Если у автора нет статистики, но есть публикации - инициализируем её
-    if (props.author && !props.author.stat && initialShouts.length > 0) {
-      console.log('[AuthorView] Author missing stats, initializing from props:', {
-        shouts: initialShouts.length,
-        author: props.author.slug
-      })
-      // Устанавливаем минимальную статистику на основе данных
-      props.author.stat = {
-        shouts: initialShouts.length,
-        comments: 0,
-        replies_count: 0,
-        rating_shouts: 0,
-        rating_comments: 0,
-        viewed_shouts: 0,
-        topics: 0
-      }
-    }
-
     // Инициализируем флаг loadMoreHidden на основе статистики автора
     if (props.author?.stat?.shouts) {
       const allShoutsLoaded = initialShouts.length >= props.author.stat.shouts
@@ -126,10 +108,13 @@ export const AuthorView = (props: AuthorViewProps) => {
       setLoadMoreHidden(initialShouts.length < FEED_PAGE_SIZE)
     }
 
-    // Инициализируем автора из пропсов если доступен
+    // ✅ Начальная инициализация - устанавливаем автора из пропсов если он доступен
     if (props.author) {
-      console.log('[AuthorView] Setting initial author from props:', props.author.slug, props.author.stat)
-      setAuthor(props.author)
+      console.log('[AuthorView] Initial setup - checking author data:', {
+        slug: props.author.slug,
+        hasStats: !!props.author.stat,
+        stats: props.author.stat
+      })
     }
 
     // Убираем загрузку комментариев - это делается в route
@@ -261,19 +246,48 @@ export const AuthorView = (props: AuthorViewProps) => {
       console.log('[AuthorView] Author loading effect triggered:', {
         sessionAuthor: meData?.slug,
         targetSlug: slug,
-        currentAuthor: author()?.slug
+        currentAuthor: author()?.slug,
+        hasPropsAuthor: !!props.author,
+        propsAuthorStats: props.author?.stat
       })
 
-      // 🔧  Приоритет для данных из route.load с полной статистикой
-      if (props.author && typeof props.author.stat?.comments === 'number') {
+      // ✅ ПРИОРИТЕТ 1: Используем данные из route.load с полной статистикой (начальная инициализация)
+      if (
+        props.author?.stat &&
+        typeof props.author.stat.comments === 'number' &&
+        (props.author.stat.shouts ?? 0) >= 0
+      ) {
+        console.log('[AuthorView] Using props.author with full stats:', {
+          slug: props.author.slug,
+          stats: props.author.stat
+        })
         setAuthor(props.author)
         return
       }
 
-      // 🔧  Проверяем кеш ПЕРЕД API запросом
+      // ✅ ПРИОРИТЕТ 2: Не перезаписываем, если текущий автор уже имеет полную статистику
+      const currentAuthor = author()
+      if (
+        currentAuthor?.stat &&
+        typeof currentAuthor.stat.comments === 'number' &&
+        (currentAuthor.stat.shouts ?? 0) >= 0
+      ) {
+        console.log('[AuthorView] Current author already has full stats, skipping update:', {
+          slug: currentAuthor.slug,
+          stats: currentAuthor.stat
+        })
+        return
+      }
+
+      // ✅ ПРИОРИТЕТ 3: Используем кеш только если нет данных в props
       const cachedAuthor = authorsEntities()[slug]
-      if (cachedAuthor && cachedAuthor.slug === slug) {
-        console.log('[AuthorView] Using cached author data:', {
+      if (
+        cachedAuthor &&
+        cachedAuthor.slug === slug &&
+        cachedAuthor.stat &&
+        typeof cachedAuthor.stat.comments === 'number'
+      ) {
+        console.log('[AuthorView] Using cached author with full stats:', {
           slug: cachedAuthor.slug,
           stats: cachedAuthor.stat
         })
@@ -281,7 +295,7 @@ export const AuthorView = (props: AuthorViewProps) => {
         return
       }
 
-      // Загружаем автора через API только если нет в кеше
+      // Загружаем автора через API только если нет в кеше и нет данных из props
       if (slug && (!author() || author()?.slug !== slug)) {
         console.log('[AuthorView] Loading author from API (cache miss):', slug)
         await loadAuthor({ slug })

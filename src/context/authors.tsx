@@ -109,18 +109,19 @@ export const AuthorsProvider = (props: { children: JSX.Element }) => {
   const addAuthor = (newAuthor: Author) => {
     setAuthors((prevAuthors) => {
       const updatedAuthors = { ...prevAuthors }
-      // ✅ ОБЪЕДИНЯЕМ данные и для одного автора
+      // ✅ ПРАВИЛЬНОЕ объединение данных автора
       const existingAuthor = updatedAuthors[newAuthor.slug]
       if (existingAuthor) {
         updatedAuthors[newAuthor.slug] = {
           ...existingAuthor,
           ...newAuthor,
-          stat: newAuthor.stat
-            ? {
-                ...existingAuthor.stat,
-                ...newAuthor.stat
-              }
-            : existingAuthor.stat
+          // ✅ Статистика: берем наиболее полную версию
+          stat:
+            newAuthor.stat && typeof newAuthor.stat.comments === 'number'
+              ? newAuthor.stat // Если новые данные имеют полную статистику - используем их
+              : existingAuthor.stat && typeof existingAuthor.stat.comments === 'number'
+                ? existingAuthor.stat // Если существующие данные имеют полную статистику - оставляем их
+                : newAuthor.stat || existingAuthor.stat // Fallback на любую доступную статистику
         }
       } else {
         updatedAuthors[newAuthor.slug] = newAuthor
