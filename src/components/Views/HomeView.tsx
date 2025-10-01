@@ -1,5 +1,5 @@
 import { createEffect, createMemo, For, onMount, Show } from 'solid-js'
-import { isServer } from 'solid-js/web'
+import { isServer, NoHydration } from 'solid-js/web'
 import { useAuthors } from '~/context/authors'
 import { useFeaturedFeed } from '~/context/featured'
 import { useLocalize } from '~/context/localize'
@@ -209,13 +209,15 @@ export const HomeView = (props: HomeViewProps) => {
             <Row3 articles={deduplicatedBlocks().topCommented.slice(0, 3)} nodate={true} />
           </Show>
 
-          {/* ✅ Случайная тема - ТОЛЬКО клиентский рендер через onMount флаг */}
-          <Show when={!isServer && randomTopicFeed()?.shouts && randomTopicFeed()?.topic}>
-            <TopicShoutsGroup
-              shouts={randomTopicFeed()?.shouts.slice(0, 7) || []}
-              topic={randomTopicFeed()?.topic as Topic}
-            />
-          </Show>
+          {/* NOTE: Случайная тема - только клиентский рендер без гидрации */}
+          <NoHydration>
+            <Show when={!isServer && randomTopicFeed()?.shouts && randomTopicFeed()?.topic}>
+              <TopicShoutsGroup
+                shouts={randomTopicFeed()?.shouts.slice(0, 7) || []}
+                topic={randomTopicFeed()?.topic as Topic}
+              />
+            </Show>
+          </NoHydration>
 
           <Show when={deduplicatedBlocks().topRated.length > 0}>
             <ArticleCardSwiper title={t('Favorite')} slides={deduplicatedBlocks().topRated.slice(0, 10)} />
