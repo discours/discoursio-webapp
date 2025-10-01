@@ -28,7 +28,7 @@ export interface SSEMessage {
   seen?: boolean
 }
 
-export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'error'
+export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'error' | 'degraded'
 
 export type DraftField = {
   content: string
@@ -162,10 +162,16 @@ export const ConnectProvider = (props: { children: JSX.Element }) => {
         }
       }
 
-      eventSource.onerror = (error) => {
-        console.error('[Connect] Ошибка SSE соединения:', error)
-        setStatus('error')
-        setError('Ошибка SSE соединения')
+      eventSource.onerror = (_error) => {
+        // 💋 Graceful: уменьшаем шум в консоли
+        if (reconnectAttempts === 0) {
+          console.warn('[Connect] SSE сервис недоступен, работаем в degraded режиме')
+        } else if (reconnectAttempts < maxReconnectAttempts) {
+          console.debug(`[Connect] SSE переподключение ${reconnectAttempts}/${maxReconnectAttempts}`)
+        }
+
+        setStatus(reconnectAttempts >= maxReconnectAttempts ? 'degraded' : 'error')
+        setError(reconnectAttempts >= maxReconnectAttempts ? null : 'Попытка переподключения...')
 
         // Закрываем соединение и инициируем переподключение
         eventSource.close()

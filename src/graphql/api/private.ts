@@ -253,9 +253,31 @@ export const useFollowedCommunities = (slug?: string, authorId?: number, signedC
 
 /**
  * Прямой метод без кеширования
- * Загрузка ленты подписок
+ * Загрузка СВОЕЙ ленты подписок (текущего пользователя)
+ * Загружает публикации только от авторов/тем, на которых подписан ТЕКУЩИЙ пользователь
+ */
+export const loadMyFollowedShouts = ({ options }: { options: LoadShoutsOptions }, signedClient: Client | undefined) => {
+  return async () => {
+    if (!signedClient) {
+      console.log('[loadMyFollowedShouts] Missing auth client')
+      return undefined
+    }
+    console.log('[loadMyFollowedShouts] Loading MY followed shouts with options:', options)
+    const resp = await signedClient.query(loadShoutsFeedQuery, { options }).toPromise()
+    const result = resp?.data?.load_shouts_feed as Shout[]
+    console.log('[loadMyFollowedShouts] Result:', { count: result?.length, hasError: !!resp?.error })
+    if (resp?.error) {
+      console.error('[loadMyFollowedShouts] GraphQL error:', resp.error)
+    }
+    return result
+  }
+}
+
+/**
+ * Прямой метод без кеширования
+ * Загрузка ленты подписок ДРУГОГО пользователя
  * Используется для SSR и начальной загрузки
- * Загружает публикации только от подписанных авторов и по подписанным темам
+ * Загружает публикации только от авторов/тем, на которых подписан ДРУГОЙ пользователь
  */
 export const loadFollowedShouts = (
   { options, slug }: { options: LoadShoutsOptions; slug: string },

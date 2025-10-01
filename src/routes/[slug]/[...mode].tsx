@@ -83,6 +83,14 @@ const fetchShout = async (slug: string): Promise<Shout | undefined> => {
       hasAuthors: !!result?.authors?.length,
       hasTopics: !!result?.topics?.length
     })
+
+    // ✅ КРИТИЧНО: Заменяем старые CDN URL сразу после загрузки
+    if (result?.body || result?.lead) {
+      const { replaceImageUrls } = await import('~/lib/imageCache')
+      if (result.body) result.body = replaceImageUrls(result.body)
+      if (result.lead) result.lead = replaceImageUrls(result.lead)
+    }
+
     return result
   } catch (error) {
     console.error(`[fetchShout] Error loading "${slug}":`, error)

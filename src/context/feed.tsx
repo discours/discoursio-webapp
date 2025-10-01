@@ -1,5 +1,6 @@
 import { useLocation } from '@solidjs/router'
 import { Client as GraphQLClient } from '@urql/core'
+import { isServer } from 'solid-js/web'
 import {
   Accessor,
   batch,
@@ -13,7 +14,12 @@ import {
   Setter,
   useContext
 } from 'solid-js'
-import { loadCoauthoredShouts, loadDiscussedShouts, loadFollowedShouts } from '~/graphql/api/private'
+import {
+  loadCoauthoredShouts,
+  loadDiscussedShouts,
+  loadFollowedShouts,
+  loadMyFollowedShouts
+} from '~/graphql/api/private'
 import { loadShouts, loadShoutsSearch } from '~/graphql/api/public'
 import { Author, LoadShoutsOptions, ReactionKind, Shout, ShoutsOrderBy, Topic } from '~/graphql/generated/graphql'
 import { FeedFilters, FeedMode, FilterState, MyFeedKind } from '~/types/nav'
@@ -223,7 +229,8 @@ type ControllersMap = {
  * @param setter - Функция обновления состояния
  * @param client - GraphQL клиент
  * @param options - Базовые опции загрузки
- * @param userSlug - Slug пользователя (для followed ленты)
+ * @param isOwnFeed - true для своей ленты (load_shouts_feed), false для чужой (load_shouts_followed_by)
+ * @param userSlug - Slug пользователя (только для чужой followed ленты)
  * @param opts - Дополнительные опции (пагинация и т.д.)
  *
  * @throws {Error} При ошибке загрузки
@@ -233,24 +240,34 @@ const loadPersonalFeed = async (
   setter: Setter<FeedState>,
   client: GraphQLClient,
   options: LoadShoutsOptions,
+  isOwnFeed = true,
   userSlug?: string,
   opts?: Partial<LoadShoutsOptions>
 ) => {
   setter((prev) => ({ ...prev, isLoading: true }))
-  console.log(`[FeedProvider] Loading ${type} feed:`, { opts, userSlug })
+  console.log(`[FeedProvider] Loading ${type} feed:`, { opts, isOwnFeed, userSlug })
 
   try {
     let fetcher: (() => Promise<Shout[] | undefined>) | undefined
 
-    if (type === 'followed' && userSlug) {
-      // Для followed ленты используем специальный запрос с slug пользователя
-      fetcher = await loadFollowedShouts({ options: { ...options, ...opts }, slug: userSlug }, client)
+    if (type === 'followed') {
+      if (isOwnFeed) {
+        // 🔥 ДЛЯ СВОЕЙ ЛЕНТЫ: load_shouts_feed (без slug)
+        // Возвращает публикации от авторов/тем, на которых подписан ТЕКУЩИЙ пользователь
+        fetcher = await loadMyFollowedShouts({ options: { ...options, ...opts } }, client)
+      } else if (userSlug) {
+        // ДЛЯ ЧУЖОЙ ЛЕНТЫ: load_shouts_followed_by (с slug)
+        // Возвращает публикации от авторов/тем, на которых подписан ДРУГОЙ пользователь
+        fetcher = await loadFollowedShouts({ options: { ...options, ...opts }, slug: userSlug }, client)
+      } else {
+        throw new Error('Missing userSlug for other user followed feed')
+      }
     } else if (type === 'discussed') {
       fetcher = await loadDiscussedShouts({ options: { ...options, ...opts } }, client)
     } else if (type === 'coauthored') {
       fetcher = await loadCoauthoredShouts({ options: { ...options, ...opts } }, client)
     } else {
-      throw new Error(`Unknown feed type: ${type} or missing userSlug for followed feed`)
+      throw new Error(`Unknown feed type: ${type}`)
     }
 
     const result = await fetcher!()
@@ -503,14 +520,15 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
   }
 
   // Обновляем методы загрузки персональных лент с передачей client и options
+  // 🔥 ИСПРАВЛЕНО: Для СВОЕЙ ленты подписок используем isOwnFeed=true (без slug)
   const loadFollowedFeed = (opts?: Partial<LoadShoutsOptions>) =>
-    loadPersonalFeed('followed', setFollowedFeed, client() as GraphQLClient, options(), session()?.author?.slug, opts)
+    loadPersonalFeed('followed', setFollowedFeed, client() as GraphQLClient, options(), true, undefined, opts)
 
   const loadDiscussedFeed = (opts?: Partial<LoadShoutsOptions>) =>
-    loadPersonalFeed('discussed', setDiscussedFeed, client() as GraphQLClient, options(), undefined, opts)
+    loadPersonalFeed('discussed', setDiscussedFeed, client() as GraphQLClient, options(), true, undefined, opts)
 
   const loadCoauthoredFeed = (opts?: Partial<LoadShoutsOptions>) =>
-    loadPersonalFeed('coauthored', setCoauthoredFeed, client() as GraphQLClient, options(), undefined, opts)
+    loadPersonalFeed('coauthored', setCoauthoredFeed, client() as GraphQLClient, options(), true, undefined, opts)
 
   const loadFeedSearch = async (text: string, options: LoadShoutsOptions) => {
     console.debug('[FeedProvider] loadFeedSearch called with:', { text, options })
@@ -698,6 +716,12 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
         // Определяем тип ленты
         const isPersonalFeed = ['followed', 'discussed', 'coauthored'].includes(currentMode)
 
+        // 🛡️ SSR не загружает авторизованные ленты
+        if (isServer && isPersonalFeed) {
+          console.log('[FeedProvider] Skipping personal feed load on SSR')
+          return
+        }
+
         // Проверяем нужно ли загружать данные
         const currentFeed = feedSetters[currentMode]?.((prev) => prev)
         const hasValidData = currentFeed?.shouts?.length > 0 && !currentFeed.isEmpty
@@ -802,6 +826,9 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
    */
   createEffect(
     on(myFeed, async (currentFeed) => {
+      // 🛡️ SSR не загружает авторизованные ленты
+      if (isServer) return
+      
       if (!(session()?.token && currentFeed)) return
 
       setIsFeedLoading(true)
