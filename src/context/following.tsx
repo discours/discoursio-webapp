@@ -72,18 +72,21 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
     communities: []
   })
 
+  // ✅ Реактивный триггер для принудительной перезагрузки подписок
+  const [followsRefreshTrigger, setFollowsRefreshTrigger] = createSignal(0)
+
   // Основной ресурс для загрузки подписок текущего пользователя
   const [followsResource] = createResource(
-    () => session()?.author?.slug,
-    async (slug) => {
-      if (!(slug && client())) return null
-      console.log('[FollowingContext] Loading follows for user:', slug)
-      const response = await client()?.query(loadAuthorFollowsQuery, { slug }).toPromise()
+    () => {
+      // Отслеживаем и slug пользователя, и триггер обновления
+      const slug = session()?.author?.slug
+      const trigger = followsRefreshTrigger()
+      return slug ? { slug, trigger } : null
+    },
+    async (params) => {
+      if (!(params?.slug && client())) return null
+      const response = await client()?.query(loadAuthorFollowsQuery, { slug: params.slug }).toPromise()
       const result = response?.data?.get_author_follows
-      console.log('[FollowingContext] Loaded follows:', {
-        authors: result?.authors?.length || 0,
-        topics: result?.topics?.length || 0
-      })
       return result || { authors: [], topics: [] }
     }
   )
@@ -132,36 +135,18 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       return
     }
     try {
-      console.log('[FollowingContext] Following:', what, slug)
       const resp = await client()?.mutation(followMutation, { what, slug }).toPromise()
       if (!resp || resp.error) return
       const result = resp?.data?.follow
       if (!result) return
 
-      console.log('[FollowingContext] Follow result:', {
-        authorsCount: result.authors?.length || 0,
-        topicsCount: result.topics?.length || 0,
-        error: result.error
-      })
-
-      // Обновляем состояние контекста с данными с сервера (даже при ошибке "already following")
-      setState((subs) => {
-        if (result.authors) subs['authors'] = result.authors
-        if (result.topics) subs['topics'] = result.topics
-        return subs
-      })
-
-      // 🔄 ВАЖНО: Обновляем статистику авторов в authors context
+      // Обновляем статистику авторов в authors context
       if (result.authors && result.authors.length > 0) {
-        console.log(
-          '[FollowingContext] Updating author stats after follow:',
-          result.authors.map((a: Author) => ({
-            slug: a.slug,
-            followers: a.stat?.followers
-          }))
-        )
         addAuthors(result.authors)
       }
+
+      // Принудительно перезагружаем актуальный список подписок
+      setFollowsRefreshTrigger((prev) => prev + 1)
 
       return result
     } catch (error) {
@@ -175,42 +160,20 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       return null
     }
     try {
-      console.log('[FollowingContext] Unfollowing:', what, slug)
       const resp = await client()?.mutation(unfollowMutation, { what, slug }).toPromise()
       const result = resp?.data?.unfollow
 
-      // 🔄 ВАЖНО: Всегда возвращаем результат, даже при ошибках
       if (!result) {
-        console.log('[FollowingContext] Unfollow: no result from server')
         return { error: 'no result', authors: [], topics: [], communities: [] }
       }
 
-      console.log('[FollowingContext] Unfollow result:', {
-        authorsCount: result.authors?.length || 0,
-        topicsCount: result.topics?.length || 0,
-        error: result.error
-      })
-
-      // Обновляем состояние контекста только если нет ошибки
-      if (!result.error) {
-        setState((subs) => {
-          if (result.authors) subs['authors'] = result.authors || []
-          if (result.topics) subs['topics'] = result.topics || []
-          return subs
-        })
-
-        // 🔄 ВАЖНО: Обновляем статистику авторов в authors context после unfollow
-        if (result.authors && result.authors.length > 0) {
-          console.log(
-            '[FollowingContext] Updating author stats after unfollow:',
-            result.authors.map((a: Author) => ({
-              slug: a.slug,
-              followers: a.stat?.followers
-            }))
-          )
-          addAuthors(result.authors)
-        }
+      // Обновляем статистику авторов в authors context после unfollow
+      if (result.authors && result.authors.length > 0) {
+        addAuthors(result.authors)
       }
+
+      // Принудительно перезагружаем актуальный список подписок
+      setFollowsRefreshTrigger((prev) => prev + 1)
 
       return result
     } catch (error) {
@@ -237,8 +200,6 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
   )
 
   const changeFollowing = async (isFollowed: boolean, what: FollowingEntity, slug: string): Promise<boolean> => {
-    console.log('[FollowingContext] 🎬 changeFollowing START:', { isFollowed, what, slug })
-
     if (!session()?.token) {
       showModal('auth')
       return isFollowed
@@ -246,125 +207,31 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
 
     setFollowingLoading(true)
     try {
-      console.log('[FollowingContext] 🔄 Calling operation:', isFollowed ? 'unfollow' : 'follow')
       const result = isFollowed ? await unfollow(what, slug) : await follow(what, slug)
 
-      console.log('[FollowingContext] 🎭 Operation completed, result exists:', !!result)
-
       if (result) {
-        console.log('[FollowingContext] 📦 Raw server result:', {
-          isFollowed,
-          what,
-          slug,
-          'result.error': result.error,
-          'result.authors?.length': result.authors?.length,
-          'result.topics?.length': result.topics?.length
-        })
-
         // Специальная обработка для ошибок, которые означают успех
         const isUnfollowNotFound =
           isFollowed && (result.error === 'following was not found' || result.error === 'Not following')
-        // Специальная обработка для ошибки "already following" при follow
         const isAlreadyFollowing = !isFollowed && result.error === 'already following'
 
-        console.log('[FollowingContext] 🎯 Condition check:', {
-          'result.error': result.error,
-          '!result.error': !result.error,
-          isUnfollowNotFound,
-          isAlreadyFollowing,
-          'final condition': !result.error || isUnfollowNotFound || isAlreadyFollowing
-        })
-
         if (!result.error || isUnfollowNotFound || isAlreadyFollowing) {
-          console.log('[FollowingContext] 🚀 Processing result:', {
-            isFollowed,
-            what,
-            slug,
-            'result.error': result.error,
-            isUnfollowNotFound,
-            isAlreadyFollowing,
-            'result.authors?.length': result.authors?.length
-          })
-
-          // Обновляем состояние контекста с новыми данными с сервера
-          // ВАЖНО: Обновляем даже при ошибке "already following", так как сервер возвращает актуальный список
-          setState((subs) => {
-            if (result.authors) {
-              subs.authors = result.authors as Author[]
-              console.log('[FollowingContext] Updated follows.authors with', result.authors.length, 'authors')
-            }
-            if (result.topics) {
-              subs.topics = result.topics as Topic[]
-            }
-            if (result.communities) {
-              subs.communities = result.communities as Community[]
-            }
-            return subs
-          })
-
-          // Определяем новое состояние подписки на основе ответа сервера
-          let newFollowState = false
-
+          // Определяем новое состояние на основе операции
           if (isUnfollowNotFound) {
-            // Если подписка не найдена при unfollow, значит пользователь не подписан
-            newFollowState = false
-            console.log('[FollowingContext] Unfollow: following not found, treating as successful unfollow')
+            return false // Подписка не найдена при unfollow → не подписан
           } else if (isAlreadyFollowing) {
-            // Если пользователь уже подписан, состояние остается true (уже подписан)
-            newFollowState = true
-            console.log('[FollowingContext] Follow: already following, state remains true')
-          } else if (isFollowed) {
-            // Если это была операция отписки (unfollow), то состояние = false
-            newFollowState = false
-            console.log('[FollowingContext] Unfollow: operation successful, state = false')
+            return true // Уже подписан → остается подписан
           } else {
-            // Если это была операция подписки (follow), проверяем по данным сервера
-            console.log('[FollowingContext] 🔍 Checking server data for', what, slug, {
-              isFollowed,
-              'result.authors?.length': result.authors?.length,
-              'result.topics?.length': result.topics?.length,
-              'authors includes slug': result.authors?.some((author: Author) => author.slug === slug)
-            })
-
-            if (what === 'AUTHOR' && result.authors) {
-              // 🔍 ДИАГНОСТИКА: выводим все slug'и авторов из ответа
-              const authorSlugs = result.authors.map((a: Author) => a.slug)
-              console.log('[FollowingContext] 🔍 Server returned authors slugs:', authorSlugs)
-              console.log('[FollowingContext] 🔍 Looking for slug:', slug)
-
-              newFollowState = result.authors.some((author: Author) => author.slug === slug)
-              console.log(
-                '[FollowingContext] 📋 Author check result:',
-                newFollowState,
-                'from',
-                result.authors.length,
-                'authors'
-              )
-            } else if (what === 'TOPIC' && result.topics) {
-              newFollowState = result.topics.some((topic: Topic) => topic.slug === slug)
-            } else if (what === 'COMMUNITY' && result.communities) {
-              if (result.communities?.length) {
-                // Обычная логика определения состояния
-                newFollowState = result.communities.some((community: Community) => community.slug === slug)
-              } else {
-                // Если нет подписок, то состояние = false
-                newFollowState = false
-                console.log('[FollowingContext] Unfollow: following not found, treating as successful unfollow')
-              }
-            }
+            return !isFollowed // Инвертируем текущее состояние при успешной операции
           }
-
-          console.log('[FollowingContext] New follow state determined from server:', newFollowState, 'for', what, slug)
-          return newFollowState
         } else {
-          console.error('[FollowingContext] Operation failed with error:', result.error)
+          console.error('[FollowingContext] Operation failed:', result.error)
         }
       }
 
-      // Если операция не удалась, возвращаем текущее состояние
       return isFollowed
     } catch (error) {
-      console.error('changeFollowing error:', error)
+      console.error('[FollowingContext] changeFollowing error:', error)
       return isFollowed
     } finally {
       setFollowingLoading(false)

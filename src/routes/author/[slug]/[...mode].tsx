@@ -217,36 +217,42 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
 
   // ✅ КРИТИЧНО для клиентского роутинга: отслеживаем изменение slug
   const [author] = createResource(
-    () => ({ slug: params.slug, ssrData: props.data.author }),
-    async ({ slug, ssrData }) => {
+    () => params.slug, // Отслеживаем ТОЛЬКО slug из URL
+    async (slug) => {
       console.log('[AuthorPage] Loading author for slug:', slug, {
-        hasSsrData: !!ssrData,
-        ssrDataSlug: ssrData?.slug,
-        ssrDataStats: ssrData?.stat
+        hasSsrData: !!props.data.author,
+        ssrDataSlug: props.data.author?.slug,
+        isInitialLoad: props.data.author?.slug === slug
       })
 
-      // ✅ КРИТИЧНО: Если есть SSR данные с полной статистикой - используем их
-      if (ssrData && ssrData.slug === slug && typeof ssrData.stat?.comments === 'number') {
-        console.log('[AuthorPage] Using SSR data with full stats:', {
-          slug: ssrData.slug,
-          stats: ssrData.stat
+      // ✅ КРИТИЧНО: Если это начальная SSR загрузка И данные совпадают - используем их
+      if (props.data.author && props.data.author.slug === slug) {
+        console.log('[AuthorPage] Using SSR data:', {
+          slug: props.data.author.slug,
+          stats: props.data.author.stat
         })
-        addAuthor(ssrData)
-        return ssrData
+        addAuthor(props.data.author)
+        return props.data.author
       }
 
-      // Проверяем кеш в контексте
+      // Проверяем кеш в контексте - ТОЛЬКО если есть полные данные
       const cached = authorsEntities()[slug]
-      if (cached && cached.slug === slug) {
+      if (cached && cached.slug === slug && cached.stat) {
         console.log('[AuthorPage] Using cached author:', {
           slug: cached.slug,
+          hasStats: !!cached.stat,
           stats: cached.stat
         })
-        return cached
+        // ✅ Если в кеше неполные данные - всё равно загружаем свежие
+        if (typeof cached.stat.comments !== 'number') {
+          console.log('[AuthorPage] Cached data incomplete, reloading from API')
+        } else {
+          return cached
+        }
       }
 
-      // Загружаем нового автора при клиентском роутинге
-      console.log('[AuthorPage] Loading author from API:', slug)
+      // ✅ Загружаем свежие данные при клиентском роутинге
+      console.log('[AuthorPage] Loading fresh author data from API:', slug)
       const loadedAuthor = await fetchAuthor(slug)
       if (loadedAuthor) {
         addAuthor(loadedAuthor)
@@ -261,8 +267,8 @@ export default function AuthorPage(props: RouteSectionProps<AuthorPageProps>) {
       return undefined
     },
     {
-      // Используем SSR данные как начальные
-      initialValue: props.data.author
+      // Используем SSR данные как начальные ТОЛЬКО если slug совпадает
+      initialValue: props.data.author?.slug === params.slug ? props.data.author : undefined
     }
   )
 

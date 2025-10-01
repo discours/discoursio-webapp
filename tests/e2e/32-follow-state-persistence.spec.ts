@@ -11,7 +11,9 @@ import { baseUrl, waitForPageLoad } from '../utils/common'
 import { test } from '../utils/test-helpers'
 
 test.describe('Follow State Persistence - КОНКРЕТНЫЙ СЦЕНАРИЙ', () => {
-  test('СЦЕНАРИЙ 1: Главная → войти → перейти к автору → подписаться → рефреш → стейт сохраняется', async ({ page }) => {
+  test('СЦЕНАРИЙ 1: Главная → войти → перейти к автору → подписаться → рефреш → стейт сохраняется', async ({
+    page
+  }) => {
     console.log('🎯 СЦЕНАРИЙ 1: Загрузка главной → войти → перейти к автору → подписаться → рефреш')
 
     // 1. Загружаем главную страницу
@@ -62,7 +64,6 @@ test.describe('Follow State Persistence - КОНКРЕТНЫЙ СЦЕНАРИЙ'
     const authorHref = await firstPostAuthor.getAttribute('href')
     expect(authorHref).toBeTruthy()
 
-    const authorSlug = authorHref!.replace('/author/', '')
     await firstPostAuthor.click()
     await waitForPageLoad(page)
 
@@ -167,7 +168,9 @@ test.describe('Follow State Persistence - КОНКРЕТНЫЙ СЦЕНАРИЙ'
       if (await followButtonAfterUnfollow.isVisible()) {
         console.log('✅ СТЕЙТ ОТПИСКИ СОХРАНИЛСЯ: кнопка показывает "Подписаться" после рефреша')
       } else {
-        const unfollowButtonAfterReload = page.locator('button:has-text("Отписаться"), button:has-text("Подписан")').first()
+        const unfollowButtonAfterReload = page
+          .locator('button:has-text("Отписаться"), button:has-text("Подписан")')
+          .first()
         if (await unfollowButtonAfterReload.isVisible()) {
           console.log('❌ СТЕЙТ ОТПИСКИ НЕ СОХРАНИЛСЯ: кнопка осталась в "Подписан"')
         } else {

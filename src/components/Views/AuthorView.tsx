@@ -240,73 +240,57 @@ export const AuthorView = (props: AuthorViewProps) => {
     )
   )
 
-  // Эффект для загрузки данных автора
+  // ✅ Упрощенный эффект для загрузки данных автора
   createEffect(
-    on([() => session()?.author, () => props.authorSlug], async ([meData, slug]) => {
-      console.log('[AuthorView] Author loading effect triggered:', {
-        sessionAuthor: meData?.slug,
-        targetSlug: slug,
-        currentAuthor: author()?.slug,
-        hasPropsAuthor: !!props.author,
-        propsAuthorStats: props.author?.stat
+    on([() => props.authorSlug, () => props.author], async ([slug, propsAuthor]) => {
+      console.log('[AuthorView] Author effect triggered:', {
+        slug,
+        currentAuthorSlug: author()?.slug,
+        propsAuthorSlug: propsAuthor?.slug,
+        hasPropsAuthor: !!propsAuthor,
+        hasPropsStats: !!propsAuthor?.stat
       })
 
-      // ✅ ПРИОРИТЕТ 1: Используем данные из route.load с полной статистикой (начальная инициализация)
-      if (
-        props.author?.stat &&
-        typeof props.author.stat.comments === 'number' &&
-        (props.author.stat.shouts ?? 0) >= 0
-      ) {
-        console.log('[AuthorView] Using props.author with full stats:', {
-          slug: props.author.slug,
-          stats: props.author.stat
-        })
-        setAuthor(props.author)
+      // ✅ Если slug изменился - сбрасываем текущего автора
+      if (author()?.slug && author()?.slug !== slug) {
+        console.log('[AuthorView] Slug changed, clearing current author')
+        setAuthor(undefined)
+      }
+
+      // ✅ ПРИОРИТЕТ 1: Используем propsAuthor если это правильный автор
+      if (propsAuthor?.slug === slug && propsAuthor.stat) {
+        console.log('[AuthorView] Using props.author:', propsAuthor.slug)
+        setAuthor(propsAuthor)
         return
       }
 
-      // ✅ ПРИОРИТЕТ 2: Не перезаписываем, если текущий автор уже имеет полную статистику
-      const currentAuthor = author()
-      if (
-        currentAuthor?.stat &&
-        typeof currentAuthor.stat.comments === 'number' &&
-        (currentAuthor.stat.shouts ?? 0) >= 0
-      ) {
-        console.log('[AuthorView] Current author already has full stats, skipping update:', {
-          slug: currentAuthor.slug,
-          stats: currentAuthor.stat
-        })
+      // ✅ ПРИОРИТЕТ 2: Если уже загружен правильный автор - не перезаписываем
+      if (author()?.slug === slug && author()?.stat) {
+        console.log('[AuthorView] Already have correct author, skipping')
         return
       }
 
-      // ✅ ПРИОРИТЕТ 3: Используем кеш только если нет данных в props
+      // ✅ ПРИОРИТЕТ 3: Проверяем кеш
       const cachedAuthor = authorsEntities()[slug]
-      if (
-        cachedAuthor &&
-        cachedAuthor.slug === slug &&
-        cachedAuthor.stat &&
-        typeof cachedAuthor.stat.comments === 'number'
-      ) {
-        console.log('[AuthorView] Using cached author with full stats:', {
-          slug: cachedAuthor.slug,
-          stats: cachedAuthor.stat
-        })
+      if (cachedAuthor?.slug === slug && cachedAuthor.stat) {
+        console.log('[AuthorView] Using cached author:', cachedAuthor.slug)
         setAuthor(cachedAuthor)
         return
       }
 
-      // Загружаем автора через API только если нет в кеше и нет данных из props
-      if (slug && (!author() || author()?.slug !== slug)) {
-        console.log('[AuthorView] Loading author from API (cache miss):', slug)
+      // ✅ ПРИОРИТЕТ 4: Загружаем из API
+      if (slug) {
+        console.log('[AuthorView] Loading author from API:', slug)
         await loadAuthor({ slug })
-        const foundAuthor = authorsEntities()[slug]
+        const loadedAuthor = authorsEntities()[slug]
 
-        if (foundAuthor) {
-          console.log(`[AuthorView] Author loaded successfully: ${foundAuthor.slug} (id: ${foundAuthor.id})`)
-          setAuthor(foundAuthor)
+        if (loadedAuthor) {
+          console.log('[AuthorView] Author loaded from API:', loadedAuthor.slug)
+          setAuthor(loadedAuthor)
         } else {
-          console.warn(`[AuthorView] Author not found: ${slug}`)
-          // Fallback для собственного профиля если API не вернул данные
+          console.warn('[AuthorView] Author not found in API:', slug)
+          // Fallback: используем session author если это собственный профиль
+          const meData = session()?.author
           if (meData?.slug === slug) {
             console.log('[AuthorView] Using session author as fallback')
             setAuthor(meData)
