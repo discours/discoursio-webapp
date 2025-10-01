@@ -14,7 +14,7 @@ import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import type { Author, Maybe, ReactionKind, Shout } from '~/graphql/generated/graphql'
-// NOTE: getCdnUrl больше не нужен - Image компонент сам применяет трансформацию
+import { getCdnUrl } from '~/lib/imageCache'
 import { capitalize } from '~/utils/capitalize'
 import { descFromBody } from '~/utils/meta'
 import styles from './ArticleCard.module.scss'
@@ -128,7 +128,8 @@ export const ArticleCard = (props: ArticleCardProps) => {
             setIsCoverImageLoadError(true)
             setIsCoverImageLoading(false)
           }
-          img.src = coverUrl
+          // ✅ Используем getCdnUrl для трансформации старых URL
+          img.src = getCdnUrl(coverUrl, 600)
         }
       }
     }
