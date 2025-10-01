@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { createEffect, createSignal, on, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, on, Show } from 'solid-js'
 import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { FollowingEntity } from '~/graphql/generated/graphql'
@@ -22,74 +22,77 @@ export const FollowingButton = (props: Props) => {
   const { t } = useLocalize()
   const { changeFollowing, follows } = useFollowing()
 
-  // 🔄 Умное начальное состояние - правильно различаем "не загружено" и "не подписан"
-  const getInitialState = (): boolean | null => {
-    // Если есть явное значение в пропсах, используем его
+  // ✅ Атомарные сигналы вместо сложного состояния
+  const [isProcessing, setIsProcessing] = createSignal(false)
+  const [followed, setFollowed] = createSignal<boolean>(false)
+
+  // ✅ createMemo для производной логики (проверка подписки)
+  const isFollowedFromContext = createMemo(() => {
+    // Если есть явное значение в пропсах, используем его (приоритет)
     if (props.isFollowed !== undefined) {
       return props.isFollowed
     }
 
-    // Если данные следований уже есть, используем их
-    if (follows?.authors) {
-      return follows.authors.some((author) => author.slug === props.slug)
+    // 🔧 ИСПРАВЛЕНИЕ: Реактивный доступ через follows.authors (не follows?.authors)
+    // createStore требует прямого доступа к свойствам для отслеживания изменений
+    const followedAuthors = follows.authors || []
+    const followedTopics = follows.topics || []
+
+    // Проверяем подписку в зависимости от типа сущности
+    if (props.entity === FollowingEntity.Author) {
+      const isFollowed = followedAuthors.some((author) => author.slug === props.slug)
+      console.log('[FollowingButton] Checking author follow status:', {
+        slug: props.slug,
+        isFollowed,
+        followedCount: followedAuthors.length,
+        followedSlugs: followedAuthors.map((a) => a.slug)
+      })
+      return isFollowed
     }
 
-    // По умолчанию не подписан (не показываем загрузку)
+    if (props.entity === FollowingEntity.Topic) {
+      return followedTopics.some((topic) => topic.slug === props.slug)
+    }
+
+    // По умолчанию не подписан
     return false
-  }
+  })
 
-  const [followed, setFollowed] = createSignal<boolean | null>(getInitialState())
-
-  // 🔄 Реактивный caption, обновляется при изменении followed()
-  const caption = () => {
-    const followedState = followed()
-    return followedState === null ? t('Loading') : followedState ? t('Unfollow') : t('Follow')
-  }
+  // ✅ Простая функция для caption (не нужен createMemo - операция < 1мс)
+  const caption = () => (followed() ? t('Unfollow') : t('Follow'))
 
   const handleFollowClick = async () => {
+    // ✅ Защита от двойных кликов
+    if (isProcessing()) return
+
+    setIsProcessing(true)
     const oldState = followed()
 
     try {
-      // НЕ делаем оптимистичные обновления, ждем ответ сервера
-      const newState = await changeFollowing(!!oldState, props.entity, props.slug)
-      // Обновляем состояние только на основе реального ответа сервера
+      // ✅ НЕ делаем оптимистичные обновления, ждем ответ сервера
+      const newState = await changeFollowing(oldState, props.entity, props.slug)
+      // ✅ Обновляем состояние только на основе реального ответа сервера
       setFollowed(newState)
       console.log('[FollowingButton] Updated state from server:', newState, 'for', props.entity, props.slug)
     } catch (error) {
-      console.error('Failed to change following state:', error)
+      console.error('[FollowingButton] Failed to change following state:', error)
       // Состояние остается прежним при ошибке
+    } finally {
+      setIsProcessing(false)
     }
   }
 
-  // 🔄 Синхронизация с пропсами
+  // ✅ ЕДИНСТВЕННЫЙ createEffect с правильными зависимостями on()
+  // Синхронизация локального состояния с контекстом
   createEffect(
     on(
-      () => props.isFollowed,
-      (isFollowed) => {
-        if (isFollowed !== undefined) {
-          setFollowed(isFollowed)
-        }
-      }
+      [isFollowedFromContext, () => props.entity, () => props.slug],
+      ([isFollowedValue]) => {
+        setFollowed(isFollowedValue)
+      },
+      { defer: true } // ✅ defer для предотвращения каскадных обновлений
     )
   )
-
-  // 🔄 Синхронизация с изменениями данных
-  createEffect(() => {
-    // Если есть явное значение в пропсах, приоритет у него
-    if (props.isFollowed !== undefined) {
-      setFollowed(props.isFollowed)
-      return
-    }
-
-    // Если есть данные следований, проверяем подписку
-    if (follows?.authors && props.entity === FollowingEntity.Author) {
-      const isFollowedBySlug = follows.authors.some((author) => author.slug === props.slug)
-      setFollowed(isFollowedBySlug)
-    } else {
-      // Нет данных - не подписан
-      setFollowed(false)
-    }
-  })
 
   const FollowedButton = () => (
     <Button
@@ -102,21 +105,15 @@ export const FollowingButton = (props: Props) => {
       }
       onClick={handleFollowClick}
       isSubscribeButton={true}
-      disabled={false}
+      disabled={isProcessing()} // ✅ Блокируем кнопку во время обработки
       class={clsx(styles.actionButton, {
         [styles.iconed]: props.iconButtons,
-        [stylesButton.followed]: followed() === true // 🔄 Проверяем именно true
+        [stylesButton.followed]: followed()
       })}
     />
   )
 
-  const MiniButton = () => (
-    <CheckButton
-      text={caption()}
-      checked={followed() === true} // 🔄 Проверяем именно true
-      onClick={handleFollowClick}
-    />
-  )
+  const MiniButton = () => <CheckButton text={caption()} checked={followed()} onClick={handleFollowClick} />
 
   const FollowButton = () => (
     <>
@@ -126,6 +123,7 @@ export const FollowingButton = (props: Props) => {
         value={props.iconButtons ? '' : caption()}
         onClick={handleFollowClick}
         isSubscribeButton={true}
+        disabled={isProcessing()} // ✅ Блокируем кнопку во время обработки
         class={clsx(styles.actionButton, {
           [styles.iconed]: props.iconButtons,
           [stylesButton.followed]: followed()

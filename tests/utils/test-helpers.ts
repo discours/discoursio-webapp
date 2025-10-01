@@ -21,8 +21,7 @@ export class TestUtils {
    */
   async goto(path = '/') {
     const baseUrl = process.env.E2E_BASE_URL || 'https://localhost:3000'
-    const sBaseUrl = `http${process.env.CI ? '' : 's'}://${baseUrl.split('://')[1]}`
-    const fullUrl = `${sBaseUrl}${path}`
+    const fullUrl = `${baseUrl}${path}`
     console.log(`Переход на: ${fullUrl}`)
 
     try {

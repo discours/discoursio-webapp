@@ -1,13 +1,11 @@
 import { clsx } from 'clsx'
-import { createEffect, createMemo, createSignal, on, Show } from 'solid-js'
+import { createMemo, Show } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
 
-import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { Author, FollowingEntity, type Topic } from '~/graphql/generated/graphql'
 import { capitalize } from '~/utils/capitalize'
-import { CheckButton } from '../_shared/CheckButton'
 import { FollowingButton } from '../_shared/FollowingButton'
 import { CardTopic } from '../Feed/CardTopic'
 
@@ -31,34 +29,17 @@ interface TopicProps {
 }
 
 export const TopicCard = (props: TopicProps) => {
-  const { t, lang } = useLocalize()
+  const { lang } = useLocalize()
+
+  // ✅ createMemo для сложных вычислений (title преобразование)
   const title = createMemo(() =>
     capitalize(lang() === 'en' ? props.topic.slug.replaceAll('-', ' ') : props.topic.title || '')
   )
-  const { session, requireAuthentication } = useSession()
-  const author = createMemo<Author>(() => session()?.author as Author)
-  const { follows, changeFollowing } = useFollowing()
-  const [isFollowed, setIsFollowed] = createSignal(false)
 
-  createEffect(
-    on([() => follows, () => props.topic], ([flws, tpc]) => {
-      if (flws && tpc) {
-        const followed = follows?.topics?.some((topic) => topic.id === props.topic?.id)
-        setIsFollowed(Boolean(followed))
-      }
-    })
-  )
+  const { session } = useSession()
 
-  const handleFollowClick = () => {
-    requireAuthentication(async () => {
-      try {
-        const newState = await changeFollowing(isFollowed(), FollowingEntity.Topic, props.topic.slug)
-        console.log('[TopicCard] Follow state changed to:', newState)
-      } catch (error) {
-        console.error('[TopicCard] Failed to change follow state:', error)
-      }
-    }, 'follow')
-  }
+  // ✅ Простая функция вместо createMemo для доступа к сигналу
+  const author = () => session()?.author as Author
 
   return (
     <div class={styles.topicContainer}>
@@ -118,12 +99,8 @@ export const TopicCard = (props: TopicProps) => {
         >
           <NoHydration>
             <Show when={author()}>
-              <Show
-                when={!props.minimize}
-                fallback={<CheckButton text={t('Follow')} checked={isFollowed()} onClick={handleFollowClick} />}
-              >
-                <FollowingButton slug={props.topic.slug} entity={FollowingEntity.Topic} isFollowed={isFollowed()} />
-              </Show>
+              {/* ✅ Делегируем всю логику подписки в FollowingButton */}
+              <FollowingButton slug={props.topic.slug} entity={FollowingEntity.Topic} minimize={props.minimize} />
             </Show>
           </NoHydration>
         </div>

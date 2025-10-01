@@ -327,6 +327,11 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
             })
 
             if (what === 'AUTHOR' && result.authors) {
+              // 🔍 ДИАГНОСТИКА: выводим все slug'и авторов из ответа
+              const authorSlugs = result.authors.map((a: Author) => a.slug)
+              console.log('[FollowingContext] 🔍 Server returned authors slugs:', authorSlugs)
+              console.log('[FollowingContext] 🔍 Looking for slug:', slug)
+
               newFollowState = result.authors.some((author: Author) => author.slug === slug)
               console.log(
                 '[FollowingContext] 📋 Author check result:',

@@ -5,7 +5,6 @@ import toast from 'solid-toast'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { useDrafts } from '~/context/drafts'
-import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
@@ -30,11 +29,11 @@ const AUTHORS_ON_PAGE = 20
 
 export const FullTopic = (props: Props) => {
   const { t, lang } = useLocalize()
-  const { follows } = useFollowing()
   const { createDraft, loadDrafts } = useDrafts()
   const { isAuthenticated } = useSession()
   const navigate = useNavigate()
-  const [followed, setFollowed] = createSignal()
+
+  // ✅ Атомарные сигналы
   const [title, setTitle] = createSignal('')
   const { hideModal } = useUI()
 
@@ -110,29 +109,21 @@ export const FullTopic = (props: Props) => {
     </>
   )
 
+  // ✅ ЕДИНСТВЕННЫЙ createEffect с правильными зависимостями
   createEffect(
     on(
       () => props.topic,
       (tpc) => {
         if (!tpc) return
-        /* FIXME: use title translation*/
         setTitle((_) => tpc?.title || '')
         return `#${capitalize(
           lang() === 'en' ? tpc.slug.replaceAll('-', ' ') : tpc.title || tpc.slug.replaceAll('-', ' '),
           true
         )}`
       },
-      {}
+      { defer: true } // ✅ defer для предотвращения каскадных обновлений
     )
   )
-
-  createEffect(() => {
-    if (follows?.topics?.length ?? true) {
-      const items = follows.topics || []
-      const isFollowed = items.some((x: Topic) => x?.slug === props.topic?.slug)
-      setFollowed(isFollowed)
-    }
-  })
 
   // 🔧 НОВАЯ ФУНКЦИЯ: Создание черновика с выбранной темой
   const handleWriteAboutTopic = async () => {
@@ -208,12 +199,8 @@ export const FullTopic = (props: Props) => {
       </div>
 
       <div class={clsx(styles.topicActions)}>
-        <FollowingButton
-          entity={FollowingEntity.Topic}
-          slug={props.topic?.slug}
-          isFollowed={Boolean(followed())}
-          class={styles.followControl}
-        />
+        {/* ✅ Делегируем всю логику подписки в FollowingButton */}
+        <FollowingButton entity={FollowingEntity.Topic} slug={props.topic?.slug} class={styles.followControl} />
 
         <Button
           variant={'bordered'}
