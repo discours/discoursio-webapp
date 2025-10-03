@@ -1,6 +1,5 @@
 import { useLocation } from '@solidjs/router'
 import { Client as GraphQLClient } from '@urql/core'
-import { isServer } from 'solid-js/web'
 import {
   Accessor,
   batch,
@@ -14,6 +13,7 @@ import {
   Setter,
   useContext
 } from 'solid-js'
+import { isServer } from 'solid-js/web'
 import {
   loadCoauthoredShouts,
   loadDiscussedShouts,
@@ -828,7 +828,7 @@ export const FeedProvider = (props: { children: JSX.Element }) => {
     on(myFeed, async (currentFeed) => {
       // 🛡️ SSR не загружает авторизованные ленты
       if (isServer) return
-      
+
       if (!(session()?.token && currentFeed)) return
 
       setIsFeedLoading(true)

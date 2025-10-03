@@ -23,9 +23,9 @@
   .plusButton {
     width: 32px;
     height: 32px;
-    border: 1px solid rgb(0 0 0 / 15%);
-    border-radius: 50%;
-    background-color: #fff;
+    border: none;
+    border-radius: 4px;
+    background-color: transparent;
     cursor: pointer;
     display: flex;
     opacity: 0.8;
@@ -33,7 +33,7 @@
     justify-content: center;
     transition: all 0.2s ease;
     color: rgb(0 0 0 / 70%);
-    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+    box-shadow: none;
     z-index: 1000;
     position: relative;
     
@@ -61,32 +61,30 @@
     
     &:hover {
       opacity: 1;
-      background-color: rgb(0 0 0 / 5%);
-      border-color: rgb(0 0 0 / 25%);
-      box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
       color: rgb(0 0 0 / 90%);
     }
     
     &.active {
       transform: rotate(45deg);
       opacity: 1;
-      background-color: rgb(0 0 0 / 8%);
-      border-color: rgb(0 0 0 / 35%);
       color: rgb(0 0 0 / 90%);
     }
   }
   
   .placeholder {
+    position: absolute;
+    left: 40px; /* Справа от кнопки + */
+    top: 50%;
+    transform: translateY(-50%);
     font-size: 14px;
     color: #999;
-    cursor: text;
+    cursor: pointer; /* Добавляем курсор клика */
     padding: 4px 10px;
     border-radius: 4px;
     transition: background-color 0.2s ease, opacity 0.2s ease;
     white-space: nowrap;
     z-index: 1000;
     opacity: 0.8;
-    margin-left: 10px;
     
     &:hover {
       color: #777;
@@ -97,22 +95,22 @@
   .menuItems {
     position: absolute;
     top: 50%;
-    transform: translateY(-50%) translateX(10px); /* Центрируем по вертикали относительно кнопки */
-    right: 35px; /* Разворачиваем влево от кнопки */
-    background: white;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+    transform: translateY(-50%) translateX(-20px) scale(0.95); /* Начальное состояние: смещение и уменьшение */
+    left: 35px; /* Разворачиваем вправо от кнопки */
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
     display: flex;
     flex-direction: row;
-    padding: 6px;
+    padding: 0;
     opacity: 0;
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-out;
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out; /* Увеличиваем время анимации */
     pointer-events: none;
-    border: 1px solid rgb(0 0 0 / 10%);
+    border: none;
     
     &.visible {
       opacity: 1;
-      transform: translateY(-50%) translateX(0); /* Сохраняем центрирование по вертикали */
+      transform: translateY(-50%) translateX(0) scale(1); /* Финальное состояние: нормальная позиция и размер */
       pointer-events: all;
     }
     

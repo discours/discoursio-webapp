@@ -17,6 +17,7 @@ import { slugify } from '~/intl/translit'
 import styles from '~/styles/views/EditView.module.scss'
 import { UploadedFile } from '~/types/upload'
 import { type SSEMessage, useConnect } from '../../context/connect'
+import { VideoPreview } from '../_shared/VideoPreview'
 import { AudioProfile } from '../Draft/DraftAudio'
 import { SubtitleComponent, TitleSection } from '../Draft/DraftEditorHead'
 import { LeadComponent } from '../Draft/DraftEditorLead'
@@ -852,7 +853,7 @@ export const EditView = (props: { draft?: Draft }) => {
   }
 
   // Добавляем функцию для сохранения черновика
-  const handleSaveDraft = async () => {
+  const _handleSaveDraft = async () => {
     if (!currentDraft()?.id) {
       toast.error(t('No draft to save'))
       return
@@ -966,7 +967,7 @@ export const EditView = (props: { draft?: Draft }) => {
   }
 
   // Функция восстановления контента из localStorage
-  const handleRestoreFromStorage = async () => {
+  const _handleRestoreFromStorage = async () => {
     const draft = currentDraft()
     if (!draft?.id) {
       toast.error(t('No draft to restore'))
@@ -989,7 +990,10 @@ export const EditView = (props: { draft?: Draft }) => {
   }
 
   // Добавляем состояние для отслеживания процесса сохранения
-  const [isSaving, setIsSaving] = createSignal(false)
+  const [_isSaving, setIsSaving] = createSignal(false)
+
+  // Состояние для URL видео в модальном окне
+  const [_videoPreviewUrl, _setVideoPreviewUrl] = createSignal('')
 
   return (
     <>
@@ -1156,26 +1160,34 @@ export const EditView = (props: { draft?: Draft }) => {
         />
       </Modal>
 
+      <Modal variant="medium" name="insertVideo">
+        <VideoPreview
+          videoUrl={(() => {
+            const { modalCallbacks } = useUI()
+            return modalCallbacks()?.data?.videoUrl || ''
+          })()}
+          onSave={(url: string) => {
+            const { modalCallbacks } = useUI()
+            const callbacks = modalCallbacks()
+            if (callbacks?.onSuccess) {
+              callbacks.onSuccess(url)
+            }
+          }}
+          onDecline={() => {
+            const { modalCallbacks } = useUI()
+            const callbacks = modalCallbacks()
+            if (callbacks?.onCancel) {
+              callbacks.onCancel()
+            }
+          }}
+        />
+      </Modal>
+
       <NoHydration>
         <Show when={currentDraft()?.id}>
           <Panel shoutId={currentDraft()?.id} />
         </Show>
       </NoHydration>
-
-      {/* Добавляем панель с кнопками сохранения и восстановления */}
-      <div class={styles.floatingButtonsPanel}>
-        <button
-          class={styles.saveButton}
-          onClick={handleRestoreFromStorage}
-          title={t('Restore from local storage')}
-          style={{ 'background-color': '#6c757d', 'min-width': '40px' }}
-        >
-          📂
-        </button>
-        <button class={styles.saveButton} onClick={handleSaveDraft} disabled={isSaving()}>
-          {isSaving() ? t('Saving...') : t('Save draft')}
-        </button>
-      </div>
     </>
   )
 }

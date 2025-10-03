@@ -546,24 +546,21 @@
 
 .inlineFormWrapper {
   position: fixed;
-  z-index: 10000; /* Увеличиваем z-index для отображения поверх всех элементов */
-  max-width: 300px;
+  z-index: 10000;
+  max-width: 450px;
+  min-width: 300px;
   width: auto;
-  box-shadow: 0 4px 20px rgb(0 0 0 / 15%);
-  border-radius: 6px;
-  background: var(--color-bg-light, #fff);
-  border: 1px solid var(--color-border-light, #e5e7eb);
+  box-shadow: none !important; /* Убираем любые тени */
+  border-radius: 0 !important; /* Убираем скругление */
+  background: transparent !important; /* Прозрачный фон */
+  border: none !important; /* Убираем все границы */
+  border-bottom: 1px solid var(--color-border, #e5e7eb) !important; /* Только нижний бордер */
+  padding: 0;
+  padding-bottom: 4px;
   
   /* Обеспечиваем видимость поверх overflow: hidden */
   transform: translateZ(0);
   will-change: transform;
-
-  .inlineForm {
-    border-color: var(--color-border-light, #e5e7eb);
-    background: var(--color-bg-light, #fff);
-    width: 100%;
-    border: none; /* Убираем дублирующий border */
-  }
 }
 
 .tempHighlight {

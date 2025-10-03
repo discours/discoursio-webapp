@@ -14,7 +14,7 @@ export type EditorFieldType = 'body' | 'lead' | 'about' | 'comment' | 'title'
 /**
  * Типы форм для вставки контента
  */
-export type FormType = 'link' | 'video' | 'audio' | 'tooltip' | null
+export type FormType = 'link' | 'video' | 'audio' | 'tooltip' | 'embed' | null
 
 /**
  * Тип команды для меню, включает все возможные типы команд
@@ -28,6 +28,10 @@ export type CommandType =
   | 'image'
   | 'video'
   | 'audio'
+  | 'media'
+  | 'upload'
+  | 'embed'
+  | 'separator'
   | 'hr'
   | 'h1'
   | 'h2'

@@ -54,6 +54,17 @@ export const AuthorBadge = (props: Props) => {
     return name || ''
   }
 
+  const truncateBio = (bio: string, maxLength = 128): string => {
+    // Удаляем HTML теги для подсчета реальной длины текста
+    const textOnly = bio.replace(/<[^>]*>/g, '')
+    if (textOnly.length <= maxLength) {
+      return bio
+    }
+    // Обрезаем до maxLength символов и добавляем многоточие
+    const truncated = textOnly.substring(0, maxLength).trim()
+    return `${truncated}...`
+  }
+
   const handleClick = (_e: MouseEvent) => {
     if (props.onClick) {
       props.onClick()
@@ -92,7 +103,7 @@ export const AuthorBadge = (props: Props) => {
               }
             >
               <Match when={props.author.bio}>
-                <div class={clsx('text-truncate', styles.bio)} innerHTML={props.author.bio || ''} />
+                <div class={clsx('text-truncate', styles.bio)} innerHTML={truncateBio(props.author.bio || '')} />
               </Match>
             </Switch>
             <Show when={props.author?.stat && !props.subscriptionsMode}>

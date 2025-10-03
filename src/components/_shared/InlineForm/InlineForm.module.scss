@@ -1,16 +1,19 @@
 .InlineForm {
-  border: 1px solid var(--color-border-light, #e5e7eb);
+  border: none !important; /* Убираем бордер */
   position: relative;
   width: 100%;
-  border-radius: 4px;
-  overflow: hidden;
+  border-radius: 0 !important; /* Убираем скругление */
+  overflow: visible;
+  background: transparent !important; /* Прозрачный фон */
+  box-shadow: none !important; /* Убираем тени */
 
   .form {
     display: flex;
     flex-flow: row nowrap;
-    padding: 8px 11px;
+    padding: 8px 0; /* Убираем горизонтальный padding */
     width: 100%;
     align-items: center;
+    background: transparent; /* Прозрачный фон для формы */
 
     input {
       margin: 0 12px 0 0;
@@ -52,6 +55,33 @@
         opacity: 0.5;
         cursor: not-allowed;
       }
+    }
+  }
+
+  .platformBadge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    margin-right: 8px;
+    background: var(--color-primary-light, #e0e7ff);
+    color: var(--color-primary, #4f46e5);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: capitalize;
+    opacity: 0;
+    transform: scale(0.8) translateY(-4px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    :global(svg) {
+      width: 14px;
+      height: 14px;
+    }
+
+    &.visible {
+      opacity: 1;
+      transform: scale(1) translateY(0);
     }
   }
 

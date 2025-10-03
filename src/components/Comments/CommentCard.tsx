@@ -1,6 +1,7 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
-import { Accessor, createMemo, createSignal, JSX, onMount, Show } from 'solid-js'
+import { Accessor, createEffect, createMemo, createSignal, JSX, on, onMount, Show } from 'solid-js'
+import { isServer } from 'solid-js/web'
 import toast from 'solid-toast'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
@@ -11,6 +12,7 @@ import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import { Author, Reaction, ReactionKind } from '~/graphql/generated/graphql'
+import { initCustomTags } from '~/utils/customTags'
 import { saveScrollPosition } from '~/utils/scroll'
 import { SharePopup } from '../Article/SharePopup'
 import { AuthorLink } from '../Author/AuthorLink'
@@ -88,6 +90,7 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
   const { session } = useSession()
   const [isExpanded, setExpanded] = createSignal(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = createSignal(false)
+  const [commentBodyRef, setCommentBodyRef] = createSignal<HTMLDivElement | undefined>()
   const [isDeleting, setIsDeleting] = createSignal(false)
   const [isAppearing, setIsAppearing] = createSignal(props.isNew || false)
   const [isEditing, setIsEditing] = createSignal(false)
@@ -140,6 +143,21 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
   const isDeleted = createMemo(() => {
     return Boolean(props.comment.deleted_at)
   })
+
+  // Обработка кастомных тегов (<tooltip>, <embed>) после рендеринга
+  createEffect(
+    on(
+      commentBodyRef,
+      () => {
+        const ref = commentBodyRef()
+        if (!ref || isServer) return
+
+        // Инициализируем обработку кастомных тегов
+        initCustomTags(ref)
+      },
+      { defer: true }
+    )
+  )
 
   /**
    * Проверяет, является ли комментарий локальным (еще не сохраненным на сервере)
@@ -360,7 +378,7 @@ export const CommentCard = (props: CommentCardProps): JSX.Element => {
                     bodyLength: body?.length,
                     sanitizedLength: sanitized?.length
                   })
-                  return <div class={styles.commentText} innerHTML={String(sanitized)} />
+                  return <div class={styles.commentText} innerHTML={String(sanitized)} ref={setCommentBodyRef} />
                 })()}
               </Show>
 

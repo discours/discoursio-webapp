@@ -21,6 +21,15 @@ export const getCdnUrl = (url: string, width?: number): string => {
   if (filename.toLowerCase() === 'webp') filename = fileparts.pop() || ''
   if (!filename) return url
 
+  // Проверяем, является ли filename валидным (содержит расширение)
+  // Если нет расширения (например, просто число "454794"), возвращаем оригинальный URL
+  const hasExtension =
+    filename.includes('.') && filename.split('.').pop()?.length && filename.split('.').pop()!.length <= 5
+  if (!hasExtension) {
+    console.warn(`[getCdnUrl] Invalid filename without extension: "${filename}", returning original URL`)
+    return url
+  }
+
   // Применяем width трансформацию если нужно
   if (width) {
     const extension = filename.split('.').pop() || ''

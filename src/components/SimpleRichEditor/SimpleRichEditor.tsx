@@ -3,6 +3,7 @@ import { Component, createEffect, createMemo, createSignal, on, onCleanup, onMou
 import { isServer, Portal } from 'solid-js/web'
 import { InlineForm } from '~/components/_shared/InlineForm/InlineForm'
 import { useLocalize } from '~/context/localize'
+import { useUI } from '~/context/ui'
 import { executeCommand, type FormatContext } from './format/common'
 import { type SelectionState } from './format/format'
 import { createEventHandlers } from './handlers/events'
@@ -31,15 +32,14 @@ import {
   Position,
   ToolbarMode
 } from './lib/types'
-import { createMediaHandlers } from './media'
+import { createMediaHandlers, initEmbedLoaders } from './media'
 import { useDropFiles } from './media/upload'
 import { isGroup } from './menu/config'
 import { switchFieldInDraft } from './menu/helpers'
-import { handlePlusMenuAction, handleSquibFormatting } from './menu/PlusMenu'
+import { handlePlusMenuAction, handleSquibFormatting, PlusMenu } from './menu/PlusMenu'
 import { SimpleToolbar } from './menu/SimpleToolbar'
 import { SquibMenu } from './menu/SquibMenu'
 import styles from './SimpleRichEditor.module.scss'
-import { EditorUILayer } from './ui/EditorUILayer'
 
 export interface SimpleRichEditorProps {
   onChange: (data: EditorData) => void
@@ -113,21 +113,9 @@ export const CURSOR_UPDATE_PERIOD = 1000
  */
 
 export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
-  // Отладочная информация при создании компонента
-  console.log('[SimpleRichEditor] Creating editor:', {
-    editorId: props.editorId,
-    fieldType: props.fieldType,
-    toolbar: props.toolbar,
-    isServer
-  })
-
   const { t } = useLocalize()
+  const { showModal, hideModal } = useUI()
   const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
-
-  // Сигналы для работы с ресурсами редактора (Keep footnote signals if footnote editor is used)
-  // Footnotes removed
-  // const [editingFootnote, setEditingFootnote] = createSignal<HTMLElement | null>(null)
-  // const [footnoteContent, setFootnoteContent] = createSignal<string>('')
   const [localVersion, setLocalVersion] = createSignal()
 
   const {
@@ -158,8 +146,11 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [isInitialFocusDone, setIsInitialFocusDone] = createSignal(false)
   const [hasSelection, setHasSelection] = createSignal(false)
 
-  // Сигнал для обновления Plus-меню из единого обработчика
-  const [updatePlusMenuTrigger, setUpdatePlusMenuTrigger] = createSignal(0)
+  // ✅ Сигнал видимости Plus-меню
+  const [shouldShowPlusMenu, setShouldShowPlusMenu] = createSignal(false)
+
+  // Реактивная позиция Plus-меню
+  const [plusMenuTop, setPlusMenuTop] = createSignal<number>(0)
 
   let blurTimerRef = 0
   const blurTimeout = 150
@@ -192,13 +183,20 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     restoreSelection,
     selectionInfo,
     cursorPosition,
-    handleDropFilesHook
+    handleDropFilesHook,
+    showModal,
+    hideModal
   })
 
   // Единый оптимизированный обработчик selectionchange (заменяет 3 дублирующихся)
   onMount(() => {
     const editor = editorRef()
     if (!editor) return
+
+    // Инициализируем lazy loading для embed виджетов
+    if (!isServer) {
+      initEmbedLoaders()
+    }
 
     let rafId: number | null = null
     let _mouseX = 0
@@ -248,9 +246,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           }
         }
 
-        // 4. Обновляем Plus-меню через сигнал (без дублирования обработчиков)
-        setUpdatePlusMenuTrigger((prev) => prev + 1)
-
         rafId = null
       })
     }
@@ -273,31 +268,84 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   })
 
   // Use helpers from UI module
-  const { currentToolbarMode, isClickInsideToolbar, getFloatingToolbarPosition, findLinkAncestor } = uiHelpers
+  const { currentToolbarMode, getFloatingToolbarPosition, findLinkAncestor } = uiHelpers
 
-  // Используем функции из handlers вместо дублированных
+  // ✅ Обновление видимости Plus-меню при движении курсора
+  const updatePlusMenuVisibility = () => {
+    if (!props.plus) return
 
-  createEffect(() => {
-    const editor = editorRef()
-    if (!editor) return
-    if (shouldShowPlaceholderState()) {
-      editor.classList.add('placeholder-visible')
-    } else {
-      editor.classList.remove('placeholder-visible')
+    const plusMenuShouldShow = uiHelpers.shouldShowPlusMenu()
+    const currentShouldShow = shouldShowPlusMenu()
+
+    if (plusMenuShouldShow !== currentShouldShow) {
+      setShouldShowPlusMenu(plusMenuShouldShow)
+      console.log('[SimpleRichEditor] Plus menu visibility updated on cursor move:', plusMenuShouldShow)
     }
-  })
+  }
+
+  // Обновление сигнала хранения позиции Plus-меню
+  const updatePlusMenuPosition = () => {
+    if (shouldShowPlusMenu()) {
+      const newTop = uiHelpers.getPlusMenuTop()
+      console.log('[SimpleRichEditor] Plus menu position calculation:', {
+        oldTop: plusMenuTop(),
+        newTop: newTop
+      })
+      setPlusMenuTop(newTop)
+      console.log('[SimpleRichEditor] Plus menu top set to:', newTop)
+    }
+  }
+
+  const clickHandler = (_e: MouseEvent) => {
+    updatePlusMenuVisibility()
+    updatePlusMenuPosition()
+  }
+
+  const keyupHandler = (e: KeyboardEvent) => {
+    if (
+      e.key === 'Enter' ||
+      e.key.startsWith('Arrow') ||
+      e.key.startsWith('Page') ||
+      e.key === 'Home' ||
+      e.key === 'End' ||
+      e.key === 'Backspace' ||
+      e.key === 'Delete'
+    ) {
+      updatePlusMenuVisibility()
+      updatePlusMenuPosition()
+    }
+  }
+
+  // Bind listeners to editor
+  const [listenersBinded, setListenersBinded] = createSignal(false)
+  createEffect(
+    on(editorRef, (editor) => {
+      if (!editor || !props.plus || listenersBinded()) return
+
+      // Слушаем только критичные события
+      editor.addEventListener('click', clickHandler)
+      editor.addEventListener('keyup', keyupHandler)
+
+      onCleanup(() => {
+        editor.removeEventListener('click', clickHandler)
+        editor.removeEventListener('keyup', keyupHandler)
+      })
+      setListenersBinded(true)
+    })
+  )
 
   createEffect(
-    () => {
-      const editor = editorRef()
-      if (!editor || isServer) return
-      uiHelpers.updatePlaceholderState() // Set initial state
-    },
-    { defer: true }
+    on(shouldShowPlaceholderState, (show: boolean) => {
+      if (show) {
+        editorRef()!.classList.add('placeholder-visible')
+      } else {
+        editorRef()!.classList.remove('placeholder-visible')
+      }
+    })
   )
 
   // --- Content Loading and Saving Logic ---
-  const loadLocalVersion = () => {
+  const loadLocalVersion = (_e: MouseEvent) => {
     const version = localVersion() as ContentVersion
     if (!version || !editorRef()) return
     console.log(`[SimpleRichEditor] Loading local version from ${new Date(version.timestamp).toLocaleString()}`)
@@ -320,7 +368,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     editorRef()!.focus()
   }
 
-  const handleClearLocalVersion = () => {
+  const handleClearLocalVersion = (_e: MouseEvent) => {
     if (!props.editorId) return
     clearLocalVersion(props.editorId, props.fieldType as EditorFieldType)
     setLocalVersion(null)
@@ -416,29 +464,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       }
     })
   )
-
-  // Воркэраунд для Lightning CSS: отслеживаем выделение через класс
-  createEffect(() => {
-    if (isServer) return
-
-    const _updateSelectionState = () => {
-      const selection = window.getSelection()
-      const editor = editorRef()
-
-      if (!selection || !editor) {
-        setHasSelection(false)
-        return
-      }
-
-      // Проверяем есть ли выделение и оно не пустое
-      const hasActiveSelection =
-        !selection.isCollapsed && selection.toString().trim().length > 0 && editor.contains(selection.anchorNode)
-
-      setHasSelection(hasActiveSelection)
-    }
-
-    // Удален дублирующийся обработчик - теперь используется единый в onMount выше
-  })
 
   // --- Core Logic --- Needed before event handlers
 
@@ -645,7 +670,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     console.log(`[handleAction] Processing command: ${command}`)
 
     // Специальная обработка для команд, требующих UI взаимодействия
-    if (['link', 'tooltip', 'image', 'video', 'audio'].includes(command)) {
+    if (['link', 'tooltip', 'image', 'video', 'audio', 'embed'].includes(command)) {
       if (command === 'link') {
         const linkElement = findLinkAncestor(activeSelection.anchorNode)
         const initialUrl = linkElement ? linkElement.getAttribute('href') || '' : ''
@@ -660,6 +685,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       }
       if (command === 'video') {
         showInlineForm('video', handleInsertVideo, '')
+        return
+      }
+      if (command === 'embed') {
+        showInlineForm('embed', handleInsertEmbed, '')
         return
       }
       if (command === 'image') {
@@ -732,9 +761,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   // Use form handlers
   const {
     showInlineForm,
-    handleInlineFormSubmit,
+    showInlineFormAtPosition,
     handleInsertLink,
     handleInsertVideo,
+    handleInsertEmbed,
     handleInsertTooltip,
     showAudioUploader,
     showImageUploadModal,
@@ -918,6 +948,23 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           />
         </div>
       </Show>
+      <Show when={showForm() === 'tooltip'}>
+        <div
+          class={styles.inlineFormWrapper}
+          style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
+        >
+          <InlineForm
+            placeholder={t('Enter tooltip text')}
+            initialValue={formInitialValue()}
+            onSubmit={handleInsertTooltip}
+            onClose={() => {
+              setShowForm(null)
+              editorRef()?.focus()
+              restoreSelection()
+            }}
+          />
+        </div>
+      </Show>
       <Show when={showForm() === 'video'}>
         <div
           class={styles.inlineFormWrapper}
@@ -936,20 +983,22 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           />
         </div>
       </Show>
-      <Show when={showForm() === 'tooltip'}>
+      <Show when={showForm() === 'embed'}>
         <div
           class={styles.inlineFormWrapper}
           style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
         >
           <InlineForm
-            placeholder={t('Enter tooltip text')}
+            placeholder={t('Paste any link')}
             initialValue={formInitialValue()}
-            onSubmit={handleInsertTooltip}
+            onSubmit={handleInsertEmbed}
             onClose={() => {
               setShowForm(null)
               editorRef()?.focus()
               restoreSelection()
             }}
+            validate={editorFormOptions()?.validate || (() => '')}
+            supportPlainText={true}
           />
         </div>
       </Show>
@@ -1029,41 +1078,39 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         </Show>
 
         {/* Forms and Modal Portals */}
-        <Show when={!isServer && showForm() !== null}>
+
+        {/* Plus Menu с прямым позиционированием */}
+        <Show when={props.plus && shouldShowPlusMenu()}>
           <Portal mount={document.body}>
-            <InlineForm
-              onBlur={(e: FocusEvent) => {
-                if (isClickInsideToolbar(e)) return
-                setShowForm(null)
-                editorRef()?.focus()
+            <PlusMenu
+              top={plusMenuTop()}
+              left={uiHelpers.getPlusMenuLeft()}
+              isVisible={true}
+              onEmpty={uiHelpers.isCursorOnEmptyLine()}
+              isFormActive={showForm() !== null}
+              onAction={(action) => {
+                console.log('[SimpleRichEditor] Plus menu action:', action)
+                handlePlusMenuAction(action, editorRef()!, {
+                  showLinkForm: () => {
+                    const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
+                    showInlineFormAtPosition('link', plusMenuPosition, handleInsertLink)
+                  },
+                  showTooltipForm: () => {
+                    const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
+                    showInlineFormAtPosition('tooltip', plusMenuPosition, handleInsertTooltip, '')
+                  },
+                  showEmbedForm: () => {
+                    const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
+                    showInlineFormAtPosition('embed', plusMenuPosition, handleInsertEmbed, '')
+                  },
+                  showImageUploadModal,
+                  showAudioUploader,
+                  handleChange
+                })
               }}
-              onClose={() => setShowForm(null)}
-              onSubmit={(value) => handleInlineFormSubmit(showForm()!, value)}
-              initialValue={formInitialValue()}
-              placeholder={showForm() === 'video' ? t('Enter video URL (YouTube, Vimeo)') : t('Enter URL')}
+              editorId={props.editorId}
             />
           </Portal>
-        </Show>
-
-        {/* UI Layer поверх редактора */}
-        <Show when={props.plus}>
-          <EditorUILayer
-            editorRef={() => editorRef()?.querySelector('[contenteditable="true"]') as HTMLDivElement}
-            showPlusMenu={uiHelpers.shouldShowPlusMenu() || false}
-            onPlusAction={(action) => {
-              console.log('[SimpleRichEditor] Plus menu action:', action)
-              handlePlusMenuAction(action, editorRef()!, {
-                showLinkForm: () => showInlineForm('link', handleInsertLink),
-                showTooltipForm: () => showInlineForm('tooltip', handleInsertTooltip, ''),
-                showVideoForm: () => showInlineForm('video', handleInsertVideo, ''),
-                showImageUploadModal,
-                showAudioUploader,
-                handleChange
-              })
-            }}
-            editorId={props.editorId}
-            updateTrigger={updatePlusMenuTrigger()}
-          />
         </Show>
       </div>
     </div>

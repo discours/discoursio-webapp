@@ -37,6 +37,7 @@ export type ModalType =
   | 'insertVideo'
   | 'uploadAudio'
   | 'insertLink'
+  | 'embedChoice'
   | ''
 
 export const MODALS: Record<ModalType, ModalType> = {
@@ -59,6 +60,7 @@ export const MODALS: Record<ModalType, ModalType> = {
   insertVideo: 'insertVideo',
   uploadAudio: 'uploadAudio',
   insertLink: 'insertLink',
+  embedChoice: 'embedChoice',
   '': ''
 }
 
@@ -74,6 +76,8 @@ type ModalCallbacks = {
   // biome-ignore lint/suspicious/noExplicitAny: true
   onSuccess?: (data?: any) => void
   onCancel?: () => void
+  // biome-ignore lint/suspicious/noExplicitAny: true
+  data?: any
 }
 
 type UIContextType = {

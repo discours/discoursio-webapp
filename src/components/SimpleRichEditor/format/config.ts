@@ -31,9 +31,13 @@ export const FORMAT_CONFIG: Record<CommandType, { tag: string; attributes?: Reco
     attributes: { 'data-type': 'punchline' }
   },
   hr: { tag: 'hr' },
+  separator: { tag: 'hr' },
   image: { tag: 'img', attributes: {} },
   video: { tag: 'div', attributes: { 'data-type': 'video' } },
-  audio: { tag: 'audio', attributes: {} },
+  audio: { tag: 'audio', attributes: { controls: 'true' } },
+  media: { tag: 'span', attributes: {} }, // UI команда, не используется
+  upload: { tag: 'span', attributes: {} }, // UI команда, не используется
+  embed: { tag: 'embed', attributes: {} }, // Кастомный тег для встраивания
   p: { tag: 'p', attributes: {} },
   squib: { tag: 'div', attributes: { 'data-align': '' } },
   'align-left': { tag: 'div', attributes: { 'data-align': 'left' } },

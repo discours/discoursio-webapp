@@ -2,6 +2,63 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.14.27] - 2025-10-03
+
+### Fixed
+- **✂️ Author Bio Truncation**: Ограничена длина описания автора (bio) до 128 символов в компоненте `AuthorBadge` для предотвращения переполнения в списках подписчиков, поддерживающих тему и других бейджах
+
+### Changed
+- **📤 Universal Media Upload**: Заменены отдельные кнопки `image`, `video`, `audio` на универсальную кнопку `upload` с автоопределением типа файла (изображение или аудио)
+- **📝 Menu Items**: Плюс-меню теперь содержит: `upload` (медиа), `embed` (встраивание), `separator` (разделитель)
+- **🎵 Audio Player**: Аудио файлы теперь отображаются с нативным HTML5 плеером (`<audio controls>`)
+
+### Added
+- **🏷️ Platform Detection**: Автоматическое определение платформы embed с микроанимацией бейджа в форме (YouTube, Vimeo, SoundCloud и др.)
+
+### Removed
+- **🎬 Video Button**: Удалена отдельная кнопка видео из плюс-меню (осталась универсальная кнопка embed для всех платформ)
+- **🔘 Separate Media Buttons**: Удалены отдельные кнопки для изображений и аудио (объединены в универсальную кнопку upload)
+
+### Added (SimpleRichEditor Embed System)
+- **🔗 Compact Embed Format**: Введен новый компактный формат `<embed>` для хранения embed-контента
+- **📦 Platform Support**: Поддержка **17 платформ**: YouTube, Vimeo, SoundCloud, Bandcamp, Facebook, X, Instagram, Telegram, Reddit, TikTok, Twitch, TED, Wikipedia, SlideShare, Imgur, Flickr, Discours.io
+- **🎨 SVG Icons**: Брендовые SVG иконки для всех embed-платформ вместо эмоджи
+- **🔄 Migration Script**: Встроенная миграция HTML embed → компактный формат в `migrator/migration/tag_handlers.py`
+- **⚡ Lazy Loading**: Privacy-first подход с отложенной загрузкой SDK для социальных сетей
+- **🖼️ Metadata Preview**: Автоматическая подтяжка метаданных (title, image, description) для preview
+- **🎯 Plain Text Mode**: Shift+Enter для вставки URL как простой ссылки без embed
+- **🖼️ Media Hosting**: SlideShare (презентации), Imgur (изображения/галереи), Flickr (фото) с oEmbed API
+- **💬 Embed Choice Dialog**: При вставке ссылки на embed-платформу (через форму или Ctrl+V) показывается диалог выбора: обычная ссылка или embed с превью
+- **📋 Paste Detection**: Автоматическое распознавание embed-платформ при вставке URL из буфера обмена
+- **🎨 Rich Previews**: YouTube, Vimeo, SoundCloud, TikTok, Imgur отображаются с полноразмерными превью
+  - YouTube/Vimeo: thumbnail с кнопкой play
+  - SoundCloud/TikTok: обложка трека/видео с названием и автором (через oEmbed)
+  - Imgur: превью изображения
+- **🎨 Improved Preview**: Минималистичный дизайн с SVG иконкой платформы, названием и кнопкой "Load content" для остальных платформ
+
+### Technical Details
+- **Storage**: Вместо verbose HTML/iframe → `<embed>https://[domain]/[subpath]</embed>`
+- **Migration**: Автоматическая конвертация iframe'ов и div'ов в компактный формат при миграции
+- **Client**: Обработка кастомных тегов (`<tooltip>`, `<embed>`) в FullArticle и CommentCard
+- **Performance**: Компактный формат уменьшает размер HTML, lazy loading улучшает загрузку
+- **Privacy**: Embed контент не загружается до явного клика пользователя
+- **UX**: `EmbedChoiceModal` позволяет выбрать тип вставки при добавлении embed-ссылок через форму или Ctrl+V
+
+## [0.14.26] - 2025-01-27
+
+### Enhanced (SimpleRichEditor PlusMenu)
+- **🎯 Smart Positioning**: PlusMenu теперь отслеживает курсор по строкам в реальном времени
+- **🔧 UI Primitives**: Разделение ответственности между видимостью (`shouldShowPlusMenu`) и позиционированием (`getPlusMenuTop`, `getPlusMenuLeft`)
+- **🎨 Clean Design**: Убраны тени и бордеры у выпадающего меню PlusMenu
+- **📏 Line-based Calculation**: Позиция вычисляется на основе индекса строки курсора вместо getBoundingClientRect
+- **🔗 Proper Separator**: Исправлена иконка разделителя - теперь используется `editor-hr` вместо пустого кружка
+- **📝 HTML Placeholder**: Убран кастомный placeholder компонент, используется стандартный HTML placeholder
+
+### Technical Details
+- **Architecture**: Примитивы UI с четким разделением ответственности
+- **Performance**: Оптимизировано обновление позиции только при движении курсора между строками
+- **Code Quality**: Упрощена логика позиционирования, убраны избыточные проверки
+
 ## [0.14.25] - 2025-09-30
 
 ### Fixed (Static Files & Image Loading)

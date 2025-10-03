@@ -16,6 +16,7 @@ import { processPrepositions } from '~/intl/prepositions'
 import { isCyrillic } from '~/intl/translate'
 import { replaceImageUrls } from '~/lib/imageCache'
 import { capitalize } from '~/utils/capitalize'
+import { initCustomTags } from '~/utils/customTags'
 import { Icon } from '../_shared/Icon'
 import { Image } from '../_shared/Image'
 import { InviteMembers } from '../_shared/InviteMembers'
@@ -85,6 +86,7 @@ export const FullArticle = (props: Props) => {
   const [pages, setPages] = createSignal<Record<string, number>>({})
   const [commentsWrapper, setCommentsWrapper] = createSignal<HTMLElement | undefined>()
   const [canEdit, setCanEdit] = createSignal<boolean>(false)
+  const [shoutBodyRef, setShoutBodyRef] = createSignal<HTMLDivElement | undefined>()
 
   const body = createMemo(() => {
     let body = props.article.body || ''
@@ -116,6 +118,21 @@ export const FullArticle = (props: Props) => {
   })
 
   const media = createMemo<MediaItem[]>(() => (props.article.media || []) as MediaItem[])
+
+  // Обработка кастомных тегов (<tooltip>, <embed-link>) после рендеринга
+  createEffect(
+    on(
+      [shoutBodyRef, body],
+      () => {
+        const ref = shoutBodyRef()
+        if (!ref || !body() || isServer) return
+
+        // Инициализируем обработку кастомных тегов
+        initCustomTags(ref)
+      },
+      { defer: true }
+    )
+  )
 
   const handleBookmarkButtonClick = (ev: MouseEvent | undefined) => {
     requireAuthentication(() => {
@@ -597,7 +614,7 @@ export const FullArticle = (props: Props) => {
               </Show>
 
               <Show when={body() && props.article.layout !== 'audio' && props.article.layout !== 'video'}>
-                <div id="shoutBody" class={styles.shoutBody} innerHTML={body()} />
+                <div id="shoutBody" class={styles.shoutBody} innerHTML={body()} ref={setShoutBodyRef} />
               </Show>
             </div>
           </article>

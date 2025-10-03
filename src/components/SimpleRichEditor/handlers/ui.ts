@@ -93,13 +93,13 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     return false
   }
 
-  const shouldShowPlusMenu = () => {
+  // видимость Plus-меню (boolean)
+  const shouldShowPlusMenu = (): boolean => {
     const isNewLine = isCursorOnEmptyLine()
     const isEditorInFocus = hasFocus()
     const isNoOtherMenuOpen = !showForm() && !showSquibEditor()
     const isPlusEnabled = props.plus
 
-    // Отладочная информация
     console.log('[PlusMenu Debug] shouldShowPlusMenu conditions:', {
       isNewLine,
       isEditorInFocus,
@@ -110,7 +110,7 @@ export const createUIHelpers = (context: UIHelpersContext) => {
       result: isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen
     })
 
-    return isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen
+    return !!(isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen)
   }
 
   const getFloatingToolbarPosition = (): Position => {
@@ -122,50 +122,71 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     })
   }
 
-  const getPlusMenuPosition = (): { top: number; left: number; isVisible?: boolean } => {
+  // top позиция Plus-меню (number)
+  const getPlusMenuTop = (): number => {
     const editor = editorRef()
-    if (!editor) {
-      return { top: 0, left: 0, isVisible: false }
+    if (!editor) return 0
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) {
+      const editorRect = editor.getBoundingClientRect()
+      return editorRect.top + 10 // Fallback: первая строка
     }
+
+    const range = selection.getRangeAt(0)
+
+    // Находим все элементы-строки в редакторе (div, p)
+    const lines = Array.from(editor.querySelectorAll('div, p'))
+
+    // Определяем в какой строке находится курсор
+    const container = range.startContainer
+    let currentLine: Element | null = null
+    let lineIndex = 0
+
+    // Ищем родительский элемент-строку
+    let node: Node | null = container
+    while (node && node !== editor) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element
+        if (element.tagName === 'DIV' || element.tagName === 'P') {
+          currentLine = element
+          break
+        }
+      }
+      node = node.parentNode
+    }
+
+    if (currentLine) {
+      lineIndex = lines.indexOf(currentLine)
+      console.log('[getPlusMenuTop] Line index:', lineIndex, 'of', lines.length)
+    }
+
+    // Вычисляем top позицию (+1 строчка ниже курсора)
+    const editorRect = editor.getBoundingClientRect()
+    const lineHeight = 24 // Примерная высота строки в пикселях
+    const editorPaddingTop = Number.parseInt(getComputedStyle(editor).paddingTop, 10) || 0
+
+    // Добавляем +1 к lineIndex, чтобы плюс был на строчку ниже
+    const topPosition = editorRect.top + editorPaddingTop + (lineIndex + 1) * lineHeight + lineHeight / 2 - 16
+
+    console.log('[getPlusMenuTop] Calculated (+1 line below):', {
+      lineIndex: lineIndex + 1,
+      editorTop: editorRect.top,
+      paddingTop: editorPaddingTop,
+      lineHeight,
+      calculatedTop: topPosition
+    })
+
+    return topPosition
+  }
+
+  // Фиксированная left позиция Plus-меню (number)
+  const getPlusMenuLeft = (): number => {
+    const editor = editorRef()
+    if (!editor) return 0
 
     const editorRect = editor.getBoundingClientRect()
-    const selection = window.getSelection()
-
-    // Используем прямое получение позиции курсора из selection
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      const rangeRect = range.getBoundingClientRect()
-
-      if (rangeRect.height > 0) {
-        // ИСПРАВЛЕННАЯ логика: используем viewport координаты напрямую
-        const position = {
-          top: rangeRect.top + rangeRect.height / 2 - 16, // Центр строки в viewport
-          left: editorRect.left - 45, // Слева от редактора в viewport
-          isVisible: true
-        }
-
-        console.log('[getPlusMenuPosition] FIXED position calculation:', {
-          rangeRect: { top: rangeRect.top, left: rangeRect.left, height: rangeRect.height },
-          editorRect: { top: editorRect.top, left: editorRect.left },
-          windowScroll: { x: window.scrollX, y: window.scrollY },
-          calculated: position,
-          'position type': 'fixed viewport coordinates'
-        })
-
-        return position
-      }
-    }
-
-    // Fallback: позиция в начале редактора (viewport координаты)
-    const fallbackPosition = {
-      top: editorRect.top + 10,
-      left: editorRect.left - 45,
-      isVisible: true
-    }
-
-    console.log('[getPlusMenuPosition] Fallback position (viewport):', fallbackPosition)
-
-    return fallbackPosition
+    return editorRect.left - 45
   }
 
   const findLinkAncestor = (node: Node | null): HTMLAnchorElement | null => {
@@ -201,7 +222,8 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     isCursorOnEmptyLine,
     shouldShowPlusMenu,
     getFloatingToolbarPosition,
-    getPlusMenuPosition,
+    getPlusMenuTop,
+    getPlusMenuLeft,
     findLinkAncestor,
     updatePlaceholderState
   }

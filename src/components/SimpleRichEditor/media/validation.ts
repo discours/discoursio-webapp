@@ -4,7 +4,7 @@
  */
 
 import { CommandType } from '../lib/types'
-import { ContentType, VideoPlatform } from './types'
+import { ContentType, EmbedPlatform, VideoPlatform } from './types'
 
 /**
  * Регулярные выражения для различных типов контента
@@ -13,6 +13,31 @@ export const URL_PATTERNS = {
   // Видео платформы
   YOUTUBE: /^(https?:\/\/)?(www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})$/,
   VIMEO: /^(https?:\/\/)?(www\.|player\.)?vimeo\.com\/(?:video\/)?(\d+)$/,
+  TWITCH: /^(https?:\/\/)?(www\.)?(twitch\.tv|m\.twitch\.tv)\/(videos\/\d+|[a-zA-Z0-9_]+)/,
+  TED: /^(https?:\/\/)?(www\.|embed\.)?ted\.com\/talks\/(?:lang\/[a-z]{2}\/)?[a-zA-Z0-9_-]+/,
+
+  // Социальные сети
+  FACEBOOK: /^(https?:\/\/)?(www\.)?facebook\.com\/.+/,
+  X_TWITTER: /^(https?:\/\/)?(www\.)?(x\.com|twitter\.com)\/.+/,
+  INSTAGRAM: /^(https?:\/\/)?(www\.)?instagram\.com\/(p|reel|tv)\/([a-zA-Z0-9_-]+)/,
+  TELEGRAM: /^(https?:\/\/)?(www\.)?t\.me\/.+/,
+  REDDIT: /^(https?:\/\/)?(www\.)?reddit\.com\/r\/.+/,
+  TIKTOK: /^(https?:\/\/)?(www\.)?(tiktok\.com|vm\.tiktok\.com)\/.+/,
+
+  // Аудио платформы
+  SOUNDCLOUD: /^(https?:\/\/)?(www\.)?soundcloud\.com\/.+/,
+  BANDCAMP: /^(https?:\/\/)?([a-zA-Z0-9-]+\.)?bandcamp\.com\/(track|album)\/.+/,
+
+  // Discours.io
+  DISCOURS: /^(https?:\/\/)?(www\.)?(discours\.io|testing\.discours\.io)\/.+/,
+
+  // Wikipedia
+  WIKIPEDIA: /^(https?:\/\/)?([a-z]{2,3}\.)?wikipedia\.org\/wiki\/.+/,
+
+  // Медиа хостинги
+  SLIDESHARE: /^(https?:\/\/)?(www\.)?slideshare\.net\/.+/,
+  IMGUR: /^(https?:\/\/)?(www\.)?(i\.)?imgur\.com\/.+/,
+  FLICKR: /^(https?:\/\/)?(www\.)?flickr\.com\/(photos|gp)\/.+/,
 
   // Медиа файлы
   IMAGE: /\.(jpe?g|png|gif|webp|avif)$/i,
@@ -91,14 +116,74 @@ export const extractVideoId = (url: string): string | null => {
 }
 
 /**
+ * Определяет платформу embed по URL
+ * @param url URL для анализа
+ * @returns Платформа embed или 'unknown' если не распознана
+ */
+export const detectEmbedPlatform = (url: string): EmbedPlatform => {
+  if (URL_PATTERNS.YOUTUBE.test(url)) return 'youtube'
+  if (URL_PATTERNS.VIMEO.test(url)) return 'vimeo'
+  if (URL_PATTERNS.TWITCH.test(url)) return 'twitch'
+  if (URL_PATTERNS.TED.test(url)) return 'ted'
+  if (URL_PATTERNS.SOUNDCLOUD.test(url)) return 'soundcloud'
+  if (URL_PATTERNS.BANDCAMP.test(url)) return 'bandcamp'
+  if (URL_PATTERNS.FACEBOOK.test(url)) return 'facebook'
+  if (URL_PATTERNS.X_TWITTER.test(url)) return 'x'
+  if (URL_PATTERNS.INSTAGRAM.test(url)) return 'instagram'
+  if (URL_PATTERNS.TELEGRAM.test(url)) return 'telegram'
+  if (URL_PATTERNS.REDDIT.test(url)) return 'reddit'
+  if (URL_PATTERNS.TIKTOK.test(url)) return 'tiktok'
+  if (URL_PATTERNS.WIKIPEDIA.test(url)) return 'wikipedia'
+  if (URL_PATTERNS.SLIDESHARE.test(url)) return 'slideshare'
+  if (URL_PATTERNS.IMGUR.test(url)) return 'imgur'
+  if (URL_PATTERNS.FLICKR.test(url)) return 'flickr'
+  if (URL_PATTERNS.DISCOURS.test(url)) return 'discours'
+  return 'unknown'
+}
+
+/**
  * Определяет тип контента по URL
  * @param url URL для анализа
  * @returns Тип контента или undefined если не распознан
  */
 export const recognizeContentType = (url: string): ContentType | undefined => {
-  if (URL_PATTERNS.YOUTUBE.test(url) || URL_PATTERNS.VIMEO.test(url)) {
+  // Видео платформы
+  if (
+    URL_PATTERNS.YOUTUBE.test(url) ||
+    URL_PATTERNS.VIMEO.test(url) ||
+    URL_PATTERNS.TWITCH.test(url) ||
+    URL_PATTERNS.TED.test(url) ||
+    URL_PATTERNS.TIKTOK.test(url)
+  ) {
     return 'video'
   }
+  // Аудио платформы
+  if (URL_PATTERNS.SOUNDCLOUD.test(url) || URL_PATTERNS.BANDCAMP.test(url)) {
+    return 'audio'
+  }
+  // Медиа хостинги (изображения)
+  if (URL_PATTERNS.IMGUR.test(url) || URL_PATTERNS.FLICKR.test(url)) {
+    return 'image'
+  }
+  // Документы/презентации
+  if (URL_PATTERNS.SLIDESHARE.test(url)) {
+    return 'link'
+  }
+  // Wikipedia и другие
+  if (URL_PATTERNS.WIKIPEDIA.test(url) || URL_PATTERNS.DISCOURS.test(url)) {
+    return 'link'
+  }
+  // Социальные сети
+  if (
+    URL_PATTERNS.FACEBOOK.test(url) ||
+    URL_PATTERNS.X_TWITTER.test(url) ||
+    URL_PATTERNS.INSTAGRAM.test(url) ||
+    URL_PATTERNS.TELEGRAM.test(url) ||
+    URL_PATTERNS.REDDIT.test(url)
+  ) {
+    return 'link'
+  }
+  // Прямые медиа файлы
   if (URL_PATTERNS.IMAGE.test(url)) {
     return 'image'
   }

@@ -77,5 +77,11 @@
   "Failed to upload file after multiple attempts. Check your connection.": "Failed to upload file after multiple attempts. Check your connection.",
   "Upload failed": "Upload failed",
   "Upload service unavailable. Try again later.": "Upload service unavailable. Try again later.",
-  "Failed to get uploaded file URL": "Failed to get uploaded file URL"
+  "Failed to get uploaded file URL": "Failed to get uploaded file URL",
+  "How to insert this link?": "How to insert this link?",
+  "Regular link": "Regular link",
+  "Insert as a regular clickable link": "Insert as a regular clickable link",
+  "Embed with preview": "Embed with preview",
+  "Show content preview in the article": "Show content preview in the article",
+  "You can change this later by editing the link": "You can change this later by editing the link"
 }

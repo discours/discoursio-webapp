@@ -288,6 +288,12 @@ export const ToolbarControl: Component<{
   if (command === 'orderedList') {
     iconNameForButton = 'editor-ol' // Используем скачанную иконку
   }
+  if (command === 'media' || command === 'upload') {
+    iconNameForButton = 'editor-image' // Используем иконку изображения для медиа/upload
+  }
+  if (command === 'separator') {
+    iconNameForButton = 'editor-hr' // Используем иконку разделителя для separator
+  }
 
   return (
     <Popover content={capitalize(command) as string}>

@@ -19,6 +19,29 @@ export type ContentType = 'link' | 'image' | 'video' | 'audio'
 export type VideoPlatform = 'youtube' | 'vimeo'
 
 /**
+ * Типы поддерживаемых embed платформ
+ */
+export type EmbedPlatform =
+  | 'youtube'
+  | 'vimeo'
+  | 'twitch'
+  | 'ted'
+  | 'soundcloud'
+  | 'bandcamp'
+  | 'facebook'
+  | 'x'
+  | 'instagram'
+  | 'telegram'
+  | 'reddit'
+  | 'tiktok'
+  | 'wikipedia'
+  | 'slideshare'
+  | 'imgur'
+  | 'flickr'
+  | 'discours'
+  | 'unknown'
+
+/**
  * Единый интерфейс для параметров вставки медиа
  */
 export interface MediaInsertParams {

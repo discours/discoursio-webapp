@@ -31,6 +31,10 @@ export interface EventHandlersContext {
   selectionInfo: Accessor<{ text: string; isEmpty: boolean }>
   cursorPosition: Accessor<{ top: number; left: number } | null>
   handleDropFilesHook: (e: DragEvent) => Promise<void>
+  // Modal functions
+  // biome-ignore lint/suspicious/noExplicitAny: Modal callbacks can have various types
+  showModal?: (modalType: any, source?: any, callbacks?: any) => void
+  hideModal?: () => void
 }
 
 /**
@@ -149,6 +153,68 @@ export const createEventHandlers = (context: EventHandlersContext) => {
 
     saveSelection()
     let pasted = false
+
+    // Проверяем text на URL embed платформы ПЕРЕД обработкой HTML
+    if (text && !html) {
+      const trimmedText = text.trim()
+      // Проверяем - это одиночный URL?
+      const urlRegex = /^https?:\/\/[^\s]+$/
+      if (urlRegex.test(trimmedText)) {
+        const { detectEmbedPlatform } = await import('../media/validation')
+        const platform = detectEmbedPlatform(trimmedText)
+
+        if (platform !== 'unknown' && context.showModal && context.hideModal) {
+          // Это embed платформа - показываем диалог выбора
+          const _savedSelection = saveSelection()
+
+          context.showModal('embedChoice', undefined, {
+            data: { url: trimmedText, platform },
+            onSuccess: async (type: 'link' | 'embed') => {
+              context.hideModal?.()
+              restoreSelection()
+
+              if (type === 'embed') {
+                // Вставляем как <embed>
+                const { createUniversalEmbed } = await import('../media/html')
+                const embedHtml = await createUniversalEmbed(trimmedText, platform)
+
+                if (embedHtml) {
+                  replaceSelection(embedHtml, editorRef() || null)
+                  handleChange(props.fieldType ? String(props.fieldType) : 'content')
+                }
+              } else {
+                // Вставляем как обычную ссылку <a>
+                const linkHtml = `<a href="${trimmedText}" target="_blank" rel="noopener noreferrer">${trimmedText}</a>`
+                replaceSelection(linkHtml, editorRef() || null)
+                handleChange(props.fieldType ? String(props.fieldType) : 'content')
+              }
+
+              editorRef()?.focus()
+            },
+            onCancel: () => {
+              context.hideModal?.()
+              restoreSelection()
+              // Вставляем как обычный текст
+              const selection = window.getSelection()
+              if (selection?.rangeCount) {
+                const range = selection.getRangeAt(0)
+                const textNode = document.createTextNode(trimmedText)
+                range.deleteContents()
+                range.insertNode(textNode)
+                range.setStartAfter(textNode)
+                range.collapse(true)
+                selection.removeAllRanges()
+                selection.addRange(range)
+              }
+              handleChange(props.fieldType ? String(props.fieldType) : 'content')
+              editorRef()?.focus()
+            }
+          })
+
+          return // Не обрабатываем дальше
+        }
+      }
+    }
 
     if (html) {
       console.log('Pasting HTML')

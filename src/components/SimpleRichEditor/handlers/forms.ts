@@ -11,7 +11,13 @@ import { validateVideoUrl, validateWebUrl } from '../../../lib/validateDraft'
 import { applyFormatting, removeFormatting } from '../format/format'
 import { EditorFieldType, FormType, InlineFormOptions, Position } from '../lib/types'
 import { replaceSelection, validateUrl } from '../lib/utils'
-import { createVideoEmbed, detectVideoPlatform, handleAudioUploaderResult } from '../media'
+import {
+  createUniversalEmbed,
+  createVideoEmbed,
+  detectEmbedPlatform,
+  detectVideoPlatform,
+  handleAudioUploaderResult
+} from '../media'
 
 export interface FormHandlersContext {
   editorRef: Accessor<HTMLDivElement | undefined>
@@ -123,6 +129,33 @@ export const createFormHandlers = (context: FormHandlersContext) => {
     }
   }
 
+  // Специальная версия для плюсменю - принимает позицию как параметр
+  const showInlineFormAtPosition = (
+    type: FormType,
+    position: Position,
+    onSubmit: (value: string) => void,
+    initialValue?: string
+  ) => {
+    if (!type) return
+
+    // Используем переданную позицию напрямую
+    setFormPosition({
+      top: position.top + window.scrollY,
+      left: position.left + window.scrollX
+    })
+
+    // Устанавливаем начальное значение
+    setFormInitialValue(initialValue || '')
+
+    setShowForm(type)
+
+    // Устанавливаем опции формы
+    editorFormOptions = {
+      onSubmit,
+      validate: type === 'video' ? (url: string) => validateVideoUrl(url) : (url: string) => validateWebUrl(url)
+    }
+  }
+
   const handleInlineFormSubmit = (type: FormType, url: string) => {
     setShowForm(null)
     if (restoreSelection()) {
@@ -190,9 +223,174 @@ export const createFormHandlers = (context: FormHandlersContext) => {
     }
   }
 
-  const handleInsertLink = (url: string) => handleInlineFormSubmit('link', url)
-  const handleInsertVideo = (url: string) => handleInlineFormSubmit('video', url)
+  const handleInsertLink = async (url: string) => {
+    // Проверяем - это embed платформа?
+    const { detectEmbedPlatform } = await import('../media/validation')
+    const platform = detectEmbedPlatform(url)
+
+    // Если это embed платформа - показываем диалог выбора
+    if (platform !== 'unknown') {
+      // Сохраняем контекст для вставки после выбора
+      const _savedSelection = saveSelection()
+
+      // Показываем модальное окно выбора
+      showModal('embedChoice', undefined, {
+        data: { url, platform },
+        onSuccess: async (type: 'link' | 'embed') => {
+          hideModal()
+
+          // Восстанавливаем выделение
+          restoreSelection()
+
+          if (type === 'embed') {
+            // Вставляем как <embed>
+            const { createUniversalEmbed } = await import('../media/html')
+            const embedHtml = await createUniversalEmbed(url, platform)
+
+            if (embedHtml) {
+              restoreSelection()
+              const editor = editorRef()
+              if (editor) {
+                replaceSelection(embedHtml, editor)
+                handleChange(props.fieldType ? String(props.fieldType) : 'content')
+              }
+            }
+          } else {
+            // Вставляем как обычную ссылку <a>
+            handleInlineFormSubmit('link', url)
+          }
+
+          editorRef()?.focus()
+        },
+        onCancel: () => {
+          hideModal()
+          editorRef()?.focus()
+          restoreSelection()
+        }
+      })
+    } else {
+      // Обычная ссылка - вставляем как раньше
+      handleInlineFormSubmit('link', url)
+    }
+  }
+
+  // Новая логика для видео - показываем модальное окно с превью
+  const handleInsertVideo = (url: string) => {
+    // Закрываем инлайн форму
+    setShowForm(null)
+
+    // Валидируем URL
+    if (!validateVideoUrl(url)) {
+      console.warn('Invalid video URL:', url)
+      editorRef()?.focus()
+      return
+    }
+
+    // Показываем модальное окно с превью, передавая URL через data
+    showModal(MODALS.insertVideo, undefined, {
+      data: { videoUrl: url }, // Передаем URL через data
+      onSuccess: (videoUrl: string) => {
+        // Вставляем видео после подтверждения в модальном окне
+        if (restoreSelection()) {
+          const platform = detectVideoPlatform(videoUrl)
+          if (platform) {
+            const embedHtml = createVideoEmbed(videoUrl)
+            const editor = editorRef()
+            if (editor && embedHtml) {
+              replaceSelection(embedHtml, editor)
+            }
+          }
+          handleChange(props.fieldType ? String(props.fieldType) : 'content')
+          editorRef()?.focus()
+        }
+        hideModal()
+      },
+      onCancel: () => {
+        hideModal()
+        editorRef()?.focus()
+        restoreSelection()
+      }
+    })
+  }
+
   const handleInsertTooltip = (text: string) => handleInlineFormSubmit('tooltip', text)
+
+  // Новая логика для универсального embed
+  const handleInsertEmbed = async (url: string, insertAsText = false) => {
+    // Закрываем инлайн форму
+    setShowForm(null)
+
+    // Валидируем URL
+    if (!validateWebUrl(url)) {
+      console.warn('Invalid embed URL:', url)
+      editorRef()?.focus()
+      return
+    }
+
+    // Если пользователь хочет простую текстовую ссылку - вставляем без embed
+    if (insertAsText) {
+      if (restoreSelection()) {
+        const editor = editorRef()
+        if (editor) {
+          // Вставляем как обычную ссылку
+          replaceSelection(`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`, editor)
+          handleChange(props.fieldType ? String(props.fieldType) : 'content')
+        }
+        editorRef()?.focus()
+      }
+      return
+    }
+
+    // Определяем платформу
+    const platform = detectEmbedPlatform(url)
+    if (platform === 'unknown') {
+      // Если платформа не распознана, вставляем как текстовую ссылку
+      if (restoreSelection()) {
+        const editor = editorRef()
+        if (editor) {
+          replaceSelection(`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`, editor)
+          handleChange(props.fieldType ? String(props.fieldType) : 'content')
+        }
+        editorRef()?.focus()
+      }
+      return
+    }
+
+    // Для YouTube и Vimeo показываем модальное окно с превью
+    if (platform === 'youtube' || platform === 'vimeo') {
+      showModal(MODALS.insertVideo, undefined, {
+        data: { videoUrl: url },
+        onSuccess: (videoUrl: string) => {
+          if (restoreSelection()) {
+            const embedHtml = createVideoEmbed(videoUrl)
+            const editor = editorRef()
+            if (editor && embedHtml) {
+              replaceSelection(embedHtml, editor)
+            }
+            handleChange(props.fieldType ? String(props.fieldType) : 'content')
+            editorRef()?.focus()
+          }
+          hideModal()
+        },
+        onCancel: () => {
+          hideModal()
+          editorRef()?.focus()
+          restoreSelection()
+        }
+      })
+    } else {
+      // Для остальных платформ сразу вставляем embed
+      if (restoreSelection()) {
+        const embedHtml = await createUniversalEmbed(url)
+        const editor = editorRef()
+        if (editor && embedHtml) {
+          replaceSelection(embedHtml, editor)
+          handleChange(props.fieldType ? String(props.fieldType) : 'content')
+        }
+        editorRef()?.focus()
+      }
+    }
+  }
 
   // Media handling
   const handleAudioUpload = (audioItems: MediaItem[]) => {
@@ -255,9 +453,11 @@ export const createFormHandlers = (context: FormHandlersContext) => {
 
   return {
     showInlineForm,
+    showInlineFormAtPosition,
     handleInlineFormSubmit,
     handleInsertLink,
     handleInsertVideo,
+    handleInsertEmbed,
     handleInsertTooltip,
     showAudioUploader,
     showImageUploadModal,

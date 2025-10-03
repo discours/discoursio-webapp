@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import { Component, createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
-// import { Icon } from '~/components/_shared/Icon'
+import { Icon } from '~/components/_shared/Icon/Icon'
 import { useLocalize } from '~/context/localize'
 import { replaceSelection } from '../lib/empty'
 import { CommandType } from '../lib/types'
@@ -16,56 +16,67 @@ export const handlePlusMenuAction = (
   action: CommandType,
   editor: HTMLElement | null,
   callbacks: {
-    showLinkForm?: (onSubmit: (url: string) => void) => void
+    showLinkForm?: () => void
     showTooltipForm?: () => void
-    showVideoForm?: (onSubmit: (url: string) => void) => void
+    showEmbedForm?: () => void
     showAudioUploader?: () => void
     showImageUploadModal?: () => void
     handleChange?: () => void
   }
 ): void => {
   switch (action) {
-    case 'video':
-      if (callbacks.showVideoForm) {
-        callbacks.showVideoForm((url: string) => {
-          if (url) {
-            const videoHtml = `<div class="video-embed"><iframe src="${url}" frameborder="0" allowfullscreen></iframe></div>`
-            replaceSelection(videoHtml, editor)
-            if (callbacks.handleChange) callbacks.handleChange()
+    case 'embed':
+      if (callbacks.showEmbedForm) {
+        callbacks.showEmbedForm()
+      }
+      break
+    case 'upload':
+      // Создаем input для выбора файлов (изображения и аудио)
+      {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = 'image/*,audio/*'
+        input.onchange = async (e) => {
+          const file = (e.target as HTMLInputElement).files?.[0]
+          if (!file) return
+
+          // Определяем тип файла по MIME
+          if (file.type.startsWith('image/')) {
+            // Изображение - вызываем modal загрузки изображения
+            if (callbacks.showImageUploadModal) {
+              callbacks.showImageUploadModal()
+              // Эмулируем выбор файла в modal
+              setTimeout(() => {
+                const fileInput = document.querySelector('input[type="file"][accept*="image"]') as HTMLInputElement
+                if (fileInput) {
+                  const dataTransfer = new DataTransfer()
+                  dataTransfer.items.add(file)
+                  fileInput.files = dataTransfer.files
+                  fileInput.dispatchEvent(new Event('change', { bubbles: true }))
+                }
+              }, 100)
+            }
+          } else if (file.type.startsWith('audio/')) {
+            // Аудио - вызываем аудио загрузчик
+            if (callbacks.showAudioUploader) {
+              callbacks.showAudioUploader()
+              // Эмулируем выбор файла в uploader
+              setTimeout(() => {
+                const fileInput = document.querySelector('input[type="file"][accept*="audio"]') as HTMLInputElement
+                if (fileInput) {
+                  const dataTransfer = new DataTransfer()
+                  dataTransfer.items.add(file)
+                  fileInput.files = dataTransfer.files
+                  fileInput.dispatchEvent(new Event('change', { bubbles: true }))
+                }
+              }, 100)
+            }
           }
-        })
+        }
+        input.click()
       }
       break
-    case 'link':
-      if (callbacks.showLinkForm) {
-        callbacks.showLinkForm((url: string) => {
-          if (url) {
-            const selection = window.getSelection()
-            let text = selection?.toString() || url
-            // Если текст пустой или содержит только пробелы, используем URL
-            if (text.trim() === '') text = url
-            const linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`
-            replaceSelection(linkHtml, editor)
-            if (callbacks.handleChange) callbacks.handleChange()
-          }
-        })
-      }
-      break
-    case 'tooltip':
-      if (callbacks.showTooltipForm) {
-        callbacks.showTooltipForm()
-      }
-      break
-    case 'audio':
-      if (callbacks.showAudioUploader) {
-        callbacks.showAudioUploader()
-      }
-      break
-    case 'image':
-      if (callbacks.showImageUploadModal) {
-        callbacks.showImageUploadModal()
-      }
-      break
+    case 'separator':
     case 'hr':
       if (editor) {
         // Вставляем <hr> и новый параграф после него
@@ -139,23 +150,21 @@ export const handleSquibFormatting = (action: string): ((el: HTMLElement) => boo
  * - Оперативное обновление положения при движении курсора
  */
 export const PlusMenu: Component<{
-  position: { top: number; left: number; isVisible?: boolean }
+  top: number
+  left: number
   isVisible: boolean
   onEmpty?: boolean
   onClose?: () => void
   onAction: (action: CommandType) => void
   editorId?: string
+  isFormActive?: boolean
 }> = (props) => {
   console.log('[PlusMenu] Component created with props:', props)
-  console.log('[PlusMenu] Position:', props.position)
+  console.log('[PlusMenu] Top:', props.top)
   console.log('[PlusMenu] isVisible:', props.isVisible)
   const [isOpen, setIsOpen] = createSignal(false)
   const [menuRef, setMenuRef] = createSignal<HTMLDivElement>()
   const [isAppearing, setIsAppearing] = createSignal(false)
-  const [currentPosition, setCurrentPosition] = createSignal<{ top: number; left: number }>({
-    top: props.position.top,
-    left: props.position.left
-  })
 
   // Эффект плавного появления меню - упрощенная логика
   createEffect(() => {
@@ -166,18 +175,6 @@ export const PlusMenu: Component<{
       setIsAppearing(false)
     }
   })
-
-  // Эффект для обновления позиции при изменении props.position
-  createEffect(() => {
-    if (props.position) {
-      setCurrentPosition({
-        top: props.position.top,
-        left: props.position.left
-      })
-    }
-  })
-
-  // Упрощенная логика - используем только props.position без внутреннего отслеживания
 
   // Закрываем меню только при клике вне компонента
   const handleClickOutside = (e: MouseEvent) => {
@@ -219,7 +216,6 @@ export const PlusMenu: Component<{
       }, 0)
     }
   }
-
   const handleMenuItemClick = (action: string) => {
     // Сохраняем селекцию перед выполнением действия
     const selection = window.getSelection()
@@ -242,74 +238,24 @@ export const PlusMenu: Component<{
     if (props.onClose) props.onClose()
   }
 
-  // Обработчик клика по плейсхолдеру - должен установить фокус на редактор
-  const handlePlaceholderClick = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    // Находим редактор по идентификатору, если он указан
-    let editor: HTMLElement | null = null
-
-    if (props.editorId) {
-      // Ищем редактор с конкретным id
-      editor = document.querySelector(`[data-editor-id="${props.editorId}"]`) as HTMLElement
-    } else {
-      // Находим ближайший редактор
-      editor = (e.target as HTMLElement).closest('.SimpleRichEditor_editor__content') as HTMLElement
-    }
-
-    // Устанавливаем фокус на редактор
-    if (editor) {
-      editor.focus()
-    } else {
-      // Если не нашли, пробуем найти по атрибуту contenteditable
-      const editableContent = document.querySelector('[contenteditable="true"]')
-      if (editableContent) {
-        ;(editableContent as HTMLElement).focus()
-      }
-    }
-
-    // Закрываем меню после клика
-    setIsOpen(false)
-  }
-
   // Определяем реальную видимость меню - упрощенная логика как в Notion
   const isReallyVisible = () => {
     return props.isVisible
   }
 
-  // Показываем плейсхолдер только если меню видимо, не открыто подменю и курсор на пустой строке
-  const shouldShowPlaceholder = () => isReallyVisible() && !isOpen() && props.onEmpty === true
-
-  // меню всегда фиксировано слева от контента
-  const getMenuPosition = () => {
-    return {
-      top: currentPosition().top,
-      left: currentPosition().left
-    }
-  }
-
-  // позиционирование - слева от абзаца
-  const menuStyle = {
-    top: `${getMenuPosition().top}px`,
-    left: `${getMenuPosition().left}px`,
-    transform: 'translate(0, 0)',
-    position: 'fixed' as const
-  }
-
   // Editor использует ограниченный набор элементов меню
-  const editorMenuItems = ['image', 'video', 'separator']
-  const { t } = useLocalize()
+  const editorMenuItems = ['upload', 'embed', 'separator']
 
   // Отладочная информация
   console.log('[PlusMenu] Render:', {
     isVisible: props.isVisible,
     isReallyVisible: isReallyVisible(),
     isAppearing: isAppearing(),
-    position: currentPosition(),
-    menuStyle
+    top: props.top,
+    'props.top type': typeof props.top,
+    'final style top': `${props.top}px`
   })
-
+  const { t } = useLocalize()
   return (
     <div
       ref={setMenuRef}
@@ -318,9 +264,9 @@ export const PlusMenu: Component<{
         [styles.appearing]: isAppearing()
       })}
       style={{
-        position: 'absolute',
-        top: `${props.position.top}px`,
-        left: `${props.position.left}px`,
+        position: 'fixed',
+        top: `${props.top}px`,
+        left: `${props.left}px`,
         'z-index': 1000
       }}
     >
@@ -329,44 +275,27 @@ export const PlusMenu: Component<{
           class={clsx(styles.plusButton, { [styles.active]: isOpen() })}
           onClick={handlePlusClick}
           onMouseDown={(e) => e.preventDefault()} // Предотвращаем потерю фокуса редактора
-          title="Добавить контент"
+          title={t('Add a link or click plus to embed media')}
         >
-          <svg width="21" height="22" viewBox="0 0 21 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path fill-rule="evenodd" clip-rule="evenodd" d="M21 9L0 9L1.50847e-07 13L21 13V9Z" fill="currentColor" />
-            <path
-              fill-rule="evenodd"
-              clip-rule="evenodd"
-              d="M12.5 21.5L12.5 0.5L8.5 0.5L8.5 21.5H12.5Z"
-              fill="currentColor"
-            />
-          </svg>
+          <Icon name="editor-plus" />
         </button>
-      </div>
 
-      <Show when={shouldShowPlaceholder()}>
-        <div class={styles.placeholder} onClick={handlePlaceholderClick}>
-          {t('Write something or click')}
-          <span style={{ margin: '0 4px' }}>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 21 22"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              style={{ display: 'inline-block' }}
-            >
-              <path fill-rule="evenodd" clip-rule="evenodd" d="M21 9L0 9L1.50847e-07 13L21 13V9Z" fill="currentColor" />
-              <path
-                fill-rule="evenodd"
-                clip-rule="evenodd"
-                d="M12.5 21.5L12.5 0.5L8.5 0.5L8.5 21.5H12.5Z"
-                fill="currentColor"
-              />
-            </svg>
+        {/* Плейсхолдер - показывается только когда меню закрыто и нет активной формы */}
+        <Show when={!isOpen() && !props.isFormActive}>
+          <span
+            class={styles.placeholder}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              // Клик на плейсхолдер = показать форму ссылки
+              props.onAction('link')
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            {t('Add a link or click plus to embed media')}
           </span>
-          {t('to add media')}
-        </div>
-      </Show>
+        </Show>
+      </div>
 
       <Show when={isOpen()}>
         <div

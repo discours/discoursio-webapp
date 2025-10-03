@@ -1,0 +1,66 @@
+.VideoPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0;
+  width: 100%;
+  max-width: 640px;
+  
+  .previewContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--color-gray-50, #f9fafb);
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 300px;
+    
+    /* Ограничиваем размер видео */
+    :global(.VideoPlayer) {
+      max-width: 100%;
+      max-height: 400px;
+      
+      .videoContainer {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        
+        iframe {
+          width: 100%;
+          height: auto;
+          aspect-ratio: 16/9;
+        }
+      }
+    }
+  }
+  
+  .actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 0 8px;
+    
+    button {
+      min-width: 120px;
+    }
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .VideoPreview {
+    .previewContainer {
+      padding: 12px;
+      min-height: 200px;
+    }
+    
+    .actions {
+      flex-direction: column-reverse;
+      
+      button {
+        width: 100%;
+        min-width: unset;
+      }
+    }
+  }
+}

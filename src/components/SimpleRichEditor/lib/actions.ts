@@ -46,7 +46,7 @@ export interface ActionContext {
  * @param context Контекст действия
  * @returns Результат обработки
  */
-export const handleKeyboardEvent = (event: KeyboardEvent, context: ActionContext): ActionResult => {
+export const handleKeyboardEvent = async (event: KeyboardEvent, context: ActionContext): Promise<ActionResult> => {
   const isMac = navigator.platform.includes('Mac')
   const cmdKey = isMac ? event.metaKey : event.ctrlKey
 
@@ -64,7 +64,7 @@ export const handleKeyboardEvent = (event: KeyboardEvent, context: ActionContext
 
     if (shortcuts[event.key]) {
       event.preventDefault()
-      return handleEditorAction({ command: shortcuts[event.key] }, context)
+      return await handleEditorAction({ command: shortcuts[event.key] }, context)
     }
   }
 
@@ -73,7 +73,7 @@ export const handleKeyboardEvent = (event: KeyboardEvent, context: ActionContext
     if (event.key.toLowerCase() === 'k') {
       // Cmd+Shift+K для удаления ссылки (используем команду link для toggle)
       event.preventDefault()
-      return handleEditorAction({ command: 'unlink' }, context)
+      return await handleEditorAction({ command: 'unlink' }, context)
     }
   }
 
@@ -132,7 +132,7 @@ export const handleMouseEvent = (event: MouseEvent, context: ActionContext): Act
  * @param context - Контекст выполнения
  * @returns Результат выполнения команды
  */
-export const handleEditorAction = (action: EditorAction, context: ActionContext): ActionResult => {
+export const handleEditorAction = async (action: EditorAction, context: ActionContext): Promise<ActionResult> => {
   const { command, data } = action
   const { editor } = context
 
@@ -272,6 +272,28 @@ export const handleEditorAction = (action: EditorAction, context: ActionContext)
       return { success: true, needsFormInput: true, formType: 'audio' }
     } catch (error) {
       console.error('[handleEditorAction] Audio error:', error)
+      return { success: false, error: String(error) }
+    }
+  }
+
+  if (command === 'embed') {
+    try {
+      // Если передан URL, создаем универсальный embed
+      if (typeof data === 'string' && data) {
+        const { createUniversalEmbed } = await import('../media/html')
+        const embedHtml = await createUniversalEmbed(data)
+        if (embedHtml && replaceSelection(embedHtml, editor)) {
+          context.onChange?.()
+          return { success: true }
+        }
+        return { success: false, error: 'Invalid or unsupported embed URL' }
+      }
+
+      // Показываем форму для ввода URL
+      context.onShowForm?.('embed', '')
+      return { success: true, needsFormInput: true, formType: 'embed' }
+    } catch (error) {
+      console.error('[handleEditorAction] Embed error:', error)
       return { success: false, error: String(error) }
     }
   }
