@@ -156,7 +156,10 @@ export const cleanupContent = (content: string): string => {
   // 4. Удаляем пустые блочные элементы
   result = result.replace(/<div>\s*<\/div>/gi, '')
 
-  // 5. Оборачиваем текст без тегов в параграф
+  // 5. Удаляем пустые параграфы в начале документа
+  result = result.replace(/^(\s*<p><br\s*\/?><\/p>\s*)+/i, '')
+
+  // 6. Оборачиваем текст без тегов в параграф
   if (result && !NOTAGS_REGEXP.test(result)) {
     result = `<p>${result}</p>`
   }
