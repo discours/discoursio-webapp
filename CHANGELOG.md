@@ -4,6 +4,12 @@
 
 ## [0.14.31] - 2025-10-04
 
+### 🐛 FIX: Local Assets Handling
+- **✅ Исправлена обработка локальных изображений**: `getCdnUrl` теперь не обрабатывает Vite bundled assets
+  - Локальные файлы (начинающиеся с `/` или `.`) возвращаются как есть
+  - Убрана ошибка "No stored path found in DB" для `discours-banner.jpg`
+  - Локальные статические ресурсы не проксируются через CDN
+
 ### 🎨 UI: Audio Layout Simplification
 - **✅ Убран большой растянутый кавер**: Удален режим expanded image в AudioHeader
   - Убрана кнопка expand и состояние `expandedImage`

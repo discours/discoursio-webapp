@@ -10,6 +10,11 @@ import { cdnUrl } from '~/config'
 export const getCdnUrl = (url: string, width?: number): string => {
   if (!url) return url
 
+  // Для локальных статических ресурсов (Vite bundled assets) возвращаем как есть
+  if (url.startsWith('/') || url.startsWith('.')) {
+    return url
+  }
+
   // Извлекаем путь из URL
   let filepath = ''
   try {
