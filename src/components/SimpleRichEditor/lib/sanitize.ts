@@ -61,8 +61,8 @@ const BASE_CONFIG: Config = {
   ALLOWED_TAGS,
   ALLOWED_ATTR,
   ADD_TAGS: ['iframe'],
-  ADD_ATTR: ['sandbox', 'loading', 'referrerpolicy'],
-  ALLOW_DATA_ATTR: false, // Запрещаем data-* атрибуты
+  ADD_ATTR: ['sandbox', 'loading', 'referrerpolicy', 'data-align', 'data-bg', 'data-squib-id', 'data-type'],
+  ALLOW_DATA_ATTR: false, // Запрещаем data-* атрибуты кроме явно разрешенных
   ALLOW_UNKNOWN_PROTOCOLS: false, // Разрешаем только стандартные протоколы
   ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
   SANITIZE_DOM: true,

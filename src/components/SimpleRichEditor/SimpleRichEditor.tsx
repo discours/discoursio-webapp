@@ -771,9 +771,11 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           if (selection && selection.rangeCount > 0) {
             const range = selection.getRangeAt(0)
             const container = range.commonAncestorContainer
-            const squibElement = (container.nodeType === Node.TEXT_NODE
-              ? container.parentElement?.closest('[data-align]')
-              : (container as HTMLElement).closest('[data-align]')) as HTMLElement | null
+            const squibElement = (
+              container.nodeType === Node.TEXT_NODE
+                ? container.parentElement?.closest('[data-align]')
+                : (container as HTMLElement).closest('[data-align]')
+            ) as HTMLElement | null
 
             if (squibElement) {
               console.log('[handleAction] Squib created, showing editor menu')
