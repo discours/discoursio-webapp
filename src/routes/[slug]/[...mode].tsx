@@ -44,7 +44,7 @@ const isSkippedPath = (slug: string): boolean => {
   const baseSlug = lowerSlug.split('/')[0] || lowerSlug
 
   // Проверяем базовый slug
-  if (RESERVED_ROUTES.includes(baseSlug as any)) {
+  if (RESERVED_ROUTES.some((route) => route === baseSlug)) {
     return true
   }
 

@@ -1,7 +1,7 @@
 import { createSignal } from 'solid-js'
-import { useUpload } from '~/context/upload'
-import { useSession } from '~/context/session'
 import { cdnUrl } from '~/config'
+import { useSession } from '~/context/session'
+import { useUpload } from '~/context/upload'
 
 export default function DebugUpload() {
   const { uploadImage } = useUpload()
@@ -22,7 +22,7 @@ export default function DebugUpload() {
     console.log('[DEBUG] Session:', {
       hasToken: !!currentSession?.token,
       hasAuthor: !!currentSession?.author,
-      token: currentSession?.token?.substring(0, 20) + '...',
+      token: `${currentSession?.token?.substring(0, 20)}...`,
       cdnUrl
     })
 

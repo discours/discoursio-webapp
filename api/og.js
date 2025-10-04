@@ -1,9 +1,6 @@
 import sharp from 'sharp'
 
 // Базовые настройки
-const cdnUrl = process.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
-const defaultImage = `${cdnUrl}/logo_sign.png`
-
 const OG_IMAGE_WIDTH = 1200
 const OG_IMAGE_HEIGHT = 630
 
@@ -407,5 +404,5 @@ function escapeXml(unsafe) {
 
 function truncate(str, maxLength) {
   if (!str || str.length <= maxLength) return str
-  return str.substring(0, maxLength) + '...'
+  return `${str.substring(0, maxLength)}...`
 }

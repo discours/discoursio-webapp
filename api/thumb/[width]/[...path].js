@@ -20,7 +20,7 @@ export async function GET(request) {
     // /api/thumb/[width]/[...path]
     // pathSegments: ['api', 'thumb', '640', 'image.jpg']
     const widthIndex = pathSegments.indexOf('thumb') + 1
-    const width = parseInt(pathSegments[widthIndex], 10)
+    const width = Number.parseInt(pathSegments[widthIndex], 10)
     const imagePath = pathSegments.slice(widthIndex + 1).join('/')
 
     console.log(`[thumb] Width: ${width}, Path: ${imagePath}`)
