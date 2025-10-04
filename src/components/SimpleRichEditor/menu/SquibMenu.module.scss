@@ -121,14 +121,27 @@
 }
 
 .editableContent {
-  min-height: 80px;
+  min-height: 60px;
+  max-height: 200px;
+  overflow-y: auto;
   border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  padding: 8px;
-  margin-bottom: 8px;
+  border-radius: 6px;
+  padding: 12px;
   outline: none;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.625;
+  color: #111827;
+  background: #fff;
+  transition: border-color 0.2s;
+  
+  &:focus {
+    border-color: #3b82f6;
+  }
+  
+  &:empty::before {
+    content: attr(data-placeholder);
+    color: #9ca3af;
+  }
 }
 
 .actions {
@@ -194,17 +207,7 @@
 } 
 
 .squibMenuContent {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  /* TODO: Стили для редактирования контента */
-}
-
-.squibMenuStyle {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  /* TODO: Стили для редактирования squib */
+  padding-top: 12px;
 }
 
 .squibMenuHeader {
@@ -212,29 +215,45 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #e5e7eb;
 }
 
-.tabButton {
-  padding: 6px 12px;
+.alignButtons {
+  display: flex;
+  gap: 4px;
+  background: #f3f4f6;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.alignButton {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
   color: #6b7280;
-  transition: all 0.2s;
+  transition: all 0.15s;
 
   &:hover {
-    background: #f3f4f6;
+    background: #e5e7eb;
     color: #111827;
   }
 
   &.active {
-    background: #e5e7eb;
+    background: #fff;
     color: #111827;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
   }
 }
 

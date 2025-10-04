@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Component, createSignal, Show } from 'solid-js'
+import { Component, createSignal, onMount, Show } from 'solid-js'
 import { CommandGroupType, CommandType, Position } from '../lib/types'
 import { SimpleToolbar } from './SimpleToolbar'
 
@@ -20,6 +20,8 @@ interface SquibMenuProps {
   editorId?: string
   /** Набор команд для меню форматирования врезки */
   commands: (CommandType | CommandGroupType)[]
+  /** Текущий элемент подвёрстки */
+  squibElement?: HTMLElement | null
 }
 
 /**
@@ -39,12 +41,33 @@ interface SquibMenuProps {
  * ```
  */
 export const SquibMenu: Component<SquibMenuProps> = (props) => {
-  // Сигнал для состояния формы
-  const [formTab, setFormTab] = createSignal<'content' | 'style'>('style')
+  // Содержимое подвёрстки
+  const [squibContent, setSquibContent] = createSignal('')
+
+  let contentEditableRef: HTMLDivElement | undefined
+
+  // Загружаем содержимое при монтировании
+  onMount(() => {
+    if (props.squibElement) {
+      setSquibContent(props.squibElement.textContent || '')
+    }
+  })
 
   // Обработчик кнопки закрытия
   const handleClose = () => {
     if (props.onClose) props.onClose()
+  }
+
+  // Обработчик изменения контента
+  const handleContentInput = (e: InputEvent) => {
+    const target = e.target as HTMLDivElement
+    const newContent = target.textContent || ''
+    setSquibContent(newContent)
+
+    // Обновляем содержимое элемента подвёрстки
+    if (props.squibElement) {
+      props.squibElement.textContent = newContent
+    }
   }
 
   // Стиль позиционирования меню над врезкой
@@ -53,7 +76,6 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
     left: `${props.position.left}px`
   }
 
-  // Устанавливаем вкладку "Стиль" по умолчанию
   return (
     <div
       class={clsx(styles.squibMenu, {
@@ -63,40 +85,59 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
       data-editor-id={props.editorId}
     >
       <div class={styles.squibMenuHeader}>
-        <div style={{ display: 'flex', gap: '4px' }}>
+        {/* Иконки выравнивания */}
+        <div class={styles.alignButtons}>
           <button
-            onClick={() => setFormTab('content')}
-            class={clsx(styles.tabButton, {
-              [styles.active]: formTab() === 'content'
+            onClick={() => props.onAction('align-left')}
+            class={clsx(styles.alignButton, {
+              [styles.active]: props.currentFormats.has('align-left')
             })}
+            title="Влево"
           >
-            Текст
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 3h12M2 6h8M2 9h12M2 12h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
           </button>
           <button
-            onClick={() => setFormTab('style')}
-            class={clsx(styles.tabButton, {
-              [styles.active]: formTab() === 'style'
+            onClick={() => props.onAction('align-center')}
+            class={clsx(styles.alignButton, {
+              [styles.active]: props.currentFormats.has('align-center')
             })}
+            title="По центру"
           >
-            Стиль
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 3h12M4 6h8M2 9h12M4 12h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+          </button>
+          <button
+            onClick={() => props.onAction('align-right')}
+            class={clsx(styles.alignButton, {
+              [styles.active]: props.currentFormats.has('align-right')
+            })}
+            title="Вправо"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 3h12M6 6h8M2 9h12M6 12h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
           </button>
         </div>
+
         <button onClick={handleClose} class={styles.closeButton} title="Скрыть меню">
           ×
         </button>
       </div>
 
-      <Show when={formTab() === 'style'}>
-        <div class={styles.squibMenuStyle}>
-          <SimpleToolbar commands={props.commands} onAction={props.onAction} currentFormats={props.currentFormats} />
-        </div>
-      </Show>
-
-      <Show when={formTab() === 'content'}>
-        <div class={styles.squibMenuContent}>
-          <p>Редактирование врезки по двойному клику на тексте</p>
-        </div>
-      </Show>
+      {/* Редактируемое поле */}
+      <div class={styles.squibMenuContent}>
+        <div
+          ref={contentEditableRef}
+          class={styles.editableContent}
+          contentEditable={true}
+          onInput={handleContentInput}
+          innerHTML={squibContent()}
+          data-placeholder="Введите текст подвёрстки..."
+        />
+      </div>
     </div>
   )
 }

@@ -1095,7 +1095,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             editorId={props.editorId}
           />
         </Show>
-        <Show when={currentToolbarMode() === 'float' && !showForm()}>
+        <Show when={currentToolbarMode() === 'float' && !showForm() && !showSquibEditor()}>
           <SimpleToolbar
             commands={displayedCommands()}
             onAction={handleAction}
@@ -1111,6 +1111,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             commands={props.commands as CommandType[]}
             currentFormats={activeFormats()}
             isVisible={true}
+            squibElement={currentSquib()}
             onAction={(action) => {
               const squibElement = currentSquib()
               if (squibElement && handleSquibFormatting(action as string)) {
