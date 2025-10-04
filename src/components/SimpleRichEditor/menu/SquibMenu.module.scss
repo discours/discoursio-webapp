@@ -2,13 +2,13 @@
   position: absolute;
   z-index: 100;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
-  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -2px 8px rgb(0 0 0 / 10%);
+  padding: 8px;
   display: none;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 200px;
+  transform: translate(-50%, -50%);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
     'Open Sans', 'Helvetica Neue', sans-serif;
   
@@ -59,8 +59,8 @@
 }
 
 .colorButton {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border: none;
   background: transparent;
   border-radius: 50%;
@@ -70,15 +70,16 @@
   position: relative;
 
   &:hover {
-    transform: scale(1.1);
+    transform: scale(1.15);
   }
 
   &.active::after {
     content: '';
     position: absolute;
-    inset: -3px;
+    inset: -2px;
     border: 2px solid #3b82f6;
     border-radius: 50%;
+    pointer-events: none;
   }
 }
 
@@ -189,43 +190,38 @@
 
 .squibMenuHeader {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e5e7eb;
+  gap: 8px;
 }
 
 .controls {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   flex: 1;
 }
 
 .alignButtons {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   background: #f3f4f6;
-  padding: 4px;
-  border-radius: 6px;
+  padding: 2px;
+  border-radius: 4px;
 }
 
-.colorButtons {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.colorPicker {
+  position: relative;
 }
 
-.alignButton {
-  width: 32px;
-  height: 32px;
+.colorPickerButton {
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   background: transparent;
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: pointer;
   color: #6b7280;
   transition: all 0.15s;
@@ -236,20 +232,98 @@
   }
 
   &.active {
-    background: #fff;
-    color: #111827;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    background: #3b82f6;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
   svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.colorDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 1000;
+  min-width: 120px;
+}
+
+.colorOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  text-align: left;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+
+  &.active {
+    background: #eff6ff;
+    color: #1e40af;
+    font-weight: 500;
+  }
+
+  .colorSwatch {
     width: 16px;
     height: 16px;
+    flex-shrink: 0;
+  }
+}
+
+.alignButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #e5e7eb;
+    color: #111827;
+  }
+
+  &.active {
+    background: #3b82f6;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
   }
 }
 
 .closeButton {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border: none;
   background: transparent;
   border-radius: 4px;
