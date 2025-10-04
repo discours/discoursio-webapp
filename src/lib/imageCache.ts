@@ -1,46 +1,33 @@
 import { cdnUrl } from '~/config'
 
 /**
- * Генерирует URL изображения с ресайзом через /api/thumb
+ * Преобразует URL изображения для CDN - извлекает только filename
  *
  * @param url - URL исходного изображения
- * @param width - Желаемая ширина (опционально)
- * @returns URL для оптимизированного изображения
+ * @param width - Желаемая ширина для ресайза (опционально)
+ * @returns URL для CDN с filename
  */
 export const getCdnUrl = (url: string, width?: number): string => {
   if (!url) return url
 
-  // Для локальных статических ресурсов (Vite bundled assets) возвращаем как есть
-  if (url.startsWith('/') || url.startsWith('.')) {
-    return url
-  }
-
   // Извлекаем путь из URL
   let filepath = ''
   try {
-    const urlObj = new URL(url)
-    filepath = urlObj.pathname
+    filepath = new URL(url).pathname
   } catch {
-    // Если не URL, то это уже путь
     filepath = url
   }
 
-  // Убираем начальный слеш если есть
-  filepath = filepath.replace(/^\/+/, '')
+  // Разбиваем на части по слешам
+  const fileparts = filepath.split('/')
+  let filename = fileparts.pop() || ''
+  if (!filename) filename = filepath
 
   // Обработка legacy /webp суффикса
-  const fileparts = filepath.split('/')
-  let filename = fileparts[fileparts.length - 1] || ''
-
-  if (filename.toLowerCase() === 'webp') {
-    fileparts.pop() // убираем 'webp'
-    filename = fileparts[fileparts.length - 1] || ''
-    filepath = fileparts.join('/')
-  }
-
+  if (filename.toLowerCase() === 'webp') filename = fileparts.pop() || ''
   if (!filename) return url
 
-  // Проверяем валидность расширения
+  // Проверяем, является ли filename валидным (содержит расширение)
   const hasExtension =
     filename.includes('.') && filename.split('.').pop()?.length && filename.split('.').pop()!.length <= 5
   if (!hasExtension) {
@@ -48,26 +35,14 @@ export const getCdnUrl = (url: string, width?: number): string => {
     return url
   }
 
-  // Убираем старый _width суффикс если есть (legacy Quoter format)
-  const cleanedFilename = filename.replace(/_\d+\.([^.]+)$/, '.$1')
-
-  // Восстанавливаем полный путь с очищенным filename
-  let fullPath = filepath
-  if (filepath.includes('/')) {
-    const pathParts = filepath.split('/')
-    pathParts[pathParts.length - 1] = cleanedFilename
-    fullPath = pathParts.join('/')
-  } else {
-    fullPath = cleanedFilename
-  }
-
-  // Если нужен ресайз - используем /api/thumb
+  // Применяем width трансформацию если нужно
   if (width) {
-    return `/api/thumb/${width}/${fullPath}`
+    // Используем Vercel Edge thumbnail API для ресайза
+    return `/api/thumb/${width}/${filename}`
   }
 
-  // Без ресайза - прямая ссылка на оригинал в CDN
-  return `${cdnUrl}/${fullPath}`
+  // Без ресайза - прямая ссылка на оригинал в Quoter CDN
+  return `${cdnUrl}/${filename}`
 }
 
 /**
