@@ -1,5 +1,4 @@
 import { clsx } from 'clsx'
-import { Component } from 'solid-js'
 import { CommandType, Position } from '../lib/types'
 
 import styles from './SquibMenu.module.scss'
@@ -39,7 +38,7 @@ interface SquibMenuProps {
  * />
  * ```
  */
-export const SquibMenu: Component<SquibMenuProps> = (props) => {
+export const SquibMenu = (props: SquibMenuProps) => {
   // Обработчик кнопки закрытия
   const handleClose = () => {
     if (props.onClose) props.onClose()

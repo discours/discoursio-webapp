@@ -1148,8 +1148,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
         {/* Forms and Modal Portals */}
 
-        {/* Plus Menu с прямым позиционированием (скрыто во время редактирования подвёрстки) */}
-        <Show when={props.plus && shouldShowPlusMenu() && !showSquibEditor()}>
+        {/* Plus Menu с прямым позиционированием (скрыто когда открыты меню или формы) */}
+        <Show when={props.plus && shouldShowPlusMenu() && !showSquibEditor() && !showForm()}>
           <Portal mount={document.body}>
             <PlusMenu
               top={plusMenuTop()}
