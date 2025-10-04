@@ -12,6 +12,150 @@ h5 {
   margin: 0 0 0.8rem;
 }
 
+// Notification preferences styles
+.notificationPreferences {
+  margin: 3rem 0;
+}
+
+.notificationHeader {
+  display: grid;
+  grid-template-columns: 1fr 150px 150px;
+  gap: 2rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 500;
+  font-size: 1.4rem;
+  color: var(--text-secondary);
+  align-items: center;
+}
+
+.notificationItem {
+  display: grid;
+  grid-template-columns: 1fr 150px 150px;
+  gap: 2rem;
+  padding: 2rem 0;
+  border-bottom: 1px solid var(--border-color);
+  align-items: center;
+}
+
+.notificationInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notificationTitle {
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.notificationDescription {
+  font-size: 1.4rem;
+  color: var(--text-secondary);
+}
+
+.notificationToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  
+  .toggleIcon {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+}
+
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  cursor: pointer;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+
+    &:checked + .toggleSlider {
+      background-color: var(--primary-color);
+    }
+
+    &:checked + .toggleSlider:before {
+      transform: translateX(24px);
+    }
+
+    &:focus + .toggleSlider {
+      box-shadow: 0 0 1px var(--primary-color);
+    }
+  }
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-color);
+  transition: 0.3s;
+  border-radius: 26px;
+
+  &:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+}
+
+.additionalSettings {
+  margin-top: 2rem;
+}
+
+.settingItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settingInfo {
+  flex: 1;
+}
+
+.settingTitle {
+  font-size: 1.6rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.settingDescription {
+  font-size: 1.4rem;
+  color: var(--text-secondary);
+}
+
+.divider {
+  margin: 4rem 0;
+  border: none;
+  border-top: 1px solid var(--border-color);
+}
+
+.formActions {
+  margin-top: 3rem;
+  display: flex;
+  gap: 1rem;
+}
+
 .multipleControls {
   margin-top: 3rem;
 }
@@ -428,4 +572,61 @@ div[data-lastpass-infield="true"] {
   line-height: 16px;
   margin-top: 0.3em;
   color: var(--danger-color);
+}
+
+// Unsubscribes list styles
+.unsubscribesList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-top: 2rem;
+}
+
+.unsubscribeItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.6rem;
+  background: var(--background-secondary);
+  border-radius: 0.8rem;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: var(--border-color);
+  }
+}
+
+.unsubscribeInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.unsubscribeTitle {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 0.4rem 0;
+}
+
+.unsubscribeDate {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.loadingText {
+  font-size: 1.6rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.emptyState {
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 1.6rem;
+  background: var(--background-secondary);
+  border-radius: 0.8rem;
+  margin-top: 2rem;
 }

@@ -26,7 +26,7 @@ const defaultLinks: IdeaVariant[] = [
   },
   {
     title: 'Something to discuss or suggest',
-    icon: 'coffee',
+    icon: 'comment',
     color: '#8b5cf6'
   },
   {

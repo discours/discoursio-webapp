@@ -24,7 +24,7 @@ export const Image = (props: Props) => {
     }
 
     // Для CDN изображений используем getCdnUrl с размером
-    // NOTE: getCdnUrl извлекает только filename, убирая production/image/ префиксы
+    // NOTE: getCdnUrl сохраняет полную структуру пути (включая production/image/)
     if (local.src.startsWith('http')) {
       return getCdnUrl(local.src, others.width)
     }

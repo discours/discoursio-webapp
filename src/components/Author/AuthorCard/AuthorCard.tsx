@@ -16,6 +16,7 @@ import type { Author, Community, Topic } from '~/graphql/generated/graphql'
 import { FollowingEntity } from '~/graphql/generated/graphql'
 import { isCyrillic } from '~/intl/translate'
 import { translit } from '~/intl/translit'
+import { getSocialIconName } from '~/lib/getSocialIconName'
 import { Modal } from '../../_shared/Modal'
 import { getShareUrl, SharePopup } from '../../Article/SharePopup'
 import { TopicBadge } from '../../Topic/TopicBadge'
@@ -316,18 +317,21 @@ export const AuthorCard = (props: Props) => {
             <Show when={props.author.links && props.author.links.length > 0}>
               <div class={styles.authorSubscribeSocial}>
                 <For each={props.author.links}>
-                  {(link: string | null) => (
-                    <a
-                      class={styles.socialLink}
-                      href={link?.startsWith('http') ? link : `https://${link}`}
-                      target="_blank"
-                      rel="nofollow noopener noreferrer"
-                    >
-                      <span class={styles.authorSubscribeSocialLabel}>
-                        {link?.startsWith('http') ? link : `https://${link}`}
-                      </span>
-                    </a>
-                  )}
+                  {(link: string | null) => {
+                    const fullUrl = link?.startsWith('http') ? link : `https://${link}`
+                    return (
+                      <a
+                        class={styles.socialLink}
+                        href={fullUrl}
+                        target="_blank"
+                        rel="nofollow noopener noreferrer"
+                        title={fullUrl}
+                      >
+                        <Icon name={getSocialIconName(fullUrl)} class={styles.socialIcon} />
+                        <span class={styles.authorSubscribeSocialLabel}>{fullUrl}</span>
+                      </a>
+                    )
+                  }}
                 </For>
               </div>
             </Show>

@@ -160,7 +160,7 @@ export const createEventHandlers = (context: EventHandlersContext) => {
       // Проверяем - это одиночный URL?
       const urlRegex = /^https?:\/\/[^\s]+$/
       if (urlRegex.test(trimmedText)) {
-        const { detectEmbedPlatform } = await import('../media/validation')
+        const { detectEmbedPlatform } = await import('../media')
         const platform = detectEmbedPlatform(trimmedText)
 
         if (platform !== 'unknown' && context.showModal && context.hideModal) {

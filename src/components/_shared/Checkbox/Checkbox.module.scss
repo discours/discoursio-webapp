@@ -1,0 +1,33 @@
+.Checkbox {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.icon {
+  width: 2.8rem;
+  height: 2.8rem;
+  flex-shrink: 0;
+}
+
+.labelText {
+  font-size: 1.6rem;
+  line-height: 1.4;
+}
+

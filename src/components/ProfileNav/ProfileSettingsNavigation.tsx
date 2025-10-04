@@ -16,6 +16,9 @@ export const ProfileSettingsNavigation = () => {
         <li class={clsx({ [styles.active]: loc?.pathname === '/settings/subs' })}>
           <a href="/settings/subs">{t('Subscriptions')}</a>
         </li>
+        <li class={clsx({ [styles.active]: loc?.pathname === '/settings/notifications' })}>
+          <a href="/settings/notifications">{t('Notifications')}</a>
+        </li>
         <li class={clsx({ [styles.active]: loc?.pathname === '/settings/security' })}>
           <a href="/settings/security">{t('Security')}</a>
         </li>

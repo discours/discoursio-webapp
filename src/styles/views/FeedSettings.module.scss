@@ -15,7 +15,7 @@
       padding: 0;
 
       &::before {
-        background: var(--icon-checkbox-big) no-repeat;
+        background: url('/icons/checkbox-big.svg') no-repeat;
         content: '';
         display: inline-block;
         height: 2.8rem;
@@ -27,20 +27,20 @@
 
     &:checked + label {
       &::before {
-        background-image: var(--icon-checkbox-checked-big);
+        background-image: url('/icons/checkbox-checked-big.svg');
       }
     }
 
     &.notifications-checkbox {
       & + label {
         &::before {
-          background: var(--icon-checkbox-notifications) no-repeat;
+          background: url('/icons/checkbox-notifications.svg') no-repeat;
         }
       }
 
       &:checked + label {
         &::before {
-          background-image: var(--icon-checkbox-notifications-checked);
+          background-image: url('/icons/checkbox-notifications-checked.svg');
         }
       }
     }

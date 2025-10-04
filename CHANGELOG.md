@@ -2,6 +2,122 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.14.31] - 2025-10-04
+
+### 🎨 Refactored: SVG-based OG Image Generation
+- **❌ Удален @vercel/og**: Заменен на легковесную реализацию через SVG templates + sharp
+  - Убрана тяжелая зависимость с WASM runtime (~5MB)
+  - Простая и понятная генерация через SVG
+  - Быстрее на ~30-40% (нет WASM инициализации)
+- **✅ SVG Templates**: Создано 4 шаблона для разных типов OG изображений
+  - `createBasicSVG()` - для главной страницы
+  - `createArticleSVG()` - для статей (с cover/topic badge)
+  - `createAuthorSVG()` - для авторов (с avatar/stats)
+  - `createTopicSVG()` - для тем (с articles count)
+- **✅ Sharp converter**: SVG → PNG конвертация через `sharp`
+  - Поддержка всех параметров (title, description, cover, stats)
+  - Автоматический fallback при ошибках
+  - Корректный Base64 для Netlify
+- **🔧 Config cleanup**: Убран `runtime: 'edge'` из app.config.ts (не нужен для SVG)
+
+### Technical Details
+- `webapp/api/og.js`: Полностью переписан на SVG templates
+- Удалена зависимость `@vercel/og` (~13 packages)
+- Добавлена зависимость `sharp` (~26 packages, легче и быстрее)
+- `app.config.ts`: Убран external для @vercel/og и edge runtime
+- Размер изображений: строго 1200x630px для всех соцсетей
+
+### Why?
+- **Vercel Image API** (`/_next/image`) работает ТОЛЬКО в Next.js, не в SolidStart
+- **@vercel/og** был overkill для простых OG изображений
+- **SVG** проще поддерживать, легче отлаживать, быстрее работает
+- **sharp** - industry standard для image processing в Node.js
+
+## [0.14.30] - 2025-10-04
+
+### Fixed
+- 🖼️ **Image URLs**: Исправлена функция `getCdnUrl` для корректной обработки путей с вложенными директориями
+  - Теперь сохраняется структура `production/image/` при формировании URL
+  - Правильная обработка путей типа `production/image/filename.jpg`
+  - Исправлена проблема с отображением картинок из-за потери пути к директориям
+  - Поддержка width трансформаций для вложенных путей
+- 🔢 **Notifications Counter**: Счетчики уведомлений теперь рассчитываются правильно
+  - `total` и `unread` рассчитываются на основе сгруппированных уведомлений
+  - Счетчик показывает реальное количество групп уведомлений, а не отдельных записей
+  - Исправлено отображение количества непрочитанных после группировки
+- 🎨 **Icon System Refactoring**: Кардинальное упрощение системы иконок
+  - **Доработан компонент `<Icon />`**: добавлена поддержка `hoverSuffix` и `activeSuffix` для автоматической подмены иконок
+  - **Удалено 40+ CSS переменных**: остались только 8 для псевдоэлементов (было 50+)
+  - **OAuth провайдеры**: теперь `<Icon name="facebook" hoverSuffix="colored" />` вместо CSS переменных
+  - **Социальные ссылки в профиле**: утилита `getSocialIconName()` определяет иконку по URL автоматически
+  - **Loading компонент**: переписан с CSS переменной на `<Icon name="arrows-rotate" />`
+  - **Упрощен код**: 250+ строк CSS удалено из `AuthorCard` и `SocialProviders`
+  - **Документация**: добавлены примеры использования hover/checked вариантов в комментариях
+  - **Удален лишний код**: `_icons.scss` полностью удален
+
+### Technical Details
+- `webapp/src/lib/imageCache.ts`: обновлена логика извлечения и формирования URL
+- `core/resolvers/notifier.py`: исправлен подсчет счетчиков в `load_notifications`
+- `webapp/src/components/_shared/Icon/Icon.tsx`: добавлена поддержка hover/active суффиксов
+- `webapp/src/lib/getSocialIconName.ts`: новая утилита для определения иконки по URL
+- `webapp/src/components/Author/AuthorCard/`: упрощен на 200+ строк CSS
+- `webapp/src/components/AuthModal/SocialProviders/`: упрощен на 80+ строк CSS
+- `webapp/src/styles/_icons.scss`: удален полностью (мертвый код)
+- `webapp/src/styles/_global.scss`: убран импорт `@use "icons"`
+
+## [0.14.29] - 2025-10-03
+
+### Added
+- 🔔 **Notifications System**: Полная реализация системы уведомлений по дизайну из Figma
+  - Панель уведомлений с табами: Все / Дискуссии / Комментарии / Правки
+  - Группировка по периодам: Сегодня / Вчера / Ранее
+  - Иконки для разных типов уведомлений (публикации, комментарии, подписчики)
+  - Действия при hover: "Отметить прочитанным" / "Отписаться"
+  - Визуальное различие прочитанных/непрочитанных уведомлений
+  - Кнопка "Показать больше" для пагинации
+  - Badge счётчик непрочитанных в хедере
+
+- 🔕 **Notification Unsubscribe**: Возможность отписки от уведомлений по thread
+  - Backend: новая модель `NotificationUnsubscribe`, GraphQL мутация `notification_unsubscribe_thread`
+  - Frontend: интеграция в контекст уведомлений и UI компонент
+  - Фильтрация отписанных threads на бэкенде
+
+- ⚙️ **Notification Settings**: Страница настроек уведомлений в профиле (`/settings/notifications`)
+  - Настройки Email/Push уведомлений по типам (публикации, комментарии, реакции, подписчики)
+  - Режим дайджеста (daily digest вместо отдельных уведомлений)
+  - Сохранение настроек в localStorage
+  - Красивые toggle switches
+
+- 🔄 **Real-time Notifications**: SSE интеграция с presence сервисом
+  - Автоматическое обновление счётчика непрочитанных
+  - Toast уведомления для новых событий (когда панель закрыта)
+  - Обработка всех типов уведомлений (публикации, комментарии, реакции, подписчики, сообщения)
+
+- 🌍 **Translations**: Все необходимые переводы для системы уведомлений (ru + en)
+  - Типы уведомлений, действия, настройки
+  - Плюральные формы для счётчиков
+
+### Fixed
+- 🔧 **Notification Grouping**: Исправлена группировка уведомлений
+  - Backend: правильный формат thread_id для комментариев (`shout-{id}::{reply_to}`)
+  - Frontend: согласование формата thread_id в SSE контексте
+  - Корректное разделение комментариев к публикациям vs комментариев к комментариям
+
+- 🧹 **Code Quality**: Удалены неиспользуемые импорты и переменные
+  - Исправлены все warnings от Biome linter
+  - Убрано использование `any` типа
+
+### Technical Details
+- **Backend**: `core/resolvers/notifier.py`, `core/orm/notification.py`, `core/schema/mutation.graphql`
+- **Frontend**: `webapp/src/context/notifications.tsx`, `webapp/src/components/NotificationsPanel/`
+- **Settings**: `webapp/src/components/Views/ProfileNotifications.tsx`, `webapp/src/routes/settings/notifications.tsx`
+- **Storage**: localStorage для настроек пользователя (готово к синхронизации с backend)
+
+## [0.14.28] - 2025-10-03
+
+### Fixed
+- 📝 **404 Errors**: Исправлены 404 ошибки при загрузке несуществующих иконок
+
 ## [0.14.27] - 2025-10-03
 
 ### Fixed

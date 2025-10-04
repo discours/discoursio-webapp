@@ -1,19 +1,19 @@
 import { clsx } from 'clsx'
-import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import { isServer } from 'solid-js/web'
 import { throttle } from 'throttle-debounce'
 import { ARTICLES_PER_PAGE } from '~/constants/pagination'
 import { useLocalize } from '~/context/localize'
 import { useNotifications } from '~/context/notifications'
 import { useSession } from '~/context/session'
+import { NotificationGroup as Group } from '~/graphql/generated/graphql'
 import { useEscKeyDownHandler } from '~/lib/useEscKeyDownHandler'
 import { useOutsideClickHandler } from '~/lib/useOutsideClickHandler'
-import { Button } from '../_shared/Button'
+import { PresenceActionType, PresenceEntityType } from '~/types/notifications'
 import { Icon } from '../_shared/Icon'
 import { EmptyMessage } from './EmptyMessage'
 import styles from './NotificationsPanel.module.scss'
 import { NotificationGroup } from './NotificationView/NotificationGroup'
-import { SmartNotificationGroup } from './SmartNotificationGroup'
 import { useSmartGrouping } from './useSmartGrouping'
 
 type Props = {
@@ -47,7 +47,7 @@ const isEarlier = (date: Date) => {
 
 export const NotificationsPanel = (props: Props) => {
   const [isLoading, setIsLoading] = createSignal(false)
-  const [useSmartGroupingEnabled, setUseSmartGroupingEnabled] = createSignal(true) // 🚀 Demo toggle
+  const [useSmartGroupingEnabled, _setUseSmartGroupingEnabled] = createSignal(true) // 🚀 Demo toggle
 
   // Debug logging
   createEffect(() => {
@@ -59,7 +59,6 @@ export const NotificationsPanel = (props: Props) => {
     after,
     sortedNotifications,
     systemNotifications,
-    unreadNotificationsCount,
     loadedNotificationsCount,
     totalNotificationsCount,
     loadNotificationsGrouped,
@@ -67,7 +66,7 @@ export const NotificationsPanel = (props: Props) => {
   } = useNotifications()
 
   // 🚀 Smart grouping integration
-  const smartGrouping = useSmartGrouping({
+  const _smartGrouping = useSmartGrouping({
     notifications: sortedNotifications(),
     systemNotifications: systemNotifications(),
     enabled: useSmartGroupingEnabled()
@@ -172,6 +171,26 @@ export const NotificationsPanel = (props: Props) => {
     })
   )
 
+  const [activeTab, setActiveTab] = createSignal<'all' | 'discussions' | 'comments' | 'edits'>('all')
+
+  const matchesTab = (n: Group) => {
+    if (activeTab() === 'all') return true
+    if (activeTab() === 'discussions') {
+      return n.entity === PresenceEntityType.Shout && n.action === PresenceActionType.Create
+    }
+    if (activeTab() === 'comments') {
+      return n.thread?.includes('::')
+    }
+    if (activeTab() === 'edits') {
+      return n.entity === PresenceEntityType.Shout && n.action === PresenceActionType.Update
+    }
+    return true
+  }
+
+  const filteredNotifications = createMemo(() => {
+    return sortedNotifications().filter(matchesTab)
+  })
+
   return (
     <div
       class={clsx(styles.container, {
@@ -182,34 +201,52 @@ export const NotificationsPanel = (props: Props) => {
         <div class={styles.closeButton} onClick={handleHide}>
           <Icon class={styles.closeIcon} name="close" />
         </div>
-        <div class={styles.title}>
-          {t('Notifications')}
-          {/* 🚀 Demo toggle */}
-          <button
-            onClick={() => setUseSmartGroupingEnabled(!useSmartGroupingEnabled())}
-            style={`
-              float: right;
-              padding: 4px 8px;
-              border: 1px solid var(--border-color, #ddd);
-              border-radius: 4px;
-              background: ${useSmartGroupingEnabled() ? 'var(--primary-color, #007acc)' : 'white'};
-              color: ${useSmartGroupingEnabled() ? 'white' : 'var(--text-color, #333)'};
-              font-size: 12px;
-              cursor: pointer;
-              margin-top: 4px;
-            `}
-            title="Toggle smart grouping (Demo)"
-          >
-            🧠 Smart {useSmartGroupingEnabled() ? 'ON' : 'OFF'}
-          </button>
+
+        {/* Header с настройками */}
+        <div class={styles.header}>
+          <div class={styles.headerTop}>
+            <h2 class={styles.title}>{t('Notifications')}</h2>
+            <div class={styles.headerActions}>
+              <button class={styles.markAllRead} onClick={(_e) => markSeenAll()}>
+                {t('Mark as read')}
+              </button>
+              <button class={styles.settingsButton}>
+                <Icon name="settings" class={styles.settingsIcon} />
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div class={styles.tabs}>
+            <button
+              class={clsx(styles.tab, { [styles.tabActive]: activeTab() === 'all' })}
+              onClick={() => setActiveTab('all')}
+            >
+              {t('All')}
+            </button>
+            <button
+              class={clsx(styles.tab, { [styles.tabActive]: activeTab() === 'discussions' })}
+              onClick={() => setActiveTab('discussions')}
+            >
+              {t('Discussions')}
+            </button>
+            <button
+              class={clsx(styles.tab, { [styles.tabActive]: activeTab() === 'comments' })}
+              onClick={() => setActiveTab('comments')}
+            >
+              {t('Comments')}
+            </button>
+            <button
+              class={clsx(styles.tab, { [styles.tabActive]: activeTab() === 'edits' })}
+              onClick={() => setActiveTab('edits')}
+            >
+              {t('Edits')}
+            </button>
+          </div>
         </div>
         <div class={clsx('wide-container', styles.content)} ref={(el) => (scrollContainerRef = el)}>
           <Show
-            when={
-              useSmartGroupingEnabled()
-                ? smartGrouping.groupedNotifications().length > 0
-                : sortedNotifications().length > 0
-            }
+            when={filteredNotifications().length > 0}
             fallback={
               <Show when={!isLoading()}>
                 <EmptyMessage />
@@ -218,89 +255,32 @@ export const NotificationsPanel = (props: Props) => {
           >
             <div class="row position-relative">
               <div class="col-xs-24">
-                {/* 🚀 Smart grouping mode */}
-                <Show when={useSmartGroupingEnabled()}>
-                  {/* Demo stats */}
-                  <div style="padding: 8px 0; font-size: 12px; color: var(--text-secondary, #666); border-bottom: 1px solid var(--border-light, #f0f0f0); margin-bottom: 16px;">
-                    📊 Reduced {smartGrouping.stats().originalCount} → {smartGrouping.stats().groupedCount}(
-                    {smartGrouping.stats().reductionPercent}% less noise)
-                  </div>
-
-                  <Show when={smartGrouping.todayGroups().length > 0}>
-                    <div class={styles.periodTitle}>{t('today')}</div>
-                    <For each={smartGrouping.todayGroups()}>
-                      {(group) => (
-                        <SmartNotificationGroup
-                          group={group}
-                          onClick={() => smartGrouping.handleGroupClick(group)}
-                          onActionClick={(actionId) => smartGrouping.handleGroupAction(group, actionId)}
-                          dateTimeFormat="ago"
-                          class={styles.notificationView}
-                        />
-                      )}
-                    </For>
-                  </Show>
-
-                  <Show when={smartGrouping.yesterdayGroups().length > 0}>
-                    <div class={styles.periodTitle}>{t('yesterday')}</div>
-                    <For each={smartGrouping.yesterdayGroups()}>
-                      {(group) => (
-                        <SmartNotificationGroup
-                          group={group}
-                          onClick={() => smartGrouping.handleGroupClick(group)}
-                          onActionClick={(actionId) => smartGrouping.handleGroupAction(group, actionId)}
-                          dateTimeFormat="time"
-                          class={styles.notificationView}
-                        />
-                      )}
-                    </For>
-                  </Show>
-
-                  <Show when={smartGrouping.earlierGroups().length > 0}>
-                    <div class={styles.periodTitle}>{t('earlier')}</div>
-                    <For each={smartGrouping.earlierGroups()}>
-                      {(group) => (
-                        <SmartNotificationGroup
-                          group={group}
-                          onClick={() => smartGrouping.handleGroupClick(group)}
-                          onActionClick={(actionId) => smartGrouping.handleGroupAction(group, actionId)}
-                          dateTimeFormat="date"
-                          class={styles.notificationView}
-                        />
-                      )}
-                    </For>
-                  </Show>
+                <Show when={todayNotifications().filter((n) => activeTab() === 'all' || matchesTab(n)).length > 0}>
+                  <div class={styles.periodTitle}>{t('today')}</div>
+                  <NotificationGroup
+                    notifications={todayNotifications().filter((n) => matchesTab(n))}
+                    class={styles.notificationView}
+                    onClick={handleNotificationViewClick}
+                    dateTimeFormat={'ago'}
+                  />
                 </Show>
-
-                {/* 🔄 Legacy mode */}
-                <Show when={!useSmartGroupingEnabled()}>
-                  <Show when={todayNotifications().length > 0}>
-                    <div class={styles.periodTitle}>{t('today')}</div>
-                    <NotificationGroup
-                      notifications={todayNotifications()}
-                      class={styles.notificationView}
-                      onClick={handleNotificationViewClick}
-                      dateTimeFormat={'ago'}
-                    />
-                  </Show>
-                  <Show when={yesterdayNotifications().length > 0}>
-                    <div class={styles.periodTitle}>{t('yesterday')}</div>
-                    <NotificationGroup
-                      notifications={yesterdayNotifications()}
-                      class={styles.notificationView}
-                      onClick={handleNotificationViewClick}
-                      dateTimeFormat={'time'}
-                    />
-                  </Show>
-                  <Show when={earlierNotifications().length > 0}>
-                    <div class={styles.periodTitle}>{t('earlier')}</div>
-                    <NotificationGroup
-                      notifications={earlierNotifications()}
-                      class={styles.notificationView}
-                      onClick={handleNotificationViewClick}
-                      dateTimeFormat={'date'}
-                    />
-                  </Show>
+                <Show when={yesterdayNotifications().filter((n) => matchesTab(n)).length > 0}>
+                  <div class={styles.periodTitle}>{t('yesterday')}</div>
+                  <NotificationGroup
+                    notifications={yesterdayNotifications().filter((n) => matchesTab(n))}
+                    class={styles.notificationView}
+                    onClick={handleNotificationViewClick}
+                    dateTimeFormat={'time'}
+                  />
+                </Show>
+                <Show when={earlierNotifications().filter((n) => matchesTab(n)).length > 0}>
+                  <div class={styles.periodTitle}>{t('earlier')}</div>
+                  <NotificationGroup
+                    notifications={earlierNotifications().filter((n) => matchesTab(n))}
+                    class={styles.notificationView}
+                    onClick={handleNotificationViewClick}
+                    dateTimeFormat={'date'}
+                  />
                 </Show>
               </div>
             </div>
@@ -308,13 +288,16 @@ export const NotificationsPanel = (props: Props) => {
           <Show when={isLoading()}>
             <div class={styles.loading}>{t('Loading')}</div>
           </Show>
-        </div>
 
-        <Show when={unreadNotificationsCount() > 0}>
-          <div class={styles.actions}>
-            <Button onClick={(_e) => markSeenAll()} variant="secondary" value={t('Mark as read')} />
-          </div>
-        </Show>
+          {/* Кнопка "Показать больше" */}
+          <Show when={!isLoading() && loadedNotificationsCount() < totalNotificationsCount()}>
+            <div class={styles.showMore}>
+              <button class={styles.showMoreButton} onClick={loadNextPage}>
+                {t('Show more')}
+              </button>
+            </div>
+          </Show>
+        </div>
       </div>
     </div>
   )

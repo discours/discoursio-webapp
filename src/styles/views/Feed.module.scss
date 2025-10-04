@@ -358,7 +358,7 @@
     border: none;
 
     &::before {
-      background: var(--icon-knowledge-base-bullet) no-repeat;
+      background: url('/icons/knowledge-base-bullet.svg') no-repeat;
       content: '';
       height: 2.4rem;
       left: 0;
@@ -369,7 +369,7 @@
 
     &:hover {
       &::before {
-        background-image: var(--icon-knowledge-base-bullet-hover);
+        background-image: url('/icons/knowledge-base-bullet-hover.svg');
       }
     }
   }

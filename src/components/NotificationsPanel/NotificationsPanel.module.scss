@@ -29,15 +29,109 @@ $transition-duration: 200ms;
     display: flex;
     flex-direction: column;
 
-    .title {
-      font-size:2rem;
-      color: var(--black-500);
-      font-style: normal;
-      font-weight: 700;
+    .header {
       position: sticky;
       top: 0;
-      padding: 1.23rem 38px;
-      border-bottom: 2px solid var(--black-100);
+      background-color: var(--background-color);
+      border-bottom: 1px solid var(--black-100);
+      z-index: 10;
+    }
+
+    .headerTop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 38px 16px;
+    }
+
+    .title {
+      font-size: 16px;
+      color: var(--black-500);
+      font-weight: 500;
+      line-height: 1.25;
+      margin: 0;
+    }
+
+    .headerActions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .markAllRead {
+      font-size: 12px;
+      line-height: 1.33;
+      color: var(--blue-500);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      font-weight: 400;
+      transition: opacity 0.2s;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+
+    .settingsButton {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: opacity 0.2s;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+
+    .settingsIcon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 24px;
+      padding: 0 38px;
+      border-bottom: 1px solid var(--black-100);
+    }
+
+    .tab {
+      position: relative;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.29;
+      color: var(--black-400);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 10px 0;
+      transition: color 0.2s;
+
+      &:hover {
+        color: var(--black-500);
+      }
+
+      &.tabActive {
+        color: var(--black-500);
+
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background-color: var(--black-500);
+        }
+      }
     }
 
     .content {
@@ -53,13 +147,25 @@ $transition-duration: 200ms;
       }
     }
 
-    .actions {
-      padding: 24px 38px;
-      width: 100%;
-      bottom: 0;
-      left: 0;
-      background: var(--background-color);
-      border-top: 1px solid var(--black-100);
+    .showMore {
+      padding: 16px 0;
+      text-align: center;
+    }
+
+    .showMoreButton {
+      font-size: 12px;
+      line-height: 1.33;
+      color: var(--blue-500);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px 16px;
+      font-weight: 400;
+      transition: opacity 0.2s;
+
+      &:hover {
+        opacity: 0.7;
+      }
     }
   }
 

@@ -22,6 +22,9 @@ export const AudioHeader = (props: Props) => {
   return (
     <div class={clsx(styles.AudioHeader, { [styles.expandedImage]: expandedImage() })}>
       <div class={styles.cover}>
+        <Show when={!props.cover}>
+          <Icon name="create-audio" class={styles.placeholder} />
+        </Show>
         <Image
           class={styles.image}
           src={props.cover || ''}

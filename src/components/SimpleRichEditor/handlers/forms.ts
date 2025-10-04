@@ -225,7 +225,7 @@ export const createFormHandlers = (context: FormHandlersContext) => {
 
   const handleInsertLink = async (url: string) => {
     // Проверяем - это embed платформа?
-    const { detectEmbedPlatform } = await import('../media/validation')
+    const { detectEmbedPlatform } = await import('../media')
     const platform = detectEmbedPlatform(url)
 
     // Если это embed платформа - показываем диалог выбора

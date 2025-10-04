@@ -830,7 +830,7 @@ details {
 
       &::before {
         content: '';
-        background: var(--icon-expand) no-repeat;
+        background: url('/icons/expand.svg') no-repeat;
         background-size: contain;
         height: 1.3rem;
         margin-right: 0.5em;

@@ -12,16 +12,44 @@ type IconProps = {
   name?: string
   counter?: number
   'data-icon'?: string
+
+  /** Суффикс для hover-варианта иконки (например, 'colored', 'hover') */
+  hoverSuffix?: string
+  /** Суффикс для активного состояния (например, 'checked') */
+  activeSuffix?: string
+  /** Активно ли состояние (для activeSuffix) */
+  isActive?: boolean
 }
 
 export const Icon = (passedProps: IconProps) => {
-  const props = mergeProps({ title: '', name: '', counter: 0 }, passedProps)
+  const props = mergeProps({ title: '', name: '', counter: 0, isActive: false }, passedProps)
   const [isLoaded, setIsLoaded] = createSignal(false)
+  const [isHovered, setIsHovered] = createSignal(false)
 
-  const iconSrc = () => `/icons/${props.name || 'default'}.svg`
+  const iconSrc = () => {
+    const baseName = props.name || 'default'
+
+    // Если активно и есть activeSuffix
+    if (props.isActive && props.activeSuffix) {
+      return `/icons/${baseName}-${props.activeSuffix}.svg`
+    }
+
+    // Если hover и есть hoverSuffix
+    if (isHovered() && props.hoverSuffix) {
+      return `/icons/${baseName}-${props.hoverSuffix}.svg`
+    }
+
+    return `/icons/${baseName}.svg`
+  }
 
   return (
-    <div class={clsx('icon', styles.icon, props.class)} style={props.style} data-icon={props['data-icon']}>
+    <div
+      class={clsx('icon', styles.icon, props.class)}
+      style={props.style}
+      data-icon={props['data-icon']}
+      onMouseEnter={() => props.hoverSuffix && setIsHovered(true)}
+      onMouseLeave={() => props.hoverSuffix && setIsHovered(false)}
+    >
       <img
         alt={props.title || props.name}
         class={clsx(props.iconClassName, {

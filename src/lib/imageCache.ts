@@ -1,24 +1,32 @@
 import { cdnUrl } from '~/config'
 
-// Функция для преобразования URL для CDN - извлекает только filename
+// Функция для преобразования URL для CDN
 export const getCdnUrl = (url: string, width?: number): string => {
   if (!url) return url
 
   // Извлекаем путь из URL
   let filepath = ''
   try {
-    filepath = new URL(url).pathname
+    const urlObj = new URL(url)
+    filepath = urlObj.pathname
   } catch {
+    // Если не URL, то это уже путь
     filepath = url
   }
 
-  // Разбиваем на части по слешам
+  // Убираем начальный слеш если есть
+  filepath = filepath.replace(/^\/+/, '')
+
+  // Разбиваем на части по слешам для обработки
   const fileparts = filepath.split('/')
-  let filename = fileparts.pop() || ''
-  if (!filename) filename = filepath
+  let filename = fileparts[fileparts.length - 1] || ''
 
   // Обработка legacy /webp суффикса
-  if (filename.toLowerCase() === 'webp') filename = fileparts.pop() || ''
+  if (filename.toLowerCase() === 'webp') {
+    fileparts.pop() // убираем 'webp'
+    filename = fileparts[fileparts.length - 1] || ''
+  }
+
   if (!filename) return url
 
   // Проверяем, является ли filename валидным (содержит расширение)
@@ -38,7 +46,16 @@ export const getCdnUrl = (url: string, width?: number): string => {
     }
   }
 
-  // Возвращаем только filename с CDN доменом
+  // Возвращаем полный путь с CDN доменом (сохраняем структуру директорий если она есть)
+  // Если путь содержит 'production/', сохраняем его, иначе используем только filename
+  if (filepath.includes('production/')) {
+    // Заменяем только filename в конце пути
+    const pathParts = filepath.split('/')
+    pathParts[pathParts.length - 1] = filename
+    return `${cdnUrl}/${pathParts.join('/')}`
+  }
+
+  // Для простых путей возвращаем только filename
   return `${cdnUrl}/${filename}`
 }
 

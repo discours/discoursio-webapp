@@ -40,6 +40,7 @@ export const SocialProviders = () => {
               value={
                 <Icon
                   name={provider.icon}
+                  hoverSuffix="colored"
                   class={styles.providerIcon}
                   data-icon={provider.icon}
                   title={provider.title}

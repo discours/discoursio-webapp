@@ -1,44 +1,124 @@
 .NotificationView {
-  font-size:1.5rem;
   display: flex;
+  gap: 8px;
   align-items: flex-start;
-  min-height: 72px;
-  margin-left: -16px;
-  border-radius: 16px;
-  padding: 16px;
-  background-color: var(--yellow-50);
-  line-height: 20px;
+  width: 100%;
+  padding: 8px;
   cursor: pointer;
-  transition: background-color 100ms;
-  max-width: 700px;
+  border-radius: 2px;
+  position: relative;
+  transition: background-color 0.2s;
+  font-size: 15px;
+  line-height: 1.33;
+
+  &:not(.seen) {
+    background-color: var(--black-50);
+  }
 
   &.seen {
     background-color: transparent;
-  }
-
-  &:hover {
-    background-color: var(--gray-100);
+    color: var(--black-500);
   }
 
   a,
   a:visited {
     padding-bottom: 0 !important;
     border-bottom: none !important;
-    font-weight: 700;
+    font-weight: 400;
+  }
+
+  .iconContainer {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--black-50);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &.iconPublished {
+      background-color: rgba(255, 255, 255, 0.32);
+    }
+  }
+
+  .notificationIcon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .actions {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: none;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .actionButton {
+    font-size: 10px;
+    line-height: 1.2;
+    color: var(--black-300);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-weight: 400;
+    transition: color 0.2s;
+
+    &:hover {
+      color: var(--black-500);
+    }
+  }
+
+  &:hover {
+    background-color: var(--black-50);
+
+    .actions {
+      display: flex;
+    }
+  }
+
+  &:not(.seen):hover {
+    background-color: var(--black-500);
+    color: var(--white-400);
+
+    a,
+    a:visited {
+      color: var(--white-400);
+    }
+
+    .timeContainer {
+      color: var(--black-300);
+    }
+
+    .actionButton {
+      color: var(--black-300);
+
+      &:hover {
+        color: var(--white-500);
+      }
+    }
   }
 }
 
 .userpic {
-  min-width: 40px;
-  margin-right: 1rem;
+  display: none;
 }
 
 .timeContainer {
   margin-left: auto;
   padding-left: 16px;
-  color: var(--black-400);
+  color: var(--black-300);
   font-size: 12px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: 14px;
   align-self: flex-start;
+  flex-shrink: 0;
 }

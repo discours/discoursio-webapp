@@ -2,7 +2,7 @@ import { resolve } from 'node:path'
 import { CSSOptions, defineConfig, LightningCSSOptions } from 'vite'
 import { nodePolyfills, PolyfillOptions } from 'vite-plugin-node-polyfills'
 
-export const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
+const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
 
 const polyfillOptions = {
   include: ['path', 'stream', 'util', 'buffer'],

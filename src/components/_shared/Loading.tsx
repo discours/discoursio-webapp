@@ -1,4 +1,5 @@
 import { clsx } from 'clsx'
+import { Icon } from './Icon'
 
 import styles from './Loading.module.scss'
 
@@ -13,7 +14,7 @@ export const Loading = (props: Props) => {
         [styles.tiny]: props.size === 'tiny'
       })}
     >
-      <div class={styles.icon} style={{ background: 'var(--icon-arrows-rotate)' }} />
+      <Icon name="arrows-rotate" class={styles.icon} />
     </div>
   )
 }
