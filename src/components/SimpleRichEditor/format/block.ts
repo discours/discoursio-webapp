@@ -45,7 +45,7 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
   const defaultTag = 'p'
 
   // Только поддерживаемые блочные типы
-  if (!config || !['h1', 'h2', 'h3', 'blockquote', 'p', 'punchline'].includes(config.tag)) {
+  if (!config || !['h1', 'h2', 'h3', 'blockquote', 'p', 'punchline', 'div'].includes(config.tag)) {
     console.warn(`[toggleBlockFormat] Command ${command} ('${config?.tag}') is not a supported block type.`)
     return
   }
@@ -99,7 +99,10 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
   const newConfig = Object.values(FORMAT_CONFIG).find((c) => c.tag === newTag)
   if (newConfig?.attributes) {
     Object.entries(newConfig.attributes).forEach(([key, value]) => {
-      if (value || key.startsWith('data-')) {
+      // Для класса используем className, а не setAttribute
+      if (key === 'class') {
+        newBlock.className = value
+      } else if (value || key.startsWith('data-')) {
         newBlock.setAttribute(key, value)
       }
     })
