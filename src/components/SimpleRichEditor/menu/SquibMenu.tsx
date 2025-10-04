@@ -187,7 +187,9 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
         </div>
 
         <button onClick={handleClose} class={styles.closeButton} title="Скрыть меню">
-          ×
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
         </button>
       </div>
     </div>
