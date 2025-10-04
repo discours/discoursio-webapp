@@ -31,49 +31,10 @@ export const handlePlusMenuAction = (
       }
       break
     case 'upload':
-      // Создаем input для выбора файлов (изображения и аудио)
-      {
-        const input = document.createElement('input')
-        input.type = 'file'
-        input.accept = 'image/*,audio/*'
-        input.onchange = async (e) => {
-          const file = (e.target as HTMLInputElement).files?.[0]
-          if (!file) return
-
-          // Определяем тип файла по MIME
-          if (file.type.startsWith('image/')) {
-            // Изображение - вызываем modal загрузки изображения
-            if (callbacks.showImageUploadModal) {
-              callbacks.showImageUploadModal()
-              // Эмулируем выбор файла в modal
-              setTimeout(() => {
-                const fileInput = document.querySelector('input[type="file"][accept*="image"]') as HTMLInputElement
-                if (fileInput) {
-                  const dataTransfer = new DataTransfer()
-                  dataTransfer.items.add(file)
-                  fileInput.files = dataTransfer.files
-                  fileInput.dispatchEvent(new Event('change', { bubbles: true }))
-                }
-              }, 100)
-            }
-          } else if (file.type.startsWith('audio/')) {
-            // Аудио - вызываем аудио загрузчик
-            if (callbacks.showAudioUploader) {
-              callbacks.showAudioUploader()
-              // Эмулируем выбор файла в uploader
-              setTimeout(() => {
-                const fileInput = document.querySelector('input[type="file"][accept*="audio"]') as HTMLInputElement
-                if (fileInput) {
-                  const dataTransfer = new DataTransfer()
-                  dataTransfer.items.add(file)
-                  fileInput.files = dataTransfer.files
-                  fileInput.dispatchEvent(new Event('change', { bubbles: true }))
-                }
-              }, 100)
-            }
-          }
-        }
-        input.click()
+      // Сначала показываем модалку выбора типа (изображение/аудио)
+      // Модалка сама откроет FileDialog после выбора типа
+      if (callbacks.showImageUploadModal) {
+        callbacks.showImageUploadModal()
       }
       break
     case 'separator':
