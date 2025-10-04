@@ -1,16 +1,20 @@
 .squibMenu {
-  position: fixed;
+  position: absolute;
   z-index: 100;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
-  padding: 8px;
-  display: flex;
+  padding: 12px;
+  display: none;
   flex-direction: column;
-  gap: 8px;
-  width: 340px;
+  gap: 12px;
+  min-width: 200px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
     'Open Sans', 'Helvetica Neue', sans-serif;
+  
+  &.visible {
+    display: flex;
+  }
 }
 
 .formatControls {
@@ -253,12 +257,4 @@
     background: #f3f4f6;
     color: #111827;
   }
-}
-
-.visible {
-  display: block;
-}
-
-.invisible {
-  display: none;
 }
