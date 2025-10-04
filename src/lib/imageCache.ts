@@ -1,6 +1,12 @@
 import { cdnUrl } from '~/config'
 
-// Функция для преобразования URL для CDN
+/**
+ * Генерирует URL изображения с ресайзом через /api/thumb
+ *
+ * @param url - URL исходного изображения
+ * @param width - Желаемая ширина (опционально)
+ * @returns URL для оптимизированного изображения
+ */
 export const getCdnUrl = (url: string, width?: number): string => {
   if (!url) return url
 
@@ -17,20 +23,19 @@ export const getCdnUrl = (url: string, width?: number): string => {
   // Убираем начальный слеш если есть
   filepath = filepath.replace(/^\/+/, '')
 
-  // Разбиваем на части по слешам для обработки
+  // Обработка legacy /webp суффикса
   const fileparts = filepath.split('/')
   let filename = fileparts[fileparts.length - 1] || ''
 
-  // Обработка legacy /webp суффикса
   if (filename.toLowerCase() === 'webp') {
     fileparts.pop() // убираем 'webp'
     filename = fileparts[fileparts.length - 1] || ''
+    filepath = fileparts.join('/')
   }
 
   if (!filename) return url
 
-  // Проверяем, является ли filename валидным (содержит расширение)
-  // Если нет расширения (например, просто число "454794"), возвращаем оригинальный URL
+  // Проверяем валидность расширения
   const hasExtension =
     filename.includes('.') && filename.split('.').pop()?.length && filename.split('.').pop()!.length <= 5
   if (!hasExtension) {
@@ -38,25 +43,26 @@ export const getCdnUrl = (url: string, width?: number): string => {
     return url
   }
 
-  // Применяем width трансформацию если нужно
-  if (width) {
-    const extension = filename.split('.').pop() || ''
-    if (extension && !filename.includes(`_${width}`)) {
-      filename = filename.replace(`.${extension}`, `_${width}.${extension}`)
-    }
-  }
+  // Убираем старый _width суффикс если есть (legacy Quoter format)
+  const cleanedFilename = filename.replace(/_\d+\.([^.]+)$/, '.$1')
 
-  // Возвращаем полный путь с CDN доменом (сохраняем структуру директорий если она есть)
-  // Если путь содержит 'production/', сохраняем его, иначе используем только filename
-  if (filepath.includes('production/')) {
-    // Заменяем только filename в конце пути
+  // Восстанавливаем полный путь с очищенным filename
+  let fullPath = filepath
+  if (filepath.includes('/')) {
     const pathParts = filepath.split('/')
-    pathParts[pathParts.length - 1] = filename
-    return `${cdnUrl}/${pathParts.join('/')}`
+    pathParts[pathParts.length - 1] = cleanedFilename
+    fullPath = pathParts.join('/')
+  } else {
+    fullPath = cleanedFilename
   }
 
-  // Для простых путей возвращаем только filename
-  return `${cdnUrl}/${filename}`
+  // Если нужен ресайз - используем /api/thumb
+  if (width) {
+    return `/api/thumb/${width}/${fullPath}`
+  }
+
+  // Без ресайза - прямая ссылка на оригинал в CDN
+  return `${cdnUrl}/${fullPath}`
 }
 
 /**

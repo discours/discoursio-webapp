@@ -4,6 +4,21 @@
 
 ## [0.14.31] - 2025-10-04
 
+### 🚀 NEW: Vercel Edge Thumbnail Generation
+- **✅ Создан `/api/thumb/[width]/[...path]`**: Генерация thumbnails на Vercel Edge
+  - Автоматический выбор формата (AVIF → WebP → JPEG) по Accept header
+  - Кеширование на Edge CDN (immutable, 1 год)
+  - Резайз через `sharp` без увеличения оригинала
+  - Fetch оригиналов из Quoter CDN
+- **🔄 Упрощена архитектура**: Quoter = upload/storage, Vercel = thumbnails
+  - `getCdnUrl(url, width)` теперь → `/api/thumb/640/image.jpg`
+  - Без ресайза → прямая ссылка на Quoter CDN
+  - Убран legacy `_width` суффикс из filename
+- **💋 Чистое разделение ответственности**:
+  - Quoter: Upload + отдача оригиналов
+  - Vercel Edge: Thumbnails + оптимизация форматов
+  - Browser: Кеширование готовых thumbnails
+
 ### 🎨 Refactored: SVG-based OG Image Generation
 - **❌ Удален @vercel/og**: Заменен на легковесную реализацию через SVG templates + sharp
   - Убрана тяжелая зависимость с WASM runtime (~5MB)

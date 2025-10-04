@@ -12,11 +12,11 @@ const translations = {
   ru: {
     'Discours — open magazine': 'Дискурс — открытый журнал',
     'About culture, science and society': 'О культуре, науке и обществе',
-    'Featured': 'Рекомендуем',
+    Featured: 'Рекомендуем',
     'Read now': 'Читайте сейчас',
     'and other materials': 'и другие материалы',
-    'articles': 'статей',
-    'followers': 'подписчиков'
+    articles: 'статей',
+    followers: 'подписчиков'
   },
   en: {}
 }
@@ -52,7 +52,7 @@ export async function GET(request) {
   try {
     const { searchParams, pathname } = new URL(request.url)
     const pathSegments = pathname.split('/')
-    
+
     // Определяем тип: /api/og/article -> article
     let type = 'basic'
     if (pathSegments.length > 2) {
@@ -108,10 +108,7 @@ export async function GET(request) {
     }
 
     // Конвертируем SVG → PNG через sharp
-    const pngBuffer = await sharp(Buffer.from(svg))
-      .resize(OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT)
-      .png()
-      .toBuffer()
+    const pngBuffer = await sharp(Buffer.from(svg)).resize(OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT).png().toBuffer()
 
     console.log(`[OG] Generated in ${Date.now() - startTime}ms`)
 
@@ -132,11 +129,8 @@ export async function GET(request) {
         title: 'Дискурс',
         description: 'О культуре, науке и обществе'
       })
-      
-      const pngBuffer = await sharp(Buffer.from(fallbackSVG))
-        .resize(OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT)
-        .png()
-        .toBuffer()
+
+      const pngBuffer = await sharp(Buffer.from(fallbackSVG)).resize(OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT).png().toBuffer()
 
       return new Response(pngBuffer, {
         status: 200,
@@ -213,17 +207,23 @@ function createArticleSVG({ title, author, topic, cover }) {
       .author { font: 400 32px -apple-system, BlinkMacSystemFont, sans-serif; fill: ${authorColor}; }
       .topic { font: 400 24px -apple-system, BlinkMacSystemFont, sans-serif; fill: white; }
     </style>
-    ${hasCover ? `
+    ${
+      hasCover
+        ? `
     <clipPath id="coverClip">
       <rect width="${OG_IMAGE_WIDTH}" height="${OG_IMAGE_HEIGHT}"/>
     </clipPath>
-    ` : ''}
+    `
+        : ''
+    }
   </defs>
   
   <!-- Background -->
   <rect width="100%" height="100%" fill="${bgColor}"/>
   
-  ${hasCover ? `
+  ${
+    hasCover
+      ? `
   <!-- Cover image -->
   <image href="${cover}" width="${OG_IMAGE_WIDTH}" height="${OG_IMAGE_HEIGHT}" 
          clip-path="url(#coverClip)" opacity="0.3"/>
@@ -234,17 +234,23 @@ function createArticleSVG({ title, author, topic, cover }) {
       <stop offset="100%" style="stop-color:rgba(0,0,0,0.7);stop-opacity:1" />
     </linearGradient>
   </defs>
-  ` : ''}
+  `
+      : ''
+  }
   
   <!-- Logo -->
   <circle cx="60" cy="60" r="30" fill="#2638d9"/>
   <text x="60" y="72" text-anchor="middle" font-size="32" font-weight="bold" fill="white">Д</text>
   
-  ${topic ? `
+  ${
+    topic
+      ? `
   <!-- Topic badge -->
   <rect x="120" y="40" rx="20" fill="rgba(255,255,255,0.25)" width="${topic.length * 14 + 24}" height="40"/>
   <text x="132" y="66" class="topic">${escapeXml(topic)}</text>
-  ` : ''}
+  `
+      : ''
+  }
   
   <!-- Title -->
   <text x="60" y="${OG_IMAGE_HEIGHT / 2 - 20}" class="title" textLength="${Math.min(title.length * 30, 1080)}">
@@ -252,9 +258,13 @@ function createArticleSVG({ title, author, topic, cover }) {
   </text>
   
   <!-- Author -->
-  ${author ? `
+  ${
+    author
+      ? `
   <text x="60" y="${OG_IMAGE_HEIGHT - 60}" class="author">${escapeXml(author)}</text>
-  ` : ''}
+  `
+      : ''
+  }
 </svg>
 `.trim()
 }
@@ -263,7 +273,9 @@ function createAuthorSVG({ name, bio, avatar, articlesCount, followersCount, loc
   const stats = [
     articlesCount && `${articlesCount} ${t('articles', locale)}`,
     followersCount && `${followersCount} ${t('followers', locale)}`
-  ].filter(Boolean).join('  •  ')
+  ]
+    .filter(Boolean)
+    .join('  •  ')
 
   return `
 <svg width="${OG_IMAGE_WIDTH}" height="${OG_IMAGE_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
@@ -284,26 +296,38 @@ function createAuthorSVG({ name, bio, avatar, articlesCount, followersCount, loc
   <circle cx="60" cy="60" r="30" fill="#2638d9"/>
   <text x="60" y="72" text-anchor="middle" font-size="32" font-weight="bold" fill="white">Д</text>
   
-  ${stats ? `
+  ${
+    stats
+      ? `
   <!-- Stats -->
   <text x="${OG_IMAGE_WIDTH - 60}" y="66" text-anchor="end" class="stats">${escapeXml(stats)}</text>
-  ` : ''}
+  `
+      : ''
+  }
   
   <!-- Avatar -->
-  ${avatar ? `
+  ${
+    avatar
+      ? `
   <image href="${avatar}" x="30" y="195" width="240" height="240" clip-path="url(#avatarClip)"/>
-  ` : `
+  `
+      : `
   <circle cx="150" cy="315" r="120" fill="#e5e7eb"/>
   <text x="150" y="340" text-anchor="middle" font-size="72" fill="#9ca3af">?</text>
-  `}
+  `
+  }
   
   <!-- Name -->
   <text x="320" y="280" class="name">${escapeXml(truncate(name, 40))}</text>
   
   <!-- Bio -->
-  ${bio ? `
+  ${
+    bio
+      ? `
   <text x="320" y="350" class="bio">${escapeXml(truncate(bio, 100))}</text>
-  ` : ''}
+  `
+      : ''
+  }
 </svg>
 `.trim()
 }
@@ -326,20 +350,28 @@ function createTopicSVG({ title, description, cover, articlesCount, locale }) {
   
   <rect width="100%" height="100%" fill="${bgColor}"/>
   
-  ${hasCover ? `
+  ${
+    hasCover
+      ? `
   <image href="${cover}" width="${OG_IMAGE_WIDTH}" height="${OG_IMAGE_HEIGHT}" opacity="0.3"/>
-  ` : ''}
+  `
+      : ''
+  }
   
   <!-- Logo -->
   <circle cx="60" cy="60" r="30" fill="#2638d9"/>
   <text x="60" y="72" text-anchor="middle" font-size="32" font-weight="bold" fill="white">Д</text>
   
-  ${articlesCount ? `
+  ${
+    articlesCount
+      ? `
   <!-- Articles count -->
   <text x="${OG_IMAGE_WIDTH - 60}" y="66" text-anchor="end" class="count">
     ${articlesCount} ${t('articles', locale)}
   </text>
-  ` : ''}
+  `
+      : ''
+  }
   
   <!-- Title -->
   <text x="60" y="${OG_IMAGE_HEIGHT / 2 - 20}" class="title">
@@ -347,11 +379,15 @@ function createTopicSVG({ title, description, cover, articlesCount, locale }) {
   </text>
   
   <!-- Description -->
-  ${description ? `
+  ${
+    description
+      ? `
   <text x="60" y="${OG_IMAGE_HEIGHT - 60}" class="desc">
     ${escapeXml(truncate(description, 120))}
   </text>
-  ` : ''}
+  `
+      : ''
+  }
 </svg>
 `.trim()
 }

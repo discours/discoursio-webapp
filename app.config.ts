@@ -55,6 +55,14 @@ export default defineConfig({
       headers: {
         'Cache-Control': 'public, max-age=3600, s-maxage=86400'
       }
+    },
+    '/api/thumb/**': {
+      prerender: false,
+      headers: {
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'CDN-Cache-Control': 'public, max-age=31536000',
+        'Vercel-CDN-Cache-Control': 'public, max-age=31536000'
+      }
     }
   },
   rollupConfig: {
