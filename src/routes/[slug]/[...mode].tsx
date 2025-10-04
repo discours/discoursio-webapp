@@ -27,7 +27,16 @@ import AuthorPage, { AuthorPageProps } from '../author/[slug]/[...mode]'
 import TopicPage, { TopicPageProps } from '../topic/[slug]/[...mode]'
 
 // ✨ Служебные пути, которые не являются статьями
-const SKIP_PATHS = ['fonts', 'icons', 'api', 'robots.txt', 'favicon.ico', 'manifest.json', 'sw.js']
+const SKIP_PATHS = [
+  'fonts',
+  'icons',
+  'api',
+  'robots.txt',
+  'favicon.ico',
+  'manifest.json',
+  'sw.js',
+  'debug-upload'
+]
 
 // ✨ Расширения файлов изображений и статики
 const STATIC_EXTENSIONS = [
