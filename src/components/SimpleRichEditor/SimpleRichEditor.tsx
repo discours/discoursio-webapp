@@ -1114,12 +1114,28 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             squibElement={currentSquib()}
             onAction={(action) => {
               const squibElement = currentSquib()
-              if (squibElement && handleSquibFormatting(action as string)) {
-                handleChange(props.fieldType ? String(props.fieldType) : 'content')
-                editorRef()?.focus()
+              if (squibElement) {
+                const handler = handleSquibFormatting(action as string)
+                if (handler(squibElement)) {
+                  // Форсируем обновление контента для сохранения изменений
+                  handleChange(props.fieldType ? String(props.fieldType) : 'content')
+                  // Обновляем позицию меню если блок изменил размеры
+                  setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
+                }
               }
             }}
             onClose={() => {
+              const squibElement = currentSquib()
+              if (squibElement) {
+                // Убираем форматирование подвёрстки - заменяем на обычный параграф
+                const textContent = squibElement.textContent || ''
+                const p = document.createElement('p')
+                p.textContent = textContent
+                squibElement.replaceWith(p)
+                
+                // Сохраняем изменения
+                handleChange(props.fieldType ? String(props.fieldType) : 'content')
+              }
               setShowSquibEditor(false)
               setCurrentSquib(null)
             }}
