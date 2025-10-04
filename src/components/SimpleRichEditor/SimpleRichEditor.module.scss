@@ -578,6 +578,12 @@
   max-width: 600px;
   min-width: 50%;
 
+  // Убираем отступы у вложенных элементов
+  > * {
+    margin: 0;
+    padding: 0;
+  }
+
   // Режимы обтекания
   &[data-align='left'] {
     float: left;
