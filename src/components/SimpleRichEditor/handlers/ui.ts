@@ -137,6 +137,7 @@ export const createUIHelpers = (context: UIHelpersContext) => {
 
     // Находим все элементы-строки в редакторе (div, p)
     const lines = Array.from(editor.querySelectorAll('div, p'))
+    const totalLines = lines.length
 
     // Определяем в какой строке находится курсор
     const container = range.startContainer
@@ -148,7 +149,7 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     while (node && node !== editor) {
       if (node.nodeType === Node.ELEMENT_NODE) {
         const element = node as Element
-        if (element.tagName === 'DIV' || element.tagName === 'P') {
+        if (element.tagName === 'DIV' || element.tagName === 'P' || element.tagName === 'H1' || element.tagName === 'H2' || element.tagName === 'H3') {
           currentLine = element
           break
         }
@@ -158,22 +159,43 @@ export const createUIHelpers = (context: UIHelpersContext) => {
 
     if (currentLine) {
       lineIndex = lines.indexOf(currentLine)
-      console.log('[getPlusMenuTop] Line index:', lineIndex, 'of', lines.length)
     }
 
-    // Вычисляем top позицию (+1 строчка ниже курсора)
     const editorRect = editor.getBoundingClientRect()
     const lineHeight = 24 // Примерная высота строки в пикселях
     const editorPaddingTop = Number.parseInt(getComputedStyle(editor).paddingTop, 10) || 0
 
-    // Добавляем +1 к lineIndex, чтобы плюс был на строчку ниже
-    const topPosition = editorRect.top + editorPaddingTop + (lineIndex + 1) * lineHeight + lineHeight / 2 - 16
+    // Проверяем: курсор на последней или предпоследней строке?
+    const isNearEnd = lineIndex >= totalLines - 2
 
-    console.log('[getPlusMenuTop] Calculated (+1 line below):', {
-      lineIndex: lineIndex + 1,
-      editorTop: editorRect.top,
-      paddingTop: editorPaddingTop,
-      lineHeight,
+    console.log('[getPlusMenuTop] Line analysis:', {
+      current: lineIndex,
+      total: totalLines,
+      isNearEnd,
+      lines
+    })
+
+    // Если курсор на последней/предпоследней строке -> показываем на текущей строке (с плейсхолдером)
+    if (isNearEnd) {
+      const topPosition = editorRect.top + editorPaddingTop + lineIndex * lineHeight + lineHeight / 2 - 16
+      console.log('[getPlusMenuTop] Near end - same line with placeholder')
+      return topPosition
+    }
+
+    // Иначе ищем ближайшую пустую строку ниже курсора
+    let targetLineIndex = lineIndex + 1
+    for (let i = lineIndex + 1; i < totalLines; i++) {
+      const line = lines[i]
+      if (!line.textContent?.trim()) {
+        targetLineIndex = i
+        break
+      }
+    }
+
+    const topPosition = editorRect.top + editorPaddingTop + targetLineIndex * lineHeight + lineHeight / 2 - 16
+
+    console.log('[getPlusMenuTop] Not near end - next empty line:', {
+      targetLineIndex,
       calculatedTop: topPosition
     })
 
