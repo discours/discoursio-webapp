@@ -15,8 +15,8 @@ export const squibId = 'squib-editor'
 export const getAllSquibs = (editor: HTMLElement): Array<{ id: string; content: string; element: HTMLElement }> => {
   if (!editor) return []
 
-  // Находим все подвёрстки в редакторе (определяются по классу .squib)
-  const squibElements = editor.querySelectorAll('.squib')
+  // Находим все подвёрстки в редакторе (определяются по атрибуту data-align)
+  const squibElements = editor.querySelectorAll('[data-align]')
   if (!squibElements.length) return []
 
   // Собираем информацию о подвёрстках

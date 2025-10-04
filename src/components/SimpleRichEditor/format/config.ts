@@ -39,7 +39,7 @@ export const FORMAT_CONFIG: Record<CommandType, { tag: string; attributes?: Reco
   upload: { tag: 'span', attributes: {} }, // UI команда, не используется
   embed: { tag: 'embed', attributes: {} }, // Кастомный тег для встраивания
   p: { tag: 'p', attributes: {} },
-  squib: { tag: 'div', attributes: { class: 'squib', 'data-align': 'left' } },
+  squib: { tag: 'div', attributes: { 'data-align': 'left' } },
   'align-left': { tag: 'div', attributes: { 'data-align': 'left' } },
   'align-center': { tag: 'div', attributes: { 'data-align': 'center' } },
   'align-right': { tag: 'div', attributes: { 'data-align': 'right' } },

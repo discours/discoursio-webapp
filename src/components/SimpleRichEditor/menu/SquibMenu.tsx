@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Component, createSignal } from 'solid-js'
+import { Component } from 'solid-js'
 import { CommandType, Position } from '../lib/types'
 
 import styles from './SquibMenu.module.scss'
@@ -40,28 +40,15 @@ interface SquibMenuProps {
  * ```
  */
 export const SquibMenu: Component<SquibMenuProps> = (props) => {
-  // Состояние dropdown для выбора цвета
-  const [showColorDropdown, setShowColorDropdown] = createSignal(false)
-
   // Обработчик кнопки закрытия
   const handleClose = () => {
     if (props.onClose) props.onClose()
   }
 
-  // Получаем текущее выравнивание и фон из squibElement (реактивно)
+  // Получаем текущее выравнивание из squibElement (реактивно)
   const getCurrentAlign = () => {
     const element = props.squibElement
     return element?.getAttribute('data-align') || 'left'
-  }
-  const getCurrentBg = () => {
-    const element = props.squibElement
-    return element?.getAttribute('data-bg') || ''
-  }
-
-  // Обработчик выбора цвета
-  const handleColorSelect = (color: string) => {
-    props.onAction(color as CommandType)
-    setShowColorDropdown(false)
   }
 
   // Стиль позиционирования меню над врезкой (по центру верхней границы)
@@ -115,80 +102,6 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
                 <path d="M2 3h12M6 6h8M2 9h12M6 12h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
               </svg>
             </button>
-          </div>
-
-          {/* Выбор цвета подложки через dropdown */}
-          <div class={styles.colorPicker}>
-            <button
-              onClick={() => setShowColorDropdown(!showColorDropdown())}
-              class={clsx(styles.colorPickerButton, {
-                [styles.active]: getCurrentBg() !== ''
-              })}
-              title="Цвет фона"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="2" y="3" width="12" height="10" rx="2" stroke="currentColor" stroke-width="1.5" fill="none" />
-                <circle cx="8" cy="8" r="2" fill="currentColor" />
-              </svg>
-            </button>
-            {showColorDropdown() && (
-              <div class={styles.colorDropdown}>
-                <button
-                  onClick={() => handleColorSelect('bg-gray')}
-                  class={clsx(styles.colorOption, {
-                    [styles.active]: getCurrentBg() === 'gray'
-                  })}
-                >
-                  <span class={styles.colorSwatch} data-color="bg-gray" />
-                  <span>Серый</span>
-                </button>
-                <button
-                  onClick={() => handleColorSelect('bg-white')}
-                  class={clsx(styles.colorOption, {
-                    [styles.active]: getCurrentBg() === 'white'
-                  })}
-                >
-                  <span class={styles.colorSwatch} data-color="bg-white" />
-                  <span>Белый</span>
-                </button>
-                <button
-                  onClick={() => handleColorSelect('bg-black')}
-                  class={clsx(styles.colorOption, {
-                    [styles.active]: getCurrentBg() === 'black'
-                  })}
-                >
-                  <span class={styles.colorSwatch} data-color="bg-black" />
-                  <span>Чёрный</span>
-                </button>
-                <button
-                  onClick={() => handleColorSelect('bg-yellow')}
-                  class={clsx(styles.colorOption, {
-                    [styles.active]: getCurrentBg() === 'yellow'
-                  })}
-                >
-                  <span class={styles.colorSwatch} data-color="bg-yellow" />
-                  <span>Жёлтый</span>
-                </button>
-                <button
-                  onClick={() => handleColorSelect('bg-red')}
-                  class={clsx(styles.colorOption, {
-                    [styles.active]: getCurrentBg() === 'red'
-                  })}
-                >
-                  <span class={styles.colorSwatch} data-color="bg-red" />
-                  <span>Красный</span>
-                </button>
-                <button
-                  onClick={() => handleColorSelect('bg-green')}
-                  class={clsx(styles.colorOption, {
-                    [styles.active]: getCurrentBg() === 'green'
-                  })}
-                >
-                  <span class={styles.colorSwatch} data-color="bg-green" />
-                  <span>Зелёный</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
 

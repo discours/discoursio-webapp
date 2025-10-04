@@ -568,10 +568,10 @@
   border-radius: 2px;
 }
 
-// Стили для подвёрстки (squib)
-:global(.squib) {
+// Стили для подвёрстки (определяется по data-align)
+:global([data-align]) {
   margin: 16px 0;
-  padding: 0;
+  padding: 20px;
   background-color: transparent;
   border-radius: 8px;
   transition: all 0.2s;
@@ -601,7 +601,7 @@
     text-align: right;
   }
 
-  // Цветовые темы
+  // Цветовые темы для блока подвёрстки
   &[data-bg='gray'] {
     background-color: #f3f4f6;
   }

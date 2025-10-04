@@ -90,10 +90,10 @@ export const createMediaHandlers = (context: MediaHandlersContext) => {
       return
     }
 
-    // Обработка клика по подвёрстке (squib) - определяется по классу .squib
-    if (target.closest('.squib')) {
+    // Обработка клика по подвёрстке - определяется по атрибуту data-align
+    if (target.closest('[data-align]')) {
       e.preventDefault()
-      const squib = target.closest('.squib') as HTMLElement
+      const squib = target.closest('[data-align]') as HTMLElement
       if (squib) {
         setCurrentSquib(squib)
         setSquibMenuPosition(calculateSquibMenuPosition(squib))
