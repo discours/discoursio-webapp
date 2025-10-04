@@ -60,39 +60,35 @@ export const handleSquibFormatting = (action: string): ((el: HTMLElement) => boo
   return (squibElement: HTMLElement): boolean => {
     if (!squibElement) return false
 
-    // Функция для добавления/удаления класса
-    const toggleClass = (className: string) => {
-      if (squibElement.classList.contains(className)) {
-        squibElement.classList.remove(className)
-      } else {
-        // Для выравнивания сначала удаляем все классы выравнивания
-        if (className.startsWith('align-')) {
-          squibElement.classList.remove('align-left', 'align-center', 'align-right')
-        }
-        squibElement.classList.add(className)
-      }
-      return true
-    }
-
     // Обрабатываем различные типы форматирования
     switch (action) {
       case 'align-left':
-        return toggleClass('align-left')
+        squibElement.setAttribute('data-align', 'left')
+        return true
       case 'align-center':
-        return toggleClass('align-center')
+        squibElement.setAttribute('data-align', 'center')
+        return true
       case 'align-right':
-        return toggleClass('align-right')
+        squibElement.setAttribute('data-align', 'right')
+        return true
       case 'bg-gray':
+        squibElement.setAttribute('data-bg', 'gray')
+        return true
       case 'bg-white':
+        squibElement.setAttribute('data-bg', 'white')
+        return true
       case 'bg-black':
+        squibElement.setAttribute('data-bg', 'black')
+        return true
       case 'bg-yellow':
+        squibElement.setAttribute('data-bg', 'yellow')
+        return true
       case 'bg-red':
-      case 'bg-green': {
-        // Удаляем все классы фона
-        squibElement.classList.remove('bg-gray', 'bg-white', 'bg-black', 'bg-yellow', 'bg-red', 'bg-green')
-        // Добавляем нужный класс
-        return toggleClass(action)
-      }
+        squibElement.setAttribute('data-bg', 'red')
+        return true
+      case 'bg-green':
+        squibElement.setAttribute('data-bg', 'green')
+        return true
       default:
         return false
     }

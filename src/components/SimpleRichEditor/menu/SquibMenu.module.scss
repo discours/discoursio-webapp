@@ -125,30 +125,6 @@
   gap: 8px;
 }
 
-.editableContent {
-  min-height: 60px;
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 12px;
-  outline: none;
-  font-size: 16px;
-  line-height: 1.625;
-  color: #111827;
-  background: #fff;
-  transition: border-color 0.2s;
-  
-  &:focus {
-    border-color: #3b82f6;
-  }
-  
-  &:empty::before {
-    content: attr(data-placeholder);
-    color: #9ca3af;
-  }
-}
-
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -210,10 +186,6 @@
   white-space: nowrap;
   font-size: 12px;
 } 
-
-.squibMenuContent {
-  padding-top: 12px;
-}
 
 .squibMenuHeader {
   display: flex;

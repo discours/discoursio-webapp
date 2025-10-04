@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
-import { Component, createSignal, onMount } from 'solid-js'
-import { CommandGroupType, CommandType, Position } from '../lib/types'
+import { Component } from 'solid-js'
+import { CommandType, Position } from '../lib/types'
 
 import styles from './SquibMenu.module.scss'
 
@@ -8,7 +8,7 @@ interface SquibMenuProps {
   /** Видимость меню */
   isVisible: boolean
   /** Обработчик команд форматирования */
-  onAction: (action: CommandType | CommandGroupType) => void
+  onAction: (action: CommandType) => void
   /** Обработчик закрытия меню */
   onClose: () => void
   /** Текущие форматы */
@@ -18,7 +18,7 @@ interface SquibMenuProps {
   /** Идентификатор редактора */
   editorId?: string
   /** Набор команд для меню форматирования врезки */
-  commands: (CommandType | CommandGroupType)[]
+  commands: CommandType[]
   /** Текущий элемент подвёрстки */
   squibElement?: HTMLElement | null
 }
@@ -40,33 +40,9 @@ interface SquibMenuProps {
  * ```
  */
 export const SquibMenu: Component<SquibMenuProps> = (props) => {
-  // Содержимое подвёрстки
-  const [squibContent, setSquibContent] = createSignal('')
-
-  let contentEditableRef: HTMLDivElement | undefined
-
-  // Загружаем содержимое при монтировании
-  onMount(() => {
-    if (props.squibElement) {
-      setSquibContent(props.squibElement.textContent || '')
-    }
-  })
-
   // Обработчик кнопки закрытия
   const handleClose = () => {
     if (props.onClose) props.onClose()
-  }
-
-  // Обработчик изменения контента
-  const handleContentInput = (e: InputEvent) => {
-    const target = e.target as HTMLDivElement
-    const newContent = target.textContent || ''
-    setSquibContent(newContent)
-
-    // Обновляем содержимое элемента подвёрстки
-    if (props.squibElement) {
-      props.squibElement.textContent = newContent
-    }
   }
 
   // Стиль позиционирования меню над врезкой
@@ -184,18 +160,6 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
         <button onClick={handleClose} class={styles.closeButton} title="Скрыть меню">
           ×
         </button>
-      </div>
-
-      {/* Редактируемое поле */}
-      <div class={styles.squibMenuContent}>
-        <div
-          ref={contentEditableRef}
-          class={styles.editableContent}
-          contentEditable={true}
-          onInput={handleContentInput}
-          innerHTML={squibContent()}
-          data-placeholder="Введите текст подвёрстки..."
-        />
       </div>
     </div>
   )
