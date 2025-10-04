@@ -155,7 +155,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   // Позиция меню подвёрстки
   const [squibMenuPosition, setSquibMenuPosition] = createSignal<Position>({ top: 50, left: 50 })
 
-  // Функция для вычисления позиции меню подвёрстки (по центру верхней границы)
+  // Функция для вычисления позиции меню подвёрстки (по центру редактора, над блоком)
   const calculateSquibMenuPosition = (squibElement: HTMLElement): Position => {
     const rect = squibElement.getBoundingClientRect()
     const editorRect = editorRef()?.getBoundingClientRect()
@@ -164,10 +164,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       return { top: 50, left: 50 }
     }
 
-    // Позиционируем меню по центру верхней границы блока (transform: translate(-50%, -50%))
+    // Позиционируем меню по центру РЕДАКТОРА (не блока), над блоком подвёрстки
     return {
       top: rect.top - editorRect.top, // Верхняя граница блока
-      left: rect.left - editorRect.left + rect.width / 2 // Центр блока по горизонтали
+      left: editorRect.width / 2 // Центр редактора по горизонтали
     }
   }
 
@@ -1121,6 +1121,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
                   handleChange(props.fieldType ? String(props.fieldType) : 'content')
                   // Обновляем позицию меню если блок изменил размеры
                   setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
+                  // Форсируем перерисовку меню обновляя currentSquib
+                  setCurrentSquib(null)
+                  setTimeout(() => setCurrentSquib(squibElement), 0)
                 }
               }
             }}

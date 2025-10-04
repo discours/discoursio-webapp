@@ -48,9 +48,15 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
     if (props.onClose) props.onClose()
   }
 
-  // Получаем текущее выравнивание и фон из squibElement
-  const getCurrentAlign = () => props.squibElement?.getAttribute('data-align') || 'left'
-  const getCurrentBg = () => props.squibElement?.getAttribute('data-bg') || ''
+  // Получаем текущее выравнивание и фон из squibElement (реактивно)
+  const getCurrentAlign = () => {
+    const element = props.squibElement
+    return element?.getAttribute('data-align') || 'left'
+  }
+  const getCurrentBg = () => {
+    const element = props.squibElement
+    return element?.getAttribute('data-bg') || ''
+  }
 
   // Обработчик выбора цвета
   const handleColorSelect = (color: string) => {
