@@ -15,6 +15,7 @@ import {
 import { Loading } from '~/components/_shared/Loading'
 import { FourOuFourView } from '~/components/Views/FourOuFour'
 import { gaIdentity } from '~/config'
+import { RESERVED_ROUTES } from '~/constants/reserved-routes'
 import { useLocalize } from '~/context/localize'
 import { getAuthor, getShout, loadShouts, loadTopicAuthors, loadTopicBySlug, loadTopics } from '~/graphql/api/public'
 import type { Author, Reaction, Shout, Topic } from '~/graphql/generated/graphql'
@@ -26,43 +27,30 @@ import { ReactionsProvider } from '../../context/reactions'
 import AuthorPage, { AuthorPageProps } from '../author/[slug]/[...mode]'
 import TopicPage, { TopicPageProps } from '../topic/[slug]/[...mode]'
 
-// ✨ Служебные пути, которые не являются статьями
-const SKIP_PATHS = [
-  'fonts',
-  'icons',
-  'api',
-  'robots.txt',
-  'favicon.ico',
-  'manifest.json',
-  'sw.js',
-  'debug-upload'
-]
-
-// ✨ Расширения файлов изображений и статики
-const STATIC_EXTENSIONS = [
-  '.png',
-  '.jpg',
-  '.jpeg',
-  '.gif',
-  '.svg',
-  '.webp',
-  '.ico',
-  '.css',
-  '.js',
-  '.json',
-  '.xml',
-  '.txt'
-]
-
+/**
+ * Проверяет, является ли путь зарезервированным (не статьёй)
+ * Использует централизованный список RESERVED_ROUTES
+ */
 const isSkippedPath = (slug: string): boolean => {
-  // Проверяем служебные пути
-  if (slug.startsWith('_') || slug.startsWith('.') || SKIP_PATHS.includes(slug)) {
+  if (!slug) return true
+
+  // Специальные символы (debug, system paths)
+  if (slug.startsWith('_') || slug.startsWith('.')) {
     return true
   }
 
-  // Проверяем расширения файлов изображений
+  // Проверяем по списку зарезервированных роутов
   const lowerSlug = slug.toLowerCase()
-  if (STATIC_EXTENSIONS.some((ext) => lowerSlug.endsWith(ext))) {
+  const baseSlug = lowerSlug.split('/')[0] || lowerSlug
+
+  // Проверяем базовый slug
+  if (RESERVED_ROUTES.includes(baseSlug as any)) {
+    return true
+  }
+
+  // Проверяем расширения файлов
+  const hasExtension = /\.(png|jpg|jpeg|gif|svg|webp|ico|css|js|json|xml|txt|woff|woff2|ttf|eot)$/i.test(lowerSlug)
+  if (hasExtension) {
     return true
   }
 

@@ -30,6 +30,9 @@ export const APP_ROUTES = [
   'topic', // topic/[slug]/[...mode]
   'topics', // topics.tsx
 
+  // Debug & Dev
+  'debug-upload', // debug-upload.tsx
+
   // Вложенные роуты из settings/
   'security', // settings/security.tsx
   'subs', // settings/subs.tsx
