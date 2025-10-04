@@ -59,21 +59,26 @@
 }
 
 .colorButton {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
-  border-radius: 4px;
+  border-radius: 50%;
   cursor: pointer;
-  padding: 3px;
-  transition: all 0.2s;
+  padding: 0;
+  transition: all 0.15s;
+  position: relative;
 
   &:hover {
-    background: #f3f4f6;
+    transform: scale(1.1);
   }
 
-  &.active {
-    background: #e5e7eb;
+  &.active::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border: 2px solid #3b82f6;
+    border-radius: 50%;
   }
 }
 
@@ -81,32 +86,32 @@
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 2px;
-  border: 1px solid rgb(0 0 0 / 10%);
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.1);
 
   &[data-color='bg-gray'] {
-    background-color: #f3f4f6;
+    background-color: #9ca3af;
   }
 
   &[data-color='bg-white'] {
     background-color: #fff;
-    border: 1px solid #e5e7eb;
+    border-color: #d1d5db;
   }
 
   &[data-color='bg-black'] {
-    background-color: #111827;
+    background-color: #1f2937;
   }
 
   &[data-color='bg-yellow'] {
-    background-color: #fef3c7;
+    background-color: #fbbf24;
   }
 
   &[data-color='bg-red'] {
-    background-color: #fee2e2;
+    background-color: #f87171;
   }
 
   &[data-color='bg-green'] {
-    background-color: #d1fae5;
+    background-color: #34d399;
   }
 }
 
@@ -214,9 +219,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex: 1;
 }
 
 .alignButtons {
@@ -225,6 +237,12 @@
   background: #f3f4f6;
   padding: 4px;
   border-radius: 6px;
+}
+
+.colorButtons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .alignButton {
