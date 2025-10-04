@@ -62,23 +62,25 @@ export const SquibMenu: Component<SquibMenuProps> = (props) => {
       data-editor-id={props.editorId}
     >
       <div class={styles.squibMenuHeader}>
-        <button
-          onClick={() => setFormTab('content')}
-          class={clsx(styles.button, {
-            [styles.active]: formTab() === 'content'
-          })}
-        >
-          Текст
-        </button>
-        <button
-          onClick={() => setFormTab('style')}
-          class={clsx(styles.button, {
-            [styles.active]: formTab() === 'style'
-          })}
-        >
-          Стиль
-        </button>
-        <button onClick={handleClose} class={styles.closeButton}>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button
+            onClick={() => setFormTab('content')}
+            class={clsx(styles.tabButton, {
+              [styles.active]: formTab() === 'content'
+            })}
+          >
+            Текст
+          </button>
+          <button
+            onClick={() => setFormTab('style')}
+            class={clsx(styles.tabButton, {
+              [styles.active]: formTab() === 'style'
+            })}
+          >
+            Стиль
+          </button>
+        </div>
+        <button onClick={handleClose} class={styles.closeButton} title="Скрыть меню">
           ×
         </button>
       </div>

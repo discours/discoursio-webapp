@@ -207,19 +207,52 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* TODO: Стили для заголовка меню */
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tabButton {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #f3f4f6;
+    color: #111827;
+  }
+
+  &.active {
+    background: #e5e7eb;
+    color: #111827;
+  }
 }
 
 .closeButton {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border: none;
   background: transparent;
+  border-radius: 4px;
   cursor: pointer;
-  /* TODO: Стили для кнопки закрытия */
+  color: #6b7280;
+  font-size: 20px;
+  line-height: 1;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #f3f4f6;
+    color: #111827;
+  }
 }
 
 .visible {
