@@ -57,9 +57,20 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
       }
 
       xhr.addEventListener('load', async () => {
+        console.log('[Upload] Response received:', {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          responseText: xhr.responseText,
+          responseLength: xhr.responseText.length,
+          contentType: xhr.getResponseHeader('Content-Type')
+        })
+
         if (xhr.status >= 200 && xhr.status < 300) {
           const filename = xhr.responseText.trim()
-          if (!filename) return reject(new Error(t('Empty response from server')))
+          if (!filename) {
+            console.error('[Upload] Empty response from server')
+            return reject(new Error(t('Empty response from server')))
+          }
           console.log('[Upload] Success:', filename)
           resolve(filename)
         } else {
