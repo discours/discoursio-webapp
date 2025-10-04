@@ -1,10 +1,6 @@
-import { clsx } from 'clsx'
-import { createSignal, Show } from 'solid-js'
+import { Show } from 'solid-js'
 
-import { Icon } from '~/components/_shared/Icon'
-import { Image } from '~/components/_shared/Image'
 import { MediaItem, Topic } from '~/graphql/generated/graphql'
-import { getImageSrcSet } from '~/lib/imageCache'
 import { CardTopic } from '../../Feed/CardTopic'
 
 import styles from './AudioHeader.module.scss'
@@ -17,27 +13,8 @@ type Props = {
 }
 
 export const AudioHeader = (props: Props) => {
-  const [expandedImage, setExpandedImage] = createSignal(false)
-
   return (
-    <div class={clsx(styles.AudioHeader, { [styles.expandedImage]: expandedImage() })}>
-      <div class={styles.cover}>
-        <Show when={!props.cover}>
-          <Icon name="create-audio" class={styles.placeholder} />
-        </Show>
-        <Image
-          class={styles.image}
-          src={props.cover || ''}
-          srcSet={getImageSrcSet(props.cover || '', [200, 300, 400, 600])}
-          alt={props.title}
-          width={300}
-        />
-        <Show when={props.cover}>
-          <button type="button" class={styles.expand} onClick={() => setExpandedImage(!expandedImage())}>
-            <Icon name="expand-circle" />
-          </button>
-        </Show>
-      </div>
+    <div class={styles.AudioHeader}>
       <div class={styles.albumInfo}>
         <Show when={props.topic}>
           <CardTopic title={props.topic.title || ''} slug={props.topic.slug} />

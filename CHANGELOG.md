@@ -4,6 +4,13 @@
 
 ## [0.14.31] - 2025-10-04
 
+### 🎨 UI: Audio Layout Simplification
+- **✅ Убран большой растянутый кавер**: Удален режим expanded image в AudioHeader
+  - Убрана кнопка expand и состояние `expandedImage`
+  - Кавер больше не растягивается на всю ширину при клике
+  - Упрощен компонент - только заголовок и метаданные
+  - Очищены неиспользуемые стили `.cover` и `.expandedImage`
+
 ### 🚀 NEW: Vercel Edge Thumbnail Generation
 - **✅ Создан `/api/thumb/[width]/[...path]`**: Генерация thumbnails на Vercel Edge
   - Автоматический выбор формата (AVIF → WebP → JPEG) по Accept header
