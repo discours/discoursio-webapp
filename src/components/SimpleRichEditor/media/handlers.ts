@@ -86,10 +86,10 @@ export const createMediaHandlers = (context: MediaHandlersContext) => {
       return
     }
 
-    // Обработка клика по врезке (squib)
-    if (target.closest('[data-type="squib"]')) {
+    // Обработка клика по подвёрстке (squib) - определяется по наличию data-align
+    if (target.closest('[data-align]')) {
       e.preventDefault()
-      const squib = target.closest('[data-type="squib"]')
+      const squib = target.closest('[data-align]')
       if (squib) {
         setCurrentSquib(squib as HTMLElement)
         setShowSquibEditor(true)

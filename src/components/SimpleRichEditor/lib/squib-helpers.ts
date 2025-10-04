@@ -7,18 +7,19 @@
 export const squibId = 'squib-editor'
 
 /**
- * Получает все врезки из редактора
+ * Получает все подвёрстки из редактора
+ * Подвёрстка (squib) — выделенный блок текста с особым оформлением
  * @param editor Элемент редактора
- * @returns Массив врезок с их идентификаторами и содержимым
+ * @returns Массив подвёрсток с их идентификаторами и содержимым
  */
 export const getAllSquibs = (editor: HTMLElement): Array<{ id: string; content: string; element: HTMLElement }> => {
   if (!editor) return []
 
-  // Находим все врезки в редакторе
-  const squibElements = editor.querySelectorAll('[data-type="squib"]')
+  // Находим все подвёрстки в редакторе (определяются по наличию data-align)
+  const squibElements = editor.querySelectorAll('[data-align]')
   if (!squibElements.length) return []
 
-  // Собираем информацию о врезках
+  // Собираем информацию о подвёрстках
   const squibs = Array.from(squibElements).map((squib) => {
     const squibId = squib.getAttribute('data-squib-id')
     if (!squibId) return null

@@ -739,9 +739,30 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         trackSelectionAndCursor()
       }, 5)
 
-      // Скрываем все активные меню/формы
+      // Скрываем все активные меню/формы (кроме squib при создании)
       setShowForm(null)
-      setShowSquibEditor(false)
+
+      // Для команды squib - показываем меню редактирования если элемент создан
+      if (command === 'squib' && result.success) {
+        const selection = window.getSelection()
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+          const squibElement =
+            range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+              ? (range.commonAncestorContainer.parentElement?.closest('[data-align]') as HTMLElement)
+              : (range.commonAncestorContainer as HTMLElement).closest('[data-align]')
+
+          if (squibElement) {
+            console.log('[handleAction] Squib created, showing editor menu')
+            setCurrentSquib(squibElement)
+            setShowSquibEditor(true)
+          } else {
+            setShowSquibEditor(false)
+          }
+        }
+      } else {
+        setShowSquibEditor(false)
+      }
 
       console.log('[handleAction] COMPLETE - Command processing finished')
     }, 50) // Увеличиваем задержку для стабильного обновления состояния кнопок
