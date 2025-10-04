@@ -4,7 +4,7 @@
  */
 
 import { Accessor, Setter } from 'solid-js'
-import { EditorFieldType } from '../lib/types'
+import { EditorFieldType, Position } from '../lib/types'
 import { getOrCreateSelection } from '../lib/utils'
 
 /**
@@ -20,6 +20,7 @@ export interface MediaHandlersContext {
   setEditingImage: Setter<HTMLElement | null>
   setCurrentSquib: Setter<HTMLElement | null>
   setShowSquibEditor: Setter<boolean>
+  setSquibMenuPosition: Setter<Position>
   // Form handlers
   showInlineForm: (type: 'link' | 'video', onSubmit: (value: string) => void, initialValue?: string) => void
   showImageUploadModal: () => void
@@ -27,6 +28,7 @@ export interface MediaHandlersContext {
   handleInsertTooltip: (text: string) => void
   // Utility functions
   saveSelection: () => void
+  calculateSquibMenuPosition: (squibElement: HTMLElement) => Position
 }
 
 /**
@@ -39,10 +41,12 @@ export const createMediaHandlers = (context: MediaHandlersContext) => {
     setEditingImage,
     setCurrentSquib,
     setShowSquibEditor,
+    setSquibMenuPosition,
     showInlineForm,
     showImageUploadModal,
     handleInsertLink,
-    saveSelection
+    saveSelection,
+    calculateSquibMenuPosition
   } = context
 
   const handleContentClick = (e: MouseEvent) => {
@@ -89,9 +93,10 @@ export const createMediaHandlers = (context: MediaHandlersContext) => {
     // Обработка клика по подвёрстке (squib) - определяется по наличию data-align
     if (target.closest('[data-align]')) {
       e.preventDefault()
-      const squib = target.closest('[data-align]')
+      const squib = target.closest('[data-align]') as HTMLElement
       if (squib) {
-        setCurrentSquib(squib as HTMLElement)
+        setCurrentSquib(squib)
+        setSquibMenuPosition(calculateSquibMenuPosition(squib))
         setShowSquibEditor(true)
       }
       return

@@ -152,6 +152,25 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   // Реактивная позиция Plus-меню
   const [plusMenuTop, setPlusMenuTop] = createSignal<number>(0)
 
+  // Позиция меню подвёрстки
+  const [squibMenuPosition, setSquibMenuPosition] = createSignal<Position>({ top: 50, left: 50 })
+
+  // Функция для вычисления позиции меню подвёрстки над элементом
+  const calculateSquibMenuPosition = (squibElement: HTMLElement): Position => {
+    const rect = squibElement.getBoundingClientRect()
+    const editorRect = editorRef()?.getBoundingClientRect()
+
+    if (!editorRect) {
+      return { top: 50, left: 50 }
+    }
+
+    // Позиционируем меню над блоком подвёрстки
+    return {
+      top: rect.top - editorRect.top - 10, // Небольшой отступ сверху
+      left: rect.left - editorRect.left
+    }
+  }
+
   let blurTimerRef = 0
   const blurTimeout = 150
 
@@ -563,11 +582,13 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     setEditingImage,
     setCurrentSquib,
     setShowSquibEditor,
+    setSquibMenuPosition,
     showInlineForm: formHandlers.showInlineForm,
     showImageUploadModal: formHandlers.showImageUploadModal,
     handleInsertLink: formHandlers.handleInsertLink,
     handleInsertTooltip: formHandlers.handleInsertTooltip,
-    saveSelection
+    saveSelection,
+    calculateSquibMenuPosition
   })
 
   // Extend base handlers with additional logic
@@ -755,6 +776,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           if (squibElement) {
             console.log('[handleAction] Squib created, showing editor menu')
             setCurrentSquib(squibElement)
+            setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
             setShowSquibEditor(true)
           } else {
             setShowSquibEditor(false)
@@ -1094,7 +1116,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
               setShowSquibEditor(false)
               setCurrentSquib(null)
             }}
-            position={{ top: 50, left: 50 } as Position}
+            position={squibMenuPosition()}
           />
         </Show>
 
