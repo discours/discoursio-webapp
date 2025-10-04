@@ -1,7 +1,6 @@
 import { clsx } from 'clsx'
-import { Component, createSignal, onMount, Show } from 'solid-js'
+import { Component, createSignal, onMount } from 'solid-js'
 import { CommandGroupType, CommandType, Position } from '../lib/types'
-import { SimpleToolbar } from './SimpleToolbar'
 
 import styles from './SquibMenu.module.scss'
 
