@@ -47,7 +47,13 @@ const ALLOWED_ATTR = [
   'allowfullscreen',
   // Стили и форматирование
   'style',
-  'class'
+  'class',
+  // Подвёрстка (squib)
+  'data-align',
+  'data-bg',
+  'data-squib-id',
+  // Другие data-атрибуты для редактора
+  'data-type'
 ]
 
 // Базовая конфигурация согласно документации DOMPurify
