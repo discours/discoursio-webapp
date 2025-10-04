@@ -765,23 +765,27 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
       // Для команды squib - показываем меню редактирования если элемент создан
       if (command === 'squib' && result.success) {
-        const selection = window.getSelection()
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0)
-          const squibElement =
-            range.commonAncestorContainer.nodeType === Node.TEXT_NODE
-              ? (range.commonAncestorContainer.parentElement?.closest('[data-align]') as HTMLElement)
-              : (range.commonAncestorContainer as HTMLElement).closest('[data-align]')
+        // Ждем пока DOM обновится после санитизации
+        setTimeout(() => {
+          const selection = window.getSelection()
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0)
+            const container = range.commonAncestorContainer
+            const squibElement = (container.nodeType === Node.TEXT_NODE
+              ? container.parentElement?.closest('[data-align]')
+              : (container as HTMLElement).closest('[data-align]')) as HTMLElement | null
 
-          if (squibElement) {
-            console.log('[handleAction] Squib created, showing editor menu')
-            setCurrentSquib(squibElement)
-            setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
-            setShowSquibEditor(true)
-          } else {
-            setShowSquibEditor(false)
+            if (squibElement) {
+              console.log('[handleAction] Squib created, showing editor menu')
+              setCurrentSquib(squibElement)
+              setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
+              setShowSquibEditor(true)
+            } else {
+              console.log('[handleAction] Squib element not found')
+              setShowSquibEditor(false)
+            }
           }
-        }
+        }, 100)
       } else {
         setShowSquibEditor(false)
       }
