@@ -1,4 +1,6 @@
 import { createEffect, createMemo, createSignal, on, onMount, Show } from 'solid-js'
+import { isServer } from 'solid-js/web'
+import { Loading } from '~/components/_shared/Loading'
 import { MediaItem } from '~/graphql/generated/graphql'
 import { getCdnUrl } from '~/lib/imageCache' // NOTE: для аудио файлов getCdnUrl работает корректно
 import { AudioTimeLine } from './AudioTimeLine'
@@ -15,6 +17,11 @@ type Props = {
 }
 
 export const AudioPlayer = (props: Props) => {
+  // ✅ КРИТИЧНО: Не рендерим AudioPlayer на SSR для избежания гидрационных мисматчей
+  if (isServer) {
+    return <Loading />
+  }
+
   let audioRef: HTMLAudioElement | undefined
   let gainNodeRef: GainNode | undefined
   let audioContextRef: AudioContext | undefined

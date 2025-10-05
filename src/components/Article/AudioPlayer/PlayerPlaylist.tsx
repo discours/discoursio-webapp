@@ -1,6 +1,8 @@
 import { createSignal, For, lazy, Show } from 'solid-js'
+import { isServer } from 'solid-js/web'
 import { Icon } from '~/components/_shared/Icon'
 import { Popover } from '~/components/_shared/Popover'
+import { sanitizeHtml } from '~/components/SimpleRichEditor/lib/sanitize'
 import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
 import { useLocalize } from '~/context/localize'
 import { MediaItem } from '~/graphql/generated/graphql'
@@ -158,12 +160,18 @@ export const PlayerPlaylist = (props: Props) => {
                     <div class={styles.descriptionBlock}>
                       <Show when={mi.body}>
                         <div class={styles.description}>
-                          <div innerHTML={mi.body || ''} />
+                          {/* ✅ КРИТИЧНО: Санитизация HTML и проверка isServer для гидрации */}
+                          <Show when={!isServer} fallback={<div>{mi.body || ''}</div>}>
+                            <div innerHTML={sanitizeHtml(mi.body || '')} />
+                          </Show>
                         </div>
                       </Show>
                       <Show when={mi.lyrics}>
                         <div class={styles.lyrics}>
-                          <div innerHTML={mi.lyrics || ''} />
+                          {/* ✅ КРИТИЧНО: Санитизация HTML и проверка isServer для гидрации */}
+                          <Show when={!isServer} fallback={<div>{mi.lyrics || ''}</div>}>
+                            <div innerHTML={sanitizeHtml(mi.lyrics || '')} />
+                          </Show>
                         </div>
                       </Show>
                     </div>

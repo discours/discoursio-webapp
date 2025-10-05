@@ -55,7 +55,8 @@ export type ArticlePageSearchParams = {
 const COMMENTS_SCROLL_OFFSET = 20 // Дополнительный отступ для комментариев
 
 const scrollTo = (el?: HTMLElement, isComments?: boolean) => {
-  if (!(el && window)) return
+  // ✅ Правильная проверка browser API согласно антипаттерну #2
+  if (!el || typeof window === 'undefined') return
 
   const { top } = el.getBoundingClientRect()
   const offset = DEFAULT_HEADER_OFFSET + (isComments ? COMMENTS_SCROLL_OFFSET : 0)
@@ -96,25 +97,24 @@ export const FullArticle = (props: Props) => {
     return body
   })
 
+  // ✅ КРИТИЧНО: Используем одинаковую логику на SSR и клиенте для гидрации
   const imageUrls = createMemo(() => {
     if (!body()) {
       return []
     }
 
-    if (isServer) {
-      const result: string[] = []
-      let match: RegExpMatchArray | null
+    // Всегда используем regex парсинг для стабильной гидрации
+    const result: string[] = []
+    let match: RegExpMatchArray | null
+    // Сбрасываем lastIndex для повторного использования regex
+    imgSrcRegExp.lastIndex = 0
 
-      while ((match = imgSrcRegExp.exec(body())) !== null) {
-        if (match) result.push(match[1])
-        else break
-      }
-      return result
+    while ((match = imgSrcRegExp.exec(body())) !== null) {
+      if (match) result.push(match[1])
+      else break
     }
 
-    const imageElements = document.querySelectorAll<HTMLImageElement>('#shoutBody img')
-    // eslint-disable-next-line unicorn/prefer-spread
-    return Array.from(imageElements).map((img) => img.src)
+    return result
   })
 
   const media = createMemo<MediaItem[]>(() => (props.article.media || []) as MediaItem[])
@@ -146,13 +146,15 @@ export const FullArticle = (props: Props) => {
 
   createEffect(
     on([() => searchParams?.commentId, commentsWrapper, isReactionsLoaded], ([cid, wrapper, loaded]) => {
-      if (!(cid && loaded && wrapper)) return
+      // ✅ Проверка browser API согласно антипаттерну #2
+      if (!(cid && loaded && wrapper) || isServer) return
 
       // First scroll - immediately go to comments section
       scrollTo(wrapper, true)
 
       // Set up observer to watch for DOM changes
       const observer = new MutationObserver(() => {
+        if (typeof document === 'undefined') return
         const commentEl = document.querySelector<HTMLElement>(`[id='comment_${cid}']`)
         if (commentEl) {
           // Second scroll - when specific comment appears
@@ -341,7 +343,8 @@ export const FullArticle = (props: Props) => {
   // Check iframes size
   const [articleContainer, setArticleContainer] = createSignal<HTMLElement | undefined>()
   const updateIframeSizes = () => {
-    if (!window) return
+    // ✅ Правильная проверка browser API согласно антипаттерну #2
+    if (typeof window === 'undefined') return
     if (!(articleContainer() && props.article.body)) return
     const iframes = articleContainer()?.querySelectorAll('iframe')
     if (!iframes) return
@@ -368,10 +371,19 @@ export const FullArticle = (props: Props) => {
     // console.debug(props.article)
     setPages((_) => ({ comments: 0, rating: 0 }))
     addSeen(props.article.slug)
-    document.title = props.article.title
+
+    // ✅ Проверка browser API перед использованием document
+    if (typeof document !== 'undefined') {
+      document.title = props.article.title
+    }
+
     updateIframeSizes()
-    window?.addEventListener('resize', updateIframeSizes)
-    onCleanup(() => window.removeEventListener('resize', updateIframeSizes))
+
+    // ✅ Проверка browser API перед addEventListener
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateIframeSizes)
+      onCleanup(() => window.removeEventListener('resize', updateIframeSizes))
+    }
   })
   const shareUrl = createMemo(() => getShareUrl({ pathname: `/${props.article.slug || ''}` }))
   const getAuthorName = (a: Author) =>
@@ -605,7 +617,10 @@ export const FullArticle = (props: Props) => {
                           description={m.body || ''}
                         />
                         <Show when={m?.body}>
-                          <div innerHTML={replaceImageUrls(m.body || '')} />
+                          {/* ✅ КРИТИЧНО: Проверка isServer для стабильной гидрации */}
+                          <Show when={!isServer} fallback={<div>{m.body || ''}</div>}>
+                            <div innerHTML={replaceImageUrls(m.body || '')} />
+                          </Show>
                         </Show>
                       </div>
                     )}

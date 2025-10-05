@@ -28,12 +28,16 @@ const coverImages = [
   CoverImage12
 ]
 
-let counter = 0
+// ✅ КРИТИЧНО: Используем детерминированный выбор вместо глобального счётчика
+// Глобальный счётчик создаёт гидрационные мисматчи (SSR vs клиент)
 export const CoverImage = (props: CoverImageProps) => {
-  const CoverImageComponent = coverImages[counter]
-  counter++
-  if (counter === coverImages.length) {
-    counter = 0
-  }
+  // Используем hash от class prop для стабильного выбора изображения
+  // Если class не передан, используем первое изображение
+  const hash = props.class
+    ? props.class.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0)
+    : 0
+  const index = hash % coverImages.length
+  const CoverImageComponent = coverImages[index]
+
   return <CoverImageComponent {...props} />
 }

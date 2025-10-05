@@ -610,6 +610,11 @@ export const processCustomTags = async (container: HTMLElement) => {
  * Используется в компонентах после рендеринга innerHTML
  */
 export const initCustomTags = (elementOrRef: HTMLElement | (() => HTMLElement | undefined)) => {
+  // ✅ КРИТИЧНО: Проверка SSR - не манипулируем DOM на сервере
+  if (typeof window === 'undefined') {
+    return
+  }
+
   const element = typeof elementOrRef === 'function' ? elementOrRef() : elementOrRef
 
   if (!element) {
@@ -617,8 +622,9 @@ export const initCustomTags = (elementOrRef: HTMLElement | (() => HTMLElement | 
     return
   }
 
-  // Небольшая задержка для уверенности что DOM готов
-  setTimeout(() => {
+  // ✅ КРИТИЧНО: Используем requestAnimationFrame вместо setTimeout
+  // для лучшей синхронизации с браузером и избежания гидрационных мисматчей
+  requestAnimationFrame(() => {
     void processCustomTags(element)
-  }, 0)
+  })
 }
