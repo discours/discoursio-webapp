@@ -4,7 +4,7 @@ import { readFileSync, existsSync, statSync, createReadStream } from 'node:fs'
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { listener } from '../.output/server/index.mjs'
-import { checkSSL } from './https'
+import { checkSSL } from './https.ts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..')
