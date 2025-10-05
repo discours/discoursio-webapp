@@ -1,7 +1,8 @@
 import { clsx } from 'clsx'
 import { Show } from 'solid-js'
+import { useFollowing } from '~/context/following'
 import { useLocalize } from '~/context/localize'
-import { ReactionSort } from '~/graphql/generated/graphql'
+import { FollowingEntity, ReactionSort } from '~/graphql/generated/graphql'
 import { Button } from '../_shared/Button'
 import { Icon } from '../_shared/Icon'
 
@@ -16,6 +17,8 @@ import styles from './CommentsHeader.module.scss'
  * @property {ReactionSort} order - Текущая сортировка комментариев
  * @property {Function} setOrder - Функция для установки сортировки
  * @property {Function} toggleNewOnly - Функция для переключения режима отображения новых комментариев
+ * @property {number} shoutId - ID поста (для отписки)
+ * @property {string} shoutSlug - Slug поста (для отписки)
  */
 type CommentsHeaderProps = {
   onlyNew: boolean
@@ -24,6 +27,8 @@ type CommentsHeaderProps = {
   order: ReactionSort
   setOrder: (order: ReactionSort) => void
   toggleNewOnly: () => void
+  shoutId?: number
+  shoutSlug?: string
 }
 
 /**
@@ -32,6 +37,28 @@ type CommentsHeaderProps = {
  */
 export const CommentsHeader = (props: CommentsHeaderProps) => {
   const { t } = useLocalize()
+  const { follow, unfollow, follows } = useFollowing()
+
+  // Проверяем слежение за уведомлениями
+  const isFollowing = () => {
+    if (!props.shoutId) return false
+    return (follows.shouts || []).some((shout) => shout?.id === props.shoutId)
+  }
+
+  // Обработчик переключения слежения
+  const handleToggleFollow = async () => {
+    if (!props.shoutSlug) return
+
+    try {
+      if (isFollowing()) {
+        await unfollow(FollowingEntity.Shout, props.shoutSlug)
+      } else {
+        await follow(FollowingEntity.Shout, props.shoutSlug)
+      }
+    } catch (error) {
+      console.error('[CommentsHeader] Failed to toggle follow:', error)
+    }
+  }
 
   return (
     <div class={styles.commentsHeaderWrapper}>
@@ -44,6 +71,22 @@ export const CommentsHeader = (props: CommentsHeaderProps) => {
             <span onClick={props.toggleNewOnly} class={styles.newReactions}>
               {` +${props.newComments}`} {props.onlyNew ? `(${t('New only').toLowerCase()})` : ''}
             </span>
+          </Show>
+
+          {/* Кнопка подписки на дискуссию */}
+          <Show when={props.shoutId && props.shoutSlug}>
+            <button
+              class={styles.followButton}
+              onClick={handleToggleFollow}
+              title={isFollowing() ? t('Unfollow the discussion') : t('Follow the discussion')}
+            >
+              <Icon
+                name={isFollowing() ? 'bell-off' : 'bell'}
+                class={clsx(styles.followIcon, {
+                  [styles.following]: isFollowing()
+                })}
+              />
+            </button>
           </Show>
         </h2>
       </Show>

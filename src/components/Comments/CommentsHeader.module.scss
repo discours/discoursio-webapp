@@ -21,6 +21,7 @@
   font-weight: 600;
   margin: 0;
   color: var(--color-text-primary);
+  position: relative;
   
   .commentsIcon {
     width: 1.5rem;
@@ -33,6 +34,42 @@
     margin-left: 0.5rem;
     font-weight: 400;
     color: var(--color-text-secondary);
+  }
+}
+
+.followButton {
+  margin-left: auto;
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+  
+  &:hover {
+    background: var(--color-bg-hover);
+    
+    .followIcon {
+      transform: scale(1.1);
+    }
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  .followIcon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-text-secondary);
+    transition: all 0.2s;
+    
+    &.following {
+      color: var(--color-primary);
+    }
   }
 }
 

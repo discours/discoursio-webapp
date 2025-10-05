@@ -5,7 +5,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { createAuthHelpers } from '../utils/auth-helpers-v2'
+import { isUserLoggedIn, performLogin } from '../utils/auth-helpers'
 import { createEditorHelpers } from '../utils/editor-helpers'
 
 test.describe('Editor Full Workflow Test', () => {
@@ -15,7 +15,6 @@ test.describe('Editor Full Workflow Test', () => {
     console.log('[EDITOR WORKFLOW] 🚀 Начинаем полный тест создания статьи...')
     console.log('[EDITOR WORKFLOW] Base URL:', baseURL)
 
-    const authHelpers = createAuthHelpers(page)
     const editorHelpers = createEditorHelpers(page)
 
     // 1. АВТОРИЗАЦИЯ
@@ -24,7 +23,7 @@ test.describe('Editor Full Workflow Test', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     await page.waitForTimeout(3000)
 
-    const authSuccess = await authHelpers.performLogin()
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       console.log('[EDITOR WORKFLOW] ❌ Авторизация не удалась, пропускаем тест')
       test.skip()
@@ -121,7 +120,7 @@ test.describe('Editor Full Workflow Test', () => {
     console.log('[EDITOR WORKFLOW] ✅ URL содержит ID черновика')
 
     // Проверяем что мы все еще авторизованы
-    const isStillAuthorized = await authHelpers.checkAuthStatus()
+    const isStillAuthorized = await isUserLoggedIn(page)
     expect(isStillAuthorized).toBe(true)
     console.log('[EDITOR WORKFLOW] ✅ Авторизация сохранилась')
 
@@ -131,14 +130,13 @@ test.describe('Editor Full Workflow Test', () => {
   test('should handle draft auto-save', async ({ page }) => {
     console.log('[EDITOR WORKFLOW] 💾 Тестируем автосохранение черновика...')
 
-    const authHelpers = createAuthHelpers(page)
     const editorHelpers = createEditorHelpers(page)
 
     // Авторизуемся
     await page.goto('/')
     await page.waitForTimeout(2000)
 
-    const authSuccess = await authHelpers.performLogin()
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -185,14 +183,13 @@ test.describe('Editor Full Workflow Test', () => {
   test('should validate required fields before publish', async ({ page }) => {
     console.log('[EDITOR WORKFLOW] ✅ Тестируем валидацию обязательных полей...')
 
-    const authHelpers = createAuthHelpers(page)
     const editorHelpers = createEditorHelpers(page)
 
     // Авторизуемся
     await page.goto('/')
     await page.waitForTimeout(2000)
 
-    const authSuccess = await authHelpers.performLogin()
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return

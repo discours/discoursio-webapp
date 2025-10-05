@@ -12,15 +12,12 @@
  */
 
 import { expect } from '@playwright/test'
-import { createAuthHelpers } from '../utils/auth-helpers-v2'
+import { performLogin } from '../utils/auth-helpers'
 import { baseUrl, waitForPageLoad } from '../utils/common'
 import { test } from '../utils/test-helpers'
 
 test.describe('FollowButton Component', () => {
-  let authHelpers: ReturnType<typeof createAuthHelpers>
-
   test.beforeEach(async ({ page }) => {
-    authHelpers = createAuthHelpers(page)
     await page.goto(baseUrl)
     await waitForPageLoad(page)
   })
@@ -39,9 +36,7 @@ test.describe('FollowButton Component', () => {
         await waitForPageLoad(page)
 
         // Ищем кнопку подписки
-        const followButton = page
-          .locator('button:has-text("Подписаться"), .subscribe-button, [data-testid="follow-button"]')
-          .first()
+        const followButton = page.locator('button:has-text("Подписаться"), button:has-text("Follow")').first()
 
         if (await followButton.isVisible()) {
           await followButton.click()
@@ -65,7 +60,7 @@ test.describe('FollowButton Component', () => {
 
     test('Должен позволять подписаться на автора после авторизации', async ({ page }) => {
       // Авторизуемся
-      const authSuccess = await authHelpers.performLogin()
+      const authSuccess = await performLogin(page)
       if (!authSuccess) {
         test.skip()
         return
@@ -83,9 +78,7 @@ test.describe('FollowButton Component', () => {
         await waitForPageLoad(page)
 
         // Ищем кнопку подписки
-        const followButton = page
-          .locator('button:has-text("Подписаться"), .subscribe-button, [data-testid="follow-button"]')
-          .first()
+        const followButton = page.locator('button:has-text("Подписаться"), button:has-text("Follow")').first()
 
         if (await followButton.isVisible()) {
           // Проверяем начальное состояние
@@ -98,9 +91,7 @@ test.describe('FollowButton Component', () => {
           await page.waitForTimeout(2000)
 
           // Проверяем что кнопка изменилась на "Отписаться" или "Подписан"
-          const unfollowButton = page
-            .locator('button:has-text("Отписаться"), button:has-text("Подписан"), button:has-text("Unfollow")')
-            .first()
+          const unfollowButton = page.locator('button:has-text("Отписаться"), button:has-text("Unfollow")').first()
           await expect(unfollowButton).toBeVisible({ timeout: 10000 })
 
           console.log('✅ Подписка на автора прошла успешно')
@@ -116,30 +107,23 @@ test.describe('FollowButton Component', () => {
 
           // Проверяем что стейт сохранился после перезагрузки
           const followButtonAfterReload = page
-            .locator('button:has-text("Подписаться"), .subscribe-button, [data-testid="follow-button"]')
+            .locator('button:has-text("Подписаться"), button:has-text("Follow")')
+            .first()
+          const unfollowButtonAfterReload = page
+            .locator('button:has-text("Отписаться"), button:has-text("Unfollow")')
             .first()
 
-          if (await followButtonAfterReload.isVisible()) {
+          const isFollowVisible = await followButtonAfterReload.isVisible()
+          const isUnfollowVisible = await unfollowButtonAfterReload.isVisible()
+
+          if (isUnfollowVisible) {
+            console.log('✅ СТЕЙТ СОХРАНИЛСЯ: кнопка показывает состояние "Подписан" после рефреша')
+          } else if (isFollowVisible) {
             const textAfterReload = await followButtonAfterReload.textContent()
             console.log(`📝 Текст кнопки после рефреша: "${textAfterReload}"`)
-
-            // Если кнопка показывает "Подписаться", значит стейт не сохранился
-            if (textAfterReload?.includes('Подписаться') || textAfterReload?.includes('Follow')) {
-              console.log('❌ СТЕЙТ НЕ СОХРАНИЛСЯ: кнопка вернулась в состояние "Подписаться"')
-            } else {
-              console.log('✅ СТЕЙТ СОХРАНИЛСЯ: кнопка осталась в состоянии "Подписан"')
-            }
+            console.log('❌ СТЕЙТ НЕ СОХРАНИЛСЯ: кнопка вернулась в состояние "Подписаться"')
           } else {
-            // Проверяем через селекторы состояния "подписан"
-            const unfollowButtonAfterReload = page
-              .locator('button:has-text("Отписаться"), button:has-text("Подписан")')
-              .first()
-
-            if (await unfollowButtonAfterReload.isVisible()) {
-              console.log('✅ СТЕЙТ СОХРАНИЛСЯ: кнопка показывает состояние "Подписан" после рефреша')
-            } else {
-              console.log('⚠️ Не удалось определить состояние кнопки после рефреша')
-            }
+            console.log('⚠️ Не удалось определить состояние кнопки после рефреша')
           }
         } else {
           console.warn('⚠️ Кнопка подписки не найдена')
@@ -153,7 +137,7 @@ test.describe('FollowButton Component', () => {
 
     test('Должен позволять отписаться от автора', async ({ page }) => {
       // Авторизуемся
-      const authSuccess = await authHelpers.performLogin()
+      const authSuccess = await performLogin(page)
       if (!authSuccess) {
         test.skip()
         return
@@ -171,21 +155,21 @@ test.describe('FollowButton Component', () => {
         await waitForPageLoad(page)
 
         // Сначала подписываемся
-        const followButton = page.locator('button:has-text("Подписаться"), .subscribe-button').first()
+        const followButton = page.locator('button:has-text("Подписаться"), button:has-text("Follow")').first()
 
         if (await followButton.isVisible()) {
           await followButton.click()
           await page.waitForTimeout(2000)
 
           // Теперь отписываемся
-          const unfollowButton = page.locator('button:has-text("Отписаться"), button:has-text("Подписан")').first()
+          const unfollowButton = page.locator('button:has-text("Отписаться"), button:has-text("Unfollow")').first()
 
           if (await unfollowButton.isVisible()) {
             await unfollowButton.click()
             await page.waitForTimeout(2000)
 
             // Проверяем что кнопка вернулась к состоянию "Подписаться"
-            const followButtonAgain = page.locator('button:has-text("Подписаться"), .subscribe-button').first()
+            const followButtonAgain = page.locator('button:has-text("Подписаться"), button:has-text("Follow")').first()
             await expect(followButtonAgain).toBeVisible({ timeout: 10000 })
 
             console.log('✅ Отписка от автора прошла успешно')
@@ -200,17 +184,20 @@ test.describe('FollowButton Component', () => {
             await page.waitForTimeout(3000)
 
             // Проверяем что стейт отписки сохранился после перезагрузки
-            const followButtonAfterReload = page.locator('button:has-text("Подписаться"), .subscribe-button').first()
+            const followButtonAfterReload = page
+              .locator('button:has-text("Подписаться"), button:has-text("Follow")')
+              .first()
+            const unfollowButtonAfterReload = page
+              .locator('button:has-text("Отписаться"), button:has-text("Unfollow")')
+              .first()
 
-            if (await followButtonAfterReload.isVisible()) {
-              const textAfterReload = await followButtonAfterReload.textContent()
-              console.log(`📝 Текст кнопки после отписки и рефреша: "${textAfterReload}"`)
+            const isFollowVisible = await followButtonAfterReload.isVisible()
+            const isUnfollowVisible = await unfollowButtonAfterReload.isVisible()
 
-              if (textAfterReload?.includes('Подписаться') || textAfterReload?.includes('Follow')) {
-                console.log('✅ СТЕЙТ ОТПИСКИ СОХРАНИЛСЯ: кнопка показывает "Подписаться" после рефреша')
-              } else {
-                console.log('❌ СТЕЙТ ОТПИСКИ НЕ СОХРАНИЛСЯ: кнопка осталась в состоянии "Подписан"')
-              }
+            if (isFollowVisible) {
+              console.log('✅ СТЕЙТ ОТПИСКИ СОХРАНИЛСЯ: кнопка показывает "Подписаться" после рефреша')
+            } else if (isUnfollowVisible) {
+              console.log('❌ СТЕЙТ ОТПИСКИ НЕ СОХРАНИЛСЯ: кнопка осталась в состоянии "Подписан"')
             } else {
               console.log('⚠️ Кнопка подписки не найдена после рефреша')
             }
@@ -232,7 +219,7 @@ test.describe('FollowButton Component', () => {
   test.describe('Подписка на темы', () => {
     test('Должен позволять подписаться на тему', async ({ page }) => {
       // Авторизуемся
-      const authSuccess = await authHelpers.performLogin()
+      const authSuccess = await performLogin(page)
       if (!authSuccess) {
         test.skip()
         return
@@ -285,7 +272,7 @@ test.describe('FollowButton Component', () => {
   test.describe('Состояния загрузки и обработка ошибок', () => {
     test('Должен блокировать кнопку во время обработки запроса', async ({ page }) => {
       // Авторизуемся
-      const authSuccess = await authHelpers.performLogin()
+      const authSuccess = await performLogin(page)
       if (!authSuccess) {
         test.skip()
         return
@@ -329,7 +316,7 @@ test.describe('FollowButton Component', () => {
 
     test('Должен предотвращать двойные клики', async ({ page }) => {
       // Авторизуемся
-      const authSuccess = await authHelpers.performLogin()
+      const authSuccess = await performLogin(page)
       if (!authSuccess) {
         test.skip()
         return
@@ -378,7 +365,7 @@ test.describe('FollowButton Component', () => {
   test.describe('Разные варианты отображения', () => {
     test('Должен отображать мини-кнопку когда minimize=true', async ({ page }) => {
       // Авторизуемся
-      const authSuccess = await authHelpers.performLogin()
+      const authSuccess = await performLogin(page)
       if (!authSuccess) {
         test.skip()
         return
@@ -412,7 +399,7 @@ test.describe('FollowButton Component', () => {
 
     test('Должен отображать кнопку с иконкой когда iconButtons=true', async ({ page }) => {
       // Авторизуемся
-      const authSuccess = await authHelpers.performLogin()
+      const authSuccess = await performLogin(page)
       if (!authSuccess) {
         test.skip()
         return
@@ -452,7 +439,7 @@ test.describe('FollowButton Component', () => {
   test.describe('Интеграция с контекстом', () => {
     test('Должен синхронизировать состояние с контекстом подписок', async ({ page }) => {
       // Авторизуемся
-      const authSuccess = await authHelpers.performLogin()
+      const authSuccess = await performLogin(page)
       if (!authSuccess) {
         test.skip()
         return
@@ -509,7 +496,7 @@ test.describe('FollowButton Component', () => {
   test.describe('Accessibility и UX', () => {
     test('Должен иметь правильные ARIA атрибуты', async ({ page }) => {
       // Авторизуемся
-      const authSuccess = await authHelpers.performLogin()
+      const authSuccess = await performLogin(page)
       if (!authSuccess) {
         test.skip()
         return
@@ -549,7 +536,7 @@ test.describe('FollowButton Component', () => {
 
     test('Должен показывать правильный текст в зависимости от состояния', async ({ page }) => {
       // Авторизуемся
-      const authSuccess = await authHelpers.performLogin()
+      const authSuccess = await performLogin(page)
       if (!authSuccess) {
         test.skip()
         return

@@ -476,6 +476,8 @@ export const FullArticle = (props: Props) => {
 
       <FeedArticlePopup
         canEdit={Boolean(canEdit())}
+        shoutId={props.article?.id}
+        shoutSlug={props.article?.slug}
         containerCssClass={clsx(stylesHeader.control, styles.articlePopupOpener)}
         onShareClick={() => showModal('share')}
         onInviteClick={() => showModal('inviteMembers')}

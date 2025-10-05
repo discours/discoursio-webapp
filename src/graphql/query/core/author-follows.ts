@@ -27,6 +27,11 @@ export default gql`
           followers
         }
       }
+      shouts {
+        id
+        slug
+        title
+      }
       #communities {
       #  id
       #  slug

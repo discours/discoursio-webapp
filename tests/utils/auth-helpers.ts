@@ -293,29 +293,14 @@ export async function performLogout(page: Page): Promise<boolean> {
  */
 export async function isUserLoggedIn(page: Page): Promise<boolean> {
   try {
-    // Проверяем несколько индикаторов авторизации
+    // Простая проверка: если кнопки "Войти" нет - значит пользователь авторизован
     const loginButton = page.locator('a:has-text("Войти"), button:has-text("Войти")').first()
-    const profileElement = page.locator(
-      '.userpic, [data-testid="user-avatar"], [data-user-menu], button:has([src*="avatar"])'
-    )
-    const userMenu = page.locator('[data-user-menu], .user-menu, .profile-menu')
-    const logoutButton = page.locator('button:has-text("Выйти"), a:has-text("Выйти"), [data-logout]')
+    const loginVisible = await loginButton.isVisible().catch(() => false)
 
-    const loginVisible = await loginButton.isVisible()
-    const profileVisible = await profileElement.isVisible()
-    const userMenuVisible = await userMenu.isVisible()
-    const logoutVisible = await logoutButton.isVisible()
-
-    // Пользователь авторизован если:
-    // 1. Кнопка входа НЕ видна И
-    // 2. Есть профиль/аватар ИЛИ есть меню пользователя ИЛИ есть кнопка выхода
-    const isLoggedIn = !loginVisible && (profileVisible || userMenuVisible || logoutVisible)
+    const isLoggedIn = !loginVisible
 
     console.log('[isUserLoggedIn]', {
       loginVisible,
-      profileVisible,
-      userMenuVisible,
-      logoutVisible,
       isLoggedIn
     })
 
@@ -456,8 +441,19 @@ export async function ensureTestAccount(page: Page): Promise<{ email: string; pa
     // Отправляем форму
     await page.click('button[type="submit"]')
 
-    // Ждем результата авторизации
-    await page.waitForTimeout(5000)
+    // Ждем результата авторизации - просто ждём исчезновения кнопки "Войти"
+    try {
+      await page.waitForSelector('a:has-text("Войти"), button:has-text("Войти")', {
+        state: 'hidden',
+        timeout: 10000
+      })
+      console.log('[ensureTestAccount] Кнопка "Войти" исчезла')
+    } catch (_e) {
+      console.log('[ensureTestAccount] Кнопка "Войти" всё ещё видна')
+    }
+
+    // Дополнительное ожидание для загрузки профиля
+    await page.waitForTimeout(1000)
 
     // Проверяем статус авторизации
     const loginStatus = await isUserLoggedIn(page)

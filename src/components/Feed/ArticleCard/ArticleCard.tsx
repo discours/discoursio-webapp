@@ -418,6 +418,8 @@ export const ArticleCard = (props: ArticleCardProps) => {
               <div class={styles.shoutCardDetailsItem}>
                 <FeedArticlePopup
                   canEdit={Boolean(canEdit())}
+                  shoutId={props.article?.id}
+                  shoutSlug={props.article?.slug}
                   containerCssClass={stylesHeader.control}
                   onShareClick={() => props.article && props.onShare?.(props.article)}
                   onInviteClick={onInvite}

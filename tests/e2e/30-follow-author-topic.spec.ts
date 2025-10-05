@@ -36,9 +36,7 @@ test.describe('Система подписок', () => {
       await waitForPageLoad(page)
 
       // Ищем кнопку подписки
-      const subscribeButton = await page
-        .locator('button:has-text("Подписаться"), .subscribe-button, [data-testid="subscribe"]')
-        .first()
+      const subscribeButton = await page.locator('button:has-text("Подписаться"), button:has-text("Follow")').first()
 
       if (await subscribeButton.isVisible()) {
         await subscribeButton.click()
@@ -46,7 +44,7 @@ test.describe('Система подписок', () => {
 
         // Проверяем, что кнопка изменилась на "Отписаться"
         const unsubscribeButton = await page
-          .locator('button:has-text("Отписаться"), button:has-text("Подписан"), .unsubscribe-button')
+          .locator('button:has-text("Отписаться"), button:has-text("Unfollow")')
           .first()
         expect(await unsubscribeButton.isVisible()).toBeTruthy()
       } else {

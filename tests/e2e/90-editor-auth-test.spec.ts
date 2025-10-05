@@ -5,14 +5,12 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { createAuthHelpers } from '../utils/auth-helpers-v2'
+import { isUserLoggedIn, performLogin } from '../utils/auth-helpers'
 
 test.describe('Editor Auth Test', () => {
   test('should login successfully for editor access', async ({ page, baseURL }) => {
     console.log('[EDITOR AUTH] 🔐 Тестируем авторизацию для доступа к редактору...')
     console.log('[EDITOR AUTH] Base URL:', baseURL)
-
-    const authHelpers = createAuthHelpers(page)
 
     // Переходим на главную страницу
     await page.goto('/', { waitUntil: 'domcontentloaded' })
@@ -20,7 +18,7 @@ test.describe('Editor Auth Test', () => {
     console.log('[EDITOR AUTH] Страница загружена')
 
     // Выполняем авторизацию
-    const authSuccess = await authHelpers.performLogin()
+    const authSuccess = await performLogin(page)
 
     if (!authSuccess) {
       console.log('[EDITOR AUTH] ❌ Авторизация не удалась')
@@ -50,7 +48,7 @@ test.describe('Editor Auth Test', () => {
     console.log('[EDITOR AUTH] ✅ Редактор загружен и доступен')
 
     // Проверяем статус авторизации
-    const isAuthorized = await authHelpers.checkAuthStatus()
+    const isAuthorized = await isUserLoggedIn(page)
     expect(isAuthorized).toBe(true)
     console.log('[EDITOR AUTH] ✅ Статус авторизации подтвержден')
   })
@@ -58,13 +56,11 @@ test.describe('Editor Auth Test', () => {
   test('should maintain auth state across page reloads', async ({ page }) => {
     console.log('[EDITOR AUTH] 🔄 Тестируем сохранение авторизации при перезагрузке...')
 
-    const authHelpers = createAuthHelpers(page)
-
     // Переходим на главную и авторизуемся
     await page.goto('/')
     await page.waitForTimeout(2000)
 
-    const authSuccess = await authHelpers.performLogin()
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       test.skip()
       return
@@ -75,7 +71,7 @@ test.describe('Editor Auth Test', () => {
     await page.waitForTimeout(3000)
 
     // Проверяем что авторизация сохранилась
-    const isStillAuthorized = await authHelpers.checkAuthStatus()
+    const isStillAuthorized = await isUserLoggedIn(page)
     expect(isStillAuthorized).toBe(true)
     console.log('[EDITOR AUTH] ✅ Авторизация сохранилась после перезагрузки')
 

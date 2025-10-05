@@ -5,20 +5,18 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { createAuthHelpers } from '../utils/auth-helpers-v2'
+import { performLogin } from '../utils/auth-helpers'
 import { createEditorHelpers } from '../utils/editor-helpers'
 
 test.describe('Editor Formatting Test', () => {
   test.beforeEach(async ({ page }) => {
     console.log('[EDITOR FORMAT] 🎨 Подготовка к тестированию форматирования...')
 
-    const authHelpers = createAuthHelpers(page)
-
     // Переходим на главную и авторизуемся
     await page.goto('/')
     await page.waitForTimeout(2000)
 
-    const authSuccess = await authHelpers.performLogin()
+    const authSuccess = await performLogin(page)
     if (!authSuccess) {
       console.log('[EDITOR FORMAT] ❌ Авторизация не удалась, пропускаем тест')
       test.skip()

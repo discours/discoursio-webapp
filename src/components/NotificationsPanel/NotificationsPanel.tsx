@@ -196,15 +196,23 @@ export const NotificationsPanel = (props: Props) => {
 
   const matchesTab = (n: Group) => {
     if (activeTab() === 'all') return true
+
     if (activeTab() === 'discussions') {
-      return n.entity === PresenceEntityType.Shout && n.action === PresenceActionType.Create
+      // Показываем уведомления по постам (бэкенд уже отфильтровал по подписке)
+      // Исключаем только отдельные комментарии (они в табе "Комментарии")
+      return !n.thread?.includes('::')
     }
+
     if (activeTab() === 'comments') {
+      // Показываем отдельные комментарии (не основные треды постов)
       return n.thread?.includes('::')
     }
+
     if (activeTab() === 'edits') {
+      // Показываем обновления постов
       return n.entity === PresenceEntityType.Shout && n.action === PresenceActionType.Update
     }
+
     return true
   }
 

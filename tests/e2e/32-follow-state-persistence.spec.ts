@@ -68,7 +68,7 @@ test.describe('Follow State Persistence - КОНКРЕТНЫЙ СЦЕНАРИЙ'
     await waitForPageLoad(page)
 
     // 5. Нажимаем кнопку подписки
-    const followButton = page.locator('button:has-text("Подписаться")').first()
+    const followButton = page.locator('button:has-text("Подписаться"), button:has-text("Follow")').first()
     await expect(followButton).toBeVisible()
     await followButton.click()
 
@@ -81,17 +81,18 @@ test.describe('Follow State Persistence - КОНКРЕТНЫЙ СЦЕНАРИЙ'
     await page.waitForTimeout(2000)
 
     // ПРОВЕРКА: стейт должен сохраниться
-    const buttonAfterReload = page.locator('button:has-text("Отписаться"), button:has-text("Подписан")').first()
+    const followButtonAfterReload = page.locator('button:has-text("Подписаться"), button:has-text("Follow")').first()
+    const unfollowButtonAfterReload = page.locator('button:has-text("Отписаться"), button:has-text("Unfollow")').first()
 
-    if (await buttonAfterReload.isVisible()) {
+    const isFollowVisible = await followButtonAfterReload.isVisible()
+    const isUnfollowVisible = await unfollowButtonAfterReload.isVisible()
+
+    if (isUnfollowVisible) {
       console.log('✅ СТЕЙТ СОХРАНИЛСЯ: кнопка показывает "Подписан" после рефреша')
+    } else if (isFollowVisible) {
+      console.log('❌ СТЕЙТ НЕ СОХРАНИЛСЯ: кнопка вернулась в "Подписаться"')
     } else {
-      const followButtonAfterReload = page.locator('button:has-text("Подписаться")').first()
-      if (await followButtonAfterReload.isVisible()) {
-        console.log('❌ СТЕЙТ НЕ СОХРАНИЛСЯ: кнопка вернулась в "Подписаться"')
-      } else {
-        console.log('⚠️ Не удалось определить состояние кнопки')
-      }
+      console.log('⚠️ Не удалось определить состояние кнопки')
     }
   })
 
@@ -151,7 +152,7 @@ test.describe('Follow State Persistence - КОНКРЕТНЫЙ СЦЕНАРИЙ'
       await waitForPageLoad(page)
 
       // 3. Нажимаем отписку
-      const unfollowButton = page.locator('button:has-text("Отписаться")').first()
+      const unfollowButton = page.locator('button:has-text("Отписаться"), button:has-text("Unfollow")').first()
       await expect(unfollowButton).toBeVisible()
       await unfollowButton.click()
 
@@ -163,19 +164,22 @@ test.describe('Follow State Persistence - КОНКРЕТНЫЙ СЦЕНАРИЙ'
       await page.waitForTimeout(2000)
 
       // ПРОВЕРКА: стейт должен сохраниться (кнопка должна показывать "Подписаться")
-      const followButtonAfterUnfollow = page.locator('button:has-text("Подписаться")').first()
+      const followButtonAfterUnfollow = page
+        .locator('button:has-text("Подписаться"), button:has-text("Follow")')
+        .first()
+      const unfollowButtonAfterUnfollow = page
+        .locator('button:has-text("Отписаться"), button:has-text("Unfollow")')
+        .first()
 
-      if (await followButtonAfterUnfollow.isVisible()) {
+      const isFollowVisible = await followButtonAfterUnfollow.isVisible()
+      const isUnfollowVisible = await unfollowButtonAfterUnfollow.isVisible()
+
+      if (isFollowVisible) {
         console.log('✅ СТЕЙТ ОТПИСКИ СОХРАНИЛСЯ: кнопка показывает "Подписаться" после рефреша')
+      } else if (isUnfollowVisible) {
+        console.log('❌ СТЕЙТ ОТПИСКИ НЕ СОХРАНИЛСЯ: кнопка осталась в "Подписан"')
       } else {
-        const unfollowButtonAfterReload = page
-          .locator('button:has-text("Отписаться"), button:has-text("Подписан")')
-          .first()
-        if (await unfollowButtonAfterReload.isVisible()) {
-          console.log('❌ СТЕЙТ ОТПИСКИ НЕ СОХРАНИЛСЯ: кнопка осталась в "Подписан"')
-        } else {
-          console.log('⚠️ Не удалось определить состояние кнопки после отписки')
-        }
+        console.log('⚠️ Не удалось определить состояние кнопки после отписки')
       }
     } else {
       console.log('⚠️ Нет активных подписок для теста отписки')

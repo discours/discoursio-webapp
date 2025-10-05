@@ -12,7 +12,7 @@ import {
   useContext
 } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { Author, CommonResult, Community, FollowingEntity, Topic } from '~/graphql/generated/graphql'
+import { Author, CommonResult, Community, FollowingEntity, Shout, Topic } from '~/graphql/generated/graphql'
 import followMutation from '~/graphql/mutation/core/follow'
 import unfollowMutation from '~/graphql/mutation/core/unfollow'
 import loadAuthorFollowers from '~/graphql/query/core/author-followers'
@@ -57,6 +57,7 @@ export interface FollowingData {
   authors?: Author[]
   topics?: Topic[]
   communities?: Community[]
+  shouts?: Shout[]
 }
 
 export const FollowingProvider: Component<{ children: JSX.Element }> = (props) => {
@@ -130,15 +131,19 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
   }
 
   const follow = async (what: FollowingEntity, slug: string) => {
+    console.log('[FollowingContext] Follow:', { what, slug })
     if (!session()?.token) {
       showModal('auth')
-      return
+      return null
     }
     try {
       const resp = await client()?.mutation(followMutation, { what, slug }).toPromise()
-      if (!resp || resp.error) return
       const result = resp?.data?.follow
-      if (!result) return
+      console.log('[FollowingContext] Follow response:', result)
+
+      if (!result) {
+        return { error: 'no result', authors: [], topics: [], communities: [] }
+      }
 
       // Обновляем статистику авторов в authors context
       if (result.authors && result.authors.length > 0) {
@@ -146,15 +151,18 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       }
 
       // Принудительно перезагружаем актуальный список подписок
+      console.log('[FollowingContext] Triggering follows refresh')
       setFollowsRefreshTrigger((prev) => prev + 1)
 
       return result
     } catch (error) {
       console.error('[FollowingContext] Follow error:', error)
+      return { error: 'network error', authors: [], topics: [], communities: [] }
     }
   }
 
   const unfollow = async (what: FollowingEntity, slug: string) => {
+    console.log('[FollowingContext] Unfollow:', { what, slug })
     if (!session()?.token) {
       showModal('auth')
       return null
@@ -162,6 +170,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
     try {
       const resp = await client()?.mutation(unfollowMutation, { what, slug }).toPromise()
       const result = resp?.data?.unfollow
+      console.log('[FollowingContext] Unfollow response:', result)
 
       if (!result) {
         return { error: 'no result', authors: [], topics: [], communities: [] }
@@ -173,6 +182,7 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
       }
 
       // Принудительно перезагружаем актуальный список подписок
+      console.log('[FollowingContext] Triggering follows refresh')
       setFollowsRefreshTrigger((prev) => prev + 1)
 
       return result
@@ -184,12 +194,23 @@ export const FollowingProvider: Component<{ children: JSX.Element }> = (props) =
 
   createEffect(
     on(
-      [() => session?.()?.author, () => followsResource?.()?.authors, () => followsResource?.()?.topics],
-      ([author, followedAuthors, followedTopics]) => {
+      [
+        () => session?.()?.author,
+        () => followsResource?.()?.authors,
+        () => followsResource?.()?.topics,
+        () => followsResource?.()?.shouts
+      ],
+      ([author, followedAuthors, followedTopics, followedShouts]) => {
         if (author) {
+          console.log('[FollowingContext] Updating follows state:', {
+            authors: followedAuthors?.length,
+            topics: followedTopics?.length,
+            shouts: followedShouts?.length
+          })
           setState((subs) => {
             if (followedAuthors) subs.authors = followedAuthors
             if (followedTopics) subs.topics = followedTopics
+            if (followedShouts) subs.shouts = followedShouts
             return subs
           })
           setFollowers(followers)

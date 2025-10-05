@@ -1851,6 +1851,8 @@ export const CommentsTree = (props: CommentsTreeProps) => {
             order={commentsOrder() as ReactionSort}
             onlyNew={onlyNew()}
             toggleNewOnly={toggleNewOnly}
+            shoutId={props.shoutId}
+            shoutSlug={props.shoutSlug}
           />
 
           <Show when={comments().length > 0}>
