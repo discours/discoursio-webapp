@@ -1,7 +1,7 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { For } from 'solid-js'
-import toast from 'solid-sonner'
+import { toast } from 'solid-sonner'
 
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'

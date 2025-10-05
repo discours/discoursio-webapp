@@ -1,7 +1,7 @@
 import { clsx } from 'clsx'
 import { batch, createEffect, createSignal, on, onCleanup, onMount, Show, untrack } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
-import toast from 'solid-sonner'
+import { toast } from 'solid-sonner'
 import { debounce } from 'throttle-debounce'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Modal } from '~/components/_shared/Modal'
@@ -984,7 +984,7 @@ export const EditView = (props: { draft?: Draft }) => {
         toast.success(t('Content restored from local storage'))
         console.log('[EditView] Контент восстановлен из localStorage:', restored.title)
       } else {
-        toast.custom(t('No changes found in local storage'))
+        toast(t('No changes found in local storage'))
       }
     } catch (error) {
       console.error('[EditView] Ошибка при восстановлении:', error)

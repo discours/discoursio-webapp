@@ -11,7 +11,7 @@ import {
   Show,
   untrack
 } from 'solid-js'
-import toast from 'solid-sonner'
+import { toast } from 'solid-sonner'
 import { COMMENTS_PER_PAGE } from '~/constants/pagination'
 import { useDrafts } from '~/context/drafts'
 import { useFeed } from '~/context/feed'

@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js'
-import toast from 'solid-sonner'
+import { toast } from 'solid-sonner'
 import { debounce } from 'throttle-debounce'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'

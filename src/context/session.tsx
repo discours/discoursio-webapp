@@ -14,7 +14,7 @@ import {
   useContext
 } from 'solid-js'
 import { isServer } from 'solid-js/web'
-import toast from 'solid-sonner'
+import { toast } from 'solid-sonner'
 import { useLocalize } from '~/context/localize'
 import { type ModalSource } from '~/context/ui'
 import { graphqlClientCreate } from '~/graphql/client'

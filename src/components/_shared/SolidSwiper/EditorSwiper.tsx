@@ -1,7 +1,7 @@
 import { createFileUploader, UploadFile } from '@solid-primitives/upload'
 import { clsx } from 'clsx'
 import { createEffect, createSignal, For, on, onMount, Show } from 'solid-js'
-import toast from 'solid-sonner'
+import { toast } from 'solid-sonner'
 import SwiperCore from 'swiper'
 import { Manipulation, Navigation, Pagination } from 'swiper/modules'
 import { SimpleRichEditor } from '~/components/SimpleRichEditor/SimpleRichEditor'
