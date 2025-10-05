@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import { Component, createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
-import { isServer, Portal } from 'solid-js/web'
+import { isServer } from 'solid-js/web'
 import { InlineForm } from '~/components/_shared/InlineForm/InlineForm'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
@@ -1076,6 +1076,38 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       </Show>
       {/* Editor Container with UI Layer */}
       <div style={{ position: 'relative' }}>
+        {/* Plus Menu positioned relative to editor container (not body portal) */}
+        <Show when={props.plus && shouldShowPlusMenu() && !showSquibEditor() && !showForm()}>
+          <PlusMenu
+            top={plusMenuTop()}
+            left={uiHelpers.getPlusMenuLeft()}
+            isVisible={true}
+            onEmpty={uiHelpers.isCursorOnEmptyLine()}
+            isFormActive={showForm() !== null}
+            onAction={(action) => {
+              console.log('[SimpleRichEditor] Plus menu action:', action)
+              handlePlusMenuAction(action, editorRef()!, {
+                showLinkForm: () => {
+                  const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
+                  showInlineFormAtPosition('link', plusMenuPosition, handleInsertLink)
+                },
+                showTooltipForm: () => {
+                  const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
+                  showInlineFormAtPosition('tooltip', plusMenuPosition, handleInsertTooltip, '')
+                },
+                showEmbedForm: () => {
+                  const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
+                  showInlineFormAtPosition('embed', plusMenuPosition, handleInsertEmbed, '')
+                },
+                showImageUploadModal,
+                showAudioUploader,
+                handleChange
+              })
+            }}
+            editorId={props.editorId}
+          />
+        </Show>
+
         {/* Editor Content */}
         <div
           class={clsx(styles.editor, {
@@ -1170,40 +1202,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         </Show>
 
         {/* Forms and Modal Portals */}
-
-        {/* Plus Menu с прямым позиционированием (скрыто когда открыты меню или формы) */}
-        <Show when={props.plus && shouldShowPlusMenu() && !showSquibEditor() && !showForm()}>
-          <Portal mount={document.body}>
-            <PlusMenu
-              top={plusMenuTop()}
-              left={uiHelpers.getPlusMenuLeft()}
-              isVisible={true}
-              onEmpty={uiHelpers.isCursorOnEmptyLine()}
-              isFormActive={showForm() !== null}
-              onAction={(action) => {
-                console.log('[SimpleRichEditor] Plus menu action:', action)
-                handlePlusMenuAction(action, editorRef()!, {
-                  showLinkForm: () => {
-                    const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
-                    showInlineFormAtPosition('link', plusMenuPosition, handleInsertLink)
-                  },
-                  showTooltipForm: () => {
-                    const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
-                    showInlineFormAtPosition('tooltip', plusMenuPosition, handleInsertTooltip, '')
-                  },
-                  showEmbedForm: () => {
-                    const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
-                    showInlineFormAtPosition('embed', plusMenuPosition, handleInsertEmbed, '')
-                  },
-                  showImageUploadModal,
-                  showAudioUploader,
-                  handleChange
-                })
-              }}
-              editorId={props.editorId}
-            />
-          </Portal>
-        </Show>
       </div>
     </div>
   )

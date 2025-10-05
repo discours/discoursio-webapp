@@ -221,7 +221,7 @@ export const PlusMenu: Component<{
         [styles.appearing]: isAppearing()
       })}
       style={{
-        position: 'fixed',
+        position: 'absolute',
         top: `${props.top}px`,
         left: `${props.left}px`,
         'z-index': 1000
