@@ -22,6 +22,7 @@ type LazyEmbedPlatform =
   | 'slideshare'
   | 'flickr'
   | 'imgur'
+  | 'ok'
 
 // Хранилище загруженных SDK
 const loadedSDKs = new Set<LazyEmbedPlatform>()
@@ -179,6 +180,38 @@ const loadBandcampEmbed = async (wrapper: HTMLElement): Promise<void> => {
 }
 
 /**
+ * 🗣️ Загружает OK.ru embed (iframe, без SDK)
+ * Одноклассники используют iframe embed
+ */
+const loadOKEmbed = async (wrapper: HTMLElement): Promise<void> => {
+  if (loadedSDKs.has('ok')) {
+    return Promise.resolve()
+  }
+
+  const container = wrapper.querySelector('.ok-iframe-container') as HTMLElement
+  if (!container) return
+
+  const videoUrl = container.getAttribute('data-video-url')
+  if (!videoUrl) return
+
+  try {
+    // OK.ru использует iframe напрямую
+    const iframe = document.createElement('iframe')
+    iframe.src = videoUrl
+    iframe.style.cssText = 'border: 0; width: 100%; height: 400px;'
+    iframe.setAttribute('allow', 'autoplay; fullscreen; encrypted-media')
+    iframe.setAttribute('allowfullscreen', 'true')
+    iframe.setAttribute('frameborder', '0')
+
+    container.appendChild(iframe)
+    loadedSDKs.add('ok')
+  } catch (error) {
+    console.error('[embedLoader] OK.ru embed failed:', error)
+    throw error
+  }
+}
+
+/**
  * Инициализирует embed после загрузки SDK
  */
 export const initializeEmbedLazy = async (
@@ -188,10 +221,10 @@ export const initializeEmbedLazy = async (
   const placeholder = wrapper.querySelector('.embed-placeholder')
   // Ищем контент в зависимости от платформы
   const content = wrapper.querySelector(
-    '.fb-post, .twitter-tweet, .instagram-media, .reddit-embed-bq, .tiktok-embed, .bandcamp-iframe-container, .slideshare-iframe-container, .flickr-iframe-container, .imgur-embed-pub, script'
+    '.fb-post, .twitter-tweet, .instagram-media, .reddit-embed-bq, .tiktok-embed, .bandcamp-iframe-container, .slideshare-iframe-container, .flickr-iframe-container, .imgur-embed-pub, .ok-iframe-container, script'
   ) as HTMLElement
 
-  if (!content && !['bandcamp', 'slideshare', 'flickr'].includes(platform)) return
+  if (!content && !['bandcamp', 'slideshare', 'flickr', 'ok'].includes(platform)) return
 
   try {
     // Показываем индикатор загрузки
@@ -232,6 +265,10 @@ export const initializeEmbedLazy = async (
         break
       case 'imgur':
         // Imgur не требует отдельной загрузки (уже загружен в html.ts)
+        break
+      case 'ok':
+        // 🗣️ OK.ru: iframe embed без SDK
+        await loadOKEmbed(wrapper)
         break
     }
 

@@ -1,43 +1,56 @@
 .InlineForm {
-  border: none !important; /* Убираем бордер */
+  border: none !important;
   position: relative;
   width: 100%;
-  border-radius: 0 !important; /* Убираем скругление */
+  border-radius: 0 !important;
   overflow: visible;
-  background: transparent !important; /* Прозрачный фон */
-  box-shadow: none !important; /* Убираем тени */
+  background: transparent !important;
+  box-shadow: none !important;
+  margin: 0;
+  padding: 0;
 
   .form {
     display: flex;
     flex-flow: row nowrap;
-    padding: 8px 0; /* Убираем горизонтальный padding */
+    padding: 0;
+    margin: 0;
     width: 100%;
     align-items: center;
-    background: transparent; /* Прозрачный фон для формы */
+    background: transparent;
+    gap: 4px;
 
     input {
-      margin: 0 12px 0 0;
-      padding: 0;
+      margin: 0;
+      padding: 2px 0;
       flex: 1;
       border: none;
+      border-bottom: 2px solid var(--color-primary, #4f46e5);
       min-width: 200px;
       display: block;
-      font-size: 14px;
-      height: 32px;
+      font-size: inherit;
+      font-family: inherit;
+      line-height: inherit;
+      height: auto;
+      background: transparent;
+      border-radius: 0;
+      transition: border-color 0.2s ease;
 
       &::placeholder {
         color: var(--color-text-secondary, #9ca3af);
+        opacity: 0.7;
       }
 
       &:focus {
         outline: none;
+        border-bottom-color: var(--color-primary-dark, #4338ca);
       }
     }
 
     button {
-      margin-left: 8px;
-      width: 28px;
-      height: 28px;
+      margin-left: 4px;
+      width: 24px;
+      height: 24px;
+      min-width: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -45,15 +58,23 @@
       background: transparent;
       border: none;
       cursor: pointer;
-      transition: background 0.2s ease;
+      opacity: 0.6;
+      transition: all 0.2s ease;
+      padding: 0;
 
       &:hover {
+        opacity: 1;
         background: var(--color-gray-100, #f3f4f6);
       }
 
       &:disabled {
-        opacity: 0.5;
+        opacity: 0.3;
         cursor: not-allowed;
+      }
+
+      :global(svg) {
+        width: 16px;
+        height: 16px;
       }
     }
   }
@@ -105,6 +126,39 @@
     &.visible {
       height: 32px;
       opacity: 1;
+    }
+  }
+
+  .embedPreview {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-radius: 8px;
+    background: var(--color-gray-50, #f9fafb);
+    max-width: 600px;
+    animation: slideIn 0.2s ease-out;
+
+    // Ограничиваем размер превью
+    :global(.embed-wrapper) {
+      max-width: 100%;
+      pointer-events: none; // Отключаем взаимодействие в превью
+    }
+
+    // Для видео/карт ограничиваем высоту
+    :global(.video-player-wrapper),
+    :global(.map-wrapper) {
+      max-height: 300px;
+    }
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
 }

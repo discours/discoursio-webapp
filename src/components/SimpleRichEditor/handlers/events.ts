@@ -105,8 +105,104 @@ export const createEventHandlers = (context: EventHandlersContext) => {
   // Debounced version for input events
   const debouncedHandleChange = debounce(150, () => handleChange(props.fieldType ? String(props.fieldType) : 'content'))
 
-  const handleInput = (_e: InputEvent) => {
+  const handleInput = async (e: InputEvent) => {
     debouncedHandleChange()
+
+    // Проверяем, ввел ли пользователь URL (закончил пробелом/Enter)
+    if (e.inputType === 'insertText' && (e.data === ' ' || e.data === '\n')) {
+      const editor = editorRef()
+      if (!editor) return
+
+      const selection = window.getSelection()
+      if (!selection?.rangeCount) return
+
+      const range = selection.getRangeAt(0)
+      const node = range.startContainer
+
+      // Получаем текст до курсора
+      if (node.nodeType === Node.TEXT_NODE && node.textContent) {
+        const textBeforeCursor = node.textContent.substring(0, range.startOffset)
+        // Извлекаем последнее слово (потенциальный URL)
+        const words = textBeforeCursor.split(/\s+/)
+        const lastWord = words[words.length - 1]
+
+        // Проверяем - это URL?
+        const urlRegex = /^https?:\/\/[^\s]+$/
+        if (urlRegex.test(lastWord)) {
+          const { detectEmbedPlatform } = await import('../media')
+          const platform = detectEmbedPlatform(lastWord)
+
+          if (platform !== 'unknown') {
+            // Сохраняем позицию для замены
+            const urlStart = textBeforeCursor.lastIndexOf(lastWord)
+            const urlEnd = range.startOffset
+
+            // Удаляем введенный URL
+            if (node.textContent) {
+              const beforeUrl = node.textContent.substring(0, urlStart)
+              const afterUrl = node.textContent.substring(urlEnd)
+              node.textContent = beforeUrl + afterUrl
+
+              // Восстанавливаем курсор
+              const newRange = document.createRange()
+              newRange.setStart(node, urlStart)
+              newRange.collapse(true)
+              selection.removeAllRanges()
+              selection.addRange(newRange)
+            }
+
+            // Вставляем inline choice компонент
+            const { EmbedInlineChoice } = await import('../components/EmbedInlineChoice')
+            const { render } = await import('solid-js/web')
+
+            const choiceContainer = document.createElement('div')
+            choiceContainer.contentEditable = 'false'
+            choiceContainer.style.userSelect = 'none'
+
+            const handleChoice = async (type: 'link' | 'embed') => {
+              if (type === 'embed') {
+                const { createUniversalEmbed } = await import('../media/html')
+                const embedHtml = await createUniversalEmbed(lastWord, platform)
+                if (embedHtml) {
+                  const tempDiv = document.createElement('div')
+                  tempDiv.innerHTML = embedHtml
+                  choiceContainer.replaceWith(...Array.from(tempDiv.childNodes))
+                }
+              } else {
+                const link = document.createElement('a')
+                link.href = lastWord
+                link.target = '_blank'
+                link.rel = 'noopener noreferrer'
+                link.textContent = lastWord
+                choiceContainer.replaceWith(link)
+              }
+              handleChange(props.fieldType ? String(props.fieldType) : 'content')
+              editor.focus()
+            }
+
+            const handleCancel = () => {
+              const textNode = document.createTextNode(lastWord)
+              choiceContainer.replaceWith(textNode)
+              editor.focus()
+            }
+
+            render(
+              () =>
+                EmbedInlineChoice({
+                  url: lastWord,
+                  platform,
+                  onChoice: handleChoice,
+                  onCancel: handleCancel
+                }),
+              choiceContainer
+            )
+
+            // Вставляем контейнер
+            replaceSelection(choiceContainer.outerHTML, editor)
+          }
+        }
+      }
+    }
   }
 
   const handleFocus = () => {
@@ -163,53 +259,68 @@ export const createEventHandlers = (context: EventHandlersContext) => {
         const { detectEmbedPlatform } = await import('../media')
         const platform = detectEmbedPlatform(trimmedText)
 
-        if (platform !== 'unknown' && context.showModal && context.hideModal) {
-          // Это embed платформа - показываем диалог выбора
-          const _savedSelection = saveSelection()
+        if (platform !== 'unknown') {
+          // Это embed платформа - вставляем inline choice компонент
+          e.preventDefault()
 
-          context.showModal('embedChoice', undefined, {
-            data: { url: trimmedText, platform },
-            onSuccess: async (type: 'link' | 'embed') => {
-              context.hideModal?.()
-              restoreSelection()
+          const { EmbedInlineChoice } = await import('../components/EmbedInlineChoice')
+          const { render } = await import('solid-js/web')
 
-              if (type === 'embed') {
-                // Вставляем как <embed>
-                const { createUniversalEmbed } = await import('../media/html')
-                const embedHtml = await createUniversalEmbed(trimmedText, platform)
+          // Создаем временный контейнер для inline choice
+          const choiceContainer = document.createElement('div')
+          choiceContainer.contentEditable = 'false'
+          choiceContainer.style.userSelect = 'none'
 
-                if (embedHtml) {
-                  replaceSelection(embedHtml, editorRef() || null)
-                  handleChange(props.fieldType ? String(props.fieldType) : 'content')
-                }
-              } else {
-                // Вставляем как обычную ссылку <a>
-                const linkHtml = `<a href="${trimmedText}" target="_blank" rel="noopener noreferrer">${trimmedText}</a>`
-                replaceSelection(linkHtml, editorRef() || null)
-                handleChange(props.fieldType ? String(props.fieldType) : 'content')
+          const handleChoice = async (type: 'link' | 'embed') => {
+            if (type === 'embed') {
+              const { createUniversalEmbed } = await import('../media/html')
+              const embedHtml = await createUniversalEmbed(trimmedText, platform)
+              if (embedHtml) {
+                const tempDiv = document.createElement('div')
+                tempDiv.innerHTML = embedHtml
+                choiceContainer.replaceWith(...Array.from(tempDiv.childNodes))
               }
-
-              editorRef()?.focus()
-            },
-            onCancel: () => {
-              context.hideModal?.()
-              restoreSelection()
-              // Вставляем как обычный текст
-              const selection = window.getSelection()
-              if (selection?.rangeCount) {
-                const range = selection.getRangeAt(0)
-                const textNode = document.createTextNode(trimmedText)
-                range.deleteContents()
-                range.insertNode(textNode)
-                range.setStartAfter(textNode)
-                range.collapse(true)
-                selection.removeAllRanges()
-                selection.addRange(range)
-              }
-              handleChange(props.fieldType ? String(props.fieldType) : 'content')
-              editorRef()?.focus()
+            } else {
+              const link = document.createElement('a')
+              link.href = trimmedText
+              link.target = '_blank'
+              link.rel = 'noopener noreferrer'
+              link.textContent = trimmedText
+              choiceContainer.replaceWith(link)
             }
-          })
+            handleChange(props.fieldType ? String(props.fieldType) : 'content')
+            editorRef()?.focus()
+          }
+
+          const handleCancel = () => {
+            const textNode = document.createTextNode(trimmedText)
+            choiceContainer.replaceWith(textNode)
+            editorRef()?.focus()
+          }
+
+          // Рендерим компонент
+          render(
+            () =>
+              EmbedInlineChoice({
+                url: trimmedText,
+                platform,
+                onChoice: handleChoice,
+                onCancel: handleCancel
+              }),
+            choiceContainer
+          )
+
+          // Вставляем контейнер в позицию курсора
+          const selection = window.getSelection()
+          if (selection?.rangeCount) {
+            const range = selection.getRangeAt(0)
+            range.deleteContents()
+            range.insertNode(choiceContainer)
+            range.setStartAfter(choiceContainer)
+            range.collapse(true)
+            selection.removeAllRanges()
+            selection.addRange(range)
+          }
 
           return // Не обрабатываем дальше
         }

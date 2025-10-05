@@ -16,6 +16,7 @@ import { FollowingProvider } from './context/following'
 import { LocalDraftsProvider } from './context/localDrafts'
 import { LocalizeProvider } from './context/localize'
 import { NotificationsProvider } from './context/notifications'
+import { ProfileProvider } from './context/profile'
 import { SessionProvider } from './context/session'
 import { TopicsProvider } from './context/topics'
 import { UIProvider } from './context/ui'
@@ -188,20 +189,22 @@ export const Providers: Component<{ children?: JSX.Element }> = (props) => {
                 <UIProvider>
                   <TopicsProvider>
                     <AuthorsProvider>
-                      <FeedProvider>
-                        <LocalDraftsProvider>
-                          <DraftsProvider>
-                            <FeaturedFeedProvider>
-                              <FollowingProvider>
-                                <MetaProvider>
-                                  <Suspense fallback={<Loading />}>{props.children}</Suspense>
-                                  <NotificationsPanelPortal />
-                                </MetaProvider>
-                              </FollowingProvider>
-                            </FeaturedFeedProvider>
-                          </DraftsProvider>
-                        </LocalDraftsProvider>
-                      </FeedProvider>
+                      <ProfileProvider>
+                        <FeedProvider>
+                          <LocalDraftsProvider>
+                            <DraftsProvider>
+                              <FeaturedFeedProvider>
+                                <FollowingProvider>
+                                  <MetaProvider>
+                                    <Suspense fallback={<Loading />}>{props.children}</Suspense>
+                                    <NotificationsPanelPortal />
+                                  </MetaProvider>
+                                </FollowingProvider>
+                              </FeaturedFeedProvider>
+                            </DraftsProvider>
+                          </LocalDraftsProvider>
+                        </FeedProvider>
+                      </ProfileProvider>
                     </AuthorsProvider>
                   </TopicsProvider>
                 </UIProvider>

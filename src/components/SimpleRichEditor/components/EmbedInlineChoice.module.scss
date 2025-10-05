@@ -1,0 +1,141 @@
+.embedChoice {
+  position: relative;
+  display: inline-flex;
+  margin: 4px 0;
+  padding: 8px 12px;
+  background: var(--color-gray-50, #f9fafb);
+  border: 1px solid var(--color-gray-200, #e5e7eb);
+  border-radius: 6px;
+  animation: slideIn 0.2s ease-out;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.buttonWithPreview {
+  position: relative;
+}
+
+.previewTooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 400px;
+  max-width: 90vw;
+  padding: 12px;
+  background: white;
+  border: 1px solid var(--color-gray-300, #d1d5db);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  animation: tooltipFadeIn 0.15s ease-out;
+  pointer-events: none;
+  
+  // Стрелочка вниз
+  &::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid white;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1));
+  }
+  
+  // Ограничиваем размер превью
+  :global(.embed-wrapper) {
+    max-width: 100%;
+    pointer-events: none;
+  }
+
+  // Для видео/карт ограничиваем высоту
+  :global(.video-player-wrapper),
+  :global(.map-wrapper) {
+    max-height: 250px;
+  }
+  
+  // Компактный вид для embed preview
+  :global(.embed-lazy) {
+    min-height: 150px;
+  }
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid var(--color-gray-300, #d1d5db);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text, #111827);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: var(--color-primary, #4f46e5);
+    border-color: var(--color-primary, #4f46e5);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.cancelButton {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: var(--color-gray-200, #e5e7eb);
+    color: var(--color-text, #111827);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+

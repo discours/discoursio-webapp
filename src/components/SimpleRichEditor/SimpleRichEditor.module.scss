@@ -550,17 +550,95 @@
   max-width: 450px;
   min-width: 300px;
   width: auto;
-  box-shadow: none !important; /* Убираем любые тени */
-  border-radius: 0 !important; /* Убираем скругление */
-  background: transparent !important; /* Прозрачный фон */
-  border: none !important; /* Убираем все границы */
-  border-bottom: 1px solid var(--color-border, #e5e7eb) !important; /* Только нижний бордер */
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
   padding: 0;
-  padding-bottom: 4px;
+  margin: 0;
   
   /* Обеспечиваем видимость поверх overflow: hidden */
   transform: translateZ(0);
   will-change: transform;
+  
+  /* Бесшовная интеграция в контент */
+  :global(.InlineForm) {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    
+    .form {
+      padding: 0 !important;
+      background: transparent !important;
+      
+      input {
+        background: transparent !important;
+        border: none !important;
+        border-bottom: 2px solid var(--color-primary, #4f46e5) !important;
+        border-radius: 0 !important;
+        padding: 2px 0 !important;
+        margin: 0 !important;
+        font-size: inherit !important;
+        font-family: inherit !important;
+        line-height: inherit !important;
+        
+        &:focus {
+          outline: none !important;
+          border-bottom-color: var(--color-primary-dark, #4338ca) !important;
+        }
+        
+        &::placeholder {
+          color: var(--color-text-secondary, #9ca3af);
+          opacity: 0.7;
+        }
+      }
+      
+      button {
+        background: transparent !important;
+        border: none !important;
+        padding: 4px !important;
+        margin-left: 4px !important;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+        
+        &:hover {
+          opacity: 1;
+          background: var(--color-gray-100, #f3f4f6) !important;
+        }
+      }
+    }
+    
+    // Превью под инпутом
+    .embedPreview {
+      margin-top: 8px !important;
+      padding: 8px !important;
+    }
+    
+    // Скрываем error пока он не нужен
+    .linkError {
+      position: relative !important;
+      bottom: auto !important;
+      margin-top: 4px !important;
+      padding: 4px 0 !important;
+      border: none !important;
+      background: transparent !important;
+      font-size: 11px !important;
+      height: auto !important;
+      
+      &.visible {
+        height: auto !important;
+      }
+    }
+    
+    // Badge компактнее
+    .platformBadge {
+      padding: 2px 6px !important;
+      margin-right: 6px !important;
+      font-size: 10px !important;
+    }
+  }
 }
 
 .tempHighlight {

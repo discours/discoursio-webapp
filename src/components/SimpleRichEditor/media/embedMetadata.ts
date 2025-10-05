@@ -240,3 +240,193 @@ export const createMetadataPreview = (metadata: EmbedMetadata, platform: string,
 export const clearMetadataCache = (): void => {
   metadataCache.clear()
 }
+
+/**
+ * Пытается извлечь iframe src из HTML кода
+ * @param html HTML строка с потенциальным iframe
+ * @returns URL iframe или null
+ */
+export const extractIframeSrc = (html: string): string | null => {
+  try {
+    const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/i)
+    return iframeMatch ? iframeMatch[1] : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Белый список доменов для iframe embed
+ * Только проверенные и безопасные сервисы
+ */
+const SAFE_EMBED_DOMAINS = [
+  // Видео
+  'youtube.com',
+  'youtu.be',
+  'youtube-nocookie.com',
+  'vimeo.com',
+  'player.vimeo.com',
+  'rutube.ru',
+  'coub.com',
+  'bitchute.com',
+  'twitch.tv',
+  'player.twitch.tv',
+  'ted.com',
+  'embed.ted.com',
+  'vk.com',
+  'vkvideo.ru',
+
+  // Аудио
+  'soundcloud.com',
+  'w.soundcloud.com',
+  'bandcamp.com',
+  'music.yandex.ru',
+  'music.yandex.com',
+
+  // Социальные
+  'facebook.com',
+  'www.facebook.com',
+  'twitter.com',
+  'platform.twitter.com',
+  'instagram.com',
+  'www.instagram.com',
+  't.me',
+  'telegram.org',
+  'reddit.com',
+  'embed.reddit.com',
+  'tiktok.com',
+  'www.tiktok.com',
+  'ok.ru',
+
+  // Карты
+  'google.com',
+  'maps.google.com',
+  'www.google.com',
+  'yandex.ru',
+  'yandex.com',
+  'api-maps.yandex.ru',
+  'umap.openstreetmap.fr',
+  'umap.openstreetmap.de',
+  'openfreemap.org',
+
+  // Интерактивные
+  'cdn.knightlab.com',
+  'renderer.apester.com',
+  'p.interacty.me',
+  'create.piktochart.com',
+  'pubhtml5.com',
+  's3.amazonaws.com', // только для PubHTML5
+
+  // Изображения
+  'imgur.com',
+  'i.imgur.com',
+  'flickr.com',
+  'www.flickr.com',
+
+  // Презентации
+  'slideshare.net',
+  'www.slideshare.net',
+
+  // Wikipedia
+  'wikipedia.org',
+
+  // Discours
+  'discours.io',
+  'testing.discours.io'
+]
+
+/**
+ * Проверяет, является ли домен безопасным для iframe
+ * @param url URL для проверки
+ * @returns true если домен в белом списке
+ */
+export const isSafeEmbedDomain = (url: string): boolean => {
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname.toLowerCase()
+
+    // Проверяем точное совпадение или поддомен
+    return SAFE_EMBED_DOMAINS.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Пытается получить embed URL через oEmbed discovery
+ * ⚠️ ТОЛЬКО для доменов из белого списка!
+ * @param url URL страницы
+ * @returns Iframe src или null
+ */
+export const discoverOEmbed = async (url: string): Promise<string | null> => {
+  // 🔒 Безопасность: проверяем домен
+  if (!isSafeEmbedDomain(url)) {
+    console.warn('Unsafe domain for oEmbed discovery:', url)
+    return null
+  }
+
+  try {
+    // Пытаемся найти oEmbed endpoint через link rel="alternate"
+    const response = await fetch(url, { mode: 'cors' })
+    const html = await response.text()
+
+    // Ищем <link rel="alternate" type="application/json+oembed" href="...">
+    const oembedMatch =
+      html.match(
+        /<link[^>]+rel=["']alternate["'][^>]+type=["']application\/json\+oembed["'][^>]+href=["']([^"']+)["']/i
+      ) ||
+      html.match(
+        /<link[^>]+type=["']application\/json\+oembed["'][^>]+rel=["']alternate["'][^>]+href=["']([^"']+)["']/i
+      )
+
+    if (!oembedMatch) return null
+
+    const oembedUrl = oembedMatch[1]
+    const oembedResponse = await fetch(oembedUrl)
+    const oembedData = await oembedResponse.json()
+
+    // Возвращаем HTML из oEmbed (обычно содержит iframe)
+    if (oembedData.html) {
+      const iframeSrc = extractIframeSrc(oembedData.html)
+
+      // 🔒 Безопасность: проверяем извлеченный iframe src
+      if (iframeSrc && isSafeEmbedDomain(iframeSrc)) {
+        return iframeSrc
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.warn('oEmbed discovery failed:', error)
+    return null
+  }
+}
+
+/**
+ * Безопасная попытка получить embed для URL
+ * @param url URL для встраивания
+ * @returns Безопасный iframe src или null
+ */
+export const getSafeEmbedUrl = async (url: string): Promise<string | null> => {
+  // 1. Проверяем, может это уже HTML с iframe
+  if (url.includes('<iframe')) {
+    const iframeSrc = extractIframeSrc(url)
+    if (iframeSrc && isSafeEmbedDomain(iframeSrc)) {
+      return iframeSrc
+    }
+    return null // 🔒 Небезопасный iframe
+  }
+
+  // 2. Проверяем сам URL
+  if (!isSafeEmbedDomain(url)) {
+    console.warn('Unsafe embed URL:', url)
+    return null
+  }
+
+  // 3. Пытаемся найти oEmbed через discovery
+  const oembedUrl = await discoverOEmbed(url)
+  if (oembedUrl) return oembedUrl
+
+  // 4. Возвращаем исходный URL только если он безопасен
+  return url
+}

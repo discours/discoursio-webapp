@@ -4,6 +4,31 @@
 
 ## [0.15.1] - 2025-10-05
 
+### 🚀 FEAT: Quick Inline Embed System
+- **✅ Реализована система быстрого встраивания контента**:
+  - **Paste URL**: При вставке URL с распознанной платформы - inline выбор (embed/link/cancel)
+  - **Type URL**: При вводе URL + пробел/Enter - автоматическое распознавание и inline выбор
+  - **Live Preview**: Tooltip с превью при hover на кнопку "With preview"
+  - **Favicon Badge**: Автоматическое отображение favicon для всех ссылок
+  - **Cancel Behavior**: Если не выбран вариант - URL остается как plain text
+  - **Seamless UI**: Форма встраивается прямо в текст (bottom border, без модалок)
+  - **30+ платформ**: YouTube, Vimeo, SoundCloud, Google/Yandex Maps, uMap, OpenFreeMap и др.
+  - **Файлы**:
+    - `events.ts`: Логика paste + typed URL detection (строки 108-327)
+    - `EmbedInlineChoice.tsx`: Новый компонент для inline выбора
+    - `EmbedInlineChoice.module.scss`: Стили с tooltip preview
+    - `InlineForm.tsx`: Favicon badge + безопасная валидация URL
+    - `InlineForm.module.scss`: Seamless интеграция в текст
+    - `SimpleRichEditor.module.scss`: Прозрачная форма без borders
+    - `embedMetadata.ts`: Whitelist безопасных доменов + `getSafeEmbedUrl()`
+    - `customTags.ts`: SSR-safe обработка + `requestAnimationFrame`
+
+### 🔧 FIX: ProfileProvider Missing in App
+- **✅ Исправлена ошибка `isUploadingAvatar is not a function`**:
+  - **Проблема**: `useProfile()` вызывался в `HeaderControls.tsx`, но `ProfileProvider` отсутствовал в `app.tsx`
+  - **Решение**: Добавлен `ProfileProvider` после `AuthorsProvider` в иерархию контекстов
+  - **Файлы**: `app.tsx` (строки 19, 192-207)
+
 ### 🔧 FIX: PlusMenu Positioning
 - **✅ Улучшено позиционирование PlusMenu при скролле**:
   - **Проблема**: `position: fixed` + Portal в `document.body` создавали проблемы при скролле

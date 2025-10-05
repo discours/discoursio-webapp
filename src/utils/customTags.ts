@@ -105,26 +105,53 @@ export const processTooltips = (container: HTMLElement) => {
 }
 
 /**
+ * Конфигурация платформ для embed
+ */
+const PLATFORM_CONFIG = {
+  youtube: { domains: ['youtube.com', 'youtu.be'], type: 'video' },
+  vimeo: { domains: ['vimeo.com'], type: 'video' },
+  soundcloud: { domains: ['soundcloud.com'], type: 'audio' },
+  bandcamp: { domains: ['bandcamp.com'], type: 'audio' },
+  facebook: { domains: ['facebook.com'], type: 'social' },
+  x: { domains: ['twitter.com', 'x.com'], type: 'social' },
+  instagram: { domains: ['instagram.com'], type: 'social' },
+  telegram: { domains: ['t.me'], type: 'social' },
+  reddit: { domains: ['reddit.com'], type: 'social' },
+  tiktok: { domains: ['tiktok.com'], type: 'video' },
+  twitch: { domains: ['twitch.tv'], type: 'video' },
+  ted: { domains: ['ted.com'], type: 'video' },
+  wikipedia: { domains: ['wikipedia.org'], type: 'reference' },
+  slideshare: { domains: ['slideshare.net'], type: 'presentation' },
+  imgur: { domains: ['imgur.com'], type: 'image' },
+  flickr: { domains: ['flickr.com'], type: 'image' },
+  discours: { domains: ['discours.io'], type: 'article' },
+  'yandex-music': { domains: ['music.yandex.ru', 'music.yandex.com'], type: 'audio' },
+  knightlab: { domains: ['cdn.knightlab.com'], type: 'interactive' },
+  apester: { domains: ['renderer.apester.com'], type: 'interactive' },
+  interacty: { domains: ['p.interacty.me'], type: 'interactive' },
+  ok: { domains: ['ok.ru'], type: 'social' },
+  vk: { domains: ['vk.com', 'vkvideo.ru'], type: 'social' },
+  piktochart: { domains: ['create.piktochart.com'], type: 'infographic' },
+  bitchute: { domains: ['bitchute.com'], type: 'video' },
+  coub: { domains: ['coub.com'], type: 'video' },
+  rutube: { domains: ['rutube.ru'], type: 'video' },
+  'google-maps': { domains: ['google.com/maps/embed', 'maps.google.com'], type: 'map' },
+  'yandex-maps': { domains: ['yandex.ru/map', 'yandex.com/map', 'api-maps.yandex.ru'], type: 'map' },
+  umap: { domains: ['umap.openstreetmap.fr', 'umap.openstreetmap.de'], type: 'map' },
+  openfreemap: { domains: ['openfreemap.org'], type: 'map' },
+  pubhtml5: { domains: ['pubhtml5.com'], type: 'interactive' },
+  spotify: { domains: ['spotify.com/episode', 'anchor.fm'], type: 'audio' }
+} as const
+
+/**
  * Определяет платформу по URL
  */
 function detectPlatformFromUrl(url: string): string {
-  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube'
-  if (url.includes('vimeo.com')) return 'vimeo'
-  if (url.includes('soundcloud.com')) return 'soundcloud'
-  if (url.includes('bandcamp.com')) return 'bandcamp'
-  if (url.includes('facebook.com')) return 'facebook'
-  if (url.includes('twitter.com') || url.includes('x.com')) return 'x'
-  if (url.includes('instagram.com')) return 'instagram'
-  if (url.includes('t.me')) return 'telegram'
-  if (url.includes('reddit.com')) return 'reddit'
-  if (url.includes('tiktok.com')) return 'tiktok'
-  if (url.includes('twitch.tv')) return 'twitch'
-  if (url.includes('ted.com')) return 'ted'
-  if (url.includes('wikipedia.org')) return 'wikipedia'
-  if (url.includes('slideshare.net')) return 'slideshare'
-  if (url.includes('imgur.com')) return 'imgur'
-  if (url.includes('flickr.com')) return 'flickr'
-  if (url.includes('discours.io')) return 'discours'
+  for (const [platform, config] of Object.entries(PLATFORM_CONFIG)) {
+    if (config.domains.some((domain) => url.includes(domain))) {
+      return platform
+    }
+  }
   return 'unknown'
 }
 
@@ -148,10 +175,12 @@ export const processEmbeds = async (container: HTMLElement) => {
     // Определяем платформу по URL
     const platform = detectPlatformFromUrl(url)
 
-    // Платформы с полноразмерным превью
-    const hasRichPreview = ['youtube', 'vimeo', 'soundcloud', 'tiktok', 'imgur'].includes(platform)
-    const isVideo = platform === 'youtube' || platform === 'vimeo'
-    const videoId = isVideo ? extractVideoId(url, platform) : null
+    // Определяем тип контента по конфигурации
+    const platformType = PLATFORM_CONFIG[platform as keyof typeof PLATFORM_CONFIG]?.type
+    const hasRichPreview = ['youtube', 'vimeo', 'soundcloud', 'tiktok', 'imgur', 'yandex-music'].includes(platform)
+    const isVideo = platformType === 'video'
+    const isAudio = platformType === 'audio'
+    const videoId = isVideo && platform !== 'tiktok' ? extractVideoId(url, platform) : null
 
     // Создаем wrapper для embed
     const wrapper = document.createElement('div')
@@ -187,8 +216,8 @@ export const processEmbeds = async (container: HTMLElement) => {
         margin: 16px 0;
         overflow: hidden;
         cursor: pointer;
-        background: ${isVideo ? '#000' : '#f9f9f9'};
-        min-height: ${needsAsyncLoad ? '200px' : 'auto'};
+        background: ${isVideo ? '#000' : isAudio ? '#f5f5f5' : '#f9f9f9'};
+        min-height: ${needsAsyncLoad ? '200px' : isAudio ? '166px' : 'auto'};
       `
 
       if (!needsAsyncLoad && thumbnailUrl) {
@@ -425,11 +454,43 @@ export const processEmbeds = async (container: HTMLElement) => {
 
     // Обработчик загрузки
     const loadContent = async () => {
-      // Для YouTube/Vimeo - создаем iframe напрямую
-      if (platform === 'youtube' || platform === 'vimeo') {
+      // Для видео/аудио/карт платформ с прямым iframe - создаем напрямую
+      const directIframePlatforms = [
+        'youtube',
+        'vimeo',
+        'rutube',
+        'coub',
+        'bitchute',
+        'yandex-music',
+        'google-maps',
+        'yandex-maps',
+        'umap',
+        'openfreemap',
+        'pubhtml5'
+      ] as const
+      if (directIframePlatforms.includes(platform as (typeof directIframePlatforms)[number])) {
         const videoId = extractVideoId(url, platform)
-        if (videoId) {
-          const iframe = createVideoIframe(videoId, platform === 'vimeo')
+        if (
+          videoId ||
+          platform === 'yandex-music' ||
+          platform === 'google-maps' ||
+          platform === 'yandex-maps' ||
+          platform === 'umap' ||
+          platform === 'openfreemap' ||
+          platform === 'pubhtml5'
+        ) {
+          const iframe = createMediaIframe(
+            url,
+            platform as
+              | 'youtube'
+              | 'vimeo'
+              | 'rutube'
+              | 'coub'
+              | 'bitchute'
+              | 'yandex-music'
+              | 'google-maps'
+              | 'yandex-maps'
+          )
           contentContainer.appendChild(iframe)
           contentContainer.style.display = 'block'
           wrapper.style.display = 'none'
@@ -479,67 +540,131 @@ export const processEmbeds = async (container: HTMLElement) => {
   }
 }
 
+/**
+ * Метаданные платформ для UI
+ */
+const PLATFORM_METADATA: Record<string, { name: string; icon: string }> = {
+  youtube: { name: 'YouTube', icon: '/icons/social-youtube.svg' },
+  vimeo: { name: 'Vimeo', icon: '/icons/social-vimeo.svg' },
+  soundcloud: { name: 'SoundCloud', icon: '/icons/social-soundcloud.svg' },
+  bandcamp: { name: 'Bandcamp', icon: '/icons/audio.svg' },
+  facebook: { name: 'Facebook', icon: '/icons/social-facebook.svg' },
+  x: { name: 'X (Twitter)', icon: '/icons/social-x.svg' },
+  instagram: { name: 'Instagram', icon: '/icons/social-instagram.svg' },
+  telegram: { name: 'Telegram', icon: '/icons/social-telegram.svg' },
+  reddit: { name: 'Reddit', icon: '/icons/social-reddit.svg' },
+  tiktok: { name: 'TikTok', icon: '/icons/user-link-tiktok.svg' },
+  twitch: { name: 'Twitch', icon: '/icons/editor-video.svg' },
+  ted: { name: 'TED', icon: '/icons/editor-video.svg' },
+  wikipedia: { name: 'Wikipedia', icon: '/icons/editor-tooltip.svg' },
+  slideshare: { name: 'SlideShare', icon: '/icons/article.svg' },
+  imgur: { name: 'Imgur', icon: '/icons/editor-image.svg' },
+  flickr: { name: 'Flickr', icon: '/icons/editor-image.svg' },
+  discours: { name: 'Discours', icon: '/icons/logo.svg' },
+  'yandex-music': { name: 'Яндекс.Музыка', icon: '/icons/audio.svg' },
+  knightlab: { name: 'KnightLab', icon: '/icons/article.svg' },
+  apester: { name: 'Apester', icon: '/icons/editor-quiz.svg' },
+  interacty: { name: 'Interacty', icon: '/icons/editor-quiz.svg' },
+  ok: { name: 'Одноклассники', icon: '/icons/editor-video.svg' },
+  vk: { name: 'ВКонтакте', icon: '/icons/social-vk.svg' }, // 🗣️ https://dev.vk.com/ru/guide
+  piktochart: { name: 'Piktochart', icon: '/icons/editor-image.svg' },
+  bitchute: { name: 'BitChute', icon: '/icons/editor-video.svg' },
+  coub: { name: 'Coub', icon: '/icons/editor-video.svg' },
+  rutube: { name: 'Rutube', icon: '/icons/editor-video.svg' },
+  'google-maps': { name: 'Google Maps', icon: '/icons/editor-location.svg' },
+  'yandex-maps': { name: 'Яндекс.Карты', icon: '/icons/editor-location.svg' },
+  umap: { name: 'uMap (OpenStreetMap)', icon: '/icons/editor-location.svg' },
+  openfreemap: { name: 'OpenFreeMap', icon: '/icons/editor-location.svg' },
+  pubhtml5: { name: 'PubHTML5 Flipbook', icon: '/icons/article.svg' },
+  spotify: { name: 'Spotify/Anchor (требует регистрацию)', icon: '/icons/audio.svg' }
+}
+
 function getPlatformIcon(platform: string): string {
-  // Возвращаем путь к SVG иконке
-  const icons: Record<string, string> = {
-    youtube: '/icons/social-youtube.svg',
-    vimeo: '/icons/social-vimeo.svg',
-    soundcloud: '/icons/social-soundcloud.svg',
-    bandcamp: '/icons/audio.svg',
-    facebook: '/icons/social-facebook.svg',
-    x: '/icons/social-x.svg',
-    instagram: '/icons/social-instagram.svg',
-    telegram: '/icons/social-telegram.svg',
-    reddit: '/icons/social-reddit.svg',
-    tiktok: '/icons/user-link-tiktok.svg',
-    twitch: '/icons/editor-video.svg',
-    ted: '/icons/editor-video.svg',
-    wikipedia: '/icons/editor-tooltip.svg',
-    slideshare: '/icons/article.svg',
-    imgur: '/icons/editor-image.svg',
-    flickr: '/icons/editor-image.svg',
-    discours: '/icons/logo.svg'
-  }
-  return icons[platform] || '/icons/editor-link.svg'
+  return PLATFORM_METADATA[platform]?.icon || '/icons/editor-link.svg'
 }
 
 function getPlatformName(platform: string): string {
-  const names: Record<string, string> = {
-    youtube: 'YouTube',
-    vimeo: 'Vimeo',
-    soundcloud: 'SoundCloud',
-    bandcamp: 'Bandcamp',
-    facebook: 'Facebook',
-    x: 'X (Twitter)',
-    instagram: 'Instagram',
-    telegram: 'Telegram',
-    reddit: 'Reddit',
-    tiktok: 'TikTok',
-    twitch: 'Twitch',
-    ted: 'TED',
-    wikipedia: 'Wikipedia',
-    slideshare: 'SlideShare',
-    imgur: 'Imgur',
-    flickr: 'Flickr',
-    discours: 'Discours'
-  }
-  return names[platform] || platform
+  return PLATFORM_METADATA[platform]?.name || platform
 }
 
 /**
- * Создает responsive iframe wrapper для видео
+ * Создает responsive iframe wrapper для видео, аудио и карт
  */
-function createVideoIframe(videoId: string, isVimeo: boolean): HTMLElement {
+function createMediaIframe(
+  url: string,
+  platform:
+    | 'youtube'
+    | 'vimeo'
+    | 'rutube'
+    | 'coub'
+    | 'bitchute'
+    | 'yandex-music'
+    | 'google-maps'
+    | 'yandex-maps'
+    | 'umap'
+    | 'openfreemap'
+    | 'pubhtml5'
+): HTMLElement {
   const wrapper = document.createElement('div')
-  wrapper.className = 'video-player-wrapper'
-  wrapper.style.cssText = `
-    position: relative;
-    padding-bottom: 56.25%;
-    height: 0;
-    overflow: hidden;
-    max-width: 100%;
-    margin: 16px 0;
-  `
+  const isAudio = platform === 'yandex-music'
+  const isMap =
+    platform === 'google-maps' || platform === 'yandex-maps' || platform === 'umap' || platform === 'openfreemap'
+  const isFlipbook = platform === 'pubhtml5'
+
+  if (isAudio) {
+    wrapper.className = 'audio-player-wrapper'
+  } else if (isMap) {
+    wrapper.className = 'map-wrapper'
+  } else if (isFlipbook) {
+    wrapper.className = 'flipbook-wrapper'
+  } else {
+    wrapper.className = 'video-player-wrapper'
+  }
+
+  // ✅ Разные стили для видео, аудио и карт
+  if (isAudio) {
+    // Для аудио - фиксированная высота 166px
+    wrapper.style.cssText = `
+      position: relative;
+      height: 166px;
+      overflow: hidden;
+      max-width: 100%;
+      margin: 16px 0;
+      border-radius: 8px;
+    `
+  } else if (isMap) {
+    // Для карт - фиксированная высота 450px (стандарт Google/Yandex)
+    wrapper.style.cssText = `
+      position: relative;
+      height: 450px;
+      overflow: hidden;
+      max-width: 100%;
+      margin: 16px 0;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    `
+  } else if (isFlipbook) {
+    // Для флипбуков (PubHTML5) - высота 600px для комфортного чтения
+    wrapper.style.cssText = `
+      position: relative;
+      height: 600px;
+      overflow: hidden;
+      max-width: 100%;
+      margin: 16px 0;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    `
+  } else {
+    // Для видео - responsive 16:9
+    wrapper.style.cssText = `
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      overflow: hidden;
+      max-width: 100%;
+      margin: 16px 0;
+    `
+  }
 
   const iframe = document.createElement('iframe')
   iframe.style.cssText = `
@@ -551,38 +676,128 @@ function createVideoIframe(videoId: string, isVimeo: boolean): HTMLElement {
     border: none;
   `
 
-  if (isVimeo) {
-    iframe.src = `https://player.vimeo.com/video/${videoId}`
-    iframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture')
-  } else {
-    iframe.src = `https://www.youtube.com/embed/${videoId}`
+  // ✅ Конфигурация iframe для платформ (проверено по официальным документациям)
+  const iframeConfig: Record<string, { getSrc: (url: string) => string; allow?: string }> = {
+    youtube: {
+      // 🗣️ YouTube IFrame Player API: https://developers.google.com/youtube/iframe_api_reference
+      getSrc: (url) => `https://www.youtube.com/embed/${extractVideoId(url, 'youtube')}`,
+      allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+    },
+    vimeo: {
+      // 🗣️ Vimeo Player SDK: https://developer.vimeo.com/player/sdk
+      getSrc: (url) => `https://player.vimeo.com/video/${extractVideoId(url, 'vimeo')}`,
+      allow: 'autoplay; fullscreen; picture-in-picture; encrypted-media'
+    },
+    rutube: {
+      // 🗣️ Rutube: проверено по фактическим embed URL
+      getSrc: (url) => `https://rutube.ru/play/embed/${extractVideoId(url, 'rutube')}`,
+      allow: 'clipboard-write; autoplay; encrypted-media; fullscreen'
+    },
+    coub: {
+      // 🗣️ Coub: проверено по фактическим embed URL
+      getSrc: (url) => `https://coub.com/embed/${extractVideoId(url, 'coub')}`,
+      allow: 'autoplay; encrypted-media'
+    },
+    bitchute: {
+      // 🗣️ BitChute: проверено по фактическим embed URL
+      getSrc: (url) => `https://www.bitchute.com/embed/${extractVideoId(url, 'bitchute')}/`,
+      allow: 'fullscreen; encrypted-media'
+    },
+    'yandex-music': {
+      // 🗣️ Яндекс.Музыка: официальный формат iframe виджета
+      // Поддерживает: /iframe/#track/{TRACK_ID}/{ALBUM_ID}/
+      getSrc: (url) => {
+        const match = url.match(/album\/(\d+)\/track\/(\d+)/)
+        if (match) {
+          const [, albumId, trackId] = match
+          return `https://music.yandex.ru/iframe/#track/${trackId}/${albumId}/`
+        }
+        return ''
+      },
+      allow: 'autoplay; encrypted-media; fullscreen'
+    },
+    'google-maps': {
+      // 🗣️ Google Maps Embed API
+      // Формат: https://www.google.com/maps/embed?pb=...
+      getSrc: (url) => url, // URL уже в правильном формате
+      allow: 'fullscreen'
+    },
+    'yandex-maps': {
+      // 🗣️ Яндекс.Карты Widget API
+      // Формат: https://yandex.ru/map-widget/v1/?...
+      getSrc: (url) => url, // URL уже в правильном формате
+      allow: 'fullscreen'
+    },
+    umap: {
+      // 🗣️ uMap (OpenStreetMap): https://umap.openstreetmap.fr
+      // Формат: https://umap.openstreetmap.fr/.../map/...
+      getSrc: (url) => url, // URL уже в правильном формате
+      allow: 'fullscreen'
+    },
+    openfreemap: {
+      // 🗣️ OpenFreeMap: https://openfreemap.org
+      getSrc: (url) => url, // URL уже в правильном формате
+      allow: 'fullscreen'
+    },
+    pubhtml5: {
+      // 🗣️ PubHTML5: интерактивные флипбуки (digital magazines)
+      // Формат: https://s3.amazonaws.com/online.pubhtml5.com/.../index.html
+      getSrc: (url) => url, // URL уже в правильном формате
+      allow: 'fullscreen'
+    }
+  }
+
+  const config = iframeConfig[platform]
+  if (config) {
+    iframe.src = config.getSrc(url)
+    if (config.allow) {
+      iframe.setAttribute('allow', config.allow)
+    }
   }
 
   iframe.setAttribute('allowfullscreen', 'true')
   iframe.setAttribute('loading', 'lazy')
+  iframe.setAttribute('frameborder', '0')
 
   wrapper.appendChild(iframe)
   return wrapper
 }
 
 /**
- * Извлекает video ID из URL
- * Поддерживает YouTube (watch?v= и youtu.be/) и Vimeo
+ * Типы платформ поддерживающих извлечение video ID
  */
-function extractVideoId(url: string, platform: 'youtube' | 'vimeo'): string | null {
-  if (platform === 'vimeo') {
-    const match = url.match(/vimeo\.com\/(\d+)/)
-    return match?.[1] || null
-  }
+type VideoIdPlatform = 'youtube' | 'vimeo' | 'rutube' | 'coub' | 'bitchute'
 
-  // YouTube
-  if (url.includes('youtube.com')) {
-    const match = url.match(/watch\?v=([a-zA-Z0-9_-]{11})/)
-    return match?.[1] || null
-  }
-  if (url.includes('youtu.be')) {
-    const match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)
-    return match?.[1] || null
+/**
+ * Паттерны для извлечения video ID из разных платформ
+ */
+const VIDEO_ID_PATTERNS: Record<VideoIdPlatform, RegExp | RegExp[]> = {
+  youtube: [/watch\?v=([a-zA-Z0-9_-]{11})/, /youtu\.be\/([a-zA-Z0-9_-]{11})/],
+  vimeo: /vimeo\.com\/(\d+)/,
+  rutube: /rutube\.ru\/video\/([a-f0-9]+)/,
+  coub: /coub\.com\/(?:view|embed)\/([a-zA-Z0-9]+)/,
+  bitchute: /bitchute\.com\/(?:video|embed)\/([a-zA-Z0-9]+)/
+}
+
+/**
+ * Извлекает video ID из URL
+ * Поддерживает множество платформ
+ */
+function extractVideoId(url: string, platform: string): string | null {
+  // Type guard для проверки поддерживаемой платформы
+  if (!(platform in VIDEO_ID_PATTERNS)) return null
+
+  const patterns = VIDEO_ID_PATTERNS[platform as VideoIdPlatform]
+  if (!patterns) return null
+
+  // Обрабатываем как массив паттернов, так и одиночный паттерн
+  const patternArray = Array.isArray(patterns) ? patterns : [patterns]
+
+  for (const pattern of patternArray) {
+    const match = url.match(pattern)
+    if (match?.[1]) {
+      return match[1]
+    }
   }
 
   return null
