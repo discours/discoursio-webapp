@@ -368,7 +368,7 @@ export const ArticleCard = (props: ArticleCardProps) => {
                 <Popover content={t('Edit')} disabled={isActionPopupActive()}>
                   {(triggerRef: (el: HTMLElement) => void) => (
                     <div class={styles.shoutCardDetailsItem} ref={triggerRef}>
-                      <A href={`/edit/${props.article?.id || ''}`}>
+                      <A href={`/edit/shout/${props.article?.id || ''}`}>
                         <Icon name="pencil-outline" class={clsx(styles.icon, styles.feedControlIcon)} />
                         <Icon
                           name="pencil-outline-hover"

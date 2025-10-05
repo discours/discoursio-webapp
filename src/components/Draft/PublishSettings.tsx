@@ -1,7 +1,7 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { batch, createEffect, createMemo, createSignal, lazy, onCleanup, onMount, Show } from 'solid-js'
-import toast from 'solid-toast'
+import toast from 'solid-sonner'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import { Image } from '~/components/_shared/Image'

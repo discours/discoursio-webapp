@@ -1,7 +1,7 @@
 import { useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { createSignal, JSX, Show } from 'solid-js'
-import { toast } from 'solid-toast'
+import { toast } from 'solid-sonner'
 import { useLocalize } from '~/context/localize'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'

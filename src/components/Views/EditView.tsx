@@ -1,7 +1,7 @@
 import { clsx } from 'clsx'
 import { batch, createEffect, createSignal, on, onCleanup, onMount, Show, untrack } from 'solid-js'
 import { NoHydration } from 'solid-js/web'
-import toast from 'solid-toast'
+import toast from 'solid-sonner'
 import { debounce } from 'throttle-debounce'
 import { InviteMembers } from '~/components/_shared/InviteMembers'
 import { Modal } from '~/components/_shared/Modal'

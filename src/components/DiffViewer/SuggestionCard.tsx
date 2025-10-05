@@ -1,5 +1,5 @@
 import { createSignal, Show } from 'solid-js'
-import { toast } from 'solid-toast'
+import { toast } from 'solid-sonner'
 import { Icon } from '~/components/_shared/Icon'
 import { RatingControl } from '~/components/RatingControl/RatingControl'
 import { useLocalize } from '~/context/localize'

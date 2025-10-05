@@ -4,7 +4,7 @@
  */
 
 import { createSignal } from 'solid-js'
-import { toast } from 'solid-toast'
+import { toast } from 'solid-sonner'
 import { useLocalize } from '~/context/localize'
 import { useUpload } from '~/context/upload'
 import { UploadResult } from './types'

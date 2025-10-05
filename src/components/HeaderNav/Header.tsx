@@ -2,7 +2,7 @@ import { A, redirect, useLocation, useSearchParams } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { isServer, NoHydration } from 'solid-js/web'
-import { Toaster } from 'solid-toast'
+import { Toaster } from 'solid-sonner'
 import { useLocalize } from '~/context/localize'
 import { useNotifications } from '~/context/notifications'
 import { useSession } from '~/context/session'
@@ -513,34 +513,17 @@ export const Header = (props: Props) => {
           <Show when={!isNotificationsPanelOpen()}>
             <Toaster
               position="bottom-right"
+              duration={4000}
+              class={styles.toasterContainer}
               toastOptions={{
-                className: styles.snackbar,
-                duration: 4000,
+                class: styles.snackbar,
                 style: {
                   background: 'var(--toast-background)',
                   color: 'var(--toast-text-color)',
                   'border-radius': 'var(--toast-border-radius)',
                   'box-shadow': 'var(--toast-box-shadow)',
-                  'font-size': 'var(--toast-font-size)',
-                  transform: 'none',
-                  position: 'relative',
-                  left: 'auto',
-                  right: 'auto',
-                  bottom: 'auto',
-                  top: 'auto',
-                  margin: '0'
+                  'font-size': 'var(--toast-font-size)'
                 }
-              }}
-              gutter={8}
-              containerClassName={styles.toasterContainer}
-              containerStyle={{
-                position: 'fixed',
-                bottom: '20px',
-                right: '20px',
-                'z-index': 10000,
-                display: 'flex',
-                'flex-direction': 'column-reverse',
-                gap: '8px'
               }}
             />
           </Show>

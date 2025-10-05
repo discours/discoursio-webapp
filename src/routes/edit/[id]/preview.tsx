@@ -1,6 +1,6 @@
 import { RouteSectionProps, useNavigate } from '@solidjs/router'
 import { createSignal, onMount, Show } from 'solid-js'
-import { toast } from 'solid-toast'
+import { toast } from 'solid-sonner'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { DraftPreview } from '~/components/Draft/DraftPreview'
 import { DraftPreviewToolbar } from '~/components/Draft/DraftPreviewToolbar'

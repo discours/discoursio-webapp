@@ -1,6 +1,6 @@
 import type { Accessor, JSX } from 'solid-js'
 import { createContext, createSignal, onCleanup, useContext } from 'solid-js'
-import toast from 'solid-toast'
+import toast from 'solid-sonner'
 import { loadCommentsBranch as loadCommentsBranchApi, loadReactions } from '~/graphql/api/public'
 import {
   MutationCreate_ReactionArgs,

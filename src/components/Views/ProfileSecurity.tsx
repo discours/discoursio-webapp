@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import { createEffect, createSignal, on, Show } from 'solid-js'
-import toast from 'solid-toast'
+import toast from 'solid-sonner'
 import { Button } from '~/components/_shared/Button'
 import { Icon } from '~/components/_shared/Icon'
 import { Loading } from '~/components/_shared/Loading'

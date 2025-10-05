@@ -2,6 +2,36 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.15.2] - 2025-10-05
+
+### ✨ Features
+- **Редактирование мигрированных шаутов**: Добавлен новый flow для редактирования опубликованных статей
+  - Создан route `/edit/shout/:id` для редактирования шаутов
+  - Автоматически создаёт черновик из шаута при первом редактировании
+  - Переиспользует существующий черновик если он уже создан
+  - Редиректит на `/edit/:draft_id` после создания черновика
+  - Обновлены ссылки "Редактировать" в `ArticleCard` и `FullArticle`
+
+### 🔧 Improvements
+- **Toast библиотека**: Заменён `solid-toast` на `solid-sonner` для лучшего UX
+  - Более современный API и стили
+  - Улучшенная анимация и позиционирование
+  - Обновлены все 20+ компонентов с импортами toast
+  - Удалены старые стили `toast.scss`
+
+### 🐛 Fixes
+- **GraphQL мутация**: Исправлена передача аргументов в `handleGraphQLError` для `createDraftFromShout`
+- **Codegen конфиг**: Обновлён для использования локального GraphQL сервера (`localhost:8000`) вместо production
+
+### Technical Details
+- `routes/edit/shout/[id].tsx`: Новый route для редактирования шаутов
+- `context/drafts.tsx`: Добавлена функция `createDraftFromShout`
+- `graphql/mutation/core/draft-create-from-shout.ts`: Новая GraphQL мутация
+- `components/Feed/ArticleCard/ArticleCard.tsx`: Обновлена ссылка редактирования
+- `components/Article/FullArticle.tsx`: Обновлена ссылка редактирования
+- `components/HeaderNav/Header.tsx`: Обновлён `Toaster` для solid-sonner
+- `codegen.ts`: Изменён schema source на `process.env.GRAPHQL_SCHEMA_URL || 'http://localhost:8000/graphql'`
+
 ## [0.15.1] - 2025-10-05
 
 ### 🚀 FEAT: Quick Inline Embed System

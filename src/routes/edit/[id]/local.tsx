@@ -1,6 +1,6 @@
 import { RouteSectionProps, useNavigate } from '@solidjs/router'
 import { onMount } from 'solid-js'
-import { toast } from 'solid-toast'
+import { toast } from 'solid-sonner'
 import { PageLayout } from '~/components/_shared/PageLayout'
 import { EditView } from '~/components/Views/EditView'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'

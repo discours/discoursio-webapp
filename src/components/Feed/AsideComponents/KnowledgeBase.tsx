@@ -22,7 +22,7 @@ const defaultItems: KnowledgeBaseItem[] = [
   {
     title: 'How Discours works',
     href: '/guide',
-    icon: 'info'
+    icon: 'editor-tooltip'
   },
   {
     title: 'How to write a good article',
@@ -37,12 +37,12 @@ const defaultItems: KnowledgeBaseItem[] = [
   {
     title: 'Community principles',
     href: '/principles',
-    icon: 'heart'
+    icon: 'like'
   },
   {
     title: 'Privacy Policy',
     href: '/privacy',
-    icon: 'lock'
+    icon: 'settings'
   }
 ]
 

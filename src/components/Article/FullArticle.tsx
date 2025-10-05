@@ -465,7 +465,7 @@ export const FullArticle = (props: Props) => {
         <Popover content={t('Edit')}>
           {(triggerRef: (el: HTMLElement) => void) => (
             <div class={styles.shoutStatsItem} ref={triggerRef}>
-              <A href={`/edit/${props.article.id}`} class={styles.shoutStatsItemInner}>
+              <A href={`/edit/shout/${props.article.id}`} class={styles.shoutStatsItemInner}>
                 <Icon name="pencil-outline" class={styles.icon} />
                 <Icon name="pencil-outline-hover" class={clsx(styles.icon, styles.iconHover)} />
               </A>

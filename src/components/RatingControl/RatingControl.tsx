@@ -1,7 +1,7 @@
 import { A } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { createEffect, createSignal, on, Show } from 'solid-js'
-import { toast } from 'solid-toast'
+import { toast } from 'solid-sonner'
 import { useLocalize } from '~/context/localize'
 import { useReactions } from '~/context/reactions'
 import { useSession } from '~/context/session'

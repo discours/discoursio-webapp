@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import { createEffect, createSignal, For, on, onMount, Show } from 'solid-js'
-import { toast } from 'solid-toast'
+import { toast } from 'solid-sonner'
 import { DraftCard } from '~/components/Draft'
 import { Placeholder } from '~/components/Feed/Placeholder'
 import { ExtendedDraft, useDrafts } from '~/context/drafts'

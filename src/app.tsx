@@ -23,7 +23,6 @@ import { UIProvider } from './context/ui'
 import { UploadProvider } from './context/upload'
 
 import '~/styles/app.scss'
-import '~/styles/toast.scss'
 
 // biome-ignore lint/suspicious/noExplicitAny: ok
 const ErrorFallback: Component<{ error: any; reset: () => void }> = (props) => {

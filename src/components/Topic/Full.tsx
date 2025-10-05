@@ -1,7 +1,7 @@
 import { useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { createEffect, createSignal, For, on, Show } from 'solid-js'
-import toast from 'solid-toast'
+import toast from 'solid-sonner'
 import { LoadMoreItems, LoadMoreWrapper } from '~/components/_shared/LoadMoreWrapper'
 import { AuthorBadge } from '~/components/Author/AuthorBadge'
 import { useDrafts } from '~/context/drafts'

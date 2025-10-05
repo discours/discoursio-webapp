@@ -7,6 +7,7 @@ import { EditorData } from '~/components/SimpleRichEditor/lib/types'
 import { handleGraphQLError } from '~/graphql/client'
 import type {
   Author,
+  CreateDraftFromShoutMutationMutation,
   CreateDraftMutationMutation,
   DeleteDraftMutationMutation,
   Draft,
@@ -19,6 +20,7 @@ import type {
 } from '~/graphql/generated/graphql'
 import unpublishShoutMutation from '~/graphql/mutation/core/article-unpublish'
 import createDraftMutation from '~/graphql/mutation/core/draft-create'
+import createDraftFromShoutMutation from '~/graphql/mutation/core/draft-create-from-shout'
 import deleteDraftMutation from '~/graphql/mutation/core/draft-delete'
 import publishDraftMutation from '~/graphql/mutation/core/draft-publish'
 import updateDraftMutation from '~/graphql/mutation/core/draft-update'
@@ -191,6 +193,7 @@ type DraftsContextType = {
   setEditorContent: (editorId: string, content: string) => undefined
   loadDrafts: () => Promise<ExtendedDraft[]>
   createDraft: (draft: DraftInput) => Promise<OperationResult<CreateDraftMutationMutation> | undefined>
+  createDraftFromShout: (shoutId: number) => Promise<OperationResult<CreateDraftFromShoutMutationMutation> | undefined>
   updateDraft: (draft: DraftInput) => Promise<OperationResult<UpdateDraftMutationMutation> | undefined>
   deleteDraft: (id: number) => Promise<OperationResult<DeleteDraftMutationMutation> | undefined>
   publishDraft: (draftId: number) => Promise<OperationResult<PublishDraftMutationMutation> | undefined>
@@ -730,6 +733,54 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       return response as OperationResult<CreateDraftMutationMutation>
     } catch (error) {
       console.error('[DraftsProvider] Ошибка при создании черновика на сервере:', error)
+      throw error
+    }
+  }
+
+  const createDraftFromShout = async (
+    shoutId: number
+  ): Promise<OperationResult<CreateDraftFromShoutMutationMutation> | undefined> => {
+    console.log('[DraftsProvider] Создаём черновик из шаута:', shoutId)
+
+    if (!isSessionReadyForServer()) {
+      console.error('[DraftsProvider] Сессия не готова для создания черновика из шаута')
+      throw new Error('Сессия не готова для создания черновика из шаута')
+    }
+
+    if (!client()) {
+      console.error('[DraftsProvider] GraphQL клиент не инициализирован')
+      throw new Error('GraphQL клиент не инициализирован')
+    }
+
+    try {
+      const response = await client()!.mutation(createDraftFromShoutMutation, { shout_id: shoutId }).toPromise()
+
+      if (response?.error) {
+        handleGraphQLError(response, 'create_draft_from_shout')
+        console.error('[DraftsProvider] Ошибка GraphQL при создании черновика из шаута:', response.error)
+        return response as OperationResult<CreateDraftFromShoutMutationMutation>
+      }
+
+      if (response?.data?.create_draft_from_shout?.error) {
+        console.error(
+          '[DraftsProvider] Ошибка сервера при создании черновика из шаута:',
+          response.data.create_draft_from_shout.error
+        )
+        return response as OperationResult<CreateDraftFromShoutMutationMutation>
+      }
+
+      if (response?.data?.create_draft_from_shout?.draft) {
+        const newDraft = response.data.create_draft_from_shout.draft
+        console.log(`[DraftsProvider] Черновик успешно создан из шаута ${shoutId}: draft_id=${newDraft.id}`)
+
+        // Добавляем новый черновик в состояние
+        setDrafts((prev) => [...prev, newDraft as ExtendedDraft])
+        setCurrentDraft(newDraft as ExtendedDraft)
+      }
+
+      return response as OperationResult<CreateDraftFromShoutMutationMutation>
+    } catch (error) {
+      console.error('[DraftsProvider] Ошибка при создании черновика из шаута:', error)
       throw error
     }
   }
@@ -1517,6 +1568,7 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
     setEditorContent,
     loadDrafts,
     createDraft,
+    createDraftFromShout,
     updateDraft,
     deleteDraft,
     publishDraft,

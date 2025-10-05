@@ -1,7 +1,7 @@
 import { A, useNavigate } from '@solidjs/router'
 import { clsx } from 'clsx'
 import { Show } from 'solid-js'
-import { toast } from 'solid-toast'
+import { toast } from 'solid-sonner'
 import type { ExtendedDraft } from '~/context/drafts'
 import { useDrafts } from '~/context/drafts'
 import { createValidDate, useLocalize } from '~/context/localize'

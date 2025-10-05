@@ -1,6 +1,6 @@
 import { clsx } from 'clsx'
 import { createSignal, onMount } from 'solid-js'
-import { toast } from 'solid-toast'
+import { toast } from 'solid-sonner'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
 import styles from './Donate.module.scss'

@@ -86,8 +86,11 @@ export const getCdnUrl = (url: string, width?: number): string => {
 
   // Применяем width трансформацию если нужно
   if (width) {
-    // В production используем /api/thumb для серверного ресайза
-    // В dev тоже используем /api/thumb, т.к. Quoter CDN теперь работает стабильно
+    // В production используем /api/thumb для серверного ресайза через Vercel
+    // В dev используем прямой CDN URL с width параметром
+    if (import.meta.env.DEV) {
+      return `${cdnUrl}/${filename}`
+    }
     return `/api/thumb/${width}/${filename}`
   }
 

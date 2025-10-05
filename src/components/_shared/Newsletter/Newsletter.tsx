@@ -1,6 +1,6 @@
 import { createSignal, JSX, Show } from 'solid-js'
 
-import { toast } from 'solid-toast'
+import { toast } from 'solid-sonner'
 import { useLocalize } from '~/context/localize'
 import { validateEmail } from '~/utils/validate'
 import { Button } from '../Button'

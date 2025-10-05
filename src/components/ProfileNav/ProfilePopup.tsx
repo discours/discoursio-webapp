@@ -116,7 +116,7 @@ export const ProfilePopup = (props: ProfilePopupProps) => {
                 <Popover content={syncStatus().tooltip || ''}>
                   {(ref) => (
                     <div ref={ref} onClick={handleSyncClick} class={styles.statusIcon}>
-                      <Icon name={syncStatus().icon || 'info'} class={syncStatus().className} />
+                      <Icon name={syncStatus().icon || 'alert-triangle'} class={syncStatus().className} />
                     </div>
                   )}
                 </Popover>
