@@ -41,9 +41,12 @@ const isRecentlyUploaded = (filename: string): boolean => {
  * - https://files.dscrs.site/production/image/xyz.png → xyz.png
  * - /production/image/file.jpeg → file.jpeg
  *
- * @param url - URL исходного изображения
- * @param width - Желаемая ширина для ресайза (опционально)
- * @returns URL для CDN с filename: cdnUrl/filename или /api/thumb/width/filename
+ * @param url - URL исходного файла (изображение, аудио, видео)
+ * @param width - Желаемая ширина для ресайза (применяется ТОЛЬКО к изображениям)
+ * @returns URL для CDN:
+ *   - Изображения с width: /api/thumb/width/filename
+ *   - Изображения без width: cdnUrl/filename
+ *   - Аудио/видео: cdnUrl/filename (width игнорируется)
  */
 export const getCdnUrl = (url: string, width?: number): string => {
   if (!url) return url
@@ -84,14 +87,26 @@ export const getCdnUrl = (url: string, width?: number): string => {
     return `${cdnUrl}/${filename}`
   }
 
-  // Применяем width трансформацию если нужно
-  if (width) {
+  // Проверяем тип файла по расширению
+  const extension = filename.split('.').pop()?.toLowerCase() || ''
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp'].includes(extension)
+  const isAudio = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aif'].includes(extension)
+  const isVideo = ['mp4', 'webm', 'mov', 'avi'].includes(extension)
+
+  // Применяем width трансформацию ТОЛЬКО для изображений
+  if (width && isImage) {
     // Используем /api/thumb для серверного ресайза (и в dev, и в prod)
     // API endpoint находится в src/routes/api/thumb/[width]/[...path].ts
     return `/api/thumb/${width}/${filename}`
   }
 
-  // Без ресайза - прямая ссылка на оригинал в Quoter CDN
+  // Для аудио, видео и файлов без ресайза - прямая ссылка на оригинал в Quoter CDN
+  if (isAudio || isVideo || !width) {
+    return `${cdnUrl}/${filename}`
+  }
+
+  // Fallback для неизвестных типов файлов с width параметром - игнорируем width
+  console.warn(`[getCdnUrl] Unknown file type for width transformation: ${extension}, using direct CDN`)
   return `${cdnUrl}/${filename}`
 }
 

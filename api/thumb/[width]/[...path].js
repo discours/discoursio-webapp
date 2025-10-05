@@ -46,6 +46,14 @@ export async function GET(request) {
       return new Response('Image path required', { status: 400 })
     }
 
+    // Проверяем, что это изображение по расширению
+    const extension = imagePath.split('.').pop()?.toLowerCase() || ''
+    const validImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp']
+    if (!validImageExtensions.includes(extension)) {
+      console.warn(`[thumb] Invalid image extension: ${extension}`)
+      return new Response('Only image files are supported', { status: 400 })
+    }
+
     // Fetch оригинал из Quoter
     const originalUrl = `${cdnUrl}/${imagePath}`
     console.log(`[thumb] Fetching: ${originalUrl}`)
