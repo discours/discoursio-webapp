@@ -18,6 +18,14 @@
   - Улучшенная анимация и позиционирование
   - Обновлены все 20+ компонентов с импортами toast
   - Удалены старые стили `toast.scss`
+- **Squib меню**: Улучшен UI и логика взаимодействия для форматирования врезок (цитат)
+  - Добавлен выбор цвета фона через выпадающее меню с визуальными образцами
+  - Новые цвета: серый, желтый, красный, зеленый, черный + без фона (рамка)
+  - Обновлен дизайн меню: закругленные углы, улучшенные тени, плавные анимации
+  - Кнопка выбора цвета показывает текущий цвет индикатором
+  - Активный цвет подсвечивается синей рамкой с glow эффектом
+  - **Исправлен конфликт меню**: при выделении текста внутри врезки показывается только основной тулбар (справа), SquibMenu (слева) автоматически скрывается
+  - При снятии выделения курсор остается внутри врезки - SquibMenu автоматически появляется снова
 
 ### 🐛 Fixes
 - **GraphQL мутация**: Исправлена передача аргументов в `handleGraphQLError` для `createDraftFromShout`
@@ -38,6 +46,9 @@
 - `codegen.ts`: Изменён schema source на `process.env.GRAPHQL_SCHEMA_URL || 'http://localhost:8000/graphql'`
 - `context/profile.tsx`: Добавлена проверка `!isUploadingAvatar()` в `createEffect` (строка 86)
 - `components/Views/ProfileSettings.tsx`: Удален вызов `setAuthor()` в `handleUploadAvatar` (строки 211-212)
+- `components/SimpleRichEditor/menu/SquibMenu.tsx`: Добавлено выпадающее меню выбора цвета, реактивные функции `getCurrentBg()` и `getCurrentColorOption()`
+- `components/SimpleRichEditor/menu/SquibMenu.module.scss`: Обновлены стили меню, добавлены `.colorRow`, `.colorIndicator`, `.colorSwatch`
+- `components/SimpleRichEditor/SimpleRichEditor.tsx`: Добавлена логика взаимоисключения SquibMenu и основного тулбара (строки 253-291)
 
 ## [0.15.1] - 2025-10-05
 

@@ -250,6 +250,12 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         const hasActiveSelection = !selection.isCollapsed && selection.toString().trim() !== ''
         setHasSelection(hasActiveSelection)
 
+        // 2.1. Если есть выделение текста - скрываем SquibMenu (приоритет основному тулбару)
+        if (hasActiveSelection && showSquibEditor()) {
+          setShowSquibEditor(false)
+          setCurrentSquib(null)
+        }
+
         // 3. Обновляем floating toolbar
         const floatToolbar = document.querySelector(`.${styles.floatingToolbar}[data-editor-id="${props.editorId}"]`)
         if (floatToolbar && floatToolbar instanceof HTMLElement) {
@@ -263,6 +269,26 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             }
           } else {
             floatToolbar.classList.remove(styles.visible)
+
+            // 3.1. Если нет выделения, проверяем - курсор внутри squib? Показываем SquibMenu
+            const container = range.commonAncestorContainer
+            let squibElement: HTMLElement | null = null
+
+            if (container.nodeType === Node.TEXT_NODE) {
+              squibElement = container.parentElement?.closest('[data-align]') as HTMLElement | null
+            } else {
+              squibElement = (container as HTMLElement).closest('[data-align]')
+            }
+
+            if (squibElement && !showSquibEditor()) {
+              setCurrentSquib(squibElement)
+              setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
+              setShowSquibEditor(true)
+            } else if (!squibElement && showSquibEditor()) {
+              // Курсор вышел из squib - скрываем меню
+              setShowSquibEditor(false)
+              setCurrentSquib(null)
+            }
           }
         }
 
