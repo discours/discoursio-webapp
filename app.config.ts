@@ -34,19 +34,7 @@ console.log('[app.config] connected to api: ', process.env.PUBLIC_CORE_API || 'h
 // 5: CONFIG
 export default defineConfig({
   nitro: {
-    timing: true,
-    // Исправление для CI: принудительная генерация manifest.json
-    ...(isCI && {
-      experimental: {
-        wasm: false
-      },
-      storage: {
-        fs: {
-          driver: 'fs',
-          base: './.vinxi'
-        }
-      }
-    })
+    timing: true
   },
   // Route rules для API
   routeRules: {
@@ -70,24 +58,6 @@ export default defineConfig({
       inlineDynamicImports: false
     }
   },
-  // Исправление для CI: обеспечиваем создание всех необходимых директорий
-  ...(isCI && {
-    routers: [
-      {
-        name: 'public',
-        type: 'static',
-        dir: './public',
-        base: '/'
-      },
-      {
-        name: 'server-fns',
-        type: 'http',
-        handler: './src/entry-server.tsx',
-        target: 'server',
-        base: '/_server'
-      }
-    ]
-  }),
   ssr: true,
   server: {
     preset,
