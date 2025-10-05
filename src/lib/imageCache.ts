@@ -1,36 +1,75 @@
 import { cdnUrl } from '~/config'
 
-
-const isDev = import.meta.env.DEV
+// Кеш недавно загруженных файлов (для обхода 404 после upload)
+// Ключ: filename, Значение: timestamp загрузки
+const recentUploads = new Map<string, number>()
+const UPLOAD_GRACE_PERIOD = 30000 // 30 секунд
 
 /**
- * Преобразует URL изображения для CDN - извлекает только filename
+ * Регистрирует файл как свежезагруженный
+ * Используется для обхода 404 сразу после upload (пока файл синхронизируется)
+ */
+export const markFileAsRecentlyUploaded = (url: string) => {
+  try {
+    const filename = url.split('/').pop()
+    if (filename) {
+      recentUploads.set(filename, Date.now())
+      // Автоматически удаляем из кеша через grace period
+      setTimeout(() => recentUploads.delete(filename), UPLOAD_GRACE_PERIOD)
+    }
+  } catch (error) {
+    console.warn('[imageCache] Failed to mark file as recently uploaded:', error)
+  }
+}
+
+/**
+ * Проверяет, был ли файл недавно загружен
+ */
+const isRecentlyUploaded = (filename: string): boolean => {
+  const uploadTime = recentUploads.get(filename)
+  if (!uploadTime) return false
+
+  const age = Date.now() - uploadTime
+  return age < UPLOAD_GRACE_PERIOD
+}
+
+/**
+ * Преобразует URL изображения для CDN - извлекает только filename (UUID + extension)
+ *
+ * Убирает все пути и префиксы:
+ * - https://cdn.discours.io/production/image/abc-123.jpg → abc-123.jpg
+ * - https://files.dscrs.site/production/image/xyz.png → xyz.png
+ * - /production/image/file.jpeg → file.jpeg
  *
  * @param url - URL исходного изображения
  * @param width - Желаемая ширина для ресайза (опционально)
- * @returns URL для CDN с filename
+ * @returns URL для CDN с filename: cdnUrl/filename или /api/thumb/width/filename
  */
 export const getCdnUrl = (url: string, width?: number): string => {
   if (!url) return url
 
-  // Извлекаем путь из URL
+  // Извлекаем путь из URL (убираем домен)
   let filepath = ''
   try {
     filepath = new URL(url).pathname
   } catch {
+    // Если не URL, значит это уже путь
     filepath = url
   }
 
-  // Разбиваем на части по слешам
+  // Разбиваем на части по слешам и берём ТОЛЬКО последний сегмент (filename)
+  // Это убирает все субпути типа /production/image/
   const fileparts = filepath.split('/')
   let filename = fileparts.pop() || ''
   if (!filename) filename = filepath
 
-  // Обработка legacy /webp суффикса
-  if (filename.toLowerCase() === 'webp') filename = fileparts.pop() || ''
+  // Обработка legacy /webp суффикса (некоторые старые URL имеют /webp в конце)
+  if (filename.toLowerCase() === 'webp') {
+    filename = fileparts.pop() || ''
+  }
   if (!filename) return url
 
-  // Проверяем, является ли filename валидным (содержит расширение)
+  // Проверяем, что filename валидный (UUID.extension)
   const hasExtension =
     filename.includes('.') && filename.split('.').pop()?.length && filename.split('.').pop()!.length <= 5
   if (!hasExtension) {
@@ -38,12 +77,17 @@ export const getCdnUrl = (url: string, width?: number): string => {
     return url
   }
 
+  // Проверяем, не был ли файл недавно загружен
+  // Для свежих файлов используем прямую ссылку (обход 404 во время синхронизации)
+  if (isRecentlyUploaded(filename)) {
+    console.log(`[getCdnUrl] Recently uploaded file, using direct CDN: ${filename}`)
+    return `${cdnUrl}/${filename}`
+  }
+
   // Применяем width трансформацию если нужно
   if (width) {
-    // В dev режиме используем testing.discours.io, в prod - Vercel Edge
-    if (isDev) {
-      return `https://testing.discours.io/api/thumb/${width}/${filename}`
-    }
+    // В production используем /api/thumb для серверного ресайза
+    // В dev тоже используем /api/thumb, т.к. Quoter CDN теперь работает стабильно
     return `/api/thumb/${width}/${filename}`
   }
 
@@ -94,6 +138,7 @@ export const getImageSrcSet = (src: string, widths: number[] = [400, 800, 1200])
 /**
  * Заменяет все URL картинок в HTML на правильный CDN
  * Нужно для обработки контента, рендерящегося через innerHTML
+ * Заменяет старые URL (cdn.discours.io) на новый CDN (files.dscrs.site)
  * @param html - HTML строка с картинками
  * @returns HTML с обновленными URL
  */
@@ -102,16 +147,23 @@ export const replaceImageUrls = (html: string): string => {
 
   // Заменяем src в img тегах
   return html.replace(/<img([^>]+)src\s*=\s*["']([^"']+)["']/gi, (match, beforeSrc, url) => {
-    // Если URL содержит cdn.discours.io - заменяем на новый CDN
+    // Пропускаем относительные и локальные пути
+    if (!url.startsWith('http')) {
+      return match
+    }
+
+    // Заменяем старый CDN (cdn.discours.io) на новый (files.dscrs.site)
     if (url.includes('cdn.discours.io')) {
       const newUrl = getCdnUrl(url)
+      console.log(`[replaceImageUrls] Replaced old CDN: ${url} → ${newUrl}`)
       return `<img${beforeSrc}src="${newUrl}"`
     }
-    // Для других URL тоже применяем getCdnUrl (для единообразия)
-    if (url.startsWith('http')) {
-      const newUrl = getCdnUrl(url)
-      return `<img${beforeSrc}src="${newUrl}"`
+
+    // Для всех остальных HTTP URL тоже применяем getCdnUrl (извлекает filename)
+    const newUrl = getCdnUrl(url)
+    if (newUrl !== url) {
+      console.log(`[replaceImageUrls] Normalized URL: ${url} → ${newUrl}`)
     }
-    return match
+    return `<img${beforeSrc}src="${newUrl}"`
   })
 }

@@ -42,7 +42,11 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
 
   const token = () => session()?.token
 
-  const upload = async (formData: FormData, onProgress?: (progress: number) => void, retryWithRefresh = true): Promise<string> => {
+  const upload = async (
+    formData: FormData,
+    onProgress?: (progress: number) => void,
+    retryWithRefresh = true
+  ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest()
 
@@ -76,19 +80,21 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
         } else if (xhr.status === 401 && retryWithRefresh) {
           // Токен истёк - обновляем и повторяем попытку
           console.log('[Upload] 401 Unauthorized - refreshing token and retrying')
-          refreshToken().then((refreshSuccess) => {
-            if (refreshSuccess) {
-              console.log('[Upload] Token refreshed successfully, retrying upload')
-              // Повторяем загрузку с новым токеном (БЕЗ повторного retry)
-              upload(formData, onProgress, false).then(resolve).catch(reject)
-            } else {
-              console.error('[Upload] Token refresh failed')
+          refreshToken()
+            .then((refreshSuccess) => {
+              if (refreshSuccess) {
+                console.log('[Upload] Token refreshed successfully, retrying upload')
+                // Повторяем загрузку с новым токеном (БЕЗ повторного retry)
+                upload(formData, onProgress, false).then(resolve).catch(reject)
+              } else {
+                console.error('[Upload] Token refresh failed')
+                reject(new Error(t('Session expired. Please sign in again.')))
+              }
+            })
+            .catch((refreshError) => {
+              console.error('[Upload] Error refreshing token:', refreshError)
               reject(new Error(t('Session expired. Please sign in again.')))
-            }
-          }).catch((refreshError) => {
-            console.error('[Upload] Error refreshing token:', refreshError)
-            reject(new Error(t('Session expired. Please sign in again.')))
-          })
+            })
         } else {
           console.error('[Upload] Error:', xhr.status, xhr.responseText)
           const errorText = xhr.responseText || 'Unknown error'

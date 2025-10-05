@@ -53,7 +53,7 @@ function getBlockElement(node: Node, editorRoot: HTMLElement): HTMLElement | nul
     if (current.nodeType === Node.ELEMENT_NODE) {
       const element = current as HTMLElement
       const tagName = element.tagName.toLowerCase()
-      
+
       // Блочные элементы
       if (['p', 'h1', 'h2', 'h3', 'blockquote', 'div', 'li'].includes(tagName)) {
         return element
@@ -68,14 +68,10 @@ function getBlockElement(node: Node, editorRoot: HTMLElement): HTMLElement | nul
 /**
  * Определяет, должна ли команда применяться как блочное форматирование
  */
-export function shouldApplyBlockFormatting(
-  command: string,
-  range: Range,
-  editorRoot: HTMLElement
-): boolean {
+export function shouldApplyBlockFormatting(command: string, range: Range, editorRoot: HTMLElement): boolean {
   // Список блочных команд
   const blockCommands = ['h1', 'h2', 'h3', 'blockquote', 'p', 'punchline', 'squib']
-  
+
   // Если это не блочная команда - false
   if (!blockCommands.includes(command)) {
     return false
@@ -84,4 +80,3 @@ export function shouldApplyBlockFormatting(
   // Проверяем, выделен ли весь блок
   return isFullBlockSelected(range, editorRoot)
 }
-

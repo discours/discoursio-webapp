@@ -81,7 +81,7 @@ export const executeCommand = (command: CommandType, context: FormatContext): Fo
       // Проверяем, должно ли применяться блочное форматирование
       // (только если курсор без выделения ИЛИ весь блок выделен)
       const applyBlock = shouldApplyBlockFormatting(command, selection.range, editor)
-      
+
       if (applyBlock) {
         console.log('[executeCommand] Applying BLOCK formatting for:', command)
         toggleBlockFormat(command, selection, editor)

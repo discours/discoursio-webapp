@@ -762,26 +762,26 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         setTimeout(() => {
           const editor = editorRef()
           const selection = window.getSelection()
-          
+
           if (!editor || !selection || selection.rangeCount === 0) {
             console.log('[handleAction] No editor or selection for squib')
             setShowSquibEditor(false)
             return
           }
-          
+
           const range = selection.getRangeAt(0)
           const container = range.commonAncestorContainer
-          
+
           // Пытаемся найти squib элемент несколькими способами
           let squibElement: HTMLElement | null = null
-          
+
           // 1. Через closest от текущей позиции курсора
           if (container.nodeType === Node.TEXT_NODE) {
             squibElement = container.parentElement?.closest('[data-align]') as HTMLElement | null
           } else {
             squibElement = (container as HTMLElement).closest('[data-align]')
           }
-          
+
           // 2. Если не нашли через closest, ищем в родительском элементе
           if (!squibElement && container.parentElement) {
             const parent = container.parentElement
@@ -789,7 +789,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
               squibElement = parent
             }
           }
-          
+
           // 3. Если всё ещё не нашли, ищем последний созданный элемент с data-align в редакторе
           if (!squibElement) {
             const allSquibs = editor.querySelectorAll('[data-align]')
@@ -1158,7 +1158,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
                 const p = document.createElement('p')
                 p.textContent = textContent
                 squibElement.replaceWith(p)
-                
+
                 // Сохраняем изменения
                 handleChange(props.fieldType ? String(props.fieldType) : 'content')
               }

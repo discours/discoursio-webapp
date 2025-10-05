@@ -239,26 +239,27 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
 
           if (isAtVeryStart) {
             e.preventDefault()
-            
+
             // Специальная обработка для списков - только если единственный элемент
             const tagName = blockElement.tagName.toLowerCase()
             if (tagName === 'ul' || tagName === 'ol') {
               // Находим элемент li внутри списка
-              const listItem = container.nodeType === Node.TEXT_NODE 
-                ? container.parentElement?.closest('li')
-                : (container as HTMLElement).closest('li')
-              
+              const listItem =
+                container.nodeType === Node.TEXT_NODE
+                  ? container.parentElement?.closest('li')
+                  : (container as HTMLElement).closest('li')
+
               if (listItem && blockElement.contains(listItem) && blockElement.children.length === 1) {
                 // Только если это единственный элемент в списке - убираем форматирование списка
                 console.log('[Backspace] Removing list formatting (single item)')
-                
+
                 const p = document.createElement('p')
                 while (listItem.firstChild) {
                   p.appendChild(listItem.firstChild)
                 }
-                
+
                 blockElement.parentNode?.replaceChild(p, blockElement)
-                
+
                 // Восстанавливаем курсор
                 const newRange = document.createRange()
                 newRange.setStart(p, 0)
@@ -266,13 +267,13 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
                 const sel = window.getSelection()
                 sel?.removeAllRanges()
                 sel?.addRange(newRange)
-                
+
                 handleChange(props.fieldType ? String(props.fieldType) : 'content')
                 return
               }
               // Если элементов больше одного - пропускаем, обработается стандартно
             }
-            
+
             // Преобразуем любой блок (включая squib с data-align) в параграф одним действием
             console.log('[Backspace] Converting block to paragraph')
             const currentSelection = window.getSelection()

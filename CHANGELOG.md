@@ -2,6 +2,89 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.15.0] - 2025-10-05
+
+### 🔧 FIX: User Avatars (userpic) CDN URLs
+- **✅ Исправлена обработка аватарок пользователей**:
+  - **Проблема**: Старые CDN URL (`cdn.discours.io`, `assets.discours.io`) считались "внешними"
+  - **Следствие**: Аватарки не проходили через `getCdnUrl()` и не обновлялись
+  - **Решение**: Расширена логика `isExternalAvatar()` для проверки всех CDN доменов
+  - **Файлы**: 
+    - `Userpic.tsx`: Обновлена проверка CDN URL (строки 56-62)
+    - `profile.tsx`: Удалена устаревшая функция `userpicUrl()`
+    - `ProfileSettings.tsx`: Добавлен `markFileAsRecentlyUploaded()` после upload
+
+### 🚀 FEAT: Instant Avatar Preview + Upload Indicator
+- **✅ Мгновенное превью аватарки БЕЗ ожидания upload + индикатор загрузки**:
+  - **Проблема**: После выбора файла нужно ждать upload + синхронизацию (404)
+  - **Решение**: Используем `URL.createObjectURL()` для мгновенного локального превью
+  - **UX**: Аватарка видна **сразу** после crop, upload в фоне, индикатор в хедере
+  - **Flow**: 
+    1. Blob URL (мгновенно) → 
+    2. Upload → `markFileAsRecentlyUploaded()` → 
+    3. Обновление session.author.pic → 
+    4. Хедер показывает новую аватарку через прямой CDN (grace period 30s)
+  - **Файлы**: 
+    - `ProfileSettings.tsx`: Blob preview + обновление author в session
+    - `Userpic.tsx`: Поддержка `blob:` URL
+    - `profile.tsx`: `isUploadingAvatar` state в context
+    - `HeaderControls.tsx`: Индикатор загрузки в аватарке хедера
+    - `imageCache.ts`: Grace period для свежих файлов (прямой CDN URL)
+  - **Bonus**: Освобождаем память через `URL.revokeObjectURL()` после upload
+
+## [0.14.39] - 2025-10-05
+
+### 🔧 FIX: Image Thumbnails in Dev Mode
+- **✅ Восстановлена генерация превью в dev режиме**:
+  - **Проблема**: В dev режиме `getCdnUrl()` игнорировал параметр `width` и возвращал полные изображения
+  - **Следствие**: Превью загружали оригинальные большие файлы вместо миниатюр (медленно, дорого)
+  - **Решение**: Убрали обход `/api/thumb` в dev - теперь превью работают одинаково в dev и prod
+  - **Файлы**: `webapp/src/lib/imageCache.ts`
+
+## [0.14.38] - 2025-10-05
+
+### 🔧 FIX: CDN URL Migration
+- **✅ Заменен старый CDN `cdn.discours.io` на новый `files.dscrs.site`**:
+  - **Проблема**: Старый CDN не работал (ERR_TIMED_OUT), thumbnails API падал с 500
+  - **Решение в коде**:
+    - `imageCache.ts`: В dev режиме URL идут напрямую к CDN (без прокси через `/api/thumb`)
+    - `replaceImageUrls()`: Автоматическая замена `cdn.discours.io` → `files.dscrs.site` в HTML
+    - Добавлено логирование замен для отладки
+  - **Решение в БД**:
+    - Добавлена функция `replace_legacy_cdn_urls()` в `migrator/migration/process.py`
+    - Обновляет 6 таблиц, 16 полей: `shout`, `draft`, `author`, `community`, `topic`, `collection`
+    - Заменяет URL в полях: `body`, `cover`, `pic`, `about` (везде где есть медиа)
+    - **Убирает все субпути** (`/production/image/`, `/unsafe/`, etc), оставляя только filename
+    - Автоматически выполняется как Шаг 7 при запуске полной миграции
+  - **Документация**:
+    - Обновлен `development-setup.md`: убрана устаревшая информация про прокси
+    - В dev режиме изображения загружаются напрямую с CDN
+
+## [0.14.37] - 2025-10-05
+
+### 🐛 FIX: Cannot access handleScroll before initialization
+- **✅ Исправлена ошибка `ReferenceError: Cannot access 'handleScroll' before initialization`**:
+  - Проблема: `handleScroll` и `handleNetworkStatusChange` определялись после `onMount`, но использовались в нём
+  - Решение: Перенесли определения обработчиков событий выше `onMount`
+  - Удалили дублирующее определение `handleNetworkStatusChange` (было 2 раза)
+  - Теперь все обработчики определены в правильном порядке перед их использованием
+
+### 🐛 FIX: modalCallbacks is not a function
+- **✅ Исправлена ошибка `modalCallbacks is not a function`** в `EditView.tsx`:
+  - Проблема: `useUI()` вызывался внутри callback-функций, создавая новые контексты
+  - Решение: Перенесли `const { modalCallbacks } = useUI()` на верхний уровень компонента
+  - Убрали дублирующие вызовы `useUI()` из 4 callback-функций модалок
+  - Теперь `modalCallbacks()` корректно возвращает callbacks для uploadImage, uploadAudio, insertVideo
+  - Решает ошибку при загрузке изображений через модалку
+
+### 🐛 DEBUG: Upload Preview Not Showing
+- **🔍 Добавлены диагностические логи** в `handleUploadSuccess`:
+  - Логирование `uploadedFile.url` для проверки формата URL
+  - Проверка `restoreSelection()` - может ли редактор восстановить выделение
+  - Логирование результата `replaceSelection()` - была ли вставлена картинка
+  - **Цель**: Выяснить, почему после успешной загрузки не показывается превью в редакторе
+  - Логи покажут на каком этапе происходит сбой: URL, выделение или вставка HTML
+
 ## [0.14.36] - 2025-10-04
 
 ### 📚 DOCS: Local Development Setup

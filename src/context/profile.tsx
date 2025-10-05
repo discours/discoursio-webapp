@@ -12,19 +12,14 @@ type ProfileContextType = {
   setForm: (profile: ProfileInput) => void
   submit: (profile: ProfileInput) => Promise<Author | undefined>
   updateFormField: (fieldName: string, value: string, remove?: boolean) => void
+  isUploadingAvatar: Accessor<boolean>
+  setIsUploadingAvatar: (loading: boolean) => void
 }
 
 const ProfileContext = createContext<ProfileContextType>({} as ProfileContextType)
 
 export function useProfile() {
   return useContext(ProfileContext)
-}
-
-const userpicUrl = (userpic: string) => {
-  if (userpic?.includes('assets.discours.io')) {
-    return userpic.replace('100x', '500x500')
-  }
-  return userpic
 }
 
 const filterProfileInput = (profile: ProfileInput): ProfileInput => {
@@ -45,6 +40,7 @@ export const ProfileProvider = (props: { children: JSX.Element }) => {
   const { addAuthor } = useAuthors()
   const [form, setForm] = createStore<ProfileInput>({} as ProfileInput)
   const [author, setAuthor] = createSignal<Author>({} as Author)
+  const [isUploadingAvatar, setIsUploadingAvatar] = createSignal(false)
 
   // when session is loaded
   createEffect(
@@ -93,7 +89,7 @@ export const ProfileProvider = (props: { children: JSX.Element }) => {
         slug: currentAuthor.slug,
         bio: currentAuthor.bio,
         about: currentAuthor.about,
-        pic: userpicUrl(currentAuthor.pic || ''),
+        pic: currentAuthor.pic || '',
         links: currentAuthor.links
       })
     }
@@ -125,7 +121,9 @@ export const ProfileProvider = (props: { children: JSX.Element }) => {
       setForm((prev) => ({ ...prev, ...filteredProfile }))
     },
     submit,
-    updateFormField
+    updateFormField,
+    isUploadingAvatar,
+    setIsUploadingAvatar
   }
 
   return <ProfileContext.Provider value={value}>{props.children}</ProfileContext.Provider>

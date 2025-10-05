@@ -200,7 +200,13 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     while (node && node !== editor) {
       if (node.nodeType === Node.ELEMENT_NODE) {
         const element = node as Element
-        if (element.tagName === 'DIV' || element.tagName === 'P' || element.tagName === 'H1' || element.tagName === 'H2' || element.tagName === 'H3') {
+        if (
+          element.tagName === 'DIV' ||
+          element.tagName === 'P' ||
+          element.tagName === 'H1' ||
+          element.tagName === 'H2' ||
+          element.tagName === 'H3'
+        ) {
           currentLine = element
           break
         }

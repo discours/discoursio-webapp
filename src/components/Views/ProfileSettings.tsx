@@ -47,7 +47,15 @@ export const ProfileSettings = () => {
   const [hostname, setHostname] = createSignal<string | null>(null)
   const [slugError, setSlugError] = createSignal<string>()
   const [nameError, setNameError] = createSignal<string>()
-  const { form, submit, updateFormField, setForm } = useProfile()
+  const {
+    form,
+    submit,
+    updateFormField,
+    setForm,
+    setIsUploadingAvatar,
+    author: profileAuthor,
+    setAuthor
+  } = useProfile()
   const { loadSession, session } = useSession()
   const [prevForm, setPrevForm] = createStore<ProfileInput>({} as ProfileInput)
   const { showConfirm } = useUI()
@@ -175,20 +183,43 @@ export const ProfileSettings = () => {
     try {
       setUploadError(false)
       setIsUserpicUpdating(true)
+      setIsUploadingAvatar(true)
+
+      // Показываем локальное превью СРАЗУ (мгновенно)
+      const localPreviewUrl = URL.createObjectURL(uploadFile.file)
+      updateFormField('pic', localPreviewUrl)
+      console.log('[ProfileSettings] Set local preview:', localPreviewUrl)
 
       console.log('[ProfileSettings] Starting avatar upload:', uploadFile.name)
       const url = await uploadImage(uploadFile.file)
       console.log('[ProfileSettings] Upload successful, URL:', url)
 
+      // Помечаем файл как свежезагруженный (обход 404 во время синхронизации)
+      const { markFileAsRecentlyUploaded } = await import('~/lib/imageCache')
+      markFileAsRecentlyUploaded(url)
+
+      // Заменяем локальное превью на серверный URL
       updateFormField('pic', url)
+
+      // Обновляем author в session (чтобы хедер сразу показал новую аватарку)
+      const currentAuthor = profileAuthor()
+      if (currentAuthor) {
+        setAuthor({ ...currentAuthor, pic: url })
+      }
+
+      // Освобождаем blob URL
+      URL.revokeObjectURL(localPreviewUrl)
+
       setUserpicFile(undefined)
       hideModal()
       setIsUserpicUpdating(false)
+      setIsUploadingAvatar(false)
 
       toast.success(t('Avatar uploaded successfully'))
     } catch (error) {
       setUploadError(true)
       setIsUserpicUpdating(false)
+      setIsUploadingAvatar(false)
       console.error('[ProfileSettings] Upload avatar error:', error)
       toast.error(error instanceof Error ? error.message : t('Upload error'))
     }

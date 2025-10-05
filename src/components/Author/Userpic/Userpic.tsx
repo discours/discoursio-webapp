@@ -51,8 +51,23 @@ export const Userpic = (props: Props) => {
   // Локальные CDN аватарки - <Image> компонент с оптимизацией
   const isExternalAvatar = createMemo(() => {
     if (!props.userpic) return false
-    // OAuth аватарки и legacy assets.discours.io
-    return !props.userpic.startsWith(cdnUrl) && !props.userpic.startsWith('/')
+
+    // Blob URL (локальное превью) - external (показываем как есть)
+    if (props.userpic.startsWith('blob:')) {
+      return true
+    }
+
+    // CDN аватарки (новый и старые) - НЕ external, обрабатываем через <Image>
+    const isCdnUrl =
+      props.userpic.startsWith(cdnUrl) ||
+      props.userpic.startsWith('/') ||
+      props.userpic.includes('cdn.discours.io') ||
+      props.userpic.includes('assets.discours.io') ||
+      props.userpic.includes('discours-io.s3.amazonaws.com') ||
+      props.userpic.includes('files.dscrs.site')
+
+    // OAuth аватарки (Google, GitHub, etc) - external
+    return !isCdnUrl
   })
 
   return (

@@ -418,20 +418,38 @@ export const createFormHandlers = (context: FormHandlersContext) => {
   }
 
   const handleUploadSuccess = (uploadedFile?: UploadedFile) => {
-    if (!uploadedFile) return
+    console.log('[handleUploadSuccess] Called with:', uploadedFile)
+
+    if (!uploadedFile) {
+      console.warn('[handleUploadSuccess] No uploadedFile provided')
+      return
+    }
+
     const currentImage = editingImage()
+    console.log('[handleUploadSuccess] Current editing image:', currentImage)
+
     if (currentImage) {
       const imgElement = currentImage as HTMLImageElement
       imgElement.src = uploadedFile.url
       imgElement.alt = uploadedFile.originalFilename || 'Uploaded image'
+      console.log('[handleUploadSuccess] Updated existing image:', { src: imgElement.src, alt: imgElement.alt })
       setEditingImage(null)
       handleChange(props.fieldType ? String(props.fieldType) : 'content')
-    } else if (restoreSelection()) {
-      replaceSelection(
-        `<img src="${uploadedFile.url}" alt="${uploadedFile.originalFilename || 'Uploaded image'}" />`,
-        editorRef() || null
-      )
-      handleChange(props.fieldType ? String(props.fieldType) : 'content')
+    } else {
+      const selectionRestored = restoreSelection()
+      console.log('[handleUploadSuccess] Selection restored:', selectionRestored)
+
+      if (selectionRestored) {
+        const imgHtml = `<img src="${uploadedFile.url}" alt="${uploadedFile.originalFilename || 'Uploaded image'}" />`
+        console.log('[handleUploadSuccess] Inserting image HTML:', imgHtml)
+
+        const inserted = replaceSelection(imgHtml, editorRef() || null)
+        console.log('[handleUploadSuccess] Image inserted:', inserted)
+
+        handleChange(props.fieldType ? String(props.fieldType) : 'content')
+      } else {
+        console.error('[handleUploadSuccess] Failed to restore selection - image NOT inserted')
+      }
     }
     hideModal()
     editorRef()?.focus()

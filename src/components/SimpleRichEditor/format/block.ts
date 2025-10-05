@@ -58,7 +58,7 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
     console.warn(`[toggleBlockFormat] Command ${command} ('${config?.tag}') is not a supported block type.`)
     return
   }
-  
+
   // Специальная обработка для squib: должен иметь data-align
   if (command === 'squib' && config.tag === 'div') {
     console.log('[toggleBlockFormat] Processing squib command')
@@ -73,7 +73,7 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
     console.warn('[toggleBlockFormat] Could not find parent block element, creating new one')
     // Создаём новый параграф для содержимого
     const p = document.createElement('p')
-    
+
     // Если есть выделенный текст, перемещаем его в новый параграф
     if (!range.collapsed) {
       const fragment = range.extractContents()
@@ -84,9 +84,9 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
       p.innerHTML = '<br>'
       range.insertNode(p)
     }
-    
+
     blockElement = p
-    
+
     // Обновляем range для работы с новым элементом
     range.selectNodeContents(blockElement)
     range.collapse(false)
@@ -162,7 +162,7 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
       }
     })
   }
-  
+
   console.log('[toggleBlockFormat] New block created:', newBlock.outerHTML)
 
   // Убеждаемся, что новый блок может быть редактируемым

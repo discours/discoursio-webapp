@@ -79,6 +79,9 @@ export const EditView = (props: { draft?: Draft }) => {
   // Инициализируем useConnect на верхнем уровне компонента
   const { getStatus, reconnect, connect, connectEditor, addHandler } = useConnect()
 
+  // Инициализируем useUI на верхнем уровне для доступа к modalCallbacks
+  const { modalCallbacks } = useUI()
+
   // Базовые сигналы
   const [subtitleInput, setSubtitleInput] = createSignal<HTMLTextAreaElement>()
   const [isSubtitleVisible, setIsSubtitleVisible] = createSignal(false)
@@ -147,6 +150,33 @@ export const EditView = (props: { draft?: Draft }) => {
       activeElement?.closest('[contenteditable="true"]') !== null ||
       activeElement?.tagName === 'INPUT'
     )
+  }
+
+  // Основные обработчики событий (определены ДО onMount, где используются)
+  const handleScroll = () => setIsScrolled(window.scrollY > 0)
+
+  const handleNetworkStatusChange = () => {
+    const draftId = currentDraft()?.id
+
+    if (typeof window !== 'undefined' && navigator.onLine && draftId) {
+      // Синхронизация с сервером при восстановлении соединения
+      syncDraft(draftId)
+        .then(() => {
+          const draft = currentDraft()
+          if (draft && getStatus() !== 'connected') {
+            // Переподключаемся к SSE
+            reconnect().catch((error) => {
+              console.error('[EditView] Failed to reconnect SSE after network change:', error)
+            })
+          }
+        })
+        .catch((error) => {
+          console.error('[EditView] Failed to sync draft after network change:', error)
+        })
+    } else if (typeof window !== 'undefined' && !navigator.onLine) {
+      // Если сеть отключена, показываем уведомление и продолжаем работу офлайн
+      console.warn('[EditView] Network is offline, continuing in offline mode')
+    }
   }
 
   // Инициализация компонента
@@ -296,9 +326,6 @@ export const EditView = (props: { draft?: Draft }) => {
     }
   })
 
-  // Основные обработчики событий
-  const handleScroll = () => setIsScrolled(window.scrollY > 0)
-
   const handleDocumentClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement
 
@@ -380,30 +407,6 @@ export const EditView = (props: { draft?: Draft }) => {
 
   const handleEditorInput = () => {
     blockExternalUpdates()
-  }
-
-  const handleNetworkStatusChange = () => {
-    const draftId = currentDraft()?.id
-
-    if (typeof window !== 'undefined' && navigator.onLine && draftId) {
-      // Синхронизация с сервером при восстановлении соединения
-      syncDraft(draftId)
-        .then(() => {
-          const draft = currentDraft()
-          if (draft && getStatus() !== 'connected') {
-            // Переподключаемся к SSE
-            reconnect().catch((error) => {
-              console.error('[EditView] Failed to reconnect SSE after network change:', error)
-            })
-          }
-        })
-        .catch((error) => {
-          console.error('[EditView] Failed to sync draft after network change:', error)
-        })
-    } else if (typeof window !== 'undefined' && !navigator.onLine) {
-      // Если сеть отключена, показываем уведомление и продолжаем работу офлайн
-      console.warn('[EditView] Network is offline, continuing in offline mode')
-    }
   }
 
   // Обработка изменений полей
@@ -1134,7 +1137,6 @@ export const EditView = (props: { draft?: Draft }) => {
       <Modal variant="narrow" name="uploadImage">
         <UploadModalContent
           onClose={(uploadedFile?: UploadedFile) => {
-            const { modalCallbacks } = useUI()
             const callbacks = modalCallbacks()
             if (callbacks?.onSuccess) {
               callbacks.onSuccess(uploadedFile)
@@ -1149,7 +1151,6 @@ export const EditView = (props: { draft?: Draft }) => {
         <AudioUploader
           audio={[]}
           onAudioAdd={(audioItems: MediaItem[]) => {
-            const { modalCallbacks } = useUI()
             const callbacks = modalCallbacks()
             if (callbacks?.onSuccess) {
               callbacks.onSuccess(audioItems)
@@ -1163,18 +1164,15 @@ export const EditView = (props: { draft?: Draft }) => {
       <Modal variant="medium" name="insertVideo">
         <VideoPreview
           videoUrl={(() => {
-            const { modalCallbacks } = useUI()
             return modalCallbacks()?.data?.videoUrl || ''
           })()}
           onSave={(url: string) => {
-            const { modalCallbacks } = useUI()
             const callbacks = modalCallbacks()
             if (callbacks?.onSuccess) {
               callbacks.onSuccess(url)
             }
           }}
           onDecline={() => {
-            const { modalCallbacks } = useUI()
             const callbacks = modalCallbacks()
             if (callbacks?.onCancel) {
               callbacks.onCancel()

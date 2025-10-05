@@ -5,6 +5,7 @@ import { createMemo, Show, Suspense } from 'solid-js'
 import { useConnect } from '~/context/connect'
 import { useDrafts } from '~/context/drafts'
 import { useLocalize } from '~/context/localize'
+import { useProfile } from '~/context/profile'
 import { useSession } from '~/context/session'
 import { useUI } from '~/context/ui'
 import { Button } from '../_shared/Button'
@@ -83,6 +84,7 @@ const EditingHeader = (props: Props) => {
   const { toggleEditorPanel } = useDrafts()
   const { session, isSessionValidating } = useSession()
   const { showModal } = useUI()
+  const { isUploadingAvatar } = useProfile()
   const loc = useLocation()
   const author = createMemo(() => session()?.author || null)
   const matchProfile = createMemo(() => {
@@ -126,7 +128,7 @@ const EditingHeader = (props: Props) => {
                     name={author()?.name || ''}
                     userpic={author()?.pic || ''}
                     class={styles.userpic}
-                    loading={isSessionValidating()}
+                    loading={isSessionValidating() || isUploadingAvatar()}
                   />
                 </div>
               </button>
@@ -166,6 +168,7 @@ const AuthorizedHeader = (props: Props) => {
   const { t } = useLocalize()
   const { session, isSessionValidating } = useSession()
   const { showModal } = useUI()
+  const { isUploadingAvatar } = useProfile()
   const loc = useLocation()
   const author = createMemo(() => session()?.author || null)
   const matchProfile = createMemo(() => {
@@ -201,7 +204,7 @@ const AuthorizedHeader = (props: Props) => {
                     name={author()?.name || ''}
                     userpic={author()?.pic || ''}
                     class={styles.userpic}
-                    loading={isSessionValidating()}
+                    loading={isSessionValidating() || isUploadingAvatar()}
                   />
                 </div>
               </button>
