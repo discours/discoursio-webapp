@@ -59,7 +59,8 @@ function requestHandler(req, res) {
 }
 
 // Проверяем наличие SSL сертификатов через checkSSL
-const sslConfig = checkSSL()
+// В dev и debug режимах пытаемся использовать HTTPS
+const sslConfig = checkSSL(true, false, false, false)
 
 let server
 if (sslConfig) {
