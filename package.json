@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
+    "build:debug": "DEBUG_BUILD=true vinxi build",
     "build:netlify": "npm run codegen:all && vinxi build",
     "start": "node scripts/server.mjs",
+    "start:debug": "npm run build:debug && node scripts/server.mjs",
     "prestart": "npm run build",
     "lint": "npx @biomejs/biome lint .",
     "check": "npx @biomejs/biome check .",

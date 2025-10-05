@@ -3,6 +3,7 @@ import { CSSOptions, defineConfig, LightningCSSOptions } from 'vite'
 import { nodePolyfills, PolyfillOptions } from 'vite-plugin-node-polyfills'
 
 const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
+const isDebug = process.env.DEBUG_BUILD === 'true' // Для отладки prod сборки
 
 const polyfillOptions = {
   include: ['path', 'stream', 'util', 'buffer'],
@@ -51,13 +52,13 @@ export default defineConfig({
         customMedia: true
       },
       cssModules: {
-        // В dev режиме упрощаем имена классов для лучшего HMR
-        generateScopedName: isDev ? '[name]__[local]' : '[name]__[local]___[hash:base64:5]'
+        // В dev/debug режиме упрощаем имена классов для лучшего HMR и отладки
+        generateScopedName: isDev || isDebug ? '[name]__[local]' : '[name]__[local]___[hash:base64:5]'
       }
     } as LightningCSSOptions,
     modules: {
-      // В dev режиме упрощаем имена классов для лучшего HMR
-      generateScopedName: isDev ? '[name]__[local]' : '[name]__[local]___[hash:base64:5]'
+      // В dev/debug режиме упрощаем имена классов для лучшего HMR и отладки
+      generateScopedName: isDev || isDebug ? '[name]__[local]' : '[name]__[local]___[hash:base64:5]'
     },
     devSourcemap: isDev, // Source maps для стилей в dev режиме
     preprocessorOptions: {
@@ -90,9 +91,9 @@ export default defineConfig({
   ],
   build: {
     target: 'esnext',
-    sourcemap: isDev, // Source maps только в dev
-    minify: isDev ? false : 'terser', // Минификация только в production
-    cssMinify: 'lightningcss', // Lightning CSS минификация
+    sourcemap: isDev || isDebug, // Source maps в dev и debug режимах
+    minify: isDev || isDebug ? false : 'terser', // Минификация только в production (не в debug)
+    cssMinify: isDebug ? false : 'lightningcss', // CSS минификация отключена в debug режиме
     chunkSizeWarningLimit: 777,
     terserOptions: {
       compress: {
