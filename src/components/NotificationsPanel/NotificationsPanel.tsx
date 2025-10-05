@@ -79,8 +79,28 @@ export const NotificationsPanel = (props: Props) => {
 
   useOutsideClickHandler({
     containerRef: panelRef,
-    predicate: () => props.isOpen,
-    handler: () => handleHide()
+    predicate: (e) => {
+      if (!props.isOpen) return false
+      
+      // Проверяем - клик внутри панели или по её элементам?
+      const target = e.target as HTMLElement
+      const isInsidePanel = panelRef?.contains(target)
+      const isTabButton = target.closest(`.${styles.tab}`)
+      const isHeaderButton = target.closest(`.${styles.headerActions}`)
+      
+      console.log('[NotificationsPanel] Click predicate:', {
+        isInsidePanel,
+        isTabButton: !!isTabButton,
+        isHeaderButton: !!isHeaderButton,
+        shouldClose: !isInsidePanel
+      })
+      
+      return !isInsidePanel
+    },
+    handler: (e) => {
+      console.log('[NotificationsPanel] Outside click confirmed, closing')
+      handleHide()
+    }
   })
 
   let windowScrollTop = 0
@@ -105,6 +125,7 @@ export const NotificationsPanel = (props: Props) => {
   useEscKeyDownHandler(handleHide)
 
   const handleNotificationViewClick = () => {
+    // Закрываем панель при клике на уведомление (переход к контенту)
     handleHide()
   }
 

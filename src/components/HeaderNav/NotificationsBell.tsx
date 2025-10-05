@@ -18,6 +18,14 @@ export const NotificationsBell = () => {
   const handleBellIconClick = (event: Event) => {
     event.preventDefault()
 
+    console.log('[NotificationsBell] Click event:', {
+      isAuthorized: isAuthorized(),
+      hasSession: !!session(),
+      hasToken: !!session()?.token,
+      hasAuthor: !!session()?.author,
+      isPanelOpen: isNotificationsPanelOpen()
+    })
+
     // Если пользователь не авторизован, показываем модаль авторизации
     if (!isAuthorized()) {
       console.log('[NotificationsBell] Guest user clicked, showing auth modal')
@@ -26,7 +34,7 @@ export const NotificationsBell = () => {
     }
 
     // Если авторизован, работаем с панелью уведомлений
-    console.log('[NotificationsBell] Authorized user clicked, current state:', isNotificationsPanelOpen())
+    console.log('[NotificationsBell] Authorized user clicked, calling toggle functions')
 
     if (isNotificationsPanelOpen()) {
       console.log('[NotificationsBell] Hiding panel')
@@ -35,6 +43,11 @@ export const NotificationsBell = () => {
       console.log('[NotificationsBell] Showing panel')
       showNotificationsPanel()
     }
+    
+    // Проверяем состояние после вызова
+    setTimeout(() => {
+      console.log('[NotificationsBell] State after toggle:', isNotificationsPanelOpen())
+    }, 100)
   }
   return (
     <div

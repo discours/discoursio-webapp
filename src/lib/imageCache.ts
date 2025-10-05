@@ -86,11 +86,8 @@ export const getCdnUrl = (url: string, width?: number): string => {
 
   // Применяем width трансформацию если нужно
   if (width) {
-    // В production используем /api/thumb для серверного ресайза через Vercel
-    // В dev используем прямой CDN URL с width параметром
-    if (import.meta.env.DEV) {
-      return `${cdnUrl}/${filename}`
-    }
+    // Используем /api/thumb для серверного ресайза (и в dev, и в prod)
+    // API endpoint находится в src/routes/api/thumb/[width]/[...path].ts
     return `/api/thumb/${width}/${filename}`
   }
 

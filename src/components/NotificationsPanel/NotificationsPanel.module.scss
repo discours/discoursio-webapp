@@ -16,18 +16,16 @@ $transition-duration: 200ms;
     width 0ms linear var(--comment-transition);
 
   .panel {
-    @include media-breakpoint-up(md) {
-      width: 50%;
-    }
-
     position: relative;
     background-color: var(--background-color);
     width: 100%;
+    max-width: 350px;
     height: 100%;
     transform: translateX(100%);
     transition: transform var(--comment-transition);
     display: flex;
     flex-direction: column;
+    box-shadow: -2px 0 8px rgb(0 0 0 / 10%);
 
     .header {
       position: sticky;
@@ -41,7 +39,7 @@ $transition-duration: 200ms;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 20px 38px 16px;
+      padding: 20px 16px 16px;
     }
 
     .title {
@@ -98,9 +96,10 @@ $transition-duration: 200ms;
 
     .tabs {
       display: flex;
-      gap: 24px;
-      padding: 0 38px;
+      gap: 16px;
+      padding: 0 16px;
       border-bottom: 1px solid var(--black-100);
+      overflow-x: auto;
     }
 
     .tab {
@@ -137,7 +136,7 @@ $transition-duration: 200ms;
     .content {
       overflow-y: auto;
       flex: 1;
-      padding: 0 38px 1rem;
+      padding: 0 16px 1rem;
 
       .loading {
         font-size:1.2rem;
@@ -170,11 +169,9 @@ $transition-duration: 200ms;
   }
 
   &.isOpened {
-    width: 100%;
-    background-color: rgb(0 0 0 / 60%);
-    transition:
-      background-color var(--comment-transition),
-      width 0ms;
+    width: 350px;
+    background-color: transparent;
+    transition: width 0ms;
 
     .panel {
       transform: translateX(0);

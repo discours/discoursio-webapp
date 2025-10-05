@@ -8,12 +8,13 @@ export const NotificationsPanelPortal = () => {
 
   // Debug logging
   createEffect(() => {
-    console.log('[NotificationsPanelPortal] isNotificationsPanelOpen:', isNotificationsPanelOpen())
+    console.log('[NotificationsPanelPortal] isNotificationsPanelOpen changed:', isNotificationsPanelOpen())
+    console.log('[NotificationsPanelPortal] Portal exists in DOM:', typeof document !== 'undefined' && !!document.body)
   })
 
   return (
     <NoHydration>
-      <Portal>
+      <Portal mount={typeof document !== 'undefined' ? document.body : undefined}>
         <NotificationsPanel isOpen={isNotificationsPanelOpen()} onClose={hideNotificationsPanel} />
       </Portal>
     </NoHydration>
