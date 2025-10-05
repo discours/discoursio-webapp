@@ -80,10 +80,10 @@ export function setupHTTPS(isDev: boolean, isCI: boolean, isVercel: boolean, isN
 
 // Функция для проверки SSL
 export function checkSSL(
-  isDev: boolean,
-  isCI: boolean,
-  isVercel: boolean,
-  isNetlify: boolean
+  isDev: boolean = false,
+  isCI: boolean = false,
+  isVercel: boolean = false,
+  isNetlify: boolean = false
 ): { key: string; cert: string } | undefined {
   // Пропускаем для всех случаев кроме локальной разработки
   if (!isDev || isCI || isVercel || isNetlify || process.argv.includes('build')) {

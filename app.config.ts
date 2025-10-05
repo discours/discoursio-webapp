@@ -34,7 +34,9 @@ console.log('[app.config] connected to api: ', process.env.PUBLIC_CORE_API || 'h
 // 5: CONFIG
 export default defineConfig({
   nitro: {
-    timing: true
+    timing: isDev, // Включаем timing только в dev
+    minify: !isDev, // Минификация только в production
+    sourceMap: isDev // Source maps только в dev
   },
   // Route rules для API
   routeRules: {
@@ -69,7 +71,7 @@ export default defineConfig({
       logLevel: 'info' // Подробные логи
     })
   },
-  devOverlay: isDev,
+  devOverlay: isDev, // Error overlay только в dev
   vite: viteConfig,
   experimental: {
     // Минимальные экспериментальные настройки для стабильности
@@ -79,5 +81,14 @@ export default defineConfig({
     router: {
       ssr: true
     }
-  }
+  },
+  // Production оптимизации
+  ...(!isDev && {
+    solid: {
+      // Отключаем dev-специфичные features в production
+      generate: 'dom',
+      hydratable: true,
+      dev: false
+    }
+  })
 } as SolidStartInlineConfig)

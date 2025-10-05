@@ -19,7 +19,7 @@ export const config = {
  * Returns: Resized image (WebP if supported)
  *
  * Caching: 1 year immutable cache для оптимальной производительности
- * 
+ *
  * Note: Использует Node.js runtime вместо Edge для поддержки sharp
  */
 export async function GET(request) {

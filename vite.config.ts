@@ -14,15 +14,19 @@ const polyfillOptions = {
 
 export default defineConfig({
   server: {
-    hmr: {
-      timeout: 120000, // Увеличиваем HMR таймаут
-      overlay: true // Показываем overlay с ошибками
-    },
-    watch: {
-      // Следим за изменениями в SCSS файлах явно
-      usePolling: false,
-      interval: 100
-    }
+    hmr: isDev
+      ? {
+          timeout: 120000, // Увеличиваем HMR таймаут
+          overlay: true // Показываем overlay с ошибками только в dev
+        }
+      : false, // Отключаем HMR в production
+    watch: isDev
+      ? {
+          // Следим за изменениями в SCSS файлах явно
+          usePolling: false,
+          interval: 100
+        }
+      : undefined
   },
   resolve: {
     alias: {
@@ -86,13 +90,13 @@ export default defineConfig({
   ],
   build: {
     target: 'esnext',
-    sourcemap: isDev,
-    minify: 'terser',
-    cssMinify: 'lightningcss',
+    sourcemap: isDev, // Source maps только в dev
+    minify: isDev ? false : 'terser', // Минификация только в production
+    cssMinify: 'lightningcss', // Lightning CSS минификация
     chunkSizeWarningLimit: 777,
     terserOptions: {
       compress: {
-        drop_console: !isDev
+        drop_console: !isDev // Удаляем console.log в production
       }
     },
     // Отключение предупреждений о неразрешенных статических ресурсах
