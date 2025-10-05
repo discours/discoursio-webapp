@@ -380,6 +380,73 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     })
   )
 
+  // Обработчик для выхода из блочных элементов при клике вне блока (всегда активен)
+  createEffect(
+    on(editorRef, (editor) => {
+      if (!editor) return
+
+      const handleBlockExit = (e: MouseEvent) => {
+        const target = e.target as HTMLElement
+
+        // Если клик по самому редактору (пустая область), а не по его содержимому
+        if (target === editor) {
+          const selection = window.getSelection()
+          if (!selection || !selection.rangeCount) return
+
+          const range = selection.getRangeAt(0)
+          const container = range.commonAncestorContainer
+
+          // Проверяем - курсор внутри блочного элемента?
+          let blockElement: HTMLElement | null = null
+          if (container.nodeType === Node.TEXT_NODE) {
+            blockElement = container.parentElement?.closest(
+              'blockquote, h1, h2, h3, h4, h5, h6, ul, ol, div[data-type], div[data-align]'
+            ) as HTMLElement | null
+          } else {
+            blockElement = (container as HTMLElement).closest(
+              'blockquote, h1, h2, h3, h4, h5, h6, ul, ol, div[data-type], div[data-align]'
+            )
+          }
+
+          // Если курсор внутри блочного элемента - создаем новую строку для выхода
+          if (blockElement && editor.contains(blockElement)) {
+            // Проверяем - есть ли пустая строка после последнего блока
+            const lastChild = editor.lastElementChild
+            const isEmpty = !lastChild || lastChild.textContent?.trim() === ''
+
+            if (!isEmpty) {
+              // Создаем новую пустую строку в конце
+              const newParagraph = document.createElement('p')
+              newParagraph.innerHTML = '<br>'
+              editor.appendChild(newParagraph)
+
+              // Перемещаем курсор в новую строку
+              const newRange = document.createRange()
+              newRange.setStart(newParagraph, 0)
+              newRange.collapse(true)
+              selection.removeAllRanges()
+              selection.addRange(newRange)
+
+              console.log('[handleBlockExit] Created new paragraph after block element:', blockElement.tagName)
+            }
+
+            // Если это squib - скрываем SquibMenu
+            if (blockElement.hasAttribute('data-align') && showSquibEditor()) {
+              setShowSquibEditor(false)
+              setCurrentSquib(null)
+            }
+          }
+        }
+      }
+
+      editor.addEventListener('click', handleBlockExit)
+
+      onCleanup(() => {
+        editor.removeEventListener('click', handleBlockExit)
+      })
+    })
+  )
+
   // Удалено: плейсхолдер теперь управляется напрямую через uiHelpers.shouldShowPlaceholder()
 
   // --- Content Loading and Saving Logic ---

@@ -79,8 +79,9 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
       return
     }
 
-    // Shift+Enter for <br> in specific fields
+    // Shift+Enter для выхода из блочных элементов или вставки <br>
     if (e.shiftKey && e.key === 'Enter') {
+      // В lead всегда вставляем <br>
       if (props.fieldType === 'lead') {
         e.preventDefault()
         if (restoreSelection()) {
@@ -89,7 +90,62 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
         }
         return
       }
-      // Allow default Shift+Enter in body
+
+      // В body проверяем - находимся ли внутри блочного элемента
+      if (props.fieldType === 'body') {
+        const selection = window.getSelection()
+        if (!selection || !selection.rangeCount) {
+          setTimeout(handleChange, 0)
+          return
+        }
+
+        const range = selection.getRangeAt(0)
+        const container = range.startContainer
+        const editorRoot = editorRef()
+        if (!editorRoot) {
+          setTimeout(handleChange, 0)
+          return
+        }
+
+        // Проверяем - курсор внутри блочного элемента?
+        const blockElement = (
+          container.nodeType === Node.TEXT_NODE
+            ? container.parentElement
+            : container instanceof Element
+              ? container
+              : null
+        )?.closest('blockquote, h1, h2, h3, h4, h5, h6, ul, ol, div[data-type], div[data-align]')
+
+        if (blockElement && editorRoot.contains(blockElement)) {
+          // Shift+Enter внутри блока - создаем новый параграф после блока
+          e.preventDefault()
+
+          const newParagraph = document.createElement('p')
+          newParagraph.innerHTML = '<br>'
+
+          // Вставляем новый параграф после текущего блока
+          if (blockElement.parentNode) {
+            if (blockElement.nextSibling) {
+              blockElement.parentNode.insertBefore(newParagraph, blockElement.nextSibling)
+            } else {
+              blockElement.parentNode.appendChild(newParagraph)
+            }
+          }
+
+          // Перемещаем курсор в новый параграф
+          const newRange = document.createRange()
+          newRange.setStart(newParagraph, 0)
+          newRange.collapse(true)
+          selection.removeAllRanges()
+          selection.addRange(newRange)
+
+          handleChange(props.fieldType ? String(props.fieldType) : 'content')
+          console.log('[Shift+Enter] Exited block element, created new paragraph')
+          return
+        }
+      }
+
+      // В остальных случаях - стандартное поведение
       setTimeout(handleChange, 0)
       return
     }
@@ -113,7 +169,7 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
         return
       }
 
-      // Body field: Handle block element exit/split
+      // Body field: Handle block element behavior
       if (props.fieldType === 'body') {
         const selection = window.getSelection()
         if (!selection || !selection.rangeCount) return
@@ -137,57 +193,38 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
             blockElement.innerHTML === '<br>' ||
             blockElement.innerHTML === ''
 
-          // Check if cursor is at end of block
-          const isAtEndOfBlock = (() => {
-            if (!range.collapsed) return false
-            let node: Node | null = range.startContainer
-            let offset = range.startOffset
-
-            while (node && node !== blockElement && node !== editorRoot) {
-              while (node.nextSibling) {
-                node = node.nextSibling
-                if (node.textContent?.trim() !== '') return false
-              }
-              const parent: Node | null = node.parentNode
-              if (!parent || parent === editorRoot) {
-                node = parent
-                break
-              }
-              if (!node) break
-              const childIndex = Array.from(parent.childNodes).indexOf(node as ChildNode)
-              if (parent) {
-                node = parent
-              } else {
-                break
-              }
-              offset = childIndex + 1
-            }
-            return node === blockElement && offset === node.childNodes.length
-          })()
-
-          if (isEmptyBlock || isAtEndOfBlock) {
+          // Enter в пустом блоке → выход из блока
+          if (isEmptyBlock) {
             e.preventDefault()
             // Exit block: Create new paragraph after
             const p = document.createElement('p')
             p.innerHTML = '<br>'
 
-            if (blockElement.parentNode && blockElement.nextSibling && blockElement.parentNode.contains(blockElement)) {
-              blockElement.parentNode.insertBefore(p, blockElement.nextSibling)
+            if (blockElement.parentNode) {
+              if (blockElement.nextSibling) {
+                blockElement.parentNode.insertBefore(p, blockElement.nextSibling)
+              } else {
+                blockElement.parentNode.appendChild(p)
+              }
             } else {
               console.warn('[handleKeyDown] Cannot safely insert element')
               return
             }
 
+            // Remove empty block
+            blockElement.remove()
+
             // Move cursor to new paragraph
-            range.selectNodeContents(p)
+            range.setStart(p, 0)
             range.collapse(true)
             selection.removeAllRanges()
             selection.addRange(range)
             handleChange(props.fieldType ? String(props.fieldType) : 'content')
+            console.log('[Enter] Exited empty block element')
             return
           }
 
-          // Let default Enter split the block
+          // Enter в непустом блоке → стандартное поведение (добавление внутри блока)
           setTimeout(handleChange, 0)
           return
         }

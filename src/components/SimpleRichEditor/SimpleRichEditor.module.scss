@@ -269,7 +269,7 @@
       font-size: 15px;
       line-height: 1.5;
       color: #111827;
-
+      
       // Убираем старое правило для не пустого контента
       &[data-placeholder] {
         &:not(:empty)::before {
