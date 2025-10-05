@@ -2,21 +2,25 @@ import sharp from 'sharp'
 
 const cdnUrl = process.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
 
-// Vercel Edge Function config
+// Vercel Serverless Function config (Node.js runtime для поддержки sharp)
 export const config = {
-  runtime: 'edge',
-  maxDuration: 30
+  runtime: 'nodejs',
+  maxDuration: 30,
+  // Увеличиваем memory для обработки больших изображений
+  memory: 1024
 }
 
 /**
- * Vercel Edge thumbnail generation
- * Генерирует thumbnails на лету, кеширует на Edge
+ * Vercel Serverless thumbnail generation
+ * Генерирует thumbnails на лету с использованием sharp (Node.js runtime)
  *
  * Usage: /api/thumb/640/image.jpg
  * Fetches: https://files.dscrs.site/image.jpg
  * Returns: Resized image (WebP if supported)
  *
  * Caching: 1 year immutable cache для оптимальной производительности
+ * 
+ * Note: Использует Node.js runtime вместо Edge для поддержки sharp
  */
 export async function GET(request) {
   const startTime = Date.now()
