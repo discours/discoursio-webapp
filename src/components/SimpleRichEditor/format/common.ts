@@ -11,6 +11,7 @@ import { toggleBlockFormat } from './block'
 import { FORMAT_CONFIG } from './config'
 import { hasFormatting } from './detection'
 import { applyInlineFormatting, removeInlineFormatting } from './inline'
+import { shouldApplyBlockFormatting } from './selection-utils'
 
 /**
  * Результат выполнения команды форматирования
@@ -77,9 +78,18 @@ export const executeCommand = (command: CommandType, context: FormatContext): Fo
     }
 
     if (isBlockCommand) {
-      // Блочные элементы используют специальную логику
-      toggleBlockFormat(command, selection, editor)
-      return { success: true, needsUpdate: true }
+      // Проверяем, должно ли применяться блочное форматирование
+      // (только если курсор без выделения ИЛИ весь блок выделен)
+      const applyBlock = shouldApplyBlockFormatting(command, selection.range, editor)
+      
+      if (applyBlock) {
+        console.log('[executeCommand] Applying BLOCK formatting for:', command)
+        toggleBlockFormat(command, selection, editor)
+        return { success: true, needsUpdate: true }
+      } else {
+        console.log('[executeCommand] Skipping block formatting - partial selection detected')
+        return { success: false, error: 'Block commands require full block selection or cursor without selection' }
+      }
     }
 
     // Инлайн форматирование (bold, italic, highlight и т.д.)

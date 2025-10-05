@@ -305,7 +305,7 @@
         font-style: italic;
         opacity: 0.8;
         display: block;
-        left: var(--editor-padding);
+        left: calc(var(--editor-padding) + 34px); // Сдвигаем вправо на 34px (для плюс-кнопки)
 
         // Плейсхолдер появляется на позиции курсора
         top: auto;

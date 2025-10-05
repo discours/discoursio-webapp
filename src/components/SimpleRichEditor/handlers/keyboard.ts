@@ -129,7 +129,7 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
             : container instanceof Element
               ? container
               : null
-        )?.closest('blockquote, h1, h2, h3, ul, ol, div[data-type]')
+        )?.closest('blockquote, h1, h2, h3, ul, ol, div[data-type], div[data-align]')
 
         if (blockElement && editorRoot.contains(blockElement)) {
           const isEmptyBlock =
@@ -218,7 +218,7 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
             : container instanceof Element
               ? container
               : null
-        )?.closest('blockquote, h1, h2, h3, ul, ol, div[data-type]')
+        )?.closest('blockquote, h1, h2, h3, ul, ol, div[data-type], div[data-align]')
 
         if (blockElement && editor.contains(blockElement)) {
           let isAtVeryStart = false
@@ -239,7 +239,42 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
 
           if (isAtVeryStart) {
             e.preventDefault()
-            // Convert to paragraph
+            
+            // Специальная обработка для списков - только если единственный элемент
+            const tagName = blockElement.tagName.toLowerCase()
+            if (tagName === 'ul' || tagName === 'ol') {
+              // Находим элемент li внутри списка
+              const listItem = container.nodeType === Node.TEXT_NODE 
+                ? container.parentElement?.closest('li')
+                : (container as HTMLElement).closest('li')
+              
+              if (listItem && blockElement.contains(listItem) && blockElement.children.length === 1) {
+                // Только если это единственный элемент в списке - убираем форматирование списка
+                console.log('[Backspace] Removing list formatting (single item)')
+                
+                const p = document.createElement('p')
+                while (listItem.firstChild) {
+                  p.appendChild(listItem.firstChild)
+                }
+                
+                blockElement.parentNode?.replaceChild(p, blockElement)
+                
+                // Восстанавливаем курсор
+                const newRange = document.createRange()
+                newRange.setStart(p, 0)
+                newRange.collapse(true)
+                const sel = window.getSelection()
+                sel?.removeAllRanges()
+                sel?.addRange(newRange)
+                
+                handleChange(props.fieldType ? String(props.fieldType) : 'content')
+                return
+              }
+              // Если элементов больше одного - пропускаем, обработается стандартно
+            }
+            
+            // Преобразуем любой блок (включая squib с data-align) в параграф одним действием
+            console.log('[Backspace] Converting block to paragraph')
             const currentSelection = window.getSelection()
             const currentRange = currentSelection?.rangeCount ? currentSelection.getRangeAt(0) : null
             applyFormatting('p', {

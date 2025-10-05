@@ -18,6 +18,7 @@ export interface UIHelpersContext {
   hasFocus: Accessor<boolean>
   showForm: Accessor<string | null>
   showSquibEditor: Accessor<boolean>
+  hasSelection: Accessor<boolean>
   content: Accessor<string>
   cursorPosition: Accessor<{ top: number; left: number } | null>
 }
@@ -26,7 +27,7 @@ export interface UIHelpersContext {
  * Creates UI helper functions for the editor
  */
 export const createUIHelpers = (context: UIHelpersContext) => {
-  const { editorRef, props, hasFocus, showForm, showSquibEditor, content } = context
+  const { editorRef, props, hasFocus, showForm, showSquibEditor, hasSelection, content } = context
 
   const currentToolbarMode = (): ToolbarMode => props.toolbar || 'float'
 
@@ -93,11 +94,46 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     return false
   }
 
+  // Проверяет, находится ли курсор на последней или предпоследней строке
+  const isCursorNearEnd = (): boolean => {
+    const editor = editorRef()
+    if (!editor) return false
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return false
+
+    const range = selection.getRangeAt(0)
+    const lines = Array.from(editor.querySelectorAll('div, p, h1, h2, h3'))
+    const totalLines = lines.length
+
+    // Находим текущую строку
+    let node: Node | null = range.startContainer
+    let currentLine: Element | null = null
+
+    while (node && node !== editor) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element
+        if (['DIV', 'P', 'H1', 'H2', 'H3'].includes(element.tagName)) {
+          currentLine = element
+          break
+        }
+      }
+      node = node.parentNode
+    }
+
+    if (!currentLine) return false
+
+    const lineIndex = lines.indexOf(currentLine)
+    return lineIndex >= totalLines - 2
+  }
+
   // видимость Plus-меню (boolean)
   const shouldShowPlusMenu = (): boolean => {
     const isNewLine = isCursorOnEmptyLine()
     const isEditorInFocus = hasFocus()
-    const isNoOtherMenuOpen = !showForm() && !showSquibEditor()
+    const hasActiveSelection = hasSelection()
+    // Скрываем Plus-меню если есть: формы, squib-меню, или активное выделение (floating toolbar)
+    const isNoOtherMenuOpen = !showForm() && !showSquibEditor() && !hasActiveSelection
     const isPlusEnabled = props.plus
 
     console.log('[PlusMenu Debug] shouldShowPlusMenu conditions:', {
@@ -107,17 +143,32 @@ export const createUIHelpers = (context: UIHelpersContext) => {
       isPlusEnabled,
       showForm: showForm(),
       showSquibEditor: showSquibEditor(),
+      hasActiveSelection,
       result: isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen
     })
 
     return !!(isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen)
   }
 
+  // видимость плейсхолдера (boolean) - только на последних строках!
+  const shouldShowPlaceholder = (): boolean => {
+    const isPlusVisible = shouldShowPlusMenu()
+    const isNearEnd = isCursorNearEnd()
+
+    console.log('[Placeholder Debug] shouldShowPlaceholder:', {
+      isPlusVisible,
+      isNearEnd,
+      result: isPlusVisible && isNearEnd
+    })
+
+    return isPlusVisible && isNearEnd
+  }
+
   const getFloatingToolbarPosition = (): Position => {
     return getEditorPosition(editorRef() || null, {
       type: 'float',
       placement: 'top',
-      offset: 60, // Увеличиваем отступ для лучшего позиционирования
+      offset: 80, // Увеличиваем отступ чтобы не перекрывать текст
       centerHorizontally: isTouchDevice()
     })
   }
@@ -208,7 +259,7 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     if (!editor) return 0
 
     const editorRect = editor.getBoundingClientRect()
-    return editorRect.left - 45
+    return editorRect.left - 34
   }
 
   const findLinkAncestor = (node: Node | null): HTMLAnchorElement | null => {
@@ -242,7 +293,9 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     isClickInsideToolbar,
     isEditorEmpty,
     isCursorOnEmptyLine,
+    isCursorNearEnd,
     shouldShowPlusMenu,
+    shouldShowPlaceholder,
     getFloatingToolbarPosition,
     getPlusMenuTop,
     getPlusMenuLeft,

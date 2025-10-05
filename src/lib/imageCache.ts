@@ -1,5 +1,8 @@
 import { cdnUrl } from '~/config'
 
+
+const isDev = import.meta.env.DEV
+
 /**
  * Преобразует URL изображения для CDN - извлекает только filename
  *
@@ -37,7 +40,10 @@ export const getCdnUrl = (url: string, width?: number): string => {
 
   // Применяем width трансформацию если нужно
   if (width) {
-    // Используем Vercel Edge thumbnail API для ресайза
+    // В dev режиме используем testing.discours.io, в prod - Vercel Edge
+    if (isDev) {
+      return `https://testing.discours.io/api/thumb/${width}/${filename}`
+    }
     return `/api/thumb/${width}/${filename}`
   }
 

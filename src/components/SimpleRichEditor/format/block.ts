@@ -24,8 +24,17 @@ const getClosestBlockElement = (node: Node | null, editorRoot: HTMLElement): HTM
     current = current.parentElement
   }
 
-  if (node.parentElement === editorRoot && editorRoot.childNodes.length === 1) {
-    return editorRoot
+  // Если не нашли блок, но node является прямым потомком editorRoot
+  if (node.parentElement === editorRoot) {
+    // Если это текстовый узел - оборачиваем в параграф
+    if (node.nodeType === Node.TEXT_NODE) {
+      const p = document.createElement('p')
+      node.parentElement?.insertBefore(p, node)
+      p.appendChild(node)
+      return p
+    }
+    // Если это элемент - возвращаем его
+    return node as HTMLElement
   }
 
   return null
@@ -49,15 +58,38 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
     console.warn(`[toggleBlockFormat] Command ${command} ('${config?.tag}') is not a supported block type.`)
     return
   }
+  
+  // Специальная обработка для squib: должен иметь data-align
+  if (command === 'squib' && config.tag === 'div') {
+    console.log('[toggleBlockFormat] Processing squib command')
+  }
 
   const targetTag = config.tag.toLowerCase()
 
   // Находим релевантный блочный элемент
-  const blockElement = getClosestBlockElement(range.startContainer, editorRoot)
+  let blockElement = getClosestBlockElement(range.startContainer, editorRoot)
 
   if (!blockElement) {
-    console.warn('[toggleBlockFormat] Could not find parent block element.')
-    return
+    console.warn('[toggleBlockFormat] Could not find parent block element, creating new one')
+    // Создаём новый параграф для содержимого
+    const p = document.createElement('p')
+    
+    // Если есть выделенный текст, перемещаем его в новый параграф
+    if (!range.collapsed) {
+      const fragment = range.extractContents()
+      p.appendChild(fragment)
+      range.insertNode(p)
+    } else {
+      // Если нет выделения, просто вставляем пустой параграф
+      p.innerHTML = '<br>'
+      range.insertNode(p)
+    }
+    
+    blockElement = p
+    
+    // Обновляем range для работы с новым элементом
+    range.selectNodeContents(blockElement)
+    range.collapse(false)
   }
 
   const currentTag = blockElement.tagName.toLowerCase()
@@ -65,8 +97,29 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
   // Логика взаимоисключения для блочных элементов
   let newTag = targetTag
 
+  // Специальная логика для squib
+  if (command === 'squib') {
+    if (blockElement.hasAttribute('data-align')) {
+      // Убираем форматирование squib: убираем атрибут и если это div - преобразуем обратно в p
+      blockElement.removeAttribute('data-align')
+      if (currentTag === 'div') {
+        // Преобразуем div обратно в p
+        newTag = defaultTag // 'p'
+        console.log('[toggleBlockFormat] Squib removed, converting div to p')
+        // Продолжаем выполнение для преобразования в p
+      } else {
+        console.log('[toggleBlockFormat] Squib removed from block:', blockElement.outerHTML)
+        return
+      }
+    } else {
+      // Добавляем форматирование squib - всегда преобразуем в div с data-align
+      newTag = 'div'
+      console.log('[toggleBlockFormat] Squib: converting block to div with data-align')
+      // Продолжаем выполнение для создания нового div с атрибутами из FORMAT_CONFIG
+    }
+  }
   // Если применяем заголовок, а уже есть другой заголовок - заменяем
-  if (['h1', 'h2', 'h3'].includes(targetTag) && ['h1', 'h2', 'h3'].includes(currentTag)) {
+  else if (['h1', 'h2', 'h3'].includes(targetTag) && ['h1', 'h2', 'h3'].includes(currentTag)) {
     newTag = currentTag === targetTag ? defaultTag : targetTag
   }
   // Если применяем punchline к blockquote или наоборот - заменяем (они взаимоисключающие)
@@ -88,8 +141,8 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
     newTag = currentTag === targetTag ? defaultTag : targetTag
   }
 
-  // Избегаем изменений если уже корректно
-  if (currentTag === newTag) return
+  // Избегаем изменений если уже корректно (но для squib продолжаем, чтобы добавить data-align)
+  if (currentTag === newTag && command !== 'squib') return
 
   console.log(`[toggleBlockFormat] Changing block from <${currentTag}> to <${newTag}>`)
 
@@ -98,15 +151,19 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
   // Копируем атрибуты если необходимо
   const newConfig = Object.values(FORMAT_CONFIG).find((c) => c.tag === newTag)
   if (newConfig?.attributes) {
+    console.log('[toggleBlockFormat] Applying attributes:', newConfig.attributes)
     Object.entries(newConfig.attributes).forEach(([key, value]) => {
       // Для класса используем className, а не setAttribute
       if (key === 'class') {
         newBlock.className = value
       } else if (value || key.startsWith('data-')) {
         newBlock.setAttribute(key, value)
+        console.log(`[toggleBlockFormat] Set attribute: ${key}="${value}"`)
       }
     })
   }
+  
+  console.log('[toggleBlockFormat] New block created:', newBlock.outerHTML)
 
   // Убеждаемся, что новый блок может быть редактируемым
   if (newTag === 'blockquote') {
@@ -126,7 +183,13 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
 
   // Заменяем старый блок новым
   try {
-    blockElement.parentNode?.replaceChild(newBlock, blockElement)
+    console.log('[toggleBlockFormat] Replacing old block:', blockElement.outerHTML)
+    console.log('[toggleBlockFormat] With new block:', newBlock.outerHTML)
+    const parent = blockElement.parentNode
+    parent?.replaceChild(newBlock, blockElement)
+    if (parent && 'innerHTML' in parent) {
+      console.log('[toggleBlockFormat] Replacement complete. Parent HTML:', (parent as HTMLElement).innerHTML)
+    }
   } catch (e) {
     console.error('[toggleBlockFormat] Error replacing node:', e)
     return

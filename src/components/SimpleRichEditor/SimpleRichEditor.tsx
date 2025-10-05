@@ -142,7 +142,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [currentSquib, setCurrentSquib] = createSignal<HTMLElement | null>(null)
   const [editingImage, setEditingImage] = createSignal<HTMLElement | null>(null)
   const [showLocalVersionLink, setShowLocalVersionLink] = createSignal(false)
-  const [shouldShowPlaceholderState, _setShouldShowPlaceholderState] = createSignal(false)
   const [isInitialFocusDone, setIsInitialFocusDone] = createSignal(false)
   const [hasSelection, setHasSelection] = createSignal(false)
 
@@ -165,8 +164,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     }
 
     // Позиционируем меню по центру РЕДАКТОРА (не блока), над блоком подвёрстки
+    // Поднимаем тулбар выше на полстроки дополнительно к transform: translate(-50%, -100%)
     return {
-      top: rect.top - editorRect.top, // Верхняя граница блока
+      top: rect.top - editorRect.top - 24, // Выше верхней границы блока (дополнительная полстроки)
       left: editorRect.width / 2 // Центр редактора по горизонтали
     }
   }
@@ -187,6 +187,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     hasFocus,
     showForm,
     showSquibEditor,
+    hasSelection,
     content,
     cursorPosition
   })
@@ -256,7 +257,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             const rect = range.getBoundingClientRect()
             if (rect) {
               floatToolbar.style.position = 'fixed'
-              floatToolbar.style.top = `${Math.max(10, rect.top - 40)}px`
+              floatToolbar.style.top = `${Math.max(10, rect.top - 60)}px` // Увеличен отступ с -40 до -60
               floatToolbar.style.left = `${rect.left + rect.width / 2}px`
               floatToolbar.classList.add(styles.visible)
             }
@@ -353,15 +354,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     })
   )
 
-  createEffect(
-    on(shouldShowPlaceholderState, (show: boolean) => {
-      if (show) {
-        editorRef()!.classList.add('placeholder-visible')
-      } else {
-        editorRef()!.classList.remove('placeholder-visible')
-      }
-    })
-  )
+  // Удалено: плейсхолдер теперь управляется напрямую через uiHelpers.shouldShowPlaceholder()
 
   // --- Content Loading and Saving Logic ---
   const loadLocalVersion = (_e: MouseEvent) => {
@@ -767,25 +760,55 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       if (command === 'squib' && result.success) {
         // Ждем пока DOM обновится после санитизации
         setTimeout(() => {
+          const editor = editorRef()
           const selection = window.getSelection()
-          if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0)
-            const container = range.commonAncestorContainer
-            const squibElement = (
-              container.nodeType === Node.TEXT_NODE
-                ? container.parentElement?.closest('[data-align]')
-                : (container as HTMLElement).closest('[data-align]')
-            ) as HTMLElement | null
-
-            if (squibElement) {
-              console.log('[handleAction] Squib created, showing editor menu')
-              setCurrentSquib(squibElement)
-              setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
-              setShowSquibEditor(true)
-            } else {
-              console.log('[handleAction] Squib element not found')
-              setShowSquibEditor(false)
+          
+          if (!editor || !selection || selection.rangeCount === 0) {
+            console.log('[handleAction] No editor or selection for squib')
+            setShowSquibEditor(false)
+            return
+          }
+          
+          const range = selection.getRangeAt(0)
+          const container = range.commonAncestorContainer
+          
+          // Пытаемся найти squib элемент несколькими способами
+          let squibElement: HTMLElement | null = null
+          
+          // 1. Через closest от текущей позиции курсора
+          if (container.nodeType === Node.TEXT_NODE) {
+            squibElement = container.parentElement?.closest('[data-align]') as HTMLElement | null
+          } else {
+            squibElement = (container as HTMLElement).closest('[data-align]')
+          }
+          
+          // 2. Если не нашли через closest, ищем в родительском элементе
+          if (!squibElement && container.parentElement) {
+            const parent = container.parentElement
+            if (parent.hasAttribute('data-align')) {
+              squibElement = parent
             }
+          }
+          
+          // 3. Если всё ещё не нашли, ищем последний созданный элемент с data-align в редакторе
+          if (!squibElement) {
+            const allSquibs = editor.querySelectorAll('[data-align]')
+            if (allSquibs.length > 0) {
+              squibElement = allSquibs[allSquibs.length - 1] as HTMLElement
+              console.log('[handleAction] Found squib via querySelectorAll (last element)')
+            }
+          }
+
+          if (squibElement) {
+            console.log('[handleAction] Squib created, showing editor menu', squibElement)
+            setCurrentSquib(squibElement)
+            setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
+            setShowSquibEditor(true)
+          } else {
+            console.log('[handleAction] Squib element not found after all attempts')
+            console.log('[handleAction] Container:', container)
+            console.log('[handleAction] Editor HTML:', editor.innerHTML)
+            setShowSquibEditor(false)
           }
         }, 100)
       } else {
@@ -1068,7 +1091,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           <div
             ref={initEditor}
             class={clsx(styles.content, {
-              [styles['placeholder-visible']]: shouldShowPlaceholderState()
+              [styles['placeholder-visible']]: uiHelpers.shouldShowPlaceholder()
             })}
             contentEditable={!props.readOnly}
             data-placeholder={props.placeholder}

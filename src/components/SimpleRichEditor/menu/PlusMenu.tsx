@@ -244,8 +244,8 @@ export const PlusMenu: Component<{
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              // Клик на плейсхолдер = показать форму ссылки
-              props.onAction('link')
+              // Клик на плейсхолдер = показать форму embed с автоопределением
+              props.onAction('embed')
             }}
             onMouseDown={(e) => e.preventDefault()}
           >

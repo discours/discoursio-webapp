@@ -37,12 +37,12 @@ const getFileType = (fileName: string): FileTypeToUpload => {
 }
 
 export const UploadProvider = (props: { children: JSX.Element }) => {
-  const { session } = useSession()
+  const { session, refreshToken } = useSession()
   const { t } = useLocalize()
 
   const token = () => session()?.token
 
-  const upload = async (formData: FormData, onProgress?: (progress: number) => void): Promise<string> => {
+  const upload = async (formData: FormData, onProgress?: (progress: number) => void, retryWithRefresh = true): Promise<string> => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest()
 
@@ -73,6 +73,22 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
           }
           console.log('[Upload] Success:', filename)
           resolve(filename)
+        } else if (xhr.status === 401 && retryWithRefresh) {
+          // Токен истёк - обновляем и повторяем попытку
+          console.log('[Upload] 401 Unauthorized - refreshing token and retrying')
+          refreshToken().then((refreshSuccess) => {
+            if (refreshSuccess) {
+              console.log('[Upload] Token refreshed successfully, retrying upload')
+              // Повторяем загрузку с новым токеном (БЕЗ повторного retry)
+              upload(formData, onProgress, false).then(resolve).catch(reject)
+            } else {
+              console.error('[Upload] Token refresh failed')
+              reject(new Error(t('Session expired. Please sign in again.')))
+            }
+          }).catch((refreshError) => {
+            console.error('[Upload] Error refreshing token:', refreshError)
+            reject(new Error(t('Session expired. Please sign in again.')))
+          })
         } else {
           console.error('[Upload] Error:', xhr.status, xhr.responseText)
           const errorText = xhr.responseText || 'Unknown error'
@@ -119,6 +135,13 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
   }
 
   const uploadFile = async (file: UploadFile, onProgress?: (progress: number) => void): Promise<UploadedFile> => {
+    // Проверяем наличие токена ДО начала загрузки
+    const currentToken = token()
+    if (!currentToken) {
+      console.error('[uploadFile] No authentication token available')
+      throw new Error(t('Session expired. Please sign in again.'))
+    }
+
     const fileType = getFileType(file.name)
 
     if (!validateUploads(fileType, [file])) throw new Error(t('Invalid file type'))

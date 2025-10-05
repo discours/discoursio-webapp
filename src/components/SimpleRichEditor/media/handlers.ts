@@ -95,9 +95,13 @@ export const createMediaHandlers = (context: MediaHandlersContext) => {
       e.preventDefault()
       const squib = target.closest('[data-align]') as HTMLElement
       if (squib) {
+        console.log('[handleContentClick] Squib clicked:', squib.outerHTML)
         setCurrentSquib(squib)
-        setSquibMenuPosition(calculateSquibMenuPosition(squib))
+        const position = calculateSquibMenuPosition(squib)
+        console.log('[handleContentClick] Squib menu position:', position)
+        setSquibMenuPosition(position)
         setShowSquibEditor(true)
+        console.log('[handleContentClick] showSquibEditor set to true')
       }
       return
     }
