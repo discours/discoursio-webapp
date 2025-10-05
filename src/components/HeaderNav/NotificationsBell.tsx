@@ -43,7 +43,7 @@ export const NotificationsBell = () => {
       console.log('[NotificationsBell] Showing panel')
       showNotificationsPanel()
     }
-    
+
     // Проверяем состояние после вызова
     setTimeout(() => {
       console.log('[NotificationsBell] State after toggle:', isNotificationsPanelOpen())

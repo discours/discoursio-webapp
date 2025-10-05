@@ -2,6 +2,12 @@ import sharp from 'sharp'
 
 const cdnUrl = process.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
 
+// Vercel Edge Function config
+export const config = {
+  runtime: 'edge',
+  maxDuration: 30
+}
+
 /**
  * Vercel Edge thumbnail generation
  * Генерирует thumbnails на лету, кеширует на Edge
@@ -9,6 +15,8 @@ const cdnUrl = process.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
  * Usage: /api/thumb/640/image.jpg
  * Fetches: https://files.dscrs.site/image.jpg
  * Returns: Resized image (WebP if supported)
+ *
+ * Caching: 1 year immutable cache для оптимальной производительности
  */
 export async function GET(request) {
   const startTime = Date.now()
@@ -80,9 +88,14 @@ export async function GET(request) {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'CDN-Cache-Control': 'public, max-age=31536000',
-        'Vercel-CDN-Cache-Control': 'public, max-age=31536000'
+        // Vercel Edge Cache best practices:
+        // - public: cacheable by browsers and CDN
+        // - s-maxage: CDN cache duration (1 year)
+        // - max-age: browser cache duration (1 year)
+        // - immutable: indicates the response will never change
+        'Cache-Control': 'public, s-maxage=31536000, max-age=31536000, immutable',
+        // Stale-while-revalidate for better UX
+        'CDN-Cache-Control': 'public, s-maxage=31536000, stale-while-revalidate=86400'
       }
     })
   } catch (error) {
@@ -90,7 +103,8 @@ export async function GET(request) {
     return new Response('Thumbnail generation failed', {
       status: 500,
       headers: {
-        'Cache-Control': 'no-cache'
+        // Don't cache errors
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
       }
     })
   }

@@ -3,8 +3,8 @@ import sharp from 'sharp'
 const cdnUrl = process.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
 
 /**
- * Vercel Edge thumbnail generation
- * Генерирует thumbnails на лету, кеширует на Edge
+ * thumbnail generation
+ * Генерирует thumbnails на лету
  *
  * Usage: /api/thumb/640/image.jpg
  * Fetches: https://files.dscrs.site/image.jpg
@@ -88,39 +88,5 @@ export async function GET({ request, params }: { request: Request; params: Recor
         'Cache-Control': 'no-cache'
       }
     })
-  }
-}
-
-// Netlify handler
-export const handler = async (event: any) => {
-  try {
-    // Парсим путь для извлечения params
-    const pathMatch = event.path.match(/\/api\/thumb\/(\d+)\/(.+)/)
-    const params = {
-      width: pathMatch?.[1] || '',
-      path: pathMatch?.[2] || ''
-    }
-    
-    const response = await GET({
-      request: new Request(
-        `https://${event.headers.host || 'localhost'}${event.path}?${new URLSearchParams(event.queryStringParameters || {}).toString()}`
-      ),
-      params
-    })
-
-    const buffer = await response.arrayBuffer()
-
-    return {
-      statusCode: response.status,
-      headers: Object.fromEntries(Object.entries(response.headers)),
-      body: Buffer.from(buffer).toString('base64'),
-      isBase64Encoded: true
-    }
-  } catch (error) {
-    console.error('[thumb] Netlify handler error:', error)
-    return {
-      statusCode: 500,
-      body: 'Error'
-    }
   }
 }

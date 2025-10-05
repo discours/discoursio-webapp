@@ -81,23 +81,23 @@ export const NotificationsPanel = (props: Props) => {
     containerRef: panelRef,
     predicate: (e) => {
       if (!props.isOpen) return false
-      
+
       // Проверяем - клик внутри панели или по её элементам?
       const target = e.target as HTMLElement
       const isInsidePanel = panelRef?.contains(target)
       const isTabButton = target.closest(`.${styles.tab}`)
       const isHeaderButton = target.closest(`.${styles.headerActions}`)
-      
+
       console.log('[NotificationsPanel] Click predicate:', {
         isInsidePanel,
         isTabButton: !!isTabButton,
         isHeaderButton: !!isHeaderButton,
         shouldClose: !isInsidePanel
       })
-      
+
       return !isInsidePanel
     },
-    handler: (e) => {
+    handler: () => {
       console.log('[NotificationsPanel] Outside click confirmed, closing')
       handleHide()
     }
