@@ -15,7 +15,13 @@ const polyfillOptions = {
 export default defineConfig({
   server: {
     hmr: {
-      timeout: 120000 // Увеличиваем HMR таймаут
+      timeout: 120000, // Увеличиваем HMR таймаут
+      overlay: true // Показываем overlay с ошибками
+    },
+    watch: {
+      // Следим за изменениями в SCSS файлах явно
+      usePolling: false,
+      interval: 100
     }
   },
   resolve: {
@@ -41,12 +47,15 @@ export default defineConfig({
         customMedia: true
       },
       cssModules: {
-        generateScopedName: '[name]__[local]___[hash:base64:5]'
+        // В dev режиме упрощаем имена классов для лучшего HMR
+        generateScopedName: isDev ? '[name]__[local]' : '[name]__[local]___[hash:base64:5]'
       }
     } as LightningCSSOptions,
     modules: {
-      generateScopedName: '[name]__[local]___[hash:base64:5]'
+      // В dev режиме упрощаем имена классов для лучшего HMR
+      generateScopedName: isDev ? '[name]__[local]' : '[name]__[local]___[hash:base64:5]'
     },
+    devSourcemap: isDev, // Source maps для стилей в dev режиме
     preprocessorOptions: {
       scss: {
         // Используем modern-compiler API везде для избежания deprecation warnings

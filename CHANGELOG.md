@@ -2,6 +2,21 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+## [0.15.3] - 2025-10-05
+
+### 🔧 Improvements
+- **Vite HMR оптимизация**: Улучшен Hot Module Replacement для CSS модулей
+  - Добавлен HMR overlay для отображения ошибок
+  - Настроен file watcher с interval 100ms для быстрого обнаружения изменений
+  - Упрощены имена CSS классов в dev режиме (`[name]__[local]` вместо хеша) для лучшего HMR
+  - Включены source maps для стилей в dev режиме (`devSourcemap: true`)
+  - Теперь изменения в `.module.scss` файлах применяются без перезагрузки страницы
+  - Подтверждено логами: `[vite] (client) hmr update` для CSS модулей работает корректно
+
+### Technical Details
+- `vite.config.ts`: Обновлена конфигурация `server.hmr` и `server.watch`
+- `vite.config.ts`: CSS modules `generateScopedName` теперь зависит от `isDev` флага
+
 ## [0.15.2] - 2025-10-05
 
 ### ✨ Features
@@ -26,6 +41,11 @@
   - Активный цвет подсвечивается синей рамкой с glow эффектом
   - **Исправлен конфликт меню**: при выделении текста внутри врезки показывается только основной тулбар (справа), SquibMenu (слева) автоматически скрывается
   - При снятии выделения курсор остается внутри врезки - SquibMenu автоматически появляется снова
+  - **Улучшена навигация по блокам** (врезки, цитаты, заголовки, списки):
+    - `Enter` в непустом блоке → добавляет новый параграф/элемент **внутри** блока
+    - `Enter` в пустом блоке → выход из блока (удаляет блок, создает обычный параграф)
+    - `Shift+Enter` в любом блоке → выход из блока (создает новый параграф **после** блока)
+    - Клик по пустой области редактора → создает новую строку и перемещает туда курсор (как в Notion/Medium)
 
 ### 🐛 Fixes
 - **GraphQL мутация**: Исправлена передача аргументов в `handleGraphQLError` для `createDraftFromShout`
@@ -48,7 +68,12 @@
 - `components/Views/ProfileSettings.tsx`: Удален вызов `setAuthor()` в `handleUploadAvatar` (строки 211-212)
 - `components/SimpleRichEditor/menu/SquibMenu.tsx`: Добавлено выпадающее меню выбора цвета, реактивные функции `getCurrentBg()` и `getCurrentColorOption()`
 - `components/SimpleRichEditor/menu/SquibMenu.module.scss`: Обновлены стили меню, добавлены `.colorRow`, `.colorIndicator`, `.colorSwatch`
-- `components/SimpleRichEditor/SimpleRichEditor.tsx`: Добавлена логика взаимоисключения SquibMenu и основного тулбара (строки 253-291)
+- `components/SimpleRichEditor/SimpleRichEditor.tsx`: 
+  - Добавлена логика взаимоисключения SquibMenu и основного тулбара (строки 253-291)
+  - Добавлен обработчик `handleBlockExit` для выхода из любых блоков при клике вне блока (строки 383-448)
+- `components/SimpleRichEditor/handlers/keyboard.ts`:
+  - Обновлена логика `Shift+Enter` для выхода из блоков (строки 82-151)
+  - Упрощена логика `Enter` - только пустой блок выходит, непустой продолжает внутри (строки 172-235)
 
 ## [0.15.1] - 2025-10-05
 
