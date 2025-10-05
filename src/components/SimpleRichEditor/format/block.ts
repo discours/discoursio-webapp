@@ -97,25 +97,72 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
   // Логика взаимоисключения для блочных элементов
   let newTag = targetTag
 
-  // Специальная логика для squib
+  // Специальная логика для squib - оборачивает/разворачивает блоки
   if (command === 'squib') {
-    if (blockElement.hasAttribute('data-align')) {
-      // Убираем форматирование squib: убираем атрибут и если это div - преобразуем обратно в p
-      blockElement.removeAttribute('data-align')
-      if (currentTag === 'div') {
-        // Преобразуем div обратно в p
-        newTag = defaultTag // 'p'
-        console.log('[toggleBlockFormat] Squib removed, converting div to p')
-        // Продолжаем выполнение для преобразования в p
-      } else {
-        console.log('[toggleBlockFormat] Squib removed from block:', blockElement.outerHTML)
+    // Проверяем: находимся ли мы уже внутри squib?
+    const parentSquib = blockElement.closest('[data-align]') as HTMLElement | null
+
+    if (parentSquib) {
+      // Если родитель - squib, разворачиваем: убираем обертку squib
+      console.log('[toggleBlockFormat] Unwrapping squib')
+
+      // Получаем все дочерние элементы squib
+      const children = Array.from(parentSquib.childNodes)
+      const parent = parentSquib.parentElement
+
+      if (parent) {
+        // Вставляем все дочерние элементы перед squib
+        children.forEach((child) => {
+          parent.insertBefore(child, parentSquib)
+        })
+
+        // Удаляем пустой squib
+        parentSquib.remove()
+
+        console.log('[toggleBlockFormat] Squib unwrapped successfully')
+      }
+
+      return // Завершаем, не продолжаем дальше
+    } else {
+      // Если нет родителя-squib, оборачиваем текущий блок в squib
+      console.log('[toggleBlockFormat] Wrapping block in squib')
+
+      // Проверяем: не содержит ли текущий блок вложенный squib (запрещено)
+      const hasNestedSquib = blockElement.querySelector('[data-align]')
+      if (hasNestedSquib) {
+        console.warn('[toggleBlockFormat] Cannot wrap block containing squib - nested squibs not allowed')
         return
       }
-    } else {
-      // Добавляем форматирование squib - всегда преобразуем в div с data-align
-      newTag = 'div'
-      console.log('[toggleBlockFormat] Squib: converting block to div with data-align')
-      // Продолжаем выполнение для создания нового div с атрибутами из FORMAT_CONFIG
+
+      const squibWrapper = document.createElement('div')
+      squibWrapper.setAttribute('data-align', config.attributes?.['data-align'] || 'left')
+
+      // Вставляем обертку перед текущим блоком
+      blockElement.parentElement?.insertBefore(squibWrapper, blockElement)
+
+      // Перемещаем блок внутрь обертки
+      squibWrapper.appendChild(blockElement)
+
+      // Восстанавливаем курсор в блоке
+      try {
+        const newRange = document.createRange()
+        const selection = window.getSelection()
+
+        if (selection) {
+          const firstTextNode = findFirstTextNode(blockElement)
+          if (firstTextNode) {
+            newRange.setStart(firstTextNode, 0)
+            newRange.setEnd(firstTextNode, 0)
+            selection.removeAllRanges()
+            selection.addRange(newRange)
+          }
+        }
+      } catch (e) {
+        console.error('[toggleBlockFormat] Error restoring cursor:', e)
+      }
+
+      console.log('[toggleBlockFormat] Block wrapped in squib successfully')
+      return // Завершаем, не продолжаем дальше
     }
   }
   // Если применяем заголовок, а уже есть другой заголовок - заменяем
@@ -141,8 +188,8 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
     newTag = currentTag === targetTag ? defaultTag : targetTag
   }
 
-  // Избегаем изменений если уже корректно (но для squib продолжаем, чтобы добавить data-align)
-  if (currentTag === newTag && command !== 'squib') return
+  // Избегаем изменений если уже корректно
+  if (currentTag === newTag) return
 
   console.log(`[toggleBlockFormat] Changing block from <${currentTag}> to <${newTag}>`)
 

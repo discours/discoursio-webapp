@@ -1,5 +1,5 @@
 .plusMenu {
-  position: absolute;
+  position: fixed;
   z-index: 1000;
   visibility: visible;
   opacity: 1;
@@ -71,26 +71,6 @@
     }
   }
   
-  .placeholder {
-    position: absolute;
-    left: 40px; /* Справа от кнопки + */
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 14px;
-    color: #999;
-    cursor: pointer; /* Добавляем курсор клика */
-    padding: 4px 10px;
-    border-radius: 4px;
-    transition: background-color 0.2s ease, opacity 0.2s ease;
-    white-space: nowrap;
-    z-index: 1000;
-    opacity: 0.8;
-    
-    &:hover {
-      color: #777;
-      opacity: 1;
-    }
-  }
   
   .menuItems {
     position: absolute;
@@ -150,10 +130,6 @@
 .menuWrapper {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
   z-index: 50;
-  font-weight: normal;
-  opacity: 1;
-  transition: opacity 0.2s ease;
 } 

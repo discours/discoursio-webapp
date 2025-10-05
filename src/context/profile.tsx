@@ -82,7 +82,8 @@ export const ProfileProvider = (props: { children: JSX.Element }) => {
   }
 
   createEffect(() => {
-    if (author()) {
+    // НЕ сбрасываем форму если идет загрузка аватарки
+    if (author() && !isUploadingAvatar()) {
       const currentAuthor = author()
       setForm({
         name: currentAuthor.name,

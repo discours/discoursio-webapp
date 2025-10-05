@@ -22,6 +22,11 @@
 ### 🐛 Fixes
 - **GraphQL мутация**: Исправлена передача аргументов в `handleGraphQLError` для `createDraftFromShout`
 - **Codegen конфиг**: Обновлён для использования локального GraphQL сервера (`localhost:8000`) вместо production
+- **Profile Settings форма**: Исправлен сброс всех полей формы к пустым значениям при загрузке аватарки
+  - Удален вызов `setAuthor()` во время загрузки аватарки, который триггерил `createEffect` и перезаписывал форму
+  - Добавлена проверка `!isUploadingAvatar()` в `createEffect` для дополнительной защиты
+  - Аватарка обновляется только через `updateFormField()` без затрагивания `author` signal
+  - Теперь при выборе и загрузке аватарки все остальные поля формы сохраняют свои значения
 
 ### Technical Details
 - `routes/edit/shout/[id].tsx`: Новый route для редактирования шаутов
@@ -31,6 +36,8 @@
 - `components/Article/FullArticle.tsx`: Обновлена ссылка редактирования
 - `components/HeaderNav/Header.tsx`: Обновлён `Toaster` для solid-sonner
 - `codegen.ts`: Изменён schema source на `process.env.GRAPHQL_SCHEMA_URL || 'http://localhost:8000/graphql'`
+- `context/profile.tsx`: Добавлена проверка `!isUploadingAvatar()` в `createEffect` (строка 86)
+- `components/Views/ProfileSettings.tsx`: Удален вызов `setAuthor()` в `handleUploadAvatar` (строки 211-212)
 
 ## [0.15.1] - 2025-10-05
 

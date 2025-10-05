@@ -654,6 +654,9 @@
   transition: all 0.2s;
   max-width: 600px;
   min-width: 50%;
+  
+  // Рамка по умолчанию (когда нет data-bg)
+  border: 2px solid #e5e7eb;
 
   // Режимы обтекания
   &[data-align='left'] {
@@ -681,6 +684,7 @@
   // Цветовые темы для блока подвёрстки
   &[data-bg='gray'] {
     background-color: #f3f4f6;
+    border: none;
   }
 
   &[data-bg='white'] {
@@ -691,21 +695,25 @@
   &[data-bg='black'] {
     background-color: #1f2937;
     color: #ffffff;
+    border: none;
   }
 
   &[data-bg='yellow'] {
     background-color: #fef3c7;
     color: #92400e;
+    border: none;
   }
 
   &[data-bg='red'] {
     background-color: #fee2e2;
     color: #991b1b;
+    border: none;
   }
 
   &[data-bg='green'] {
     background-color: #d1fae5;
     color: #065f46;
+    border: none;
   }
 }
 

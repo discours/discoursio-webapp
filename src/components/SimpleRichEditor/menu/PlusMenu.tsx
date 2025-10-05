@@ -221,7 +221,7 @@ export const PlusMenu: Component<{
         [styles.appearing]: isAppearing()
       })}
       style={{
-        position: 'absolute',
+        position: 'fixed',
         top: `${props.top}px`,
         left: `${props.left}px`,
         'z-index': 1000
@@ -231,27 +231,11 @@ export const PlusMenu: Component<{
         <button
           class={clsx(styles.plusButton, { [styles.active]: isOpen() })}
           onClick={handlePlusClick}
-          onMouseDown={(e) => e.preventDefault()} // Предотвращаем потерю фокуса редактора
+          onMouseDown={(e) => e.preventDefault()}
           title={t('Add a link or click plus to embed media')}
         >
           <Icon name="editor-plus" />
         </button>
-
-        {/* Плейсхолдер - показывается только когда меню закрыто и нет активной формы */}
-        <Show when={!isOpen() && !props.isFormActive}>
-          <span
-            class={styles.placeholder}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              // Клик на плейсхолдер = показать форму embed с автоопределением
-              props.onAction('embed')
-            }}
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            {t('Add a link or click plus to embed media')}
-          </span>
-        </Show>
       </div>
 
       <Show when={isOpen()}>

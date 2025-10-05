@@ -77,6 +77,12 @@ export function shouldApplyBlockFormatting(command: string, range: Range, editor
     return false
   }
 
-  // Проверяем, выделен ли весь блок
+  // Squib - особая команда-контейнер, применяется всегда к текущему блоку
+  // независимо от выделения
+  if (command === 'squib') {
+    return true
+  }
+
+  // Для остальных блочных команд проверяем, выделен ли весь блок
   return isFullBlockSelected(range, editorRoot)
 }

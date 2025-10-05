@@ -20,6 +20,17 @@ export function hasFormatting(format: CommandType, state: SelectionState): boole
     return hasFormatting('link', state)
   }
 
+  // Специальная обработка для squib - проверяем наличие data-align у родителей
+  if (format === 'squib') {
+    const node = state.range.startContainer
+    const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement)
+    if (!element) return false
+
+    // Проверяем есть ли родитель с data-align (это и есть squib)
+    const squibParent = element.closest('[data-align]')
+    return !!squibParent
+  }
+
   const config = FORMAT_CONFIG[format]
   if (!config) {
     // console.warn(`[hasFormatting] No config found for format: ${format}`)

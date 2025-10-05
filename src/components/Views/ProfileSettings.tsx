@@ -47,15 +47,7 @@ export const ProfileSettings = () => {
   const [hostname, setHostname] = createSignal<string | null>(null)
   const [slugError, setSlugError] = createSignal<string>()
   const [nameError, setNameError] = createSignal<string>()
-  const {
-    form,
-    submit,
-    updateFormField,
-    setForm,
-    setIsUploadingAvatar,
-    author: profileAuthor,
-    setAuthor
-  } = useProfile()
+  const { form, submit, updateFormField, setForm, setIsUploadingAvatar } = useProfile()
   const { loadSession, session } = useSession()
   const [prevForm, setPrevForm] = createStore<ProfileInput>({} as ProfileInput)
   const { showConfirm } = useUI()
@@ -200,12 +192,6 @@ export const ProfileSettings = () => {
 
       // Заменяем локальное превью на серверный URL
       updateFormField('pic', url)
-
-      // Обновляем author в session (чтобы хедер сразу показал новую аватарку)
-      const currentAuthor = profileAuthor()
-      if (currentAuthor) {
-        setAuthor({ ...currentAuthor, pic: url })
-      }
 
       // Освобождаем blob URL
       URL.revokeObjectURL(localPreviewUrl)
