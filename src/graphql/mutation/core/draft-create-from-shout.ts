@@ -15,7 +15,10 @@ export default gql`
         topics { id title slug }
         authors { id name slug }
         layout
-        shout
+        shout {
+          id
+          published_at
+        }
         cover
         cover_caption
         seo
