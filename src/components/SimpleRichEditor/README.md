@@ -1,425 +1,146 @@
 # SimpleRichEditor
 
-Гибкий WYSIWYG редактор с расширяемой архитектурой.
+Гибкий WYSIWYG редактор с расширяемой архитектурой на SolidJS.
 
 ## Содержание
 - [Основные возможности](#основные-возможности)
-- [Компоненты](#компоненты)
-- [API](#api)
-- [Стилизация](#стилизация)
 - [Архитектура](#архитектура)
+- [API](#api)
+- [Компоненты](#компоненты)
+- [Горячие клавиши](#горячие-клавиши)
+- [Стилизация](#стилизация)
 
 ## Основные возможности
 
-### Форматирование текста
-- **Инлайн форматирование:**
+### 📝 Форматирование текста
+
+#### Инлайн форматирование
   - `bold`, `italic` - базовое форматирование
-  - `link` - ссылки с предпросмотром
+- `link` - ссылки с inline формой
   - `highlight` - выделение текста
-- **Блочное форматирование:**
-  - `h1`, `h2`, `h3` - заголовки (с правильным переключением между уровнями)
-  - `blockquote` - цитаты
+- `tooltip` - всплывающие подсказки (кастомный тег)
+
+#### Блочное форматирование
+- `h1`, `h2`, `h3` - заголовки с правильным переключением между уровнями
+- `blockquote` - цитаты с toggle отменой
+- `punchline` - ударные цитаты (акцентированный блок)
   - `p` - обычные параграфы
-- **Стилизация врезок:**
-  - `align-left`, `align-center`, `align-right` - выравнивание
-  - `bg-gray`, `bg-white`, `bg-black`, `bg-yellow`, `bg-red`, `bg-green` - цветовые фоны
+- `incut` - врезки с настраиваемым выравниванием и фоном
 
-### Панель инструментов
+#### Стилизация врезок
+- **Выравнивание:** `align-left`, `align-center`, `align-right`
+- **Цветовые фоны:** `bg-gray`, `bg-white`, `bg-black`, `bg-yellow`, `bg-red`, `bg-green`
+
+#### Списки
+- `bulletList` - маркированные списки
+- `orderedList` - нумерованные списки
+
+### 🎨 Панель инструментов
+
 Реализована в [SimpleToolbar.tsx](./menu/SimpleToolbar.tsx):
-- Фиксированная внизу
-- Всплывающая над выделением (bubble)
-- Автоскрытие меню при потере фокуса
-- [Счетчик символов](./lib/counter.ts) с лимитами
+- **Три режима отображения:**
+  - `top` - фиксированная вверху
+  - `bottom` - фиксированная внизу
+  - `float` - всплывающая над выделением
+- Автоскрытие при потере фокуса
+- Поддержка групп команд и выпадающих меню
+- Динамическое отображение активных форматов
 
-### Расширенные возможности
-- **Редактор подвёрстки (incut)** с собственным меню стилей `['align-left', 'align-center', 'align-right', 'bg-gray', 'bg-white', 'bg-black', 'bg-yellow', 'bg-red', 'bg-green']`
-  - Создаёт `<div class="incut" data-align="left">` с настраиваемым выравниванием и фоном
-  - Toggle отмена: повторное нажатие разворачивает подвёрстку обратно в параграф
-- **Ударная цитата (punchline)** - акцентированный блок текста
-  - Создаёт `<div class="punchline">` для выделения важных мыслей
-  - Toggle отмена: повторное нажатие возвращает в обычный параграф
-- **Цитата (blockquote)** - стандартное цитирование
-  - Создаёт `<blockquote>` для оформления цитат
-  - Toggle отмена: повторное нажатие возвращает в обычный параграф
-- **Дополнительное [меню](./menu/PlusMenu.tsx) "+"** для медиа-контента `['image', 'video', 'audio', 'hr']` с умным позиционированием по строкам
-- **Обработка вставки** из буфера обмена для [медиа-контента и ссылок](./lib/embed.ts)
-- **Drag & Drop для изображений и URL:**
+### 📎 Медиа-контент
+
+#### Поддерживаемые типы
+- **Изображения:** JPEG, PNG, GIF, WebP, AVIF (до 500MB)
+- **Аудио:** MP3, WAV, OGG, M4A, FLAC
+- **Видео:** YouTube, Vimeo (через URL)
+- **Preview:** 20+ платформ с автоматическим распознаванием
+
+#### Drag & Drop
   - ✅ Полная поддержка `dragover`, `dragenter`, `dragleave`, `drop` событий
-  - ✅ Визуальная индикация области drop (подсветка границ)
+- ✅ Визуальная индикация области drop
   - ✅ Правильное восстановление выделения через клонирование Range
-  - ✅ **Распознавание URL** из известных платформ (YouTube, Vimeo, Twitter, Instagram, SoundCloud, etc.)
-  - ✅ Автоматическая вставка как embed или обычная ссылка
   - ✅ Параллельная загрузка до 3 файлов одновременно
   - ✅ Прогресс-индикатор с отображением текущего/общего количества файлов
-  - ✅ Валидация типов и размеров файлов (макс. 500MB, только изображения)
-- **Автосохранение контента** с версионированием в localStorage
-- **Последовательное форматирование:** Исправлена проблема с применением разных уровней заголовков
-- **Восстановление фокуса:** После форматирования курсор правильно возвращается в редактор
-- **Умное позиционирование Plus-меню:** Отслеживает курсор по строкам в реальном времени
-- **HTML placeholder:** Использует стандартный placeholder вместо кастомного компонента
+- ✅ Валидация типов и размеров файлов
 
-## Компоненты
+#### Preview платформы
+**Видео:** YouTube, Vimeo, Twitch, TED  
+**Аудио:** SoundCloud, Bandcamp  
+**Социальные сети:** Twitter/X, Instagram, Facebook, Telegram, Reddit, TikTok, OK.ru  
+**Медиа хостинги:** Imgur, Flickr, SlideShare  
+**Прочее:** Wikipedia, Discours.io
 
-### PlusMenu
-Меню добавления медиа-контента:
-- Позиционируется слева от текущей строки курсора
-- Отслеживает вертикальное перемещение курсора в реальном времени
-- Показывается только на пустых строках
-- Поддерживает команды: `['image', 'video', 'audio', 'hr']`
+### ⚡ Дополнительные возможности
 
-### SquibMenu
-Меню форматирования врезок:
-- Меню для оформления врезок
-- Позиционируется по центру поля ввода
-- Управление выравниванием и фоном
-
-### Upload System
-Система загрузки файлов с улучшенным Drag & Drop:
-- **Модальные окна** загрузки файлов
-- **Поддержка форматов:**
-  - Изображения: JPEG, PNG, GIF, WebP, AVIF (до 500MB)
-  - Аудио: MP3, WAV, OGG, M4A, FLAC
-  - Видео: через URL (YouTube, Vimeo)
-- **Drag & Drop интерфейс:**
-  - **Файлы:** Визуальная индикация, параллельная загрузка (до 3), прогресс-бар
-  - **URL:** Автоматическое распознавание платформ (20+ сервисов)
-  - **Embed поддержка:** YouTube, Vimeo, Twitch, TED, SoundCloud, Bandcamp
-  - **Социальные сети:** Twitter/X, Instagram, Facebook, Telegram, Reddit, TikTok
-  - **Медиа хостинги:** Imgur, Flickr, SlideShare
-  - **Прочее:** Wikipedia, Discours.io
-  - Автоматическая вставка в позицию курсора
-  - Обработка ошибок с уведомлениями
-
-
-# API
-
-## Основные параметры компонента
-
-```typescript
-interface SimpleRichEditorProps {
-  // Уникальный идентификатор редактора, используется для синхронизации и сохранения состояния
-  editorId: string;
-  
-  // Тип поля (body, lead и т.д.), влияет на поведение редактора и стилизацию
-  fieldType: string;
-  
-  // Позиция панели инструментов: "bottom" | "top" | "bubble"
-  toolbar: string;
-  
-  // Доступные команды форматирования
-  commands: CommandType[];
-  
-  // Исходное содержимое редактора в HTML формате
-  content?: string;
-  
-  // Обработчик изменения содержимого
-  onChange?: (data: EditorData) => void;
-  
-  // Обработчик отправки формы (Ctrl+Enter)
-  onSubmit?: (content: string) => Promise<boolean>;
-  
-  // Обработчик отмены редактирования (Esc)
-  onCancel?: () => void;
-  
-  // Обработчик потери фокуса
-  onBlur?: () => void;
-  
-  // Обработчик получения фокуса
-  onFocus?: () => void;
-  
-  // Обработчик инициализации редактора
-  onInit?: (instance: EditorInstance) => void;
-  
-  // Текст заполнителя, когда редактор пуст (использует стандартный HTML placeholder)
-  placeholder?: string;
-  
-  // Включение всплывающей панели инструментов при выделении текста
-  bubble?: boolean;
-  
-  // Включение меню "+" для вставки медиа-контента
-  plus?: boolean;
-  
-  // Включение режима врезки с дополнительными стилями оформления
-  incut?: boolean;
-  
-  // Режим только для чтения
-  readOnly?: boolean;
-  
-  // Скрыть кнопки действий (сохранить/отменить)
-  hideButtons?: boolean;
-  
-  // Ограничение на количество символов
-  limit?: number;
-}
-```
-
-## Структура данных
-
-### EditorData
-```typescript
-interface EditorData {
-  // HTML содержимое редактора
-  content: string;
-  
-  // Флаг, указывающий, пуст ли редактор (учитывает пустые блоки)
-  isEmpty: boolean;
-  
-  // Статистика текста (количество символов, слов и т.д.)
-  stats?: {
-    chars: number;
-    words: number;
-    paragraphs: number;
-  };
-}
-```
-
-### EditorInstance
-```typescript
-interface EditorInstance {
-  // DOM-элемент редактора
-  editor: HTMLDivElement;
-  
-  // Методы для программного управления редактором
-  methods: {
-    // Установить содержимое редактора
-    setContent: (html: string) => void;
-    
-    // Получить текущее содержимое
-    getContent: () => string;
-    
-    // Очистить содержимое
-    clear: () => void;
-    
-    // Установить/снять фокус
-    focus: () => void;
-    blur: () => void;
-    
-    // Добавить HTML в текущую позицию курсора
-    insertHTML: (html: string) => void;
-  };
-}
-```
-
-## Команды форматирования
-
-```typescript
-type CommandType =
-  // Базовое форматирование текста
-  | 'bold'       // Полужирный
-  | 'italic'     // Курсив
-  | 'link'       // Ссылка
-  
-  // Блочные элементы
-  | 'blockquote' // Цитата
-  | 'preview'    // Превью
-  | 'hr'         // Горизонтальная линия
-  
-  // Заголовки
-  | 'h1' | 'h2' | 'h3'
-  
-  // Специальные элементы
-  | 'tooltip'    // Подсказка (используйте кастомный тег <tooltip> вручную)
-  | 'incut'      // Врезка
-  
-  // Выравнивание текста
-  | 'align-left' | 'align-center' | 'align-right'
-  
-  // Цветовые фоны
-  | 'bg-gray' | 'bg-white' | 'bg-black' 
-  | 'bg-yellow' | 'bg-red' | 'bg-green'
-```
-
-## Примеры использования
-
-### Основной редактор статьи
-```tsx
-<SimpleRichEditor
-  editorId={`draft-${draftId}-body`}
-  fieldType="body"
-  toolbar="bottom"
-  commands={['bold', 'italic', 'link', 'blockquote', 'image']}
-  content={initialContent}
-  onChange={(data) => handleInputChange('body', data.content)}
-  onInit={(instance) => setBodyEditorRef(instance.editor)}
-  onFocus={() => handleBodyEditorFocus(true)}
-  onBlur={() => handleBodyEditorFocus(false)}
-  plus={true}
-/>
-```
-
-### Редактор краткого вступления
-```tsx
-<SimpleRichEditor
-  editorId={`draft-${draftId}-lead`}
-  fieldType="lead"
-  toolbar="bottom"
-  commands={['bold', 'italic', 'link']}
-  placeholder="Краткое введение для привлечения интереса читателя"
-  content={leadContent}
-  onChange={handleLeadEditorChange}
-  onBlur={saveLead}
-/>
-```
-
-### Редактор комментария
-```tsx
-<SimpleRichEditor
-  editorId={`comment-${commentId}`}
-  fieldType="comment"
-  commands={['bold', 'italic', 'link', 'blockquote']}
-  placeholder="Введите ваш комментарий..."
-  onChange={(data) => setCommentText(data.content)}
-  onSubmit={handleSubmitComment}
-  onCancel={handleCancelComment}
-  limit={5000}
-/>
-```
-
-## Режимы панели инструментов
-
-### bottom
-Панель инструментов фиксируется внизу области редактирования.
-Хорошо подходит для больших текстовых полей.
-
-### top
-Панель инструментов фиксируется вверху области редактирования.
-Удобно для небольших текстовых полей.
-
-### bubble
-Панель инструментов появляется над выделенным текстом.
-Обеспечивает чистый интерфейс и быстрый доступ к форматированию.
-
-## Колаборативное редактирование
-
-Редактор поддерживает совместную работу через систему awareness:
-
-- Синхронизация изменений между пользователями
-- Отображение курсоров и выделений других пользователей
-- Отложенное сохранение при отсутствии подключения к серверу
-- Автоматическое восстановление соединения
-
-### События collaborative editing
-```typescript
-interface CollaborationEvents {
-  // Подключение к серверу синхронизации
-  onConnect?: () => void;
-  
-  // Отключение от сервера синхронизации
-  onDisconnect?: () => void;
-  
-  // Обновление состояния присутствия других пользователей
-  onPresenceUpdate?: (users: User[]) => void;
-}
-```
-
-## Горячие клавиши
-
-Реализованы в [handlers/keyboard.ts](./handlers/keyboard.ts):
-
-### Форматирование
-- `Ctrl/Cmd + B` - Полужирный
-- `Ctrl/Cmd + I` - Курсив  
-- `Ctrl/Cmd + K` - Ссылка
-- `Ctrl/Cmd + Q` - Цитата (blockquote)
-- `Ctrl/Cmd + 1` - Заголовок H1
-- `Ctrl/Cmd + 2` - Заголовок H2
-- `Ctrl/Cmd + 3` - Заголовок H3
-
-### Навигация
-- `Tab` - Переход к следующему полю (title → lead → body)
-- `Shift + Tab` - Переход к предыдущему полю
-- `Enter` - Создание нового параграфа
-- `Backspace` - Удаление с умной обработкой пустых блоков и переносов строк
-
-### Действия
-- `Ctrl/Cmd + Enter` - Отправка формы
-- `Esc` - Отмена редактирования / закрытие форм
-
-
-## Стилизация
-
-### CSS Modules
-- Основные стили: `SimpleRichEditor.module.scss`
-- Компоненты меню: `menu/*.module.scss`
-- Вспомогательные стили: `lib/*.module.scss`
-
-### CSS классы
-Основные классы:
-- `.editor` - Основной контейнер
-- `.toolbar` - Панель инструментов
-- `.content` - Область редактирования
-- `.buttons` - Кнопки действий
-
-Модификаторы:
-- `.focused` - В фокусе
-- `.hasContent` - Есть контент
-- `.readOnly` - Режим чтения
-- `.bubble` - Всплывающее меню
-- `.incut` - Режим редактирования врезки
+- **Plus-меню** (`+`) - умное позиционирование для вставки медиа
+- **Автосохранение** - версионирование контента в localStorage
+- **Обработка вставки** - автоматическое распознавание URL и медиа
+- **HTML placeholder** - стандартный placeholder вместо кастомного компонента
+- **Восстановление фокуса** - правильное возвращение курсора после форматирования
+- **Inline формы** - бесшовная интеграция форм прямо в текст
 
 ## Архитектура
 
-После рефакторинга 2025 года редактор имеет модульную архитектуру с четким разделением ответственности:
+После рефакторинга 2025 года редактор имеет модульную архитектуру с четким разделением ответственности.
 
-### 🏗️ Основные директории
+### 🏗️ Структура директорий
 
-#### `format/` - Система форматирования
-- `config.ts` - Конфигурация команд форматирования (FORMAT_CONFIG)
-- `common.ts` - Единая точка входа для выполнения команд (executeCommand)
-- `inline.ts` - Инлайн форматирование (bold, italic, link, highlight)
-- `block.ts` - Блочное форматирование (h1, h2, h3, blockquote)
-- `detection.ts` - Определение активного форматирования (hasFormatting)
-- `utils.ts` - Утилиты для работы с DOM и выделением
-- `format.ts` - Главный экспорт всех функций форматирования
-
-#### `handlers/` - Обработчики событий (SolidJS function composition)
-- `events.ts` - События ввода, фокуса, вставки, **drag & drop**
-  - `handleInput` - обработка ввода текста
-  - `handlePaste` - вставка из буфера обмена
-  - `handleDragOver` - **КРИТИЧНО:** preventDefault() для разрешения drop
-  - `handleDragEnter` - визуальная индикация начала перетаскивания
-  - `handleDragLeave` - убирает индикацию при выходе из области
-  - `handleDropFiles` - обработка dropped файлов с загрузкой
-- `forms.ts` - Инлайн формы и модальные окна (showInlineForm, showImageUploadModal)
-- `keyboard.ts` - Клавиатурные шорткаты (Cmd+B, Cmd+I, Cmd+K, Tab, Enter, Backspace)
-- `media.ts` - Обработка кликов по медиа-элементам (handleContentClick)
-- `ui.ts` - UI хелперы (позиционирование меню, определение пустого редактора, примитивы Plus-меню)
-
-#### `lib/` - Базовая функциональность
-- `types.ts` - TypeScript типы и интерфейсы
-- `state.ts` - Управление состоянием редактора
-- `selection.ts` - Работа с выделением текста (useSelection hook)
-- `storage.ts` - Автосохранение и версионирование контента
-- `actions.ts` - Обработка команд редактора
-- `embed.ts` - Обработка вставки медиа-контента
-- `utils.ts` - Общие утилиты (валидация URL, работа с DOM)
-- `commands.ts` - Определение групп команд
-- `helpers.ts` - Вспомогательные функции
-- `empty.ts` - Проверка пустого контента
-- `sanitize.ts` - Очистка HTML
-- `media.ts` - Единый модуль для работы с медиа-контентом (аудио, видео, изображения)
-
-#### `media/` - Система загрузки и обработки медиа
-- `upload.ts` - **Улучшенная система drag & drop:**
-  - `useDropFiles()` - hook для обработки перетаскивания файлов **и URL**
-  - `validateFiles()` - валидация типов и размеров (макс. 500MB)
-  - **Автоматическое распознавание URL** из 20+ платформ
-  - Параллельная загрузка до 3 файлов одновременно
-  - Прогресс-индикатор с детализацией (N/M файлов)
-  - Правильное восстановление selection через `cloneRange()`
-- `insertion.ts` - Вставка медиа в редактор
-- `html.ts` - Генерация HTML для медиа-элементов и embed виджетов
-- `validation.ts` - **Валидация URL и распознавание платформ:**
-  - `detectEmbedPlatform()` - определение платформы по URL
-  - `recognizeContentType()` - определение типа контента
-  - Поддержка 20+ платформ (видео, аудио, социальные сети, медиа хостинги)
-- `types.ts` - TypeScript типы для медиа-системы
-
-#### `menu/` - Компоненты меню
-- `SimpleToolbar.tsx` - Основная панель инструментов
-- `PlusMenu.tsx` - Меню добавления медиа-контента
-- `SquibMenu.tsx` - Меню форматирования врезок
-- `helpers.ts` - Утилиты для работы с меню
+```
+SimpleRichEditor/
+├── format/              # Система форматирования
+│   ├── config.ts        # Конфигурация команд (FORMAT_CONFIG)
+│   ├── common.ts        # Единая точка входа (executeCommand)
+│   ├── inline.ts        # Инлайн форматирование (bold, italic, link)
+│   ├── block.ts         # Блочное форматирование (h1, h2, h3, blockquote)
+│   ├── detection.ts     # Определение активного форматирования
+│   ├── utils.ts         # Утилиты для работы с DOM и выделением
+│   ├── types.ts         # TypeScript типы
+│   └── format.ts        # Главный экспорт
+│
+├── handlers/            # Обработчики событий (SolidJS composition)
+│   ├── events.ts        # Ввод, фокус, вставка, drag & drop
+│   ├── forms.ts         # Inline формы и модальные окна
+│   ├── keyboard.ts      # Клавиатурные шорткаты
+│   ├── media.ts         # Обработка кликов по медиа-элементам
+│   └── ui.ts            # UI хелперы и примитивы меню
+│
+├── lib/                 # Базовая функциональность
+│   ├── types.ts         # TypeScript типы и интерфейсы
+│   ├── command.ts       # Категоризация команд
+│   ├── selection.ts     # Работа с выделением (useSelection hook)
+│   ├── storage.ts       # Автосохранение и версионирование
+│   ├── actions.ts       # Обработка команд редактора
+│   ├── utils.ts         # Общие утилиты
+│   ├── empty.ts         # Проверка пустого контента
+│   ├── sanitize.ts      # Очистка HTML
+│   ├── positioning.ts   # Позиционирование меню
+│   ├── timing.ts        # Утилиты для задержек и debounce
+│   └── dom-utils.ts     # Работа с DOM
+│
+├── media/               # Система медиа-контента
+│   ├── upload.ts        # Drag & drop и загрузка файлов
+│   ├── insertion.ts     # Вставка медиа в редактор
+│   ├── html.ts          # Генерация HTML для медиа и preview
+│   ├── validation.ts    # Валидация URL и распознавание платформ
+│   ├── previewLoader.ts # Lazy loading SDK для preview виджетов
+│   ├── previewMetadata.ts # Open Graph / oEmbed метаданные
+│   ├── previewRenderer.ts # Рендеринг preview тегов
+│   ├── handlers.ts      # Обработчики медиа-событий
+│   ├── types.ts         # TypeScript типы
+│   └── index.ts         # Главный экспорт
+│
+├── menu/                # Компоненты меню
+│   ├── SimpleToolbar.tsx # Основная панель инструментов
+│   ├── PlusMenu.tsx     # Меню добавления медиа-контента
+│   ├── IncutMenu.tsx    # Меню форматирования врезок
+│   ├── config.ts        # Конфигурация групп команд
+│   ├── helpers.ts       # Утилиты для работы с меню
+│   └── presets.ts       # Предустановленные наборы команд
+│
+├── components/          # Вспомогательные компоненты
+│   └── PreviewInlineChoice.tsx # Inline выбор типа вставки
+│
+└── SimpleRichEditor.tsx # Главный компонент
+```
 
 ### 🔄 Принципы архитектуры
 
@@ -430,7 +151,65 @@ interface CollaborationEvents {
 5. **Типизация** - Строгая типизация TypeScript для всех интерфейсов
 6. **Примитивы UI** - Разделение ответственности между видимостью и позиционированием
 
-### 🎯 Примитивы Plus-меню
+### 🎯 Ключевые модули
+
+#### `format/common.ts` - Унифицированная система форматирования
+```typescript
+// Единая функция для выполнения всех команд
+executeCommand(command: CommandType, context: FormatContext): FormatResult
+
+// Проверка активности команды
+isCommandActive(command: CommandType, selection: SelectionState): boolean
+
+// Получение доступных команд
+getAvailableCommands(context: FormatContext): CommandType[]
+```
+
+#### `handlers/events.ts` - Обработчики событий
+```typescript
+// Обработка ввода текста с автоматическим распознаванием URL
+handleInput(e: InputEvent): void
+
+// Вставка из буфера с поддержкой preview
+handlePaste(e: ClipboardEvent): void
+
+// Drag & Drop для файлов и URL
+handleDragOver(e: DragEvent): void
+handleDropFiles(e: DragEvent): void
+```
+
+#### `media/validation.ts` - Распознавание платформ
+```typescript
+// Определение платформы по URL (20+ платформ)
+detectPreviewPlatform(url: string): PreviewPlatform
+
+// Определение типа контента
+recognizeContentType(url: string): ContentType
+
+// Валидация URL
+isValidUrl(url: string): boolean
+```
+
+#### `lib/selection.ts` - Работа с выделением
+```typescript
+// Hook для отслеживания выделения и курсора
+useSelection(
+  editorRef: Accessor<HTMLDivElement>,
+  toolbarMode: Accessor<string>,
+  editorId?: Accessor<string>
+)
+
+// Создание состояния выделения
+createSelectionState(
+  editor: HTMLElement,
+  cursorPosition?: Position
+): SelectionState | null
+
+// Валидация выделения
+validateSelection(editor: HTMLElement): SelectionValidationResult
+```
+
+### 🎨 Примитивы Plus-меню
 
 Реализованы в `handlers/ui.ts` с четким разделением ответственности:
 
@@ -449,23 +228,325 @@ interface CollaborationEvents {
 - **Логика:** Фиксированная позиция слева от редактора
 - **Обновление:** Один раз при рендере редактора
 
+## API
+
+### Основные параметры компонента
+
+```typescript
+interface SimpleRichEditorProps {
+  // Уникальный идентификатор редактора
+  editorId?: string
+  
+  // Тип поля (body, lead, title, comment, about)
+  fieldType?: EditorFieldType
+  
+  // Режим панели инструментов: "top" | "bottom" | "float"
+  toolbar?: ToolbarMode
+  
+  // Доступные команды форматирования
+  commands?: readonly (CommandType | readonly CommandType[])[]
+  
+  // Исходное содержимое редактора в HTML формате
+  content?: string
+  
+  // Обработчик изменения содержимого
+  onChange: (data: EditorData) => void
+  
+  // Обработчик потери фокуса
+  onBlur?: () => void
+  
+  // Обработчик получения фокуса
+  onFocus?: () => void
+  
+  // Обработчик инициализации редактора
+  onInit?: (instance: { editor: HTMLDivElement }) => void
+  
+  // Текст заполнителя
+  placeholder?: string
+  
+  // Включение меню "+" для вставки медиа-контента
+  plus?: boolean
+  
+  // Автофокус при монтировании
+  autofocus?: boolean
+  
+  // Режим только для чтения
+  readOnly?: boolean
+  
+  // Колаборативное редактирование
+  collaborative?: boolean
+  
+  // Обновление курсора для колаборации
+  onCollabCursorUpdate?: (data: Position) => void
+}
+```
+
+### Структура данных
+
+#### EditorData
+```typescript
+interface EditorData {
+  // HTML содержимое редактора
+  content: string
+  
+  // Чистый текст без HTML
+  plainText: string
+  
+  // Длина текста
+  length: number
+  
+  // Флаг пустого редактора
+  isEmpty: boolean
+  
+  // Информация о выделении
+  selection?: {
+    text: string
+    isEmpty: boolean
+    position?: Position
+  }
+}
+```
+
+#### SelectionState
+```typescript
+interface SelectionState {
+  // Range объект выделения
+  range: Range | null
+  
+  // Выделенный текст
+  text: string
+  
+  // Флаг пустого выделения (курсор)
+  isEmpty: boolean
+  
+  // Позиция курсора
+  position: Position
+}
+```
+
+### Команды форматирования
+
+```typescript
+type CommandType =
+  // Базовое форматирование
+  | 'bold'       // Полужирный
+  | 'italic'     // Курсив
+  | 'link'       // Ссылка
+  | 'unlink'     // Удалить ссылку
+  | 'highlight'  // Выделение
+  
+  // Блочные элементы
+  | 'blockquote' // Цитата
+  | 'punchline'  // Ударная цитата
+  | 'p'          // Параграф
+  
+  // Заголовки
+  | 'h1' | 'h2' | 'h3'
+  
+  // Списки
+  | 'bulletList'   // Маркированный список
+  | 'orderedList'  // Нумерованный список
+  
+  // Медиа
+  | 'image'    // Изображение
+  | 'video'    // Видео
+  | 'audio'    // Аудио
+  | 'preview'  // Preview виджет
+  
+  // Специальные элементы
+  | 'tooltip'  // Подсказка
+  | 'incut'    // Врезка
+  | 'hr'       // Горизонтальная линия
+  
+  // Выравнивание
+  | 'align-left' | 'align-center' | 'align-right'
+  
+  // Цветовые фоны
+  | 'bg-gray' | 'bg-white' | 'bg-black' 
+  | 'bg-yellow' | 'bg-red' | 'bg-green'
+```
+
+### Примеры использования
+
+#### Основной редактор статьи
+```tsx
+<SimpleRichEditor
+  editorId={`draft-${draftId}-body`}
+  fieldType="body"
+  toolbar="bottom"
+  commands={['bold', 'italic', 'link', 'blockquote', 'image']}
+  content={initialContent}
+  onChange={(data) => handleInputChange('body', data.content)}
+  onInit={(instance) => setBodyEditorRef(instance.editor)}
+  plus={true}
+/>
+```
+
+#### Редактор краткого вступления
+```tsx
+<SimpleRichEditor
+  editorId={`draft-${draftId}-lead`}
+  fieldType="lead"
+  toolbar="bottom"
+  commands={['bold', 'italic', 'link']}
+  placeholder="Краткое введение для привлечения интереса читателя"
+  content={leadContent}
+  onChange={handleLeadEditorChange}
+/>
+```
+
+#### Редактор комментария
+```tsx
+<SimpleRichEditor
+  editorId={`comment-${commentId}`}
+  fieldType="comment"
+  commands={['bold', 'italic', 'link', 'blockquote']}
+  placeholder="Введите ваш комментарий..."
+  onChange={(data) => setCommentText(data.content)}
+/>
+```
+
+## Компоненты
+
+### SimpleToolbar
+Основная панель инструментов с поддержкой групп команд.
+
+**Возможности:**
+- Три режима отображения (top, bottom, float)
+- Выпадающие меню для групп команд
+- Динамическое отображение активных форматов
+- Автоскрытие при потере фокуса
+
+**Группы команд:**
+- `text` - Базовое форматирование
+- `headings` - Заголовки
+- `quotes` - Цитаты и врезки
+- `lists` - Списки
+- `links` - Ссылки
+- `media` - Медиа контент
+- `align` - Выравнивание
+- `backgrounds` - Фоны
+
+### PlusMenu
+Меню добавления медиа-контента с умным позиционированием.
+
+**Возможности:**
+- Позиционируется слева от текущей строки курсора
+- Отслеживает вертикальное перемещение курсора в реальном времени
+- Показывается только на пустых строках
+- Поддерживает команды: `image`, `video`, `audio`, `preview`, `hr`
+
+### IncutMenu
+Меню форматирования врезок с настройками выравнивания и фона.
+
+**Возможности:**
+- Позиционируется по центру редактора над блоком врезки
+- Управление выравниванием (left, center, right)
+- Управление фоном (gray, white, black, yellow, red, green)
+- Кнопка удаления врезки
+
+### PreviewInlineChoice
+Компактный inline выбор типа вставки URL.
+
+**Возможности:**
+- Показывается при вставке распознанного URL
+- Выбор между preview виджетом и обычной ссылкой
+- Tooltip с превью при hover на кнопку "Preview"
+- Автоматическое определение поддерживаемых платформ
+
+## Горячие клавиши
+
+Реализованы в [handlers/keyboard.ts](./handlers/keyboard.ts).
+
+### Форматирование
+- `Ctrl/Cmd + B` - Полужирный
+- `Ctrl/Cmd + I` - Курсив  
+- `Ctrl/Cmd + K` - Ссылка
+- `Ctrl/Cmd + Q` - Цитата (blockquote)
+- `Ctrl/Cmd + 1` - Заголовок H1
+- `Ctrl/Cmd + 2` - Заголовок H2
+- `Ctrl/Cmd + 3` - Заголовок H3
+
+### Навигация
+- `Tab` - Переход к следующему полю (title → lead → body)
+- `Shift + Tab` - Переход к предыдущему полю
+- `Enter` - Создание нового параграфа
+- `Backspace` - Удаление с умной обработкой пустых блоков
+
+### Действия
+- `Ctrl/Cmd + Enter` - Отправка формы
+- `Esc` - Отмена редактирования / закрытие форм
+
+## Стилизация
+
+### CSS Modules
+- `SimpleRichEditor.module.scss` - Основные стили
+- `menu/*.module.scss` - Стили компонентов меню
+- `media/styles.module.scss` - Стили медиа-элементов
+
+### CSS классы
+
+**Основные:**
+- `.editor` - Основной контейнер
+- `.toolbar` - Панель инструментов
+- `.content` - Область редактирования
+- `.floatingToolbar` - Всплывающая панель
+
+**Модификаторы:**
+- `.focused` - Редактор в фокусе
+- `.empty` - Пустой редактор
+- `.hasSelection` - Есть выделение текста
+- `.readOnly` - Режим только для чтения
+- `.withTopToolbar` - С верхней панелью
+- `.withBottomToolbar` - С нижней панелью
+
+**Блочные элементы:**
+- `[data-align]` - Врезки с выравниванием
+- `[data-bg]` - Элементы с цветовым фоном
+- `.punchline` - Ударные цитаты
+
 ## Преимущества
 
 ### Производительность
 - Нет зависимости от TipTap/ProseMirror
 - Меньший размер бандла
 - Быстрая инициализация
+- Оптимизированные обработчики событий
 
 ### Разработка
 - Простая кодовая база
 - Легкая кастомизация
 - Модульная архитектура
+- Строгая типизация TypeScript
+
+### Пользовательский опыт
+- Интуитивный интерфейс
+- Быстрая работа
+- Поддержка drag & drop
+- Автоматическое распознавание контента
 
 ## Ограничения
 
 - Хранит историю изменений глубиной в 20 состояний
 - Ограниченная поддержка сложного форматирования
-- Нет поддержки таблиц и сложных списков
+- Нет поддержки таблиц
 - Нет поддержки вложенных списков
 - Ограниченная поддержка RTL текста
 
+## Технические детали
+
+### Зависимости
+- SolidJS - реактивный фреймворк
+- clsx - утилита для работы с классами
+- SCSS Modules - изолированные стили
+
+### Совместимость
+- Современные браузеры (Chrome, Firefox, Safari, Edge)
+- Поддержка touch-устройств
+- SSR-совместимый (с проверкой `isServer`)
+
+### Безопасность
+- Санитизация HTML контента
+- Валидация URL перед вставкой
+- Проверка доменов для preview виджетов
+- Ограничение размера загружаемых файлов
