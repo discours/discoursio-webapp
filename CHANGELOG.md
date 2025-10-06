@@ -1,8 +1,10 @@
-# Changelog
+# 📝 Changelog
 
-## [Unreleased]
+Все изменения в этом проекте будут документированы в этом файле.
 
-### Fixed
+## [0.15.4] - upload revised
+
+### 🐛 Fixes
 - **[SimpleRichEditor]** Полностью переработана логика drag-and-drop для изображений и URL:
   - ✅ Добавлен обязательный `onDragOver` с `preventDefault()` - без этого браузер блокирует drop
   - ✅ Добавлена визуальная индикация при перетаскивании (подсветка границ редактора)
@@ -34,6 +36,2831 @@
 - `SimpleRichEditor.tsx`:
   - Подключены все drag-обработчики к contentEditable элементу
 
-### Documentation
-- Обновлен `README.md` с детальным описанием drag & drop функциональности
+### 📚 Documentation
+- Обновлен `SimpleRichEditor/README.md` с детальным описанием drag & drop функциональности
 - Добавлена техническая документация по архитектуре медиа-системы
+
+## [0.15.3] - 2025-10-05
+
+### 🔧 Improvements
+- **Vite HMR оптимизация**: Улучшен Hot Module Replacement для CSS модулей
+  - Добавлен HMR overlay для отображения ошибок
+  - Настроен file watcher с interval 100ms для быстрого обнаружения изменений
+  - Упрощены имена CSS классов в dev режиме (`[name]__[local]` вместо хеша) для лучшего HMR
+  - Включены source maps для стилей в dev режиме (`devSourcemap: true`)
+  - Теперь изменения в `.module.scss` файлах применяются без перезагрузки страницы
+  - Подтверждено логами: `[vite] (client) hmr update` для CSS модулей работает корректно
+
+### Technical Details
+- `vite.config.ts`: Обновлена конфигурация `server.hmr` и `server.watch`
+- `vite.config.ts`: CSS modules `generateScopedName` теперь зависит от `isDev` флага
+
+## [0.15.2] - 2025-10-05
+
+### ✨ Features
+- **Редактирование мигрированных шаутов**: Добавлен новый flow для редактирования опубликованных статей
+  - Создан route `/edit/shout/:id` для редактирования шаутов
+  - Автоматически создаёт черновик из шаута при первом редактировании
+  - Переиспользует существующий черновик если он уже создан
+  - Редиректит на `/edit/:draft_id` после создания черновика
+  - Обновлены ссылки "Редактировать" в `ArticleCard` и `FullArticle`
+
+### 🔧 Improvements
+- **Toast библиотека**: Заменён `solid-toast` на `solid-sonner` для лучшего UX
+  - Более современный API и стили
+  - Улучшенная анимация и позиционирование
+  - Обновлены все 20+ компонентов с импортами toast
+  - Удалены старые стили `toast.scss`
+- **Squib меню**: Улучшен UI и логика взаимодействия для форматирования врезок (цитат)
+  - Добавлен выбор цвета фона через выпадающее меню с визуальными образцами
+  - Новые цвета: серый, желтый, красный, зеленый, черный + без фона (рамка)
+  - Обновлен дизайн меню: закругленные углы, улучшенные тени, плавные анимации
+  - Кнопка выбора цвета показывает текущий цвет индикатором
+  - Активный цвет подсвечивается синей рамкой с glow эффектом
+  - **Исправлен конфликт меню**: при выделении текста внутри врезки показывается только основной тулбар (справа), SquibMenu (слева) автоматически скрывается
+  - При снятии выделения курсор остается внутри врезки - SquibMenu автоматически появляется снова
+  - **Улучшена навигация по блокам** (врезки, цитаты, заголовки, списки):
+    - `Enter` в непустом блоке → добавляет новый параграф/элемент **внутри** блока
+    - `Enter` в пустом блоке → выход из блока (удаляет блок, создает обычный параграф)
+    - `Shift+Enter` в любом блоке → выход из блока (создает новый параграф **после** блока)
+    - Клик по пустой области редактора → создает новую строку и перемещает туда курсор (как в Notion/Medium)
+
+### 🐛 Fixes
+- **GraphQL мутация**: Исправлена передача аргументов в `handleGraphQLError` для `createDraftFromShout`
+- **Codegen конфиг**: Обновлён для использования локального GraphQL сервера (`localhost:8000`) вместо production
+- **Profile Settings форма**: Исправлен сброс всех полей формы к пустым значениям при загрузке аватарки
+  - Удален вызов `setAuthor()` во время загрузки аватарки, который триггерил `createEffect` и перезаписывал форму
+  - Добавлена проверка `!isUploadingAvatar()` в `createEffect` для дополнительной защиты
+  - Аватарка обновляется только через `updateFormField()` без затрагивания `author` signal
+  - Теперь при выборе и загрузке аватарки все остальные поля формы сохраняют свои значения
+
+### Technical Details
+- `routes/edit/shout/[id].tsx`: Новый route для редактирования шаутов
+- `context/drafts.tsx`: Добавлена функция `createDraftFromShout`
+- `graphql/mutation/core/draft-create-from-shout.ts`: Новая GraphQL мутация
+- `components/Feed/ArticleCard/ArticleCard.tsx`: Обновлена ссылка редактирования
+- `components/Article/FullArticle.tsx`: Обновлена ссылка редактирования
+- `components/HeaderNav/Header.tsx`: Обновлён `Toaster` для solid-sonner
+- `codegen.ts`: Изменён schema source на `process.env.GRAPHQL_SCHEMA_URL || 'http://localhost:8000/graphql'`
+- `context/profile.tsx`: Добавлена проверка `!isUploadingAvatar()` в `createEffect` (строка 86)
+- `components/Views/ProfileSettings.tsx`: Удален вызов `setAuthor()` в `handleUploadAvatar` (строки 211-212)
+- `components/SimpleRichEditor/menu/SquibMenu.tsx`: Добавлено выпадающее меню выбора цвета, реактивные функции `getCurrentBg()` и `getCurrentColorOption()`
+- `components/SimpleRichEditor/menu/SquibMenu.module.scss`: Обновлены стили меню, добавлены `.colorRow`, `.colorIndicator`, `.colorSwatch`
+- `components/SimpleRichEditor/SimpleRichEditor.tsx`: 
+  - Добавлена логика взаимоисключения SquibMenu и основного тулбара (строки 253-291)
+  - Добавлен обработчик `handleBlockExit` для выхода из любых блоков при клике вне блока (строки 383-448)
+- `components/SimpleRichEditor/handlers/keyboard.ts`:
+  - Обновлена логика `Shift+Enter` для выхода из блоков (строки 82-151)
+  - Упрощена логика `Enter` - только пустой блок выходит, непустой продолжает внутри (строки 172-235)
+
+## [0.15.1] - 2025-10-05
+
+### 🚀 FEAT: Quick Inline Embed System
+- **✅ Реализована система быстрого встраивания контента**:
+  - **Paste URL**: При вставке URL с распознанной платформы - inline выбор (embed/link/cancel)
+  - **Type URL**: При вводе URL + пробел/Enter - автоматическое распознавание и inline выбор
+  - **Live Preview**: Tooltip с превью при hover на кнопку "With preview"
+  - **Favicon Badge**: Автоматическое отображение favicon для всех ссылок
+  - **Cancel Behavior**: Если не выбран вариант - URL остается как plain text
+  - **Seamless UI**: Форма встраивается прямо в текст (bottom border, без модалок)
+  - **30+ платформ**: YouTube, Vimeo, SoundCloud, Google/Yandex Maps, uMap, OpenFreeMap и др.
+  - **Файлы**:
+    - `events.ts`: Логика paste + typed URL detection (строки 108-327)
+    - `EmbedInlineChoice.tsx`: Новый компонент для inline выбора
+    - `EmbedInlineChoice.module.scss`: Стили с tooltip preview
+    - `InlineForm.tsx`: Favicon badge + безопасная валидация URL
+    - `InlineForm.module.scss`: Seamless интеграция в текст
+    - `SimpleRichEditor.module.scss`: Прозрачная форма без borders
+    - `embedMetadata.ts`: Whitelist безопасных доменов + `getSafeEmbedUrl()`
+    - `customTags.ts`: SSR-safe обработка + `requestAnimationFrame`
+
+### 🔧 FIX: ProfileProvider Missing in App
+- **✅ Исправлена ошибка `isUploadingAvatar is not a function`**:
+  - **Проблема**: `useProfile()` вызывался в `HeaderControls.tsx`, но `ProfileProvider` отсутствовал в `app.tsx`
+  - **Решение**: Добавлен `ProfileProvider` после `AuthorsProvider` в иерархию контекстов
+  - **Файлы**: `app.tsx` (строки 19, 192-207)
+
+### 🔧 FIX: PlusMenu Positioning
+- **✅ Улучшено позиционирование PlusMenu при скролле**:
+  - **Проблема**: `position: fixed` + Portal в `document.body` создавали проблемы при скролле
+  - **Решение**: Изменено на `position: absolute` внутри контейнера редактора
+  - **UX**: Меню теперь корректно скроллится вместе с контентом (как в Notion/Coda)
+  - **Файлы**: 
+    - `PlusMenu.tsx`: Изменено с `fixed` на `absolute` (строка 224)
+    - `SimpleRichEditor.tsx`: Убран Portal, меню внутри relative контейнера (строки 1079-1109)
+    - Удален неиспользуемый импорт `Portal` (строка 3)
+
+## [0.15.0] - 2025-10-05
+
+### 🔧 FIX: User Avatars (userpic) CDN URLs
+- **✅ Исправлена обработка аватарок пользователей**:
+  - **Проблема**: Старые CDN URL (`cdn.discours.io`, `assets.discours.io`) считались "внешними"
+  - **Следствие**: Аватарки не проходили через `getCdnUrl()` и не обновлялись
+  - **Решение**: Расширена логика `isExternalAvatar()` для проверки всех CDN доменов
+  - **Файлы**: 
+    - `Userpic.tsx`: Обновлена проверка CDN URL (строки 56-62)
+    - `profile.tsx`: Удалена устаревшая функция `userpicUrl()`
+    - `ProfileSettings.tsx`: Добавлен `markFileAsRecentlyUploaded()` после upload
+
+### 🚀 FEAT: Instant Avatar Preview + Upload Indicator
+- **✅ Мгновенное превью аватарки БЕЗ ожидания upload + индикатор загрузки**:
+  - **Проблема**: После выбора файла нужно ждать upload + синхронизацию (404)
+  - **Решение**: Используем `URL.createObjectURL()` для мгновенного локального превью
+  - **UX**: Аватарка видна **сразу** после crop, upload в фоне, индикатор в хедере
+  - **Flow**: 
+    1. Blob URL (мгновенно) → 
+    2. Upload → `markFileAsRecentlyUploaded()` → 
+    3. Обновление session.author.pic → 
+    4. Хедер показывает новую аватарку через прямой CDN (grace period 30s)
+  - **Файлы**: 
+    - `ProfileSettings.tsx`: Blob preview + обновление author в session
+    - `Userpic.tsx`: Поддержка `blob:` URL
+    - `profile.tsx`: `isUploadingAvatar` state в context
+    - `HeaderControls.tsx`: Индикатор загрузки в аватарке хедера
+    - `imageCache.ts`: Grace period для свежих файлов (прямой CDN URL)
+  - **Bonus**: Освобождаем память через `URL.revokeObjectURL()` после upload
+
+## [0.14.39] - 2025-10-05
+
+### 🔧 FIX: Image Thumbnails in Dev Mode
+- **✅ Восстановлена генерация превью в dev режиме**:
+  - **Проблема**: В dev режиме `getCdnUrl()` игнорировал параметр `width` и возвращал полные изображения
+  - **Следствие**: Превью загружали оригинальные большие файлы вместо миниатюр (медленно, дорого)
+  - **Решение**: Убрали обход `/api/thumb` в dev - теперь превью работают одинаково в dev и prod
+  - **Файлы**: `webapp/src/lib/imageCache.ts`
+
+## [0.14.38] - 2025-10-05
+
+### 🔧 FIX: CDN URL Migration
+- **✅ Заменен старый CDN `cdn.discours.io` на новый `files.dscrs.site`**:
+  - **Проблема**: Старый CDN не работал (ERR_TIMED_OUT), thumbnails API падал с 500
+  - **Решение в коде**:
+    - `imageCache.ts`: В dev режиме URL идут напрямую к CDN (без прокси через `/api/thumb`)
+    - `replaceImageUrls()`: Автоматическая замена `cdn.discours.io` → `files.dscrs.site` в HTML
+    - Добавлено логирование замен для отладки
+  - **Решение в БД**:
+    - Добавлена функция `replace_legacy_cdn_urls()` в `migrator/migration/process.py`
+    - Обновляет 6 таблиц, 16 полей: `shout`, `draft`, `author`, `community`, `topic`, `collection`
+    - Заменяет URL в полях: `body`, `cover`, `pic`, `about` (везде где есть медиа)
+    - **Убирает все субпути** (`/production/image/`, `/unsafe/`, etc), оставляя только filename
+    - Автоматически выполняется как Шаг 7 при запуске полной миграции
+  - **Документация**:
+    - Обновлен `development-setup.md`: убрана устаревшая информация про прокси
+    - В dev режиме изображения загружаются напрямую с CDN
+
+## [0.14.37] - 2025-10-05
+
+### 🐛 FIX: Cannot access handleScroll before initialization
+- **✅ Исправлена ошибка `ReferenceError: Cannot access 'handleScroll' before initialization`**:
+  - Проблема: `handleScroll` и `handleNetworkStatusChange` определялись после `onMount`, но использовались в нём
+  - Решение: Перенесли определения обработчиков событий выше `onMount`
+  - Удалили дублирующее определение `handleNetworkStatusChange` (было 2 раза)
+  - Теперь все обработчики определены в правильном порядке перед их использованием
+
+### 🐛 FIX: modalCallbacks is not a function
+- **✅ Исправлена ошибка `modalCallbacks is not a function`** в `EditView.tsx`:
+  - Проблема: `useUI()` вызывался внутри callback-функций, создавая новые контексты
+  - Решение: Перенесли `const { modalCallbacks } = useUI()` на верхний уровень компонента
+  - Убрали дублирующие вызовы `useUI()` из 4 callback-функций модалок
+  - Теперь `modalCallbacks()` корректно возвращает callbacks для uploadImage, uploadAudio, insertVideo
+  - Решает ошибку при загрузке изображений через модалку
+
+### 🐛 DEBUG: Upload Preview Not Showing
+- **🔍 Добавлены диагностические логи** в `handleUploadSuccess`:
+  - Логирование `uploadedFile.url` для проверки формата URL
+  - Проверка `restoreSelection()` - может ли редактор восстановить выделение
+  - Логирование результата `replaceSelection()` - была ли вставлена картинка
+  - **Цель**: Выяснить, почему после успешной загрузки не показывается превью в редакторе
+  - Логи покажут на каком этапе происходит сбой: URL, выделение или вставка HTML
+
+## [0.14.36] - 2025-10-04
+
+### 📚 DOCS: Local Development Setup
+- **✅ Создана документация `/docs/development-setup.md`**:
+  - Инструкция по запуску локального Quoter на порту 8080
+  - Конфигурация `.env.local` для dev режима
+  - 2 варианта: локальный Quoter или production files.dscrs.site
+  - Troubleshooting для CORS, 401, thumbnails 404
+
+### 🔧 FIX: Dev Mode Thumbnail Proxy
+- **✅ Исправлен thumbnail proxy в dev режиме**: 
+  - В dev: `/api/thumb` → `https://testing.discours.io/api/thumb`
+  - В prod: `/api/thumb` → Vercel Edge (локальный endpoint)
+  - Решает 404 для thumbnails в localhost:3000
+  - `cdnUrl` уже поддерживает `PUBLIC_CDN_URL` env var
+
+## [0.14.35] - 2025-10-04
+
+### 🔧 FIX: Upload Token Refresh on 401
+- **✅ Автоматическое обновление токена при загрузке файлов**: 
+  - Добавлен параметр `retryWithRefresh` в функцию `upload()`
+  - При получении 401 (Unauthorized) автоматически вызывается `refreshToken()`
+  - После успешного обновления токена загрузка повторяется автоматически
+  - Предотвращён бесконечный retry через флаг `retryWithRefresh = false` при повторе
+  - Теперь загрузка файлов работает даже с истёкшим токеном
+  - Решает проблему "Invalid or expired token" при upload аватара и других файлов
+
+## [0.14.34] - 2025-10-04
+
+### 🔧 FIX: Block vs Inline Formatting Logic
+- **✅ Исправлена логика определения block/inline форматирования**: Критичное правило
+  - Создан новый модуль `format/selection-utils.ts` для проверки типа выделения
+  - Функция `isFullBlockSelected()` проверяет, выделен ли весь блок полностью
+  - Функция `shouldApplyBlockFormatting()` определяет тип форматирования
+  - **Блочное форматирование** применяется только если:
+    - Курсор находится в блоке БЕЗ выделения (`collapsed: true`)
+    - ИЛИ весь текст блока выделен полностью
+  - **Инлайн форматирование** применяется при частичном выделении текста
+  - Интегрировано в `executeCommand()` в `format/common.ts`
+  - Теперь `<p>один [два] три</p>` + `h1` → НЕ преобразуется (корректно)
+  - А `<p>[текст]</p>` + `h1` → `<h1>текст</h1>` (корректно)
+
+## [0.14.33] - 2025-10-04
+
+### 📊 DOCS: Editor Formatting Matrix
+- **✅ Создана комплексная матрица форматирования**: Документация всех сочетаний и состояний
+  - Детальная матрица взаимодействий блочных форматов (p, h1-h3, blockquote, punchline, squib, ul, ol)
+  - Документация инлайн форматирования (bold, italic, highlight, data-bg)
+  - 75+ критичных тестовых сценариев с ожидаемым поведением
+  - План создания автоматических тестов (Unit, Integration, E2E)
+  - Приоритизация тестирования (P0-P3)
+  - Метрики успеха и покрытия кода
+  - Файл: `webapp/docs/editor-formatting-matrix.md`
+
+### 🔧 FIX: Editor Keyboard Interactions
+- **✅ Enter работает в squib блоках**: Добавлена поддержка `div[data-align]`
+  - Добавлен селектор `div[data-align]` в обработчик Enter в `keyboard.ts`
+  - Enter внутри squib теперь корректно создает новый параграф при выходе из блока
+  - Enter в середине squib правильно разбивает блок
+- **✅ Backspace убирает форматирование одним действием**: Упрощена логика
+  - Удалена послойная логика для squib (убрать `data-align` → убрать `div`)
+  - Теперь Backspace в начале `div[data-align]` сразу преобразует в `<p>`
+  - Backspace в списке с одним `li` преобразует в `<p>`
+  - Backspace в списке с несколькими `li` работает стандартно (объединяет элементы)
+  - Все блочные элементы (h1-h3, blockquote, punchline) преобразуются в `<p>` одним Backspace
+
+### 🐛 FIX: Squib Creation & Menu Visibility
+- **✅ Исправлено создание squib блоков**: Правильные атрибуты из FORMAT_CONFIG
+  - Убран ранний `return` в `toggleBlockFormat` для `div` → `div` с `data-align`
+  - Добавлено исключение `command !== 'squib'` в проверку `currentTag === newTag`
+  - Теперь всегда создается новый `div` с атрибутом `data-align="left"` из FORMAT_CONFIG
+  - Squib элемент корректно находится после создания через `querySelectorAll('[data-align]')`
+- **🔍 Добавлено логирование для отладки**: Детальные логи клика по squib
+  - Логирование в `handleContentClick` при клике на `[data-align]` элемент
+  - Вывод `squib.outerHTML`, позиции меню и установки `showSquibEditor`
+  - Помогает диагностировать проблемы с видимостью SquibMenu
+
+### 🎨 UI: Placeholder & Link Action
+- **✅ Plus-меню вызывает embed вместо link**: Более универсальное действие
+  - Клик на placeholder "Add a link to embed media" теперь открывает форму embed
+  - Форма embed поддерживает автоопределение типа ссылки (YouTube, Twitter, OpenGraph)
+  - Изменен `props.onAction('link')` на `props.onAction('embed')` в `PlusMenu.tsx`
+
+## [0.14.32] - 2025-10-04
+
+### 🎨 UX: Plus Menu & Toolbar Positioning
+- **✅ Plus-меню скрывается при открытых тулбарах**: Улучшено поведение интерфейса
+  - Plus-меню теперь скрывается когда активно выделение текста (floating toolbar)
+  - Добавлена проверка `hasActiveSelection` в `shouldShowPlusMenu`
+  - Предотвращает конфликт между Plus-меню и dropdown меню тулбара
+  - Plus-кнопка смещена на `-34px` от левого края редактора
+  - Плейсхолдер смещен вправо на `+34px` для компенсации Plus-кнопки
+- **✅ Floating toolbar поднят выше**: Не перекрывает выделенный текст
+  - Увеличен offset с `-40px` до `-60px` в `SimpleRichEditor.tsx`
+  - Увеличен offset с `60` до `80` в `getFloatingToolbarPosition`
+
+## [0.14.32] - 2025-10-04
+
+### 🐛 FIX: Upload Session Validation
+- **✅ Проверка токена перед аплоадом**: Ранняя проверка авторизации
+  - Добавлена проверка наличия токена в `uploadFile` ДО начала загрузки
+  - Теперь если токен отсутствует - сразу показывается ошибка "Session expired"
+  - Предотвращает попытку загрузки файлов без авторизации
+  - Улучшена обработка ошибки 401 от Quoter
+
+### 🐛 FIX: Squib Button Not Working
+- **✅ Исправлена кнопка подвёрстки**: Теперь корректно применяется к любым блокам
+  - Добавлена специальная логика для `squib` в `toggleBlockFormat`
+  - Проверка на наличие атрибута `data-align` вместо только сравнения тегов
+  - Toggle логика: если `data-align` уже есть → убираем, иначе → применяем
+  - Исправлена проблема, когда `<p>` не мог стать `<div data-align="left">`
+
+### 🎨 UX: Squib Toolbar Positioning
+- **✅ Компактный тулбар подвёрстки**: Не перекрывает текущую строку
+  - `transform: translate(-50%, -100%)` вместо `-50%` — полностью выше позиции
+  - Уменьшен padding: `6px 8px` вместо `8px` для более компактного вида
+  - Тулбар теперь полностью располагается над блоком подвёрстки
+
+### 🐛 FIX: Plus Menu Placeholder Logic
+- **✅ Плейсхолдер только на последних строках**: Разделена логика показа Plus-меню и плейсхолдера
+  - Добавлена функция `isCursorNearEnd()` — проверяет позицию курсора
+  - Добавлена функция `shouldShowPlaceholder()` — плейсхолдер только если `shouldShowPlusMenu() && isCursorNearEnd()`
+  - Plus-меню показывается слева от пустой строки БЕЗ плейсхолдера на средних строках
+  - Плейсхолдер появляется ТОЛЬКО на последней/предпоследней строке вместе с Plus-меню
+  - Удалён неиспользуемый сигнал `shouldShowPlaceholderState`
+  - **КРИТИЧНО**: Исправлена логика `isCursorOnEmptyLine` — теперь проверяет весь текст строки, а не только до курсора
+  - Убрана неправильная проверка `startOffset === 0` которая считала непустые строки пустыми
+
+## [0.14.31] - 2025-10-04
+
+### 🐛 FIX: Squib (Подвёрстка) Menu - Full Implementation
+- **✅ ПОЛНОСТЬЮ РЕАЛИЗОВАНО меню редактора подвёрстки**: Работает и выглядит как в Figma
+  - **КРИТИЧНО**: Добавлены `data-*` атрибуты в `ADD_ATTR` DOMPurify (не только в ALLOWED_ATTR!)
+  - Атрибуты `data-align`, `data-bg`, `data-squib-id`, `data-type` сохраняются после санитизации
+  - Меню автоматически появляется после создания подвёрстки (команда `squib`)
+  - Позиционирование: `absolute` относительно редактора (было `fixed`)
+  - Динамический расчет позиции через `calculateSquibMenuPosition`
+  - Обработчик кликов ищет элементы по `[data-align]`
+  - Задержка 100ms для ожидания обновления DOM после санитизации
+  - Подвёрстка создается с `data-align="left"` по умолчанию (не пустое значение)
+  - Улучшены стили: padding 12px, min-width 200px, правильный z-index
+  - Кнопка закрытия (×) видима с hover эффектом
+  - Разделены стили табов (`.tabButton`) и кнопок форматирования (`.button`)
+  - TypeScript: правильный каст `Element → HTMLElement`
+
+### 🐛 FIX: Plus Menu Upload Flow
+- **✅ Правильный порядок upload**: Сначала модалка, потом FileDialog
+  - Убрано преждевременное открытие FileDialog
+  - Модалка сама открывает FileDialog после выбора типа
+  - Упрощен код на -43 строки
+
+### 🐛 FIX: Local Assets Handling
+- **✅ Исправлена обработка локальных изображений**: `getCdnUrl` теперь не обрабатывает Vite bundled assets
+  - Локальные файлы (начинающиеся с `/` или `.`) возвращаются как есть
+  - Убрана ошибка "No stored path found in DB" для `discours-banner.jpg`
+  - Локальные статические ресурсы не проксируются через CDN
+
+### 🎨 UI: Audio Layout Simplification
+- **✅ Убран большой растянутый кавер**: Удален режим expanded image в AudioHeader
+  - Убрана кнопка expand и состояние `expandedImage`
+  - Кавер больше не растягивается на всю ширину при клике
+  - Упрощен компонент - только заголовок и метаданные
+  - Очищены неиспользуемые стили `.cover` и `.expandedImage`
+
+### 🚀 NEW: Vercel Edge Thumbnail Generation
+- **✅ Создан `/api/thumb/[width]/[...path]`**: Генерация thumbnails на Vercel Edge
+  - Автоматический выбор формата (AVIF → WebP → JPEG) по Accept header
+  - Кеширование на Edge CDN (immutable, 1 год)
+  - Резайз через `sharp` без увеличения оригинала
+  - Fetch оригиналов из Quoter CDN
+- **🔄 Упрощена архитектура**: Quoter = upload/storage, Vercel = thumbnails
+  - `getCdnUrl(url, width)` теперь → `/api/thumb/640/image.jpg`
+  - Без ресайза → прямая ссылка на Quoter CDN
+  - Убран legacy `_width` суффикс из filename
+- **💋 Чистое разделение ответственности**:
+  - Quoter: Upload + отдача оригиналов
+  - Vercel Edge: Thumbnails + оптимизация форматов
+  - Browser: Кеширование готовых thumbnails
+
+### 🎨 Refactored: SVG-based OG Image Generation
+- **❌ Удален @vercel/og**: Заменен на легковесную реализацию через SVG templates + sharp
+  - Убрана тяжелая зависимость с WASM runtime (~5MB)
+  - Простая и понятная генерация через SVG
+  - Быстрее на ~30-40% (нет WASM инициализации)
+- **✅ SVG Templates**: Создано 4 шаблона для разных типов OG изображений
+  - `createBasicSVG()` - для главной страницы
+  - `createArticleSVG()` - для статей (с cover/topic badge)
+  - `createAuthorSVG()` - для авторов (с avatar/stats)
+  - `createTopicSVG()` - для тем (с articles count)
+- **✅ Sharp converter**: SVG → PNG конвертация через `sharp`
+  - Поддержка всех параметров (title, description, cover, stats)
+  - Автоматический fallback при ошибках
+  - Корректный Base64 для Netlify
+- **🔧 Config cleanup**: Убран `runtime: 'edge'` из app.config.ts (не нужен для SVG)
+
+### Technical Details
+- `webapp/api/og.js`: Полностью переписан на SVG templates
+- Удалена зависимость `@vercel/og` (~13 packages)
+- Добавлена зависимость `sharp` (~26 packages, легче и быстрее)
+- `app.config.ts`: Убран external для @vercel/og и edge runtime
+- Размер изображений: строго 1200x630px для всех соцсетей
+
+### Why?
+- **Vercel Image API** (`/_next/image`) работает ТОЛЬКО в Next.js, не в SolidStart
+- **@vercel/og** был overkill для простых OG изображений
+- **SVG** проще поддерживать, легче отлаживать, быстрее работает
+- **sharp** - industry standard для image processing в Node.js
+
+## [0.14.30] - 2025-10-04
+
+### Fixed
+- 🖼️ **Image URLs**: Исправлена функция `getCdnUrl` для корректной обработки путей с вложенными директориями
+  - Теперь сохраняется структура `production/image/` при формировании URL
+  - Правильная обработка путей типа `production/image/filename.jpg`
+  - Исправлена проблема с отображением картинок из-за потери пути к директориям
+  - Поддержка width трансформаций для вложенных путей
+- 🔢 **Notifications Counter**: Счетчики уведомлений теперь рассчитываются правильно
+  - `total` и `unread` рассчитываются на основе сгруппированных уведомлений
+  - Счетчик показывает реальное количество групп уведомлений, а не отдельных записей
+  - Исправлено отображение количества непрочитанных после группировки
+- 🎨 **Icon System Refactoring**: Кардинальное упрощение системы иконок
+  - **Доработан компонент `<Icon />`**: добавлена поддержка `hoverSuffix` и `activeSuffix` для автоматической подмены иконок
+  - **Удалено 40+ CSS переменных**: остались только 8 для псевдоэлементов (было 50+)
+  - **OAuth провайдеры**: теперь `<Icon name="facebook" hoverSuffix="colored" />` вместо CSS переменных
+  - **Социальные ссылки в профиле**: утилита `getSocialIconName()` определяет иконку по URL автоматически
+  - **Loading компонент**: переписан с CSS переменной на `<Icon name="arrows-rotate" />`
+  - **Упрощен код**: 250+ строк CSS удалено из `AuthorCard` и `SocialProviders`
+  - **Документация**: добавлены примеры использования hover/checked вариантов в комментариях
+  - **Удален лишний код**: `_icons.scss` полностью удален
+
+### Technical Details
+- `webapp/src/lib/imageCache.ts`: обновлена логика извлечения и формирования URL
+- `core/resolvers/notifier.py`: исправлен подсчет счетчиков в `load_notifications`
+- `webapp/src/components/_shared/Icon/Icon.tsx`: добавлена поддержка hover/active суффиксов
+- `webapp/src/lib/getSocialIconName.ts`: новая утилита для определения иконки по URL
+- `webapp/src/components/Author/AuthorCard/`: упрощен на 200+ строк CSS
+- `webapp/src/components/AuthModal/SocialProviders/`: упрощен на 80+ строк CSS
+- `webapp/src/styles/_icons.scss`: удален полностью (мертвый код)
+- `webapp/src/styles/_global.scss`: убран импорт `@use "icons"`
+
+## [0.14.29] - 2025-10-03
+
+### Added
+- 🔔 **Notifications System**: Полная реализация системы уведомлений по дизайну из Figma
+  - Панель уведомлений с табами: Все / Дискуссии / Комментарии / Правки
+  - Группировка по периодам: Сегодня / Вчера / Ранее
+  - Иконки для разных типов уведомлений (публикации, комментарии, подписчики)
+  - Действия при hover: "Отметить прочитанным" / "Отписаться"
+  - Визуальное различие прочитанных/непрочитанных уведомлений
+  - Кнопка "Показать больше" для пагинации
+  - Badge счётчик непрочитанных в хедере
+
+- 🔕 **Notification Unsubscribe**: Возможность отписки от уведомлений по thread
+  - Backend: новая модель `NotificationUnsubscribe`, GraphQL мутация `notification_unsubscribe_thread`
+  - Frontend: интеграция в контекст уведомлений и UI компонент
+  - Фильтрация отписанных threads на бэкенде
+
+- ⚙️ **Notification Settings**: Страница настроек уведомлений в профиле (`/settings/notifications`)
+  - Настройки Email/Push уведомлений по типам (публикации, комментарии, реакции, подписчики)
+  - Режим дайджеста (daily digest вместо отдельных уведомлений)
+  - Сохранение настроек в localStorage
+  - Красивые toggle switches
+
+- 🔄 **Real-time Notifications**: SSE интеграция с presence сервисом
+  - Автоматическое обновление счётчика непрочитанных
+  - Toast уведомления для новых событий (когда панель закрыта)
+  - Обработка всех типов уведомлений (публикации, комментарии, реакции, подписчики, сообщения)
+
+- 🌍 **Translations**: Все необходимые переводы для системы уведомлений (ru + en)
+  - Типы уведомлений, действия, настройки
+  - Плюральные формы для счётчиков
+
+### Fixed
+- 🔧 **Notification Grouping**: Исправлена группировка уведомлений
+  - Backend: правильный формат thread_id для комментариев (`shout-{id}::{reply_to}`)
+  - Frontend: согласование формата thread_id в SSE контексте
+  - Корректное разделение комментариев к публикациям vs комментариев к комментариям
+
+- 🧹 **Code Quality**: Удалены неиспользуемые импорты и переменные
+  - Исправлены все warnings от Biome linter
+  - Убрано использование `any` типа
+
+### Technical Details
+- **Backend**: `core/resolvers/notifier.py`, `core/orm/notification.py`, `core/schema/mutation.graphql`
+- **Frontend**: `webapp/src/context/notifications.tsx`, `webapp/src/components/NotificationsPanel/`
+- **Settings**: `webapp/src/components/Views/ProfileNotifications.tsx`, `webapp/src/routes/settings/notifications.tsx`
+- **Storage**: localStorage для настроек пользователя (готово к синхронизации с backend)
+
+## [0.14.28] - 2025-10-03
+
+### Fixed
+- 📝 **404 Errors**: Исправлены 404 ошибки при загрузке несуществующих иконок
+
+## [0.14.27] - 2025-10-03
+
+### Fixed
+- **✂️ Author Bio Truncation**: Ограничена длина описания автора (bio) до 128 символов в компоненте `AuthorBadge` для предотвращения переполнения в списках подписчиков, поддерживающих тему и других бейджах
+
+### Changed
+- **📤 Universal Media Upload**: Заменены отдельные кнопки `image`, `video`, `audio` на универсальную кнопку `upload` с автоопределением типа файла (изображение или аудио)
+- **📝 Menu Items**: Плюс-меню теперь содержит: `upload` (медиа), `embed` (встраивание), `separator` (разделитель)
+- **🎵 Audio Player**: Аудио файлы теперь отображаются с нативным HTML5 плеером (`<audio controls>`)
+
+### Added
+- **🏷️ Platform Detection**: Автоматическое определение платформы embed с микроанимацией бейджа в форме (YouTube, Vimeo, SoundCloud и др.)
+
+### Removed
+- **🎬 Video Button**: Удалена отдельная кнопка видео из плюс-меню (осталась универсальная кнопка embed для всех платформ)
+- **🔘 Separate Media Buttons**: Удалены отдельные кнопки для изображений и аудио (объединены в универсальную кнопку upload)
+
+### Added (SimpleRichEditor Embed System)
+- **🔗 Compact Embed Format**: Введен новый компактный формат `<embed>` для хранения embed-контента
+- **📦 Platform Support**: Поддержка **17 платформ**: YouTube, Vimeo, SoundCloud, Bandcamp, Facebook, X, Instagram, Telegram, Reddit, TikTok, Twitch, TED, Wikipedia, SlideShare, Imgur, Flickr, Discours.io
+- **🎨 SVG Icons**: Брендовые SVG иконки для всех embed-платформ вместо эмоджи
+- **🔄 Migration Script**: Встроенная миграция HTML embed → компактный формат в `migrator/migration/tag_handlers.py`
+- **⚡ Lazy Loading**: Privacy-first подход с отложенной загрузкой SDK для социальных сетей
+- **🖼️ Metadata Preview**: Автоматическая подтяжка метаданных (title, image, description) для preview
+- **🎯 Plain Text Mode**: Shift+Enter для вставки URL как простой ссылки без embed
+- **🖼️ Media Hosting**: SlideShare (презентации), Imgur (изображения/галереи), Flickr (фото) с oEmbed API
+- **💬 Embed Choice Dialog**: При вставке ссылки на embed-платформу (через форму или Ctrl+V) показывается диалог выбора: обычная ссылка или embed с превью
+- **📋 Paste Detection**: Автоматическое распознавание embed-платформ при вставке URL из буфера обмена
+- **🎨 Rich Previews**: YouTube, Vimeo, SoundCloud, TikTok, Imgur отображаются с полноразмерными превью
+  - YouTube/Vimeo: thumbnail с кнопкой play
+  - SoundCloud/TikTok: обложка трека/видео с названием и автором (через oEmbed)
+  - Imgur: превью изображения
+- **🎨 Improved Preview**: Минималистичный дизайн с SVG иконкой платформы, названием и кнопкой "Load content" для остальных платформ
+
+### Technical Details
+- **Storage**: Вместо verbose HTML/iframe → `<embed>https://[domain]/[subpath]</embed>`
+- **Migration**: Автоматическая конвертация iframe'ов и div'ов в компактный формат при миграции
+- **Client**: Обработка кастомных тегов (`<tooltip>`, `<embed>`) в FullArticle и CommentCard
+- **Performance**: Компактный формат уменьшает размер HTML, lazy loading улучшает загрузку
+- **Privacy**: Embed контент не загружается до явного клика пользователя
+- **UX**: `EmbedChoiceModal` позволяет выбрать тип вставки при добавлении embed-ссылок через форму или Ctrl+V
+
+## [0.14.26] - 2025-01-27
+
+### Enhanced (SimpleRichEditor PlusMenu)
+- **🎯 Smart Positioning**: PlusMenu теперь отслеживает курсор по строкам в реальном времени
+- **🔧 UI Primitives**: Разделение ответственности между видимостью (`shouldShowPlusMenu`) и позиционированием (`getPlusMenuTop`, `getPlusMenuLeft`)
+- **🎨 Clean Design**: Убраны тени и бордеры у выпадающего меню PlusMenu
+- **📏 Line-based Calculation**: Позиция вычисляется на основе индекса строки курсора вместо getBoundingClientRect
+- **🔗 Proper Separator**: Исправлена иконка разделителя - теперь используется `editor-hr` вместо пустого кружка
+- **📝 HTML Placeholder**: Убран кастомный placeholder компонент, используется стандартный HTML placeholder
+
+### Technical Details
+- **Architecture**: Примитивы UI с четким разделением ответственности
+- **Performance**: Оптимизировано обновление позиции только при движении курсора между строками
+- **Code Quality**: Упрощена логика позиционирования, убраны избыточные проверки
+
+## [0.14.25] - 2025-09-30
+
+### Fixed (Static Files & Image Loading)
+- **🖼️ Image Hydration Fix**: Исправлена перерисовка изображений при SSR гидрации
+- **🔄 URL Normalization**: `getCdnUrl()` теперь извлекает только filename, убирая `production/image/` префиксы
+- **⚡ Stable Hydration**: SSR и клиент используют одинаковые URL → нет повторной загрузки изображений
+- **🎯 OAuth Avatars**: Внешние OAuth аватарки (Google/Telegram) теперь корректно отображаются
+- **🧩 Smart Detection**: `Userpic.tsx` определяет тип аватарки (внешняя/локальная) и применяет правильную обработку
+
+### Fixed (Avatar Upload in ProfileSettings)
+- **🐛 Double Modal Fix**: Убран двойной вызов модалки выбора файла
+- **✅ Upload Feedback**: Добавлены toast уведомления об успехе/ошибке загрузки
+- **📝 Better Logging**: Улучшено логирование для отладки процесса загрузки
+- **🎨 UX Improvement**: Модалка автоматически закрывается после успешной загрузки
+
+### Technical Details
+- `imageCache.ts`: Упрощена логика `getCdnUrl()` - только извлечение filename
+- `Image.tsx`: Применяет `getCdnUrl()` для всех HTTP URL, не только с width
+- `Userpic.tsx`: Внешние OAuth аватарки используют `<img>`, локальные - `<Image>` компонент
+- `ProfileSettings.tsx`: Исправлен event propagation для предотвращения двойного вызова
+- `AudioHeader.tsx`: Обновлено использование `getImageSrcSet()` вместо устаревшей функции
+
+## [0.14.24] - 2025-09-29
+
+### Fixed (OAuth Redirect URI)
+- **🚨 Critical Fix**: Исправлена проблема с ненадежным Referer header в OAuth
+- **🎯 State Parameter**: Redirect URL теперь передается через безопасный state параметр
+- **🛡️ Reliability**: Избегаем проблем с блокировщиками рекламы и настройками приватности
+- **🔄 Smart Redirect**: Автоматический возврат на исходную страницу после OAuth авторизации
+
+### Fixed (OAuth Infinite Loading) 
+- **🚨 Critical Fix**: Устранен бесконечный цикл загрузки после OAuth авторизации
+- **🔄 Session Timer**: Исправлен циклический вызов `loadSession()` в `setupSessionTimer()`
+- **⏰ OAuth Delay**: Добавлена 5-секундная задержка перед запуском session timer после OAuth
+- **🛡️ Cycle Prevention**: Убраны вызовы `loadSession()` из таймера обновления токенов
+
+### Technical Details
+- Redirect URL передается через base64-кодированный state параметр вместо ненадежного Referer
+- State содержит: uuid, redirect_url, timestamp для безопасности и отладки
+- Исправлен цикл: OAuth → loadSession → updateSession → setupSessionTimer → loadSession
+- OAuth теперь использует прямое обновление состояния без вызова updateSession
+- Session timer больше не вызывает loadSession при ошибках refresh
+- OAuth обрабатывается автоматически в SessionProvider без отдельного роута
+
+## [0.14.23] - 2025-09-28
+
+### Fixed (OAuth Session Recovery)
+- **🔄 OAuth Flow Enhancement**: Добавлена приоритетная проверка httpOnly cookies после OAuth редиректа
+- **🎯 Smart Session Detection**: SessionProvider теперь автоматически обнаруживает OAuth редиректы
+- **⚡ Instant Token Recovery**: Токен из httpOnly cookie сразу сохраняется в localStorage для последующих запросов
+- **🛡️ Session Persistence**: Улучшена стабильность восстановления сессии после OAuth авторизации
+
+### Technical Details
+- Добавлена проверка `oauth_in_progress` флага в sessionStorage
+- Приоритетная обработка OAuth редиректов в SessionProvider.onMount
+- Автоматическое извлечение токена из httpOnly cookie и сохранение в localStorage
+- Fallback логика для обычного восстановления сессии остается без изменений
+
+## [0.14.22] - 2025-09-27
+
+### Removed
+- **🗑️ GraphQL Proxy Removal**: Удален неиспользуемый GraphQL прокси роут `/graphql`
+- **🔧 OAuth Token Handling**: Убран фейковый токен `'httponly_cookie'` из localStorage после OAuth
+- **🧹 Test Cleanup**: Обновлены тесты для использования прямых API запросов
+- **📚 Documentation Update**: Обновлена документация с правильными URL API
+
+### Technical Details
+- Удален файл `src/routes/graphql.ts` (неиспользуемый прокси)
+- Упрощена логика OAuth редиректа в `src/routes/oauth.ts`
+- Обновлены тесты в `tests/utils/auth-helpers.ts` и `tests/utils/real-api-helpers.ts`
+- Обновлена документация в `docs/solidstart-urql-best-practices.md`
+- Все GraphQL запросы идут прямо к `v3.dscrs.site/graphql` с `credentials: 'include'`
+
+## [0.14.21] - 2025-09-26
+
+### Enhanced (OAuth Simplification)
+- **⚡ Simple OAuth Route**: Создан простой редирект роут `/oauth`
+- **🎯 Clean Architecture**: Бэкенд обрабатывает OAuth → редирект на фронт с результатом
+- **🍪 Cookie Support**: Поддержка httpOnly cookies от бэкенда (приоритет) + fallback на URL параметры
+- **🧹 Removed Complexity**: Убрана сложная OAuth логика из SessionProvider
+- **🚫 Reserved Routes**: Добавлен черный список зарезервированных роутов для защиты от конфликтов со slug'ами
+
+### Security Improvements
+- **🔐 Secure Cookies**: Все OAuth cookies с флагами Secure + SameSite=Lax
+- **⏰ TTL Validation**: 10-минутное окно для OAuth state (защита от replay атак)
+- **🚫 XSS Protection**: Токены недоступны из JavaScript благодаря httpOnly
+- **🎯 PKCE Ready**: Подготовлена инфраструктура для PKCE flow
+
+### Breaking Changes
+- **📍 Redirect URI**: OAuth провайдеры должны использовать `/oauth` вместо `/oauth/callback`
+- **🔄 Cookie-based**: Авторизация теперь работает через httpOnly cookies, не localStorage
+
+## [0.14.20] - 2025-09-24
+
+### Enhanced
+- **OAuth redirect_url**: Изменен redirect_uri с `window.location.origin` на `window.location.href` для возврата на исходную страницу после OAuth авторизации
+
+### Fixed (Critical)
+- 🚨 **OAuth Callback**: Исправлена критическая проблема - токены в URL не распознавались из-за отсутствия oauth_state в localStorage
+- 🔧 **OAuth Debug**: Добавлена отладочная информация для диагностики OAuth параметров
+- 🚨 **OAuth Errors**: Добавлена обработка ошибок OAuth (error=auth_failed, access_denied и др.)
+- 🎯 **OAuth Success**: Исправлена обработка успешной авторизации для разных форматов URL (GitHub: m=auth&mode=login)
+- 🔍 **OAuth Debug Enhanced**: Добавлена расширенная отладка для диагностики проблем с OAuth на всех страницах
+- 🚨 **OAuth Error Analysis**: Расширен список обрабатываемых ошибок OAuth и улучшена диагностика бекенд проблем
+- 🚨 **Critical JS Fix**: Исправлена ошибка "properties of undefined (reading 'write')" которая ломала обработку OAuth токенов
+- 🚨 **Article Loading Fix**: Исправлена бесконечная загрузка на страницах статей - добавлена правильная обработка Promise данных из route.load
+- 🚨 **Vercel Build Fix**: Убрана проблемная проверка process.stderr которая могла влиять на билд процесс
+- 🚀 **Netlify Deploy**: Добавлена конфигурация для деплоя на Netlify с правильной настройкой SolidStart SSR
+- 🔧 **Netlify API Functions**: Переписаны все API функции (feedback, newsletter, og) для совместимости с Netlify Functions
+- 📚 **Netlify Deploy Guide**: Добавлена подробная инструкция по деплою на Netlify с настройками и troubleshooting
+- 🎨 **Netlify OG Images**: Добавлена поддержка оверлея с кавером для генерации OG изображений через SVG
+- 🔧 **Unified API**: Единая кодовая база для Vercel и Netlify функций в папке api/ с простыми адаптерами (DRY, YAGNI, KISS)
+
+### Fixed
+- **GitHub OAuth**: Исправлен redirect_uri для localhost:3000 development
+- 🎯 **SimpleRichEditor**: Исправлена логика определения позиции курсора - теперь работает без активного выделения текста
+- 🎨 **SimpleRichEditor**: Убраны отладочные стили и упрощена архитектура UI Layer
+- 🔧 **DRY Fix**: Устранено дублирование isEditorEmpty и updatePlaceholderState - теперь используется единый источник из uiHelpers
+
+### WIP
+- **PlusMenu**: Заменен текстовый символ "+" на SVG иконку editor-plus.svg
+- 🚨 **КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ**: Плюс-меню в SimpleRichEditor не отображалось из-за строгой логики видимости в EditorUILayer
+- 🎯 **SimpleRichEditor**: Упрощено условие показа плюс-меню для надежности отображения
+- 🎯 **SimpleRichEditor**: Исправлено позиционирование плюс-меню - убран конфликт между fixed и absolute позиционированием
+- 🎯 **SimpleRichEditor**: Исправлена логика показа плюс-меню - теперь использует shouldShowPlusMenu() вместо hardcoded true
+
+## [0.14.19] - 2025-09-22
+
+### Fixed
+- 🎯 **SimpleRichEditor**: Улучшено позиционирование тултип-меню редактора - поднято выше редактируемой строки (отступ 60px)
+- 🎯 **SimpleRichEditor**: Основное меню форматирования теперь скрывается при появлении мини-форм вставки тултипа и ссылки
+- 🎯 **SimpleRichEditor**: Исправлено отображение активности кнопок тулбара - теперь корректно показывают состояние исходя из позиции курсора (добавлена проверка заголовков H1-H3)
+- 🎯 **SimpleRichEditor**: Реализована взаимоисключающая логика для блочных элементов:
+  - Заголовки H1, H2, H3 взаимоисключающие (применение одного снимает другие)
+  - Punchline и Blockquote взаимоисключающие
+  - Заголовки и Punchline взаимоисключающие
+  - Заголовки МОГУТ быть внутри Blockquote (не взаимоисключающие)
+
+## [0.14.18] - 2025-09-20
+
+### Fixed
+- ✨ **SimpleRichEditor**: Добавлена команда `tooltip` для создания тултипов с простой формой ввода текста
+  - Добавлен тип `tooltip` в `CommandType` и `FormType`
+  - Реализована форма ввода текста для тултипов в `InlineForm`
+  - Добавлена обработка команды `tooltip` в основном обработчике команд
+  - Команда `tooltip` добавлена в Plus-меню рядом с `link`
+  - Поддержка кастомного тега `<tooltip>` с отображением как иконка ⓘ
+  - Интеграция с Plus-меню для быстрого доступа
+- 🔧 **SSR**: Исправлена ошибка `window is not defined` в `EditView.tsx` при очистке event listeners
+- 🔧 **Hydration**: Исправлена ошибка `Hydration Mismatch` в SimpleRichEditor - добавлена проверка `isClient()` для предотвращения SSR рендеринга редактора
+- 🔧 **Hydration**: Исправлена ошибка `Hydration Mismatch` в компоненте Icon - добавлена server-aware инициализация состояния `isLoaded`
+- 🔧 **Tooltip**: Исправлено размножение иконок ⓘ при переносах строк - добавлен JavaScript обработчик для корректного отображения иконки только в конце tooltip блока
+
+
+### 🧪 E2E Tests DRY Refactoring & Standardization
+
+- Устранение дублирования кода и стандартизация E2E тестов редактора
+- Созданы единые хелперы `EditorHelpers` и `AuthHelpers` 
+- Все тесты переведены в формат `9x-editor-*.spec.ts`
+- Добавлены новые npm скрипты для тестирования редактора
+
+## [0.14.17] - 2025-09-20
+
+### 🧪 E2E Testing Infrastructure & Upload System Integration
+
+- Устранение дублирования кода и стандартизация
+- Полностью рабочая инфраструктура для тестирования загрузки файлов
+- Upload функциональность подключена к production API
+- Новые npm scripts и test utilities для upload тестирования
+  
+## [0.14.16] - 2025-09-18
+
+### 🎯 SimpleRichEditor Final Formatting Fixes
+
+- **✅ ИСПРАВЛЕНА отмена форматирования**: Кнопки теперь корректно отменяют форматирование при нажатии на активную кнопку
+
+- **✅ ИСПРАВЛЕНО визуальное обновление кнопок тулбара**: Кнопки теперь показывают активное состояние в реальном времени
+
+## [0.14.15] - 2025-09-18
+
+### 🎯 SimpleRichEditor Formatting Fixes
+
+- **✅ ИСПРАВЛЕНО повторное форматирование**: Курсор больше не перескакивает при применении форматирования
+
+- **✅ ИСПРАВЛЕНА потеря фокуса**: Редактор сохраняет фокус после применения любого форматирования
+
+- **✅ ИСПРАВЛЕНО последовательное форматирование**: Заголовки разных уровней применяются корректно
+  - **Bug**: Нельзя было применить H2 после H1, или любое другое форматирование после уже примененного
+  - **Root Cause**: Неправильная логика определения активного форматирования и восстановления выделения
+  - **Fix**: Улучшена логика `hasFormatting` для блочных элементов, правильное восстановление курсора
+  - **Impact**: Можно свободно переключаться между любыми типами форматирования
+
+### 🔧 SimpleRichEditor Refactoring
+
+- **✅ МОДУЛЯРИЗАЦИЯ компонента**: Разбит монолитный компонент на специализированные модули
+  - **Problem**: `SimpleRichEditor.tsx` содержал 1709 строк кода, сложен для поддержки и отладки
+  - **Solution**: 
+    1. **Обработчики событий**: `handlers/events.ts`, `handlers/keyboard.ts`, `handlers/forms.ts`
+    2. **UI утилиты**: `handlers/ui.ts` - позиционирование, состояние интерфейса
+    3. **Форматирование**: `format/common.ts`, `format/inline.ts`, `format/block.ts`, `format/detection.ts`
+    4. **Медиа**: Объединены `lib/audio.ts`, `lib/video.ts`, `lib/helpers.ts` в `lib/media.ts`
+  - **Impact**: Размер основного компонента сокращен до 1033 строк, улучшена читаемость и тестируемость
+  - **DRY**: Устранены дублирования в `lib/link.ts`, `lib/utils.ts`, селекторах и проверках типов узлов
+
+- **✅ УНИФИЦИРОВАННАЯ система форматирования**: Создана единая система для всех типов форматирования
+  - **Problem**: Разрозненная логика для inline/block форматирования, дублирование кода
+  - **Solution**: 
+    1. **Единая точка входа**: `executeCommand()` в `format/common.ts`
+    2. **Специализированные модули**: Отдельная логика для inline и block форматирования
+    3. **Общие утилиты**: `format/utils.ts` для восстановления выделения и работы с DOM
+  - **Impact**: Консистентное поведение всех команд форматирования, упрощенная отладка
+
+- **✅ ИСПРАВЛЕНА гидрация SSR**: Редактор теперь рендерится только на клиенте
+  - **Problem**: `Error: Hydration Mismatch` при обновлении страницы из-за динамического контента
+  - **Solution**: Обернут компонент в `Show when={!isServer}` с fallback для SSR
+  - **Impact**: Стабильная работа при обновлении страницы, отсутствие ошибок гидрации
+
+### 🧪 E2E Testing Infrastructure
+
+- **✅ НАСТРОЕНА инфраструктура E2E тестов**: Автоматизированное тестирование форматирования
+  - **Goal**: Автоматизировать проверку функций редактора вместо ручного тестирования
+  - **Implementation**:
+    1. **Playwright конфигурация**: Отдельные конфиги для разных типов тестов
+    2. **Авторизация**: Упрощенный flow с использованием переменных окружения
+    3. **Селекторы**: Робастные селекторы для элементов редактора и форм
+    4. **Консольные логи**: Захват browser console для детальной отладки
+  - **Files**: `tests/e2e/editor-format-test.spec.ts`, `tests/utils/auth-helpers.ts`, `playwright.config.ts`
+  - **Status**: Базовая инфраструктура готова, тесты требуют запущенного dev сервера
+
+- **✅ ОТЛАДОЧНЫЕ инструменты**: Расширенное логирование для диагностики проблем
+  - **Implementation**: Добавлены console.log во все критические точки форматирования
+  - **Coverage**: Выделение, восстановление фокуса, выполнение команд, позиционирование курсора
+  - **Impact**: Упрощена диагностика проблем форматирования через browser console
+
+## [0.14.14] - 2025-09-17
+
+### 🔧 OpenGraph & MetaTags Fixes (WIP)
+
+- **✅ ИСПРАВЛЕНА совместимость с @vercel/og v1.0.0**: Обновлена реализация createElement для React-compatible API
+  - **Bug**: @vercel/og v1.0.0 требует совместимость с React.createElement API
+  - **Fix**: Добавлена минимальная React-compatible реализация createElement в `api/og.js`
+  - **Technical**: Фильтрация undefined children, правильная структура props.children
+  - **Impact**: OpenGraph изображения теперь генерируются корректно с новой версией библиотеки
+
+- **✅ ИСПРАВЛЕНО форматирование MetaTags**: Убрана лишняя пробельная строка в компоненте
+  - **Bug**: Лишний пробел в объявлении функции MetaTags
+  - **Fix**: Удален лишний пробел в `src/components/_shared/MetaTags.tsx`
+  - **Impact**: Улучшена читаемость кода и соответствие стандартам форматирования
+
+## [0.14.13] - 2025-09-11
+
+### 🎯 Performance & Navigation Fixes
+
+- **✅ ИСПРАВЛЕНО отображение публикаций на странице автора**: Публикации не отображались при непустой статистике
+  - **Bug**: При наличии публикаций в статистике автора (author.stat.shouts > 0) они не отображались в профиле
+  - **Root Cause**: 
+    1. `sortedFeed` не устанавливался в `onMount` при пустых начальных данных (`props.shouts = []`)
+    2. Отсутствовал эффект начальной загрузки публикаций при несоответствии статистики и отображаемых данных
+    3. При клиентском роутинге `props.shouts` остаются пустыми, так как не происходит повторный `route.load`
+  - **Fix**: 
+    1. Убрано условие `if (initialShouts.length > 0)` - `sortedFeed` теперь всегда устанавливается в `onMount`
+    2. Добавлен эффект автоматической загрузки: если статистика показывает публикации, но `sortedFeed` пустой - загружаем данные
+    3. Улучшен эффект смены автора: добавлена проверка соответствия `author.slug === props.authorSlug` в эффекте загрузки
+    4. Добавлено логирование для диагностики проблем с клиентским роутингом
+  - **Impact**: Решена проблема "счётчик показывает публикации, но они не видны в профиле"
+  - **Edge Cases**: Особенно важно для авторов с одной публикацией и быстрых переходов между авторами
+
+- **✅ ИСПРАВЛЕНА задержка при переходе на автора**: Комплексное решение проблемы медленной навигации
+  - **Bug**: Переходы на ссылки авторов в статье работали медленно (2+ секунды) из-за множественных проблем
+  - **Root Cause**: 
+    1. `ArticlePageContent` пытался загрузить авторские страницы (`@aleksandr-delfinov`) как статьи (3 неудачные попытки)
+    2. Двойная загрузка автора: route.load + повторный API запрос в AuthorView
+    3. Перекрывающиеся обработчики кликов в FullArticle
+    4. Неправильная передача данных из route.load в компонент
+  - **Fix**: 
+    1. **Роутинг**: Добавлена проверка `slug.startsWith('@')` в ArticlePageContent - авторские страницы не загружаются как статьи
+    2. **Кеширование**: AuthorView проверяет кеш перед API запросом, предотвращая дублирование
+    3. **Обработчики**: Ранний выход для навигационных ссылок в click handlers
+    4. **Данные**: Упрощена обработка props.data в AuthorPage, убрано избыточное createResource
+  - **Technical**: Оптимизированы `[slug]/[...mode].tsx`, `AuthorView.tsx`, `FullArticle.tsx`
+  - **Impact**: Переходы на авторов теперь мгновенные, устранена двойная загрузка данных
+
+- **✅ ИСПРАВЛЕНО отсутствие публикаций при клиентском роутинге на автора**: Публикации не отображались при переходах
+  - **Bug**: При клиентском роутинге на страницу автора публикации не показывались, хотя статистика указывала на их наличие
+  - **Root Cause**: При клиентском роутинге `props.author` приходит без статистики, эффект автоматической загрузки не срабатывал из-за `shoutsAmount() === 0`
+  - **Fix**: 
+    1. Используем `props.shouts.length` как fallback если нет статистики: `const expectedShouts = shouts > 0 ? shouts : (propsArticlesCount || 0)`
+    2. В `onMount` сразу показываем публикации из props без ожидания дополнительной загрузки
+    3. Добавлена зависимость `props.shouts?.length` в эффект автоматической загрузки
+  - **Technical**: Модифицирован эффект загрузки в AuthorView и логика onMount
+  - **Impact**: Публикации автора отображаются мгновенно при любом способе навигации
+
+- **✅ ИСПРАВЛЕНО исчезновение публикаций при переключении вкладок автора**: "Публикации не найдены" при возврате на вкладку
+  - **Bug**: При переключении между вкладками автора (Публикации → Комментарии → Публикации) показывалось "Публикации не найдены"
+  - **Root Cause**: Эффекты фильтрации/сортировки срабатывали при переключении вкладок и очищали `sortedFeed`
+  - **Fix**: Улучшена логика эффектов - они срабатывают только при реальном изменении фильтров/сортировки на вкладке публикаций
+  - **Technical**: Добавлено отслеживание `currentTab` в эффектах и проверка `stayedOnPublications`
+  - **Impact**: Публикации сохраняются при переключении между вкладками автора
+
+## [0.14.12] - 2025-09-10
+
+### 🎯 Critical GraphQL Fix - Topic Authors Query + localStorage Quota
+
+- **✅ ИСПРАВЛЕНА ошибка get_topic_authors() missing slug argument**: GraphQL запрос требовал обязательный параметр
+  - **Bug**: `TopicAuthorsQuery` объявлял `$slug: String` как опциональный, но бекенд требует обязательный
+  - **Fix**: Изменено на `$slug: String!` в GraphQL схеме
+  - **Result**: Устранена ошибка при клиентском роутинге на страницы тем
+
+- **✅ ДОБАВЛЕНА валидация slug параметров**: Предотвращение вызовов с пустыми значениями
+  - **Protection**: Валидация `topicSlug` в `TopicView` компоненте перед GraphQL запросами
+  - **Functions**: `getTopicFollowers`, `getTopicAuthorsList`, `getTopicTopAuthors`
+  - **createResource**: Изменена логика - возвращаем `undefined` вместо `false` для предотвращения выполнения запросов
+  - **route.load**: Добавлена проверка на undefined/пустой slug в роутах
+  - **GraphQL API**: Валидация slug в `loadTopicAuthors`, `loadTopicFollowers` и `loadTopicBySlug` перед созданием loader
+  - **Result**: Защита от ошибок при undefined/пустых slug параметрах на всех уровнях
+
+- **✅ ИСПРАВЛЕНО переполнение localStorage**: QuotaExceededError от GraphQL кеширования
+  - **Bug**: Кеш GraphQL запросов переполнял localStorage и блокировал работу приложения  
+  - **Fix**: Отключено кеширование во всех GraphQL API функциях (loadShouts, loadTopicAuthors, loadTopicFollowers, loadTopicBySlug и др.)
+  - **Impact**: Устранена блокировка рендера, приложение работает стабильно
+  - **Performance**: Небольшое снижение скорости из-за отсутствия кеша, но стабильность важнее
+  - **Future**: Реализация SmartCache с LRU cleanup, мониторингом квоты localStorage и сжатием данных
+
+### 🎯 Critical Editor Styles Fix - Text Highlighting
+
+- **✅ ИСПРАВЛЕНА потеря стилей при сохранении**: Стили выделения текста теперь сохраняются корректно
+  - **Bug**: DOMPurify удалял теги `mark`, `highlight`, `span` и атрибуты `style`, `class`
+  - **Fix**: Добавлены недостающие теги и атрибуты в конфигурацию DOMPurify
+  - **Result**: Выделенный текст и inline стили сохраняются при публикации
+
+- **✅ УЛУЧШЕНА обработка HTML контента**: Исправлена логика определения HTML vs JSON
+  - **Bug**: `cleanupJsonContent` неправильно обрабатывала HTML контент как JSON
+  - **Fix**: Добавлена дополнительная проверка на наличие HTML тегов
+  - **Result**: HTML контент не теряет форматирование при обработке
+
+
+### 🎯 Critical Routing Fix - Direct Links
+
+- **✅ ИСПРАВЛЕНЫ прямые ссылки на темы и авторов**: Критическая ошибка в `isSkippedPath` функции
+  - **Bug**: `@author-slug` и `!topic-slug` блокировались как skipped paths
+  - **Fix**: Убраны `@` и `!` префиксы из `isSkippedPath`, добавлена правильная обработка в `route.load`
+  - **Result**: Прямые ссылки на темы и авторов теперь работают корректно
+
+- **✅ УЛУЧШЕНА SSR загрузка данных**: Добавлена параллельная загрузка для тем и авторов
+  - **Topics**: `loadTopicBySlug`, `loadTopicAuthors`, `loadShouts` с фильтрацией
+  - **Authors**: `getAuthor`, `loadShouts` с фильтрацией по автору
+  - **Performance**: Использован `Promise.all` для параллельной загрузки
+
+- **✅ ОБНОВЛЕНА передача данных**: Специализированные компоненты получают SSR данные
+  - **TopicPage**: Получает `topic`, `authors`, `articles` из SSR
+  - **AuthorPage**: Получает `author`, `articles` из SSR
+  - **Types**: Обновлены `ArticlePageProps` и `SlugPageProps`
+
+## [0.14.11] - 2025-09-08
+
+### 🔧 Critical Route & Editor Fixes
+
+- **✅ ИСПРАВЛЕНЫ роуты страниц тем**: Исправлен NaN offset в `/topic/[slug]` маршрутах  
+  - **Bug**: `Number.parseInt(undefined, 10)` возвращал NaN и ломал загрузку статей
+  - **Fix**: Добавлен fallback `|| 0` для корректной обработки отсутствующего параметра offset
+
+- **✅ ДОБАВЛЕНА страница подписчиков**: Реализована полная поддержка `?m=followers`
+  - **New Route**: Добавлена обработка параметра `m=followers` в AuthorView
+  - **UI Components**: Добавлена вкладка "Followers" с отображением списка подписчиков  
+  - **Navigation**: Корректные ссылки и счетчики подписчиков в TabNavigator
+
+- **✅ ИСПРАВЛЕН редактор с HTML-стилями**: Предотвращено повреждение HTML при сохранении
+  - **Bug**: `parseJsonContent()` неправильно обрабатывала HTML теги (заголовки, выделения)
+  - **Fix**: Добавлена проверка HTML контента перед JSON парсингом
+  - **Result**: Стили (заголовки, подчеркивания) теперь сохраняются корректно при публикации
+
+### 🎯 Technical Details
+- **`src/routes/topic/[slug]/[...mode].tsx`**: Исправлен offset parsing
+- **`src/components/Views/AuthorView.tsx`**: Добавлена обработка followers tab + UI
+- **`src/context/drafts.tsx`**: Улучшена логика parseJsonContent для HTML
+
+### 🚀 Impact
+- **Темы**: Страницы `/topic/literature` и другие теперь загружаются корректно
+- **Профили**: Ссылки `/@username?m=followers` работают с полным UI подписчиков  
+- **Редактор**: Можно использовать все стили без ошибок публикации
+
+## [0.14.10] - 2025-09-05
+
+### 🖼️ OpenGraph Preview Images Investigation
+
+- **🔍 ДИАГНОСТИКА: Исследована проблема с OpenGraph превью картинками**
+  - **API 404 Issue**: Обнаружено что `/api/og/*` возвращает 404 на testing.discours.io
+  - **SSR метатеги**: Добавлены полные OG метатеги в PageLayout.tsx для server-side rendering  
+  - **Конфигурация**: Проверена настройка Edge routes в app.config.ts и vercel.json
+  - **Кастомная h() функция**: Подтверждена корректность существующего подхода для @vercel/og
+
+### 🔧 Technical Changes  
+- **PageLayout.tsx**: Добавлены SSR OG метатеги через @solidjs/meta (og:image, twitter:card и т.д.)
+- **Vercel config**: Проверена конфигурация Edge routes для /api/og/**
+- **api/og.js**: Подтверждена корректность существующего кода с кастомной h() функцией
+
+### 🎯 Next Steps
+- Проверить развертывание Edge функций на testing.discours.io  
+- Убедиться что API endpoints /api/og/* доступны на production домене
+- Протестировать fallback изображения при недоступности OG API
+
+## [0.14.9] - 2025-09-03
+
+### 🔧 Comment Editor UX Improvements
+- **✅ Исправлена видимость инструментов редактирования**: Инструменты комментариев теперь корректно показываются/скрываются
+  - **Логика отображения**: Инструменты появляются только после ввода первого символа и при фокусе на редакторе
+  - **Автоскрытие**: Инструменты автоматически скрываются при очистке редактора или потере фокуса
+  - **Кнопка "Отмена"**: Теперь корректно очищает редактор, оставляя его видимым в дефолтном состоянии
+  - **Улучшенная UX**: Убрано постоянное отображение панели инструментов, которое загромождало интерфейс
+  - **Условная видимость**: `bottomToolbar` показывается только при `hasFocus() && !isEditorEmpty()`
+
+### 🎯 Technical Details  
+- **SimpleRichEditor.tsx**: Обновлена логика условного рендеринга toolbar с использованием `clsx`
+- **CommentsTree.tsx**: Исправлена функция `handleClear()` для корректной работы с новыми комментариями
+- **EditorControls**: Улучшена логика отображения кнопок в зависимости от режима редактора
+
+## [0.14.8] - 2025-09-03
+
+### 🎵 AudioPlayer Critical Fixes
+- **🔧 Автозапуск**: При перемотке через сикер аудио сразу начинает играть с выбранной позиции
+- **🎯 Позиционирование**: Исправлено точное совпадение сикера с линией прогресса - убран визуальный зазор  
+- **💡 Сброс времени**: Устранен сброс на 00:00 после клика - заблокирован конфликт onCanPlay во время seeking
+- **🎚️ Синхронизация**: Упрощена логика scrub - убраны избыточные задержки и проверки
+
+### Technical Details
+- Функция `scrub`: упрощен алгоритм, добавлена проверка `!isSeeking()` в `onCanPlay`
+- CSS: выровнены высоты линий прогресса (серая и цветная: обе 4px), сикер точно по центру (`top: 0`)
+
+## [0.14.7] - 2025-09-03
+
+### 🎯 Icon Component Fixes
+- **🔧 Критично**: Исправлены исчезающие иконки в приложении
+  - Убран проблемный `NoHydration` wrapper, блокировавший гидрацию
+  - Упрощена логика загрузки без сложных client/server проверок
+  - Иконки теперь видны по умолчанию (opacity: 1) для стабильной SSR гидрации
+  - Плавная анимация загрузки (0.3 → 1.0 opacity) вместо 0 → 1
+  - Улучшена CSS логика с `:not(.loaded)` подходом
+
+### 🖼️ Image Cropper Improvements
+- **🚀 Полная переработка**: ImageCropper компонента для лучшего UX
+  - Исправлены дублирующиеся canvas элементы
+  - Добавлен скрытый img элемент для правильной загрузки
+  - Улучшена логика масштабирования и центрирования изображений
+  - Добавлены zoom controls (−/+) для удобства использования ImageCropper
+  - Правильное вычисление координат обрезки с учетом масштаба
+  - Визуальные улучшения: углы рамки, затемнение, плавные переходы
+  - Фиксированный размер вывода для консистентности
+- **🛡️ Error Handling**: Лучшая обработка ошибок загрузки изображений
+
+## [0.14.6] - 2025-09-01
+
+### ✨ @vercel/og Optimizations
+- **🚀 Кэширование**: Прогрессивное кэширование OG-изображений с ETag и динамическими TTL
+- **🛡️ Устойчивость**: Graceful fallback на базовый OG при ошибках генерации
+- **📊 Логирование**: Минимизировано для production (только заголовки, не весь payload)
+- **⚡ Производительность**: Оставлена оптимальная самодельная функция `h` для простых оверлеев
+
+### 🔧 Technical Details
+- Immutable кэш (1 год) для статичного логотипа
+- 30-дневный кэш для динамических изображений с ETag
+- Короткий кэш (5 мин) для fallback изображений
+- Улучшенная обработка ошибок с двухуровневым fallback
+
+### 🐛 Edge Runtime Fixes
+- **🚨 Критично**: Отключены кастомные шрифты в Vercel Edge Runtime
+- **⚡ Кэширование**: Исправлена блокировка кэша для /api/og в vercel.json
+- **🎨 Шрифты**: Переход на системные шрифты для стабильности
+- **🛠️ Совместимость**: Полная совместимость с Vercel Edge функциями
+
+## [0.14.5] - 2025-09-01
+
+### 🔔 Smart Notification Grouping System
+- **🚀 НОВАЯ ФУНКЦИЯ**: Система умной группировки уведомлений
+  - Клиентская группировка уведомлений для устранения дублирования
+  - Интеграция системных toast-уведомлений с основными уведомлениями
+  - Новый компонент `SmartNotificationGroup` для отображения сгруппированных уведомлений
+  - Hook `useSmartGrouping` для реактивной обработки группировки
+  - Группировка по категориям: реакции, комментарии, подписки, сообщения
+  - Статистика группировки с процентом сокращения количества уведомлений
+  - Контекстные действия: просмотр, подписка, отклонение
+  - Поддержка приоритетов и автоматического сворачивания
+  - SSE интеграция для real-time обновлений
+  - Демо-переключатель между legacy и smart режимами
+
+### 🔧 Техническая реструктуризация
+- **📁 Перемещение**: `notificationGrouper.ts` в папку компонентов
+- **🗂️ Типы**: Объединены `notifications.ts` и `notifications-unified.ts`
+- **🔨 TypeScript**: Исправлены все ошибки типизации в 5 файлах
+- **🧹 Cleanup**: Удалены неиспользуемые файлы `smartGrouper.ts` и `demoGrouper.ts`
+- **📦 Imports**: Обновлены все импорты для новой структуры
+
+### 🐛 Исправления
+- Правильная типизация `Author[]` в `SmartNotificationGroup`
+- Исправлена обработка `UploadedFile` в компонентах загрузки
+- Добавлены fallback значения для опциональных полей
+- Устранены ошибки линтера в notification файлах
+
+### 🔐 OAuth Провайдеры
+- **🔕 Временно скрыты**: Telegram, X.com, Yandex провайдеры
+- **✅ Активны**: Google, GitHub, Facebook, VKontakte
+- **🎨 UI**: Социальные иконки отцентрированы в ряд с увеличенным spacing
+- Провайдеры закомментированы и могут быть легко восстановлены
+
+### 🔄 Роутинг
+- **🐛 Critical Fix**: Удален неправильный редирект-файл, который создавал бесконечный loop
+- **💻 Устойчивость**: Ссылки типа `/topic/social` работают напрямую через `[...mode].tsx`
+- **🧑‍🏫 Авторы топика**: Вкладка "Authors" теперь доступна через `/topic/[slug]/authors` и использует `TopicAuthorsView`
+- **📖 О топике**: Вкладка "About" доступна через `/topic/[slug]/about`
+- **🔄 Унифицированный роутинг**: Все табы обрабатываются в едином `[...mode].tsx` файле
+- **🐛 Статьи**: Исправлено пропадание публикаций при обновлении страницы
+- **⚡ Гидрация**: Упрощена логика загрузки данных, убраны конфликты createResource
+- **🧠 SolidJS Best Practices**: Применены правильные паттерны
+  - Убран `async createEffect` (ломает гидрацию)
+  - Добавлен `defer: true` для предотвращения race conditions
+  - Удалено дублирование логики мета-данных
+  - Правильное использование `createResource` для async данных
+- Правильная SSR загрузка данных топика и статей при прямом переходе
+
+## [0.14.4] - 2025-09-01
+
+### 🗳️ Исправлена система голосования
+- **⚡ voting-system-fix**: Исправлена логика голосования - двухэтапное голосование
+  - Исправлена логика в `RatingControl.tsx` - убрана возможность бесконечного голосования
+  - Повторный клик по той же кнопке игнорируется (голос уже установлен)
+  - Клик по противоположной кнопке СНАЧАЛА отменяет текущий голос (нейтральное состояние)
+  - После отмены можно снова голосовать в любую сторону (плюс или минус)
+  - Добавлена блокировка кликов во время обработки запроса
+  - Устранена ошибка "Cannot create reaction" при повторных голосованиях
+  - Реализована правильная логика: голос → нейтрально → новый голос
+
+### 📤 Интеграция Quoter API
+- **BREAKING:** Обновлен API загрузки файлов на новый Quoter API с системой квот
+- Исправлена структура FormData: используется поле 'file' вместо типа файла
+- Обновлена обработка ответов: чтение имени файла из тела ответа вместо Location header
+- Улучшена обработка ошибок: добавлены коды 401 (квота) и 415 (формат)
+
+## [0.14.3] - 2025-09-01
+
+### 🔧 Исправления гидрации и UI
+- **⚡ hydration-mismatch-fix**: Устранены критические ошибки гидрации в компонентах
+  - Исправлена ошибка "Hydration Mismatch" в `FollowingButton.tsx:128` - убран JSX из `value` пропа
+  - Заменены `<Show when={...}>` на условный рендеринг (`{... && (...)}`) в `AuthorBadge.tsx`
+  - Добавлены `Suspense` границы вокруг блоков статистики для стабильной гидрации
+  - Заменены обычные пробелы на `&nbsp;` между счетчиками и текстом для предотвращения мисматчей
+  - Исправлена передача JSX в пропсы компонентов - теперь используется строковый контент
+
+- **⚡ subscribe-button-alignment-fix**: Исправлено выравнивание кнопки подписки в `AuthorBadge`
+  - Добавлен `align-self: flex-start` для `.bio` и `.actions` CSS классов
+  - Кнопка подписки теперь корректно выровнена с остальными элементами интерфейса
+  - Устранено смещение кнопки вниз относительно статистики автора
+
+- **⚡ author-stats-display-optimization**: Оптимизировано отображение статистики авторов
+  - Скрыты пустые (нулевые) счетчики для чистоты интерфейса
+  - Добавлены небольшие отступы между числами и текстом для лучшей читаемости
+  - Убран лишний разделитель-буллет, который сдвигал элементы интерфейса
+  - Реализован смешанный формат: текст для основных счетчиков, иконки для дополнительных
+  - Статистика отображается в одну строку без переноса для компактности
+
+## [0.14.2] - 2025-08-31
+
+### 🔧 GraphQL Schema Fix
+- **⚡ graphql-schema-field-alignment**: Исправлено несоответствие полей между `AuthorStat` и `TopicStat`
+  - 🎯 **AuthorStat**: `authors` → `coauthors` (7 файлов) - author-by, authors-load-by, authors-load-search, author-follows-authors, topic-authors, topic-followers, author-follows (часть authors)
+  - 🎯 **TopicStat**: вернуто `authors` (8 файлов) - topics-all, topics-by-community, author-follows-topics, article-load, article-my, author-follows (часть topics), follow, unfollow 
+  - Устранена критическая ошибка GraphQL codegen: "Cannot query field 'coauthors' on type 'TopicStat'"
+  - Полная синхронизация схем frontend/backend для корректной генерации типов
+
+### ✨ Author Statistics Enhancement
+- **📊 expanded-author-stats**: Расширено отображение статистики авторов
+  - 🎯 **AuthorBadge**: Добавлены все ненулевые счетчики с серыми числами и подписями
+  - 🎯 **AuthorCard**: Полная статистика автора с SVG иконками в одну строку
+  - 📊 Отображаемые поля: публикации, соавторы, подписчики, ответы, просмотры, рейтинг публикаций, рейтинг комментариев
+  - 🎨 Адаптивный дизайн с горизонтальной прокруткой на мобильных
+  - ♻️ Сохранена исходная логика ABC списка (только 2 базовые вкладки)
+
+## [0.14.1] - 2025-01-30
+
+### 🎯 Исправлена кнопка "написать в тему"
+- **⚡ write-about-topic-button-fix**: Кнопка "написать в тему" теперь создает черновик с выбранной темой
+  - Добавлена функция `handleWriteAboutTopic` для создания нового черновика с предустановленной темой
+  - Интеграция с контекстом `useDrafts()` для создания черновика типа "article"
+  - Автоматическая установка темы как главной (`main_topic_id`) и в список тем (`topic_ids`)
+  - Перенаправление пользователя в редактор после создания черновика
+  - Проверка авторизации перед созданием черновика с уведомлениями об ошибках
+  - Полная локализация на русский и английский языки
+
+## [0.14.0] - 2025-08-30
+
+### 🎯 Улучшения UI и исправления подписок
+- **⚡ version-switcher-removal**: Убран переключатель версий из DraftCard
+  - Удален сложный переключатель "локальная/серверная версия" с главной страницы черновиков
+  - Добавлена кнопка восстановления из localStorage в редактор (📂)
+  - Упрощена логика управления версиями черновиков
+  - Очищены неиспользуемые переводы и стили
+
+- **⚡ subscription-button-fix**: Исправлено изначальное состояние кнопки подписки
+  - Исправлена обратная логика в `FollowingButton` - теперь показывает правильное состояние
+  - Убраны оптимистичные обновления UI - показываем реальное состояние с сервера
+  - Добавлена синхронизация с контекстом подписок для актуального состояния
+  - Исправлена обработка ошибки "already following" - теперь корректно подтверждает существующую подписку
+
+- **⚡ followers-display-fix**: Исправлено отображение подписчиков на странице автора
+  - Исключен текущий пользователь из списка подписчиков (исправлен счетчик "1 подписчик")
+  - Обновлена статистика автора с правильным количеством подписчиков
+  - Улучшено отображение микро-юзерпиков подписчиков
+
+- **⚡ solidjs-optimization**: Оптимизация SolidJS паттернов
+  - Заменена избыточная мемоизация `createMemo` на простые функции в `AuthorCard` и `AuthorBadge`
+  - Применено золотое правило: если операция < 1мс - используется простая функция
+  - Удалены неиспользуемые импорты
+
+- **⚡ duplicate-slug-error-fix**: Улучшена обработка ошибок публикации
+  - Добавлена специальная обработка ошибки дублирующегося slug при публикации
+  - Проверка на уже опубликованный черновик перед отправкой на сервер
+  - Улучшенные сообщения об ошибках с переводами
+
+## [0.13.9] - 2025-08-30
+
+### 🔍 Исправлен предпросмотр драфтов
+- **⚡ draft-preview-fix**: Решена ошибка "Draft not found" при нажатии предпросмотра
+  - Улучшена логика поиска драфта в `DraftPreviewPage` с альтернативными критериями поиска
+  - Добавлено детальное логирование для отладки процесса загрузки драфтов
+  - Исправлен поиск по `local_id`, числовому ID и основному ID драфта
+  - Оптимизирована загрузка драфтов в контексте для стабильной работы предпросмотра
+
+### 🔗 Исправлена генерация слага
+- **⚡ slug-generation-fix**: Решена проблема с пустым полем "постоянная ссылка" в настройках публикации
+  - Добавлена автоматическая генерация слага при загрузке `PublishSettings` компонента
+  - Приоритизация существующего слага - не перезаписываем уже установленный
+  - Генерация нового слага только при отсутствии или пустом значении
+  - Исправлена проверка содержимого и заголовка с учетом данных из localStorage
+  - Улучшена логика `updateDraftField` для корректной работы с существующими слагами
+
+### 📝 Улучшена валидация контента
+- **⚡ content-validation-fix**: Исправлена ошибка "добавьте содержимое перед публикацией"
+  - Проверка контента теперь учитывает данные из localStorage через `getActualContent()`
+  - Приоритет localStorage > currentDraft для корректного отображения введенного контента
+  - Детальное логирование для диагностики проблем с валидацией
+  - Синхронизация драфта с localStorage перед проверкой для актуальности данных
+
+## [0.13.8] - 2025-08-30
+
+### Fixed
+- Исправлена потеря данных черновика при переходе в настройки публикации
+- Временно отключен режим предложений правок в выпадающем меню редактора
+- Исправлен бесконечный цикл синхронизации в роуте настроек
+- Исправлено сохранение пустых строк в localStorage для очистки полей
+- Добавлена автоматическая генерация slug при изменении заголовка черновика
+- Исправлен regex для извлечения ID черновика из editorId
+
+## [0.13.7] - 2025-08-30
+
+### Fixed
+- Исправлена дозагрузка авторов для режимов by=shouts и by=followers
+- Улучшено отображение суперскрипта с количеством публикаций в режиме by=name
+- Исправлена синхронизация между LoadMoreWrapper и отображаемыми данными
+- Исправлена ошибка "Cannot use 'in' operator" в Swiper компонентах
+- Предотвращен бесконечный цикл загрузки иконок в офлайн режиме
+- Убрана избыточная мемоизация в Icon компоненте
+- Исправлена дозагрузка на главной странице - теперь использует данные из контекста
+- Изменена дефолтная вкладка авторов с by=name на by=shouts
+- Добавлена дозагрузка на странице /feed через LoadMoreWrapper
+- Исправлен ререндер при пустых результатах фильтрации (например, "за день")
+## [0.13.6] - 2025-08-29
+
+### 🔄 Восстановлена оригинальная логика авторизации
+- **⚡ auth-restore**: Исправлен процесс публикации черновиков
+  - Восстановлена функция `refreshClient()` в `SessionProvider` для обновления GraphQL клиента с актуальным токеном
+  - Возвращена оригинальная логика: `await refreshClient()` → `client().mutation()` вместо создания отдельных клиентов
+  - Исправлены типы `SessionContextType` для включения `refreshClient`
+  - Убрана сложная логика с `createClient` и `fetchOptions` функциями
+
+## [0.13.5] - 2025-01-28
+
+### 🔍 Улучшена валидация контента черновиков
+- **⚡ publish-validation-fix**: Исправлена проверка контента перед публикацией
+  - Экспортирована функция `cleanupHtmlContent` из `validateDraft.ts`
+  - Обновлена проверка в `PublishSettings.tsx` для использования той же логики что и в валидации
+  - Добавлена автоматическая синхронизация черновика с localStorage при загрузке страницы настроек
+  - Исправлено использование `createMemo` на простую функцию согласно SolidJS best practices
+  - Убраны отладочные логи для предотвращения ошибок гидрации
+
+## [0.13.4] - 2025-08-29
+
+### 🏠 Исправлена главная страница (SSR)
+- **⚡ homepage-ssr-fix**: Решены проблемы гидрации на главной странице
+  - Исправлена работа ArticleCard компонента с SSR данными
+  - Стабилизирована загрузка HomeView для правильной гидрации
+  - Исправлен маршрут (main).tsx для корректной передачи данных
+
+### 🎯 Исправлена страница топика (продолжение)
+- **📊 topic-page-fix**: Дополнительные исправления страницы топика
+  - Улучшена работа TopicView с реактивными данными
+  - Исправлены проблемы с LoadMoreWrapper в контексте топиков
+  - Оптимизированы контексты: connect, drafts, localize, topics
+  - Стабилизирован маршрут (all-topics).tsx
+
+### 📈 Система счетчиков просмотров
+- **👀 views_count**: Интегрирована система подсчета просмотров статей
+  - Добавлены счетчики просмотров в ArticleCard и FullArticle компоненты
+  - Обновлены GraphQL запросы для поддержки статистики просмотров
+  - Интегрированы счетчики в TopicView и featured контекст
+  - Оптимизированы все core запросы для передачи статистики просмотров
+
+### 🧑‍💼 Исправлен паттерн загрузки авторов (SSR)
+- **⚡ Применен правильный паттерн Carniato**: route.load → createResource → реактивные пропсы
+  - Исправлена гидрация через initialValue в createResource для стабильной SSR работы
+  - Убран async createEffect в пользу правильного createResource с SSR-данными
+  - Контекст обновляется ТОЛЬКО после получения данных (предотвращение циклов)
+  - Все типы авторов (по алфавиту, followers, shouts) передаются через реактивные пропсы
+- **🔄 Оптимизирована реактивность компонента**: Убраны ненужные пересчеты и циклические обновления
+  - Мемоизированы layout, getAuthorsForLayout, getGroupedByLetter для производительности
+  - Правильная приоритизация: props.* (SSR данные) → контекст (клиентские данные)
+  - LoadMoreWrapper интегрирован для дозагрузки авторов по followers/shouts
+  - Алфавитная группировка работает корректно с поиском и реактивными обновлениями
+
+### 🔧 Улучшения Cursor Rules
+- **📝 rules-improved**: Оптимизированы правила разработки для повышения качества кода
+  - Обновлены SolidJS паттерны и антипаттерны
+  - Улучшены правила для SSR и гидрации
+  - Добавлены рекомендации по производительности
+
+## [0.13.3] - 2025-08-25
+
+### 🎯 Исправлена страница топика
+- **📊 Восстановлена статистика топика**: Решена проблема исчезновения статистики публикаций в шапке
+  - Исправлено условие отображения `<Show when={props.topic?.stat?.shouts && props.topic.stat.shouts > 0}>`
+  - Статистика публикаций теперь отображается независимо от загрузки followers/authors
+  - Убрана зависимость от общего `props.topic?.stat` которая могла становиться falsy
+- **🔧 Исправлена загрузка данных топика**: Решена проблема с Promise в route.load данных
+  - Исправлен паттерн доступа к данным из route.load через createResource
+  - Данные топика теперь корректно разрешаются из Promise и передаются в компоненты
+  - Устранена ошибка гидрации "Hydration Mismatch" на странице топика
+- **👥 Исправлены модальные окна followers/authors**: Решена проблема пустых списков в модальных окнах
+  - Исправлены GraphQL запросы: `get_topic_followers` и `get_topic_authors`
+  - Добавлена отладка загрузки followers и authors для диагностики
+  - Модальные окна теперь корректно отображают списки подписчиков и авторов топика
+
+## [0.13.2] - 2025-08-25
+
+### 🗑️ Исправлено удаление черновиков
+- **🔧 Исправлена логика удаления черновиков**: Решена проблема "Error deleting draft" без запросов к серверу
+  - Исправлена функция `isSessionReadyForServer` для корректной проверки готовности сессии
+  - Убрана преждевременная проверка локального существования черновика перед удалением с сервера
+  - Теперь черновики удаляются напрямую с сервера, независимо от локального состояния
+  - Упрощена логика обработки ошибок в `deleteDraft` для более надежного удаления
+- **🎯 Исправлено снятие с публикации**: Решена проблема неправильного ID в `unpublishShout`
+  - Теперь используется `draft.shout.id` вместо `draft.id` для снятия с публикации
+  - Исправлены вызовы в `PublishSettings.tsx` и `DraftsView.tsx`
+  - Добавлены проверки наличия `shout.id` перед вызовом API
+- **🧹 Очистка диагностических логов**: Убраны избыточные console.log для продакшена
+  - Упрощены логи в функциях удаления и публикации черновиков
+  - Убраны детальные логи состояния сессии и API запросов
+  - Оставлены только критические логи для отладки
+
+## [0.13.1] - 2025-08-25
+
+### 🔧 Исправления системы черновиков
+- **🎯 Исправлена синхронизация контента редактора**: Решена проблема "No content for draft" при публикации
+  - Исправлена логика `updateDraftField` для корректного обновления `currentDraft` при изменениях в редакторе
+  - Добавлена принудительная синхронизация черновика перед публикацией через `syncDraft()`
+  - Улучшена обработка редакторных полей (body, lead) с debounced обновлением для стабильности фокуса
+  - Добавлено логирование для диагностики проблем синхронизации контента
+- **🗑️ Исправлено удаление черновиков с сервера**: Решена проблема неправильного определения существования черновиков
+  - Исправлена функция `checkDraftExistsOnServer` которая всегда возвращала `false`
+  - Теперь корректно определяется существование серверных черновиков для правильного выбора стратегии удаления
+  - Добавлено детальное логирование для диагностики проблем удаления
+- **⌨️ Исправлена потеря фокуса в редакторе**: Решена проблема потери фокуса при вводе текста
+  - Убраны лишние `setTimeout` и ререндеры `currentDraft` при каждом символе
+  - Улучшена функция `syncDraft` для полной синхронизации контента из localStorage
+  - Контент редактора теперь сохраняется в localStorage без влияния на фокус
+  - Перед публикацией вызывается `syncDraft()` для загрузки актуального контента
+- **📝 Исправлена проблема с body в запросах**: Решена проблема отсутствия контента при публикации
+  - Добавлена синхронизация в `validateCurrentDraft` для получения актуального контента
+  - Добавлена синхронизация в `publishDraft` перед валидацией и публикацией
+  - Теперь весь контент редактора корректно попадает в GraphQL запросы
+  - Исправлена проблема когда публикация не срабатывала из-за отсутствия body
+  - Исправлена ошибка гидрации на странице настроек публикации (/edit/*/settings)
+
+## [0.13.0] - 2025-08-25
+
+### 🚀 Архитектурные улучшения
+- **🔧 Устранены циклические зависимости**: Context providers больше не импортируют из utility модулей
+  - `drafts.tsx` и `localDrafts.tsx` теперь полностью самодостаточны
+  - Storage функции перенесены непосредственно в контексты
+  - Улучшена архитектура: контексты независимы от utility модулей
+  - Соблюден принцип разделения ответственности
+
+### 🎵 Улучшения AudioPlayer
+- **🔧 Исправлены критические баги аудиоплеера**: Полная переработка компонентов AudioPlayer
+  - Исправлена работа seekbar и timeline для корректного позиционирования
+  - Улучшена синхронизация между AudioPlayer и AudioPlayerPreview
+  - Добавлена отладочная информация для диагностики проблем
+  - Оптимизирована производительность воспроизведения аудио
+  - Исправлены проблемы с seekbar в AudioTimeLine компоненте
+
+### 🧹 Оптимизация кода
+- **💋 KISS: Упрощение компонентов**: Убраны избыточные части кода
+  - Оптимизированы LayoutSelector, ProfilePopup, EditView
+  - Упрощен OfflineStatus компонент
+  - Улучшены ShareLinks и topic роуты
+  - Обновлены SolidJS паттерны в .cursor/rules
+
+### 🔧 Исправления системы черновиков
+- **📝 Post-publication fixes**: Улучшена работа с черновиками после публикации
+  - Исправлена логика отображения в DraftCard и DraftsView
+  - Обновлен контекст drafts для лучшей синхронизации
+  - Улучшена загрузка черновиков через GraphQL
+  - Оптимизирована работа с localStorage
+
+### 🚀 CI/CD улучшения
+- **⚙️ Gitea CI оптимизация**: Улучшена стабильность тестов
+  - Обновлены workflow файлы для .gitea/workflows
+  - Улучшена конфигурация test-coverage
+  - Оптимизированы настройки Playwright для CI
+  - Улучшена стабильность автоматических тестов
+
+## [0.12.9] - 2025-08-21
+
+### 🚨 Критические исправления стабильности
+- **🔧 Исправлена ошибка инициализации**: Устранена ошибка "Cannot access 'fallbackShouts' before initialization" в HomeView
+  - Переупорядочены объявления переменных для корректной работы Temporal Dead Zone
+  - Исправлен порядок createMemo в компонентах SolidJS
+- **🛡️ Исправлены null-проверки в авторизации**: Добавлены защитные проверки в session.tsx
+  - Предотвращена ошибка "Cannot read properties of null (reading 'id')"
+  - Добавлены проверки author и token во всех функциях авторизации
+  - Улучшена обработка ошибок в loadSessionData, signIn, signUp
+
+### 🚀 Оптимизация производительности
+- **💋 KISS: Упрощена загрузка топиков**: Убрана сложная логика "trying old API first"
+  - Удалены множественные попытки разных API
+  - Ускорена загрузка топиков за счет одного запроса вместо 2-3
+  - Упрощены логи и отладка
+  - Улучшена предсказуемость работы системы
+
+### 🧪 Улучшения тестирования
+- **❌ Удалены retry механизмы**: Убраны маскирующие проблемы retries из тестов
+  - Установлены retries: 0 в playwright.config.ts
+  - Уменьшены таймауты для быстрого выявления проблем
+  - Удален retryOperation из test-helpers.ts
+  - Тесты теперь показывают реальные проблемы без маскировки
+
+### 🔧 Технические исправления
+- **Исправлена синтаксическая ошибка**: Закрыта незавершенная async функция в routes/(main).tsx
+- **Улучшена обработка ошибок**: Добавлены защитные проверки во всех критических местах
+
+## [0.12.8] - 2025-08-21
+
+### 🎯 Исправление системы отображения тем в настройках публикации
+- **🔧 TopicPillsCloud**: Восстановлена правильная логика отображения доступных тем
+  - Поиск работает как дополнительная фильтрация, а не как требование для показа
+  - Пользователь сразу видит доступные темы для выбора
+  - Улучшены fallback сообщения для разных состояний
+  - Добавлен счетчик результатов при поиске
+
+### 🧪 Исправления E2E тестирования
+- **Увеличены таймауты** для CI среды (60 секунд вместо 30)
+- **Улучшена стабильность** тестов с увеличением retry до 2 в CI
+- **Оптимизированы проверки** готовности страниц в TestUtils
+- **Добавлена обработка ошибок** в smoke тестах для предотвращения падения
+- **Улучшена логика гидратации** SolidJS с более мягкими критериями
+- **Уменьшено количество воркеров** в CI для большей стабильности
+
+### 📚 Документация и README
+- **Обновлены версии** во всех бейджах (0.12.8)
+- **Улучшены бейджи** с добавлением логотипов и цветов
+
+## [0.12.7] - 2025-08-20
+
+- Новое API подключено
+- Исправлена потеря авторизации при перезагрузке страницы
+- Удалены лишние устаревшие модули
+- linter: 120 символов в строку
+
+
+## [0.12.6] - 2025-08-12
+
+- Удалена зависимость от `sass-embedded` и `vite-plugin-sass-dts`
+- Локальные e2e тесты работают
+- E2E тесты обновлены - удалены мок-тесты, добавлены реальные
+- Рабочий pre-commit hook 
+
+## [0.12.5] - 2025-08-09
+
+### 🔧 Исправления
+- Исправления логик управления черновками: добавление, сохранение, удаление
+- Исправление потери авторизации при обновлении страницы
+- Исправление тестирования авторизации
+- Унификация конфига тестов `global-setup.ts`
+- Footnote -> `<tooltip>` 
+- Восстановление всех утраченных имён классов в `scss`
+- Исправлено `/edit` отображение как защищенного ресурса
+- Позиционирование заголовка
+- исправлена работа `codegen-inbox.ts` в CI
+- удалены unit-тесты и многие лишние пакеты
+
+## [0.12.4] - 2025-08-07
+
+### 🐛 Fixed
+- **E2E Tests**: Исправлена критическая ошибка Dart Sass 500 на macOS ARM64
+  - Установлена недостающая зависимость `sass-embedded-darwin-arm64`
+  - Улучшены тестовые утилиты с проверками состояния сервера
+  - Обновлена конфигурация Playwright с увеличенными таймаутами
+  - Исправлены тесты гидратации SolidJS (75% тестов проходят)
+
+### 🔧 Technical
+- **Test Utils**: Добавлены методы `checkServerHealth()` и `checkHydrationState()`
+- **Playwright Config**: Увеличены таймауты до 90 секунд для стабильности
+- **Error Handling**: Улучшена обработка CORS ошибок в тестах
+- **Retry Logic**: Добавлен механизм повторных попыток для нестабильных операций
+
+### 📚 Documentation
+- Добавлена стратегия исправления E2E тестов
+- Создан детальный отчет о проделанной работе
+- Обновлена документация по тестированию
+
+## [0.12.3] - 2025-08-02
+
+### 🧪 Исправления E2E тестирования
+- **🔧 Отдельный тестовый сервер**: Настроен инстанс на порту 3001 для E2E тестов
+- **🔒 HTTPS поддержка**: Сохранена HTTPS конфигурация для production-like тестирования
+- **📊 Стабильная конфигурация**: Обновлены baseURL, OAuth redirectUri и все тестовые утилиты
+- **🚀 Разделение серверов**: Dev сервер (3000) отделен от тестового сервера (3001)
+- **✅ Проверка гидрации**: Тесты теперь корректно обнаруживают проблемы гидрации SolidJS
+- **🛠️ NPM скрипты**: Добавлен `dev:e2e` для запуска тестового сервера
+
+## [0.12.2] - 2025-08-01
+
+### 🔧 Исправления сборки
+- **✅ Добавлены отсутствующие GraphQL функции**: Реализованы `createCacheableLoader`, `createCacheableQueryResource`, `createLoader`, `graphqlClientCreate`
+- **⚡ Кеширование данных**: Браузерное кеширование через sessionStorage с TTL 30 минут для статичных данных
+- **🔄 Реактивные ресурсы**: Интеграция с SolidJS createResource для автоматического отслеживания зависимостей
+- **🔐 Авторизация**: Поддержка Bearer токенов в GraphQL клиентах
+- **🚀 Оптимизация производительности**: Кеширование отключено для SSR, включено для клиентских запросов
+
+## [0.12.1] - 2025-08-01
+
+### 🔧 CI/CD Улучшения
+
+**Исправление проблемы с WebKit fallback в CI:**
+- ✅ **Ubuntu 22.04**: Обновление с устаревшей ubuntu-latest до поддерживаемой версии
+- ✅ **Chromium**: Замена проблемного WebKit на стабильный Chromium для CI тестов  
+- ✅ **Кэширование**: Playwright браузеры теперь кэшируются между запусками
+- ✅ **Артефакты**: Автоматическая загрузка отчетов при ошибках тестов
+- ✅ **Умная конфигурация**: Разные настройки для CI и локальной разработки
+- ✅ **Секреты**: Исправлен доступ к переменным окружения в GitHub Actions
+
+**Технические детали:**
+- Устранена ошибка "BEWARE: your OS is not officially supported by Playwright"
+- Ускорение CI за счет кэширования и npm ci вместо npm install
+- Улучшенная стабильность тестов с ретраями и оптимизированными таймаутами
+
+### 🧪 Гидрация и тестирование
+- юнит-тесты отделены от e2e
+- исправлен резолв иконок и шрифтов в vite
+- исправления гидрации
+
+## [0.12.0] - 2025-07-08
+
+### 🚀 Поддержка Vite 7
+- **🔧 Создан патч для Vinxi**: Добавлена поддержка Vite 7.x в `viteManifestPath`
+- **⚙️ Автоматическое применение патча**: Через `patch-package` в postinstall script
+- **✅ Полная совместимость**: Все роутеры собираются без ошибок с Vite 7.0.0
+
+## [0.11.12] - 2025-06-26
+
+- **⏱️ Улучшена UX кнопки "показать еще"**: Добавлена 3-секундная задержка перед появлением кнопки после загрузки контента
+- **🔄 Оптимизирован LoadMoreWrapper**: Добавлена система таймеров для контроля видимости элементов интерфейса
+- **🧹 Улучшена очистка ресурсов**: Добавлена корректная очистка таймеров при размонтировании компонента
+
+## [0.11.11] - 2025-06-25
+
+- **🚨 Не исправлена ошибка DOM**: Ошибка "NotFoundError: insertBefore" в SimpleRichEditor при навигации всё еще присутствует
+- **🔧 Улучшена загрузка публикаций**: Оптимизирована логика обновления данных с кешированием и тайм-аутами
+- **🔧 Исправлена ошибка гидрации**: Добавлен ClientOnly wrapper для FeedView для предотвращения конфликтов SSR/CSR
+- **⚡ Оптимизирована работа ленты**: 
+  - Улучшена синхронизация между SSR и клиентскими данными
+  - Добавлены защитные проверки для предотвращения race conditions
+  - Исправлена логика URL routing для режима "Свежие"
+  - Добавлена принудительная загрузка при недоступности SSR fallback
+  - Изолированная загрузка постов: при переключении режимов только список статей показывает loading
+
+#### Мерцающие скелетоны вместо Loading
+- **✨ Новые скелетоны**: Создан компонент `ArticleCardSkeleton` с shimmer анимацией для красивой загрузки
+- **🎨 Умная замена Loading**: Скелетоны показываются на месте будущих карточек вместо общего Loading
+- **📱 Адаптивные скелетоны**: Разные размеры скелетонов (small/medium/large) с поддержкой темной темы
+
+#### Исправления гидратации
+- **🔧 Улучшена валидация данных**: Row5 теперь проверяет не только длину массива, но и валидность каждой статьи (article?.id)
+- **⚡ Оптимизирована инициализация ресурсов**: Используется `undefined` как initial value вместо пустых массивов
+- **🛡️ Защита от пустых состояний**: Добавлены проверки безопасности в компонентах
+- **🔄 Стабильная гидратация**: Исправлена проблема с SolidJS гидратацией и переинициализацией ресурсов
+
+#### Оптимизация SolidJS реактивности
+- **⚡ Устранены избыточные createMemo**: Простые функции вместо createMemo для несложных операций
+- **🎯 Правильное использование createEffect**: Применен паттерн `createEffect(on([...], ...))` для отслеживания изменений
+- **📚 Следование SolidJS best practices**: Оставлены createMemo только для сложных вычислений
+
+#### Улучшения отображения ленты
+- **🔧 Упрощена передача данных**: Данные передаются напрямую из SSR в компоненты
+- **⚡ Исправлена логика sortedFeed**: Установлен приоритет данных из контекста с fallback на props
+- **🔄 Стабильная смена режимов**: Исправлен сброс пагинации при смене режима ленты
+
+#### Исправления SSR
+- **⚡ Оптимизированы таймауты**: Увеличен SSR timeout с 8 до 15 секунд для полной загрузки
+- **🚀 Улучшена стратегия загрузки**:
+  - Главная страница: SSR загружает только featured shouts
+  - Feed лента: SSR загружает все режимы (recent, hot, top) для мгновенного переключения
+- **🔧 Приоритетная система данных**: SSR → context → client loaded → fallback
+
+#### Исправления отображения изображений
+- **🖼️ Улучшена обработка ошибок**: Добавлены отсутствующие обработчики `onError` и `onLoad` для изображений
+- **⚡ Добавлен триггер перерисовки**: Введен сигнал `loaded` для обновления UI после загрузки
+- **🔧 Улучшен кавер в статьях**: Увеличен размер изображения с 800px до 1200px
+- **🎨 Добавлена индикация загрузки**: Изображения показываются с opacity 0.5 во время загрузки
+
+#### Стилистические исправления
+- **🎨 Исправлены стили ссылок**: Убраны черный цвет и синее подчеркивание в aside секциях
+- **🎯 Используются глобальные CSS переменные**: Применены `--link-color` и `--link-hover-color`
+- **🔧 Заменены устаревшие методы**: `loadShoutsMyRates` заменен на `useShoutsMyRates`
+
+## [0.11.10] - 2025-06-22
+
+### ♿ Улучшение доступности приложения (ARIA Accessibility)
+
+#### Внедрение ARIA ролей и атрибутов
+- **🌐 Семантическая структура**: Добавлены правильные ARIA роли в соответствии с [MDN ARIA Reference](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles)
+- **🎯 Модальные окна**: Реализован ARIA dialog pattern с `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, `aria-describedby`
+- **📋 Выпадающие списки**: Добавлены роли `combobox`, `listbox`, `option` с поддержкой `aria-expanded`, `aria-selected`, `aria-multiselectable`
+- **🔍 Поле поиска**: Внедрён ARIA searchbox pattern с `role="search"`, `role="searchbox"`, правильными labels
+- **📑 Оглавление**: Добавлены навигационные роли `navigation`, правильная иерархия заголовков, `aria-current` для активных элементов
+- **💬 Всплывающие подсказки**: Реализован ARIA tooltip pattern с динамическими `aria-describedby` связями
+
+#### Улучшения компонентов интерфейса
+- **🔘 Кнопки**: Добавлены атрибуты `aria-label`, `aria-expanded`, `aria-pressed`, `aria-busy` для всех интерактивных элементов
+- **🗂️ Навигация**: Структурирована с `role="banner"`, `role="navigation"`, `aria-current="page"` для активных ссылок
+- **📰 Статьи**: Правильная семантика с `role="article"`, `rel="author"`, структурированные заголовки
+- **⚠️ Диалоги подтверждения**: Роль `alertdialog` для критических действий с правильными aria-labels
+
+#### Техническая реализация
+- **🏷️ Автоматическая генерация ID**: Уникальные идентификаторы для связи элементов через ARIA атрибуты  
+- **🎨 Скрытие декоративных элементов**: `aria-hidden="true"` для всех иконок и декоративных элементов
+- **📱 Улучшенная навигация с клавиатуры**: Правильные `role` атрибуты для всех интерактивных элементов
+- **🔗 Семантические связи**: Использование `aria-labelledby`, `aria-describedby` для логических связей между элементами
+- **🌍 Локализация ARIA**: Все ARIA labels переведены на русский язык для лучшего UX русскоязычных пользователей
+
+#### Соответствие стандартам
+- **✅ WCAG 2.1 совместимость**: Реализованы рекомендации по доступности веб-контента
+- **📋 ARIA Authoring Practices**: Следование официальным паттернам WAI-ARIA
+- **🔍 Screen Reader поддержка**: Оптимизация для программ чтения с экрана
+- **⌨️ Keyboard Navigation**: Улучшенная навигация с клавиатуры
+
+## [0.11.9] - 2025-06-22
+
+### 🔧 Исправления системы ключевых слов (Keywords)
+
+#### Полное покрытие всех маршрутов приложения
+- **📝 Расширены JSON файлы keywords**: Добавлены ключевые слова для всех существующих страниц:
+  - `article`, `author`, `authors` - для контентных страниц
+  - `feed`, `search`, `edit`, `inbox`, `settings` - для функциональных разделов  
+  - `connect`, `debate`, `manifest`, `partners`, `support`, `thanks`, `terms` - для статических страниц
+  - `topics` - для раздела тем
+- **🌐 Билингвальная поддержка**: Все новые ключевые слова добавлены на русском и английском языках
+- **🎯 SEO оптимизация**: Каждый набор keywords содержит релевантные поисковые термины для лучшего ранжирования
+
+#### Улучшенная логика определения keywords
+- **🚀 Новые функции**: Добавлены `getArticleKeywords()` и `getAuthorKeywords()` для динамической генерации
+- **📊 Интеллектуальная подстановка**: Автоматическое добавление заголовков статей, имён авторов и названий тем
+- **🔍 Расширенное покрытие маршрутов**: Обработка всех возможных путей включая подразделы и параметризованные роуты
+- **⚡ Унификация логики**: Централизованная система в `getPageKeywords()` заменила дублирующий код в `PageLayout.tsx`
+
+#### Техническая архитектура
+- **🔄 DRY принцип**: Удалено дублирование логики keywords между `entry-server.tsx` и `PageLayout.tsx`
+- **📦 Централизованные импорты**: Все компоненты теперь используют функции из `~/intl/keywords.ts`
+- **🛡️ Fallback система**: Надёжные значения по умолчанию для всех типов контента
+- **🎨 Композиция метаданных**: Автоматическое объединение базовых keywords с контентными данными
+
+### 🎯 SEO улучшения
+- Более релевантные keywords для поисковых систем
+- Лучшая категоризация контента через специализированные ключевые слова
+- Поддержка мультиязычного SEO с правильной локализацией keywords
+
+### 🛠️ Исправления серверного рендеринга
+- **🚨 Критическое исправление SSR**: Устранена ошибка `Cannot read properties of undefined (reading 'indexOf')` в SolidJS серверном рендеринге
+- **🛡️ Защита от ошибок**: Добавлены try-catch блоки во все критичные функции серверного рендеринга
+- **⚡ Оптимизация системных запросов**: Быстрый путь для vercel-screenshot, vercel-favicon и других bot-запросов
+- **🔄 Fallback система**: Минимальные HTML и метатеги в случае ошибок для стабильности работы
+- **🏎️ Улучшенная производительность**: Системные запросы не делают GraphQL вызовы и используют минимальные метатеги
+- **📊 Улучшенное логирование**: Детальное логирование ошибок и типов assets/scripts для диагностики
+
+### ⚡ Оптимизация серверного рендеринга
+- **🧹 Устранение дублирования кода**: Вынесены повторяющиеся блоки в переиспользуемые функции
+- **📦 Унификация GraphQL запросов**: Единая функция `fetchGraphQLData` для всех типов контента
+- **🎯 Оптимизация логики маршрутизации**: Упрощенная и более эффективная обработка URL paths
+- **🚀 Улучшенная производительность**: Минимизировано количество операций и условных проверок  
+- **📝 Смарт логирование**: Логирование только в development режиме для production оптимизации
+- **🏗️ Структурная оптимизация**: Разделение логики на специализированные утилитарные функции
+
+## [0.11.8] - 2025-06-20
+
+### 🚀 Новые возможности  
+- **🎯 Динамические Open Graph метатеги**: Полная поддержка всех типов контента с автоматическим определением по URL
+- **🔄 Серверная генерация метатегов**: GraphQL запросы для получения данных статей, авторов и тем прямо в entry-server.tsx
+- **📊 Расширенные метатеги статей**: Автоматические теги `article:author`, `article:section`, `article:tags`, `article:published_time`
+- **👤 Метатеги профилей авторов**: Поддержка `profile:first_name`, `profile:username` для страниц авторов
+- **🖼️ Улучшенные OG превью**: Исправлена система генерации изображений с правильными путями к CDN
+
+### 🔧 Исправления Open Graph системы
+- **🌐 CORS поддержка**: Добавлены правильные заголовки для превью изображений
+- **🔗 Исправлены пути изображений**: Обновлены URL к логотипу и статичным изображениям в api/og.js
+- **⚡ Оптимизированный API**: Улучшена обработка ошибок и логирование в OG генераторе
+- **🎨 Корректные метатеги**: Все обязательные теги теперь генерируются с правильными данными
+- **📱 Twitter Card поддержка**: Полные метатеги для корректного отображения в Twitter/X
+
+### 🛠️ Техническая архитектура
+- **🔍 URL анализ**: Интеллектуальное определение типа контента по pathname 
+- **📡 GraphQL интеграция**: Прямые запросы к core API для получения актуальных данных
+- **⚙️ Асинхронная обработка**: Правильная работа с async/await в server handler
+- **🎭 Fallback система**: Надёжные значения по умолчанию для всех случаев
+
+## [0.11.7] - 2025-06-20
+
+### 🔧 Исправления Open Graph тегов
+- **🏷️ Исправлены базовые OG теги**: Корректно настроены обязательные теги (`og:type`, `og:title`, `og:logo`) в `entry-server.tsx`
+- **🔧 Исправлены ключи переводов**: Заменены неправильные ключи (`_locale`, `open journal`) на существующие
+- **📝 Корректное описание**: Используется правильный ключ перевода для описания проекта
+- **🛡️ Fallback значения**: Добавлены надёжные значения по умолчанию для всех критичных тегов в `PageLayout.tsx`
+- **🎯 Чёткая группировка**: Логическое разделение обязательных, расширенных и совместимых тегов
+- **✅ solid-meta совместимость**: Убедились, что используется правильный пакет `@solidjs/meta` с локализацией
+
+### 📚 Документация и синхронизация
+- 🌐 **Синхронизация README.en.md** — Полный перевод обновленного README.md на английский язык
+- ✨ **Сохранение современного формата** — Все бейджи, метрики и структура перенесены в английскую версию
+- 🎯 **Консистентность документации** — Теперь обе версии README используют одинаковое современное оформление
+
+### 📚 Документация и визуализация
+- 🌟 **Полная модернизация README** — Добавлены красочные бейджи и эмоджи в стиле backend проекта
+- 📊 **Подробная статистика проекта** — Полный отчет с точными цифрами:
+  - 📄 **455 TypeScript файлов** — Вся кодовая база
+  - 🎨 **138 SCSS файлов** — Стили и компоненты  
+  - 🧪 **12 тестовых файлов** — E2E, API, интеграционные тесты
+  - 📖 **29 документов** — Полная документация всех систем
+- 🎯 **Визуализация метрик** — Красивые бейджи со статусами и числовыми показателями
+- 📈 **Отчет о покрытии тестами** — Детальная разбивка по типам тестов:
+  - ✅ **Open Graph Suite** — API + метатеги + интеграция (новое в 0.11.6)
+  - ✅ **E2E тесты** — Компоненты, авторизация, черновики  
+  - ✅ **Компонентные тесты** — UI элементы и функциональность
+- 🔗 **Улучшенная навигация** — Быстрые ссылки на все разделы документации
+- 📋 **Структурированные таблицы** — Удобное представление статистики и покрытия
+
+## [0.11.6] - 2025-06-19
+
+### ✨ Расширение системы метатегов Open Graph
+
+#### Новые метатеги
+- **Дополнительные метаданные изображений**: Добавлены `og:image:alt`, `og:image:type`, `og:image:secure_url`
+- **Метаданные статей**: Реализованы `article:author`, `article:section`, `article:published_time`, `article:modified_time`, `article:tag`
+- **Метаданные профилей**: Добавлены `profile:first_name`, `profile:last_name`, `profile:username` для страниц авторов
+- **Twitter Card расширения**: Добавлен `twitter:image:alt` для лучшей доступности
+- **Поддержка других соцсетей**: Добавлены метатеги для VK (`vk:title`, `vk:description`, `vk:image`), Telegram и LinkedIn
+- **SEO улучшения**: Реализованы канонические URL (`rel="canonical"`) и `robots` метатеги
+
+#### Техническая архитектура
+- **Расширенный интерфейс `OGMetadata`**: Добавлены все новые поля с типизацией
+- **Автоматическая генерация метаданных**: Функция `generateOGMetadata` теперь автоматически извлекает данные из объектов `Shout`, `Author`, `Topic`
+- **Правильная обработка timestamp**: Исправлена конвертация Unix timestamp в ISO даты для метатегов `article:*`
+- **API заголовки**: Добавлены дополнительные заголовки в `/api/og` для лучшей совместимости с парсерами
+
+#### Документация
+- **Обновлена документация**: Полный список всех поддерживаемых метатегов в `docs/open-graph.md`
+- **Примеры использования**: Добавлены примеры для всех типов контента
+
+### 🛠️ Технические улучшения
+- Исправлены TypeScript ошибки в обработке nullable полей
+- Улучшена проверка существования данных перед генерацией метатегов
+- Оптимизирована условная отрисовка метатегов в `PageLayout.tsx`
+
+### 🧪 Тестирование
+- **Комплексное тестирование OG системы**: Созданы Playwright тесты для всех компонентов Open Graph
+- **API тесты**: Полное покрытие `/api/og` эндпоинтов для всех типов контента (статьи, авторы, темы)
+- **E2E тесты метатегов**: Проверка наличия и корректности всех OG метатегов на страницах
+- **Интеграционные тесты**: Тестирование производительности, консистентности и валидности OG данных
+- **Тесты безопасности**: Проверка корректной обработки специальных символов в метаданных
+
+## [0.11.5] - 2025-06-17
+
+### 🚨 Унификация SSE архитектуры
+- **Единый модуль connect.tsx**: Объединена вся SSE функциональность в один централизованный контекст
+- **Service Worker как единственная точка SSE**: Устранено дублирование соединений, Service Worker теперь единственная точка подключения к серверу
+- **Интегрированная YJS Awareness**: Совместное редактирование теперь встроено в основной SSE контекст
+- **Автоматическая фоновая синхронизация**: Background Sync и офлайн поддержка через Service Worker
+- **Хук useEditorAwareness**: Удобный API для работы с совместным редактированием
+- **Централизованная архитектура**: Одно SSE соединение вместо множественных, лучшая производительность
+- **Офлайн восстановление**: Автоматическое восстановление данных из localStorage при восстановлении соединения
+- **Удалены избыточные модули**: Очищены старые контексты worker.tsx и awareness.ts
+
+### 🖼️ Система изображений (WIP)
+- **Убраны квотер-оверлеи**: Удалена поддержка параметра `?s=` 
+- **Упрощён API**: Убран параметр `shout` из `getCachedImageUrl()` и `getFileUrl()`
+- **Исправлен getFileUrl**: Добавлена поддержка `noSizeUrlPart` для оригинального размера
+
+### 🚀 UX
+- Фильтры ленты теперь отображаются сразу без условной логики
+
+### Fixed
+- Исправлены проблемы с белым экраном на Vercel
+- Добавлена правильная конфигурация для SolidStart приложения в vercel.json
+- Добавлены ErrorBoundary компоненты для отлавливания ошибок в production
+- Улучшено логирование для отладки проблем на серверной стороне
+- Добавлен health-check endpoint для диагностики
+- Исправлены настройки роутинга для Edge Runtime
+
+### Added
+- Middleware с расширенным логированием для Vercel
+- Debug скрипты в entry-server.tsx
+- Health check API endpoint (/api/health)
+
+## [0.11.4] - 2025-06-17
+
+### 🖼️ Система изображений - Полная переработка
+
+#### Исправлены критические проблемы отображения
+- **Треугольные заглушки**: Исправлена проблема, когда изображения загружались успешно (200), но не отображались в UI
+- **Пустые карточки в ленте**: Добавлена поддержка изображений в режиме `isFeedMode` с корректными fallback заглушками  
+- **Маленький кавер в статьях**: Увеличен размер изображений кавера с 800px до 1200px
+- **Проблемы с обновлением**: Исправлена работа принудительного обновления (Ctrl+Shift+R) во всех режимах
+
+#### Улучшена архитектура компонентов
+- **Image.tsx**: Добавлен сигнал `loaded` для триггера перерисовки и визуальная индикация загрузки (opacity)
+- **ArticleCard.tsx**: Унифицирована обработка изображений между обычным режимом и режимом ленты
+- **FullArticle.tsx**: Добавлены обработчики ошибок для изображений кавера
+- **Реактивность SolidJS**: Исправлено сбрасывание состояния ошибок при успешной загрузке
+
+#### Оптимизирована система кеширования
+- Упрощена логика генерации URL с параметрами обхода кеша
+- Исправлено агрессивное кеширование браузера через timestamp параметры
+- Обновлен middleware.js для корректной обработки параметров кеширования
+- Сокращено количество повторных попыток загрузки с 3 до 2
+
+### 🛠️ Технические улучшения
+- Исправлены ошибки TypeScript в обработчиках событий
+- Добавлена SSR совместимость с проверками `isServer`
+- Улучшена диагностика ошибок загрузки изображений
+
+### 📚 Документация
+- Создана подробная документация системы изображений (`docs/image-caching.md`)
+- Обновлена основная документация с описанием архитектуры компонентов
+
+## [0.11.3] - 2025-06-04
+
+### 🔧 Исправления
+
+#### Генерация изображений для OpenGraph
+- Исправлена работа API для генерации OG изображений (`api/og.js`)
+- Добавлена поддержка корневого пути `/api/og` для базовых изображений
+- Улучшена обработка параметров запроса для OG изображений
+- Добавлено логирование для отладки генерации OG изображений
+- Исправлены маршруты в конфигурации для корректной работы Edge функций
+
+#### Мета-теги OpenGraph
+- Исправлено отсутствие обязательных мета-тегов (og:url, og:type, og:title, og:description)
+- Добавлен тег og:logo для соответствия требованиям валидаторов OG
+- Улучшена генерация мета-тегов с корректными значениями по умолчанию
+- Обеспечена совместимость со всеми основными социальными сетями
+- Добавлены гарантированные значения для всех обязательных мета-тегов
+- Реализовано дублирование критичных мета-тегов с использованием как property, так и name атрибутов
+- Усилена совместимость с различными парсерами OpenGraph
+
+#### Система черновиков
+- 🛠️ Улучшена функция `removeDraftFromStorage` для удаления всех связанных с черновиком ключей в localStorage
+- 📋 Добавлен поиск по различным префиксам ключей (`draft-${draftId}-`, `draft-fields-${draftId}`, `yjs-content-${draftId}-`, `draft-${draftId}.`)
+- 🔍 Расширено логирование процесса удаления для упрощения диагностики
+- 🧹 Оптимизирована очистка состояния после удаления черновика
+- 🛡️ Улучшена обработка ошибок при удалении черновиков
+
+### 👨‍💻 Технические подробности
+- Добавлен подробный лог удаляемых ключей localStorage для отладки
+- Реализован двухэтапный процесс удаления: сначала сбор ключей, затем их удаление
+- Улучшена обработка исключений в функциях удаления черновиков
+- Добавлена дополнительная проверка наличия ID перед удалением
+- Оптимизирована логика удаления данных из состояния приложения
+
+## [0.11.2] - 2025-06-03
+
+### 🔧 Исправления
+- не загружаем статистику для выбора темы в настройках публикации
+
+#### Система черновиков
+- **Рефакторинг компонентов UI для работы с ExtendedDraft**: Обновлены все компоненты для использования минимального набора полей
+  - 🧩 Компонент `TopicPillsCloud` теперь использует первую тему в массиве `topics[0]` в качестве главной темы
+  - 🔄 Обновлены страницы `edit/[id]/local.tsx` и `edit/[id]/preview.tsx` для работы с новой структурой
+  - 🛠️ `DraftCard` и `PublishSettings` адаптированы для работы с полями `local_id` и `draft_id`
+  - 🔍 Упрощено определение локальных черновиков через проверку отсутствия `draft_id` вместо флага `isLocalOnly`
+  - 🧩 Установлено единственное обязательное поле `local_id: string` для идентификации в localStorage
+  - 🔄 Оптимизированы опциональные поля: `draft_id`, `shout_id`, `published_at`
+  - 🔍 Улучшена логика синхронизации черновиков между локальным хранилищем и сервером
+  - 🛠️ Рефакторинг функции `syncDraft` и `syncDraftsBySlug` для использования упрощенного интерфейса
+- **Исправление линтера**: Добавлены игнорирующие комментарии для необходимых `any` приведений типов
+  - 🧹 Исправлены предупреждения о шаблонных строках без интерполяции
+  - 🔁 Сохранена структура условий с комментарием `biome-ignore` для поддержания читаемости кода
+
+
+### 👨‍💻 Технические подробности
+- Весь код теперь последовательно использует минимальный набор полей в `ExtendedDraft`
+- Улучшены проверки типов для предотвращения ошибок с null/undefined
+- Все компоненты сохраняют полную функциональность при уменьшенном наборе данных
+- Использован индексный доступ к полям через `baseDraft[key]` для динамического заполнения свойств из localStorage
+- Сокращен объем кода при сохранении полной функциональности
+- Добавлена производительная функция `getAllDraftFields` для работы с localStorage
+
+## [0.11.1] - 2025-06-03
+
+### 🔧 Исправления
+
+#### Система соединения и реактивность
+- **Рефакторинг API системы соединения**: Улучшена надежность и типизация
+  - 🔄 Заменён булевый флаг `connected` на более подробный `getStatus()` с состояниями ('connected', 'disconnected', 'connecting', 'error')
+  - 🛡️ Удалён метод `reconnect()` в пользу надёжного автоматического переподключения
+  - 🧩 Улучшена проверка типов и внутренняя структура контекста соединения
+  - 📊 Добавлено более информативное отображение статуса соединения в интерфейсе
+- **Компоненты соединения**: Обновлены для соответствия новому API
+  - 🔄 Обновлён `ConnectionIndicator` в HeaderControls для использования нового API статусов
+  - 🌐 Улучшено отображение состояния соединения с локализованными статусами
+  - 🔗 Локальное определение типов в модуле `awareness.ts` для независимости от `connect.tsx`
+
+### 👨‍💻 Технические подробности
+- Обновлены зависимые компоненты для совместимости с новым API соединения
+- Устранены ошибки TypeScript при проверке типов
+- Исправлено взаимодействие между `useConnect()` и другими системами веб-приложения
+- Полностью адаптированы компоненты редактирования и совместной работы
+
+## [0.11.0] - 2025-06-03
+
+### Улучшения
+
+#### Система уведомлений и присутствия
+- ✨ Улучшен механизм SSE-соединения с добавлением exponential backoff
+- 🔄 Добавлена дедупликация SSE-сообщений для предотвращения дублирования уведомлений
+- 🔔 Расширена поддержка типов уведомлений (сообщения, реакции, публикации, глобальные)
+- 🔌 Улучшена обработка обрывов соединения и автоматическое переподключение
+- 🔗 Интегрирована система presence с существующей системой уведомлений
+- 📱 Добавлено автоматическое отображение панели уведомлений для важных сообщений
+
+#### Компоненты
+- 🖼️ Обновлен компонент NotificationGroup для отображения различных типов уведомлений
+- 🧭 Улучшена навигация по уведомлениям в зависимости от их типа
+- 🗂️ Оптимизирована структура компонентов без добавления новых сущностей
+
+
+## [0.10.16] - 2025-06-02
+
+### 🔧 Fixed
+- **Восстановлена функция loadTopicBySlug**: Исправлена критическая ошибка в загрузке топиков по slug
+  - **Добавлен отсутствующий функционал**: Реализована функция `loadTopicBySlug(slug: string)` в GraphQL API
+  - **Кешированная загрузка**: Использует `createCacheableLoader` для оптимизации повторных запросов
+  - **SSR поддержка**: Полная поддержка серверного рендеринга для страниц топиков
+  - **Реактивный ресурс**: Добавлена функция `useTopicBySlug` для реактивной загрузки в компонентах
+  - **Импорт исправлен**: Добавлен импорт `loadTopicBySlug` в роут `/topic/[slug]/[...mode].tsx`
+  - **GraphQL интеграция**: Использует существующий query `get_topic` из schema
+
+### ✨ Added
+- **Интеграция @vercel/og**: Добавлена поддержка динамической генерации Open Graph изображений
+  - **Автоматическая генерация**: OG изображения создаются на лету для статей и страниц
+  - **Оптимизация SEO**: Улучшенное отображение ссылок в социальных сетях
+  - **Серверная генерация**: Изображения генерируются на сервере для быстрой загрузки
+  - **Кастомизация**: Поддержка брендинга и стилизации OG изображений
+
+### 🎯 Technical Details
+- Функция построена на базе существующего GraphQL query `topic-by-slug`
+- Включает кеширование для повышения производительности
+- Совместима с архитектурой кешируемых загрузчиков проекта
+- Поддерживает TypeScript типизацию из схемы `QueryGet_TopicArgs`
+- **@vercel/og**: Интегрирован для динамической генерации метаизображений
+
+## [0.10.15] - 2025-06-02
+
+### 🐛 Bug Fixes
+- **TopicPillsCloud исправление критической ошибки**: Исправлена проблема с переключением тем без ID
+  - **GraphQL запрос**: Добавлено обязательное поле `id` в запрос `get_topics_by_community`
+  - **Валидация тем**: Улучшена проверка корректности данных тем перед обработкой
+  - **Обработка ошибок**: Добавлено подробное логирование ошибок валидации
+  - **Регенерация типов**: Обновлены TypeScript типы после изменения GraphQL схемы
+
+### ✨ Features  
+- **Кнопки управления черновиком**: Добавлены новые кнопки в настройки публикации (`/edit/[id]/settings`)
+  - **"Сохранить черновик"**: Кнопка для сохранения изменений без публикации
+  - **"Сбросить изменения"**: Кнопка для отмены всех несохраненных изменений с подтверждением
+  - **Группировка кнопок**: Логичное расположение рядом с кнопкой "Опубликовать"
+  - **Обработчики**: Полная реализация функций `handleSaveDraft` и `handleResetChanges`
+  - **Локализация**: Добавлены переводы на русский и английский языки
+
+### 🎨 UI/UX Improvements
+- **Унификация стилей кнопок**: Исправлены различия в скругленности кнопок
+  - **Единый border-radius**: 8px для всех кнопок в секции `formActions`  
+  - **Улучшенные hover эффекты**: Исправлены hover стили для Button variant="primary"
+  - **Современный дизайн**: Переход от цветного фона к инверсии при hover
+
+- **Поддержка темной/светлой темы**: Полная адаптация TopicPillsCloud для обеих тем
+  - **CSS переменные**: Заменены все жестко заданные цвета на переменные
+  - **Светлая тема**: Синие акценты (#2638d9), светлые фоны
+  - **Темная тема**: Более яркие синие акценты (#4361ee), серые фоны для input полей (#2a2a2a)
+  - **Адаптивные границы**: Динамические цвета границ (#e0e0e0 → #404040)
+  - **Улучшенная контрастность**: Оптимизированные цвета для комфортного чтения
+
+### 🔧 Technical
+- **Отладка авторизации**: Добавлена детальная система отладки процесса входа
+  - **GraphQL клиент**: Подробное логирование создания клиента и запросов
+  - **Тестирование API**: Функция проверки доступности GraphQL endpoint
+  - **Обработка ошибок**: Расширенное логирование ошибок сессии и загрузки данных
+  - **Timeout мониторинг**: Отслеживание таймаутов запросов с предупреждениями
+
+### 🌐 Локализация
+- Новые переводы для кнопок управления черновиком:
+  - RU: "Сохранить черновик", "Сбросить изменения", "Сохранение...", "Сброс..."
+  - EN: "Save draft", "Reset changes", "Saving...", "Resetting..."
+- Сообщения для пользователя:
+  - RU: "Черновик успешно сохранен", "Изменения успешно сброшены"
+  - EN: "Draft saved successfully", "Changes reset successfully"
+
+## [0.10.14] - 2025-06-02
+
+### 🚀 Performance
+- **AllTopicsView оптимизация**: Кардинальное улучшение производительности страницы топиков
+  - **Упрощенная архитектура**: Убран тяжелый контекст `useTopics()`, данные теперь загружаются через props в роуте
+  - **Быстрое переключение вкладок**: Добавлено локальное состояние `layout` для мгновенного переключения между `shouts`/`followers`/`name`
+  - **Ленивая загрузка**: Данные загружаются только для активной вкладки в роуте
+  - **Простая виртуализация**: Показ только 100 элементов при первой загрузке с пагинацией
+  - **Debounced поиск**: Поиск с задержкой 300мс для снижения нагрузки
+
+- **AllAuthorsView дозагрузка**: Добавлена полная поддержка дозагрузки авторов
+  - **Пагинация по 20 авторов**: Оптимальный размер страницы для производительности
+  - **Unified архитектура**: Одинаковая логика дозагрузки для всех вкладок сортировки
+
+### 🐛 Bug Fixes  
+- **Счетчики публикаций авторов**: Исправлено отображение счетчиков публикаций на вкладке сортировки по именам
+  - **Динамическое наполнение статистикой**: Авторы без статистики получают её из контекста `useAuthors()`
+  - **Интеграция с контекстом**: Все загруженные авторы добавляются в контекст через `addAuthors()` 
+  - **Функция `getAuthorWithStat`**: Получает автора со статистикой из контекста, если она доступна
+  - **Единообразие UI**: Все вкладки авторов теперь показывают счетчики публикаций консистентно
+
+### 🔧 Technical
+- **Оптимизированные GraphQL запросы**: Упрощена загрузка данных для AllTopicsView
+- **Кеширование**: Улучшено кеширование через createCacheableLoader
+- **Типизация**: Исправлены TypeScript ошибки в роутах
+
+## [0.10.13] - 2025-06-01
+
+### ✨ Upgraded
+- **FeedCustomization компонент**: Кардинальное улучшение дизайна и функциональности
+  - Продвинутые CSS анимации: плавающие стрелы, пульсирующий лук, вращающаяся мишень
+  - Градиентный фон с плавными переходами и эффектами hover
+  - Улучшенная адаптивность для мобильных устройств и десктопа
+- **AsideSection компонент**: Расширенная функциональность для специальных карточек
+  - Новые варианты: `default`, `card`, `minimal` для разных типов контента
+  - Пропсы `noPadding` и `noBackground` для тонкой настройки стилизации
+  - Улучшенная поддержка collapsible секций с плавными анимациями
+  - Специализированные стили заголовков для каждого варианта
+  - Оптимизированные hover эффекты и transitions
+
+### 🔧 Fixed
+- **SASS компиляция**: Исправлен синтаксис селекторов в AsideSection.module.scss
+- **JSON валидация**: Убрана лишняя запятая в файле переводов
+
+### 🌐 Localization
+- Добавлены переводы для новых строк FeedCustomization:
+  - EN: "Hit the target", "Fine-tune your feed to get exactly the content you want to read"
+  - RU: "Попади в цель", "Точно настройте вашу ленту, чтобы получать именно тот контент, который хотите читать"
+
+### 📚 Documentation
+- Обновлена документация `docs/feed-components.md` с описанием новых возможностей
+- Добавлены примеры использования обоих компонентов
+- Документированы все новые пропсы и варианты использования
+
+### 🎨 Performance
+- CSS анимации оптимизированы с использованием hardware acceleration
+- Уменьшена CSS специфичность для лучшей производительности
+- Улучшено кеширование компонентов через мемоизацию
+
+## [0.10.12] - 2025-06-01
+
+### ✨ Added
+- **Система фильтрации ленты**: Реализована автоматическая передача фильтров из UI в GraphQL запросы
+  - Фильтры из FeedFiltersControl (временные периоды, featured, layouts) теперь передаются в запросы к бэкенду
+  - Сортировка из FeedSwitcher (recent/hot/top) корректно применяется в запросах
+  - Автоматическая перезагрузка ленты при изменении любых фильтров или сортировки
+  - Эффект синхронизации фильтров между компонентами через контекст feed
+  - **Полная поддержка управления лентой в профилях авторов**: 
+    - Добавлен FeedSwitcher для выбора сортировки (recent/top/hot) в профилях авторов
+    - Добавлен FeedFiltersControl для фильтрации публикаций в профилях авторов
+    - Объединение author filter с пользовательскими фильтрами (featured, layouts, periods) и сортировкой
+    - Автоматическая перезагрузка публикаций автора при изменении любых фильтров или сортировки
+    - Интеграция с общей системой фильтрации через filterState и options
+    - Адаптивный дизайн с правильными отступами и выравниванием элементов управления
+
+### 🔧 Fixed
+- **FeedProvider**: Исправлена передача параметров сортировки `order_by` в зависимости от режима
+- **FeedFiltersControl**: Убрана дублирующая логика ручной перезагрузки данных
+- **Типизация**: Исправлены типы для совместимости с GraphQL схемой `LoadShoutsOptions`
+- **Отступы и выравнивание**: Исправлены отступы в filtersRow для консистентного отображения
+
+### 📚 Technical Details
+- Обновлен контекст `useFeed()` для автоматической обработки изменений фильтров
+- Добавлен эффект реактивности для `filterState.timestamp`
+- Функция `loadFeed()` теперь объединяет фильтры из состояния с переданными опциями
+- **AuthorView**: Добавлена функция `loadAuthorShouts()` для загрузки с учетом всех фильтров и сортировки
+- **AuthorView**: Добавлен эффект перезагрузки при изменении фильтров или сортировки только на вкладке публикаций  
+- **Стили**: Добавлены стили для feedSwitcher и dropdowns в Author.module.scss по аналогии с Topic.module.scss
+- Сохранена обратная совместимость для SSR и специфических запросов (AuthorView, TopicView)
+
+
+## [0.10.11] - 2025-05-31
+
+### ✅ Активировано
+- **Функциональность смены пароля и email**: Полностью активирована после реализации backend мутаций
+  - Раскомментирован код использования `UpdateSecurityMutation` в контексте сессии
+  - Добавлены мутации `ConfirmEmailChange` и `CancelEmailChange`
+  - Добавлены функции `confirmEmailChange()` и `cancelEmailChange()` в контекст сессии
+  - **Флоу полностью функционален**: смена пароля, смена email с подтверждением
+
+### Добавлено
+- **Новые GraphQL мутации**:
+  - `src/graphql/mutation/core/auth-confirm-email-change.ts`
+  - `src/graphql/mutation/core/auth-cancel-email-change.ts`
+- **Расширенный контекст сессии**: 
+  - Функция `confirmEmailChange(token: string)` для подтверждения смены email
+  - Функция `cancelEmailChange()` для отмены смены email
+  - Полная интеграция с backend мутациями `updateSecurity`, `confirmEmailChange`, `cancelEmailChange`
+
+- **Документация для backend**: Создана полная документация `docs/backend-security-mutations.md` для реализации мутации `updateSecurity`
+
+### Исправлено
+- **Компонент ProfileSecurity**: Исправлена логика смены email и пароля
+  - Добавлена правильная валидация с проверкой старого пароля
+  - Исправлена обработка ошибок и их отображение
+  - Улучшена типизация и обработка формы
+- **Получение email пользователя**: Исправлена проблема с пустым полем email в настройках безопасности
+  - Добавлено поле `email` в GraphQL мутации: `GetSession`, `Login`, `RegisterUser`, `RefreshToken`
+  - Обновлена функция `loadSessionData` для сохранения email пользователя в контексте сессии
+  - Email теперь корректно автозаполняется в поле ввода на странице настроек безопасности
+
+### Улучшено
+- **UX настроек безопасности**: Значительно улучшен пользовательский интерфейс
+  - **Автозаполнение email**: Поле email теперь автоматически заполняется текущим значением из профиля
+  - **Заметная плавающая панель**: Кнопки сохранения теперь прижаты к низу экрана с тенью и лучшим контрастом
+  - **Улучшенная кнопка "Сохранить"**: Увеличенный размер, жирный шрифт, тень и hover-эффекты
+  - **Фиксированное позиционирование**: Панель с кнопками всегда видна внизу экрана
+  - **Лучшая видимость**: Увеличенные отступы и более контрастные границы
+
+## [0.10.10] - 2025-05-31
+
+### Fixed
+- Исправлен флоу подписки на авторов и темы - интерфейс теперь корректно обновляется после получения ответа от сервера
+- Улучшена синхронизация состояния подписки между компонентами FollowingButton, CheckButton, AuthorCard, TopicCard и контекстом following
+- Исправлен метод changeFollowing для правильного возврата нового состояния подписки
+- Добавлено логирование для отладки состояния подписок во всех компонентах
+- Устранены конфликты между локальным и глобальным состоянием подписки
+- Убраны промежуточные состояния "Подписываем..." и "Отписываем..." - при оптимистичном обновлении кнопка сразу показывает конечное состояние
+- **Исправлена лента "Моя лента" - теперь показывает только публикации от подписанных авторов и тем**:
+  - Заменен неправильный GraphQL запрос `load_shouts_feed` на правильный `load_shouts_followed_by`
+  - Обновлена функция `loadFollowedShouts` для передачи slug пользователя
+  - Лента теперь фильтрует контент только от авторов и тем, на которые подписан пользователь
+  - Добавлено подробное логирование для диагностики загрузки ленты подписок
+- **Исправлена страница управления подписками `/settings/subs`**:
+  - Исправлено отображение кнопок управления подписками в AuthorBadge и TopicBadge в режиме `minimize`
+  - Улучшена логика фильтрации и поиска подписок - поиск теперь работает поверх фильтра по типу
+  - Добавлены счетчики для каждой категории (авторы/темы/все)
+  - Добавлены плейсхолдеры для пустых состояний (нет подписок, не найдено результатов)
+  - Улучшена UX с подробным логированием для отладки проблем загрузки данных
+  - Исправлена логика отображения кнопок подписки - теперь они показываются для всех авторов, кроме самого пользователя
+- **Исправлена проблема с загрузкой подписок в контексте FollowingProvider**:
+  - Устранена путаница между запросами `loadAuthorFollowers` (подписчики) и `loadAuthorFollows` (подписки)  
+  - Убран дублирующийся и неправильный ресурс `follows`, оставлен только корректный `followsResource`
+  - Исправлена инициализация контекста - теперь используется правильный GraphQL запрос `get_author_follows`
+  - Подписки теперь корректно отображаются как на странице автора `/author/discours`, так и на странице управления `/settings/subs`
+  - Добавлено подробное логирование для диагностики загрузки подписок
+
+### Removed
+- Убрана секция offline статуса из правого сайдбара ленты
+  - Удален блок "All synced" и кнопка "delete all drafts" 
+  - Убраны связанные переменные состояния и функции управления offline режимом
+  - Упрощен интерфейс сайдбара, убрав лишние элементы управления
+
+## [0.10.9] - 2025-05-31
+
+### Добавлено
+- **Service Worker**: Полная переработка и кардинальное улучшение offline-функциональности
+  - Background Sync для автоматической синхронизации черновиков при восстановлении связи
+  - Улучшенный GraphQL request handler с structured error responses для offline режима
+  - Детальное логирование всех операций с временными метками и префиксами
+  - Storage quota monitoring с предупреждениями при достижении 80% лимита
+  - Автоматическая периодическая очистка черновиков старше 30 дней
+  - Performance metrics для отслеживания скорости операций save/load
+
+- **OfflineStatus компонент**: Новый компонент для мониторинга offline статуса
+  - Real-time отображение статуса сети и синхронизации черновиков
+  - Expandable интерфейс с детальной статистикой storage usage
+  - Manual cleanup functionality для принудительной очистки старых данных
+  - Интеграция в EditView для отображения sync статуса конкретного черновика
+  - Современный дизайн с адаптивностью и dark theme поддержкой
+
+- **Storage Management**: Комплексная система управления offline хранением
+  - Compression алгоритм для HTML контента (body/lead fields) 
+  - Sync status tracking с подсчётом failed attempts для каждого черновика
+  - Metadata management system для централизованного управления storage
+  - Storage quota checking с автоматическими предупреждениями
+  - Performance monitoring со средним временем операций
+
+- **Offline страница**: Полная переработка в корпоративном стиле проекта
+  - Использование шрифта Muller и CSS-переменных проекта
+  - Интеграция с /error.svg артворком для визуального оформления
+  - Adaptive design с поддержкой тёмной темы и accessibility
+  - Функциональная проверка соединения с GraphQL endpoint
+  - Автоматическое обнаружение восстановления сети с плавными анимациями
+
+### Улучшено
+- **Service Worker**: Кардинальная архитектурная переработка кэширования
+  - 4 специализированные стратегии: Cache First, Network First, GraphQL Smart Caching
+  - Правильная обработка `/graphql` endpoints вместо устаревших `/api/*` путей
+  - Expired entries cleanup с проверкой TTL для всех типов кэшей
+  - Push notifications с action buttons и улучшенной обработкой кликов
+  - Client messaging system для двусторонней коммуникации со страницей
+
+- **Архитектура offline хранения**: Оптимизация для производительности
+  - Динамическое версионирование кэша на основе build time
+  - Structured GraphQL error responses при отсутствии сети
+  - TTL-based cache expiration с автоматической очисткой
+  - Background sync registration с обработкой sync events
+
+- **Кодовая база**: Радикальное сокращение объёма кода на 65%
+  - Оптимизация offline.html: с 514 до 142 строк (-72%)
+  - Рефакторинг Service Worker: удаление дублирующегося кода
+  - Выделение CSS стилей в отдельный файл offline.css
+  - Улучшенная читаемость и maintainability кода
+
+### Оптимизировано
+- **Performance**: Значительное улучшение скорости работы offline режима
+  - HTML content compression для экономии localStorage space
+  - Smart caching с TTL: статика 7 дней, GraphQL 30 минут, страницы 1 день
+  - Batch operations для синхронизации multiple drafts
+  - Lazy cleanup выполняется в background без блокировки UI
+
+- **User Experience**: Улучшенное взаимодействие в offline режиме
+  - Contextual sync status indicators для каждого черновика
+  - Graceful degradation при отсутствии сети
+  - Predictive caching для часто используемых операций
+  - Seamless transition между online/offline режимами
+
+### Архитектура
+- **Кэширование**: 4-уровневая система с intelligent routing
+  - **Cache First**: Статические ресурсы (CSS, JS, fonts, images)
+  - **Network First**: HTML страницы и API endpoints
+  - **GraphQL Smart**: Селективное кэширование публичных операций
+  - **Stale-while-revalidate**: Локализация и часто обновляемый контент
+
+- **Background Sync**: Полная реализация для черновиков
+  - Автоматическая регистрация при установке Service Worker
+  - Client-triggered sync registration для immediate updates
+  - Batch synchronization с error handling и retry logic
+  - Real-time notifications о результатах синхронизации
+
+- **Storage Strategy**: Multi-tier approach с оптимизацией
+  - **localStorage**: Компактное хранение с compression
+  - **Service Worker Cache**: Structured caching с TTL
+  - **Memory**: Runtime optimization для frequently accessed data
+  - **Future-ready**: Подготовка к миграции на IndexedDB
+
+### Технические детали
+- **Compatibility**: Поддержка всех современных браузеров
+- **Storage Limits**: 
+  - localStorage quota warning при 80% заполнения
+  - Автоматическая очистка drafts старше 30 дней
+  - Compression threshold 1KB для HTML fields
+- **Performance Metrics**:
+  - Average save/load times tracking
+  - Total operations counter
+  - Storage usage monitoring
+  - Network status detection
+
+### Локализация
+- Расширенная поддержка offline режима для русского и английского языков
+- Контекстные сообщения об ошибках синхронизации
+- Пользовательские уведомления о статусе storage
+
+### Безопасность
+- Structured error responses без exposing sensitive data
+- Safe compression алгоритмы для user content
+- Secure background sync с proper authorization handling
+
+## [0.10.8] - 2025-05-31
+
+### Fixed
+- **Точное выравнивание элементов фильтров и переключателя**: Полностью исправлена система выравнивания
+  - **Принудительное выравнивание**: Все дочерние элементы `.filtersContainer` имеют `display: flex, align-items: center, height: 4rem`
+  - **Унифицированные стили дропдаунов**: Все элементы в `.dropdowns > *` имеют одинаковый стиль и выравнивание
+  - **Консистентная типографика**: Единообразный шрифт `Muller, 1.4rem, font-weight: 500, letter-spacing: -0.5%`
+  - **Точная высота**: Фиксированная высота `4rem` для всех элементов с адаптивностью для мобильных (`3.6rem`)
+  - **Улучшен FeedSwitcher**: Добавлен `justify-content: stretch` и точное выравнивание `li` элементов
+  - **Восстановлен periodSwitcher**: Полные стили для дропдаунов периода с единообразным дизайном
+  - **Стилизация reloadButton**: Правильные размеры и выравнивание кнопки обновления
+  - **Hover эффекты**: Единообразные интерактивные состояния `rgba(0, 0, 0, 0.04)` для всех элементов
+  - **Общий фон**: Консистентный фон `rgba(255, 255, 255, 0.5)` и `border-radius: 0.8rem` для всех компонентов
+
+### Added
+- **Интеллектуальное отображение фильтров**: Фильтры автоматически скрываются при малом количестве контента
+  - **Условная видимость**: Фильтры показываются только если публикаций больше 10 ИЛИ есть данные для дозагрузки (`hasMore = true`)
+  - **UX оптимизация**: Убирает лишние элементы интерфейса когда они не нужны
+  - **Реактивность**: Автоматическое появление фильтров при росте количества публикаций
+  - **Производительность**: Уменьшение количества DOM элементов для страниц с малым контентом
+
+- **Система дедупликации публикаций в ленте**: Полностью исключены повторы публикаций в разных блоках
+  - **Утилиты дедупликации**: Создан `~/utils/deduplicate.ts` с классом `FeedDeduplicationContext` и вспомогательными функциями
+  - **Приоритетная система**: Основная лента имеет приоритет перед дополнительными блоками (Top viewed, Top month, Favorite)
+  - **TopicView дедупликация**: Исключены повторы между `sortedFeed`, `reactedTopMonthArticles`, `favoriteTopArticles` и `topViewedShouts`
+  - **HomeView дедупликация**: Исключены повторы между `featuredShouts` и дополнительными блоками (`topRatedShouts`, `topMonthShouts`, `topCommentedShouts`, случайная тема)
+  - **Реактивность**: Мемоизированная система пересчета дедуплицированных блоков при изменении данных
+  - **Производительность**: Эффективный алгоритм с использованием `Set<number>` для отслеживания использованных ID
+  - **Ограничения слайдеров**: Лимитирование слайдеров до 10 элементов для предотвращения чрезмерного потребления уникальных публикаций
+  - **Сохранение структуры**: Все блоки сохраняют свою структуру и визуальную организацию, но без дублирования контента
+
+### Changed
+- **Архитектура выравнивания**: Переход от индивидуальных стилей к системному принудительному выравниванию
+- **Стилизация элементов**: Унификация всех интерактивных элементов с общими переходами и эффектами
+- **Логика фильтров**: FeedFiltersControl теперь учитывает количество публикаций и наличие дополнительных данных
+- **Отображение ленты**: Внедрена интеллектуальная система предотвращения повторов с сохранением приоритета основной ленты
+
+## [0.10.7] - 2025-05-30
+
+### ⚡ Добавлено
+- **OAuth провайдеры расширены**: Добавлена поддержка Telegram и X.com
+  - **Telegram OAuth**: Поддержка входа через Telegram Login Widget
+  - **X.com (Twitter) OAuth 2.0**: Поддержка нового API X.com с современной иконкой
+  - **Совместимость**: Сохранены VK и Yandex провайдеры
+  - **Безопасность**: CSRF защита и TTL валидация для всех провайдеров
+  - **Список провайдеров**: telegram, x.com, google, github, facebook, vk, yandex
+  - **API mapping**: x.com автоматически маппится на twitter для API совместимости
+  - **Документация**: Полная конфигурация для всех 7 провайдеров
+  - **Дизайн кнопок**: Строгое соответствие Figma дизайну
+    - **Только иконки**: Кнопки содержат только иконки без текста (как в Figma)
+    - **Компактные кнопки**: 48x48px с острыми углами (border-radius: 0) для оптимального размещения
+    - **Фон**: #F7F7F8 (светло-серый) согласно Figma спецификации
+    - **Отступы**: gap 8px между кнопками, padding 12px для идеального размещения иконок
+    - **Размер иконок**: 20x20px для оптимального отображения в компактных кнопках
+    - **Без бордеров**: По умолчанию кнопки без бордеров
+    - **Ховер эффект**: Только тонкий бордер 1px при наведении, фон не меняется
+    - **Иконки по умолчанию**: ВСЕ иконки черные (#000000) включая VK, Facebook, Telegram, GitHub
+    - **Ховер цвета**: При наведении иконки показывают официальные брендовые цвета
+    - **Современные иконки**: X.com заменяет устаревшую Twitter иконку
+    - **GitHub**: Обновлена иконка без круглого фона, более крупная
+    - **Официальные брендовые цвета**: 
+      - Facebook #1877F2 (официальный синий)
+      - VK #0077FF (официальный синий VK)  
+      - GitHub #24292E (официальный темно-серый)
+      - Telegram #0088CC (синий Telegram)
+      - X.com #000000 (остается черным согласно новому дизайну)
+      - Yandex #FC3F1D (официальный красный)
+    - **Google**: Черная по умолчанию, цветная многокомпонентная при ховере
+    - **Accessibility**: title атрибуты для всех кнопок
+
+- **Lightning CSS: Максимальная интеграция завершена успешно** ✅
+  - **CSS Transformation**: `transformer: 'lightningcss'` для всех CSS/SCSS файлов
+  - **CSS Minification**: `cssMinify: 'lightningcss'` в production  
+  - **SolidJS CSS Modules**: `:global()` селекторы работают корректно
+  - **Глобальные стили**: Lightning CSS compatible синтаксис без `:global {}` блоков
+  - **50-100x ускорение** CSS processing по сравнению с traditional tools
+  - **Vendor prefixes**: автоматически для Chrome 95+, Firefox 90+, Safari 14+, Edge 95+
+  - **Modern CSS**: custom media queries, CSS nesting, color functions
+  - **Tree shaking**: встроенное удаление неиспользуемых CSS правил
+  - **HMR**: ускорение до ~10ms для CSS обновлений
+  - **CSS Pipeline**: SCSS → Lightning CSS → Optimized CSS
+  - **Build времена**: 3-4x ускорение CSS компиляции
+  - **Сборка**: проходит без warning'ов и ошибок
+  - **Воркэраунды**: JavaScript fallbacks для complex selectors
+    - SelectionChange API для отслеживания выделения текста
+    - Класс `hasSelection` вместо `:has(::selection:not(:empty))`
+    - `@supports` fallbacks для современных браузеров
+
+### 🗑️ Удалено  
+- **Stylelint и зависимости**: Lightning CSS покрывает CSS валидацию
+  - Удалены пакеты: stylelint, stylelint-config-*, stylelint-order, stylelint-scss
+  - Удалены файлы: .stylelintrc.json, .stylelintignore
+  - **Экономия**: 61 пакет, ~15MB дискового пространства
+  - Упрощен скрипт `fix`: только Biome, без stylelint
+
+### 🔧 Улучшено
+- **CSS Toolchain максимизирован**: Lightning CSS на всех этапах обработки
+  - CSS Transform: `transformer: 'lightningcss'`
+  - CSS Minify: `cssMinify: 'lightningcss'` в production
+  - Modern CSS features: custom media queries, CSS nesting
+  - Vendor prefixes: автоматически на основе browser targets
+  - Оптимизация: встроенный tree shaking и минификация
+- **Pipeline оптимизирован**: SCSS → Sass → Lightning CSS → Optimized CSS
+- **Dev Experience**: Мгновенные CSS обновления через Lightning CSS HMR
+- **Build времена**: 3-4x ускорение CSS компиляции
+- **Bundle размер**: Автоматическое удаление неиспользуемых CSS правил
+- **OAuth иконки ховер эффекты**: Исправлены ховер эффекты для всех OAuth провайдеров
+  - **VK, Facebook, Telegram**: Обновлены SVG файлы с `fill="currentColor"` вместо жестких цветов
+  - **Все иконки**: Теперь корректно меняют цвет с черного на брендовый при наведении
+  - **CSS селекторы**: Улучшена структура CSS для правильной работы ховер эффектов
+  - **Плавные переходы**: Добавлены `transition` для всех цветовых изменений
+  - **Консистентность**: Все 7 провайдеров теперь работают единообразно
+
+## [0.10.6] - 2025-05-30
+
+### Оптимизировано
+- **Контекст сессии**: Полная оптимизация и типизация контекста сессии
+  - Добавлены недостающие функции: `isRegistered`, `oauth`, `isAuthenticated`
+  - Оптимизированы функции `confirmEmail`, `resendVerifyEmail`, `isEmailUsed` 
+  - Улучшена логика OAuth авторизации с правильной генерацией state
+  - Автоматическое обновление GraphQL клиента при изменении токена сессии
+  - Убрана избыточная функция `refreshClient` - клиент обновляется автоматически
+  - Добавлено подробное логирование для диагностики проблем с сессией
+  - Исправлена типизация всех функций контекста для соответствия реальному использованию
+
+### Исправлено
+- **Ошибки типизации**: Устранены все ошибки TypeScript в компонентах
+  - `RegisterForm.tsx`: Исправлено использование `isRegistered`
+  - `SocialProviders.tsx`: Добавлена функция `oauth` 
+  - `LayoutSelector.tsx`: Удалено использование `refreshClient` и `isAuthenticated`
+  - Все компоненты теперь корректно используют обновленный контекст сессии
+- **Логика авторизации**: Улучшена проверка состояния авторизации
+  - `isAuthenticated()` теперь проверяет наличие и токена, и данных автора
+  - Правильная обработка состояний загрузки и валидации сессии
+  - Улучшена совместимость с существующими компонентами
+- **Реактивность сессии в заголовке**: Применены принципы из solid-memo.md для оптимизации реактивности
+  - Заменили монолитный объект сессии на атомарные сигналы `sessionToken` и `sessionAuthor`  
+  - Используем `createMemo` для производного состояния полной сессии (`fullSession`)
+  - Компоненты заголовка теперь корректно реагируют на изменения сессии после рефреша
+  - Упрощен API localStorage: убран избыточный `safeLocalStorage`, используется стандартное API с проверкой `isServer`
+  - Улучшена типизация контекста сессии для лучшего соответствия реальным сигнатурам функций
+- **Счетчики публикаций и комментариев в профиле**: Исправлена логика отображения счетчиков
+  - Счетчики теперь показывают только общее количество из статистики автора (author.stat)
+  - Убран неправильный fallback на количество загруженных элементов (sortedFeed().length, commented().length)
+  - Плейсхолдеры отображаются только при отсутствии статистики (0 публикаций/комментариев)
+  - Контент отображается только при наличии статистики больше 0
+  - Исключена путаница между клиентским состоянием и серверными данными
+  - Добавлена диагностика загрузки реакций для выявления потенциального попадания не-комментариев в фильтр
+- **Отображение черновиков**: Исправлена проблема с неполным отображением черновиков
+  - Добавлена подробная диагностика логики отображения черновиков
+  - Выявлена проблема с накоплением "сиротских" черновиков в localStorage
+  - Оставлена только функция `removeLocalDraft()` для удаления конкретных черновиков
+  - Улучшена логика определения проблемных черновиков из localStorage
+  - Обеспечен показ всех локальных черновиков пользователю для ручного управления
+- **Исчезновение тел комментариев**: Исправлена проблема с санитизацией HTML в комментариях
+  - Отключена настройка RETURN_TRUSTED_TYPE в конфигурации DOMPurify
+  - Добавлено принудительное приведение результата к строке
+  - Добавлена отладочная информация для диагностики проблем с санитизацией
+  - Комментарии теперь корректно отображают свое содержимое
+- **Потеря авторизации при обновлении страницы**: Исправлена проблема с восстановлением сессии при перезагрузке
+  - Теперь при наличии токена в localStorage сессия немедленно восстанавливается в onMount
+  - GraphQL клиент инициализируется с токеном до выполнения запросов
+  - Результат загрузки сессии правильно применяется к ресурсу через refetch
+  - Добавлена обработка ошибок при восстановлении сессии с fallback на дефолтный клиент
+  - Улучшена синхронизация между инициализацией клиента и состоянием сессии
+  - Исправлена проблема с асинхронной мутацией ресурса сессии
+  - Реализован подход с немедленной установкой временной сессии и фоновой валидацией
+- **Отображение публикаций и комментариев в профиле**: Исправлена проблема с пустыми профилями
+  - Публикации и комментарии теперь отображаются если есть реальные данные, независимо от статистики
+  - Счетчики в табах показывают либо данные из статистики, либо количество загруженных элементов
+  - Плейсхолдеры показываются только если нет ни статистики, ни реальных данных
+  - Улучшена логика условного рендеринга контента профиля
+- Исправлено отображение счетчиков публикаций и комментариев на страницах авторов
+- Счетчики теперь показывают только реальные данные из статистики автора (author.stat)
+- Убрана неправильная инициализация статистики с количеством загруженных элементов
+- Счетчики отображаются только после загрузки правильной статистики автора
+- Исправлено отображение фолловеров в собственном профиле - они теперь корректно загружаются и отображаются
+- Добавлен сброс состояния фолловеров при переходе между профилями разных авторов
+- Исправлено отображение фолловеров для незалогиненных пользователей
+  - Добавлена инициализация GraphQL клиента без токена для публичных запросов
+  - Разделена логика загрузки автора и загрузки фолловеров на отдельные эффекты
+  - Добавлена обработка случаев когда клиент еще не готов
+
+- **Отображение публикаций автора**: Исправлена проблема с изначальным отображением публикаций во вкладке "Публикации" на странице автора
+  - Публикации теперь отображаются сразу при загрузке страницы без необходимости переключения между вкладками
+  - Оптимизирована инициализация данных в компоненте `AuthorView`
+  - Исправлена логика обработки начальных данных `props.shouts`
+  - Добавлена правильная синхронизация между эффектами обновления данных
+  - Улучшена обработка состояния загрузки публикаций
+
+- **Client Exception на userpic**: Исправлена ошибка "Uncaught Client Exception" при клике на аватар пользователя
+  - Добавлена null-безопасность в ProfilePopup компоненте
+  - Исправлена типизация author в HeaderControls
+- **Отображение userpic**: Исправлено отображение аватара пользователя в хедере
+  - Добавлены Show обертки для безопасного рендеринга userpic только при наличии авторизованного пользователя
+  - Исправлена типизация в EditingHeader и AuthorizedHeader компонентах
+- **URL-кодированные slug авторов**: Полностью исправлена проблема с загрузкой авторов с спецсимволами в slug
+- **Сортировка авторов**: Исправлены неработающие ссылки в алфавитном указателе списка авторов
+
+- **Плейсхолдеры на странице автора**: Исправлена логика отображения плейсхолдеров
+  - Плейсхолдер "нет публикаций" теперь показывается для любого автора с 0 публикациями, а не только для текущего пользователя
+  - Плейсхолдер "нет комментариев" теперь показывается для любого автора с 0 комментариями
+  - Плейсхолдеры больше не отображаются одновременно с контентом
+  - Улучшена логика условного рендеринга плейсхолдеров на основе статистики автора
+
+- **Счетчики в собственном профиле**: Исправлено отображение счетчиков публикаций и комментариев в собственном профиле
+  - Счетчики теперь отображаются для текущего пользователя даже если в сессии нет объекта `stat`
+  - Добавлена инициализация статистики для текущего пользователя при отсутствии данных
+  - Упрощено условие показа счетчиков до простой проверки наличия автора
+
+- **Корректность счетчиков публикаций**: Исправлена логика подсчета количества публикаций и комментариев
+  - Счетчики теперь показывают общее количество из `author.stat`, а не количество загруженных элементов
+  - Убран неправильный fallback на `props.shouts?.length` в `stats()` memo
+  - Инициализация статистики теперь не использует длину пропсов как значение по умолчанию
+  - Счетчики отображают корректные данные из базы данных, а не состояние клиента
+
+- **SSR совместимость**: Исправлена ошибка `localStorage is not defined` при серверном рендеринге
+  - Добавлены безопасные функции `safeLocalStorage` для работы с localStorage в SSR окружении
+  - Добавлена проверка на наличие `window` и `localStorage` перед обращением к ним
+  - Исправлено обращение к localStorage в `sessionData` функции и других местах
+  - Приложение теперь корректно работает как при SSR, так и в браузере
+
+### Добавлено
+- **Кнопка поиска в хедере**: Восстановлена иконка-кнопка поиска во всех режимах хедера согласно дизайну Figma
+  - Добавлена в `EditingHeader`, `AuthorizedHeader` и `GuestHeader`
+  - Использует существующий `SearchModal` компонент с полнофункциональным поиском
+  - Интегрирована с системой UI модалей через `showModal('search')`
+  - Стилизована с помощью CSS класса `userControlItemSearch`
+
+- **Расширенное меню профиля**: Полная реализация нового дизайна меню пользователя согласно Figma
+  - **Профиль** - переход на страницу профиля пользователя
+  - **Черновики** - переход к черновикам пользователя
+  - **Подписки** - управление подписками на авторов и темы
+  - **Комментарии** - просмотр комментариев пользователя  
+  - **Закладки** - сохраненные материалы и дискуссии
+  - **Настройки** - настройки профиля и аккаунта
+  - **Выйти** - выход из аккаунта с разделителем
+  - Использует правильные иконки: `profile`, `pencil-outline`, `glasses`, `comment`, `bookmark`, `settings`, `logout`
+
+- **Плейсхолдер для пустого списка черновиков**: Добавлен красивый плейсхолдер для случаев когда у пользователя нет черновиков
+  - Использует тот же дизайн и компонент, что и плейсхолдеры в других разделах
+  - Показывает призыв к действию "Создать черновик" с кнопкой для перехода к редактору
+  - Отображается только после завершения загрузки черновиков
+  - Включены переводы на русский язык
+
+- **Недостающие функции сессии**: `isRegistered`, `oauth`, `isAuthenticated`, `confirmEmail`, `resendVerifyEmail`
+- **OAuth авторизация**: Полная реализация с улучшенной безопасностью
+  - Поддержка провайдеров: Google, Facebook, GitHub, VK, Yandex
+  - Генерация безопасного state с timestamp для защиты от CSRF
+  - Валидация TTL OAuth сессий (10 минут)
+  - Обратная совместимость со старым форматом state
+  - Подробная обработка ошибок и логирование OAuth flow
+  - Автоматическая загрузка данных пользователя после OAuth callback
+- **Инструкции для бекенда**: Создан `docs/oauth-implementation.md` с полными требованиями
+  - Схема бекенд endpoints (`/oauth/{provider}`, `/oauth/{provider}/callback`)
+  - Конфигурация провайдеров (Google, Facebook, GitHub)
+  - Схема базы данных для OAuth связок
+  - Система безопасности (state validation, CSRF protection, TTL)
+  - Environment variables и deployment checklist
+- **Подробное логирование**: Диагностика загрузки и валидации сессии для отладки
+
+### Улучшено
+- **Code Simplification**: Упрощен код компонентов хедера
+  - Убраны избыточные ErrorBoundary обертки  
+  - Удалена неработающая система отладки
+  - Оптимизированы импорты и типизация
+- **Загрузка сессии**: Улучшена UX при загрузке сессии
+  - Сессия больше не загружается во время SSR, что устраняет ошибки в логах
+  - При наличии токена в localStorage немедленно показывается заглушка на месте юзерпика
+  - Асинхронная валидация токена происходит в фоне без блокировки UI
+  - Добавлено состояние `isSessionValidating` для отслеживания процесса валидации
+  - Юзерпик показывает спиннер загрузки во время валидации сессии
+  - Улучшена синхронизация между состоянием сессии и отображением в хедере
+
+## [0.10.5] - 2025-05-17
+### Исправлено
+- Устранена проблема с циклическими эффектами в компоненте `LoadMoreWrapper`, приводившая к переполнению стека вызовов
+- Добавлено отложенное выполнение эффектов с использованием `defer: true` для предотвращения циклических зависимостей
+- Применён `batch` для группировки обновлений состояния в обработчиках событий
+- Улучшена производительность при загрузке элементов в бесконечных списках
+- Внедрены `createMemo` для оптимизации пересчитываемых значений и предотвращения лишних обновлений
+- Добавлена изолированная функция `safeUpdateState` для безопасного обновления состояния без циклических зависимостей
+- Реализовано чтение значений вне реактивного контекста для улучшения стабильности
+
+## [0.10.4] - 2025-05-16
+### Изменено
+- authorizer.js заменён на внутреннюю авторизацию
+
+### Улучшено
+- Улучшена обработка ошибок в модуле авторизации 
+- Добавлена более детальная диагностика проблем с подключением к API
+- Исправлена проблема типизации в сессии (null vs undefined)
+- Добавлен таймаут для GraphQL запросов для предотвращения зависших запросов
+- Улучшена обработка OAuth авторизации
+- Реализован динамический интервал обновления сессии с учетом ошибок
+- Добавлено подробное логирование процесса авторизации и обновления сессии
+
+### Исправлено
+- Проблема с неработающим входом по email
+- Ошибки типизации в контексте сессии
+- Улучшена стабильность при потере соединения с API
+- Предотвращение множественных запросов при сбоях авторизации
+
+## [0.10.3] - 2025-05-12
+### Исправлено
+- Проблема с публикацией черновиков: исправлена некорректная обработка тем
+- Улучшена кнопка "опубликовать" в карточке черновика - теперь работает аналогично кнопке в заголовке
+- Исправлена логика валидации и обработки ошибок при публикации черновиков
+- Улучшена обработка переходов между страницами при публикации черновиков
+- Добавлено более подробное логирование действий при публикации для диагностики проблем
+
+## [0.10.2] - 2025-05-05
+### Исправлено
+- Позиционирование toast-уведомлений в стопку справа
+- Позиционирование toast-уведомлений при переключении между локальной и серверной версиями черновика
+- Иконка облака (cloud.svg) исправлена для более чёткого отображения
+- Позиционирование toast-уведомлений в стопку справа
+
+### Изменено
+- Заменен компонент выбора тем с селектора на кликабельное облако тегов (pills) в настройках публикации
+- Отображение 20 самых популярных тем по публикациям по умолчанию
+- Фильтрация тем при поиске сохраняет существующее UX взаимодействие
+- Улучшен пользовательский интерфейс выбора тем и связь с основной темой
+- Добавлена анимация при наведении на теги для лучшего визуального отклика
+- Улучшена стилизация главной темы с выделением
+- Добавлен счетчик выбранных тем для наглядного представления количества
+- Предотвращение множественных кликов при добавлении/удалении тем
+
+## [0.10.1] - 2025-04-28
+### Изменено
+- `solid-toast` заменил `useSnackbar` 
+- режим предпросмотра и его компоненты
+- работа с `localStorage` перенесена в контекст провайдер `drafts`
+- валидация ошибок изолирована из `PublishSettings` и `EditView`
+- `updateDraftField` централизованный способ обновления
+- индикация отличия связанного черновика от своей публикации
+
+### Исправлено
+- потеря фокуса при редактировании полей черновика - через `produce`
+- логика определения связанного черновика ищет `Shout.id`
+
+## [0.10.0] - 2025-04-26
+### Добавлено
+- offline-first хранение черновиков
+- предпросмотр для черновиков
+- индикация опубликованности черновиков
+- режим предложения правок
+- копоненты `DiffView`, `SuggestionsView`, `SuggestionCard`
+
+
+## [0.9.25] - 2025-04-02
+### Добавлено
+- Поддержка загрузки аудиофайлов через компонент AudioUploader в редакторе
+- Фиксированная панель в нижней части экрана с кнопками "Сохранить черновик" и "Опубликовать"
+- `NotificationsBell` и `PublishButton` компоненты для улучшенного пользовательского интерфейса
+- Отображение сохраненного вступления (lead) с возможностью редактирования по клику
+- Кнопки сохранения и отмены для редактора вступления
+- offline-first для редактирования черновиков/публикаций
+
+### Изменено
+- Улучшен интерфейс редактора вступления (lead): кнопки интегрированы внутрь редактора
+- Изменен внешний вид редактора вступления: убраны границы и синяя точка, добавлен серый фон при фокусе
+- Кнопки сохранения и отмены отображаются только при наличии содержимого в редакторе
+- Увеличена минимальная высота редактора вступления до 108px
+- В режиме редактирования футер скрыт для более удобной работы с черновиком
+- кнопка "Опубликовать" всегда ведёт на настройки публикации
+- Оптимизация функций позиционирования меню в `SimpleRichEditor`
+
+### Исправлено
+- API обработки событий меню для врезок и разных типов контента в релакторе
+- `isActive` теперь использует логику `hasFormatting`
+- Исправлено сохранение содержимого редактора вступления
+- Улучшена работа с фокусом в редакторе вступления
+- Правильное отображение плейсхолдера и меню "плюс" в основном редакторе
+
+## [0.9.24] - 2025-03-22
+### Добавлено
+- Адаптивная загрузка комментариев: полная загрузка веток для статей с малым числом комментариев (<5не0) и лимитированная загрузка для больших обсуждений
+- Отображение удаленных комментариев в дереве
+- Дозагрузка комментариев по скроллу
+- Дозагрузка комментариев по веткам
+- Система автоматического переключения на запасной CDN сервер при недоступности основного
+- Механизм повторных попыток загрузки с использованием альтернативных CDN серверов
+- Расширенное логирование и обработка ошибок при загрузке файлов
+- Предварительная проверка доступности CDN сервера
+- Проверка размера файла перед загрузкой (ограничение 5 МБ)
+- Расширенная отладочная информация для загрузки изображений
+
+### Улучшено
+- Сообщения об ошибках при загрузке изображений
+- Обработка ошибок при загрузке файлов в редакторе комментариев
+- Обработка токенов авторизации при загрузке файлов
+- Обработка ошибок сервера при загрузке файлов
+- Устойчивость к ошибкам при проверке доступности изображений
+
+### Исправлено
+- Полное отображение дерева комментариев для всех загруженных комментариев
+- Автоматическая загрузка всех ответов в ветках для небольших обсуждений
+- Правильная обработка first_replies и корневых комментариев
+- Стабильное построение дерева комментариев при загрузке новых комментариев
+- Некорректное отображение дерева комментариев при пустом комментариях в кэше
+- Логика определения новых комментариев (комментарии не отображались как новые)
+- Синхронизация счетчиков комментариев между заголовком, списком и карточками
+- Переключение сортировок и "только новые" для комментариев
+- Убрана возможность выделения элементов управления редактора
+- Формирование URL изображений и обработка заголовков ответа
+- Проблема с загрузкой изображений в редакторе комментариев
+- Положение редактора в дереве комментариев
+
+## [0.9.23] - 2025-03-14
+### Добавлено
+- меню комментария
+- автоматическая очистка лишних переносов строк в комментариях
+- Обработка при вводе, потере фокуса и сохранении комментария
+
+### Исправлено
+- обновление списка комментариев без ререндера и дергания
+- устранено дублирование редакторов при ответе на комментарии
+- исправлено "обрубание" дерева комментариев при ответе
+- убрана неиспользуемая логика для отображения формы ответа
+- проблема наложения и дублирования комментариев в ветках при обновлении
+- визуальная индикация выделенного текста при вставке
+- форма ссылки теперь показывает пустое поле для ввода URL
+- выделенный текст сохраняется внутри ссылки при вставке
+
+## [0.9.22] - 2025-03-12
+### Изменено
+- упразднён компонент `SimpleInsert` в пользу `InlineForm`
+- исправлены обработки меню тулбара редактора
+- исправлена логика работы формы вставки ссылки
+- реализовано сохранение выделения при вставке
+- восстановлено распознание вставки ссылки в редакторе
+
+### Исправлено
+- приведение TrustedHTML к строке в `sanitizeHtml`
+
+## [0.9.21] - 2025-03-09
+### Добавлено
+- **Отладка загрузки авторов**: Добавлено детальное логирование для диагностики проблем с загрузкой авторов
+  - Расширено логирование в `loadAuthor` функции с указанием параметров запроса
+  - Добавлено логирование в `AuthorView` для отслеживания передаваемых slug
+  - Улучшена диагностика случаев когда автор не найден в базе данных
+  - Добавлено автоматическое декодирование URL-кодированных slug с спецсимволами (em dash, etc.)
+  - Исправлена проблема с поиском авторов с неанглийскими символами в slug
+
+## [0.9.20] - 2025-03-08
+### Добавлено
+- **Обновлены стили FeedSwitcher** - добавлено подчеркивание активного режима
+  - **Активное состояние**: Черная нижняя граница `border-bottom: 2px solid #000000` без закругления
+  - **Цвет текста**: Черный (#000000) для лучшей читаемости активного элемента  
+  - **Фон**: Легкий синий оттенок `rgba(38, 56, 217, 0.08)` для активного состояния
+  - **Wrapper стили**: `border-radius: 0.8rem` перенесен к контейнеру с полупрозрачным фоном
+  - **Счетчик**: Обновлен стиль счетчика для соответствия новому дизайну
+  - **Hover эффекты**: Сохранены те же стили для активного состояния при наведении
+
+## [0.9.19] - 2025-02-24
+### Добавлено
+- более подробное логирование
+- подробные докстринги для компонентов и функций в `CommentCard`
+- редактор для ответов на комментарии с соответствующими стилями
+- валидация пустого содержимого при отправке ответов и редактировании
+
+### Изменено
+- чётко разделены 3 режима редактирования комментария: ответ, исправление и новый
+- оптимизирована взаимозависимость и изоляция компонентов из `Comments` и `RatingControl`
+- улучшено состояние кнопок в зависимости от режима (ответ, редактирование)
+- переименован интерфейс `Props` в `CommentCardProps` для улучшения читаемости кода
+
+### Удалено
+- неиспользуемые функции `likeReaction` и `unlikeReaction` из `CommentCard`
+- избыточные переменные состояния `liked` и `likesCount`
+
+## [0.9.18] - 2025-02-21
+### Изменено
+- переработан компонент `CommentCard`
+- переработан компонент `CommentsHeader`
+- переработан компонент `CommentsTree`
+- переработан компонент `RatingControl`
+
+## [0.9.17] - 2025-02-18
+### Добавлено
+- Логика для очистки контента с помощью `dompurify`
+- кеширование тела всех редакторов в `localStorage`
+
+### Изменено
+- API и изоляция `SimpleRichEditor`
+- контекст кеширует поля ввода всех редакторов
+- рефакторинг компонентов комментариев: `CommentCard`, `CommentsList`
+
+### Удалено
+- `onSubmit` и `onCancel` из редактора
+
+## [0.9.16] - 2025-02-12 
+
+### Добавлено
+- Документация по использованию черновиков `docs/drafts.md`
+- `patch-package` и патч для `vite-plugin-solid`
+
+### Изменено
+- Переработан роут и компоненты для просмотра списка черновиков и одного черновика
+- Переработан компонент `EditView` для работы с черновиками
+- Улучшена изоляция контекста сессии
+- Упрощен компонент `SimpleInsert`
+- Переименован Editor/Toolbar/Panel в `Sidebar`
+- Обновлены GraphQL мутации для работы с черновиками `graphql/mutations/draft*`
+- Обновлена сборка на `vite` v6
+- Обновлены зависимости проекта
+- Автосохранение абстрагировано в компоненте `AutoSave` и использует `localStorage`
+
+### Удалено
+- Удален старый редактор на базе TipTap
+- Удалены неиспользуемые расширения VS Code
+- Устаревшая фильтрация консольных логов в `vite.config.ts`
+
+## [0.9.15] - 2025-02-05
+- `SimpleRichEditor` на замену `MiniEditor` и `MicroEditor`
+- `RichEditor` на замену `Editor`
+- `@solid-primitives/selection` используется в редакторе
+- поддержка встраивания видео и превью ссылок при вставке из буфера
+- оптимизация компонент редактора
+- добавлена документация по использованию редакторов
+- добавлена поддержка плейсхолдера в `SimpleRichEditor` и `RichEditor`
+- приведение внешнего вида редакторов к макету
+
+## [0.9.14] - 2025-02-01
+### Добавлено
+- Состояние `isReady` в EditorContext для отслеживания инициализации
+- Усиленная валидация топиков с проверкой обязательных полей
+- Улучшенная сериализация медиа для GraphQL мутаций
+
+### Изменено
+- Валидация топиков теперь проверяет обязательные поля (id, slug, title)
+- Улучшено приведение типов для полей топика
+- Упрощена логика фильтрации топиков
+- Улучшено логирование ошибок для невалидных топиков
+
+### Исправлено
+- Приведение типа ID топика к числовому формату
+- Консистентность сериализации медиа
+- Отслеживание состояния инициализации редактора
+
+## [0.9.13] - 2025-01-28
+- Исправлена ошибка гидратации в компоненте Snackbar
+- Улучшена стабильность SSR
+
+## [0.9.12] - 2024-12-16
+- Обновлены логики отображения ленты:
+  - Упрощена логика в роуте `[...mode].tsx`
+  - Упрощена структура компонента `FeedPage`
+  - Проверка авторизации - только в `FeedView`
+  - Улучшена типизация в `FeedView` и `FeedProvider`
+  - Добавлен `AbortController` для запросов GraphQL, включается через параметр `withAbort`
+  - Оптимизирована работа с кешем через `createQueryResource`
+  - Исправлено отображение плейсхолдера для неавторизованных пользователей
+
+## [0.9.11] - 2024-12-09
+- добавлены e2e тесты для проверки миграции с `createAsync`
+- добавлены e2e тесты для проверки миграции с `createResource`
+- `Row5` повышена стабильность
+- `translation.json` обновлен
+- добавлен документ `docs/structure.md`
+
+## [0.9.10] - 2024-12-08
+- добавлены e2e тесты для проверки миграции с `createAsync`:
+  - тесты базового рендеринга страниц
+  - тесты навигации по топикам
+  - тесты поисковой функциональности
+  - увеличены таймауты для стабильности тестов
+  - добавлено ожидание сетевых запросов
+- исправлены проблемы запуска production сборки:
+  - добавлен punycode как зависимость
+  - отключены deprecation warnings
+  - исправлена конфигурация сборки
+
+## [0.9.9] - 2024-12-07
+- миграция с `createAsync` на `createResource`:
+  - обновлены все компоненты с поддержкой SSR
+  - улучшена обработка состояний загрузки/ошибок
+  - оптимизирована гидрация компонентов
+  - добавлена типобезопасность
+  - улучшена производительность
+- обновлена документация по асинхронным паттернам в `docs/solid-async.md`
+
+## [0.9.8] - 2024-12-06
+- документация
+- переезд на `createResource` вместо `cache` в `src/graphql/api`
+
+## [0.9.7] - 2024-11-20
+- solid-start решение
+...
+
+## [0.1.0] - 2020-11-20
+- Первая версия на svelte (другой репозиторий)
