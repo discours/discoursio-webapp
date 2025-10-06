@@ -1,4 +1,4 @@
-.squibMenu {
+.incutMenu {
   position: absolute;
   z-index: 100;
   background: #fff;
@@ -186,13 +186,13 @@
   font-size: 12px;
 } 
 
-.squibMenuContainer {
+.incutMenuContainer {
   position: relative;
   display: flex;
   flex-direction: column;
 }
 
-.squibMenuHeader {
+.incutMenuHeader {
   display: flex;
   align-items: center;
   gap: 2px;

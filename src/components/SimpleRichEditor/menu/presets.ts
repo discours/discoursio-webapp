@@ -15,7 +15,7 @@ export const FULL_COMMANDS = [
     [
       // кнопка с иконкой editor-headings
       ['h1', 'h2', 'h3'], // Заголовки
-      ['blockquote', 'punchline', 'squib'] // Цитаты и врезки
+      ['blockquote', 'punchline', 'incut'] // Цитаты и врезки
     ]
   ],
 

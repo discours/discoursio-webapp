@@ -9,6 +9,9 @@ import { MediaItem } from '~/graphql/generated/graphql'
 import { UploadedFile } from '~/types/upload'
 import { validateVideoUrl, validateWebUrl } from '../../../lib/validateDraft'
 import { applyFormatting, removeFormatting } from '../format/format'
+import { calculateFormPosition } from '../lib/positioning'
+import { findLinkAncestor as findLinkAncestorUtil } from '../lib/selection'
+import { afterDOMUpdate } from '../lib/timing'
 import { EditorFieldType, FormType, InlineFormOptions, Position } from '../lib/types'
 import { replaceSelection, validateUrl } from '../lib/utils'
 import {
@@ -64,51 +67,18 @@ export const createFormHandlers = (context: FormHandlersContext) => {
     handleChange
   } = context
 
+  // Используем общую утилиту findLinkAncestor (DRY)
   const findLinkAncestor = (node: Node | null): HTMLAnchorElement | null => {
-    if (!node) return null
-    let currentNode = node
-    const rootNode = editorRef()
-    while (currentNode && currentNode !== rootNode) {
-      if (currentNode.nodeName === 'A') {
-        return currentNode as HTMLAnchorElement
-      }
-      if (!currentNode.parentNode || currentNode.parentNode === document.body) break
-      currentNode = currentNode.parentNode
-    }
-    return null
+    return findLinkAncestorUtil(node, editorRef())
   }
 
   const showInlineForm = (type: FormType, onSubmit: (value: string) => void, initialValue?: string) => {
     if (!type) return
 
-    // Получаем текущую позицию курсора для точного позиционирования формы
-    const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
-
-      setFormPosition({
-        top: rect.bottom + window.scrollY + 5,
-        left: rect.left + window.scrollX
-      })
-    } else {
-      // Запасной вариант
-      const cursorPos = cursorPosition()
-      if (cursorPos) {
-        setFormPosition({
-          top: cursorPos.top + window.scrollY + 5,
-          left: cursorPos.left + window.scrollX
-        })
-      } else {
-        // Используем центр редактора
-        const editorRect = editorRef()?.getBoundingClientRect()
-        if (editorRect) {
-          setFormPosition({
-            top: editorRect.top + window.scrollY + editorRect.height / 2,
-            left: editorRect.left + window.scrollX + editorRect.width / 2
-          })
-        }
-      }
+    // Используем утилиту calculateFormPosition (DRY)
+    const position = calculateFormPosition(editorRef(), cursorPosition())
+    if (position) {
+      setFormPosition(position)
     }
 
     // Устанавливаем начальное значение
@@ -172,12 +142,61 @@ export const createFormHandlers = (context: FormHandlersContext) => {
             position: { top: 0, left: 0 }
           })
         } else if (validateUrl(url)) {
-          const caption = currentSelection?.toString() || ''
-          applyFormatting('link', {
+          // Применяем форматирование ссылки
+          const selectionState = {
             range: currentRange,
-            text: `<a href="${url}">${caption}</a>`,
+            text: currentSelection?.toString() || url,
             isEmpty: !currentSelection || currentSelection.isCollapsed,
             position: { top: 0, left: 0 }
+          }
+
+          console.log('[handleInlineFormSubmit] Applying link formatting:', { url, selectionState })
+          applyFormatting('link', selectionState)
+
+          // Небольшая задержка для стабилизации DOM (DRY: timing)
+          afterDOMUpdate(() => {
+            // После applyFormatting выделение устанавливается на созданный элемент
+            // Находим ссылку через новое выделение
+            const newSelection = window.getSelection()
+            if (newSelection && newSelection.rangeCount > 0) {
+              const newRange = newSelection.getRangeAt(0)
+              const container = newRange.commonAncestorContainer
+
+              // Ищем ссылку: либо сам контейнер, либо его родитель, либо внутри контейнера
+              let linkElement: HTMLAnchorElement | null = null
+
+              if (container.nodeType === Node.ELEMENT_NODE) {
+                const el = container as HTMLElement
+                linkElement = el.tagName === 'A' ? (el as HTMLAnchorElement) : el.querySelector('a')
+              } else {
+                linkElement = container.parentElement?.closest('a') || null
+              }
+
+              if (linkElement) {
+                linkElement.setAttribute('href', url)
+                linkElement.setAttribute('target', '_blank')
+                linkElement.setAttribute('rel', 'noopener noreferrer')
+                console.log('[handleInlineFormSubmit] Link created with href:', url)
+              } else {
+                console.warn('[handleInlineFormSubmit] Could not find created link element')
+                // Fallback: ищем все ссылки в редакторе и обновляем последнюю с href="#"
+                const editor = editorRef()
+                if (editor) {
+                  const allLinks = editor.querySelectorAll('a[href="#"]')
+                  const lastLink = allLinks[allLinks.length - 1] as HTMLAnchorElement
+                  if (lastLink) {
+                    lastLink.setAttribute('href', url)
+                    lastLink.setAttribute('target', '_blank')
+                    lastLink.setAttribute('rel', 'noopener noreferrer')
+                    console.log('[handleInlineFormSubmit] Link found via fallback and updated')
+                  }
+                }
+              }
+            }
+
+            // Сохраняем изменения
+            handleChange()
+            editorRef()?.focus()
           })
         } else {
           console.warn('Invalid URL for link:', url)
@@ -417,8 +436,8 @@ export const createFormHandlers = (context: FormHandlersContext) => {
     })
   }
 
-  const handleUploadSuccess = (uploadedFile?: UploadedFile) => {
-    console.log('[handleUploadSuccess] Called with:', uploadedFile)
+  const handleUploadSuccess = async (uploadedFile?: UploadedFile) => {
+    console.log('[handleUploadSuccess] Called with:', uploadedFile, 'localFile:', !!uploadedFile?.localFile)
 
     if (!uploadedFile) {
       console.warn('[handleUploadSuccess] No uploadedFile provided')
@@ -435,28 +454,76 @@ export const createFormHandlers = (context: FormHandlersContext) => {
       console.log('[handleUploadSuccess] Updated existing image:', { src: imgElement.src, alt: imgElement.alt })
       setEditingImage(null)
       handleChange(props.fieldType ? String(props.fieldType) : 'content')
+      hideModal()
+      editorRef()?.focus()
     } else {
+      const editor = editorRef()
+      if (!editor) {
+        console.error('[handleUploadSuccess] No editor ref available')
+        return
+      }
+
+      console.log('[handleUploadSuccess] Inserting new image:', uploadedFile.url)
+
+      // Пытаемся восстановить выделение
       const selectionRestored = restoreSelection()
       console.log('[handleUploadSuccess] Selection restored:', selectionRestored)
 
-      if (selectionRestored) {
-        const imgHtml = `<img src="${uploadedFile.url}" alt="${uploadedFile.originalFilename || 'Uploaded image'}" />`
-        console.log('[handleUploadSuccess] Inserting image HTML:', imgHtml)
+      // Используем правильную функцию insertImage из media/insertion
+      const { insertImage } = await import('../media/insertion')
 
-        const inserted = replaceSelection(imgHtml, editorRef() || null)
-        console.log('[handleUploadSuccess] Image inserted:', inserted)
+      if (!selectionRestored) {
+        // Если выделение не восстановлено - фокусируем редактор
+        console.warn('[handleUploadSuccess] Selection not restored, focusing editor')
+        editor.focus()
+      }
+
+      // Если есть локальный файл - сначала показываем его для мгновенного превью
+      let blobUrl: string | null = null
+      if (uploadedFile.localFile) {
+        blobUrl = URL.createObjectURL(uploadedFile.localFile)
+        console.log('[handleUploadSuccess] Created blob URL for instant preview:', blobUrl)
+      }
+
+      // Вставляем изображение с blob URL (если есть) или сразу с CDN URL
+      const previewUrl = blobUrl || uploadedFile.url
+      const inserted = insertImage(previewUrl, editor, uploadedFile.originalFilename || 'Uploaded image')
+      console.log('[handleUploadSuccess] Image inserted:', inserted)
+
+      // Даем браузеру время обновить DOM, затем сохраняем выделение и вызываем handleChange (DRY: timing)
+      afterDOMUpdate(() => {
+        // Если использовали blob URL - заменяем на CDN URL
+        if (blobUrl) {
+          const imgElements = editor.querySelectorAll(`img[src="${blobUrl}"]`)
+          imgElements.forEach((img) => {
+            ;(img as HTMLImageElement).src = uploadedFile.url
+            console.log('[handleUploadSuccess] Replaced blob URL with CDN URL:', uploadedFile.url)
+          })
+          // Освобождаем blob URL
+          URL.revokeObjectURL(blobUrl)
+        }
+
+        // КРИТИЧНО: Сохраняем новое выделение после вставки изображения
+        // Это предотвращает восстановление старого выделения при последующих изменениях
+        saveSelection()
 
         handleChange(props.fieldType ? String(props.fieldType) : 'content')
-      } else {
-        console.error('[handleUploadSuccess] Failed to restore selection - image NOT inserted')
-      }
+
+        // Закрываем модальное окно и фокусируем редактор ПОСЛЕ сохранения
+        hideModal()
+        editorRef()?.focus()
+      })
     }
-    hideModal()
-    editorRef()?.focus()
   }
 
   const showImageUploadModal = () => {
+    console.log('[showImageUploadModal] Called, current editingImage:', editingImage())
     saveSelection()
+
+    // КРИТИЧНО: Очищаем editingImage при открытии модального окна
+    // Это гарантирует что новое изображение будет вставлено, а не заменит существующее
+    setEditingImage(null)
+    console.log('[showImageUploadModal] Cleared editingImage for new upload')
 
     // Используем новую систему колбэков через UI контекст
     showModal(MODALS.uploadImage, undefined, {

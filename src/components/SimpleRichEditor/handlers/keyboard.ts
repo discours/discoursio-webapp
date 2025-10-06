@@ -5,6 +5,8 @@
 
 import { Accessor } from 'solid-js'
 import { applyFormatting } from '../format/format'
+import { findBlockAncestor } from '../lib/selection'
+import { afterDOMUpdate } from '../lib/timing'
 import { CommandType, EditorFieldType } from '../lib/types'
 import { replaceSelection } from '../lib/utils'
 
@@ -34,9 +36,9 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
     const isMac = navigator.platform.includes('Mac')
     const cmdKey = isMac ? e.metaKey : e.ctrlKey
 
-    // Arrow keys - just track selection
+    // Arrow keys - just track selection (DRY: timing)
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-      setTimeout(trackSelectionAndCursor, 0)
+      afterDOMUpdate(trackSelectionAndCursor)
       return
     }
 
@@ -95,7 +97,7 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
       if (props.fieldType === 'body') {
         const selection = window.getSelection()
         if (!selection || !selection.rangeCount) {
-          setTimeout(handleChange, 0)
+          afterDOMUpdate(handleChange)
           return
         }
 
@@ -103,18 +105,12 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
         const container = range.startContainer
         const editorRoot = editorRef()
         if (!editorRoot) {
-          setTimeout(handleChange, 0)
+          afterDOMUpdate(handleChange)
           return
         }
 
-        // Проверяем - курсор внутри блочного элемента?
-        const blockElement = (
-          container.nodeType === Node.TEXT_NODE
-            ? container.parentElement
-            : container instanceof Element
-              ? container
-              : null
-        )?.closest('blockquote, h1, h2, h3, h4, h5, h6, ul, ol, div[data-type], div[data-align]')
+        // Проверяем - курсор внутри блочного элемента? (DRY: selection)
+        const blockElement = findBlockAncestor(container, editorRoot)
 
         if (blockElement && editorRoot.contains(blockElement)) {
           // Shift+Enter внутри блока - создаем новый параграф после блока
@@ -145,8 +141,8 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
         }
       }
 
-      // В остальных случаях - стандартное поведение
-      setTimeout(handleChange, 0)
+      // В остальных случаях - стандартное поведение (DRY: timing)
+      afterDOMUpdate(handleChange)
       return
     }
 
@@ -179,13 +175,7 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
         const editorRoot = editorRef()
         if (!editorRoot) return
 
-        const blockElement = (
-          container.nodeType === Node.TEXT_NODE
-            ? container.parentElement
-            : container instanceof Element
-              ? container
-              : null
-        )?.closest('blockquote, h1, h2, h3, ul, ol, div[data-type], div[data-align]')
+        const blockElement = findBlockAncestor(container, editorRoot)
 
         if (blockElement && editorRoot.contains(blockElement)) {
           const isEmptyBlock =
@@ -224,13 +214,13 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
             return
           }
 
-          // Enter в непустом блоке → стандартное поведение (добавление внутри блока)
-          setTimeout(handleChange, 0)
+          // Enter в непустом блоке → стандартное поведение (добавление внутри блока) (DRY: timing)
+          afterDOMUpdate(handleChange)
           return
         }
 
-        // Default Enter behavior
-        setTimeout(handleChange, 0)
+        // Default Enter behavior (DRY: timing)
+        afterDOMUpdate(handleChange)
         return
       }
     }
@@ -239,7 +229,7 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
     if (e.key === 'Backspace' || e.key === 'Delete') {
       const selection = window.getSelection()
       if (!selection || !selection.rangeCount || !editorRef() || !selection.isCollapsed) {
-        setTimeout(handleChange, 0)
+        afterDOMUpdate(handleChange)
         return
       }
 
@@ -249,13 +239,7 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
 
       // Check if cursor is at the start of a block element for Backspace
       if (e.key === 'Backspace' && range.startOffset === 0) {
-        const blockElement = (
-          container.nodeType === Node.TEXT_NODE
-            ? container.parentElement
-            : container instanceof Element
-              ? container
-              : null
-        )?.closest('blockquote, h1, h2, h3, ul, ol, div[data-type], div[data-align]')
+        const blockElement = findBlockAncestor(container, editor)
 
         if (blockElement && editor.contains(blockElement)) {
           let isAtVeryStart = false
@@ -311,7 +295,7 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
               // Если элементов больше одного - пропускаем, обработается стандартно
             }
 
-            // Преобразуем любой блок (включая squib с data-align) в параграф одним действием
+            // Преобразуем любой блок (включая incut с data-align) в параграф одним действием
             console.log('[Backspace] Converting block to paragraph')
             const currentSelection = window.getSelection()
             const currentRange = currentSelection?.rangeCount ? currentSelection.getRangeAt(0) : null
@@ -327,8 +311,8 @@ export const createKeyboardHandlers = (context: KeyboardHandlersContext) => {
         }
       }
 
-      // Let default Backspace/Delete handle other cases
-      setTimeout(handleChange, 0)
+      // Let default Backspace/Delete handle other cases (DRY: timing)
+      afterDOMUpdate(handleChange)
       return
     }
 

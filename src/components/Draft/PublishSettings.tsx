@@ -223,7 +223,10 @@ export const PublishSettings = () => {
 
   const handleBackClick = () => {
     const draft = currentDraft()
-    if (!draft?.draft_id && draft?.local_id) {
+    // Локальный черновик: local_id не начинается с "server-" и нет draft_id
+    const isLocalDraft = draft?.local_id && !draft.local_id.startsWith('server-') && !draft?.draft_id
+
+    if (isLocalDraft) {
       navigate(`/edit/${draft.local_id}/local`)
     } else if (draft?.id) {
       navigate(`/edit/${draft.id}`)

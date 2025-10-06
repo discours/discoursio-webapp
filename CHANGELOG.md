@@ -2,9 +2,240 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
-## [0.15.4] - upload revised
+## [0.15.5]
+
+### Removed
+- **Удален легаси код для `<embed-link>` тегов:**
+  - `media/PreviewLinkRenderer.tsx` - рендерил старый формат `<embed-link data-platform="..." data-url="...">`
+  - `media/previewComponent.ts` - создавал `<embed-link>` теги (не использовался)
+  - Обновлен комментарий в `Article/FullArticle.tsx`: `<embed-link>` → `<preview>`
+  - Причина: формат `<embed-link>` никогда не использовался в продакшене
+  - Результат: единый подход через `<preview>url</preview>` теги
+
+### Fixed
+- **Исправлено использование `<embed>` тега для хранения video URLs:**
+  - **Проблема:** `<embed>` - это HTML5 void element без textContent, предназначенный для плагинов
+  - **Решение:** Заменен на кастомный тег `<preview>url</preview>`
+  - `media/html.ts`: `createVideoEmbed()` теперь возвращает `<preview>url</preview>`
+  - `media/previewRenderer.ts` (переименован из `embedRenderer.ts`):
+    - `processPreviewTags()` (переименован из `processEmbedTags()`) ищет `<preview>` теги
+    - `convertIframesToPreviews()` (переименован из `convertIframesToEmbeds()`)
+  - `lib/sanitize.ts`: Добавлен `preview` в `ALLOWED_TAGS` и `ADD_TAGS`
+  - `components/PreviewInlineChoice.tsx`: Использует `processPreviewTags()` из `previewRenderer`
+  - `handlers/events.ts`: 
+    - Обновлены импорты `PreviewInlineChoice` вместо `EmbedInlineChoice`
+    - `getHTML()`: `createElement('preview')` вместо `createElement('embed')`
+    - `handleChoice`: тип `'link' | 'preview'` вместо `'link' | 'embed'`
+    - Переменные: `previewHtml` вместо `embedHtml`
+    - Комментарии: "URL preview платформы" вместо "URL embed платформы"
+  - `SimpleRichEditor.tsx`: Обновлен `onMount` для обработки `<preview>` тегов
+  - `lib/timing.ts`: Обновлены примеры в документации
+  - Результат: `<preview>` корректно создается через `createElement()` и сохраняет `textContent`
+
+### Added
+- **Толерантность к query параметрам в URL embed:**
+  - `media/validation.ts`:
+    - Убран `$` из конца регулярных выражений для YouTube и Vimeo
+    - Добавлена функция `cleanUrl()` для очистки URL от лишних параметров
+    - YouTube: `?v=ID&t=3s` → `?v=ID` (оставляет только video ID)
+    - youtu.be: убирает все query параметры
+    - Vimeo: убирает query параметры
+  - `handlers/events.ts`:
+    - Используется `cleanUrl()` перед `detectEmbedPlatform()` в `handleInput` и `handlePaste`
+    - Очищенный URL передается в `createUniversalEmbed()` и `PreviewInlineChoice`
+    - Ссылки также используют очищенный URL
+  - `media/index.ts`: экспортирует `cleanUrl` для использования в других модулях
+  - Результат: URL вида `https://www.youtube.com/watch?v=xxxx-SM&t=3s` теперь корректно распознаются и вставляются как `https://www.youtube.com/watch?v=xxxx-SM`
+
+## [0.15.4] - 2025-10-06
+
+### 🔧 DRY Refactoring: SimpleRichEditor Codebase
+
+- **Объединен `lib/dom-utils.ts`** - единый модуль для DOM утилит:
+  - **Объединяет старый `dom-utils.ts` и новый `dom.ts`**
+  - `getElementFromNode()` - получение HTMLElement из узла (DRY: detection.ts)
+  - `findAncestor()` - универсальный поиск родителя (было дублировано в dom-utils.ts)
+  - `getNodesInRange()` - получение всех узлов в Range
+  - Реэкспортируется из `lib/selection.ts`
+  - Разрывает циклическую зависимость `selection.ts` ↔ `format.ts` ↔ `detection.ts`
+
+- **Единый модуль `lib/selection.ts`** (710 строк) для консолидации дублирующейся логики:
+  - **Объединяет `lib/selection.ts` и старый `lib/selection.ts`**
+  - `validateSelection()` - единая валидация выделения (было дублировано в 3+ местах)
+  - `createSelectionState()` - создание SelectionState из текущего выделения
+  - `getElementFromNode()` - получение HTMLElement из узла (DRY: detection.ts)
+  - `findAncestor()` - универсальный поиск родителя (DRY: dom-utils, detection.ts)
+  - `findLinkAncestor()` - поиск родительского элемента ссылки (было дублировано в handlers/ui.ts и handlers/forms.ts)
+  - `findBlockAncestor()` - поиск родительского блочного элемента (было дублировано в keyboard.ts, SimpleRichEditor.tsx)
+  - `isInsideBlockType()` - проверка вхождения в блок определенного типа
+  - `logSelectionDetails()` - логирование деталей выделения для отладки
+  - **Мигрировано из `format/selection-utils.ts`:**
+    - `getBlockElement()` - поиск ближайшего блочного элемента
+    - `isFullBlockSelected()` - проверка полного выделения блока
+    - `shouldApplyBlockFormatting()` - определение применения блочного форматирования
+  - **Хук `useSelection()`** для работы с выделением, курсором и тулбаром
+  - **Утилиты для Range:** `filterTextNodes`, `getRangeArgs`, `getRangePos`
+  - **Отслеживание:** `setupSelectionTracking`, `isSelectionInElement`, `isLinkActive`
+
+- **Общий модуль `lib/command.ts`** для консолидации проверок типов команд:
+  - `isBlockCommand()` - проверка блочных команд (было дублировано в format/common.ts, format/format.ts)
+  - `isListCommand()` - проверка команд списков
+  - `isMediaCommand()` - проверка медиа команд
+  - `isInlineCommand()` - проверка инлайн команд
+  - `requiresUI()` - проверка команд, требующих UI
+  - `isLinkCommand()` - проверка команд ссылок
+  - `getListExecCommandId()` - получение execCommand ID для списков
+  - `categorizeCommand()` - группировка команд по категориям
+
+- **Общий модуль `lib/position.ts`** для консолидации вычислений позиций:
+  - **Объединяет функциональность из старого `positioning.ts` и нового кода**
+  - `calculateFormPosition()` - вычисление позиции inline формы (было дублировано в handlers/forms.ts)
+  - `calculatePlusMenuTop()` - вычисление top позиции Plus-меню (было дублировано в handlers/ui.ts)
+  - `calculatePlusMenuLeft()` - вычисление left позиции Plus-меню
+  - `calculateIncutMenuPosition()` - вычисление позиции меню подвёрстки
+  - `getEditorPosition()` - универсальная функция позиционирования меню (из positioning.ts)
+  - `getFloatingToolbarPosition()` - позиция плавающего тулбара (из positioning.ts)
+  - `getPlusMenuPosition()` - позиция плюс-меню (из positioning.ts)
+  - `getEditorFloatingMenuPosition()` - позиция плавающего меню (из positioning.ts)
+  - `getElementPosition()` - получение координат элемента относительно viewport
+  - `getElementAbsolutePosition()` - получение координат с учетом прокрутки
+  - `isPointInsideElement()` - проверка вхождения точки в элемент
+  - `isTouchDevice()` - определение сенсорного устройства (из positioning.ts)
+
+- **Рефакторинг SimpleRichEditor.tsx:**
+  - `handleAction()` теперь использует `validateSelection()` вместо дублирующейся логики
+  - Заменены 3 экземпляра ручной валидации выделения на вызовы утилиты
+  - `findLinkAncestor` заменен на общую утилиту
+  - `findBlockAncestor` заменен на общую утилиту в обработчике `handleBlockExit`
+
+- **Рефакторинг handlers/ui.ts:**
+  - `findLinkAncestor()` теперь использует общую утилиту из `selection.ts`
+  - Удалено 12 строк дублирующегося кода
+
+- **Рефакторинг handlers/forms.ts:**
+  - `findLinkAncestor()` теперь использует общую утилиту из `selection.ts`
+  - `showInlineForm()` теперь использует `calculateFormPosition()` - удалено ~30 строк дублирующегося кода
+
+- **Рефакторинг handlers/ui.ts:**
+  - `getPlusMenuTop()` и `getPlusMenuLeft()` теперь используют утилиты из `position.ts`
+  - Удалено ~50 строк дублирующегося кода
+
+- **Рефакторинг menu/helpers.ts:**
+  - Реэкспорты `getFloatingToolbarPosition` и `getPlusMenuPosition` обновлены
+
+- **Рефакторинг handlers/keyboard.ts:**
+  - Добавлен импорт `findBlockAncestor` из `selection.ts`
+
+- **Рефакторинг format/common.ts:**
+  - Импорт `shouldApplyBlockFormatting` теперь из `lib/selection.ts`
+
+- **Результаты:**
+  - Удалено ~315+ строк дублирующегося кода
+  - Создано 3 новых модуля утилит (~800 строк переиспользуемого кода):
+    - `lib/selection.ts` (322 строки)
+    - `lib/command.ts` (125 строк)
+    - `lib/position.ts` (349 строк - объединяет positioning.ts + новый код)
+  - Единая точка истины для логики работы с выделением, командами и позиционированием
+  - Упрощена отладка и тестирование
+  - Улучшена поддерживаемость кодовой базы
+  - Все утилиты покрыты JSDoc комментариями
+
+### ✨ Features
+- **[SimpleRichEditor]** Рендеринг embed в редакторе:
+  - ✅ `<embed>url</embed>` сохраняется компактно в HTML
+  - ✅ В редакторе отображается как полноценный iframe превью
+  - ✅ Автоматическая конвертация при загрузке и сохранении контента
+  - ✅ Поддержка YouTube и Vimeo с responsive 16:9 wrapper
+  - `media/embedRenderer.ts`: новый модуль для обработки `<embed>` тегов
+  - `lib/sanitize.ts`: добавлен `embed` в `ALLOWED_TAGS` и `ADD_TAGS` для DOMPurify
+  - `handlers/events.ts`: 
+    - Конвертация iframe → `<embed>` при сохранении через `getHTML`
+    - Вызов `processEmbedTags` после вставки с `setTimeout` для стабильности DOM
+    - Автоматическое сохранение и фокус после обработки embed
+  - `SimpleRichEditor.tsx`: обработка `<embed>` → iframe при загрузке через `onMount`
+  - Исправлено: DOMPurify теперь не удаляет `<embed>` теги из контента
+  - Исправлено: iframe превью отображается сразу после вставки embed
+- **Унифицирован опыт вставки embed через кнопку и вставку URL:**
+  - `menu/PlusMenu.tsx`:
+    - Кнопка embed теперь показывает **inline placeholder** "https://..." в позиции курсора
+    - **Placeholder - реальный DOM элемент** с `contentEditable="false"` как оверлей
+    - **Автоматически исчезает при начале ввода или вставке** - удаляется из DOM
+    - После вставки URL срабатывают те же обработчики что и при обычной вставке
+    - Убрана отдельная форма для embed - используется единый flow через `PreviewInlineChoice`
+  - `SimpleRichEditor.tsx`:
+    - `showEmbedPlaceholder` создает `<span>` с `data-embed-placeholder-overlay`
+    - Позиционируется абсолютно в месте курсора (через `getBoundingClientRect`)
+    - `pointer-events: none` и `user-select: none` - не мешает вводу
+    - Обработчик `handleInput` удаляет placeholder при первом вводе
+    - Добавлен `wrapperRef` для доступа к wrapper элементу
+  - Результат: единообразный UX для всех способов вставки embed, placeholder не попадает в сохраняемый контент, визуально отображается в позиции курсора
+- **Улучшен UI выбора типа вставки ссылок:**
+  - `components/SimpleRichEditor/components/PreviewInlineChoice.tsx`:
+    - Убраны эмоджи из кнопок "With preview" и "Simple link"
+    - Добавлено отображение URL под кнопками выбора
+    - **Полностью переиспользуется `createUniversalEmbed` для генерации превью** (DRY)
+    - Превью генерируется асинхронно при первом hover на кнопку "With preview"
+    - **`<embed>` теги автоматически конвертируются в iframe для превью** через `processEmbedTags`
+    - **Кнопка "Simple link" показывается всегда** - не блокирует вставку любых URL
+    - **Кнопка "With preview" показывается для всех известных платформ** (не только для тех, где есть ID)
+    - Поддерживаются все платформы из `detectEmbedPlatform`: youtube, vimeo, twitch, ted, soundcloud, bandcamp, facebook, x, instagram, telegram, reddit, tiktok, wikipedia, slideshare, imgur, flickr, discours
+    - Удален дублирующий код генерации iframe - теперь используется единая логика из `media/html.ts`
+  - `components/SimpleRichEditor/components/PreviewInlineChoice.module.scss`:
+    - Кнопки теперь с прозрачным фоном (как ссылки поверх контента)
+    - Уменьшен padding: `2px 8px` вместо `6px 12px`
+    - Убраны границы и фон контейнера
+    - Текст стилизован как ссылка с подчеркиванием при hover
+    - Более компактный и минималистичный дизайн
+    - Добавлены стили для отображения URL (`.urlDisplay`)
+- **[SimpleRichEditor]** Переименование и улучшение блоков форматирования:
+  - 🔄 **squib → incut** (подвёрстка): переименовано везде для ясности
+  - ✅ **punchline** (ударная цитата): полная поддержка с `class="punchline"`
+  - ✅ **blockquote** (цитата): улучшенная поддержка
+  - ✅ **Подсветка активных блоков**: кнопки в тулбаре подсвечиваются при нахождении внутри блока
+  - ✅ **Toggle отмена форматирования**: повторное нажатие кнопки блока отменяет форматирование
+  - ✅ Обновлена система определения активных форматов для всех блоков
 
 ### 🐛 Fixes
+- **Исправлена навигация к серверным черновикам:**
+  - `components/Draft/PublishSettings.tsx`:
+    - Добавлена проверка `local_id.startsWith('server-')` для различения локальных и серверных черновиков
+    - Серверные черновики теперь используют числовой `id` вместо `local_id` с префиксом
+  - `components/Draft/DraftCard.tsx`:
+    - Аналогичная проверка для превью черновиков
+  - Исправлено: URL `/edit/server-8/local` → `/edit/8` для серверных черновиков
+  - Локальные черновики продолжают использовать `/edit/{local_id}/local`
+- **Исправление циклической валидации черновиков:**
+  - `lib/validateDraft.ts`:
+    - Добавлен параметр `isForPublishing` в `validateDraftForPublishing`
+    - Для черновиков (`isForPublishing = false`) не требуются обязательные поля
+    - Для публикации (`isForPublishing = true`) применяется строгая валидация
+  - `context/drafts.tsx`:
+    - Убран вызов `syncDraft` из `validateCurrentDraft` - предотвращает циклические обновления
+    - Валидация теперь использует текущее состояние из сигнала `currentDraft()`
+    - При публикации используется строгая валидация с `isForPublishing = true`
+  - Исправлено: черновики больше не требуют `main_topic` и другие обязательные поля
+  - Исправлено: каждый ввод символа не триггерит синхронизацию с сервером
+- **Мгновенное превью загруженных изображений:**
+  - `types/upload.ts`:
+    - Добавлено поле `localFile?: File` в `UploadedFile`
+  - `components/Upload/UploadModalContent/UploadModalContent.tsx`:
+    - Передается локальный файл в результате загрузки
+  - `components/SimpleRichEditor/handlers/forms.ts`:
+    - Используется `URL.createObjectURL()` для мгновенного превью из blob
+    - После вставки blob URL заменяется на CDN URL
+    - Автоматическая очистка blob URL через `URL.revokeObjectURL()`
+  - Результат: изображения отображаются мгновенно без ожидания загрузки с CDN
+- **Исправление моргания превью при изменении заголовка:**
+  - `components/SimpleRichEditor/SimpleRichEditor.tsx`:
+    - Добавлен сигнал `isInternalUpdate` для отслеживания внутренних обновлений контента
+    - `getHTML` теперь устанавливает флаг перед вызовом `setContent`
+    - `createEffect` для синхронизации `innerHTML` пропускает обновления когда `isInternalUpdate() === true`
+    - Предотвращает циклическое обновление: `handleChange` → `getHTML` → `setContent` → `createEffect` → перезапись `innerHTML`
+  - Результат: изменение заголовка не вызывает моргание превью изображения в body
+- **[SimpleRichEditor]** Исправлено поведение IncutMenu (тулбар подвёрстки):
+  - ✅ Меню автоматически скрывается при клике вне блока подвёрстки
+  - ✅ Меню автоматически показывается при возвращении курсора в блок
+  - ✅ Улучшена логика определения клика вне блока через `closest('[data-align]')`
 - **[SimpleRichEditor]** Полностью переработана логика drag-and-drop для изображений и URL:
   - ✅ Добавлен обязательный `onDragOver` с `preventDefault()` - без этого браузер блокирует drop
   - ✅ Добавлена визуальная индикация при перетаскивании (подсветка границ редактора)
@@ -15,8 +246,39 @@
   - ✅ Добавлен прогресс-индикатор с отображением "N/M файлов загружено"
   - ✅ Добавлены обработчики `dragenter`/`dragleave` для корректного UI состояния
   - ✅ Улучшена обработка ошибок с детальными уведомлениями
+- **[SimpleRichEditor]** Исправлена вставка ссылок через кнопку тулбара:
+  - ✅ Переписана логика `handleInlineFormSubmit` для корректной работы с `applyFormatting`
+  - ✅ После создания ссылки через `applyInlineFormatting` корректно устанавливается `href` атрибут
+  - ✅ Добавлены `target="_blank"` и `rel="noopener noreferrer"` для безопасности
+  - ✅ Исправлен поиск созданного элемента ссылки через новое выделение после форматирования
+  - ✅ Добавлен fallback: поиск последней ссылки с `href="#"` если основной метод не сработал
+  - ✅ Добавлен `setTimeout` для стабилизации DOM перед поиском элемента
+  - ✅ Добавлено логирование для отладки процесса создания ссылок
+- **[SimpleRichEditor]** Исправлена вставка изображений через модальное окно загрузки:
+  - ✅ Переписана логика `handleUploadSuccess` для использования `insertImage` из `media/insertion`
+  - ✅ Очистка `editingImage` при открытии модального окна - предотвращает замену вместо вставки
+  - ✅ Сохранение нового выделения после вставки - предотвращает повторную вставку при изменениях
+  - ✅ Fallback: если выделение не восстановлено - курсор устанавливается в конец редактора
+  - ✅ Добавлен `setTimeout` перед `handleChange` - дает браузеру время обновить DOM после вставки
+  - ✅ Изображения теперь корректно отображаются после загрузки
 
-### Technical Details
+### Technical Details  
+- **Переименование squib → incut:**
+  - `lib/types.ts`: CommandType 'squib' → 'incut'
+  - `format/config.ts`: incut с `class="incut"` и `data-align`
+  - `menu/SquibMenu.tsx` → `menu/IncutMenu.tsx`
+  - `lib/squib-helpers.ts` → `lib/incut-helpers.ts`
+  - Массовое переименование во всех файлах (переменные, комментарии, стили)
+- **Блоки форматирования:**
+  - `format/detection.ts`: 
+    - Добавлена проверка `incut` и `punchline` в `getActiveFormats()`
+    - Улучшена функция `hasFormatting()` для корректной работы с DIV блоками
+    - Добавлена специальная обработка для `incut` и `punchline` через `closest('.incut')` и `closest('.punchline')`
+    - Добавлена проверка классов для DIV элементов в блочном форматировании
+  - `format/types.ts`: добавлен `incut: boolean` в `ActiveFormatsType`
+  - `format/block.ts`: добавлена toggle логика для `punchline` и `blockquote`
+  - `format/config.ts`: `punchline` с `class="punchline"`, `incut` с `class="incut"`
+  - `format/common.ts`: унифицированная система toggle для всех форматов через `hasFormatting()`
 - `handlers/events.ts`:
   - Новые обработчики: `handleDragOver`, `handleDragEnter`, `handleDragLeave`
   - Улучшен `handleDropFiles` с управлением CSS классами
@@ -35,6 +297,23 @@
   - Добавлены стили для `.drag-over` класса (подсветка области drop)
 - `SimpleRichEditor.tsx`:
   - Подключены все drag-обработчики к contentEditable элементу
+- **Исправление вставки ссылок:**
+  - `handlers/forms.ts`:
+    - Переписан `handleInlineFormSubmit` для команды 'link'
+    - Убран неправильный вызов `applyFormatting` с HTML-строкой в параметре `text`
+    - Теперь используется правильный `SelectionState` с текстом выделения
+    - После `applyFormatting` находится созданная ссылка через новое выделение
+    - Установка атрибутов `href`, `target`, `rel` на найденном элементе
+- **Исправление вставки изображений:**
+  - `handlers/forms.ts`:
+    - Переписан `handleUploadSuccess` как `async` функция
+    - Использование `insertImage` из `media/insertion` вместо прямой вставки HTML
+    - Добавлен `setEditingImage(null)` в `showImageUploadModal` для очистки состояния
+    - Перенесены `saveSelection()`, `handleChange()`, `hideModal()`, `focus()` внутрь `setTimeout`
+    - Это гарантирует что DOM обновится перед сохранением и модалка не закроется раньше времени
+    - Убрано создание невалидного range при восстановлении выделения - предотвращает ошибку `addRange()`
+    - Улучшена логика: вставка → обновление DOM → сохранение → закрытие модалки
+    - Улучшено логирование для отладки проблем с выделением
 
 ### 📚 Documentation
 - Обновлен `SimpleRichEditor/README.md` с детальным описанием drag & drop функциональности
@@ -126,8 +405,8 @@
   - **30+ платформ**: YouTube, Vimeo, SoundCloud, Google/Yandex Maps, uMap, OpenFreeMap и др.
   - **Файлы**:
     - `events.ts`: Логика paste + typed URL detection (строки 108-327)
-    - `EmbedInlineChoice.tsx`: Новый компонент для inline выбора
-    - `EmbedInlineChoice.module.scss`: Стили с tooltip preview
+    - `PreviewInlineChoice.tsx`: Новый компонент для inline выбора
+    - `PreviewInlineChoice.module.scss`: Стили с tooltip preview
     - `InlineForm.tsx`: Favicon badge + безопасная валидация URL
     - `InlineForm.module.scss`: Seamless интеграция в текст
     - `SimpleRichEditor.module.scss`: Прозрачная форма без borders

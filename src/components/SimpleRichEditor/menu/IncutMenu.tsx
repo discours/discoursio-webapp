@@ -2,9 +2,9 @@ import { clsx } from 'clsx'
 import { createSignal, Show } from 'solid-js'
 import { CommandType, Position } from '../lib/types'
 
-import styles from './SquibMenu.module.scss'
+import styles from './IncutMenu.module.scss'
 
-interface SquibMenuProps {
+interface IncutMenuProps {
   /** Видимость меню */
   isVisible: boolean
   /** Обработчик команд форматирования */
@@ -20,16 +20,16 @@ interface SquibMenuProps {
   /** Набор команд для меню форматирования врезки */
   commands: CommandType[]
   /** Текущий элемент подвёрстки */
-  squibElement?: HTMLElement | null
+  incutElement?: HTMLElement | null
 }
 
 /**
- * Меню форматирования подвёрстки (squib)
+ * Меню форматирования подвёрстки (incut)
  * Подвёрстка — это выделенный блок текста с особым оформлением (цвет фона, выравнивание)
  *
  * @example
  * ```tsx
- * <SquibMenu
+ * <IncutMenu
  *   isVisible={showMenu()}
  *   onAction={handleFormat}
  *   onClose={() => setShowMenu(false)}
@@ -39,7 +39,7 @@ interface SquibMenuProps {
  * />
  * ```
  */
-export const SquibMenu = (props: SquibMenuProps) => {
+export const IncutMenu = (props: IncutMenuProps) => {
   // State для выпадающего меню цветов
   const [showColorPicker, setShowColorPicker] = createSignal(false)
 
@@ -48,15 +48,15 @@ export const SquibMenu = (props: SquibMenuProps) => {
     if (props.onClose) props.onClose()
   }
 
-  // Получаем текущее выравнивание из squibElement (реактивно)
+  // Получаем текущее выравнивание из incutElement (реактивно)
   const getCurrentAlign = () => {
-    const element = props.squibElement
+    const element = props.incutElement
     return element?.getAttribute('data-align') || 'left'
   }
 
-  // Получаем текущий цвет фона из squibElement (реактивно)
+  // Получаем текущий цвет фона из incutElement (реактивно)
   const getCurrentBg = () => {
-    const element = props.squibElement
+    const element = props.incutElement
     return element?.getAttribute('data-bg') || 'none'
   }
 
@@ -74,8 +74,8 @@ export const SquibMenu = (props: SquibMenuProps) => {
   const handleBgChange = (bgValue: string) => {
     if (bgValue === 'none') {
       // Убираем атрибут data-bg для отображения рамки
-      if (props.squibElement) {
-        props.squibElement.removeAttribute('data-bg')
+      if (props.incutElement) {
+        props.incutElement.removeAttribute('data-bg')
         // Вызываем onChange через фиктивную команду для сохранения
         props.onAction('align-left' as CommandType)
       }
@@ -100,15 +100,15 @@ export const SquibMenu = (props: SquibMenuProps) => {
 
   return (
     <div
-      class={clsx(styles.squibMenu, {
+      class={clsx(styles.incutMenu, {
         [styles.visible]: props.isVisible
       })}
       style={menuStyle}
       data-editor-id={props.editorId}
     >
-      <div class={styles.squibMenuContainer}>
+      <div class={styles.incutMenuContainer}>
         {/* Первая строка: выравнивание + цвет + закрыть */}
-        <div class={styles.squibMenuHeader}>
+        <div class={styles.incutMenuHeader}>
           <div class={styles.alignButtons}>
             <button
               onClick={() => props.onAction('align-left')}

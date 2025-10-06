@@ -166,7 +166,10 @@ export const DraftCard = (props: Props) => {
     }
 
     // Переходим на страницу превью черновика
-    if (!props.draft.draft_id && props.draft.local_id) {
+    // Локальный черновик: local_id не начинается с "server-" и нет draft_id
+    const isLocalDraft = props.draft.local_id && !props.draft.local_id.startsWith('server-') && !props.draft.draft_id
+
+    if (isLocalDraft) {
       navigate(`/edit/${props.draft.local_id}/preview`)
     } else if (props.draft.id) {
       navigate(`/edit/${props.draft.id}/preview`)

@@ -17,7 +17,6 @@ import { AuthModal } from '../AuthModal'
 import { Feedback } from '../Discours/Feedback'
 import stylesFeedSwitcher from '../Feed/FeedSwitcher/FeedSwitcher.module.scss'
 import { SearchModal } from '../SearchModal/SearchModal'
-import { EmbedChoiceModal } from '../SimpleRichEditor/modals/EmbedChoiceModal'
 import styles from './Header.module.scss'
 import { HeaderControls } from './HeaderControls'
 import { TopicsNav } from './TopicsNav'
@@ -168,10 +167,7 @@ export const Header = (props: Props) => {
         <Feedback />
       </Modal>
 
-      {/* EmbedChoiceModal не использует Modal-обертку, рендерится напрямую */}
-      <Show when={modal() === 'embedChoice'}>
-        <EmbedChoiceModal />
-      </Show>
+      {/* EmbedChoiceModal удален - legacy код, не использовался */}
 
       <div class={clsx(styles.mainHeaderInner)}>
         <div class="wide-container">

@@ -40,7 +40,11 @@ export const UploadModalContent = (props: Props) => {
       })
 
       const url = await uploadImage(file.file, (progress) => setUploadProgress(progress))
-      const result: UploadedFile = { url, originalFilename: file.name }
+      const result: UploadedFile = {
+        url,
+        originalFilename: file.name,
+        localFile: file.file // Передаем локальный файл для мгновенного превью
+      }
 
       console.log('[UploadModalContent] Upload successful:', result)
       props.onClose(result)

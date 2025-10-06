@@ -32,7 +32,15 @@
 - [Счетчик символов](./lib/counter.ts) с лимитами
 
 ### Расширенные возможности
-- **Редактор врезки (squib)** с собственным меню стилей `['align-left', 'align-center', 'align-right', 'bg-gray', 'bg-white', 'bg-black', 'bg-yellow', 'bg-red', 'bg-green']`
+- **Редактор подвёрстки (incut)** с собственным меню стилей `['align-left', 'align-center', 'align-right', 'bg-gray', 'bg-white', 'bg-black', 'bg-yellow', 'bg-red', 'bg-green']`
+  - Создаёт `<div class="incut" data-align="left">` с настраиваемым выравниванием и фоном
+  - Toggle отмена: повторное нажатие разворачивает подвёрстку обратно в параграф
+- **Ударная цитата (punchline)** - акцентированный блок текста
+  - Создаёт `<div class="punchline">` для выделения важных мыслей
+  - Toggle отмена: повторное нажатие возвращает в обычный параграф
+- **Цитата (blockquote)** - стандартное цитирование
+  - Создаёт `<blockquote>` для оформления цитат
+  - Toggle отмена: повторное нажатие возвращает в обычный параграф
 - **Дополнительное [меню](./menu/PlusMenu.tsx) "+"** для медиа-контента `['image', 'video', 'audio', 'hr']` с умным позиционированием по строкам
 - **Обработка вставки** из буфера обмена для [медиа-контента и ссылок](./lib/embed.ts)
 - **Drag & Drop для изображений и URL:**
@@ -132,7 +140,7 @@ interface SimpleRichEditorProps {
   plus?: boolean;
   
   // Включение режима врезки с дополнительными стилями оформления
-  squib?: boolean;
+  incut?: boolean;
   
   // Режим только для чтения
   readOnly?: boolean;
@@ -213,7 +221,7 @@ type CommandType =
   
   // Специальные элементы
   | 'tooltip'    // Подсказка (используйте кастомный тег <tooltip> вручную)
-  | 'squib'      // Врезка
+  | 'incut'      // Врезка
   
   // Выравнивание текста
   | 'align-left' | 'align-center' | 'align-right'
@@ -349,7 +357,7 @@ interface CollaborationEvents {
 - `.hasContent` - Есть контент
 - `.readOnly` - Режим чтения
 - `.bubble` - Всплывающее меню
-- `.squib` - Режим редактирования врезки
+- `.incut` - Режим редактирования врезки
 
 ## Архитектура
 

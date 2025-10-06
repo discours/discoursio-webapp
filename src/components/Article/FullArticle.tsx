@@ -119,7 +119,7 @@ export const FullArticle = (props: Props) => {
 
   const media = createMemo<MediaItem[]>(() => (props.article.media || []) as MediaItem[])
 
-  // Обработка кастомных тегов (<tooltip>, <embed-link>) после рендеринга
+  // Обработка кастомных тегов (<tooltip>, <preview>) после рендеринга
   createEffect(
     on(
       [shoutBodyRef, body],

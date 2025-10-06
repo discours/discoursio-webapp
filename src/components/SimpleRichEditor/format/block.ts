@@ -59,9 +59,9 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
     return
   }
 
-  // Специальная обработка для squib: должен иметь data-align
-  if (command === 'squib' && config.tag === 'div') {
-    console.log('[toggleBlockFormat] Processing squib command')
+  // Специальная обработка для incut: должен иметь data-align
+  if (command === 'incut' && config.tag === 'div') {
+    console.log('[toggleBlockFormat] Processing incut command')
   }
 
   const targetTag = config.tag.toLowerCase()
@@ -97,51 +97,72 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
   // Логика взаимоисключения для блочных элементов
   let newTag = targetTag
 
-  // Специальная логика для squib - оборачивает/разворачивает блоки
-  if (command === 'squib') {
-    // Проверяем: находимся ли мы уже внутри squib?
-    const parentSquib = blockElement.closest('[data-align]') as HTMLElement | null
+  // Специальная логика для punchline - toggle (отмена при повторном нажатии)
+  if (command === 'punchline') {
+    const hasPunchline = blockElement.classList?.contains('punchline')
+    if (hasPunchline) {
+      // Отменяем punchline - заменяем на обычный параграф
+      console.log('[toggleBlockFormat] Removing punchline formatting')
+      newTag = defaultTag
+    } else {
+      newTag = 'div' // punchline это div с классом
+    }
+  }
+  // Специальная логика для blockquote - toggle (отмена при повторном нажатии)
+  else if (command === 'blockquote') {
+    if (currentTag === 'blockquote') {
+      // Отменяем blockquote - заменяем на обычный параграф
+      console.log('[toggleBlockFormat] Removing blockquote formatting')
+      newTag = defaultTag
+    } else {
+      newTag = 'blockquote'
+    }
+  }
+  // Специальная логика для incut - оборачивает/разворачивает блоки
+  else if (command === 'incut') {
+    // Проверяем: находимся ли мы уже внутри incut?
+    const parentIncut = blockElement.closest('[data-align]') as HTMLElement | null
 
-    if (parentSquib) {
-      // Если родитель - squib, разворачиваем: убираем обертку squib
-      console.log('[toggleBlockFormat] Unwrapping squib')
+    if (parentIncut) {
+      // Если родитель - incut, разворачиваем: убираем обертку incut
+      console.log('[toggleBlockFormat] Unwrapping incut')
 
-      // Получаем все дочерние элементы squib
-      const children = Array.from(parentSquib.childNodes)
-      const parent = parentSquib.parentElement
+      // Получаем все дочерние элементы incut
+      const children = Array.from(parentIncut.childNodes)
+      const parent = parentIncut.parentElement
 
       if (parent) {
-        // Вставляем все дочерние элементы перед squib
+        // Вставляем все дочерние элементы перед incut
         children.forEach((child) => {
-          parent.insertBefore(child, parentSquib)
+          parent.insertBefore(child, parentIncut)
         })
 
-        // Удаляем пустой squib
-        parentSquib.remove()
+        // Удаляем пустой incut
+        parentIncut.remove()
 
-        console.log('[toggleBlockFormat] Squib unwrapped successfully')
+        console.log('[toggleBlockFormat] Incut unwrapped successfully')
       }
 
       return // Завершаем, не продолжаем дальше
     } else {
-      // Если нет родителя-squib, оборачиваем текущий блок в squib
-      console.log('[toggleBlockFormat] Wrapping block in squib')
+      // Если нет родителя-incut, оборачиваем текущий блок в incut
+      console.log('[toggleBlockFormat] Wrapping block in incut')
 
-      // Проверяем: не содержит ли текущий блок вложенный squib (запрещено)
-      const hasNestedSquib = blockElement.querySelector('[data-align]')
-      if (hasNestedSquib) {
-        console.warn('[toggleBlockFormat] Cannot wrap block containing squib - nested squibs not allowed')
+      // Проверяем: не содержит ли текущий блок вложенный incut (запрещено)
+      const hasNestedIncut = blockElement.querySelector('[data-align]')
+      if (hasNestedIncut) {
+        console.warn('[toggleBlockFormat] Cannot wrap block containing incut - nested incuts not allowed')
         return
       }
 
-      const squibWrapper = document.createElement('div')
-      squibWrapper.setAttribute('data-align', config.attributes?.['data-align'] || 'left')
+      const incutWrapper = document.createElement('div')
+      incutWrapper.setAttribute('data-align', config.attributes?.['data-align'] || 'left')
 
       // Вставляем обертку перед текущим блоком
-      blockElement.parentElement?.insertBefore(squibWrapper, blockElement)
+      blockElement.parentElement?.insertBefore(incutWrapper, blockElement)
 
       // Перемещаем блок внутрь обертки
-      squibWrapper.appendChild(blockElement)
+      incutWrapper.appendChild(blockElement)
 
       // Восстанавливаем курсор в блоке
       try {
@@ -161,7 +182,7 @@ export const toggleBlockFormat = (command: CommandType, state: SelectionState, e
         console.error('[toggleBlockFormat] Error restoring cursor:', e)
       }
 
-      console.log('[toggleBlockFormat] Block wrapped in squib successfully')
+      console.log('[toggleBlockFormat] Block wrapped in incut successfully')
       return // Завершаем, не продолжаем дальше
     }
   }

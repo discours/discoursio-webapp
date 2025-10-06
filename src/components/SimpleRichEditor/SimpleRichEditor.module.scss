@@ -157,6 +157,7 @@
     position: relative; // Убедимся, что position задан для работы z-index
   }
 
+
   .editor {
     position: relative;
     width: 100%;
@@ -726,7 +727,7 @@
 }
 
 // Стиль для активной (выбранной) врезки
-.activeSquib {
+.activeIncut {
   border: 2px solid #4285f4 !important; // Синий бордер для активной врезки
 }
 
@@ -761,7 +762,7 @@
 }
 
 // Стиль для режима редактирования врезки
-.editingSquib {
+.editingIncut {
   box-shadow: 0 0 5px rgb(66 133 244 / 30%);
   position: relative;
 

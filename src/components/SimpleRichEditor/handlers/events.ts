@@ -4,9 +4,12 @@
  */
 
 import { Accessor } from 'solid-js'
+import { render } from 'solid-js/web'
 import { debounce } from 'throttle-debounce'
+import { PreviewInlineChoice } from '../components/PreviewInlineChoice'
 import { isEmptyContent } from '../lib/empty'
 import { cleanupJsonContent } from '../lib/storage'
+import { afterDOMUpdateAsync } from '../lib/timing'
 import { EditorData, EditorFieldType } from '../lib/types'
 import { replaceSelection } from '../lib/utils'
 import { handleContentPaste } from '../media'
@@ -59,7 +62,21 @@ export const createEventHandlers = (context: EventHandlersContext) => {
    * Получает HTML содержимое из редактора
    */
   const getHTML = (editor: HTMLElement): string => {
-    const rawContent = editor.innerHTML || ''
+    // Клонируем контент для обработки
+    const clone = editor.cloneNode(true) as HTMLElement
+
+    // Конвертируем iframe обратно в <preview> для компактного хранения
+    const wrappers = clone.querySelectorAll('.video-embed-wrapper[data-embed-url]')
+    for (const wrapper of Array.from(wrappers)) {
+      const url = wrapper.getAttribute('data-embed-url')
+      if (url) {
+        const previewTag = document.createElement('preview')
+        previewTag.textContent = url
+        wrapper.replaceWith(previewTag)
+      }
+    }
+
+    const rawContent = clone.innerHTML || ''
     const contentHtml = cleanupJsonContent(rawContent)
     setContent(contentHtml)
     return contentHtml
@@ -129,8 +146,10 @@ export const createEventHandlers = (context: EventHandlersContext) => {
         // Проверяем - это URL?
         const urlRegex = /^https?:\/\/[^\s]+$/
         if (urlRegex.test(lastWord)) {
-          const { detectEmbedPlatform } = await import('../media')
-          const platform = detectEmbedPlatform(lastWord)
+          const { detectEmbedPlatform, cleanUrl } = await import('../media')
+          // Очищаем URL от лишних параметров
+          const cleanedUrl = cleanUrl(lastWord)
+          const platform = detectEmbedPlatform(cleanedUrl)
 
           if (platform !== 'unknown') {
             // Сохраняем позицию для замены
@@ -151,30 +170,47 @@ export const createEventHandlers = (context: EventHandlersContext) => {
               selection.addRange(newRange)
             }
 
-            // Вставляем inline choice компонент
-            const { EmbedInlineChoice } = await import('../components/EmbedInlineChoice')
-            const { render } = await import('solid-js/web')
-
+            // Вставляем inline choice компонент для выбора типа вставки
             const choiceContainer = document.createElement('div')
             choiceContainer.contentEditable = 'false'
             choiceContainer.style.userSelect = 'none'
 
-            const handleChoice = async (type: 'link' | 'embed') => {
-              if (type === 'embed') {
+            const handleChoice = async (type: 'link' | 'preview' | 'text') => {
+              if (type === 'preview') {
                 const { createUniversalEmbed } = await import('../media/html')
-                const embedHtml = await createUniversalEmbed(lastWord, platform)
-                if (embedHtml) {
+                // Используем очищенный URL для preview
+                const previewHtml = await createUniversalEmbed(cleanedUrl, platform)
+                if (previewHtml) {
                   const tempDiv = document.createElement('div')
-                  tempDiv.innerHTML = embedHtml
+                  tempDiv.innerHTML = previewHtml
                   choiceContainer.replaceWith(...Array.from(tempDiv.childNodes))
+
+                  // Даем браузеру время обновить DOM перед обработкой (DRY: timing)
+                  await afterDOMUpdateAsync(async () => {
+                    // Обрабатываем новые <preview> теги
+                    const { processPreviewTags } = await import('../media/previewRenderer')
+                    const editor = editorRef()
+                    if (editor) {
+                      await processPreviewTags(editor)
+                    }
+
+                    // Сохраняем изменения
+                    handleChange()
+                    editor?.focus()
+                  })
                 }
-              } else {
+              } else if (type === 'link') {
                 const link = document.createElement('a')
-                link.href = lastWord
+                // Используем очищенный URL для ссылки
+                link.href = cleanedUrl
                 link.target = '_blank'
                 link.rel = 'noopener noreferrer'
-                link.textContent = lastWord
+                link.textContent = cleanedUrl
                 choiceContainer.replaceWith(link)
+              } else {
+                // type === 'text' - вставляем просто текст
+                const textNode = document.createTextNode(cleanedUrl)
+                choiceContainer.replaceWith(textNode)
               }
               handleChange(props.fieldType ? String(props.fieldType) : 'content')
               editor.focus()
@@ -188,8 +224,8 @@ export const createEventHandlers = (context: EventHandlersContext) => {
 
             render(
               () =>
-                EmbedInlineChoice({
-                  url: lastWord,
+                PreviewInlineChoice({
+                  url: cleanedUrl, // Показываем очищенный URL
                   platform,
                   onChoice: handleChoice,
                   onCancel: handleCancel
@@ -250,43 +286,62 @@ export const createEventHandlers = (context: EventHandlersContext) => {
     saveSelection()
     let pasted = false
 
-    // Проверяем text на URL embed платформы ПЕРЕД обработкой HTML
+    // Проверяем text на URL preview платформы ПЕРЕД обработкой HTML
     if (text && !html) {
       const trimmedText = text.trim()
       // Проверяем - это одиночный URL?
       const urlRegex = /^https?:\/\/[^\s]+$/
       if (urlRegex.test(trimmedText)) {
-        const { detectEmbedPlatform } = await import('../media')
-        const platform = detectEmbedPlatform(trimmedText)
+        const { detectEmbedPlatform, cleanUrl } = await import('../media')
+        // Очищаем URL от лишних параметров
+        const cleanedUrl = cleanUrl(trimmedText)
+        const platform = detectEmbedPlatform(cleanedUrl)
 
         if (platform !== 'unknown') {
-          // Это embed платформа - вставляем inline choice компонент
+          // Это preview платформа - вставляем inline choice компонент
           e.preventDefault()
-
-          const { EmbedInlineChoice } = await import('../components/EmbedInlineChoice')
-          const { render } = await import('solid-js/web')
 
           // Создаем временный контейнер для inline choice
           const choiceContainer = document.createElement('div')
           choiceContainer.contentEditable = 'false'
           choiceContainer.style.userSelect = 'none'
 
-          const handleChoice = async (type: 'link' | 'embed') => {
-            if (type === 'embed') {
+          const handleChoice = async (type: 'link' | 'preview' | 'text') => {
+            if (type === 'preview') {
               const { createUniversalEmbed } = await import('../media/html')
-              const embedHtml = await createUniversalEmbed(trimmedText, platform)
-              if (embedHtml) {
+              // Используем очищенный URL для preview
+              const previewHtml = await createUniversalEmbed(cleanedUrl, platform)
+              if (previewHtml) {
                 const tempDiv = document.createElement('div')
-                tempDiv.innerHTML = embedHtml
+                tempDiv.innerHTML = previewHtml
                 choiceContainer.replaceWith(...Array.from(tempDiv.childNodes))
+
+                // Даем браузеру время обновить DOM перед обработкой (DRY: timing)
+                await afterDOMUpdateAsync(async () => {
+                  // Обрабатываем новые <preview> теги
+                  const { processPreviewTags } = await import('../media/previewRenderer')
+                  const editor = editorRef()
+                  if (editor) {
+                    await processPreviewTags(editor)
+                  }
+
+                  // Сохраняем изменения
+                  handleChange()
+                  editor?.focus()
+                })
               }
-            } else {
+            } else if (type === 'link') {
               const link = document.createElement('a')
-              link.href = trimmedText
+              // Используем очищенный URL для ссылки
+              link.href = cleanedUrl
               link.target = '_blank'
               link.rel = 'noopener noreferrer'
-              link.textContent = trimmedText
+              link.textContent = cleanedUrl
               choiceContainer.replaceWith(link)
+            } else {
+              // type === 'text' - вставляем просто текст
+              const textNode = document.createTextNode(cleanedUrl)
+              choiceContainer.replaceWith(textNode)
             }
             handleChange(props.fieldType ? String(props.fieldType) : 'content')
             editorRef()?.focus()
@@ -301,8 +356,8 @@ export const createEventHandlers = (context: EventHandlersContext) => {
           // Рендерим компонент
           render(
             () =>
-              EmbedInlineChoice({
-                url: trimmedText,
+              PreviewInlineChoice({
+                url: cleanedUrl, // Показываем очищенный URL
                 platform,
                 onChoice: handleChoice,
                 onCancel: handleCancel

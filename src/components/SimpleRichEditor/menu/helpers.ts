@@ -65,7 +65,7 @@ export const updatePlaceholderStyle = (params: {
   }
 }
 
-// Функции позиционирования перенесены в ../lib/positioning.ts
+// Функции позиционирования перенесены в ../lib/positionUtils.ts
 export {
   getFloatingToolbarPosition,
   getPlusMenuPosition

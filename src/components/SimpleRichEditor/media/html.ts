@@ -3,7 +3,7 @@
  * @description Генерация HTML для различных типов медиа-контента
  */
 
-import { createMetadataPreview, type EmbedMetadata, getEmbedMetadata, OEMBED_ENDPOINTS } from './embedMetadata'
+import { createMetadataPreview, type EmbedMetadata, getEmbedMetadata, OEMBED_ENDPOINTS } from './previewMetadata'
 import styles from './styles.module.scss'
 import { EmbedContent, MediaInsertParams } from './types'
 import { detectEmbedPlatform, detectVideoPlatform } from './validation'
@@ -25,7 +25,7 @@ const createElement = (tag: string, attrs: Record<string, string> = {}, content?
 }
 
 /**
- * Создает HTML-код для встраивания видео используя компактный <embed> тег
+ * Создает HTML-код для встраивания видео используя компактный кастомный тег
  * @param url URL видео
  * @returns HTML-код или null если не удалось создать
  */
@@ -33,9 +33,10 @@ export const createVideoEmbed = (url: string): string | null => {
   const platform = detectVideoPlatform(url)
   if (!platform) return null
 
-  // Компактный формат - просто <embed>url</embed>
-  // Клиентская обработка будет в customTags.ts
-  return `<embed>${url}</embed>`
+  // Компактный формат - кастомный тег <preview>url</preview>
+  // Используем кастомный тег, т.к. <embed> - void element без textContent
+  // <preview> семантически точно описывает назначение - placeholder для iframe
+  return `<preview>${url}</preview>`
 }
 
 /**
@@ -943,7 +944,8 @@ export const createMediaHTML = (params: MediaInsertParams): string => {
 
   switch (type) {
     case 'image':
-      return `<img src="${url}" alt="${title}" ${attributesStr} />`
+      // Используем createImageEmbed для правильной структуры <figure><img></figure>
+      return createImageEmbed({ type: 'image', url, title })
     case 'video': {
       // Для видео используем embed если это поддерживаемая платформа
       const embedHtml = createVideoEmbed(url)

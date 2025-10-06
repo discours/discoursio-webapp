@@ -3,7 +3,7 @@
  * @description Проверка активного форматирования в выделении
  */
 
-import { findAncestor, getNodesInRange } from '../lib/dom-utils'
+import { findAncestor, getElementFromNode, getNodesInRange } from '../lib/dom-utils'
 import { CommandType, SelectionState } from '../lib/types'
 import { FORMAT_CONFIG } from './config'
 import { ActiveFormatsType } from './types'
@@ -20,15 +20,18 @@ export function hasFormatting(format: CommandType, state: SelectionState): boole
     return hasFormatting('link', state)
   }
 
-  // Специальная обработка для squib - проверяем наличие data-align у родителей
-  if (format === 'squib') {
-    const node = state.range.startContainer
-    const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement)
+  // Специальная обработка для incut - проверяем наличие класса incut (DRY: selection.ts)
+  if (format === 'incut') {
+    const element = getElementFromNode(state.range.startContainer)
     if (!element) return false
+    return !!element.closest('.incut')
+  }
 
-    // Проверяем есть ли родитель с data-align (это и есть squib)
-    const squibParent = element.closest('[data-align]')
-    return !!squibParent
+  // Специальная обработка для punchline - проверяем наличие класса punchline (DRY: selection.ts)
+  if (format === 'punchline') {
+    const element = getElementFromNode(state.range.startContainer)
+    if (!element) return false
+    return !!element.closest('.punchline')
   }
 
   const config = FORMAT_CONFIG[format]
@@ -39,42 +42,37 @@ export function hasFormatting(format: CommandType, state: SelectionState): boole
 
   const tag = config.tag.toUpperCase()
 
-  // Если нет выделения, проверяем текущую позицию курсора
+  // Если нет выделения, проверяем текущую позицию курсора (DRY: selection.ts)
   if (state.isEmpty) {
-    const node = state.range.startContainer
+    const element = getElementFromNode(state.range.startContainer)
+    if (!element) return false
 
-    if (node) {
-      const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement)
-      if (!element) return false
+    // Проверяем текущий элемент и его предков на соответствие требуемому тегу
+    if (tag === 'MARK') {
+      const result = hasTagOrStyle(element, 'MARK', null, 'background-color')
+      return result
+    } else if (tag === 'STRONG') {
+      const result = hasTagOrStyle(element, 'B', 'STRONG', 'font-weight', 'bold', '700')
+      return result
+    } else if (tag === 'EM') {
+      const result = hasTagOrStyle(element, 'I', 'EM', 'font-style', 'italic')
+      return result
+    } else if (tag === 'A') {
+      const result = element.tagName === 'A' || !!findAncestor(element, 'A')
+      return result
+    } else if (['H1', 'H2', 'H3', 'BLOCKQUOTE', 'P', 'DIV'].includes(tag)) {
+      // Для блочных элементов проверяем ближайший блочный родитель
+      const blockParent = element.closest('h1, h2, h3, blockquote, p, div')
 
-      // Проверяем текущий элемент и его предков на соответствие требуемому тегу
-      if (tag === 'MARK') {
-        const result = hasTagOrStyle(element, 'MARK', null, 'background-color')
-        // console.log(`[hasFormatting] MARK check (cursor) result: ${result}`)
-        return result
-      } else if (tag === 'STRONG') {
-        const result = hasTagOrStyle(element, 'B', 'STRONG', 'font-weight', 'bold', '700')
-        // console.log(`[hasFormatting] STRONG check (cursor) result: ${result}`)
-        return result
-      } else if (tag === 'EM') {
-        const result = hasTagOrStyle(element, 'I', 'EM', 'font-style', 'italic')
-        // console.log(`[hasFormatting] EM check (cursor) result: ${result}`)
-        return result
-      } else if (tag === 'A') {
-        const result = element.tagName === 'A' || !!findAncestor(element, 'A')
-        // console.log(`[hasFormatting] A check (cursor) result: ${result}`)
-        return result
-      } else if (['H1', 'H2', 'H3', 'BLOCKQUOTE', 'P'].includes(tag)) {
-        // Для блочных элементов проверяем ближайший блочный родитель
-        const blockParent = element.closest('h1, h2, h3, blockquote, p, div')
-        const result = blockParent?.tagName === tag
-        // console.log(`[hasFormatting] Block check - looking for ${tag}, found: ${blockParent?.tagName}, result: ${result}`)
-        return result
-      } else {
-        const result = !!element.closest(tag.toLowerCase()) || !!findAncestor(element, (el) => el.tagName === tag)
-        // console.log(`[hasFormatting] Element check - looking for ${tag}, result: ${result}`)
-        return result
+      // Для DIV проверяем класс (punchline или incut)
+      if (tag === 'DIV' && blockParent?.tagName === 'DIV') {
+        const divElement = blockParent as HTMLElement
+        return divElement.classList.contains('punchline') || divElement.classList.contains('incut')
       }
+
+      return blockParent?.tagName === tag
+    } else {
+      return !!element.closest(tag.toLowerCase()) || !!findAncestor(element, (el) => el.tagName === tag)
     }
   } else {
     // Для выделенного текста
@@ -85,7 +83,7 @@ export function hasFormatting(format: CommandType, state: SelectionState): boole
     const nodesToCheck = textNodes.length > 0 ? textNodes : selectedNodes
 
     return nodesToCheck.every((node: Node) => {
-      const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement)
+      const element = getElementFromNode(node)
       if (!element) return false
 
       if (tag === 'MARK') {
@@ -96,19 +94,22 @@ export function hasFormatting(format: CommandType, state: SelectionState): boole
         return hasTagOrStyle(element, 'I', 'EM', 'font-style', 'italic')
       } else if (tag === 'A') {
         return element.tagName === 'A' || !!findAncestor(element, 'A')
-      } else if (['H1', 'H2', 'H3', 'BLOCKQUOTE', 'P'].includes(tag)) {
+      } else if (['H1', 'H2', 'H3', 'BLOCKQUOTE', 'P', 'DIV'].includes(tag)) {
         // Для блочных элементов проверяем ближайший блочный родитель
         const blockParent = element.closest('h1, h2, h3, blockquote, p, div')
-        // console.log(`[hasFormatting] Block check - looking for ${tag}, found: ${blockParent?.tagName}`)
+
+        // Для DIV проверяем класс (punchline или incut)
+        if (tag === 'DIV' && blockParent?.tagName === 'DIV') {
+          const divElement = blockParent as HTMLElement
+          return divElement.classList.contains('punchline') || divElement.classList.contains('incut')
+        }
+
         return blockParent?.tagName === tag
       } else {
         return !!element.closest(tag.toLowerCase()) || !!findAncestor(element, (el) => el.tagName === tag)
       }
     })
   }
-
-  // console.log(`[hasFormatting] FINAL RESULT for ${format}: false (no conditions matched)`)
-  return false
 }
 
 /**
@@ -194,6 +195,7 @@ export const getActiveFormats = (selection?: Selection, editor?: HTMLDivElement)
     bulletList: false,
     orderedList: false,
     punchline: false,
+    incut: false,
     h1: false,
     h2: false,
     h3: false,
@@ -237,7 +239,10 @@ export const getActiveFormats = (selection?: Selection, editor?: HTMLDivElement)
 
     // Проверка специальных блоков
     formats.punchline = ancestorNodes.some(
-      (node: Node) => node.nodeName === 'DIV' && node.parentElement?.classList.contains('punchline')
+      (node: Node) => node.nodeName === 'DIV' && (node as HTMLElement).classList?.contains('punchline')
+    )
+    formats.incut = ancestorNodes.some(
+      (node: Node) => node.nodeName === 'DIV' && (node as HTMLElement).classList?.contains('incut')
     )
 
     return formats
@@ -266,11 +271,14 @@ export const getActiveFormats = (selection?: Selection, editor?: HTMLDivElement)
     formats.p = commonAncestors.some((node) => node.nodeName === 'P')
 
     formats.punchline = commonAncestors.some(
-      (node) => node.nodeName === 'DIV' && node.parentElement?.classList.contains('punchline')
+      (node) => node.nodeName === 'DIV' && (node as HTMLElement).classList?.contains('punchline')
+    )
+    formats.incut = commonAncestors.some(
+      (node) => node.nodeName === 'DIV' && (node as HTMLElement).classList?.contains('incut')
     )
     formats.highlight = commonAncestors.some(
       (node) =>
-        node.nodeName === 'MARK' || (node.nodeName === 'SPAN' && node.parentElement?.classList.contains('highlight'))
+        node.nodeName === 'MARK' || (node.nodeName === 'SPAN' && (node as HTMLElement).classList?.contains('highlight'))
     )
   } catch (e) {
     console.error('Error getting active formats:', e)

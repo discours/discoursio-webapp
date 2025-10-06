@@ -137,7 +137,7 @@ const getDropdownIconForNestedGroup = (group: readonly (readonly CommandType[])[
   // Используем новые имена иконок
   if (['h1', 'h2', 'h3'].includes(firstCommandInFirstGroup)) return 'editor-text-size' // Иконка "TT"
   if (['bulletList', 'orderedList'].includes(firstCommandInFirstGroup)) return 'editor-ul' // Иконка дропдауна для списков
-  if (['blockquote', 'punchline', 'squib'].includes(firstCommandInFirstGroup)) return 'editor-quote' // Иконка цитаты как иконка дропдауна
+  if (['blockquote', 'punchline', 'incut'].includes(firstCommandInFirstGroup)) return 'editor-quote' // Иконка цитаты как иконка дропдауна
   return 'editor-more'
 }
 
@@ -152,7 +152,7 @@ const getDropdownIconForGroupName = (groupName: CommandGroupType): string => {
   // Используем новые имена иконок
   if (['h1', 'h2', 'h3'].includes(firstCommand)) return 'editor-text-size'
   if (['bulletList', 'orderedList'].includes(firstCommand)) return 'editor-ul'
-  if (['blockquote', 'punchline', 'squib'].includes(firstCommand)) return 'editor-quote'
+  if (['blockquote', 'punchline', 'incut'].includes(firstCommand)) return 'editor-quote'
   return 'editor-more'
 }
 
@@ -274,13 +274,13 @@ export const ToolbarControl: Component<{
   const command = actionStr as CommandType
 
   // Определяем имя иконки для кнопки
-  // Учитываем особые случаи для punchline и squib, если нужно
+  // Учитываем особые случаи для punchline и incut, если нужно
   let iconNameForButton = `editor-${command}`
   if (command === 'punchline') {
     iconNameForButton = 'editor-punchline' // Используем скачанную иконку
   }
-  if (command === 'squib') {
-    iconNameForButton = 'editor-squib' // Используем скачанную иконку
+  if (command === 'incut') {
+    iconNameForButton = 'editor-incut' // Используем скачанную иконку
   }
   if (command === 'bulletList') {
     iconNameForButton = 'editor-ul' // Используем скачанную иконку

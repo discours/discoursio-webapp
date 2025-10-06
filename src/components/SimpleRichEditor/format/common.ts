@@ -6,12 +6,18 @@
  * одной унифицированной системой команд.
  */
 
+import {
+  isBlockCommand as isBlockCmd,
+  isLinkCommand as isLinkCmd,
+  isListCommand as isListCmd,
+  isMediaCommand as isMediaCmd
+} from '../lib/command'
+import { shouldApplyBlockFormatting } from '../lib/selection'
 import { CommandType, SelectionState } from '../lib/types'
 import { toggleBlockFormat } from './block'
 import { FORMAT_CONFIG } from './config'
 import { hasFormatting } from './detection'
 import { applyInlineFormatting, removeInlineFormatting } from './inline'
-import { shouldApplyBlockFormatting } from './selection-utils'
 
 /**
  * Результат выполнения команды форматирования
@@ -58,11 +64,11 @@ export const executeCommand = (command: CommandType, context: FormatContext): Fo
 
     console.log(`[executeCommand] Config found for ${command}:`, config)
 
-    // Определяем тип команды
-    const isBlockCommand = ['h1', 'h2', 'h3', 'blockquote', 'p', 'punchline', 'squib'].includes(command)
-    const isListCommand = ['bulletList', 'orderedList'].includes(command)
-    const isMediaCommand = ['image', 'video', 'audio'].includes(command)
-    const isLinkCommand = command === 'link'
+    // Определяем тип команды (DRY: command.ts)
+    const isBlockCommand = isBlockCmd(command)
+    const isListCommand = isListCmd(command)
+    const isMediaCommand = isMediaCmd(command)
+    const isLinkCommand = isLinkCmd(command)
 
     // Обрабатываем команды по типам
     if (isMediaCommand || isLinkCommand) {

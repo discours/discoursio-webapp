@@ -37,7 +37,7 @@ export const featuredEditorCommands = [
   // Дропдаун "TT"
   [
     ['h1', 'h2', 'h3'], // Первая группа (Заголовки)
-    ['blockquote', 'punchline', 'squib'] // Вторая группа (Выделение)
+    ['blockquote', 'punchline', 'incut'] // Вторая группа (Выделение)
   ],
   '',
   // Простые кнопки

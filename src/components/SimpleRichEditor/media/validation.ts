@@ -10,9 +10,9 @@ import { ContentType, EmbedPlatform, VideoPlatform } from './types'
  * Регулярные выражения для различных типов контента
  */
 export const URL_PATTERNS = {
-  // Видео платформы
-  YOUTUBE: /^(https?:\/\/)?(www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})$/,
-  VIMEO: /^(https?:\/\/)?(www\.|player\.)?vimeo\.com\/(?:video\/)?(\d+)$/,
+  // Видео платформы (убраны $ в конце для толерантности к query параметрам)
+  YOUTUBE: /^(https?:\/\/)?(www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+  VIMEO: /^(https?:\/\/)?(www\.|player\.)?vimeo\.com\/(?:video\/)?(\d+)/,
   TWITCH: /^(https?:\/\/)?(www\.)?(twitch\.tv|m\.twitch\.tv)\/(videos\/\d+|[a-zA-Z0-9_]+)/,
   TED: /^(https?:\/\/)?(www\.|embed\.)?ted\.com\/talks\/(?:lang\/[a-z]{2}\/)?[a-zA-Z0-9_-]+/,
 
@@ -70,6 +70,43 @@ export const isValidUrl = (url: string): boolean => {
 export const normalizeUrl = (url: string): string => {
   if (!url) return url
   return url.startsWith('http') ? url : `https://${url}`
+}
+
+/**
+ * Очищает URL от лишних query параметров, оставляя только основной идентификатор
+ * @param url URL для очистки
+ * @returns Очищенный URL
+ */
+export const cleanUrl = (url: string): string => {
+  if (!url) return url
+
+  try {
+    const urlObj = new URL(url)
+
+    // YouTube: оставляем только v параметр
+    if (urlObj.hostname.includes('youtube.com')) {
+      const videoId = urlObj.searchParams.get('v')
+      if (videoId) {
+        return `https://www.youtube.com/watch?v=${videoId}`
+      }
+    }
+
+    // youtu.be: убираем query параметры
+    if (urlObj.hostname === 'youtu.be') {
+      return `https://youtu.be${urlObj.pathname}`
+    }
+
+    // Vimeo: убираем query параметры
+    if (urlObj.hostname.includes('vimeo.com')) {
+      return `${urlObj.protocol}//${urlObj.hostname}${urlObj.pathname}`
+    }
+
+    // Для остальных платформ возвращаем как есть
+    return url
+  } catch (_e) {
+    // Если URL невалидный, возвращаем как есть
+    return url
+  }
 }
 
 /**

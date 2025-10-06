@@ -103,7 +103,7 @@ export const [showAudioForm, setShowAudioForm] = createSignal<boolean>(false)
 export const [showUploadModal, setShowUploadModal] = createSignal<boolean>(false)
 
 // Текущий редактируемый сквиб (блок)
-export const [editingSquibId, setEditingSquibId] = createSignal<string | null>(null)
+export const [editingIncutId, setEditingIncutId] = createSignal<string | null>(null)
 
 // Footnotes removed
 

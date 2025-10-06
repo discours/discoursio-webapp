@@ -28,7 +28,8 @@ const ALLOWED_TAGS = [
   'a',
   'img',
   'video',
-  'iframe' // Фильтруется дополнительно
+  'iframe', // Фильтруется дополнительно
+  'preview' // Кастомный тег для компактного хранения video embeds
 ]
 
 const ALLOWED_ATTR = [
@@ -48,10 +49,10 @@ const ALLOWED_ATTR = [
   // Стили и форматирование
   'style',
   'class',
-  // Подвёрстка (squib)
+  // Подвёрстка (incut)
   'data-align',
   'data-bg',
-  'data-squib-id',
+  'data-incut-id',
   // Другие data-атрибуты для редактора
   'data-type'
 ]
@@ -60,8 +61,8 @@ const ALLOWED_ATTR = [
 const BASE_CONFIG: Config = {
   ALLOWED_TAGS,
   ALLOWED_ATTR,
-  ADD_TAGS: ['iframe'],
-  ADD_ATTR: ['sandbox', 'loading', 'referrerpolicy', 'data-align', 'data-bg', 'data-squib-id', 'data-type'],
+  ADD_TAGS: ['iframe', 'preview'], // preview - кастомный тег для компактного хранения video URLs
+  ADD_ATTR: ['sandbox', 'loading', 'referrerpolicy', 'data-align', 'data-bg', 'data-incut-id', 'data-type'],
   ALLOW_DATA_ATTR: false, // Запрещаем data-* атрибуты кроме явно разрешенных
   ALLOW_UNKNOWN_PROTOCOLS: false, // Разрешаем только стандартные протоколы
   ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,

@@ -5,7 +5,8 @@
 
 import { Accessor } from 'solid-js'
 import { isEmptyContent } from '../lib/empty'
-import { getEditorPosition, isTouchDevice } from '../lib/positioning'
+import { calculatePlusMenuLeft, calculatePlusMenuTop, getEditorPosition, isTouchDevice } from '../lib/positioning'
+import { findLinkAncestor as findLinkAncestorUtil } from '../lib/selection'
 import { Position, ToolbarMode } from '../lib/types'
 
 export interface UIHelpersContext {
@@ -17,7 +18,7 @@ export interface UIHelpersContext {
   // State
   hasFocus: Accessor<boolean>
   showForm: Accessor<string | null>
-  showSquibEditor: Accessor<boolean>
+  showIncutEditor: Accessor<boolean>
   hasSelection: Accessor<boolean>
   content: Accessor<string>
   cursorPosition: Accessor<{ top: number; left: number } | null>
@@ -27,7 +28,7 @@ export interface UIHelpersContext {
  * Creates UI helper functions for the editor
  */
 export const createUIHelpers = (context: UIHelpersContext) => {
-  const { editorRef, props, hasFocus, showForm, showSquibEditor, hasSelection, content } = context
+  const { editorRef, props, hasFocus, showForm, showIncutEditor, hasSelection, content } = context
 
   const currentToolbarMode = (): ToolbarMode => props.toolbar || 'float'
 
@@ -132,8 +133,8 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     const isNewLine = isCursorOnEmptyLine()
     const isEditorInFocus = hasFocus()
     const hasActiveSelection = hasSelection()
-    // Скрываем Plus-меню если есть: формы, squib-меню, или активное выделение (floating toolbar)
-    const isNoOtherMenuOpen = !showForm() && !showSquibEditor() && !hasActiveSelection
+    // Скрываем Plus-меню если есть: формы, incut-меню, или активное выделение (floating toolbar)
+    const isNoOtherMenuOpen = !showForm() && !showIncutEditor() && !hasActiveSelection
     const isPlusEnabled = props.plus
 
     console.log('[PlusMenu Debug] shouldShowPlusMenu conditions:', {
@@ -142,7 +143,7 @@ export const createUIHelpers = (context: UIHelpersContext) => {
       isNoOtherMenuOpen,
       isPlusEnabled,
       showForm: showForm(),
-      showSquibEditor: showSquibEditor(),
+      showIncutEditor: showIncutEditor(),
       hasActiveSelection,
       result: isEditorInFocus && isNewLine && isPlusEnabled && isNoOtherMenuOpen
     })
@@ -173,76 +174,9 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     })
   }
 
-  // top позиция Plus-меню (number) - всегда на строке ниже курсора
-  const getPlusMenuTop = (): number => {
-    const editor = editorRef()
-    if (!editor) return 0
-
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) {
-      const editorRect = editor.getBoundingClientRect()
-      return editorRect.top + 10
-    }
-
-    const range = selection.getRangeAt(0)
-
-    // Находим родительский элемент-строку текущей позиции курсора
-    const container = range.startContainer
-    let currentLine: Element | null = null
-
-    let node: Node | null = container
-    while (node && node !== editor) {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const element = node as Element
-        if (
-          element.tagName === 'DIV' ||
-          element.tagName === 'P' ||
-          element.tagName === 'H1' ||
-          element.tagName === 'H2' ||
-          element.tagName === 'H3'
-        ) {
-          currentLine = element
-          break
-        }
-      }
-      node = node.parentNode
-    }
-
-    if (!currentLine) {
-      const editorRect = editor.getBoundingClientRect()
-      return editorRect.top + 10
-    }
-
-    // Получаем координаты текущей строки и показываем плюс на следующей строке
-    const lineRect = currentLine.getBoundingClientRect()
-    const lineHeight = lineRect.height || 24
-
-    // Плюс на строке ниже = верх текущей строки + высота строки + отступ для центрирования
-    return lineRect.top + lineHeight + lineHeight / 2 - 16
-  }
-
-  // Фиксированная left позиция Plus-меню (number)
-  const getPlusMenuLeft = (): number => {
-    const editor = editorRef()
-    if (!editor) return 0
-
-    const editorRect = editor.getBoundingClientRect()
-    return editorRect.left - 34
-  }
-
-  const findLinkAncestor = (node: Node | null): HTMLAnchorElement | null => {
-    if (!node) return null
-    let currentNode = node
-    const rootNode = editorRef()
-    while (currentNode && currentNode !== rootNode) {
-      if (currentNode.nodeName === 'A') {
-        return currentNode as HTMLAnchorElement
-      }
-      if (!currentNode.parentNode || currentNode.parentNode === document.body) break
-      currentNode = currentNode.parentNode
-    }
-    return null
-  }
+  // Используем утилиты для вычисления позиций Plus-меню (DRY)
+  const getPlusMenuTop = (): number => calculatePlusMenuTop(editorRef())
+  const getPlusMenuLeft = (): number => calculatePlusMenuLeft(editorRef())
 
   const updatePlaceholderState = () => {
     const isEmpty = isEditorEmpty()
@@ -267,7 +201,7 @@ export const createUIHelpers = (context: UIHelpersContext) => {
     getFloatingToolbarPosition,
     getPlusMenuTop,
     getPlusMenuLeft,
-    findLinkAncestor,
+    findLinkAncestor: (node: Node | null) => findLinkAncestorUtil(node, editorRef()),
     updatePlaceholderState
   }
 }

@@ -52,7 +52,7 @@ export const toggleFormatting = (
   }
 
   try {
-    const isBlockCommand = ['h1', 'h2', 'h3', 'blockquote', 'p', 'punchline', 'squib'].includes(command)
+    const isBlockCommand = ['h1', 'h2', 'h3', 'blockquote', 'p', 'punchline', 'incut'].includes(command)
     const isListCommand = ['bulletList', 'orderedList'].includes(command)
     const isFormatActive = hasFormatting(command, state)
 

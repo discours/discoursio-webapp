@@ -313,7 +313,7 @@ export const processEmbeds = async (container: HTMLElement) => {
         // Асинхронная загрузка метаданных
         void (async () => {
           const { getEmbedMetadata, OEMBED_ENDPOINTS } = await import(
-            '~/components/SimpleRichEditor/media/embedMetadata'
+            '~/components/SimpleRichEditor/media/previewMetadata'
           )
           const metadata = await getEmbedMetadata(url, platform as keyof typeof OEMBED_ENDPOINTS)
 
@@ -498,7 +498,7 @@ export const processEmbeds = async (container: HTMLElement) => {
       } else {
         // Для остальных платформ - динамический импорт
         const { createUniversalEmbed } = await import('~/components/SimpleRichEditor/media/html')
-        const { initializeEmbedLazy } = await import('~/components/SimpleRichEditor/media/embedLoader')
+        const { initializeEmbedLazy } = await import('~/components/SimpleRichEditor/media/previewLoader')
 
         const embedHtml = await createUniversalEmbed(url, platform)
 

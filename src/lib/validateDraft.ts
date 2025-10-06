@@ -161,38 +161,41 @@ const cleanupHtmlContent = (content: string | null | undefined): string => {
 /**
  * Проверяет черновик на готовность к публикации
  * @param draft черновик для проверки
+ * @param isForPublishing если true, проверяет все поля для публикации; если false, только базовые поля для черновика
  * @returns результат валидации
  */
-export const validateDraftForPublishing = (draft: DraftInput): ValidationResult => {
+export const validateDraftForPublishing = (draft: DraftInput, isForPublishing = false): ValidationResult => {
   const errors: ValidationError[] = []
 
-  // Проверка заголовка
-  if (!draft.title || draft.title.trim() === '') {
+  // Проверка заголовка (только для публикации)
+  if (isForPublishing && (!draft.title || draft.title.trim() === '')) {
     errors.push({
       field: 'title',
       message: 'Title is required'
     })
   }
 
-  // Проверка текста
-  const bodyContent = cleanupHtmlContent(draft.body)
-  if (!bodyContent || bodyContent.trim() === '' || bodyContent === '<br>') {
-    errors.push({
-      field: 'body',
-      message: 'Content is required'
-    })
+  // Проверка текста (только для публикации)
+  if (isForPublishing) {
+    const bodyContent = cleanupHtmlContent(draft.body)
+    if (!bodyContent || bodyContent.trim() === '' || bodyContent === '<br>') {
+      errors.push({
+        field: 'body',
+        message: 'Content is required'
+      })
+    }
   }
 
-  // Проверка темы
-  if (!draft.topic_ids || !draft.topic_ids.length) {
+  // Проверка темы (только для публикации)
+  if (isForPublishing && (!draft.topic_ids || !draft.topic_ids.length)) {
     errors.push({
       field: 'topic_ids',
       message: 'At least one topic is required'
     })
   }
 
-  // Проверка слага
-  if (!draft.slug || draft.slug.trim() === '') {
+  // Проверка слага (только для публикации)
+  if (isForPublishing && (!draft.slug || draft.slug.trim() === '')) {
     errors.push({
       field: 'slug',
       message: 'URL is required'

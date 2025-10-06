@@ -12,6 +12,7 @@ export type ActiveFormatsType = {
   link: boolean
   blockquote: boolean
   punchline: boolean
+  incut: boolean
   h1: boolean
   h2: boolean
   h3: boolean
@@ -32,6 +33,7 @@ export function emptyActiveFormats(): ActiveFormatsType {
     link: false,
     blockquote: false,
     punchline: false,
+    incut: false,
     h1: false,
     h2: false,
     h3: false,

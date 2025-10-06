@@ -9,10 +9,6 @@
  * - Загрузка файлов и drag & drop
  */
 
-// Embed loader (lazy loading SDK с privacy protection)
-export { initEmbedLoaders, initializeEmbedLazy } from './embedLoader'
-// Embed metadata (Open Graph / oEmbed для preview)
-export { clearMetadataCache, createMetadataPreview, type EmbedMetadata, getEmbedMetadata } from './embedMetadata'
 // Обработчики кликов
 export {
   createMediaHandlers,
@@ -38,6 +34,10 @@ export {
   insertMedia,
   insertVideo
 } from './insertion'
+// Embed loader (lazy loading SDK с privacy protection)
+export { initEmbedLoaders, initializeEmbedLazy } from './previewLoader'
+// Embed metadata (Open Graph / oEmbed для preview)
+export { clearMetadataCache, createMetadataPreview, type EmbedMetadata, getEmbedMetadata } from './previewMetadata'
 // Типы
 export type {
   ContentType,
@@ -61,6 +61,7 @@ export {
 } from './upload'
 // Валидация
 export {
+  cleanUrl,
   detectEmbedPlatform,
   detectVideoPlatform,
   extractVideoId,

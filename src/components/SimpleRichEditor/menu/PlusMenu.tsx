@@ -3,6 +3,7 @@ import { Component, createEffect, createSignal, For, onCleanup, onMount, Show } 
 import { Icon } from '~/components/_shared/Icon/Icon'
 import { useLocalize } from '~/context/localize'
 import { replaceSelection } from '../lib/empty'
+import { afterAnimation, afterDOMUpdate, restoreSelectionAfter } from '../lib/timing'
 import { CommandType } from '../lib/types'
 import styles from './PlusMenu.module.scss'
 import { ToolbarControl } from './SimpleToolbar'
@@ -19,6 +20,7 @@ export const handlePlusMenuAction = (
     showLinkForm?: () => void
     showTooltipForm?: () => void
     showEmbedForm?: () => void
+    showEmbedPlaceholder?: () => void
     showAudioUploader?: () => void
     showImageUploadModal?: () => void
     handleChange?: () => void
@@ -26,8 +28,9 @@ export const handlePlusMenuAction = (
 ): void => {
   switch (action) {
     case 'embed':
-      if (callbacks.showEmbedForm) {
-        callbacks.showEmbedForm()
+      // Показываем оверлей с placeholder для ввода URL
+      if (editor && callbacks.showEmbedPlaceholder) {
+        callbacks.showEmbedPlaceholder()
       }
       break
     case 'upload':
@@ -52,42 +55,42 @@ export const handlePlusMenuAction = (
 }
 
 /**
- * Обработчик форматирования врезки (squib)
+ * Обработчик форматирования врезки (incut)
  * @param action - тип команды форматирования или название класса
  * @returns функция, применяющая форматирование к выбранной врезке
  */
-export const handleSquibFormatting = (action: string): ((el: HTMLElement) => boolean) => {
-  return (squibElement: HTMLElement): boolean => {
-    if (!squibElement) return false
+export const handleIncutFormatting = (action: string): ((el: HTMLElement) => boolean) => {
+  return (incutElement: HTMLElement): boolean => {
+    if (!incutElement) return false
 
     // Обрабатываем различные типы форматирования
     switch (action) {
       case 'align-left':
-        squibElement.setAttribute('data-align', 'left')
+        incutElement.setAttribute('data-align', 'left')
         return true
       case 'align-center':
-        squibElement.setAttribute('data-align', 'center')
+        incutElement.setAttribute('data-align', 'center')
         return true
       case 'align-right':
-        squibElement.setAttribute('data-align', 'right')
+        incutElement.setAttribute('data-align', 'right')
         return true
       case 'bg-gray':
-        squibElement.setAttribute('data-bg', 'gray')
+        incutElement.setAttribute('data-bg', 'gray')
         return true
       case 'bg-white':
-        squibElement.setAttribute('data-bg', 'white')
+        incutElement.setAttribute('data-bg', 'white')
         return true
       case 'bg-black':
-        squibElement.setAttribute('data-bg', 'black')
+        incutElement.setAttribute('data-bg', 'black')
         return true
       case 'bg-yellow':
-        squibElement.setAttribute('data-bg', 'yellow')
+        incutElement.setAttribute('data-bg', 'yellow')
         return true
       case 'bg-red':
-        squibElement.setAttribute('data-bg', 'red')
+        incutElement.setAttribute('data-bg', 'red')
         return true
       case 'bg-green':
-        squibElement.setAttribute('data-bg', 'green')
+        incutElement.setAttribute('data-bg', 'green')
         return true
       default:
         return false
@@ -126,8 +129,8 @@ export const PlusMenu: Component<{
   // Эффект плавного появления меню - упрощенная логика
   createEffect(() => {
     if (props.isVisible) {
-      // Установим флаг появления с небольшой задержкой для анимации
-      setTimeout(() => setIsAppearing(true), 50)
+      // Установим флаг появления с небольшой задержкой для анимации (DRY: timing)
+      afterAnimation(() => setIsAppearing(true))
     } else {
       setIsAppearing(false)
     }
@@ -142,10 +145,10 @@ export const PlusMenu: Component<{
   }
 
   onMount(() => {
-    // Добавляем обработчик с задержкой чтобы избежать конфликта с кликом по кнопке
-    setTimeout(() => {
+    // Добавляем обработчик с задержкой чтобы избежать конфликта с кликом по кнопке (DRY: timing)
+    afterDOMUpdate(() => {
       document.addEventListener('click', handleClickOutside)
-    }, 0)
+    })
   })
 
   onCleanup(() => {
@@ -162,15 +165,15 @@ export const PlusMenu: Component<{
 
     setIsOpen(!isOpen())
 
-    // Восстанавливаем селекцию после небольшой задержки
+    // Восстанавливаем селекцию после небольшой задержки (DRY: timing)
     if (savedRange) {
-      setTimeout(() => {
+      restoreSelectionAfter(() => {
         const newSelection = window.getSelection()
         if (newSelection) {
           newSelection.removeAllRanges()
           newSelection.addRange(savedRange)
         }
-      }, 0)
+      })
     }
   }
   const handleMenuItemClick = (action: string) => {
@@ -181,15 +184,15 @@ export const PlusMenu: Component<{
     props.onAction(action === 'horizontal-rule' ? ('hr' as CommandType) : (action as CommandType))
     setIsOpen(false)
 
-    // Восстанавливаем селекцию после выполнения действия
+    // Восстанавливаем селекцию после выполнения действия (DRY: timing)
     if (savedRange) {
-      setTimeout(() => {
+      restoreSelectionAfter(() => {
         const newSelection = window.getSelection()
         if (newSelection) {
           newSelection.removeAllRanges()
           newSelection.addRange(savedRange)
         }
-      }, 0)
+      })
     }
 
     if (props.onClose) props.onClose()

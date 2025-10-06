@@ -67,7 +67,7 @@ export const InlineForm = (props: Props) => {
         // 🔒 Безопасное извлечение iframe src (только из whitelist доменов)
         let urlToDetect = value.trim()
         if (urlToDetect.includes('<iframe')) {
-          const { getSafeEmbedUrl } = await import('~/components/SimpleRichEditor/media/embedMetadata')
+          const { getSafeEmbedUrl } = await import('~/components/SimpleRichEditor/media/previewMetadata')
           const safeUrl = await getSafeEmbedUrl(urlToDetect)
           if (safeUrl) {
             urlToDetect = safeUrl
@@ -89,7 +89,7 @@ export const InlineForm = (props: Props) => {
           setShowPlatformBadge(true)
         } else {
           // Для unknown URL проверяем безопасность
-          const { isSafeEmbedDomain } = await import('~/components/SimpleRichEditor/media/embedMetadata')
+          const { isSafeEmbedDomain } = await import('~/components/SimpleRichEditor/media/previewMetadata')
           if (isSafeEmbedDomain(urlToDetect)) {
             setDetectedPlatform('embed')
             setShowPlatformBadge(true)

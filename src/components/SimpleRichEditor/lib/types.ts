@@ -46,7 +46,7 @@ export type CommandType =
   | 'bg-red'
   | 'bg-green'
   | 'bg-color'
-  | 'squib'
+  | 'incut'
   | 'highlight'
   | 'p'
   | 'bulletList'
@@ -245,9 +245,9 @@ export interface SimpleToolbarProps {
 }
 
 /**
- * Параметры SquibMenu
+ * Параметры IncutMenu
  */
-export interface SquibMenuProps {
+export interface IncutMenuProps {
   targetElement: HTMLElement | null
   position: Position
   isVisible: boolean

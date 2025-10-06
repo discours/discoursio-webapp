@@ -1,5 +1,5 @@
 /**
- * @module media/embedLoader
+ * @module media/previewLoader
  * @description Lazy loading SDK для embed виджетов с защитой приватности
  *
  * Принцип: SDK загружаются ТОЛЬКО после явного согласия пользователя
@@ -11,7 +11,7 @@
 
 import type { EmbedPlatform } from './types'
 
-type LazyEmbedPlatform =
+type LazyPreviewPlatform =
   | 'facebook'
   | 'x'
   | 'instagram'
@@ -25,7 +25,7 @@ type LazyEmbedPlatform =
   | 'ok'
 
 // Хранилище загруженных SDK
-const loadedSDKs = new Set<LazyEmbedPlatform>()
+const loadedSDKs = new Set<LazyPreviewPlatform>()
 
 /**
  * Загружает Facebook SDK
@@ -216,7 +216,7 @@ const loadOKEmbed = async (wrapper: HTMLElement): Promise<void> => {
  */
 export const initializeEmbedLazy = async (
   wrapper: HTMLElement,
-  platform: EmbedPlatform | LazyEmbedPlatform
+  platform: EmbedPlatform | LazyPreviewPlatform
 ): Promise<void> => {
   const placeholder = wrapper.querySelector('.embed-placeholder')
   // Ищем контент в зависимости от платформы
@@ -301,7 +301,7 @@ export const initEmbedLoaders = (): void => {
     if (target.getAttribute('data-embed-action') === 'load') {
       const wrapper = target.closest('[data-embed-platform]') as HTMLElement
       if (wrapper) {
-        const platform = wrapper.getAttribute('data-embed-platform') as LazyEmbedPlatform
+        const platform = wrapper.getAttribute('data-embed-platform') as LazyPreviewPlatform
         const loaded = wrapper.getAttribute('data-sdk-loaded') === 'true'
 
         if (!loaded && platform) {

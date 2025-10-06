@@ -18,9 +18,9 @@ export interface MediaHandlersContext {
   }
   // State setters
   setEditingImage: Setter<HTMLElement | null>
-  setCurrentSquib: Setter<HTMLElement | null>
-  setShowSquibEditor: Setter<boolean>
-  setSquibMenuPosition: Setter<Position>
+  setCurrentIncut: Setter<HTMLElement | null>
+  setShowIncutEditor: Setter<boolean>
+  setIncutMenuPosition: Setter<Position>
   // Form handlers
   showInlineForm: (type: 'link' | 'video', onSubmit: (value: string) => void, initialValue?: string) => void
   showImageUploadModal: () => void
@@ -28,7 +28,7 @@ export interface MediaHandlersContext {
   handleInsertTooltip: (text: string) => void
   // Utility functions
   saveSelection: () => void
-  calculateSquibMenuPosition: (squibElement: HTMLElement) => Position
+  calculateIncutMenuPosition: (incutElement: HTMLElement) => Position
 }
 
 /**
@@ -39,14 +39,14 @@ export const createMediaHandlers = (context: MediaHandlersContext) => {
     editorRef,
     props,
     setEditingImage,
-    setCurrentSquib,
-    setShowSquibEditor,
-    setSquibMenuPosition,
+    setCurrentIncut,
+    setShowIncutEditor,
+    setIncutMenuPosition,
     showInlineForm,
     showImageUploadModal,
     handleInsertLink,
     saveSelection,
-    calculateSquibMenuPosition
+    calculateIncutMenuPosition
   } = context
 
   const handleContentClick = (e: MouseEvent) => {
@@ -93,15 +93,15 @@ export const createMediaHandlers = (context: MediaHandlersContext) => {
     // Обработка клика по подвёрстке - определяется по атрибуту data-align
     if (target.closest('[data-align]')) {
       e.preventDefault()
-      const squib = target.closest('[data-align]') as HTMLElement
-      if (squib) {
-        console.log('[handleContentClick] Squib clicked:', squib.outerHTML)
-        setCurrentSquib(squib)
-        const position = calculateSquibMenuPosition(squib)
-        console.log('[handleContentClick] Squib menu position:', position)
-        setSquibMenuPosition(position)
-        setShowSquibEditor(true)
-        console.log('[handleContentClick] showSquibEditor set to true')
+      const incut = target.closest('[data-align]') as HTMLElement
+      if (incut) {
+        console.log('[handleContentClick] Incut clicked:', incut.outerHTML)
+        setCurrentIncut(incut)
+        const position = calculateIncutMenuPosition(incut)
+        console.log('[handleContentClick] Incut menu position:', position)
+        setIncutMenuPosition(position)
+        setShowIncutEditor(true)
+        console.log('[handleContentClick] showIncutEditor set to true')
       }
       return
     }

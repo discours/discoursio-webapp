@@ -5,13 +5,19 @@ import { InlineForm } from '~/components/_shared/InlineForm/InlineForm'
 import { useLocalize } from '~/context/localize'
 import { useUI } from '~/context/ui'
 import { executeCommand, type FormatContext } from './format/common'
-import { type SelectionState } from './format/format'
 import { createEventHandlers } from './handlers/events'
 import { createFormHandlers } from './handlers/forms'
 import { createKeyboardHandlers } from './handlers/keyboard'
 import { createUIHelpers } from './handlers/ui'
 import { isEmptyContent } from './lib/empty'
-import { useSelection } from './lib/selection'
+import {
+  createSelectionState as createSelectionStateUtil,
+  findBlockAncestor,
+  findLinkAncestor as findLinkAncestorUtil,
+  logSelectionDetails,
+  useSelection,
+  validateSelection
+} from './lib/selection'
 import {
   ContentVersion,
   cleanupJsonContent,
@@ -23,6 +29,7 @@ import {
   saveEditorContent,
   saveVersionToStorage
 } from './lib/storage'
+import { afterDOMUpdate, afterToolbarUpdate } from './lib/timing'
 import {
   CommandGroupType,
   CommandType,
@@ -36,9 +43,9 @@ import { createMediaHandlers, initEmbedLoaders } from './media'
 import { useDropFiles } from './media/upload'
 import { isGroup } from './menu/config'
 import { switchFieldInDraft } from './menu/helpers'
-import { handlePlusMenuAction, handleSquibFormatting, PlusMenu } from './menu/PlusMenu'
+import { IncutMenu } from './menu/IncutMenu'
+import { handleIncutFormatting, handlePlusMenuAction, PlusMenu } from './menu/PlusMenu'
 import { SimpleToolbar } from './menu/SimpleToolbar'
-import { SquibMenu } from './menu/SquibMenu'
 import styles from './SimpleRichEditor.module.scss'
 
 export interface SimpleRichEditorProps {
@@ -134,12 +141,12 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const { handleDropFiles: handleDropFilesHook } = useDropFiles()
 
   // Local state signals (ensure all needed are here and only defined once)
-  const [showSquibEditor, setShowSquibEditor] = createSignal(false)
+  const [showIncutEditor, setShowIncutEditor] = createSignal(false)
   const [hasFocus, setHasFocus] = createSignal(false)
   const [showForm, setShowForm] = createSignal<FormType>(null)
   const [formPosition, setFormPosition] = createSignal<Position | null>(null)
   const [formInitialValue, setFormInitialValue] = createSignal('')
-  const [currentSquib, setCurrentSquib] = createSignal<HTMLElement | null>(null)
+  const [currentIncut, setCurrentIncut] = createSignal<HTMLElement | null>(null)
   const [editingImage, setEditingImage] = createSignal<HTMLElement | null>(null)
   const [showLocalVersionLink, setShowLocalVersionLink] = createSignal(false)
   const [isInitialFocusDone, setIsInitialFocusDone] = createSignal(false)
@@ -152,11 +159,11 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const [plusMenuTop, setPlusMenuTop] = createSignal<number>(0)
 
   // Позиция меню подвёрстки
-  const [squibMenuPosition, setSquibMenuPosition] = createSignal<Position>({ top: 50, left: 50 })
+  const [incutMenuPosition, setIncutMenuPosition] = createSignal<Position>({ top: 50, left: 50 })
 
   // Функция для вычисления позиции меню подвёрстки (по центру редактора, над блоком)
-  const calculateSquibMenuPosition = (squibElement: HTMLElement): Position => {
-    const rect = squibElement.getBoundingClientRect()
+  const calculateIncutMenuPosition = (incutElement: HTMLElement): Position => {
+    const rect = incutElement.getBoundingClientRect()
     const editorRect = editorRef()?.getBoundingClientRect()
 
     if (!editorRect) {
@@ -180,13 +187,17 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   // Base state for content
   const [content, setContent] = createSignal(initialContent || '')
 
+  // Флаг для предотвращения циклических обновлений innerHTML
+  // Когда true - изменение content пришло изнутри редактора, не нужно обновлять innerHTML
+  const [isInternalUpdate, setIsInternalUpdate] = createSignal(false)
+
   // Create UI helpers
   const uiHelpers = createUIHelpers({
     editorRef,
     props,
     hasFocus,
     showForm,
-    showSquibEditor,
+    showIncutEditor,
     hasSelection,
     content,
     cursorPosition
@@ -209,13 +220,16 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   })
 
   // Единый оптимизированный обработчик selectionchange (заменяет 3 дублирующихся)
-  onMount(() => {
+  onMount(async () => {
     const editor = editorRef()
     if (!editor) return
 
     // Инициализируем lazy loading для embed виджетов
     if (!isServer) {
       initEmbedLoaders()
+      // Обрабатываем существующие <preview> теги
+      const { processPreviewTags } = await import('./media/previewRenderer')
+      await processPreviewTags(editor)
     }
 
     let rafId: number | null = null
@@ -250,10 +264,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         const hasActiveSelection = !selection.isCollapsed && selection.toString().trim() !== ''
         setHasSelection(hasActiveSelection)
 
-        // 2.1. Если есть выделение текста - скрываем SquibMenu (приоритет основному тулбару)
-        if (hasActiveSelection && showSquibEditor()) {
-          setShowSquibEditor(false)
-          setCurrentSquib(null)
+        // 2.1. Если есть выделение текста - скрываем IncutMenu (приоритет основному тулбару)
+        if (hasActiveSelection && showIncutEditor()) {
+          setShowIncutEditor(false)
+          setCurrentIncut(null)
         }
 
         // 3. Обновляем floating toolbar
@@ -270,24 +284,24 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           } else {
             floatToolbar.classList.remove(styles.visible)
 
-            // 3.1. Если нет выделения, проверяем - курсор внутри squib? Показываем SquibMenu
+            // 3.1. Если нет выделения, проверяем - курсор внутри incut? Показываем IncutMenu
             const container = range.commonAncestorContainer
-            let squibElement: HTMLElement | null = null
+            let incutElement: HTMLElement | null = null
 
             if (container.nodeType === Node.TEXT_NODE) {
-              squibElement = container.parentElement?.closest('[data-align]') as HTMLElement | null
+              incutElement = container.parentElement?.closest('[data-align]') as HTMLElement | null
             } else {
-              squibElement = (container as HTMLElement).closest('[data-align]')
+              incutElement = (container as HTMLElement).closest('[data-align]')
             }
 
-            if (squibElement && !showSquibEditor()) {
-              setCurrentSquib(squibElement)
-              setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
-              setShowSquibEditor(true)
-            } else if (!squibElement && showSquibEditor()) {
-              // Курсор вышел из squib - скрываем меню
-              setShowSquibEditor(false)
-              setCurrentSquib(null)
+            if (incutElement && !showIncutEditor()) {
+              setCurrentIncut(incutElement)
+              setIncutMenuPosition(calculateIncutMenuPosition(incutElement))
+              setShowIncutEditor(true)
+            } else if (!incutElement && showIncutEditor()) {
+              // Курсор вышел из incut - скрываем меню
+              setShowIncutEditor(false)
+              setCurrentIncut(null)
             }
           }
         }
@@ -314,7 +328,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   })
 
   // Use helpers from UI module
-  const { currentToolbarMode, getFloatingToolbarPosition, findLinkAncestor } = uiHelpers
+  const { currentToolbarMode, getFloatingToolbarPosition } = uiHelpers
 
   // ✅ Обновление видимости Plus-меню при движении курсора
   const updatePlusMenuVisibility = () => {
@@ -388,6 +402,20 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       const handleBlockExit = (e: MouseEvent) => {
         const target = e.target as HTMLElement
 
+        // Проверяем - клик вне блока подвёрстки?
+        // Если IncutMenu открыто и клик НЕ по блоку подвёрстки - скрываем меню
+        if (showIncutEditor()) {
+          const clickedIncut = target.closest('[data-align]')
+          const currentIncutElement = currentIncut()
+
+          // Если клик вне текущего блока подвёрстки - скрываем меню
+          if (!clickedIncut || clickedIncut !== currentIncutElement) {
+            console.log('[handleBlockExit] Click outside incut, hiding IncutMenu')
+            setShowIncutEditor(false)
+            setCurrentIncut(null)
+          }
+        }
+
         // Если клик по самому редактору (пустая область), а не по его содержимому
         if (target === editor) {
           const selection = window.getSelection()
@@ -396,17 +424,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           const range = selection.getRangeAt(0)
           const container = range.commonAncestorContainer
 
-          // Проверяем - курсор внутри блочного элемента?
-          let blockElement: HTMLElement | null = null
-          if (container.nodeType === Node.TEXT_NODE) {
-            blockElement = container.parentElement?.closest(
-              'blockquote, h1, h2, h3, h4, h5, h6, ul, ol, div[data-type], div[data-align]'
-            ) as HTMLElement | null
-          } else {
-            blockElement = (container as HTMLElement).closest(
-              'blockquote, h1, h2, h3, h4, h5, h6, ul, ol, div[data-type], div[data-align]'
-            )
-          }
+          // Используем утилиту findBlockAncestor (DRY)
+          const blockElement = findBlockAncestor(container, editor)
 
           // Если курсор внутри блочного элемента - создаем новую строку для выхода
           if (blockElement && editor.contains(blockElement)) {
@@ -430,10 +449,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
               console.log('[handleBlockExit] Created new paragraph after block element:', blockElement.tagName)
             }
 
-            // Если это squib - скрываем SquibMenu
-            if (blockElement.hasAttribute('data-align') && showSquibEditor()) {
-              setShowSquibEditor(false)
-              setCurrentSquib(null)
+            // Если это incut - скрываем IncutMenu
+            if (blockElement.hasAttribute('data-align') && showIncutEditor()) {
+              setShowIncutEditor(false)
+              setCurrentIncut(null)
             }
           }
         }
@@ -560,6 +579,13 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   createEffect(
     on(content, (newContent) => {
       if (!editorRef() || isServer) return
+
+      // Пропускаем обновление если это внутреннее изменение из getHTML
+      if (isInternalUpdate()) {
+        console.log('[SimpleRichEditor] Skipping innerHTML sync - internal update')
+        return
+      }
+
       if (editorRef()!.innerHTML !== newContent) {
         console.log('[SimpleRichEditor] Syncing editor innerHTML with content signal')
         saveSelection()
@@ -578,11 +604,31 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
    * @returns Очищенный HTML
    */
   const getHTML = (editor: HTMLElement): string => {
-    const rawContent = editor.innerHTML || ''
+    // Клонируем контент для обработки
+    const clone = editor.cloneNode(true) as HTMLElement
+
+    // Конвертируем iframe обратно в <preview> для компактного хранения
+    const wrappers = clone.querySelectorAll('.video-embed-wrapper[data-embed-url]')
+    for (const wrapper of Array.from(wrappers)) {
+      const url = wrapper.getAttribute('data-embed-url')
+      if (url) {
+        const previewTag = document.createElement('preview')
+        previewTag.textContent = url
+        wrapper.replaceWith(previewTag)
+      }
+    }
+
+    const rawContent = clone.innerHTML || ''
     const contentHtml = cleanupJsonContent(rawContent)
 
     if (contentHtml !== content()) {
+      // Устанавливаем флаг что это внутреннее обновление
+      setIsInternalUpdate(true)
       setContent(contentHtml)
+      // Сбрасываем флаг в следующем тике (DRY: timing)
+      afterDOMUpdate(() => {
+        setIsInternalUpdate(false)
+      })
     }
 
     return contentHtml
@@ -636,7 +682,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
   // Use event handlers from events module
   const {
-    handleInput,
+    handleInput: handleInputBase,
     handleFocus: handleFocusBase,
     handleBlur: handleBlurBase,
     handlePaste,
@@ -645,6 +691,18 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     handleDragLeave,
     handleDropFiles
   } = eventHandlers
+
+  // Обертка для handleInput чтобы убрать placeholder при вводе
+  const handleInput = (e: InputEvent) => {
+    const editor = editorRef()
+    // Удаляем placeholder оверлей при вводе
+    const placeholder = editor?.querySelector('[data-embed-placeholder-overlay]')
+    if (placeholder) {
+      placeholder.remove()
+      console.log('[SimpleRichEditor] Embed placeholder hidden on input')
+    }
+    handleInputBase(e)
+  }
 
   // Create form handlers
   const formHandlers = createFormHandlers({
@@ -669,15 +727,15 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     editorRef,
     props,
     setEditingImage,
-    setCurrentSquib,
-    setShowSquibEditor,
-    setSquibMenuPosition,
+    setCurrentIncut,
+    setShowIncutEditor,
+    setIncutMenuPosition,
     showInlineForm: formHandlers.showInlineForm,
     showImageUploadModal: formHandlers.showImageUploadModal,
     handleInsertLink: formHandlers.handleInsertLink,
     handleInsertTooltip: formHandlers.handleInsertTooltip,
     saveSelection,
-    calculateSquibMenuPosition
+    calculateIncutMenuPosition
   })
 
   // Extend base handlers with additional logic
@@ -729,46 +787,28 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     const command = action as CommandType
     const editor = editorRef()
 
-    // Убедимся, что есть редактор
-    if (!editor) {
-      console.warn('[handleAction] No editor found')
+    // Валидируем выделение через утилиту (DRY)
+    const validation = validateSelection(editor)
+    if (!validation.isValid) {
+      console.warn('[handleAction]', validation.error)
       return
     }
 
-    // Получаем текущее выделение (НЕ восстанавливаем старое!)
-    const activeSelection = window.getSelection()
-    if (!activeSelection || activeSelection.rangeCount === 0) {
-      console.warn('[handleAction] No active selection found')
-      return
+    // Логируем детали выделения (DRY)
+    if (validation.selection) {
+      logSelectionDetails(validation.selection, 'handleAction')
     }
 
-    // Проверяем, что выделение находится в редакторе
-    const range = activeSelection.getRangeAt(0)
-    if (!editor.contains(range.commonAncestorContainer)) {
-      console.warn('[handleAction] Selection is not within editor')
+    // Создаем SelectionState через утилиту (DRY)
+    const selectionState = createSelectionStateUtil(editor!, cursorPosition())
+    if (!selectionState) {
+      console.warn('[handleAction] Failed to create selection state')
       return
-    }
-
-    console.log('[handleAction] Selection details:', {
-      text: activeSelection.toString(),
-      isCollapsed: activeSelection.isCollapsed,
-      rangeCount: activeSelection.rangeCount,
-      startContainer: range.startContainer.nodeName,
-      endContainer: range.endContainer.nodeName,
-      startOffset: range.startOffset,
-      endOffset: range.endOffset
-    })
-
-    const selectionState: SelectionState = {
-      range: range,
-      text: activeSelection.toString(),
-      isEmpty: activeSelection.isCollapsed,
-      position: cursorPosition() || { top: 0, left: 0 }
     }
 
     // Создаем контекст для унифицированной системы форматирования
     const formatContext: FormatContext = {
-      editor,
+      editor: editor!,
       selection: selectionState,
       editorId: props.editorId
     }
@@ -782,13 +822,14 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     // Специальная обработка для команд, требующих UI взаимодействия
     if (['link', 'tooltip', 'image', 'video', 'audio', 'embed'].includes(command)) {
       if (command === 'link') {
-        const linkElement = findLinkAncestor(activeSelection.anchorNode)
+        // Используем утилиту findLinkAncestor (DRY)
+        const linkElement = findLinkAncestorUtil(validation.selection?.anchorNode ?? null, editor)
         const initialUrl = linkElement ? linkElement.getAttribute('href') || '' : ''
         showInlineForm('link', handleInsertLink, initialUrl)
         return
       }
       if (command === 'tooltip') {
-        const tooltipElement = activeSelection.anchorNode?.parentElement?.closest('tooltip')
+        const tooltipElement = validation.selection?.anchorNode?.parentElement?.closest('tooltip')
         const initialText = tooltipElement ? tooltipElement.textContent || '' : ''
         showInlineForm('tooltip', handleInsertTooltip, initialText)
         return
@@ -835,84 +876,84 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       handleChange(props.fieldType ? String(props.fieldType) : 'content')
     }
 
-    // 2. Задержка для стабилизации DOM и обновления состояния кнопок
-    setTimeout(() => {
+    // 2. Задержка для стабилизации DOM и обновления состояния кнопок (DRY: timing)
+    afterDOMUpdate(() => {
       console.log('[handleAction] Post-command timeout - updating toolbar state')
 
       // Принудительно обновляем активное форматирование для корректного отображения кнопок
       console.log('[handleAction] Updating active formats for toolbar buttons...')
       trackSelectionAndCursor()
 
-      // Дополнительная проверка через небольшую задержку
-      setTimeout(() => {
+      // Дополнительная проверка через небольшую задержку (DRY: timing)
+      afterToolbarUpdate(() => {
         console.log('[handleAction] Secondary toolbar state update')
         trackSelectionAndCursor()
-      }, 5)
+      })
 
-      // Скрываем все активные меню/формы (кроме squib при создании)
+      // Скрываем все активные меню/формы (кроме incut при создании)
       setShowForm(null)
 
-      // Для команды squib - показываем меню редактирования если элемент создан
-      if (command === 'squib' && result.success) {
-        // Ждем пока DOM обновится после санитизации
-        setTimeout(() => {
+      // Для команды incut - показываем меню редактирования если элемент создан
+      if (command === 'incut' && result.success) {
+        // Ждем пока DOM обновится после санитизации (DRY: timing)
+        afterDOMUpdate(() => {
           const editor = editorRef()
           const selection = window.getSelection()
 
           if (!editor || !selection || selection.rangeCount === 0) {
-            console.log('[handleAction] No editor or selection for squib')
-            setShowSquibEditor(false)
+            console.log('[handleAction] No editor or selection for incut')
+            setShowIncutEditor(false)
             return
           }
 
           const range = selection.getRangeAt(0)
           const container = range.commonAncestorContainer
 
-          // Пытаемся найти squib элемент несколькими способами
-          let squibElement: HTMLElement | null = null
+          // Пытаемся найти incut элемент несколькими способами
+          let incutElement: HTMLElement | null = null
 
           // 1. Через closest от текущей позиции курсора
           if (container.nodeType === Node.TEXT_NODE) {
-            squibElement = container.parentElement?.closest('[data-align]') as HTMLElement | null
+            incutElement = container.parentElement?.closest('[data-align]') as HTMLElement | null
           } else {
-            squibElement = (container as HTMLElement).closest('[data-align]')
+            incutElement = (container as HTMLElement).closest('[data-align]')
           }
 
           // 2. Если не нашли через closest, ищем в родительском элементе
-          if (!squibElement && container.parentElement) {
+          if (!incutElement && container.parentElement) {
             const parent = container.parentElement
             if (parent.hasAttribute('data-align')) {
-              squibElement = parent
+              incutElement = parent
             }
           }
 
           // 3. Если всё ещё не нашли, ищем последний созданный элемент с data-align в редакторе
-          if (!squibElement) {
-            const allSquibs = editor.querySelectorAll('[data-align]')
-            if (allSquibs.length > 0) {
-              squibElement = allSquibs[allSquibs.length - 1] as HTMLElement
-              console.log('[handleAction] Found squib via querySelectorAll (last element)')
+          if (!incutElement) {
+            const allIncuts = editor.querySelectorAll('[data-align]')
+            if (allIncuts.length > 0) {
+              incutElement = allIncuts[allIncuts.length - 1] as HTMLElement
+              console.log('[handleAction] Found incut via querySelectorAll (last element)')
             }
           }
 
-          if (squibElement) {
-            console.log('[handleAction] Squib created, showing editor menu', squibElement)
-            setCurrentSquib(squibElement)
-            setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
-            setShowSquibEditor(true)
+          if (incutElement) {
+            console.log('[handleAction] Incut created, showing editor menu', incutElement)
+            setCurrentIncut(incutElement)
+            setIncutMenuPosition(calculateIncutMenuPosition(incutElement))
+            setShowIncutEditor(true)
           } else {
-            console.log('[handleAction] Squib element not found after all attempts')
+            console.log('[handleAction] Incut element not found after all attempts')
             console.log('[handleAction] Container:', container)
             console.log('[handleAction] Editor HTML:', editor.innerHTML)
-            setShowSquibEditor(false)
+            setShowIncutEditor(false)
           }
-        }, 100)
+        })
       } else {
-        setShowSquibEditor(false)
+        setShowIncutEditor(false)
       }
 
       console.log('[handleAction] COMPLETE - Command processing finished')
-    }, 50) // Увеличиваем задержку для стабильного обновления состояния кнопок
+    }) // Увеличиваем задержку для стабильного обновления состояния кнопок
   }
 
   // Create keyboard handlers (ПОСЛЕ объявления handleAction и handleNavigation)
@@ -938,26 +979,6 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     showImageUploadModal,
     editorFormOptions
   } = formHandlers
-
-  // This manual update might conflict with the createMemo above. Let's rely on the memo.
-  // const updateFootnotes = (footnotes: Array<{ id: string; content: string; marker: Element }>) => {
-  //   const footnotesObject: Record<string, string> = {}
-  //   footnotes.forEach(({ id, content }) => {
-  //     footnotesObject[id] = content
-  //   })
-  //   setStateDocumentFootnotes(footnotesObject)
-  // }
-
-  // Effect no longer needed if getFootnotesArray is a memo depending on content()
-  // createEffect(
-  //   on(content, () => {
-  //     if (editorRef()) {
-  //       updateFootnotes(getAllFootnotes(editorRef()!))
-  //     }
-  //   })
-  // )
-
-  // Draft navigation function удалена из конца файла - уже объявлена выше
 
   // --- Initialization ---
   const initEditor = (element: HTMLDivElement) => {
@@ -1173,7 +1194,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
       {/* Editor Container with UI Layer */}
       <div style={{ position: 'relative' }}>
         {/* Plus Menu positioned relative to editor container (not body portal) */}
-        <Show when={props.plus && shouldShowPlusMenu() && !showSquibEditor() && !showForm()}>
+        <Show when={props.plus && shouldShowPlusMenu() && !showIncutEditor() && !showForm()}>
           <PlusMenu
             top={plusMenuTop()}
             left={uiHelpers.getPlusMenuLeft()}
@@ -1194,6 +1215,43 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
                 showEmbedForm: () => {
                   const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
                   showInlineFormAtPosition('embed', plusMenuPosition, handleInsertEmbed, '')
+                },
+                showEmbedPlaceholder: () => {
+                  // Вставляем реальный non-selectable элемент как оверлей
+                  const editor = editorRef()
+                  if (editor) {
+                    // Удаляем старый placeholder если есть
+                    const oldPlaceholder = editor.querySelector('[data-embed-placeholder-overlay]')
+                    if (oldPlaceholder) oldPlaceholder.remove()
+
+                    // Получаем позицию курсора
+                    const selection = window.getSelection()
+                    if (selection && selection.rangeCount > 0) {
+                      const range = selection.getRangeAt(0)
+                      const rect = range.getBoundingClientRect()
+                      const editorRect = editor.getBoundingClientRect()
+
+                      // Создаем placeholder элемент
+                      const placeholder = document.createElement('span')
+                      placeholder.contentEditable = 'false'
+                      placeholder.textContent = 'https://...'
+                      placeholder.setAttribute('data-embed-placeholder-overlay', 'true')
+                      placeholder.style.cssText = `
+                        position: absolute;
+                        left: ${rect.left - editorRect.left}px;
+                        top: ${rect.top - editorRect.top}px;
+                        color: #9ca3af;
+                        opacity: 0.6;
+                        pointer-events: none;
+                        user-select: none;
+                        z-index: 1;
+                      `
+
+                      editor.appendChild(placeholder)
+                      editor.focus()
+                      console.log('[SimpleRichEditor] Embed placeholder shown at cursor')
+                    }
+                  }
                 },
                 showImageUploadModal,
                 showAudioUploader,
@@ -1249,7 +1307,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             editorId={props.editorId}
           />
         </Show>
-        <Show when={currentToolbarMode() === 'float' && !showForm() && !showSquibEditor()}>
+        <Show when={currentToolbarMode() === 'float' && !showForm() && !showIncutEditor()}>
           <SimpleToolbar
             commands={displayedCommands()}
             onAction={handleAction}
@@ -1260,43 +1318,43 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             editorId={props.editorId}
           />
         </Show>
-        <Show when={showSquibEditor() && currentSquib()}>
-          <SquibMenu
+        <Show when={showIncutEditor() && currentIncut()}>
+          <IncutMenu
             commands={props.commands as CommandType[]}
             currentFormats={activeFormats()}
             isVisible={true}
-            squibElement={currentSquib()}
+            incutElement={currentIncut()}
             onAction={(action) => {
-              const squibElement = currentSquib()
-              if (squibElement) {
-                const handler = handleSquibFormatting(action as string)
-                if (handler(squibElement)) {
+              const incutElement = currentIncut()
+              if (incutElement) {
+                const handler = handleIncutFormatting(action as string)
+                if (handler(incutElement)) {
                   // Форсируем обновление контента для сохранения изменений
                   handleChange(props.fieldType ? String(props.fieldType) : 'content')
                   // Обновляем позицию меню если блок изменил размеры
-                  setSquibMenuPosition(calculateSquibMenuPosition(squibElement))
-                  // Форсируем перерисовку меню обновляя currentSquib
-                  setCurrentSquib(null)
-                  setTimeout(() => setCurrentSquib(squibElement), 0)
+                  setIncutMenuPosition(calculateIncutMenuPosition(incutElement))
+                  // Форсируем перерисовку меню обновляя currentIncut (DRY: timing)
+                  setCurrentIncut(null)
+                  afterDOMUpdate(() => setCurrentIncut(incutElement))
                 }
               }
             }}
             onClose={() => {
-              const squibElement = currentSquib()
-              if (squibElement) {
+              const incutElement = currentIncut()
+              if (incutElement) {
                 // Убираем форматирование подвёрстки - заменяем на обычный параграф
-                const textContent = squibElement.textContent || ''
+                const textContent = incutElement.textContent || ''
                 const p = document.createElement('p')
                 p.textContent = textContent
-                squibElement.replaceWith(p)
+                incutElement.replaceWith(p)
 
                 // Сохраняем изменения
                 handleChange(props.fieldType ? String(props.fieldType) : 'content')
               }
-              setShowSquibEditor(false)
-              setCurrentSquib(null)
+              setShowIncutEditor(false)
+              setCurrentIncut(null)
             }}
-            position={squibMenuPosition()}
+            position={incutMenuPosition()}
           />
         </Show>
 

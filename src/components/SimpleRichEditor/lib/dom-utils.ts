@@ -1,39 +1,59 @@
 /**
  * @module lib/dom-utils
- * @description Утилиты для работы с DOM в редакторе
+ * @description Утилиты для работы с DOM в редакторе (объединяет dom.ts и dom-utils.ts)
  */
 
 /**
- * Ищет родительский элемент, соответствующий селектору или функции предиката
+ * Получает HTMLElement из узла (текстового или элемента)
+ * Консолидирует паттерн из detection.ts и других модулей
  *
- * @param element - Элемент, для которого ищем предка
- * @param selector - Строковый селектор (тег) или функция-предикат
- * @returns Найденный элемент или null
- *
- * @example
- * // Поиск по тегу
- * const blockquote = findAncestor(node, 'BLOCKQUOTE');
- *
- * // Поиск с предикатом
- * const punchline = findAncestor(node, el =>
- *   el.tagName === 'SPAN' && el.classList.contains('punchline')
- * );
+ * @param node - Узел для преобразования
+ * @returns HTMLElement или null
  */
-export function findAncestor(element: Node | null, selector: string | ((element: Element) => boolean)): Element | null {
+export const getElementFromNode = (node: Node | null): HTMLElement | null => {
+  if (!node) return null
+  return node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement)
+}
+
+/**
+ * Универсальная функция поиска родительского элемента
+ * Консолидирует логику из старого dom-utils и других модулей
+ *
+ * @param element - Начальный элемент
+ * @param predicate - Функция проверки или строка селектора
+ * @param rootNode - Корневой узел (опционально)
+ * @returns Найденный элемент или null
+ */
+export const findAncestor = (
+  element: Element | null,
+  predicate: string | ((el: Element) => boolean),
+  rootNode?: HTMLElement
+): Element | null => {
   if (!element) return null
 
-  // Если текущий элемент - текстовый узел, начинаем с родителя
-  let current: Element | null = element.nodeType === Node.TEXT_NODE ? element.parentElement : (element as Element)
+  let current: Element | null = element
 
-  // Определяем функцию проверки в зависимости от типа селектора
-  const matchesSelector = typeof selector === 'function' ? selector : (el: Element) => el.tagName === selector
+  while (current && current !== rootNode) {
+    // Если предикат - строка, используем closest
+    if (typeof predicate === 'string') {
+      const found = current.closest(predicate)
+      if (found) return found
+      break
+    }
 
-  // Поднимаемся по дереву DOM до корня документа
-  while (current && !matchesSelector(current)) {
+    // Если предикат - функция, проверяем каждый элемент
+    if (predicate(current)) {
+      return current
+    }
+
+    if (!current.parentElement || current.parentElement === document.body) {
+      break
+    }
+
     current = current.parentElement
   }
 
-  return current
+  return null
 }
 
 /**

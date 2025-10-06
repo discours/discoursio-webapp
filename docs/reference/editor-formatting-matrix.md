@@ -11,7 +11,7 @@
 - **Параграфы**: `p`
 - **Заголовки**: `h1`, `h2`, `h3`
 - **Цитаты**: `blockquote`, `punchline`
-- **Врезка (подвёрстка)**: `squib` (`div[data-align]`)
+- **Врезка (подвёрстка)**: `incut` (`div[data-align]`)
 - **Списки**: `bulletList` (ul), `orderedList` (ol)
 - **Разделители**: `hr`, `separator`
 
@@ -34,7 +34,7 @@
 
 ## 🔄 Матрица взаимодействий блочных форматов
 
-| От / К      | p | h1 | h2 | h3 | blockquote | punchline | squib | ul | ol |
+| От / К      | p | h1 | h2 | h3 | blockquote | punchline | incut | ul | ol |
 |------------|---|----|----|----|-----------|-----------| ------|----|----|
 | **p**          | - | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **h1**         | ✅ | - | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -42,7 +42,7 @@
 | **h3**         | ✅ | ✅ | ✅ | - | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **blockquote** | ✅ | ✅ | ✅ | ✅ | - | ✅ | ✅ | ✅ | ✅ |
 | **punchline**  | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ | ✅ | ✅ |
-| **squib**      | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ | ✅ |
+| **incut**      | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ | ✅ |
 | **ul**         | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ |
 | **ol**         | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | - |
 
@@ -85,37 +85,37 @@
 
 #### 2. Squib (врезка)
 ```typescript
-// Тест 2.1: p → squib (курсор внутри)
+// Тест 2.1: p → incut (курсор внутри)
 начало: "<p>текст|</p>"
-команда: 'squib'
+команда: 'incut'
 ожидание: "<div data-align=\"left\">текст</div>"
 
-// Тест 2.2: p → squib (весь текст выделен)
+// Тест 2.2: p → incut (весь текст выделен)
 начало: "<p>[текст]</p>"
-команда: 'squib'
+команда: 'incut'
 ожидание: "<div data-align=\"left\">текст</div>"
 
-// Тест 2.3: squib → p (toggle)
+// Тест 2.3: incut → p (toggle)
 начало: "<div data-align=\"left\">текст|</div>"
-команда: 'squib'
+команда: 'incut'
 ожидание: "<p>текст</p>"
 
-// Тест 2.4: squib → h1 (смена блока)
+// Тест 2.4: incut → h1 (смена блока)
 начало: "<div data-align=\"left\">текст|</div>"
 команда: 'h1'
 ожидание: "<h1>текст</h1>"
 
-// Тест 2.5: squib + выравнивание (курсор внутри)
+// Тест 2.5: incut + выравнивание (курсор внутри)
 начало: "<div data-align=\"left\">текст|</div>"
 команда: 'align-center'
 ожидание: "<div data-align=\"center\">текст</div>"
 
-// Тест 2.6: squib + inline форматирование (частичное выделение)
+// Тест 2.6: incut + inline форматирование (частичное выделение)
 начало: "<div data-align=\"left\">[текст]</div>" (выделена часть)
 команда: 'bold'
 ожидание: "<div data-align=\"left\"><strong>текст</strong></div>"
 
-// Тест 2.7: НЕ преобразовывать squib при частичном выделении
+// Тест 2.7: НЕ преобразовывать incut при частичном выделении
 начало: "<div data-align=\"left\">один [два] три</div>"
 команда: 'h1'
 ожидание: "<div data-align=\"left\">один [два] три</div>" (без изменений блока)
@@ -186,7 +186,7 @@
 команда: 'bg-yellow'
 ожидание: "<span data-bg=\"yellow\">текст</span>"
 
-// Тест 5.3: data-bg внутри squib
+// Тест 5.3: data-bg внутри incut
 начало: "<div data-align=\"left\">текст</div>"
 выделение: "текст"
 команда: 'bg-yellow'
@@ -207,9 +207,9 @@
 команда: 'h2'
 ожидание: "<h2><strong>заголовок</strong></h2>"
 
-// Тест 6.3: squib с bold + italic → p (курсор = block)
+// Тест 6.3: incut с bold + italic → p (курсор = block)
 начало: "<div data-align=\"left\"><strong>жирный|</strong> <em>курсив</em></div>"
-команда: 'squib' (toggle)
+команда: 'incut' (toggle)
 ожидание: "<p><strong>жирный</strong> <em>курсив</em></p>"
 
 // Тест 6.4: blockquote с ссылкой → p (курсор = block)
@@ -217,7 +217,7 @@
 команда: 'blockquote' (toggle)
 ожидание: "<p>текст с <a href=\"#\">ссылкой</a></p>"
 
-// Тест 6.5: squib с highlight (курсор = изменение align)
+// Тест 6.5: incut с highlight (курсор = изменение align)
 начало: "<div data-align=\"center\">текст с <mark>выделением|</mark></div>"
 команда: 'align-right'
 ожидание: "<div data-align=\"right\">текст с <mark>выделением</mark></div>"
@@ -242,10 +242,10 @@
 ```typescript
 // Тест 7.1: multiple inline внутри block
 начало: "<div data-align=\"left\"><strong><em><mark>текст</mark></em></strong></div>"
-команда: 'squib' (toggle)
+команда: 'incut' (toggle)
 ожидание: "<p><strong><em><mark>текст</mark></em></strong></p>"
 
-// Тест 7.2: squib с link и highlight
+// Тест 7.2: incut с link и highlight
 начало: "<div data-align=\"center\"><a href=\"#\">ссылка</a> и <mark>выделение</mark></div>"
 команда: 'align-left'
 ожидание: "<div data-align=\"left\"><a href=\"#\">ссылка</a> и <mark>выделение</mark></div>"
@@ -260,7 +260,7 @@
 команда: 'punchline'
 ожидание: "<div data-type=\"punchline\">текст с <span data-bg=\"yellow\">желтым фоном</span></div>"
 
-// Тест 7.5: squib → h2 → blockquote (цепочка преобразований)
+// Тест 7.5: incut → h2 → blockquote (цепочка преобразований)
 начало: "<div data-align=\"left\"><strong>текст</strong></div>"
 команда: 'h2'
 промежуточно: "<h2><strong>текст</strong></h2>"
@@ -282,7 +282,7 @@
 команда: 'bold'
 ожидание: "<div data-align=\"left\"><strong>жирный</strong> <strong>обычный</strong></div>"
 
-// Тест 8.3: расширение bold внутри squib
+// Тест 8.3: расширение bold внутри incut
 начало: "<div data-align=\"center\"><strong>жирный</strong> обычный текст</div>"
 выделение: "жирный обычный"
 команда: 'bold'
@@ -314,7 +314,7 @@
 действие: Enter
 ожидание: "<blockquote>цитата</blockquote><p><br></p>"
 
-// Тест 9.4: Enter в squib
+// Тест 9.4: Enter в incut
 начало: "<div data-align=\"left\">текст|</div>"
 действие: Enter
 ожидание: "<div data-align=\"left\">текст</div><p><br></p>"
@@ -347,7 +347,7 @@
 действие: Backspace
 ожидание: "<p>цитата</p>"
 
-// Тест 10.4: Backspace в начале squib
+// Тест 10.4: Backspace в начале incut
 начало: "<div data-align=\"left\">|текст</div>"
 действие: Backspace
 ожидание: "<p>текст</p>"
@@ -405,20 +405,20 @@
 действие: новая строка, курсор в начале
 ожидание: plus menu видим слева
 
-// Тест 12.3: Squib menu при клике на squib
+// Тест 12.3: Squib menu при клике на incut
 начало: "<div data-align=\"left\">текст</div>"
 действие: клик на блок
-ожидание: squib menu видим над блоком с кнопками выравнивания
+ожидание: incut menu видим над блоком с кнопками выравнивания
 
 // Тест 12.4: Скрытие plus menu при открытии form
 начало: plus menu видим
 действие: клик на embed
 ожидание: plus menu скрыт, form видим
 
-// Тест 12.5: Скрытие floating toolbar при squib menu
+// Тест 12.5: Скрытие floating toolbar при incut menu
 начало: текст выделен, floating toolbar видим
-действие: применить squib
-ожидание: floating toolbar скрыт, squib menu видим
+действие: применить incut
+ожидание: floating toolbar скрыт, incut menu видим
 ```
 
 #### 13. Переходы состояний
@@ -494,7 +494,7 @@
 действие: Backspace
 ожидание: "<p><strong>текст</strong> с <em>форматированием</em></p>"
 
-// Тест 16.3: Enter в squib с highlight
+// Тест 16.3: Enter в incut с highlight
 начало: "<div data-align=\"center\">текст <mark>выделение|</mark></div>"
 действие: Enter
 ожидание: "<div data-align=\"center\">текст <mark>выделение</mark></div><p><br></p>"
@@ -508,8 +508,8 @@
 ## 🔍 Известные проблемы
 
 ### Текущие баги (требуют исправления)
-1. ❌ Squib menu не появляется после создания squib
-2. ❌ Кнопка squib не видна в dropdown (возможно, ошибка иконки)
+1. ❌ Squib menu не появляется после создания incut
+2. ❌ Кнопка incut не видна в dropdown (возможно, ошибка иконки)
 3. ⚠️ Plus menu позиционирование может быть некорректным в некоторых случаях
 4. ⚠️ Floating toolbar может перекрывать текст
 
@@ -525,10 +525,10 @@
 
 ### Критичные (P0)
 - [ ] **Block vs Inline определение**: Блочное только при курсоре БЕЗ выделения или полном выделении
-- [ ] Создание и удаление squib
+- [ ] Создание и удаление incut
 - [ ] Backspace в начале блочных элементов
 - [ ] Enter внутри блочных элементов
-- [ ] Видимость всех меню (floating, plus, squib)
+- [ ] Видимость всех меню (floating, plus, incut)
 - [ ] Сохранение data-* атрибутов при санитизации
 - [ ] Сохранение вложенного inline форматирования при преобразовании блоков
 

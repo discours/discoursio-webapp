@@ -981,8 +981,8 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
         hasTopics: !!(draftInput.topic_ids && draftInput.topic_ids.length > 0)
       })
 
-      // Проводим валидацию перед публикацией
-      const validationResult = validateDraftForPublishing(draftInput)
+      // Проводим строгую валидацию перед публикацией
+      const validationResult = validateDraftForPublishing(draftInput, true)
       console.log('[DraftsProvider] Pre-publish validation result:', validationResult)
 
       if (!validationResult.isValid) {
@@ -1288,26 +1288,23 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       return false
     }
 
-    // Сначала синхронизируем черновик чтобы получить актуальный контент
-    console.log('[DraftsProvider] Синхронизируем черновик перед валидацией...')
-    const syncedDraft = await syncDraft(draft.id)
-    const finalDraft = syncedDraft || draft
-
+    // НЕ вызываем syncDraft здесь чтобы избежать циклических зависимостей
+    // Используем текущее состояние черновика из сигнала
     console.log('[DraftsProvider] Starting validation for draft:', {
-      id: finalDraft.id,
-      title: finalDraft.title,
-      topics: finalDraft.topics,
-      topicIds: finalDraft.topics?.map((t) => t?.id),
-      body: `${finalDraft.body?.substring(0, 100)}...`,
-      bodyLength: finalDraft.body?.length,
-      slug: finalDraft.slug
+      id: draft.id,
+      title: draft.title,
+      topics: draft.topics,
+      topicIds: draft.topics?.map((t) => t?.id),
+      body: `${draft.body?.substring(0, 100)}...`,
+      bodyLength: draft.body?.length,
+      slug: draft.slug
     })
 
-    // Создаем DraftInput из синхронизированного черновика
-    const draftInput = createDraftInput(finalDraft)
+    // Создаем DraftInput из текущего черновика
+    const draftInput = createDraftInput(draft)
 
     console.log('[DraftsProvider] DraftInput for validation:', {
-      draftId: finalDraft.id,
+      draftId: draft.id,
       topicIds: draftInput.topic_ids,
       mainTopicId: draftInput.main_topic_id,
       title: draftInput.title,
@@ -1316,8 +1313,9 @@ export const DraftsProvider = (props: { children: JSX.Element }) => {
       slug: draftInput.slug
     })
 
-    const validationResult = validateDraftForPublishing(draftInput)
-    console.log('[DraftsProvider] Validation result:', validationResult)
+    // Валидация для черновика (не требует обязательных полей)
+    const validationResult = validateDraftForPublishing(draftInput, false)
+    console.log('[DraftsProvider] Validation result (draft mode):', validationResult)
 
     if (validationResult.isValid) {
       console.log('[DraftsProvider] Валидация успешна')
