@@ -54,6 +54,14 @@
     border-color: var(--color-border-hover);
   }
 
+  // Визуальная индикация при drag-over
+  :global(.drag-over) {
+    background-color: var(--color-primary-light, rgba(54, 102, 255, 0.05));
+    border: 2px dashed var(--color-primary, #36f);
+    outline: 2px solid var(--color-primary-light, rgba(54, 102, 255, 0.2));
+    outline-offset: 2px;
+  }
+
   // Специальные стили для редактора вступления
   &[data-field-type="lead"] {
     border: none;

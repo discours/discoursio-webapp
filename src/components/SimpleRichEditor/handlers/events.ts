@@ -392,13 +392,52 @@ export const createEventHandlers = (context: EventHandlersContext) => {
     }
   }
 
+  const handleDragOver = (e: DragEvent) => {
+    // КРИТИЧНО: preventDefault() для разрешения drop
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Устанавливаем эффект копирования
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy'
+    }
+  }
+
+  const handleDragEnter = (e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Добавляем визуальную индикацию
+    const editor = editorRef()
+    if (editor && !props.readOnly) {
+      editor.classList.add('drag-over')
+    }
+  }
+
+  const handleDragLeave = (e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Убираем индикацию только если покидаем сам редактор
+    const editor = editorRef()
+    if (editor && e.target === editor) {
+      editor.classList.remove('drag-over')
+    }
+  }
+
   const handleDropFiles = async (e: DragEvent) => {
     e.preventDefault()
-    if (!editorRef() || props.readOnly) return
+    e.stopPropagation()
+
+    const editor = editorRef()
+    if (!editor || props.readOnly) return
+
+    // Убираем визуальную индикацию
+    editor.classList.remove('drag-over')
 
     await handleDropFilesHook(e)
     handleChange(props.fieldType ? String(props.fieldType) : 'content')
-    editorRef()?.focus()
+    editor.focus()
   }
 
   // Helper function
@@ -413,6 +452,9 @@ export const createEventHandlers = (context: EventHandlersContext) => {
     handleFocus,
     handleBlur,
     handlePaste,
+    handleDragOver,
+    handleDragEnter,
+    handleDragLeave,
     handleDropFiles,
     handleChange,
     debouncedHandleChange

@@ -80,21 +80,93 @@ export const useDropFiles = () => {
     if (sel) {
       const windowSelection = window.getSelection()
       windowSelection?.removeAllRanges()
-      windowSelection?.addRange(sel)
-      return true
+
+      // КРИТИЧНО: клонируем range перед добавлением
+      // Иначе может быть ошибка "The object is in an invalid state"
+      try {
+        const clonedRange = sel.cloneRange()
+        windowSelection?.addRange(clonedRange)
+        return true
+      } catch (error) {
+        console.warn('[restoreSelection] Failed to restore selection:', error)
+        return false
+      }
     }
     return false
   }
 
   /**
-   * Обработчик перетаскивания файлов с реальной загрузкой
+   * Обработчик перетаскивания файлов и URL с реальной загрузкой
    * @param ev Событие drag
    */
   const handleDropFiles = async (ev: DragEvent) => {
     saveSelection()
 
+    // Проверяем наличие текстовых данных (URL)
+    const droppedText = ev.dataTransfer?.getData('text/plain')
+    const droppedHtml = ev.dataTransfer?.getData('text/html')
+
+    // Если это URL - обрабатываем как embed
+    if (droppedText && !droppedHtml) {
+      const trimmedUrl = droppedText.trim()
+
+      // Проверяем - это URL?
+      const urlRegex = /^https?:\/\/[^\s]+$/
+      if (urlRegex.test(trimmedUrl)) {
+        const { detectEmbedPlatform } = await import('./validation')
+        const platform = detectEmbedPlatform(trimmedUrl)
+
+        if (platform !== 'unknown') {
+          console.log(`[useDropFiles] Detected embed platform: ${platform} for URL: ${trimmedUrl}`)
+
+          // Вставляем URL как embed
+          const { createUniversalEmbed } = await import('./html')
+          const embedHtml = await createUniversalEmbed(trimmedUrl, platform)
+
+          if (embedHtml && restoreSelection()) {
+            const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+            if (editor) {
+              const { replaceSelection } = await import('../lib/utils')
+              replaceSelection(embedHtml, editor)
+              toast.success(t('Embed inserted successfully'))
+              return
+            }
+          }
+        } else {
+          // Неизвестная платформа - вставляем как обычную ссылку
+          console.log(`[useDropFiles] Unknown platform, inserting as link: ${trimmedUrl}`)
+
+          if (restoreSelection()) {
+            const editor = document.querySelector('[contenteditable="true"]') as HTMLElement
+            if (editor) {
+              const link = document.createElement('a')
+              link.href = trimmedUrl
+              link.target = '_blank'
+              link.rel = 'noopener noreferrer'
+              link.textContent = trimmedUrl
+
+              const selection = window.getSelection()
+              if (selection?.rangeCount) {
+                const range = selection.getRangeAt(0)
+                range.deleteContents()
+                range.insertNode(link)
+                range.setStartAfter(link)
+                range.collapse(true)
+                selection.removeAllRanges()
+                selection.addRange(range)
+              }
+
+              toast.success(t('Link inserted'))
+              return
+            }
+          }
+        }
+      }
+    }
+
+    // Обрабатываем файлы
     const files = ev.dataTransfer?.files
-    if (!files) return
+    if (!files || files.length === 0) return
 
     const fileArray = Array.from(files)
 
@@ -116,13 +188,23 @@ export const useDropFiles = () => {
     try {
       console.log('[useDropFiles] Processing dropped images:', validImages.length)
 
-      // Показываем уведомление о начале загрузки
-      const uploadingToast = toast.loading(t('Uploading images...'))
+      // Показываем уведомление о начале загрузки с прогрессом
+      const totalFiles = validImages.length
+      let uploadedCount = 0
+
+      const uploadingToast = toast.loading(
+        t('Uploading {{current}}/{{total}} images...', { current: uploadedCount, total: totalFiles })
+      )
 
       // Загружаем файлы через реальную систему загрузки
       const uploadResults: UploadResult[] = []
 
-      for (const file of validImages) {
+      // Параллельная загрузка с ограничением (максимум 3 одновременно)
+      const CONCURRENT_UPLOADS = 3
+      const uploadQueue = [...validImages]
+      const activeUploads: Promise<void>[] = []
+
+      const uploadFile = async (file: File) => {
         try {
           console.log(`[useDropFiles] Uploading file: ${file.name}`)
 
@@ -145,6 +227,35 @@ export const useDropFiles = () => {
             error: error instanceof Error ? error.message : 'Upload failed',
             data: { name: file.name }
           })
+        } finally {
+          uploadedCount++
+          // Обновляем прогресс в toast
+          toast.loading(t('Uploading {{current}}/{{total}} images...', { current: uploadedCount, total: totalFiles }), {
+            id: uploadingToast
+          })
+        }
+      }
+
+      // Запускаем загрузку с ограничением параллельности
+      while (uploadQueue.length > 0 || activeUploads.length > 0) {
+        // Запускаем новые загрузки до лимита
+        while (activeUploads.length < CONCURRENT_UPLOADS && uploadQueue.length > 0) {
+          const file = uploadQueue.shift()
+          if (file) {
+            const uploadPromise = uploadFile(file).then(() => {
+              // Удаляем завершенную загрузку из активных
+              const index = activeUploads.indexOf(uploadPromise)
+              if (index > -1) {
+                activeUploads.splice(index, 1)
+              }
+            })
+            activeUploads.push(uploadPromise)
+          }
+        }
+
+        // Ждем завершения хотя бы одной загрузки
+        if (activeUploads.length > 0) {
+          await Promise.race(activeUploads)
         }
       }
 

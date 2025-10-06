@@ -640,6 +640,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     handleFocus: handleFocusBase,
     handleBlur: handleBlurBase,
     handlePaste,
+    handleDragOver,
+    handleDragEnter,
+    handleDragLeave,
     handleDropFiles
   } = eventHandlers
 
@@ -1224,6 +1227,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
             onFocus={handleFocus}
             onBlur={handleBlur}
             onPaste={handlePaste}
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
             onDrop={handleDropFiles}
             onClick={handleContentClick}
             onKeyDown={handleKeyDown}
