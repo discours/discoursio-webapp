@@ -5,13 +5,13 @@
 
 import { Component, createSignal, Show } from 'solid-js'
 import { useLocalize } from '~/context/localize'
-import { createUniversalEmbed } from '../media/html'
+import { createUniversalPreview } from '../media/html'
 import styles from './PreviewInlineChoice.module.scss'
 
 interface Props {
   url: string
   platform: string
-  onChoice: (type: 'link' | 'preview' | 'text') => void
+  onChoice: (type: 'link' | 'preview') => void
   onCancel: () => void
 }
 
@@ -30,22 +30,22 @@ export const PreviewInlineChoice: Component<Props> = (props) => {
     // unknown платформа - не можем создать embed
     if (props.platform === 'unknown') return false
 
-    // Для всех известных платформ из detectEmbedPlatform можем создать embed
+    // Для всех известных платформ из detectPreviewPlatform можем создать preview
     // Полный список: youtube, vimeo, twitch, ted, soundcloud, bandcamp, facebook, x,
     // instagram, telegram, reddit, tiktok, wikipedia, slideshare, imgur, flickr, discours
     return true
   }
 
   // Генерируем превью асинхронно при первом hover
-  // Переиспользуем createUniversalEmbed для генерации превью
+  // Переиспользуем createUniversalPreview для генерации превью
   const generatePreview = async () => {
     if (previewHtml()) return // Уже сгенерировано
 
     console.log('[PreviewInlineChoice] Generating preview for:', props.url, 'platform:', props.platform)
 
     try {
-      const html = await createUniversalEmbed(props.url, props.platform)
-      console.log('[PreviewInlineChoice] createUniversalEmbed returned:', html)
+      const html = await createUniversalPreview(props.url, props.platform)
+      console.log('[PreviewInlineChoice] createUniversalPreview returned:', html)
 
       if (html) {
         // Если это <preview> тег (для видео), конвертируем в iframe для превью
@@ -100,7 +100,7 @@ export const PreviewInlineChoice: Component<Props> = (props) => {
               {t('Preview')}
             </button>
 
-            {/* Tooltip превью при hover - используем previewHtml из createUniversalEmbed */}
+            {/* Tooltip превью при hover - используем previewHtml из createUniversalPreview */}
             <Show when={showPreview() && previewHtml()}>
               <div class={styles.previewTooltip} innerHTML={previewHtml()} />
             </Show>
@@ -118,19 +118,6 @@ export const PreviewInlineChoice: Component<Props> = (props) => {
           title={t('Insert as hyperlink')}
         >
           {t('Link')}
-        </button>
-
-        {/* Кнопка "Текст" показывается всегда */}
-        <button
-          type="button"
-          class={styles.actionButton}
-          onClick={() => {
-            console.log('[PreviewInlineChoice] Text button clicked')
-            props.onChoice('text')
-          }}
-          title={t('Insert as plain text')}
-        >
-          {t('Text')}
         </button>
 
         <button type="button" class={styles.cancelButton} onClick={props.onCancel} title={t('Cancel')}>

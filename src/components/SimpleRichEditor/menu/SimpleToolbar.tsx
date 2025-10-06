@@ -294,6 +294,9 @@ export const ToolbarControl: Component<{
   if (command === 'separator') {
     iconNameForButton = 'editor-hr' // Используем иконку разделителя для separator
   }
+  if (command === 'preview') {
+    iconNameForButton = 'editor-video' // Используем иконку видео для preview/embed
+  }
 
   return (
     <Popover content={capitalize(command) as string}>

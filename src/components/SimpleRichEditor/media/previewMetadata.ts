@@ -1,6 +1,6 @@
 /**
- * @module media/embedMetadata
- * @description Получение мета-данных для embed preview без загрузки внешних SDK
+ * @module media/previewMetadata
+ * @description Получение мета-данных для preview preview без загрузки внешних SDK
  *
  * Использует Open Graph теги и oEmbed API для получения:
  * - title
@@ -10,13 +10,13 @@
  * Все запросы идут через наш backend для защиты приватности
  */
 
-export interface EmbedMetadata {
+export interface PreviewMetadata {
   title?: string
   description?: string
   thumbnail?: string
   author?: string
   authorUrl?: string
-  embedType?: 'video' | 'photo' | 'link' | 'rich'
+  previewType?: 'video' | 'photo' | 'link' | 'rich'
 }
 
 /**
@@ -45,11 +45,11 @@ export const OEMBED_ENDPOINTS: Record<string, string> = {
  * @param url URL для получения метаданных
  * @returns Promise с метаданными или null если недоступно
  */
-export const fetchEmbedMetadata = async (url: string): Promise<EmbedMetadata | null> => {
+export const fetchPreviewMetadata = async (url: string): Promise<PreviewMetadata | null> => {
   try {
     // Делаем запрос через наш backend endpoint
     // Это защищает приватность - внешние сервисы не узнают IP пользователя
-    const response = await fetch('/api/embed/metadata', {
+    const response = await fetch('/api/preview/metadata', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -58,14 +58,14 @@ export const fetchEmbedMetadata = async (url: string): Promise<EmbedMetadata | n
     })
 
     if (!response.ok) {
-      console.warn('Failed to fetch embed metadata:', response.statusText)
+      console.warn('Failed to fetch preview metadata:', response.statusText)
       return null
     }
 
     const data = await response.json()
-    return data as EmbedMetadata
+    return data as PreviewMetadata
   } catch (error) {
-    console.error('Error fetching embed metadata:', error)
+    console.error('Error fetching preview metadata:', error)
     return null
   }
 }
@@ -73,13 +73,13 @@ export const fetchEmbedMetadata = async (url: string): Promise<EmbedMetadata | n
 /**
  * Получает мета-данные через oEmbed API (fallback, если нет backend)
  * @param url URL для получения метаданных
- * @param platform Платформа embed
+ * @param platform Платформа preview
  * @returns Promise с метаданными или null
  */
 export const fetchOEmbedMetadata = async (
   url: string,
   platform: keyof typeof OEMBED_ENDPOINTS
-): Promise<EmbedMetadata | null> => {
+): Promise<PreviewMetadata | null> => {
   const endpoint = OEMBED_ENDPOINTS[platform]
   if (!endpoint) return null
 
@@ -99,7 +99,7 @@ export const fetchOEmbedMetadata = async (
       thumbnail: data.thumbnail_url,
       author: data.author_name,
       authorUrl: data.author_url,
-      embedType: data.type
+      previewType: data.type
     }
   } catch (error) {
     console.error(`Error fetching oEmbed for ${platform}:`, error)
@@ -110,7 +110,7 @@ export const fetchOEmbedMetadata = async (
 /**
  * Кеш для мета-данных (в памяти)
  */
-const metadataCache = new Map<string, EmbedMetadata>()
+const metadataCache = new Map<string, PreviewMetadata>()
 
 /**
  * Получает мета-данные с кешированием
@@ -118,17 +118,17 @@ const metadataCache = new Map<string, EmbedMetadata>()
  * @param platform Платформа (опционально, для oEmbed fallback)
  * @returns Promise с метаданными или null
  */
-export const getEmbedMetadata = async (
+export const getPreviewMetadata = async (
   url: string,
   platform?: keyof typeof OEMBED_ENDPOINTS
-): Promise<EmbedMetadata | null> => {
+): Promise<PreviewMetadata | null> => {
   // Проверяем кеш
   if (metadataCache.has(url)) {
     return metadataCache.get(url) || null
   }
 
   // Пытаемся получить через backend
-  let metadata = await fetchEmbedMetadata(url)
+  let metadata = await fetchPreviewMetadata(url)
 
   // Если не получилось и есть platform, пробуем oEmbed напрямую
   if (!metadata && platform) {
@@ -145,11 +145,11 @@ export const getEmbedMetadata = async (
 
 /**
  * Создает HTML для preview с метаданными
- * @param metadata Мета-данные embed
+ * @param metadata Мета-данные preview
  * @param platform Платформа
  * @returns HTML строка для preview
  */
-export const createMetadataPreview = (metadata: EmbedMetadata, platform: string, platformColor: string): string => {
+export const createMetadataPreview = (metadata: PreviewMetadata, platform: string, platformColor: string): string => {
   const wrapper = document.createElement('div')
   wrapper.className = 'embed-metadata-preview'
   wrapper.style.display = 'flex'
@@ -164,7 +164,7 @@ export const createMetadataPreview = (metadata: EmbedMetadata, platform: string,
   if (metadata.thumbnail) {
     const thumbnail = document.createElement('img')
     thumbnail.src = metadata.thumbnail
-    thumbnail.alt = metadata.title || 'Embed thumbnail'
+    thumbnail.alt = metadata.title || 'Preview'
     thumbnail.style.width = '120px'
     thumbnail.style.height = '90px'
     thumbnail.style.objectFit = 'cover'
@@ -256,10 +256,10 @@ export const extractIframeSrc = (html: string): string | null => {
 }
 
 /**
- * Белый список доменов для iframe embed
+ * Белый список доменов для iframe preview
  * Только проверенные и безопасные сервисы
  */
-const SAFE_EMBED_DOMAINS = [
+const SAFE_PREVIEW_DOMAINS = [
   // Видео
   'youtube.com',
   'youtu.be',
@@ -340,27 +340,27 @@ const SAFE_EMBED_DOMAINS = [
  * @param url URL для проверки
  * @returns true если домен в белом списке
  */
-export const isSafeEmbedDomain = (url: string): boolean => {
+export const isSafePreviewDomain = (url: string): boolean => {
   try {
     const urlObj = new URL(url)
     const hostname = urlObj.hostname.toLowerCase()
 
     // Проверяем точное совпадение или поддомен
-    return SAFE_EMBED_DOMAINS.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`))
+    return SAFE_PREVIEW_DOMAINS.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`))
   } catch {
     return false
   }
 }
 
 /**
- * Пытается получить embed URL через oEmbed discovery
+ * Пытается получить preview URL через oEmbed discovery
  * ⚠️ ТОЛЬКО для доменов из белого списка!
  * @param url URL страницы
  * @returns Iframe src или null
  */
 export const discoverOEmbed = async (url: string): Promise<string | null> => {
   // 🔒 Безопасность: проверяем домен
-  if (!isSafeEmbedDomain(url)) {
+  if (!isSafePreviewDomain(url)) {
     console.warn('Unsafe domain for oEmbed discovery:', url)
     return null
   }
@@ -390,7 +390,7 @@ export const discoverOEmbed = async (url: string): Promise<string | null> => {
       const iframeSrc = extractIframeSrc(oembedData.html)
 
       // 🔒 Безопасность: проверяем извлеченный iframe src
-      if (iframeSrc && isSafeEmbedDomain(iframeSrc)) {
+      if (iframeSrc && isSafePreviewDomain(iframeSrc)) {
         return iframeSrc
       }
     }
@@ -403,23 +403,23 @@ export const discoverOEmbed = async (url: string): Promise<string | null> => {
 }
 
 /**
- * Безопасная попытка получить embed для URL
+ * Безопасная попытка получить preview для URL
  * @param url URL для встраивания
  * @returns Безопасный iframe src или null
  */
-export const getSafeEmbedUrl = async (url: string): Promise<string | null> => {
+export const getSafePreviewUrl = async (url: string): Promise<string | null> => {
   // 1. Проверяем, может это уже HTML с iframe
   if (url.includes('<iframe')) {
     const iframeSrc = extractIframeSrc(url)
-    if (iframeSrc && isSafeEmbedDomain(iframeSrc)) {
+    if (iframeSrc && isSafePreviewDomain(iframeSrc)) {
       return iframeSrc
     }
     return null // 🔒 Небезопасный iframe
   }
 
   // 2. Проверяем сам URL
-  if (!isSafeEmbedDomain(url)) {
-    console.warn('Unsafe embed URL:', url)
+  if (!isSafePreviewDomain(url)) {
+    console.warn('Unsafe preview URL:', url)
     return null
   }
 

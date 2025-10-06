@@ -28,7 +28,7 @@ export const processPreviewTags = async (container: HTMLElement): Promise<void> 
       if (videoId) {
         // Создаем wrapper для iframe
         const wrapper = document.createElement('div')
-        wrapper.className = 'video-embed-wrapper'
+        wrapper.className = 'video-preview-wrapper'
         wrapper.contentEditable = 'false'
         wrapper.style.position = 'relative'
         wrapper.style.paddingBottom = '56.25%'
@@ -57,8 +57,8 @@ export const processPreviewTags = async (container: HTMLElement): Promise<void> 
         wrapper.appendChild(iframe)
 
         // Сохраняем оригинальный URL как data-атрибут для последующего сохранения
-        wrapper.setAttribute('data-embed-url', url)
-        wrapper.setAttribute('data-embed-platform', platform)
+        wrapper.setAttribute('data-preview-url', url)
+        wrapper.setAttribute('data-preview-platform', platform)
 
         console.log('[processPreviewTags] Replacing preview tag with iframe wrapper')
         previewTag.replaceWith(wrapper)
@@ -72,10 +72,10 @@ export const processPreviewTags = async (container: HTMLElement): Promise<void> 
  * @param container Контейнер с HTML контентом
  */
 export const convertIframesToPreviews = (container: HTMLElement): void => {
-  const wrappers = container.querySelectorAll('.video-embed-wrapper[data-embed-url]')
+  const wrappers = container.querySelectorAll('.video-preview-wrapper[data-preview-url]')
 
   for (const wrapper of Array.from(wrappers)) {
-    const url = wrapper.getAttribute('data-embed-url')
+    const url = wrapper.getAttribute('data-preview-url')
     if (url) {
       const previewTag = document.createElement('preview')
       previewTag.textContent = url

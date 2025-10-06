@@ -37,7 +37,7 @@ export const FORMAT_CONFIG: Record<CommandType, { tag: string; attributes?: Reco
   audio: { tag: 'audio', attributes: { controls: 'true' } },
   media: { tag: 'span', attributes: {} }, // UI команда, не используется
   upload: { tag: 'span', attributes: {} }, // UI команда, не используется
-  embed: { tag: 'embed', attributes: {} }, // Кастомный тег для встраивания
+  preview: { tag: 'preview', attributes: {} }, // Кастомный тег для встраивания видео
   p: { tag: 'p', attributes: {} },
   incut: { tag: 'div', attributes: { class: 'incut', 'data-align': 'left' } },
   'align-left': { tag: 'div', attributes: { 'data-align': 'left' } },

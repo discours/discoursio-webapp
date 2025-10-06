@@ -113,15 +113,15 @@ export const useDropFiles = () => {
       // Проверяем - это URL?
       const urlRegex = /^https?:\/\/[^\s]+$/
       if (urlRegex.test(trimmedUrl)) {
-        const { detectEmbedPlatform } = await import('./validation')
-        const platform = detectEmbedPlatform(trimmedUrl)
+        const { detectPreviewPlatform } = await import('./validation')
+        const platform = detectPreviewPlatform(trimmedUrl)
 
         if (platform !== 'unknown') {
           console.log(`[useDropFiles] Detected embed platform: ${platform} for URL: ${trimmedUrl}`)
 
-          // Вставляем URL как embed
-          const { createUniversalEmbed } = await import('./html')
-          const embedHtml = await createUniversalEmbed(trimmedUrl, platform)
+          // Вставляем URL как preview
+          const { createUniversalPreview } = await import('./html')
+          const embedHtml = await createUniversalPreview(trimmedUrl, platform)
 
           if (embedHtml && restoreSelection()) {
             const editor = document.querySelector('[contenteditable="true"]') as HTMLElement

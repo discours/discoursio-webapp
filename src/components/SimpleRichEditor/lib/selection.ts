@@ -189,6 +189,7 @@ export const findBlockAncestor = (node: Node | null, rootNode: HTMLElement | nul
         tagName === 'UL' ||
         tagName === 'OL' ||
         tagName === 'P' ||
+        tagName === 'FIGCAPTION' ||
         (tagName === 'DIV' && (currentNode.hasAttribute('data-type') || currentNode.hasAttribute('data-align')))
       ) {
         return currentNode

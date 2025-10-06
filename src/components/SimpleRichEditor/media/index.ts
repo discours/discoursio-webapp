@@ -17,11 +17,11 @@ export {
 // HTML генерация
 export {
   createAudioHTML,
-  createImageEmbed,
+  createImagePreview,
   createLinkPreview,
   createMediaHTML,
-  createUniversalEmbed,
-  createVideoEmbed
+  createUniversalPreview,
+  createVideoPreview
 } from './html'
 // Вставка контента
 export {
@@ -34,18 +34,18 @@ export {
   insertMedia,
   insertVideo
 } from './insertion'
-// Embed loader (lazy loading SDK с privacy protection)
-export { initEmbedLoaders, initializeEmbedLazy } from './previewLoader'
-// Embed metadata (Open Graph / oEmbed для preview)
-export { clearMetadataCache, createMetadataPreview, type EmbedMetadata, getEmbedMetadata } from './previewMetadata'
+// Preview loader (lazy loading SDK с privacy protection)
+export { initializePreviewLazy, initPreviewLoaders } from './previewLoader'
+// Preview metadata (Open Graph / oEmbed для preview)
+export { clearMetadataCache, createMetadataPreview, getPreviewMetadata, type PreviewMetadata } from './previewMetadata'
 // Типы
 export type {
   ContentType,
-  EmbedContent,
-  EmbedOptions,
-  EmbedPlatform,
   MediaInsertParams,
   MediaType,
+  PreviewContent,
+  PreviewOptions,
+  PreviewPlatform,
   UploadResult,
   VideoPlatform
 } from './types'
@@ -62,7 +62,7 @@ export {
 // Валидация
 export {
   cleanUrl,
-  detectEmbedPlatform,
+  detectPreviewPlatform,
   detectVideoPlatform,
   extractVideoId,
   isValidUrl,

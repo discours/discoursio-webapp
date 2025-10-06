@@ -3,10 +3,10 @@
  * @description Генерация HTML для различных типов медиа-контента
  */
 
-import { createMetadataPreview, type EmbedMetadata, getEmbedMetadata, OEMBED_ENDPOINTS } from './previewMetadata'
+import { createMetadataPreview, getPreviewMetadata, OEMBED_ENDPOINTS, type PreviewMetadata } from './previewMetadata'
 import styles from './styles.module.scss'
-import { EmbedContent, MediaInsertParams } from './types'
-import { detectEmbedPlatform, detectVideoPlatform } from './validation'
+import { MediaInsertParams, PreviewContent } from './types'
+import { detectPreviewPlatform, detectVideoPlatform } from './validation'
 
 /**
  * Создает HTML элемент с заданными атрибутами
@@ -29,12 +29,12 @@ const createElement = (tag: string, attrs: Record<string, string> = {}, content?
  * @param url URL видео
  * @returns HTML-код или null если не удалось создать
  */
-export const createVideoEmbed = (url: string): string | null => {
+export const createVideoPreview = (url: string): string | null => {
   const platform = detectVideoPlatform(url)
   if (!platform) return null
 
   // Компактный формат - кастомный тег <preview>url</preview>
-  // Используем кастомный тег, т.к. <embed> - void element без textContent
+  // Используем кастомный тег, т.к. <preview> - void element без textContent
   // <preview> семантически точно описывает назначение - placeholder для iframe
   return `<preview>${url}</preview>`
 }
@@ -45,9 +45,7 @@ export const createVideoEmbed = (url: string): string | null => {
  * @returns HTML строка для аудио-элемента
  */
 export const createAudioHTML = (url: string): string => {
-  return `<div class="audio-embed" data-audio-src="${url}">
-    <audio src="${url}" controls></audio>
-  </div>`
+  return `<audio src="${url}" controls></audio>`
 }
 
 /**
@@ -55,7 +53,7 @@ export const createAudioHTML = (url: string): string => {
  * @param content Параметры изображения
  * @returns HTML строка
  */
-export const createImageEmbed = (content: EmbedContent): string => {
+export const createImagePreview = (content: PreviewContent): string => {
   const figure = createElement('figure')
   const img = createElement('img', {
     src: content.url,
@@ -76,7 +74,7 @@ export const createImageEmbed = (content: EmbedContent): string => {
  * @param content Параметры ссылки
  * @returns HTML строка
  */
-export const createLinkPreview = (content: EmbedContent): string => {
+export const createLinkPreview = (content: PreviewContent): string => {
   const preview = createElement('div', { class: styles.preview })
 
   if (content.image) {
@@ -109,33 +107,33 @@ export const createLinkPreview = (content: EmbedContent): string => {
 }
 
 /**
- * Создает универсальный HTML для embed любой платформы
+ * Создает универсальный HTML для preview любой платформы
  * @param url URL для встраивания
  * @returns HTML строка или null если платформа не поддерживается
  */
-export const createUniversalEmbed = async (
+export const createUniversalPreview = async (
   url: string,
   platformOverride?: string,
-  metadataOverride?: EmbedMetadata
+  metadataOverride?: PreviewMetadata
 ): Promise<string | null> => {
-  const platform = platformOverride || detectEmbedPlatform(url)
+  const platform = platformOverride || detectPreviewPlatform(url)
 
   // Получаем метаданные для preview (асинхронно), используя переданные если есть
-  const metadata = metadataOverride || (await getEmbedMetadata(url, platform as keyof typeof OEMBED_ENDPOINTS))
+  const metadata = metadataOverride || (await getPreviewMetadata(url, platform as keyof typeof OEMBED_ENDPOINTS))
 
   switch (platform) {
     case 'youtube':
     case 'vimeo':
       // Используем VideoPlayer компонент через data-атрибуты
-      return createVideoEmbed(url)
+      return createVideoPreview(url)
 
     case 'twitch': {
-      // Официальный Twitch embed
+      // Официальный Twitch preview
       // API: https://dev.twitch.tv/docs/embed/video-and-clips
       const wrapper = document.createElement('div')
-      wrapper.className = 'twitch-embed'
-      wrapper.setAttribute('data-embed-platform', 'twitch')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'twitch-preview'
+      wrapper.setAttribute('data-preview-platform', 'twitch')
+      wrapper.setAttribute('data-preview-url', url)
 
       // Извлекаем channel или video ID из URL
       const urlParts = url.split('/')
@@ -143,7 +141,7 @@ export const createUniversalEmbed = async (
       const channelOrVideo = urlParts[urlParts.length - 1]
 
       // Twitch Player iframe
-      // parent параметр обязателен для работы Twitch embed
+      // parent параметр обязателен для работы Twitch preview
       const parentDomain = typeof window !== 'undefined' ? window.location.hostname : 'discours.io'
       const iframe = document.createElement('iframe')
       iframe.src = isVideo
@@ -160,13 +158,13 @@ export const createUniversalEmbed = async (
     }
 
     case 'ted': {
-      // Официальный TED embed с поддержкой субтитров
+      // Официальный TED preview с поддержкой субтитров
       // Docs: https://blog.ted.com/tedtalks_embed_1/
-      // Docs: https://blog.ted.com/now-you-can-embed-tedtalks-with-subtitles-enabled/
+      // Docs: https://blog.ted.com/now-you-can-preview-tedtalks-with-subtitles-enabled/
       const wrapper = document.createElement('div')
-      wrapper.className = 'ted-embed'
-      wrapper.setAttribute('data-embed-platform', 'ted')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'ted-preview'
+      wrapper.setAttribute('data-preview-platform', 'ted')
+      wrapper.setAttribute('data-preview-url', url)
 
       // Извлекаем slug из URL
       // Поддерживаемые форматы:
@@ -174,7 +172,7 @@ export const createUniversalEmbed = async (
       // - https://ted.com/talks/[slug]
       // - https://embed.ted.com/talks/[slug]
       // - https://www.ted.com/talks/lang/ru/[slug] (с языком)
-      let embedUrl = url
+      let previewUrl = url
       const talkMatch = url.match(/ted\.com\/talks\/(?:lang\/([a-z]{2})\/)?([a-zA-Z0-9_-]+)/)
       if (talkMatch) {
         const existingLang = talkMatch[1] // Язык из URL (если есть)
@@ -192,12 +190,12 @@ export const createUniversalEmbed = async (
 
         // Официальный embed URL с языком субтитров
         // Формат: https://embed.ted.com/talks/lang/[lang]/[slug]
-        embedUrl = `https://embed.ted.com/talks/lang/${lang}/${slug}`
+        previewUrl = `https://embed.ted.com/talks/lang/${lang}/${slug}`
       }
 
-      // TED iframe - используем их официальный embed player
+      // TED iframe - используем их официальный preview player
       const iframe = document.createElement('iframe')
-      iframe.src = embedUrl
+      iframe.src = previewUrl
       iframe.width = '100%'
       iframe.height = '480'
       iframe.frameBorder = '0'
@@ -210,12 +208,12 @@ export const createUniversalEmbed = async (
     }
 
     case 'soundcloud': {
-      // Официальный SoundCloud embed
+      // Официальный SoundCloud widget
       // API: https://developers.soundcloud.com/docs/api/html5-widget
       const wrapper = document.createElement('div')
-      wrapper.className = 'soundcloud-embed'
-      wrapper.setAttribute('data-embed-platform', 'soundcloud')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'soundcloud-preview'
+      wrapper.setAttribute('data-preview-platform', 'soundcloud')
+      wrapper.setAttribute('data-preview-url', url)
 
       const iframe = document.createElement('iframe')
       iframe.width = '100%'
@@ -230,17 +228,17 @@ export const createUniversalEmbed = async (
     }
 
     case 'facebook': {
-      // Официальный Facebook embed с lazy loading
+      // Официальный Facebook preview с lazy loading
       // SDK: https://developers.facebook.com/docs/plugins/embedded-posts/
       const wrapper = document.createElement('div')
-      wrapper.className = 'facebook-embed embed-lazy'
-      wrapper.setAttribute('data-embed-platform', 'facebook')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'facebook-preview preview-lazy'
+      wrapper.setAttribute('data-preview-platform', 'facebook')
+      wrapper.setAttribute('data-preview-url', url)
       wrapper.setAttribute('data-sdk-loaded', 'false')
 
       // Создаем placeholder с кнопкой активации
       const placeholder = document.createElement('div')
-      placeholder.className = 'embed-placeholder'
+      placeholder.className = 'preview-placeholder'
       placeholder.style.padding = '20px'
       placeholder.style.border = '1px solid #e1e8ed'
       placeholder.style.borderRadius = '8px'
@@ -267,14 +265,14 @@ export const createUniversalEmbed = async (
 
       const button = document.createElement('button')
       button.textContent = 'Load full content'
-      button.className = 'embed-load-button'
+      button.className = 'preview-load-button'
       button.style.padding = '8px 16px'
       button.style.backgroundColor = '#1877f2'
       button.style.color = 'white'
       button.style.border = 'none'
       button.style.borderRadius = '4px'
       button.style.cursor = 'pointer'
-      button.setAttribute('data-embed-action', 'load')
+      button.setAttribute('data-preview-action', 'load')
 
       const privacy = document.createElement('div')
       privacy.textContent = 'Connects to Facebook servers'
@@ -285,7 +283,7 @@ export const createUniversalEmbed = async (
       placeholder.appendChild(button)
       placeholder.appendChild(privacy)
 
-      // Facebook embed контейнер (скрыт до загрузки)
+      // Facebook preview контейнер (скрыт до загрузки)
       const fbPost = document.createElement('div')
       fbPost.className = 'fb-post'
       fbPost.setAttribute('data-href', url)
@@ -300,17 +298,17 @@ export const createUniversalEmbed = async (
     }
 
     case 'x': {
-      // Официальный X (Twitter) embed с lazy loading
+      // Официальный X (Twitter) preview с lazy loading
       // SDK: https://developer.twitter.com/en/docs/twitter-for-websites/embedded-tweets/overview
       const wrapper = document.createElement('div')
-      wrapper.className = 'x-embed twitter-embed embed-lazy'
-      wrapper.setAttribute('data-embed-platform', 'x')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'x-preview twitter-preview preview-lazy'
+      wrapper.setAttribute('data-preview-platform', 'x')
+      wrapper.setAttribute('data-preview-url', url)
       wrapper.setAttribute('data-sdk-loaded', 'false')
 
       // Создаем placeholder с кнопкой активации
       const placeholder = document.createElement('div')
-      placeholder.className = 'embed-placeholder'
+      placeholder.className = 'preview-placeholder'
       placeholder.style.padding = '20px'
       placeholder.style.border = '1px solid #e1e8ed'
       placeholder.style.borderRadius = '8px'
@@ -337,14 +335,14 @@ export const createUniversalEmbed = async (
 
       const button = document.createElement('button')
       button.textContent = 'Load full content'
-      button.className = 'embed-load-button'
+      button.className = 'preview-load-button'
       button.style.padding = '8px 16px'
       button.style.backgroundColor = '#1da1f2'
       button.style.color = 'white'
       button.style.border = 'none'
       button.style.borderRadius = '4px'
       button.style.cursor = 'pointer'
-      button.setAttribute('data-embed-action', 'load')
+      button.setAttribute('data-preview-action', 'load')
 
       const privacy = document.createElement('div')
       privacy.textContent = 'Connects to X/Twitter servers'
@@ -355,7 +353,7 @@ export const createUniversalEmbed = async (
       placeholder.appendChild(button)
       placeholder.appendChild(privacy)
 
-      // Twitter embed контейнер (скрыт до загрузки)
+      // Twitter preview контейнер (скрыт до загрузки)
       const blockquote = document.createElement('blockquote')
       blockquote.className = 'twitter-tweet'
       blockquote.setAttribute('data-theme', 'light')
@@ -373,17 +371,17 @@ export const createUniversalEmbed = async (
     }
 
     case 'instagram': {
-      // Официальный Instagram embed с lazy loading
+      // Официальный Instagram preview с lazy loading
       // SDK: https://developers.facebook.com/docs/instagram/embedding
       const wrapper = document.createElement('div')
-      wrapper.className = 'instagram-embed embed-lazy'
-      wrapper.setAttribute('data-embed-platform', 'instagram')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'instagram-preview preview-lazy'
+      wrapper.setAttribute('data-preview-platform', 'instagram')
+      wrapper.setAttribute('data-preview-url', url)
       wrapper.setAttribute('data-sdk-loaded', 'false')
 
       // Создаем placeholder с кнопкой активации
       const placeholder = document.createElement('div')
-      placeholder.className = 'embed-placeholder'
+      placeholder.className = 'preview-placeholder'
       placeholder.style.padding = '20px'
       placeholder.style.border = '1px solid #e1e8ed'
       placeholder.style.borderRadius = '8px'
@@ -410,14 +408,14 @@ export const createUniversalEmbed = async (
 
       const button = document.createElement('button')
       button.textContent = 'Load full content'
-      button.className = 'embed-load-button'
+      button.className = 'preview-load-button'
       button.style.padding = '8px 16px'
       button.style.background = 'linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)'
       button.style.color = 'white'
       button.style.border = 'none'
       button.style.borderRadius = '4px'
       button.style.cursor = 'pointer'
-      button.setAttribute('data-embed-action', 'load')
+      button.setAttribute('data-preview-action', 'load')
 
       const privacy = document.createElement('div')
       privacy.textContent = 'Connects to Instagram servers'
@@ -428,7 +426,7 @@ export const createUniversalEmbed = async (
       placeholder.appendChild(button)
       placeholder.appendChild(privacy)
 
-      // Instagram embed контейнер (скрыт до загрузки)
+      // Instagram preview контейнер (скрыт до загрузки)
       const blockquote = document.createElement('blockquote')
       blockquote.className = 'instagram-media'
       blockquote.setAttribute('data-instgrm-permalink', url)
@@ -456,17 +454,17 @@ export const createUniversalEmbed = async (
     }
 
     case 'telegram': {
-      // Официальный Telegram embed
+      // Официальный Telegram preview
       // API: https://core.telegram.org/widgets/post
       const wrapper = document.createElement('div')
-      wrapper.className = 'telegram-embed'
-      wrapper.setAttribute('data-embed-platform', 'telegram')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'telegram-preview'
+      wrapper.setAttribute('data-preview-platform', 'telegram')
+      wrapper.setAttribute('data-preview-url', url)
 
-      // Telegram использует специальный формат для embed
+      // Telegram использует специальный формат для preview
       // Пример: https://t.me/channelname/123 -> https://t.me/channelname/123?embed=1
-      const _embedUrl = url.includes('?') ? `${url}&embed=1` : `${url}?embed=1`
-
+      const _previewUrl = url.includes('?') ? `${url}&embed=1` : `${url}?embed=1`
+      // TODO: use previewUrl here
       // Создаем script tag для Telegram widget
       const script = document.createElement('script')
       script.async = true
@@ -480,17 +478,17 @@ export const createUniversalEmbed = async (
     }
 
     case 'reddit': {
-      // Официальный Reddit embed с lazy loading
+      // Официальный Reddit preview с lazy loading
       // API: https://www.reddit.com/wiki/oembeds
       const wrapper = document.createElement('div')
-      wrapper.className = 'reddit-embed embed-lazy'
-      wrapper.setAttribute('data-embed-platform', 'reddit')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'reddit-preview preview-lazy'
+      wrapper.setAttribute('data-preview-platform', 'reddit')
+      wrapper.setAttribute('data-preview-url', url)
       wrapper.setAttribute('data-sdk-loaded', 'false')
 
       // Создаем placeholder с кнопкой активации
       const placeholder = document.createElement('div')
-      placeholder.className = 'embed-placeholder'
+      placeholder.className = 'preview-placeholder'
       placeholder.style.padding = '20px'
       placeholder.style.border = '1px solid #e1e8ed'
       placeholder.style.borderRadius = '8px'
@@ -517,14 +515,14 @@ export const createUniversalEmbed = async (
 
       const button = document.createElement('button')
       button.textContent = 'Load full content'
-      button.className = 'embed-load-button'
+      button.className = 'preview-load-button'
       button.style.padding = '8px 16px'
       button.style.backgroundColor = '#FF4500'
       button.style.color = 'white'
       button.style.border = 'none'
       button.style.borderRadius = '4px'
       button.style.cursor = 'pointer'
-      button.setAttribute('data-embed-action', 'load')
+      button.setAttribute('data-preview-action', 'load')
 
       const privacy = document.createElement('div')
       privacy.textContent = 'Connects to Reddit servers'
@@ -535,10 +533,10 @@ export const createUniversalEmbed = async (
       placeholder.appendChild(button)
       placeholder.appendChild(privacy)
 
-      // Reddit embed контейнер (скрыт до загрузки)
+      // Reddit preview контейнер (скрыт до загрузки)
       const blockquote = document.createElement('blockquote')
-      blockquote.className = 'reddit-embed-bq'
-      blockquote.setAttribute('data-embed-height', '500')
+      blockquote.className = 'reddit-preview-bq'
+      blockquote.setAttribute('data-preview-height', '500')
       blockquote.style.display = 'none'
 
       const link = document.createElement('a')
@@ -553,17 +551,17 @@ export const createUniversalEmbed = async (
     }
 
     case 'tiktok': {
-      // Официальный TikTok embed с lazy loading
+      // Официальный TikTok preview с lazy loading
       // API: https://developers.tiktok.com/doc/embed-videos
       const wrapper = document.createElement('div')
-      wrapper.className = 'tiktok-embed embed-lazy'
-      wrapper.setAttribute('data-embed-platform', 'tiktok')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'tiktok-preview preview-lazy'
+      wrapper.setAttribute('data-preview-platform', 'tiktok')
+      wrapper.setAttribute('data-preview-url', url)
       wrapper.setAttribute('data-sdk-loaded', 'false')
 
       // Создаем placeholder с кнопкой активации
       const placeholder = document.createElement('div')
-      placeholder.className = 'embed-placeholder'
+      placeholder.className = 'preview-placeholder'
       placeholder.style.padding = '20px'
       placeholder.style.border = '1px solid #e1e8ed'
       placeholder.style.borderRadius = '8px'
@@ -590,14 +588,14 @@ export const createUniversalEmbed = async (
 
       const button = document.createElement('button')
       button.textContent = 'Load full content'
-      button.className = 'embed-load-button'
+      button.className = 'preview-load-button'
       button.style.padding = '8px 16px'
       button.style.backgroundColor = '#000'
       button.style.color = 'white'
       button.style.border = 'none'
       button.style.borderRadius = '4px'
       button.style.cursor = 'pointer'
-      button.setAttribute('data-embed-action', 'load')
+      button.setAttribute('data-preview-action', 'load')
 
       const privacy = document.createElement('div')
       privacy.textContent = 'Connects to TikTok servers'
@@ -608,9 +606,9 @@ export const createUniversalEmbed = async (
       placeholder.appendChild(button)
       placeholder.appendChild(privacy)
 
-      // TikTok embed контейнер (скрыт до загрузки)
+      // TikTok preview контейнер (скрыт до загрузки)
       const blockquote = document.createElement('blockquote')
-      blockquote.className = 'tiktok-embed'
+      blockquote.className = 'tiktok-preview'
       blockquote.setAttribute('cite', url)
       blockquote.setAttribute('data-video-id', url.split('/').pop() || '')
       blockquote.style.display = 'none'
@@ -624,18 +622,18 @@ export const createUniversalEmbed = async (
     }
 
     case 'bandcamp': {
-      // Официальный Bandcamp embed через oEmbed API
+      // Официальный Bandcamp preview через oEmbed API
       // API: https://bandcamp.com/developer
       // Docs: https://bandcamp.com/developer#oembed
       const wrapper = document.createElement('div')
-      wrapper.className = 'bandcamp-embed embed-lazy'
-      wrapper.setAttribute('data-embed-platform', 'bandcamp')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'bandcamp-preview preview-lazy'
+      wrapper.setAttribute('data-preview-platform', 'bandcamp')
+      wrapper.setAttribute('data-preview-url', url)
       wrapper.setAttribute('data-sdk-loaded', 'false')
 
       // Создаем placeholder с кнопкой активации
       const placeholder = document.createElement('div')
-      placeholder.className = 'embed-placeholder'
+      placeholder.className = 'preview-placeholder'
       placeholder.style.padding = '20px'
       placeholder.style.border = '1px solid #629aa9'
       placeholder.style.borderRadius = '8px'
@@ -663,14 +661,14 @@ export const createUniversalEmbed = async (
 
       const button = document.createElement('button')
       button.textContent = 'Load player'
-      button.className = 'embed-load-button'
+      button.className = 'preview-load-button'
       button.style.padding = '8px 16px'
       button.style.backgroundColor = '#629aa9'
       button.style.color = 'white'
       button.style.border = 'none'
       button.style.borderRadius = '4px'
       button.style.cursor = 'pointer'
-      button.setAttribute('data-embed-action', 'load')
+      button.setAttribute('data-preview-action', 'load')
 
       const privacy = document.createElement('div')
       privacy.textContent = 'Connects to Bandcamp servers'
@@ -681,7 +679,7 @@ export const createUniversalEmbed = async (
       placeholder.appendChild(button)
       placeholder.appendChild(privacy)
 
-      // Bandcamp iframe контейнер (будет заполнен через oEmbed)
+      // Bandcamp iframe контейнер (будет заполнен через oEmbed) для preview
       const iframeContainer = document.createElement('div')
       iframeContainer.className = 'bandcamp-iframe-container'
       iframeContainer.style.display = 'none'
@@ -697,11 +695,11 @@ export const createUniversalEmbed = async (
     }
 
     case 'wikipedia': {
-      // Wikipedia embed - iframe с превью
+      // Wikipedia preview - iframe с превью
       const wrapper = document.createElement('div')
-      wrapper.className = 'wikipedia-embed'
-      wrapper.setAttribute('data-embed-platform', 'wikipedia')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'wikipedia-preview'
+      wrapper.setAttribute('data-preview-platform', 'wikipedia')
+      wrapper.setAttribute('data-preview-url', url)
 
       // Извлекаем язык и название статьи из URL
       // Примеры: https://en.wikipedia.org/wiki/Article, https://ru.wikipedia.org/wiki/Статья
@@ -738,7 +736,7 @@ export const createUniversalEmbed = async (
     case 'discours': {
       // Для Discours.io создаем простую ссылку-превью
       const wrapper = document.createElement('div')
-      wrapper.className = 'discours-embed'
+      wrapper.className = 'discours-preview'
       const link = document.createElement('a')
       link.href = url
       link.target = '_blank'
@@ -749,16 +747,16 @@ export const createUniversalEmbed = async (
     }
 
     case 'slideshare': {
-      // SlideShare embed - iframe из oEmbed API
+      // SlideShare preview - iframe из oEmbed API
       const wrapper = document.createElement('div')
-      wrapper.className = 'slideshare-embed embed-lazy'
-      wrapper.setAttribute('data-embed-platform', 'slideshare')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'slideshare-preview preview-lazy'
+      wrapper.setAttribute('data-preview-platform', 'slideshare')
+      wrapper.setAttribute('data-preview-url', url)
       wrapper.setAttribute('data-sdk-loaded', 'false')
 
       // Placeholder с кнопкой загрузки
       const placeholder = document.createElement('div')
-      placeholder.className = 'embed-placeholder'
+      placeholder.className = 'preview-placeholder'
       placeholder.style.padding = '20px'
       placeholder.style.border = '1px solid #e1e8ed'
       placeholder.style.borderRadius = '8px'
@@ -776,7 +774,7 @@ export const createUniversalEmbed = async (
       }
 
       const loadButton = document.createElement('button')
-      loadButton.className = 'embed-load-button'
+      loadButton.className = 'preview-load-button'
       loadButton.textContent = 'Load presentation'
       loadButton.style.padding = '8px 16px'
       loadButton.style.backgroundColor = '#e68523'
@@ -797,7 +795,7 @@ export const createUniversalEmbed = async (
 
       wrapper.appendChild(placeholder)
 
-      // Container для iframe (будет заполнен при клике)
+      // Container для iframe (будет заполнен при клике) для preview
       const iframeContainer = document.createElement('div')
       iframeContainer.className = 'slideshare-iframe-container'
       iframeContainer.style.display = 'none'
@@ -811,11 +809,11 @@ export const createUniversalEmbed = async (
     }
 
     case 'imgur': {
-      // Imgur embed - может быть изображение или галерея
+      // Imgur preview - может быть изображение или галерея
       const wrapper = document.createElement('div')
-      wrapper.className = 'imgur-embed'
-      wrapper.setAttribute('data-embed-platform', 'imgur')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'imgur-preview'
+      wrapper.setAttribute('data-preview-platform', 'imgur')
+      wrapper.setAttribute('data-preview-url', url)
 
       // Определяем тип Imgur контента
       const isGallery = url.includes('/gallery/') || url.includes('/a/')
@@ -824,7 +822,7 @@ export const createUniversalEmbed = async (
       if (isGallery && imgurId) {
         // Для галереи - используем blockquote embed
         const blockquote = document.createElement('blockquote')
-        blockquote.className = 'imgur-embed-pub'
+        blockquote.className = 'imgur-preview-pub'
         blockquote.setAttribute('lang', 'en')
         blockquote.setAttribute('data-id', imgurId)
 
@@ -835,7 +833,7 @@ export const createUniversalEmbed = async (
 
         wrapper.appendChild(blockquote)
 
-        // Скрипт для загрузки Imgur embed
+        // Скрипт для загрузки Imgur preview
         const script = document.createElement('script')
         script.async = true
         script.src = '//s.imgur.com/min/embed.js'
@@ -863,16 +861,16 @@ export const createUniversalEmbed = async (
     }
 
     case 'flickr': {
-      // Flickr embed - iframe из oEmbed API
+      // Flickr preview - iframe из oEmbed API
       const wrapper = document.createElement('div')
-      wrapper.className = 'flickr-embed embed-lazy'
-      wrapper.setAttribute('data-embed-platform', 'flickr')
-      wrapper.setAttribute('data-embed-url', url)
+      wrapper.className = 'flickr-preview preview-lazy'
+      wrapper.setAttribute('data-preview-platform', 'flickr')
+      wrapper.setAttribute('data-preview-url', url)
       wrapper.setAttribute('data-sdk-loaded', 'false')
 
       // Placeholder с кнопкой загрузки
       const placeholder = document.createElement('div')
-      placeholder.className = 'embed-placeholder'
+      placeholder.className = 'preview-placeholder'
       placeholder.style.padding = '20px'
       placeholder.style.border = '1px solid #e1e8ed'
       placeholder.style.borderRadius = '8px'
@@ -890,7 +888,7 @@ export const createUniversalEmbed = async (
       }
 
       const loadButton = document.createElement('button')
-      loadButton.className = 'embed-load-button'
+      loadButton.className = 'preview-load-button'
       loadButton.textContent = 'Load photo'
       loadButton.style.padding = '8px 16px'
       loadButton.style.backgroundColor = '#0063dc'
@@ -911,7 +909,7 @@ export const createUniversalEmbed = async (
 
       wrapper.appendChild(placeholder)
 
-      // Container для iframe (будет заполнен при клике)
+      // Container для iframe (будет заполнен при клике) для preview
       const iframeContainer = document.createElement('div')
       iframeContainer.className = 'flickr-iframe-container'
       iframeContainer.style.display = 'none'
@@ -944,12 +942,12 @@ export const createMediaHTML = (params: MediaInsertParams): string => {
 
   switch (type) {
     case 'image':
-      // Используем createImageEmbed для правильной структуры <figure><img></figure>
-      return createImageEmbed({ type: 'image', url, title })
+      // Используем createImagePreview для правильной структуры <figure><img></figure>
+      return createImagePreview({ type: 'image', url, title })
     case 'video': {
-      // Для видео используем embed если это поддерживаемая платформа
-      const embedHtml = createVideoEmbed(url)
-      if (embedHtml) return embedHtml
+      // Для видео используем preview если это поддерживаемая платформа
+      const previewHtml = createVideoPreview(url)
+      if (previewHtml) return previewHtml
       // Иначе обычный video тег
       return `<video src="${url}" controls title="${title}" ${attributesStr}></video>`
     }

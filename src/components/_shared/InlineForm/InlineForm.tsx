@@ -47,8 +47,8 @@ export const InlineForm = (props: Props) => {
       if (!show || !url || platform === 'unknown') return null
 
       try {
-        const { createUniversalEmbed } = await import('~/components/SimpleRichEditor/media/html')
-        const html = await createUniversalEmbed(url, platform)
+        const { createUniversalPreview } = await import('~/components/SimpleRichEditor/media/html')
+        const html = await createUniversalPreview(url, platform)
         return html
       } catch {
         return null
@@ -67,8 +67,8 @@ export const InlineForm = (props: Props) => {
         // 🔒 Безопасное извлечение iframe src (только из whitelist доменов)
         let urlToDetect = value.trim()
         if (urlToDetect.includes('<iframe')) {
-          const { getSafeEmbedUrl } = await import('~/components/SimpleRichEditor/media/previewMetadata')
-          const safeUrl = await getSafeEmbedUrl(urlToDetect)
+          const { getSafePreviewUrl } = await import('~/components/SimpleRichEditor/media/previewMetadata')
+          const safeUrl = await getSafePreviewUrl(urlToDetect)
           if (safeUrl) {
             urlToDetect = safeUrl
             // Обновляем значение поля на безопасный URL
@@ -81,16 +81,16 @@ export const InlineForm = (props: Props) => {
           }
         }
 
-        const { detectEmbedPlatform } = await import('~/components/SimpleRichEditor/media/validation')
-        const platform = detectEmbedPlatform(urlToDetect)
+        const { detectPreviewPlatform } = await import('~/components/SimpleRichEditor/media/validation')
+        const platform = detectPreviewPlatform(urlToDetect)
 
         if (platform !== 'unknown') {
           setDetectedPlatform(platform)
           setShowPlatformBadge(true)
         } else {
           // Для unknown URL проверяем безопасность
-          const { isSafeEmbedDomain } = await import('~/components/SimpleRichEditor/media/previewMetadata')
-          if (isSafeEmbedDomain(urlToDetect)) {
+          const { isSafePreviewDomain } = await import('~/components/SimpleRichEditor/media/previewMetadata')
+          if (isSafePreviewDomain(urlToDetect)) {
             setDetectedPlatform('embed')
             setShowPlatformBadge(true)
           } else {

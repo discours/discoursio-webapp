@@ -15,9 +15,9 @@ import { afterDOMUpdate } from '../lib/timing'
 import { EditorFieldType, FormType, InlineFormOptions, Position } from '../lib/types'
 import { replaceSelection, validateUrl } from '../lib/utils'
 import {
-  createUniversalEmbed,
-  createVideoEmbed,
-  detectEmbedPlatform,
+  createUniversalPreview,
+  createVideoPreview,
+  detectPreviewPlatform,
   detectVideoPlatform,
   handleAudioUploaderResult
 } from '../media'
@@ -204,10 +204,10 @@ export const createFormHandlers = (context: FormHandlersContext) => {
       } else if (type === 'video' && validateVideoUrl(url)) {
         const platform = detectVideoPlatform(url)
         if (platform) {
-          const embedHtml = createVideoEmbed(url)
+          const previewHtml = createVideoPreview(url)
           const editor = editorRef()
-          if (editor && embedHtml) {
-            replaceSelection(embedHtml, editor)
+          if (editor && previewHtml) {
+            replaceSelection(previewHtml, editor)
           }
         }
       } else if (type === 'tooltip') {
@@ -243,34 +243,34 @@ export const createFormHandlers = (context: FormHandlersContext) => {
   }
 
   const handleInsertLink = async (url: string) => {
-    // Проверяем - это embed платформа?
-    const { detectEmbedPlatform } = await import('../media')
-    const platform = detectEmbedPlatform(url)
+    // Проверяем - это preview платформа?
+    const { detectPreviewPlatform } = await import('../media')
+    const platform = detectPreviewPlatform(url)
 
-    // Если это embed платформа - показываем диалог выбора
+    // Если это preview платформа - показываем диалог выбора
     if (platform !== 'unknown') {
       // Сохраняем контекст для вставки после выбора
       const _savedSelection = saveSelection()
 
       // Показываем модальное окно выбора
-      showModal('embedChoice', undefined, {
+      showModal('previewChoice', undefined, {
         data: { url, platform },
-        onSuccess: async (type: 'link' | 'embed') => {
+        onSuccess: async (type: 'link' | 'preview') => {
           hideModal()
 
           // Восстанавливаем выделение
           restoreSelection()
 
-          if (type === 'embed') {
-            // Вставляем как <embed>
-            const { createUniversalEmbed } = await import('../media/html')
-            const embedHtml = await createUniversalEmbed(url, platform)
+          if (type === 'preview') {
+            // Вставляем как <preview>
+            const { createUniversalPreview } = await import('../media/html')
+            const previewHtml = await createUniversalPreview(url, platform)
 
-            if (embedHtml) {
+            if (previewHtml) {
               restoreSelection()
               const editor = editorRef()
               if (editor) {
-                replaceSelection(embedHtml, editor)
+                replaceSelection(previewHtml, editor)
                 handleChange(props.fieldType ? String(props.fieldType) : 'content')
               }
             }
@@ -313,10 +313,10 @@ export const createFormHandlers = (context: FormHandlersContext) => {
         if (restoreSelection()) {
           const platform = detectVideoPlatform(videoUrl)
           if (platform) {
-            const embedHtml = createVideoEmbed(videoUrl)
+            const previewHtml = createVideoPreview(videoUrl)
             const editor = editorRef()
-            if (editor && embedHtml) {
-              replaceSelection(embedHtml, editor)
+            if (editor && previewHtml) {
+              replaceSelection(previewHtml, editor)
             }
           }
           handleChange(props.fieldType ? String(props.fieldType) : 'content')
@@ -334,19 +334,19 @@ export const createFormHandlers = (context: FormHandlersContext) => {
 
   const handleInsertTooltip = (text: string) => handleInlineFormSubmit('tooltip', text)
 
-  // Новая логика для универсального embed
-  const handleInsertEmbed = async (url: string, insertAsText = false) => {
+  // Новая логика для универсального preview
+  const handleInsertPreview = async (url: string, insertAsText = false) => {
     // Закрываем инлайн форму
     setShowForm(null)
 
     // Валидируем URL
     if (!validateWebUrl(url)) {
-      console.warn('Invalid embed URL:', url)
+      console.warn('Invalid preview URL:', url)
       editorRef()?.focus()
       return
     }
 
-    // Если пользователь хочет простую текстовую ссылку - вставляем без embed
+    // Если пользователь хочет простую текстовую ссылку - вставляем без preview
     if (insertAsText) {
       if (restoreSelection()) {
         const editor = editorRef()
@@ -361,7 +361,7 @@ export const createFormHandlers = (context: FormHandlersContext) => {
     }
 
     // Определяем платформу
-    const platform = detectEmbedPlatform(url)
+    const platform = detectPreviewPlatform(url)
     if (platform === 'unknown') {
       // Если платформа не распознана, вставляем как текстовую ссылку
       if (restoreSelection()) {
@@ -381,10 +381,10 @@ export const createFormHandlers = (context: FormHandlersContext) => {
         data: { videoUrl: url },
         onSuccess: (videoUrl: string) => {
           if (restoreSelection()) {
-            const embedHtml = createVideoEmbed(videoUrl)
+            const previewHtml = createVideoPreview(videoUrl)
             const editor = editorRef()
-            if (editor && embedHtml) {
-              replaceSelection(embedHtml, editor)
+            if (editor && previewHtml) {
+              replaceSelection(previewHtml, editor)
             }
             handleChange(props.fieldType ? String(props.fieldType) : 'content')
             editorRef()?.focus()
@@ -398,12 +398,12 @@ export const createFormHandlers = (context: FormHandlersContext) => {
         }
       })
     } else {
-      // Для остальных платформ сразу вставляем embed
+      // Для остальных платформ сразу вставляем preview
       if (restoreSelection()) {
-        const embedHtml = await createUniversalEmbed(url)
+        const previewHtml = await createUniversalPreview(url)
         const editor = editorRef()
-        if (editor && embedHtml) {
-          replaceSelection(embedHtml, editor)
+        if (editor && previewHtml) {
+          replaceSelection(previewHtml, editor)
           handleChange(props.fieldType ? String(props.fieldType) : 'content')
         }
         editorRef()?.focus()
@@ -542,7 +542,7 @@ export const createFormHandlers = (context: FormHandlersContext) => {
     handleInlineFormSubmit,
     handleInsertLink,
     handleInsertVideo,
-    handleInsertEmbed,
+    handleInsertPreview,
     handleInsertTooltip,
     showAudioUploader,
     showImageUploadModal,

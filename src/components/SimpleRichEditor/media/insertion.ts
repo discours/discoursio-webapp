@@ -7,7 +7,7 @@ import { MediaItem } from '~/graphql/generated/graphql'
 import { replaceSelection } from '../lib/utils'
 // Используем require() для избежания циклических зависимостей
 import { createMediaHTML } from './html'
-import { EmbedContent, EmbedOptions, MediaInsertParams } from './types'
+import { MediaInsertParams, PreviewContent, PreviewOptions } from './types'
 import { recognizeContentType, validateVideoUrl } from './validation'
 
 /**
@@ -93,7 +93,7 @@ export const handleAudioUploaderResult = (audioItems: MediaItem[], editor: HTMLE
  * @param options Опции обработки
  * @returns true если контент был обработан специальным образом
  */
-export const handleContentPaste = async (text: string, options: EmbedOptions): Promise<boolean> => {
+export const handleContentPaste = async (text: string, options: PreviewOptions): Promise<boolean> => {
   const { showLoading, insertText, insertHtml } = options
 
   try {
@@ -104,31 +104,31 @@ export const handleContentPaste = async (text: string, options: EmbedOptions): P
 
     showLoading?.()
 
-    const embedContent: EmbedContent = {
+    const previewContent: PreviewContent = {
       type: contentType,
       url: text
     }
 
     switch (contentType) {
       case 'video': {
-        const { createVideoEmbed } = await import('./html')
-        const embedHtml = createVideoEmbed(text)
-        if (embedHtml) {
-          insertHtml(embedHtml)
+        const { createVideoPreview } = await import('./html')
+        const previewHtml = createVideoPreview(text)
+        if (previewHtml) {
+          insertHtml(previewHtml)
           return true
         }
         break
       }
       case 'image': {
-        const { createImageEmbed } = await import('./html')
-        const embedHtml = createImageEmbed(embedContent)
-        insertHtml(embedHtml)
+        const { createImagePreview } = await import('./html')
+        const previewHtml = createImagePreview(previewContent)
+        insertHtml(previewHtml)
         return true
       }
       case 'audio': {
         const { createAudioHTML } = await import('./html')
-        const embedHtml = createAudioHTML(text)
-        insertHtml(embedHtml)
+        const previewHtml = createAudioHTML(text)
+        insertHtml(previewHtml)
         return true
       }
       case 'link': {
@@ -172,7 +172,7 @@ export const handleContentPasteEvent = async (event: ClipboardEvent, editor: HTM
   // Если это текст и похож на URL или медиа-ссылку, обрабатываем его
   if (text?.trim()) {
     return await handleContentPaste(text, {
-      insertText: (textContent) => {
+      insertText: (textContent: string) => {
         if (editor) {
           const sel = window.getSelection()
           if (sel && sel.rangeCount > 0) {
@@ -187,7 +187,7 @@ export const handleContentPasteEvent = async (event: ClipboardEvent, editor: HTM
           }
         }
       },
-      insertHtml: (html) => {
+      insertHtml: (html: string) => {
         if (editor) {
           replaceSelection(html, editor)
         }

@@ -4,7 +4,7 @@
  */
 
 import { CommandType } from '../lib/types'
-import { ContentType, EmbedPlatform, VideoPlatform } from './types'
+import { ContentType, PreviewPlatform, VideoPlatform } from './types'
 
 /**
  * Регулярные выражения для различных типов контента
@@ -153,11 +153,11 @@ export const extractVideoId = (url: string): string | null => {
 }
 
 /**
- * Определяет платформу embed по URL
+ * Определяет платформу preview по URL
  * @param url URL для анализа
- * @returns Платформа embed или 'unknown' если не распознана
+ * @returns Платформа preview или 'unknown' если не распознана
  */
-export const detectEmbedPlatform = (url: string): EmbedPlatform => {
+export const detectPreviewPlatform = (url: string): PreviewPlatform => {
   if (URL_PATTERNS.YOUTUBE.test(url)) return 'youtube'
   if (URL_PATTERNS.VIMEO.test(url)) return 'vimeo'
   if (URL_PATTERNS.TWITCH.test(url)) return 'twitch'

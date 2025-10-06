@@ -19,9 +19,9 @@ export type ContentType = 'link' | 'image' | 'video' | 'audio'
 export type VideoPlatform = 'youtube' | 'vimeo'
 
 /**
- * Типы поддерживаемых embed платформ
+ * Типы поддерживаемых preview платформ
  */
-export type EmbedPlatform =
+export type PreviewPlatform =
   | 'youtube'
   | 'vimeo'
   | 'twitch'
@@ -68,7 +68,7 @@ export interface MediaInsertParams {
 /**
  * Интерфейс для контента встраивания
  */
-export interface EmbedContent {
+export interface PreviewContent {
   /** Тип контента для встраивания */
   type: ContentType
   /** URL медиа-ресурса */
@@ -92,7 +92,7 @@ export interface EmbedContent {
 /**
  * Опции для обработки встраивания
  */
-export interface EmbedOptions {
+export interface PreviewOptions {
   /** Показать индикатор загрузки */
   showLoading?: () => void
   /** Вставить текст */

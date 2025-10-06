@@ -3,7 +3,7 @@
  * @description Обработка кастомных HTML тегов (<tooltip>, <embed>)
  */
 
-import type { EmbedPlatform } from '~/components/SimpleRichEditor/media/types'
+import type { PreviewPlatform } from '~/components/SimpleRichEditor/media/types'
 
 /**
  * Обрабатывает <tooltip> теги, превращая их в интерактивные тултипы
@@ -185,8 +185,8 @@ export const processEmbeds = async (container: HTMLElement) => {
     // Создаем wrapper для embed
     const wrapper = document.createElement('div')
     wrapper.className = `embed-wrapper embed-${platform}`
-    wrapper.setAttribute('data-embed-platform', platform)
-    wrapper.setAttribute('data-embed-url', url)
+    wrapper.setAttribute('data-preview-platform', platform)
+    wrapper.setAttribute('data-preview-url', url)
     wrapper.setAttribute('data-sdk-loaded', 'false')
 
     if (hasRichPreview) {
@@ -312,10 +312,10 @@ export const processEmbeds = async (container: HTMLElement) => {
 
         // Асинхронная загрузка метаданных
         void (async () => {
-          const { getEmbedMetadata, OEMBED_ENDPOINTS } = await import(
+          const { getPreviewMetadata, OEMBED_ENDPOINTS } = await import(
             '~/components/SimpleRichEditor/media/previewMetadata'
           )
-          const metadata = await getEmbedMetadata(url, platform as keyof typeof OEMBED_ENDPOINTS)
+          const metadata = await getPreviewMetadata(url, platform as keyof typeof OEMBED_ENDPOINTS)
 
           if (metadata?.thumbnail) {
             loader.remove()
@@ -497,10 +497,10 @@ export const processEmbeds = async (container: HTMLElement) => {
         }
       } else {
         // Для остальных платформ - динамический импорт
-        const { createUniversalEmbed } = await import('~/components/SimpleRichEditor/media/html')
-        const { initializeEmbedLazy } = await import('~/components/SimpleRichEditor/media/previewLoader')
+        const { createUniversalPreview } = await import('~/components/SimpleRichEditor/media/html')
+        const { initializePreviewLazy } = await import('~/components/SimpleRichEditor/media/previewLoader')
 
-        const embedHtml = await createUniversalEmbed(url, platform)
+        const embedHtml = await createUniversalPreview(url, platform)
 
         if (embedHtml) {
           contentContainer.innerHTML = embedHtml
@@ -508,9 +508,9 @@ export const processEmbeds = async (container: HTMLElement) => {
           wrapper.style.display = 'none'
 
           // Инициализируем lazy loading для социальных сетей если нужно
-          const lazyWrapper = contentContainer.querySelector('.embed-lazy') as HTMLElement
+          const lazyWrapper = contentContainer.querySelector('.preview-lazy') as HTMLElement
           if (lazyWrapper && platform !== 'unknown') {
-            await initializeEmbedLazy(lazyWrapper, platform as EmbedPlatform)
+            await initializePreviewLazy(lazyWrapper, platform as PreviewPlatform)
           }
         }
       }

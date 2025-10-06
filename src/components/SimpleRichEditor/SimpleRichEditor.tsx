@@ -39,7 +39,7 @@ import {
   Position,
   ToolbarMode
 } from './lib/types'
-import { createMediaHandlers, initEmbedLoaders } from './media'
+import { createMediaHandlers, initPreviewLoaders } from './media'
 import { useDropFiles } from './media/upload'
 import { isGroup } from './menu/config'
 import { switchFieldInDraft } from './menu/helpers'
@@ -224,9 +224,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     const editor = editorRef()
     if (!editor) return
 
-    // Инициализируем lazy loading для embed виджетов
+    // Инициализируем lazy loading для preview виджетов
     if (!isServer) {
-      initEmbedLoaders()
+      initPreviewLoaders()
       // Обрабатываем существующие <preview> теги
       const { processPreviewTags } = await import('./media/previewRenderer')
       await processPreviewTags(editor)
@@ -608,9 +608,9 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     const clone = editor.cloneNode(true) as HTMLElement
 
     // Конвертируем iframe обратно в <preview> для компактного хранения
-    const wrappers = clone.querySelectorAll('.video-embed-wrapper[data-embed-url]')
+    const wrappers = clone.querySelectorAll('.video-preview-wrapper[data-preview-url]')
     for (const wrapper of Array.from(wrappers)) {
-      const url = wrapper.getAttribute('data-embed-url')
+      const url = wrapper.getAttribute('data-preview-url')
       if (url) {
         const previewTag = document.createElement('preview')
         previewTag.textContent = url
@@ -696,10 +696,10 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
   const handleInput = (e: InputEvent) => {
     const editor = editorRef()
     // Удаляем placeholder оверлей при вводе
-    const placeholder = editor?.querySelector('[data-embed-placeholder-overlay]')
+    const placeholder = editor?.querySelector('[data-preview-placeholder-overlay]')
     if (placeholder) {
       placeholder.remove()
-      console.log('[SimpleRichEditor] Embed placeholder hidden on input')
+      console.log('[SimpleRichEditor] Preview placeholder hidden on input')
     }
     handleInputBase(e)
   }
@@ -820,7 +820,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     console.log(`[handleAction] Processing command: ${command}`)
 
     // Специальная обработка для команд, требующих UI взаимодействия
-    if (['link', 'tooltip', 'image', 'video', 'audio', 'embed'].includes(command)) {
+    if (['link', 'tooltip', 'image', 'video', 'audio', 'preview'].includes(command)) {
       if (command === 'link') {
         // Используем утилиту findLinkAncestor (DRY)
         const linkElement = findLinkAncestorUtil(validation.selection?.anchorNode ?? null, editor)
@@ -838,8 +838,8 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
         showInlineForm('video', handleInsertVideo, '')
         return
       }
-      if (command === 'embed') {
-        showInlineForm('embed', handleInsertEmbed, '')
+      if (command === 'preview') {
+        showInlineForm('preview', handleInsertPreview, '')
         return
       }
       if (command === 'image') {
@@ -973,7 +973,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
     showInlineFormAtPosition,
     handleInsertLink,
     handleInsertVideo,
-    handleInsertEmbed,
+    handleInsertPreview,
     handleInsertTooltip,
     showAudioUploader,
     showImageUploadModal,
@@ -1172,7 +1172,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           />
         </div>
       </Show>
-      <Show when={showForm() === 'embed'}>
+      <Show when={showForm() === 'preview'}>
         <div
           class={styles.inlineFormWrapper}
           style={{ top: `${formPosition()?.top || 0}px`, left: `${formPosition()?.left || 0}px` }}
@@ -1180,7 +1180,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
           <InlineForm
             placeholder={t('Paste any link')}
             initialValue={formInitialValue()}
-            onSubmit={handleInsertEmbed}
+            onSubmit={handleInsertPreview}
             onClose={() => {
               setShowForm(null)
               editorRef()?.focus()
@@ -1212,16 +1212,16 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
                   const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
                   showInlineFormAtPosition('tooltip', plusMenuPosition, handleInsertTooltip, '')
                 },
-                showEmbedForm: () => {
+                showPreviewForm: () => {
                   const plusMenuPosition = { top: plusMenuTop(), left: uiHelpers.getPlusMenuLeft() + 35 }
-                  showInlineFormAtPosition('embed', plusMenuPosition, handleInsertEmbed, '')
+                  showInlineFormAtPosition('preview', plusMenuPosition, handleInsertPreview, '')
                 },
-                showEmbedPlaceholder: () => {
+                showPreviewPlaceholder: () => {
                   // Вставляем реальный non-selectable элемент как оверлей
                   const editor = editorRef()
                   if (editor) {
                     // Удаляем старый placeholder если есть
-                    const oldPlaceholder = editor.querySelector('[data-embed-placeholder-overlay]')
+                    const oldPlaceholder = editor.querySelector('[data-preview-placeholder-overlay]')
                     if (oldPlaceholder) oldPlaceholder.remove()
 
                     // Получаем позицию курсора
@@ -1235,7 +1235,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
                       const placeholder = document.createElement('span')
                       placeholder.contentEditable = 'false'
                       placeholder.textContent = 'https://...'
-                      placeholder.setAttribute('data-embed-placeholder-overlay', 'true')
+                      placeholder.setAttribute('data-preview-placeholder-overlay', 'true')
                       placeholder.style.cssText = `
                         position: absolute;
                         left: ${rect.left - editorRect.left}px;
@@ -1249,7 +1249,7 @@ export const SimpleRichEditor: Component<SimpleRichEditorProps> = (props) => {
 
                       editor.appendChild(placeholder)
                       editor.focus()
-                      console.log('[SimpleRichEditor] Embed placeholder shown at cursor')
+                      console.log('[SimpleRichEditor] Preview placeholder shown at cursor')
                     }
                   }
                 },

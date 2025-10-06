@@ -4,7 +4,7 @@
  */
 
 import { applyFormatting, createSelectionState, hasFormatting, removeFormatting } from '../format/format'
-import { createVideoEmbed, detectVideoPlatform, insertAudio } from '../media'
+import { createVideoPreview, detectVideoPlatform, insertAudio } from '../media'
 import { CommandType, FormType } from './types'
 import { replaceSelection } from './utils'
 
@@ -228,8 +228,8 @@ export const handleEditorAction = async (action: EditorAction, context: ActionCo
       if (typeof data === 'string' && data) {
         const platform = detectVideoPlatform(data)
         if (platform) {
-          const embedHtml = createVideoEmbed(data)
-          if (embedHtml && replaceSelection(embedHtml, editor)) {
+          const previewHtml = createVideoPreview(data)
+          if (previewHtml && replaceSelection(previewHtml, editor)) {
             context.onChange?.()
             return { success: true }
           }
@@ -276,13 +276,13 @@ export const handleEditorAction = async (action: EditorAction, context: ActionCo
     }
   }
 
-  if (command === 'embed') {
+  if (command === 'preview') {
     try {
-      // Если передан URL, создаем универсальный embed
+      // Если передан URL, создаем универсальный preview
       if (typeof data === 'string' && data) {
-        const { createUniversalEmbed } = await import('../media/html')
-        const embedHtml = await createUniversalEmbed(data)
-        if (embedHtml && replaceSelection(embedHtml, editor)) {
+        const { createUniversalPreview } = await import('../media/html')
+        const previewHtml = await createUniversalPreview(data)
+        if (previewHtml && replaceSelection(previewHtml, editor)) {
           context.onChange?.()
           return { success: true }
         }
@@ -290,8 +290,8 @@ export const handleEditorAction = async (action: EditorAction, context: ActionCo
       }
 
       // Показываем форму для ввода URL
-      context.onShowForm?.('embed', '')
-      return { success: true, needsFormInput: true, formType: 'embed' }
+      context.onShowForm?.('preview', '')
+      return { success: true, needsFormInput: true, formType: 'preview' }
     } catch (error) {
       console.error('[handleEditorAction] Embed error:', error)
       return { success: false, error: String(error) }

@@ -29,7 +29,7 @@ export const getCommandType = (cmd: CommandType): CommandGroupType => {
   if (['h1', 'h2', 'h3', 'hr'].includes(cmd)) return 'headings'
   if (['blockquote', 'punchline', 'incut'].includes(cmd)) return 'quotes'
   if (['bulletList', 'orderedList'].includes(cmd)) return 'lists'
-  if (['link'].includes(cmd)) return 'links'
+  if (['link', 'preview', 'tooltip'].includes(cmd)) return 'links'
   if (['image', 'video', 'audio'].includes(cmd)) return 'media'
   return 'text'
 }

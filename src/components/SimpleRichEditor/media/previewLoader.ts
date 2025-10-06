@@ -9,7 +9,7 @@
  * - Утечку данных
  */
 
-import type { EmbedPlatform } from './types'
+import type { PreviewPlatform } from './types'
 
 type LazyPreviewPlatform =
   | 'facebook'
@@ -214,21 +214,21 @@ const loadOKEmbed = async (wrapper: HTMLElement): Promise<void> => {
 /**
  * Инициализирует embed после загрузки SDK
  */
-export const initializeEmbedLazy = async (
+export const initializePreviewLazy = async (
   wrapper: HTMLElement,
-  platform: EmbedPlatform | LazyPreviewPlatform
+  platform: PreviewPlatform | LazyPreviewPlatform
 ): Promise<void> => {
-  const placeholder = wrapper.querySelector('.embed-placeholder')
+  const placeholder = wrapper.querySelector('.preview-placeholder')
   // Ищем контент в зависимости от платформы
   const content = wrapper.querySelector(
-    '.fb-post, .twitter-tweet, .instagram-media, .reddit-embed-bq, .tiktok-embed, .bandcamp-iframe-container, .slideshare-iframe-container, .flickr-iframe-container, .imgur-embed-pub, .ok-iframe-container, script'
+    '.fb-post, .twitter-tweet, .instagram-media, .reddit-preview-bq, .tiktok-preview, .bandcamp-iframe-container, .slideshare-iframe-container, .flickr-iframe-container, .imgur-preview-pub, .ok-iframe-container, script'
   ) as HTMLElement
 
   if (!content && !['bandcamp', 'slideshare', 'flickr', 'ok'].includes(platform)) return
 
   try {
     // Показываем индикатор загрузки
-    const button = placeholder?.querySelector('[data-embed-action="load"]')
+    const button = placeholder?.querySelector('[data-preview-action="load"]')
     if (button) {
       button.textContent = 'Loading...'
       ;(button as HTMLButtonElement).disabled = true
@@ -294,18 +294,18 @@ export const initializeEmbedLazy = async (
 /**
  * Инициализирует обработчики для всех lazy embed на странице
  */
-export const initEmbedLoaders = (): void => {
+export const initPreviewLoaders = (): void => {
   // Используем делегирование событий для динамически добавляемых embed
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement
-    if (target.getAttribute('data-embed-action') === 'load') {
-      const wrapper = target.closest('[data-embed-platform]') as HTMLElement
+    if (target.getAttribute('data-preview-action') === 'load') {
+      const wrapper = target.closest('[data-preview-platform]') as HTMLElement
       if (wrapper) {
-        const platform = wrapper.getAttribute('data-embed-platform') as LazyPreviewPlatform
+        const platform = wrapper.getAttribute('data-preview-platform') as LazyPreviewPlatform
         const loaded = wrapper.getAttribute('data-sdk-loaded') === 'true'
 
         if (!loaded && platform) {
-          void initializeEmbedLazy(wrapper, platform)
+          void initializePreviewLazy(wrapper, platform)
         }
       }
     }

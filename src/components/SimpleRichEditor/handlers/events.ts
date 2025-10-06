@@ -66,9 +66,9 @@ export const createEventHandlers = (context: EventHandlersContext) => {
     const clone = editor.cloneNode(true) as HTMLElement
 
     // Конвертируем iframe обратно в <preview> для компактного хранения
-    const wrappers = clone.querySelectorAll('.video-embed-wrapper[data-embed-url]')
+    const wrappers = clone.querySelectorAll('.video-preview-wrapper[data-preview-url]')
     for (const wrapper of Array.from(wrappers)) {
-      const url = wrapper.getAttribute('data-embed-url')
+      const url = wrapper.getAttribute('data-preview-url')
       if (url) {
         const previewTag = document.createElement('preview')
         previewTag.textContent = url
@@ -146,10 +146,10 @@ export const createEventHandlers = (context: EventHandlersContext) => {
         // Проверяем - это URL?
         const urlRegex = /^https?:\/\/[^\s]+$/
         if (urlRegex.test(lastWord)) {
-          const { detectEmbedPlatform, cleanUrl } = await import('../media')
+          const { detectPreviewPlatform, cleanUrl } = await import('../media')
           // Очищаем URL от лишних параметров
           const cleanedUrl = cleanUrl(lastWord)
-          const platform = detectEmbedPlatform(cleanedUrl)
+          const platform = detectPreviewPlatform(cleanedUrl)
 
           if (platform !== 'unknown') {
             // Сохраняем позицию для замены
@@ -175,11 +175,11 @@ export const createEventHandlers = (context: EventHandlersContext) => {
             choiceContainer.contentEditable = 'false'
             choiceContainer.style.userSelect = 'none'
 
-            const handleChoice = async (type: 'link' | 'preview' | 'text') => {
+            const handleChoice = async (type: 'link' | 'preview') => {
               if (type === 'preview') {
-                const { createUniversalEmbed } = await import('../media/html')
+                const { createUniversalPreview } = await import('../media/html')
                 // Используем очищенный URL для preview
-                const previewHtml = await createUniversalEmbed(cleanedUrl, platform)
+                const previewHtml = await createUniversalPreview(cleanedUrl, platform)
                 if (previewHtml) {
                   const tempDiv = document.createElement('div')
                   tempDiv.innerHTML = previewHtml
@@ -199,7 +199,8 @@ export const createEventHandlers = (context: EventHandlersContext) => {
                     editor?.focus()
                   })
                 }
-              } else if (type === 'link') {
+              } else {
+                // type === 'link'
                 const link = document.createElement('a')
                 // Используем очищенный URL для ссылки
                 link.href = cleanedUrl
@@ -207,10 +208,6 @@ export const createEventHandlers = (context: EventHandlersContext) => {
                 link.rel = 'noopener noreferrer'
                 link.textContent = cleanedUrl
                 choiceContainer.replaceWith(link)
-              } else {
-                // type === 'text' - вставляем просто текст
-                const textNode = document.createTextNode(cleanedUrl)
-                choiceContainer.replaceWith(textNode)
               }
               handleChange(props.fieldType ? String(props.fieldType) : 'content')
               editor.focus()
@@ -292,10 +289,10 @@ export const createEventHandlers = (context: EventHandlersContext) => {
       // Проверяем - это одиночный URL?
       const urlRegex = /^https?:\/\/[^\s]+$/
       if (urlRegex.test(trimmedText)) {
-        const { detectEmbedPlatform, cleanUrl } = await import('../media')
+        const { detectPreviewPlatform, cleanUrl } = await import('../media')
         // Очищаем URL от лишних параметров
         const cleanedUrl = cleanUrl(trimmedText)
-        const platform = detectEmbedPlatform(cleanedUrl)
+        const platform = detectPreviewPlatform(cleanedUrl)
 
         if (platform !== 'unknown') {
           // Это preview платформа - вставляем inline choice компонент
@@ -306,11 +303,11 @@ export const createEventHandlers = (context: EventHandlersContext) => {
           choiceContainer.contentEditable = 'false'
           choiceContainer.style.userSelect = 'none'
 
-          const handleChoice = async (type: 'link' | 'preview' | 'text') => {
+          const handleChoice = async (type: 'link' | 'preview') => {
             if (type === 'preview') {
-              const { createUniversalEmbed } = await import('../media/html')
+              const { createUniversalPreview } = await import('../media/html')
               // Используем очищенный URL для preview
-              const previewHtml = await createUniversalEmbed(cleanedUrl, platform)
+              const previewHtml = await createUniversalPreview(cleanedUrl, platform)
               if (previewHtml) {
                 const tempDiv = document.createElement('div')
                 tempDiv.innerHTML = previewHtml
@@ -330,7 +327,8 @@ export const createEventHandlers = (context: EventHandlersContext) => {
                   editor?.focus()
                 })
               }
-            } else if (type === 'link') {
+            } else {
+              // type === 'link'
               const link = document.createElement('a')
               // Используем очищенный URL для ссылки
               link.href = cleanedUrl
@@ -338,10 +336,6 @@ export const createEventHandlers = (context: EventHandlersContext) => {
               link.rel = 'noopener noreferrer'
               link.textContent = cleanedUrl
               choiceContainer.replaceWith(link)
-            } else {
-              // type === 'text' - вставляем просто текст
-              const textNode = document.createTextNode(cleanedUrl)
-              choiceContainer.replaceWith(textNode)
             }
             handleChange(props.fieldType ? String(props.fieldType) : 'content')
             editorRef()?.focus()

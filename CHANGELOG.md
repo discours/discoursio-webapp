@@ -163,7 +163,7 @@
     - После вставки URL срабатывают те же обработчики что и при обычной вставке
     - Убрана отдельная форма для embed - используется единый flow через `PreviewInlineChoice`
   - `SimpleRichEditor.tsx`:
-    - `showEmbedPlaceholder` создает `<span>` с `data-embed-placeholder-overlay`
+    - `showEmbedPlaceholder` создает `<span>` с `data-preview-placeholder-overlay`
     - Позиционируется абсолютно в месте курсора (через `getBoundingClientRect`)
     - `pointer-events: none` и `user-select: none` - не мешает вводу
     - Обработчик `handleInput` удаляет placeholder при первом вводе

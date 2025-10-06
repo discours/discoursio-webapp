@@ -36,7 +36,7 @@ export const INLINE_COMMANDS: readonly CommandType[] = ['bold', 'italic', 'highl
 /**
  * Команды, требующие UI взаимодействия (формы, модалки)
  */
-export const UI_COMMANDS: readonly CommandType[] = ['link', 'tooltip', 'image', 'video', 'audio', 'embed'] as const
+export const UI_COMMANDS: readonly CommandType[] = ['link', 'tooltip', 'image', 'video', 'audio', 'preview'] as const
 
 /**
  * Проверяет, является ли команда блочной

@@ -19,18 +19,18 @@ export const handlePlusMenuAction = (
   callbacks: {
     showLinkForm?: () => void
     showTooltipForm?: () => void
-    showEmbedForm?: () => void
-    showEmbedPlaceholder?: () => void
+    showPreviewForm?: () => void
+    showPreviewPlaceholder?: () => void
     showAudioUploader?: () => void
     showImageUploadModal?: () => void
     handleChange?: () => void
   }
 ): void => {
   switch (action) {
-    case 'embed':
+    case 'preview':
       // Показываем оверлей с placeholder для ввода URL
-      if (editor && callbacks.showEmbedPlaceholder) {
-        callbacks.showEmbedPlaceholder()
+      if (editor && callbacks.showPreviewPlaceholder) {
+        callbacks.showPreviewPlaceholder()
       }
       break
     case 'upload':
@@ -198,18 +198,12 @@ export const PlusMenu: Component<{
     if (props.onClose) props.onClose()
   }
 
-  // Определяем реальную видимость меню - упрощенная логика как в Notion
-  const isReallyVisible = () => {
-    return props.isVisible
-  }
-
   // Editor использует ограниченный набор элементов меню
-  const editorMenuItems = ['upload', 'embed', 'separator']
+  const editorMenuItems = ['upload', 'preview', 'separator']
 
   // Отладочная информация
   console.log('[PlusMenu] Render:', {
     isVisible: props.isVisible,
-    isReallyVisible: isReallyVisible(),
     isAppearing: isAppearing(),
     top: props.top,
     'props.top type': typeof props.top,
@@ -220,7 +214,7 @@ export const PlusMenu: Component<{
     <div
       ref={setMenuRef}
       class={clsx(styles.plusMenu, {
-        [styles.visible]: isReallyVisible(),
+        [styles.visible]: props.isVisible,
         [styles.appearing]: isAppearing()
       })}
       style={{

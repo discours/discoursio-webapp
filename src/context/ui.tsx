@@ -38,6 +38,7 @@ export type ModalType =
   | 'uploadAudio'
   | 'insertLink'
   | 'embedChoice'
+  | 'previewChoice'
   | ''
 
 export const MODALS: Record<ModalType, ModalType> = {
@@ -61,6 +62,7 @@ export const MODALS: Record<ModalType, ModalType> = {
   uploadAudio: 'uploadAudio',
   insertLink: 'insertLink',
   embedChoice: 'embedChoice',
+  previewChoice: 'previewChoice',
   '': ''
 }
 
