@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
-    "build": "vinxi build && node vinxi-patch.js",
-    "build:debug": "cross-env DEBUG_BUILD=true vinxi build && node vinxi-patch.js",
-    "build:netlify": "npm run codegen:all && vinxi build && node vinxi-patch.js",
+    "prebuild": "node scripts/prebuild.mjs",
+    "build": "vinxi build && node ./scripts/vinxi-patch.js",
+    "build:debug": "cross-env DEBUG_BUILD=true vinxi build && node ./scripts/vinxi-patch.js",
+    "build:netlify": "npm run codegen:all && vinxi build && node ./scripts/vinxi-patch.js",
     "start": "cross-env NODE_ENV=production node scripts/server.mjs",
     "start:debug": "npm run build:debug && cross-env DEBUG_BUILD=true node scripts/server.mjs",
     "prestart": "npm run build",
