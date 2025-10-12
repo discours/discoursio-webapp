@@ -8,7 +8,7 @@ svg:not(.no-transition) {
   opacity: 0;
   transform: scale(0.95);
   transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-  
+
   // ✅ Автоматическое появление для инлайновых SVG
   &[width], &[height], &[viewBox] {
     opacity: 1;
@@ -66,6 +66,11 @@ section {
 }
 
 .wide-container {
+  margin: 0 auto;
+  max-width: 1500px;
+  padding: 0 math.div($container-padding-x, 2);
+  width: 100%;
+
   @include media-breakpoint-up(sm) {
     padding: 0 $container-padding-x;
   }
@@ -73,11 +78,6 @@ section {
   @include media-breakpoint-up(xl) {
     padding: 0 $grid-gutter-width;
   }
-
-  margin: 0 auto;
-  max-width: 1500px;
-  padding: 0 math.div($container-padding-x, 2);
-  width: 100%;
 }
 
 h1,
@@ -735,6 +735,7 @@ figure {
 }
 
 .container {
+  margin: 0 auto;
   max-width: 1500px;
   width: auto;
 }

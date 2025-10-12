@@ -1,12 +1,6 @@
 @use "sass:map" as map;
 @use "global" as *;
 
-// Генерация классов контейнера и ряда
-.container,
-.container-fluid {
-  @include make-container($container-max-widths, $grid-gutter-width);
-}
-
 .row {
   @include make-row;
 

@@ -39,6 +39,11 @@
     &:hover {
       background-color: var(--clr-black) !important;
       color: var(--clr-white) !important;
+
+      .shoutCardLinkWrapper,
+      .shoutCardLinkContainer {
+        background: #000;
+      }
     }
   }
 
@@ -342,8 +347,6 @@
       line-height: 1.2;
     }
 
-
-
     .shoutAuthor {
       margin-top: 0.6em;
     }
@@ -367,16 +370,19 @@
 }
 
 .shoutCardWithCover {
+  aspect-ratio: 16/9;
+  width: 100%;
+  color: white;
+
   @include media-breakpoint-down(xl) {
     aspect-ratio: auto;
     height: 100%;
   }
 
-  aspect-ratio: 16/9;
-  width: 100%;
-  color: white;
-
   swiper-slide & {
+    aspect-ratio: 16/9;
+    margin-bottom: 0;
+
     @include media-breakpoint-down(lg) {
       aspect-ratio: 1/1;
     }
@@ -392,16 +398,11 @@
         padding-left: 10%;
       }
     }
-
-    aspect-ratio: 16/9;
-    margin-bottom: 0;
   }
 
   &.shoutCardNoImage {
     background: rgba(0, 0, 0, 0.5);
   }
-
-
 
   .shoutCardCoverContainer,
   .shoutCardCover,
@@ -416,15 +417,15 @@
   }
 
   .shoutCardContent {
-    @include media-breakpoint-down(xl) {
-      position: relative;
-    }
-
     display: flex;
     flex-direction: column;
     justify-content: end;
     padding: 30% 2.4rem 2.4rem;
     z-index: 1;
+
+    @include media-breakpoint-down(xl) {
+      position: relative;
+    }
   }
 
   .shoutCardCover {
@@ -443,10 +444,22 @@
   }
 
   .shoutCardTitle {
-    font-size:3.2rem;
+    font-size: 3.2rem;
   }
 
+  a:link {
+    color: var(--clr-white);
 
+    &:hover {
+      background-color: var(--clr-white) !important;
+      color: var(--clr-black) !important;
+
+      .shoutCardLinkWrapper,
+      .shoutCardLinkContainer {
+        background: var(--clr-white);
+      }
+    }
+  }
 }
 
 .shoutCardContentTop {
@@ -718,7 +731,12 @@
     }
 
     .shoutTopic {
+      font-size: 1.4rem;
       margin-bottom: 3.2rem;
+
+      a:link {
+        color: var(--blue-link);
+      }
     }
 
     .shoutCardTitle {

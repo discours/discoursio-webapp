@@ -1,21 +1,27 @@
 @use 'sass:math';
 
 .Topics {
+  font-size: 1.6rem;
+  margin-bottom: $container-padding-x;
+  position: relative;
+  overflow: auto;
+  width: 100%;
+
   @include media-breakpoint-down(sm) {
-    padding: 0 math.div($container-padding-x, 2);
+    margin: 0 #{-$container-padding-x} $container-padding-x;
+    padding: 0 $container-padding-x;
+    width: auto;
   }
 
   @include media-breakpoint-up(md) {
     font-size:1.4rem;
   }
 
-  font-size: 1.6rem;
-  position: relative;
-  width: 100%;
-
   .list {
     list-style: none;
     font-weight: 500;
+    margin: 0 $container-padding-x 0 0;
+    padding: 0 $container-padding-x 0 0;
   }
 
   .item {

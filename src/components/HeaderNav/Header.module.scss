@@ -13,10 +13,11 @@
 
 .mainHeaderInner {
   position: relative;
-  width: 100%;
   user-select: none;
+  width: 100%;
+
   @include media-breakpoint-down(lg) {
-    padding: 0 math.div($container-padding-x, 2);
+    padding: 0;
   }
 }
 
@@ -315,7 +316,7 @@
 .burgerContainer {
   // Полностью скрываем на всех экранах кроме мобильных
   display: none;
-  
+
   @include media-breakpoint-down(sm) {
     display: inline-flex;
     box-sizing: content-box;
@@ -676,7 +677,7 @@
       justify-content: center;
       height: 100%;
       padding: 0;
-      
+
       .textLabel {
         font-family: 'Muller', sans-serif;
         font-weight: 500;
@@ -770,18 +771,18 @@
   a:link,
   a:visited,
   button {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+
     @include media-breakpoint-up(xl) {
       border-radius: 2rem;
       padding: 0 2rem;
       min-width: auto;
       white-space: nowrap;
     }
-
-    align-items: center;
-    display: flex;
-    justify-content: center;
-    min-width: 0;
-    overflow: hidden;
 
     &:hover {
       @include media-breakpoint-up(xl) {
@@ -810,17 +811,29 @@
   a::before {
     display: none;
   }
+
+  .icon {
+    @include media-breakpoint-up(md) {
+      display: none;
+    }
+  }
+}
+
+.createPostLinkLabel {
+  @include media-breakpoint-down(md) {
+    display: none;
+  }
 }
 
 .userControlItemCreate {
   .icon {
+    height: 2.8rem;
+    width: 2.8rem;
+
     @include media-breakpoint-up(md) {
       height: 3.2rem;
       width: 3.2rem;
     }
-
-    height: 2.8rem;
-    width: 2.8rem;
   }
 }
 
@@ -848,7 +861,6 @@
     flex-wrap: wrap;
     gap: 24px;
     margin: 0;
-    margin-bottom: 0;
     max-width: 1500px;
     padding: 0;
     position: relative;
@@ -957,7 +969,7 @@
 
   .editorModesSelected {
     cursor: default;
-    
+
     &::before {
       content: '✦';
     }
@@ -967,11 +979,11 @@
     opacity: 0.4;
     cursor: not-allowed;
     pointer-events: none;
-    
+
     &:hover {
       opacity: 0.4;
     }
-    
+
     .editorModeTitle,
     .editorModeDescription,
     .editorModeIcon {
@@ -1064,12 +1076,12 @@
     border-radius: 50%;
     transition: background-color 0.3s ease;
   }
-  
+
   &.connected .indicatorDot {
     background-color: #44b700;
     box-shadow: 0 0 0 2px rgb(68 183 0 / 20%);
   }
-  
+
   &.disconnected .indicatorDot {
     background-color: #ff3d00;
     box-shadow: 0 0 0 2px rgb(255 61 0 / 20%);
@@ -1121,7 +1133,6 @@
   background: var(--background-color-invert);
   cursor: pointer;
 }
-
 
 .userControlItemInbox {
   width: 2.4rem;

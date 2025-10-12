@@ -348,7 +348,10 @@ export const Header = (props: Props) => {
             </div>
 
             <div class={clsx('col-auto', styles.createPostLink)}>
-              <A href="/edit/new">{t('Create post')}</A>
+              <A href="/edit/new">
+                <span class={styles.createPostLinkLabel}>{t('Create post')}</span>
+                <Icon name="pencil-outline" class={styles.icon} />
+              </A>
             </div>
 
             <div class={clsx('col-auto')}>
