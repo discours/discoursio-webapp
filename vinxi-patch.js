@@ -1,18 +1,11 @@
 // vinxi-patch.js
-// Windows-only workaround for Vinxi manifest.json issue
+// Workaround for Vinxi manifest.json issue (needed on Windows and CI environments like Vercel)
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-
-// Only run on Windows
-if (os.platform() !== 'win32') {
-  console.log('⏭️  Skipping vinxi-patch (not Windows)')
-  process.exit(0)
-}
 
 const manifestPath = path.join(__dirname, '.vinxi/build/server-fns/_server/manifest.js')
 const jsonPath = path.join(__dirname, '.vinxi/build/server-fns/_server/manifest.json')
