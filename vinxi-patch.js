@@ -1,8 +1,12 @@
 // vinxi-patch.js
 // Windows-only workaround for Vinxi manifest.json issue
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Only run on Windows
 if (os.platform() !== 'win32') {
