@@ -57,6 +57,7 @@ export const render = async (pageContext: PageContext) => {
   return escapeInject`<!DOCTYPE html>
     <html lang="${lng}">
       <head>
+        <meta name="robots" content="noindex,nofollow">
         ${dangerouslySkipEscape(getAssets())}
       </head>
       <body>
