@@ -41,8 +41,9 @@ This candidate makes the historical SolidStart application reproducible for publ
 - HTTP demo smoke: passed
 - Playwright Chromium demo smoke: passed
 - Runtime dependency audit: zero known findings
+- Pull-request CI: `quality` and `dependency-review` passed
 
-These checks validate the candidate checkout, not GitHub CI, a published package, a release artifact, or a production deployment.
+These checks validate the candidate checkout and pull-request CI, not a published package, release artifact, or production deployment.
 
 ## Known limitations
 

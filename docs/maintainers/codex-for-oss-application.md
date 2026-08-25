@@ -35,4 +35,4 @@ Topics:
 
 `solidjs`, `solid-start`, `typescript`, `graphql`, `publishing`, `journalism`, `independent-media`, `collaborative-editing`, `open-source`, `ssr`, `i18n`, `playwright`
 
-Do not submit until the owner fills the account email and OpenAI Organization ID and verifies that the repository-readiness pull request is public.
+Do not submit until the owner fills the account email and OpenAI Organization ID. Pull request #533 is public and green, but merging it and resuming visible maintenance would strengthen the application.

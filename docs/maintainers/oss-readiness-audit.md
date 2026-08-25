@@ -90,12 +90,13 @@ The codebase itself is substantial: 3,941 commits at the audited head, 203 TSX c
 | Demo fixture HTTP request | 200, HTML returned, no internal-error marker |
 | Playwright Chromium demo smoke | Passed |
 | Runtime npm audit | 0 known findings |
+| GitHub CI (`quality` and `dependency-review`) | Passed on the pull-request candidate |
 
-External API behaviour, authenticated flows, inbox, realtime events, mail delivery, deployed server behaviour, GitHub CI on the candidate, and production deployment are **UNVERIFIABLE** from this local audit.
+External API behaviour, authenticated flows, inbox, realtime events, mail delivery, deployed server behaviour, and production deployment are **UNVERIFIABLE** from this audit.
 
 ## Highest-value next actions
 
-1. Review, commit, push, and open a pull request for this candidate; require green GitHub CI before merge.
+1. Review pull request #533 and merge only after maintainer approval; its candidate checks are green.
 2. Protect `dev`, enable secret scanning/push protection/private vulnerability reporting, and decide the role of `main`.
 3. Publish the reviewed issue backlog gradually and label it accurately.
 4. Merge only after operational review of `.gitea/workflows/main.yml`; merge, release, and deploy remain separate decisions.
