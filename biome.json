@@ -11,6 +11,7 @@
       "!**/.husky",
       "!**/docs",
       "!**/gen",
+      "!src/graphql/generated",
       "!**/*.gen.ts",
       "!**/*.d.ts"
     ]

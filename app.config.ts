@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, SolidStartInlineConfig } from '@solidjs/start/config'
 import { config } from 'dotenv'
-import { checkSSL } from './scripts/https'
+import { checkSSL } from './scripts/https.mjs'
 import viteConfig from './vite.config'
 
 // 1: Загружаем .env файл
@@ -15,7 +15,8 @@ if (existsSync(envPath)) {
 }
 
 // 2: ENVIRONMENT DETECTION
-const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
+const isProductionBuild = process.env.NODE_ENV === 'production' || process.argv.slice(2).includes('build')
+const isDev = !isProductionBuild && !process.env.CI
 const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS)
 const isVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV)
 const isNetlify = Boolean(process.env.NETLIFY)
@@ -29,7 +30,7 @@ const preset = isNetlify ? 'netlify' : isVercel ? 'vercel' : 'node'
 console.info(`[app.config] solid-start preset: ${preset}`)
 
 // 4: API CONNECTION
-console.log('[app.config] connected to api: ', process.env.PUBLIC_CORE_API || 'https://v3.dscrs.site/graphql')
+console.info(`[app.config] API endpoint: ${process.env.PUBLIC_CORE_API ? 'configured' : 'default'}`)
 
 // 5: CONFIG
 export default defineConfig({
@@ -64,7 +65,7 @@ export default defineConfig({
   server: {
     preset,
     port: process.env.PORT ? Number(process.env.PORT) : 3000,
-    https: checkSSL(isDev, isCI, isVercel, isNetlify),
+    https: checkSSL(isDev && !isCI && !isVercel && !isNetlify),
     ...(isDev && {
       host: '0.0.0.0', // Слушаем на всех интерфейсах
       strictPort: false, // Разрешаем выбор другого порта

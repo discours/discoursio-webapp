@@ -7,6 +7,7 @@ export default gql`
         author {
             id
             slug
+            user
             name
             email
             pic

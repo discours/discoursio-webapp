@@ -1,0 +1,51 @@
+type Mutation {
+  # author
+  rate_author(rated_slug: String!, value: Int!): CommonResult!
+  update_author(profile: ProfileInput!): CommonResult!
+
+  # draft
+  create_draft(draft_input: DraftInput!): CommonResult!
+  update_draft(draft_id: Int!, draft_input: DraftInput!): CommonResult!
+  delete_draft(draft_id: Int!): CommonResult!
+  # publication
+  publish_shout(shout_id: Int!): CommonResult!
+  publish_draft(draft_id: Int!): CommonResult!
+  unpublish_draft(draft_id: Int!): CommonResult!
+  unpublish_shout(shout_id: Int!): CommonResult!
+
+  # follower
+  follow(what: FollowingEntity!, slug: String!): AuthorFollowsResult!
+  unfollow(what: FollowingEntity!, slug: String!): AuthorFollowsResult!
+
+  # topic
+  create_topic(topic_input: TopicInput!): CommonResult!
+  update_topic(topic_input: TopicInput!): CommonResult!
+  delete_topic(slug: String!): CommonResult!
+
+  # reaction
+  create_reaction(reaction: ReactionInput!): CommonResult!
+  update_reaction(reaction: ReactionInput!): CommonResult!
+  delete_reaction(reaction_id: Int!): CommonResult!
+
+  # collab
+  create_invite(slug: String, author_id: Int): CommonResult!
+  remove_author(slug: String, author_id: Int): CommonResult!
+  remove_invite(invite_id: Int!): CommonResult!
+  accept_invite(invite_id: Int!): CommonResult!
+  reject_invite(invite_id: Int!): CommonResult!
+
+  # bookmark
+  toggle_bookmark_shout(slug: String!): CommonResult!
+
+  # notifier
+  notification_mark_seen(notification_id: Int!, seen: Boolean): CommonResult!
+  notifications_seen_after(after: Int!, seen: Boolean): CommonResult!
+  notifications_seen_thread(thread_id: String!, seen: Boolean): CommonResult!
+
+  # community
+  join_community(slug: String!): CommonResult!
+  leave_community(slug: String!): CommonResult!
+  create_community(community_input: CommunityInput!): CommonResult!
+  update_community(community_input: CommunityInput!): CommonResult!
+  delete_community(slug: String!): CommonResult!
+}

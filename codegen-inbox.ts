@@ -2,22 +2,9 @@ import type { CodegenConfig } from '@graphql-codegen/cli'
 
 const config: CodegenConfig = {
   overwrite: true,
-  // Используем только inbox схему
-  schema: 'https://inbox.dscrs.site',
+  schema: process.env.INBOX_GRAPHQL_SCHEMA_URL || './src/graphql/schema/inbox.graphql',
   documents: ['src/graphql/mutation/chat/**/*.ts', 'src/graphql/query/chat/**/*.ts'],
   generates: {
-    './src/graphql/generated/inbox-introspection.json': {
-      plugins: ['introspection'],
-      config: {
-        minify: true
-      }
-    },
-    './src/graphql/generated/inbox-schema.graphql': {
-      plugins: ['schema-ast'],
-      config: {
-        includeDirectives: false
-      }
-    },
     './src/graphql/generated/inbox/': {
       preset: 'client',
       plugins: [],

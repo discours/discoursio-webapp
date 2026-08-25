@@ -4,7 +4,8 @@ import { readFileSync, existsSync, statSync, createReadStream } from 'node:fs'
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { listener } from '../.output/server/index.mjs'
-import { checkSSL } from './https.ts'
+import { checkSSL } from './https.mjs'
+import { resolvePublicFile } from './static-files.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..')
@@ -38,8 +39,13 @@ const mimeTypes = {
 
 // Обработчик запросов со статикой
 function requestHandler(req, res) {
-  // Пробуем найти статический файл
-  const filePath = join(publicDir, req.url === '/' ? '/index.html' : req.url.split('?')[0])
+  const filePath = resolvePublicFile(publicDir, req.url)
+
+  if (!filePath) {
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end('Bad Request')
+    return
+  }
   
   if (existsSync(filePath) && statSync(filePath).isFile()) {
     const ext = extname(filePath)
@@ -60,7 +66,7 @@ function requestHandler(req, res) {
 
 // Проверяем наличие SSL сертификатов через checkSSL
 // В dev и debug режимах пытаемся использовать HTTPS
-const sslConfig = checkSSL(true, false, false, false)
+const sslConfig = checkSSL(process.env.LOCAL_HTTPS === 'true')
 
 let server
 if (sslConfig) {

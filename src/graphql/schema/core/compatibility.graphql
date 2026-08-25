@@ -1,0 +1,72 @@
+# Additions used by the current webapp that post-date the last public backend schema snapshot.
+# Every field below is exercised by a checked-in operation under src/graphql.
+
+extend type Author {
+  email: String
+  email_verified: Boolean
+  roles: [String]
+}
+
+extend type Shout {
+  seo: String
+}
+
+extend enum ShoutsOrderBy {
+  views_count
+}
+
+extend type AuthorStat {
+  coauthors: Int
+  replies_count: Int
+  viewed_shouts: Int
+}
+
+extend type Stat {
+  comments_count: Int
+  views_count: Int
+}
+
+extend type SearchResult {
+  id: Int
+}
+
+extend type Draft {
+  shout: Shout
+}
+
+type AuthResult {
+  author: Author
+  error: String
+  success: Boolean
+  token: String
+}
+
+type ActionResult {
+  error: String
+  success: Boolean
+}
+
+type SendLinkResult {
+  id: String
+}
+
+extend type Query {
+  isEmailUsed(email: String!): Boolean
+  load_authors_search(text: String!, limit: Int, offset: Int): [Author]
+}
+
+extend type Mutation {
+  cancelEmailChange: AuthResult
+  confirmEmailChange(token: String!): AuthResult
+  confirmEmail(token: String!): AuthResult
+  create_draft_from_shout(shout_id: Int!): CommonResult!
+  getSession: AuthResult
+  login(email: String!, password: String!): AuthResult
+  logout: ActionResult
+  refreshToken: AuthResult
+  registerUser(email: String!, password: String!, name: String): AuthResult
+  requestPasswordReset(email: String!): ActionResult
+  resetPassword(newPassword: String!, token: String!): ActionResult
+  sendLink(email: String!, template: String): SendLinkResult
+  updateSecurity(email: String, old_password: String, new_password: String): ActionResult
+}

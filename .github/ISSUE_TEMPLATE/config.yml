@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/discours/discoursio-webapp/blob/dev/SECURITY.md
+    about: Read the private-reporting procedure before sharing any details.
+  - name: Contribution guide
+    url: https://github.com/discours/discoursio-webapp/blob/dev/CONTRIBUTING.md
+    about: Setup, tests, GraphQL compatibility, and pull-request expectations.

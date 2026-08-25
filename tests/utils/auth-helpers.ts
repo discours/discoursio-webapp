@@ -29,21 +29,12 @@ export interface MockUser {
   isExisting?: boolean
 }
 
-/**
- * Стандартные тестовые пользователи
- */
-export const TEST_USERS = {
-  VALID: {
-    email: process.env.TEST_USERNAME || 'test@example.com',
-    password: process.env.TEST_PASSWORD || 'testPassword123!',
-    fullName: 'Тестовый Пользователь'
-  },
-  NEW: {
-    email: `test+${Date.now()}@example.com`,
-    password: 'NewTestPassword123!',
-    fullName: 'Новый Тестовый Пользователь'
-  }
-} as const
+function requiredTestCredentials(): AuthCredentials {
+  const email = process.env.TEST_USERNAME
+  const password = process.env.TEST_PASSWORD
+  if (!email || !password) throw new Error('TEST_USERNAME and TEST_PASSWORD must be set for authenticated E2E tests')
+  return { email, password }
+}
 
 /**
  * Проверяет доступность API перед тестами
@@ -71,11 +62,10 @@ export async function checkApiConnection(page: Page): Promise<boolean> {
           return false
         }
 
-        const data = await response.json()
-        console.log('[API Test] Успешный ответ от API:', data)
+        await response.json()
         return true
-      } catch (error) {
-        console.warn('[API Test] Ошибка проверки API:', error)
+      } catch {
+        console.warn('[API Test] Ошибка проверки API')
         return false
       }
     }, externalApiUrl)
@@ -87,8 +77,8 @@ export async function checkApiConnection(page: Page): Promise<boolean> {
 
     console.log('[API Test] GraphQL API недоступен')
     return false
-  } catch (error) {
-    console.warn('[API Test] Ошибка проверки GraphQL API:', error)
+  } catch {
+    console.warn('[API Test] Ошибка проверки GraphQL API')
     return false
   }
 }
@@ -111,7 +101,7 @@ export async function performLogin(page: Page): Promise<boolean> {
       return false
     }
 
-    console.log(`[performLogin] Используем аккаунт: ${account.email} (новый: ${account.isNew})`)
+    console.log(`[performLogin] Тестовый аккаунт готов (новый: ${account.isNew})`)
 
     // Добавляем обработчики ошибок для диагностики
     await page.evaluate(() => {
@@ -170,13 +160,7 @@ export async function performRegistration(page: Page, user?: MockUser): Promise<
     console.log('[performRegistration] Начинаем процесс регистрации...')
 
     // Используем переданные данные или тестовые данные из переменных окружения
-    const testUser = user || {
-      email: process.env.TEST_USERNAME || 'test@example.com',
-      password: process.env.TEST_PASSWORD || 'testpassword',
-      fullName: 'Test User'
-    }
-
-    console.log(`[performRegistration] Используем данные: ${testUser.email}`)
+    const testUser = user || { ...requiredTestCredentials(), fullName: 'Test User' }
 
     // Проверяем доступность API
     const apiAvailable = await checkApiConnection(page)
@@ -421,10 +405,7 @@ export async function ensureTestAccount(page: Page): Promise<{ email: string; pa
   try {
     console.log('[ensureTestAccount] Простая авторизация с существующим аккаунтом...')
 
-    const existingUsername = process.env.TEST_USERNAME || 'guests@discours.io'
-    const existingPassword = process.env.TEST_PASSWORD || 'test123'
-
-    console.log(`[ensureTestAccount] Логин: ${existingUsername}`)
+    const { email: existingUsername, password: existingPassword } = requiredTestCredentials()
 
     // Переходим напрямую к форме авторизации
     await page.goto(`${baseUrl}?m=auth`, { waitUntil: 'domcontentloaded' })

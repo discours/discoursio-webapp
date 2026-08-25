@@ -11,6 +11,10 @@ import { baseUrl, waitForPageLoad } from '../utils/common'
 import { test } from '../utils/test-helpers'
 
 test.describe('Follow State Persistence - КОНКРЕТНЫЙ СЦЕНАРИЙ', () => {
+  const username = process.env.TEST_USERNAME || ''
+  const password = process.env.TEST_PASSWORD || ''
+  test.skip(!username || !password, 'TEST_USERNAME and TEST_PASSWORD are required')
+
   test('СЦЕНАРИЙ 1: Главная → войти → перейти к автору → подписаться → рефреш → стейт сохраняется', async ({
     page
   }) => {
@@ -27,8 +31,8 @@ test.describe('Follow State Persistence - КОНКРЕТНЫЙ СЦЕНАРИЙ'
 
     // 3. Вводим TEST_USERNAME TEST_PASSWORD
     await expect(page.locator('input[placeholder="Почта"]')).toBeVisible()
-    await page.fill('input[placeholder="Почта"]', process.env.TEST_USERNAME || 'guests@discours.io')
-    await page.fill('input[placeholder="Пароль"]', process.env.TEST_PASSWORD || 'test123')
+    await page.fill('input[placeholder="Почта"]', username)
+    await page.fill('input[placeholder="Пароль"]', password)
 
     // Отправляем форму
     const submitButton = page.locator('button[type="submit"]:has-text("Войти")').first()
@@ -108,8 +112,8 @@ test.describe('Follow State Persistence - КОНКРЕТНЫЙ СЦЕНАРИЙ'
     await loginButton.click()
 
     await expect(page.locator('input[placeholder="Почта"]')).toBeVisible()
-    await page.fill('input[placeholder="Почта"]', process.env.TEST_USERNAME || 'guests@discours.io')
-    await page.fill('input[placeholder="Пароль"]', process.env.TEST_PASSWORD || 'test123')
+    await page.fill('input[placeholder="Почта"]', username)
+    await page.fill('input[placeholder="Пароль"]', password)
 
     const submitButton = page.locator('button[type="submit"]:has-text("Войти")').first()
     await submitButton.click()

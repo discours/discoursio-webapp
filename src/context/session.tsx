@@ -40,10 +40,6 @@ import { coreApiUrl } from '../config'
  */
 const testApiConnection = async () => {
   try {
-    console.log('[API Test] Тестируем подключение к API')
-    console.log('[API Test] CoreApiUrl:', coreApiUrl)
-    console.log('[API Test] Current location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
-
     // Простой fetch запрос для проверки доступности
     const response = await fetch(coreApiUrl, {
       method: 'POST',
@@ -55,20 +51,15 @@ const testApiConnection = async () => {
       })
     })
 
-    console.log('[API Test] Response status:', response.status)
-    console.log('[API Test] Response ok:', response.ok)
-    console.log('[API Test] Response statusText:', response.statusText)
-
     if (!response.ok) {
-      console.error('[API Test] API недоступен:', response.statusText)
+      console.error('[API Test] API недоступен')
       return false
     }
 
-    const result = await response.json()
-    console.log('[API Test] API доступен, ответ:', result)
+    await response.json()
     return true
-  } catch (error) {
-    console.error('[API Test] Ошибка подключения к API:', error)
+  } catch {
+    console.error('[API Test] Ошибка подключения к API')
     return false
   }
 }
@@ -86,9 +77,14 @@ const TOKEN_REFRESH_INTERVAL = Number(process.env.TOKEN_REFRESH_INTERVAL) || 30
 /**
  * Интерфейс токена авторизации
  */
+export type SessionAuthor = Pick<
+  Author,
+  'bio' | 'email' | 'email_verified' | 'id' | 'links' | 'name' | 'pic' | 'roles' | 'slug' | 'user'
+>
+
 export interface AuthPayload {
   token: string
-  author: Author
+  author: SessionAuthor
 }
 
 /**
@@ -222,14 +218,9 @@ export const SessionProvider = (props: {
     source?: string
   }>()
 
-  // Проверяем что SessionProvider монтируется
-  if (!isServer) {
-    console.log('[SessionProvider] Mounted. URL:', window.location.href)
-  }
-
   // Атомарные сигналы для fine-grained reactivity
   const [sessionToken, setSessionToken] = createSignal<string | undefined>()
-  const [sessionAuthor, setSessionAuthor] = createSignal<Author | undefined>()
+  const [sessionAuthor, setSessionAuthor] = createSignal<SessionAuthor | undefined>()
   const [isSessionLoaded, setIsSessionLoaded] = createSignal(false)
   // Проверяем наличие токена сразу для корректной инициализации
   const [isSessionValidating, setIsSessionValidating] = createSignal(false)
@@ -263,17 +254,12 @@ export const SessionProvider = (props: {
   // Изолированная функция загрузки сессии (принцип изоляции из solid-effects.md)
   const loadSessionData = async (token: string): Promise<AuthPayload | undefined> => {
     try {
-      console.log('[loadSessionData] Загрузка данных сессии с токеном длиной:', token.length)
-
       const client = graphqlClientCreate(coreApiUrl, token)
-      console.log('[loadSessionData] Клиент создан, отправляем GetSession мутацию')
 
       const result = await client.mutation(GetSessionMutation, {}).toPromise()
-      console.log('[loadSessionData] Получен результат GetSession:', result)
 
       if (result.error) {
-        console.error('[loadSessionData] GraphQL error:', result.error)
-        console.error('[loadSessionData] Error details:', result.error.networkError || result.error.graphQLErrors)
+        console.error('[loadSessionData] GraphQL request failed')
         return undefined
       }
 
@@ -286,15 +272,8 @@ export const SessionProvider = (props: {
           return undefined
         }
 
-        console.log('[loadSessionData] Данные сессии получены:', {
-          authorId: author.id,
-          authorName: author.name,
-          hasNewToken: !!newToken
-        })
-
         // Обновляем токен в localStorage если изменился И не пустой
         if (newToken && newToken !== token && !isServer) {
-          console.log('[loadSessionData] Обновляем токен в localStorage')
           localStorage.setItem(AUTH_TOKEN_KEY, newToken)
         }
 
@@ -305,21 +284,22 @@ export const SessionProvider = (props: {
             slug: author.slug,
             name: author.name,
             email: author.email,
+            email_verified: author.email_verified,
             pic: author.pic,
             bio: author.bio,
-            links: author.links
+            links: author.links,
+            roles: author.roles,
+            user: author.user
           }
         }
 
-        console.log('[loadSessionData] Возвращаем данные сессии:', sessionData)
         return sessionData
       }
 
       console.warn('[loadSessionData] Данные сессии отсутствуют в ответе')
       return undefined
-    } catch (error) {
-      console.error('[loadSessionData] Исключение при загрузке данных сессии:', error)
-      console.error('[loadSessionData] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    } catch {
+      console.error('[loadSessionData] Session request failed')
       return undefined
     }
   }
@@ -327,17 +307,10 @@ export const SessionProvider = (props: {
   // Функция для загрузки сессии с переданным клиентом (для работы с httpOnly cookies)
   const loadSessionDataWithClient = async (client: Client): Promise<AuthPayload | undefined> => {
     try {
-      console.log('[loadSessionDataWithClient] Загрузка данных сессии с переданным клиентом')
-
       const result = await client.mutation(GetSessionMutation, {}).toPromise()
-      console.log('[loadSessionDataWithClient] Получен результат GetSession:', result)
 
       if (result.error) {
-        console.error('[loadSessionDataWithClient] GraphQL error:', result.error)
-        console.error(
-          '[loadSessionDataWithClient] Error details:',
-          result.error.networkError || result.error.graphQLErrors
-        )
+        console.error('[loadSessionDataWithClient] GraphQL request failed')
         return undefined
       }
 
@@ -348,12 +321,6 @@ export const SessionProvider = (props: {
         if (!author) {
           return undefined
         }
-
-        console.log('[loadSessionDataWithClient] Данные сессии получены:', {
-          authorId: author.id,
-          authorName: author.name,
-          hasToken: !!token
-        })
 
         if (!token) {
           console.warn('[loadSessionDataWithClient] Токен отсутствует в ответе')
@@ -367,21 +334,22 @@ export const SessionProvider = (props: {
             slug: author.slug,
             name: author.name,
             email: author.email,
+            email_verified: author.email_verified,
             pic: author.pic,
             bio: author.bio,
-            links: author.links
+            links: author.links,
+            roles: author.roles,
+            user: author.user
           }
         }
 
-        console.log('[loadSessionDataWithClient] Возвращаем данные сессии:', sessionData)
         return sessionData
       }
 
       console.warn('[loadSessionDataWithClient] Данные сессии отсутствуют в ответе')
       return undefined
-    } catch (error) {
-      console.error('[loadSessionDataWithClient] Исключение при загрузке данных сессии:', error)
-      console.error('[loadSessionDataWithClient] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    } catch {
+      console.error('[loadSessionDataWithClient] Session request failed')
       return undefined
     }
   }
@@ -403,14 +371,6 @@ export const SessionProvider = (props: {
       hasSessionData: !!sessionData,
       clearValidatingFlag
     })
-    if (sessionData) {
-      console.log('[updateSession] Данные сессии:', {
-        authorId: sessionData.author.id,
-        authorName: sessionData.author.name,
-        tokenLength: sessionData.token.length
-      })
-    }
-
     batch(() => {
       if (sessionData) {
         console.log('[updateSession] Устанавливаем токен и автора')
@@ -490,8 +450,8 @@ export const SessionProvider = (props: {
           updateSession(undefined, true, false)
           return undefined
         }
-      } catch (error) {
-        console.log('[loadSession] Ошибка при восстановлении сессии из cookie:', error)
+      } catch {
+        console.warn('[loadSession] Ошибка при восстановлении сессии из cookie')
         updateSession(undefined, true, false)
         return undefined
       }
@@ -508,8 +468,8 @@ export const SessionProvider = (props: {
         updateSession(undefined, true, false)
       }
       return sessionData
-    } catch (error) {
-      console.error('[loadSession] Failed to load session:', error)
+    } catch {
+      console.error('[loadSession] Failed to load session')
       setAuthError(t('Failed to load session'))
       // Не удаляем токен из localStorage при исключениях
       updateSession(undefined, true, false)
@@ -539,7 +499,7 @@ export const SessionProvider = (props: {
       const oauthError = urlParams.get('oauth_error')
 
       if (oauthError) {
-        console.error('[SessionProvider] OAuth error:', oauthError)
+        console.error('[SessionProvider] OAuth provider returned an error')
 
         const errorMessages = {
           auth_failed: t('OAuth authorization failed'),
@@ -571,14 +531,8 @@ export const SessionProvider = (props: {
       const oauthToken = urlParams.get('access_token')
       const oauthError = urlParams.get('oauth_error')
 
-      console.log('[SessionProvider] Checking URL for OAuth params:', {
-        hasToken: !!oauthToken,
-        hasError: !!oauthError,
-        url: window.location.href
-      })
-
       if (oauthError) {
-        console.error('[SessionProvider] OAuth error:', oauthError)
+        console.error('[SessionProvider] OAuth provider returned an error')
         setAuthError(t(`OAuth error: ${oauthError}`))
         // Очищаем URL от ошибки
         urlParams.delete('oauth_error')
@@ -588,12 +542,8 @@ export const SessionProvider = (props: {
       }
 
       if (oauthToken) {
-        console.log('[SessionProvider] 🎯 OAuth token found in URL!')
-        console.log(`[SessionProvider] Token preview: ${oauthToken.substring(0, 20)}...`)
-
         // Сохраняем токен в localStorage
         localStorage.setItem(AUTH_TOKEN_KEY, oauthToken)
-        console.log('[SessionProvider] ✅ Token saved to localStorage')
 
         // 🎯 Обрабатываем state для получения redirect URL
         const stateParam = urlParams.get('state')
@@ -604,10 +554,9 @@ export const SessionProvider = (props: {
             const stateData = JSON.parse(atob(stateParam))
             if (stateData.redirect_url) {
               redirectUrl = new URL(stateData.redirect_url).pathname + new URL(stateData.redirect_url).search
-              console.log('[SessionProvider] 🔄 Redirect URL from state:', redirectUrl)
             }
-          } catch (error) {
-            console.warn('[SessionProvider] Failed to parse state parameter:', error)
+          } catch {
+            console.warn('[SessionProvider] Failed to parse OAuth state')
           }
         }
 
@@ -616,7 +565,6 @@ export const SessionProvider = (props: {
         urlParams.delete('state')
         const cleanUrl = redirectUrl
         window.history.replaceState({}, '', cleanUrl)
-        console.log('[SessionProvider] 🔄 Redirected to original page:', cleanUrl)
 
         // Инициализируем клиент с новым токеном
         initializeClient(oauthToken)
@@ -648,8 +596,8 @@ export const SessionProvider = (props: {
             console.error('[SessionProvider] Failed to load OAuth session')
             updateSession(undefined, true, false)
           }
-        } catch (error) {
-          console.error('[SessionProvider] OAuth session error:', error)
+        } catch {
+          console.error('[SessionProvider] OAuth session request failed')
           updateSession(undefined, true, false)
         }
         return
@@ -696,8 +644,8 @@ export const SessionProvider = (props: {
             // 🚨 FIX: НЕ вызываем loadSession в таймере - это создает цикл!
             setupSessionTimer(Math.max(5, intervalMinutes / 2))
           }
-        } catch (error) {
-          console.error('[SessionProvider] Failed to refresh token:', error)
+        } catch {
+          console.error('[SessionProvider] Failed to refresh token')
           setupSessionTimer(Math.max(5, intervalMinutes / 2))
         }
       },
@@ -714,10 +662,6 @@ export const SessionProvider = (props: {
    */
   const signIn = async (params: LoginInput): Promise<boolean> => {
     try {
-      console.log('[signIn] Начало авторизации')
-      console.log('[signIn] Параметры:', { email: params.email, passwordLength: params.password.length })
-      console.log('[signIn] CoreApiUrl:', coreApiUrl)
-
       // Тестируем подключение к API
       if (!isServer) {
         const apiAvailable = await testApiConnection()
@@ -729,26 +673,17 @@ export const SessionProvider = (props: {
       }
 
       const authClient = graphqlClientCreate(coreApiUrl)
-      console.log('[signIn] GraphQL клиент создан')
-
-      console.log('[signIn] Отправляем мутацию Login...')
       const result = await authClient
         .mutation(LoginMutation, { email: params.email, password: params.password })
         .toPromise()
 
-      console.log('[signIn] Получен результат:', result)
-
       if (result.error) {
-        console.error('[signIn] GraphQL error:', result.error)
-        console.error('[signIn] Error details:', result.error.networkError || result.error.graphQLErrors)
+        console.error('[signIn] GraphQL request failed')
         setAuthError(result.error.message || 'Sign in failed')
         return false
       }
 
-      console.log('[signIn] Проверяем result.data?.login:', result.data?.login)
-
       if (result.data?.login?.success) {
-        console.log('[signIn] Авторизация успешна на сервере')
         const { author, token } = result.data.login
 
         // ✅ Проверяем что author и token не null
@@ -758,11 +693,8 @@ export const SessionProvider = (props: {
           return false
         }
 
-        console.log('[signIn] Получены данные:', { authorId: author.id, tokenLength: token.length })
-
         // Сохраняем токен в localStorage
         if (!isServer) {
-          console.log('[signIn] Сохраняем токен в localStorage')
           localStorage.setItem(AUTH_TOKEN_KEY, token)
         }
 
@@ -774,24 +706,24 @@ export const SessionProvider = (props: {
             slug: author.slug,
             name: author.name,
             email: author.email,
+            email_verified: author.email_verified,
             pic: author.pic,
             bio: author.bio,
-            links: author.links
+            links: author.links,
+            roles: author.roles,
+            user: author.user
           }
         }
 
-        console.log('[signIn] Обновляем сессию с данными:', sessionData)
         updateSession(sessionData)
-        console.log('[signIn] Авторизация завершена успешно')
         return true
       }
 
-      console.warn('[signIn] Авторизация не удалась. Ошибка от сервера:', result.data?.login?.error)
+      console.warn('[signIn] Авторизация не удалась')
       setAuthError(result.data?.login?.error || 'Sign in failed')
       return false
     } catch (error) {
-      console.error('[signIn] Исключение в процессе авторизации:', error)
-      console.error('[signIn] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+      console.error('[signIn] Authentication request failed')
       setAuthError(error instanceof Error ? error.message : 'Sign in failed')
       return false
     }
@@ -802,7 +734,7 @@ export const SessionProvider = (props: {
    */
   const signUp = async (params: SignupInput): Promise<boolean> => {
     try {
-      console.info('[signUp] Attempting sign up:', { email: params.email })
+      console.info('[signUp] Attempting sign up')
       const authClient = graphqlClientCreate(coreApiUrl)
 
       const result = await authClient
@@ -831,9 +763,12 @@ export const SessionProvider = (props: {
             slug: author.slug,
             name: author.name,
             email: author.email,
+            email_verified: author.email_verified,
             pic: author.pic,
             bio: author.bio,
-            links: author.links
+            links: author.links,
+            roles: author.roles,
+            user: author.user
           }
         }
 
@@ -843,9 +778,9 @@ export const SessionProvider = (props: {
 
       setAuthError(result.data?.registerUser?.error || 'Sign up failed')
       return false
-    } catch (error) {
-      console.error('[signUp] Error:', error)
-      setAuthError(error instanceof Error ? error.message : 'Sign up failed')
+    } catch {
+      console.error('[signUp] Registration request failed')
+      setAuthError('Sign up failed')
       return false
     }
   }
@@ -866,8 +801,8 @@ export const SessionProvider = (props: {
           const authClient = graphqlClientCreate(coreApiUrl, currentSession.token)
           await authClient.mutation(LogoutMutation, {}).toPromise()
           logoutSuccess = true
-        } catch (error) {
-          console.warn('[signOut] Failed to logout with token:', error)
+        } catch {
+          console.warn('[signOut] Failed to logout with token')
         }
       } else {
         // Если токен недоступен локально, пытаемся выполнить logout через httpOnly cookie
@@ -876,8 +811,8 @@ export const SessionProvider = (props: {
           const cookieClient = graphqlClientCreate(coreApiUrl)
           await cookieClient.mutation(LogoutMutation, {}).toPromise()
           logoutSuccess = true
-        } catch (error) {
-          console.warn('[signOut] Failed to logout via cookie:', error)
+        } catch {
+          console.warn('[signOut] Failed to logout via cookie')
         }
       }
 
@@ -891,8 +826,8 @@ export const SessionProvider = (props: {
       }
 
       return true
-    } catch (error) {
-      console.error('[signOut] Error:', error)
+    } catch {
+      console.error('[signOut] Logout request failed')
       // Все равно очищаем локальную сессию
       updateSession(undefined)
       return false
@@ -934,12 +869,12 @@ export const SessionProvider = (props: {
           .toPromise()
 
         if (securityUpdateResult.error) {
-          console.error('[updateProfile] Security update error:', securityUpdateResult.error)
+          console.error('[updateProfile] Security update request failed')
           throw new Error(securityUpdateResult.error.message)
         }
 
         if (securityUpdateResult.data?.updateSecurity?.error) {
-          console.error('[updateProfile] Security update failed:', securityUpdateResult.data.updateSecurity.error)
+          console.error('[updateProfile] Security update was rejected')
           throw new Error(securityUpdateResult.data.updateSecurity.error)
         }
 
@@ -965,7 +900,7 @@ export const SessionProvider = (props: {
         .toPromise()
 
       if (profileUpdateResult.error) {
-        console.error('[updateProfile] Profile update error:', profileUpdateResult.error)
+        console.error('[updateProfile] Profile update request failed')
         throw new Error(profileUpdateResult.error.message)
       }
 
@@ -978,7 +913,7 @@ export const SessionProvider = (props: {
       setAuthError(profileUpdateResult.data?.update_author?.error || 'Profile update failed')
       return false
     } catch (error) {
-      console.error('[updateProfile] Error:', error)
+      console.error('[updateProfile] Profile update failed')
       setAuthError(error instanceof Error ? error.message : 'Profile update failed')
       return false
     }
@@ -1007,8 +942,8 @@ export const SessionProvider = (props: {
             updateSession(sessionData, true)
             return true
           }
-        } catch (cookieError) {
-          console.log('[refreshToken] Не удалось обновить сессию из cookie:', cookieError)
+        } catch {
+          console.warn('[refreshToken] Не удалось обновить сессию из cookie')
         }
 
         return false
@@ -1018,7 +953,7 @@ export const SessionProvider = (props: {
       const result = await authClient.mutation(RefreshTokenMutation, {}).toPromise()
 
       if (result.error) {
-        console.error('[refreshToken] GraphQL error:', result.error)
+        console.error('[refreshToken] GraphQL request failed')
         return false
       }
 
@@ -1038,9 +973,12 @@ export const SessionProvider = (props: {
             slug: author.slug,
             name: author.name,
             email: author.email,
+            email_verified: author.email_verified,
             pic: author.pic,
             bio: author.bio,
-            links: author.links
+            links: author.links,
+            roles: author.roles,
+            user: author.user
           }
         }
 
@@ -1048,10 +986,10 @@ export const SessionProvider = (props: {
         return true
       }
 
-      console.error('[refreshToken] Token refresh failed:', result.data?.refreshToken?.error)
+      console.error('[refreshToken] Token refresh failed')
       return false
-    } catch (error) {
-      console.error('[refreshToken] Error:', error)
+    } catch {
+      console.error('[refreshToken] Refresh request failed')
       return false
     }
   }
@@ -1081,7 +1019,7 @@ export const SessionProvider = (props: {
           await callback()
           return
         } catch (callbackError) {
-          console.error('[requireAuthentication] Callback execution error:', callbackError)
+          console.error('[requireAuthentication] Callback execution failed')
           toast.error(t('Operation failed'))
 
           // Если была ошибка авторизации, перенаправляем на форму входа
@@ -1107,8 +1045,8 @@ export const SessionProvider = (props: {
             await callback()
             return
           }
-        } catch (cookieError) {
-          console.log('[requireAuthentication] Не удалось восстановить сессию из cookie:', cookieError)
+        } catch {
+          console.warn('[requireAuthentication] Не удалось восстановить сессию из cookie')
         }
 
         // Если cookie тоже не помог, открываем модалку логина
@@ -1124,8 +1062,8 @@ export const SessionProvider = (props: {
       }
 
       changeSearchParams({ mode: 'login', m: 'auth' }, { replace: true })
-    } catch (error) {
-      console.error('[requireAuthentication] Unexpected error:', error)
+    } catch {
+      console.error('[requireAuthentication] Unexpected authentication error')
       toast.error(t('Try again later'))
     }
   }
@@ -1136,8 +1074,8 @@ export const SessionProvider = (props: {
       const authClient = graphqlClientCreate(coreApiUrl)
       const result = await authClient.mutation(ResetPasswordMutation, { newPassword: password, token }).toPromise()
       return !!result.data?.resetPassword?.success
-    } catch (error) {
-      console.error('[changePassword] Error:', error)
+    } catch {
+      console.error('[changePassword] Password change request failed')
       return false
     }
   }
@@ -1152,9 +1090,9 @@ export const SessionProvider = (props: {
       }
 
       return 'Failed to send password reset email'
-    } catch (error) {
-      console.error('[forgotPassword] Error:', error)
-      return error instanceof Error ? error.message : 'Failed to request password reset'
+    } catch {
+      console.error('[forgotPassword] Password reset request failed')
+      return 'Failed to request password reset'
     }
   }
 
@@ -1184,9 +1122,12 @@ export const SessionProvider = (props: {
               slug: author.slug,
               name: author.name,
               email: author.email,
+              email_verified: author.email_verified,
               pic: author.pic,
               bio: author.bio,
-              links: author.links
+              links: author.links,
+              roles: author.roles,
+              user: author.user
             }
           }
           updateSession(sessionData)
@@ -1197,9 +1138,9 @@ export const SessionProvider = (props: {
 
       setAuthError(result.data?.confirmEmail?.error || 'Email confirmation failed')
       return false
-    } catch (error) {
-      console.error('[confirmEmail] Error:', error)
-      setAuthError(error instanceof Error ? error.message : 'Email confirmation failed')
+    } catch {
+      console.error('[confirmEmail] Email confirmation request failed')
+      setAuthError('Email confirmation failed')
       return false
     }
   }
@@ -1209,7 +1150,7 @@ export const SessionProvider = (props: {
    */
   const resendVerifyEmail = async (params: ResendVerifyEmailInput): Promise<boolean> => {
     try {
-      console.info('[resendVerifyEmail] Resending verification email:', { email: params.email })
+      console.info('[resendVerifyEmail] Resending verification email')
       const authClient = graphqlClientCreate(coreApiUrl)
       const result = await authClient.mutation(ResendVerifyEmailMutation, { email: params.email }).toPromise()
 
@@ -1219,9 +1160,9 @@ export const SessionProvider = (props: {
 
       setAuthError(result.data?.resendConfirmationEmail?.error || 'Failed to resend verification email')
       return false
-    } catch (error) {
-      console.error('[resendVerifyEmail] Error:', error)
-      setAuthError(error instanceof Error ? error.message : 'Failed to resend verification email')
+    } catch {
+      console.error('[resendVerifyEmail] Verification email request failed')
+      setAuthError('Failed to resend verification email')
       return false
     }
   }
@@ -1231,19 +1172,19 @@ export const SessionProvider = (props: {
    */
   const isRegistered = async (email: string): Promise<string> => {
     try {
-      console.info('[isRegistered] Checking email registration status:', { email })
+      console.info('[isRegistered] Checking email registration status')
       const authClient = graphqlClientCreate(coreApiUrl)
       const result = await authClient.query(IsEmailUsedQuery, { email }).toPromise()
 
       if (result.error) {
-        console.error('[isRegistered] GraphQL error:', result.error)
+        console.error('[isRegistered] GraphQL request failed')
         return ''
       }
 
       // Возвращаем статус как строку для совместимости с RegisterForm
       return result.data?.isEmailUsed ? 'registered' : ''
-    } catch (error) {
-      console.error('[isRegistered] Error:', error)
+    } catch {
+      console.error('[isRegistered] Registration status request failed')
       return ''
     }
   }
@@ -1289,16 +1230,12 @@ export const SessionProvider = (props: {
 
       const oauthUrl = `${coreApiUrl.replace('/graphql', '')}/oauth/${apiProvider}?${oauthParams.toString()}`
 
-      console.info('[oauth] Redirecting to provider:', {
-        provider,
-        apiProvider,
-        state: `${state.substring(0, 8)}...`
-      })
+      console.info('[oauth] Redirecting to provider:', apiProvider)
 
       // Перенаправляем на OAuth провайдера
       window.location.href = oauthUrl
-    } catch (error) {
-      console.error('[oauth] Error starting OAuth flow:', error)
+    } catch {
+      console.error('[oauth] Error starting OAuth flow')
       setAuthError(t('Failed to initialize OAuth'))
     }
   }
@@ -1335,7 +1272,7 @@ export const SessionProvider = (props: {
       const result = await authClient.mutation(ConfirmEmailChangeMutation, { token }).toPromise()
 
       if (result.error) {
-        console.error('[confirmEmailChange] GraphQL error:', result.error)
+        console.error('[confirmEmailChange] GraphQL request failed')
         setAuthError(result.error.message || 'Email change confirmation failed')
         return false
       }
@@ -1348,9 +1285,9 @@ export const SessionProvider = (props: {
 
       setAuthError(result.data?.confirmEmailChange?.error || 'Email change confirmation failed')
       return false
-    } catch (error) {
-      console.error('[confirmEmailChange] Error:', error)
-      setAuthError(error instanceof Error ? error.message : 'Email change confirmation failed')
+    } catch {
+      console.error('[confirmEmailChange] Email change request failed')
+      setAuthError('Email change confirmation failed')
       return false
     }
   }
@@ -1371,7 +1308,7 @@ export const SessionProvider = (props: {
       const result = await authClient.mutation(CancelEmailChangeMutation, {}).toPromise()
 
       if (result.error) {
-        console.error('[cancelEmailChange] GraphQL error:', result.error)
+        console.error('[cancelEmailChange] GraphQL request failed')
         setAuthError(result.error.message || 'Email change cancellation failed')
         return false
       }
@@ -1384,9 +1321,9 @@ export const SessionProvider = (props: {
 
       setAuthError(result.data?.cancelEmailChange?.error || 'Email change cancellation failed')
       return false
-    } catch (error) {
-      console.error('[cancelEmailChange] Error:', error)
-      setAuthError(error instanceof Error ? error.message : 'Email change cancellation failed')
+    } catch {
+      console.error('[cancelEmailChange] Cancellation request failed')
+      setAuthError('Email change cancellation failed')
       return false
     }
   }

@@ -2,7 +2,7 @@ import type { CodegenConfig } from '@graphql-codegen/cli'
 
 const config: CodegenConfig = {
   overwrite: true,
-  schema: process.env.GRAPHQL_SCHEMA_URL || 'https://v3.dscrs.site/graphql',
+  schema: process.env.GRAPHQL_SCHEMA_URL || './src/graphql/schema/core/*.graphql',
   documents: [
     'src/graphql/queries/**/*.ts',
     'src/**/*.{ts,tsx}',
@@ -16,18 +16,6 @@ const config: CodegenConfig = {
     '!src/graphql/query/inbox/**'
   ],
   generates: {
-    './src/graphql/generated/introspection.json': {
-      plugins: ['introspection'],
-      config: {
-        minify: true
-      }
-    },
-    './src/graphql/generated/schema.graphql': {
-      plugins: ['schema-ast'],
-      config: {
-        includeDirectives: false
-      }
-    },
     './src/graphql/generated/': {
       preset: 'client',
       plugins: [],

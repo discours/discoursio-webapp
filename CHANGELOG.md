@@ -2,6 +2,33 @@
 
 Все изменения в этом проекте будут документированы в этом файле.
 
+> Earlier version headings record internal development history. This repository has not yet published matching Git tags or GitHub releases.
+
+## [Unreleased]
+
+### Added
+
+- Deterministic read-only demo mode for first-run development without private services.
+- Local GraphQL schema snapshots and committed generated clients for reproducible builds.
+- Unit tests for static-file path confinement and public form validation.
+- Standard contribution, security, conduct, maintainer, roadmap, issue, and pull-request documentation.
+
+### Changed
+
+- CI now targets the real `dev` and `main` branches on Node 24 and verifies codegen, lint, types, unit tests, and build without package lifecycle side effects.
+- Local `vinxi build` now selects production minification and source-map settings even when `NODE_ENV` was not set by the caller.
+- Local HTTPS setup is explicit and cross-platform instead of installing software or modifying trust stores during normal startup.
+- Feedback and newsletter handlers validate bounded input and return generic provider errors.
+- Vite is pinned to the maintained 6.x line required by Vinxi 0.5; Vite 7 writes its manifest where this Vinxi version cannot read it.
+- Unused GraphQL codegen plugins were removed, and compatible Solid, Swiper, and form-data fixes were adopted to reduce the audited dependency surface.
+- Runtime dependencies were updated until `npm audit --omit=dev` reported no known vulnerabilities; dev-tooling findings remain tracked separately.
+
+### Security
+
+- Reject encoded and plain path traversal in the custom static-file server.
+- Remove OAuth token, authentication response, and session payload logging.
+- Stop returning mail-provider responses and errors to public clients.
+
 ## [0.15.5]
 
 ### Removed

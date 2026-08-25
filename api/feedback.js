@@ -1,49 +1,61 @@
 import FormData from 'form-data'
 import Mailgun from 'mailgun.js'
+import { RequestValidationError, validateFeedback } from './lib/request-validation.js'
 
-const mailgun = new Mailgun(FormData)
-const mg = mailgun.client({ username: 'discoursio', key: process.env.MAILGUN_API_KEY })
+const jsonHeaders = { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff' }
 
-// Vercel handler
-export default async function handler(req, res) {
-  const { contact, subject, message } = req.body
+function mailgunClient() {
+  if (!process.env.MAILGUN_API_KEY) throw new Error('MAIL_PROVIDER_NOT_CONFIGURED')
+  return new Mailgun(FormData).client({ username: 'discoursio', key: process.env.MAILGUN_API_KEY })
+}
 
-  const text = `${contact}\n\n${message}`
-
-  const data = {
+async function sendFeedback(body) {
+  const { contact, subject, message } = validateFeedback(body)
+  await mailgunClient().messages.create('discours.io', {
     from: 'Discours Feedback Robot <robot@discours.io>',
     to: 'welcome@discours.io',
     subject,
-    text
-  }
+    text: `${contact}\n\n${message}`
+  })
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
-    const response = await mg.messages.create('discours.io', data)
-    console.log('Email sent successfully!', response)
-    res.status(200).json({ result: 'great success' })
+    await sendFeedback(req.body)
+    return res.status(200).json({ success: true })
   } catch (error) {
-    console.log('Error:', error)
-    res.status(400).json(error)
+    if (error instanceof RequestValidationError) return res.status(422).json({ error: error.message })
+    if (error instanceof Error && error.message === 'MAIL_PROVIDER_NOT_CONFIGURED') {
+      return res.status(503).json({ error: 'Feedback service is not configured' })
+    }
+    console.error('[feedback] Mail provider request failed')
+    return res.status(502).json({ error: 'Feedback service is temporarily unavailable' })
   }
 }
 
-// Netlify handler - простой адаптер
 export const netlifyHandler = async (event) => {
-  const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }
-
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' }
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: '{"error":"Method not allowed"}' }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: jsonHeaders, body: '' }
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers: jsonHeaders, body: '{"error":"Method not allowed"}' }
+  }
 
   try {
-    const { contact, subject, message } = JSON.parse(event.body)
-    await mg.messages.create('discours.io', {
-      from: 'Discours Feedback Robot <robot@discours.io>',
-      to: 'welcome@discours.io',
-      subject,
-      text: `${contact}\n\n${message}`
-    })
-    return { statusCode: 200, headers, body: '{"result":"success"}' }
+    await sendFeedback(event.body)
+    return { statusCode: 200, headers: jsonHeaders, body: '{"success":true}' }
   } catch (error) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: error.message }) }
+    if (error instanceof RequestValidationError) {
+      return { statusCode: 422, headers: jsonHeaders, body: JSON.stringify({ error: error.message }) }
+    }
+    if (error instanceof Error && error.message === 'MAIL_PROVIDER_NOT_CONFIGURED') {
+      return { statusCode: 503, headers: jsonHeaders, body: '{"error":"Feedback service is not configured"}' }
+    }
+    console.error('[feedback] Mail provider request failed')
+    return {
+      statusCode: 502,
+      headers: jsonHeaders,
+      body: '{"error":"Feedback service is temporarily unavailable"}'
+    }
   }
 }

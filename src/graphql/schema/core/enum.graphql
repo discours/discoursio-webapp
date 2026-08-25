@@ -1,0 +1,53 @@
+enum ReactionStatus {
+  NEW
+  UPDATED
+  CHANGED
+  EXPLAINED
+  DELETED
+}
+
+enum ReactionSort {
+  newest
+  oldest
+  like
+  dislike
+}
+
+enum ShoutsOrderBy {
+  last_commented_at
+  rating
+  comments_count
+}
+
+enum ReactionKind {
+
+  # collabs
+  AGREE
+  DISAGREE
+  ASK
+  PROPOSE
+  PROOF
+  DISPROOF
+  ACCEPT
+  REJECT
+
+  # public feed
+  QUOTE
+  COMMENT
+  LIKE
+  DISLIKE
+
+}
+
+enum FollowingEntity {
+  TOPIC
+  AUTHOR
+  SHOUT
+  COMMUNITY
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}

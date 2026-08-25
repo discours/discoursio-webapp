@@ -33,7 +33,6 @@ bun.lock
 /plawright-report/
 /templates/dist/*
 target
-.github/dependabot.yml
 .output
 .vinxi
 *.pem
@@ -49,7 +48,6 @@ DEBUG.log
 .prettierrc
 venv
 /SV-DEV/*
-src/graphql/generated/
 .yoyo/
 docs/progress/*
 .autopilot.json

@@ -14,7 +14,7 @@ export default defineConfig({
   timeout: 30000, // ⏱️ Стандартный таймаут без маскировки проблем
   // В CI используем более надежные настройки
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'https://localhost:3000',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
     // Для работы с прокси на /graphql
     headless: !!isCI,
     ignoreHTTPSErrors: true,
@@ -50,7 +50,7 @@ export default defineConfig({
 
   // Запускаем отдельный тестовый сервер на порту 3000 (для CORS)
   webServer: {
-    command: 'E2E=true PORT=3000 npm run dev',
+    command: 'cross-env E2E=true PORT=3000 npm run dev',
     // command: 'npm run build && npx vinxi preview --port 3000',
     port: 3000,
     reuseExistingServer: !process.env.CI,

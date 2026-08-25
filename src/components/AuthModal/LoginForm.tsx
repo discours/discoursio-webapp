@@ -73,10 +73,6 @@ export const LoginForm = () => {
   const handleSubmit = async (event: Event) => {
     event.preventDefault()
 
-    console.log('[LoginForm] Начало процесса авторизации')
-    console.log('[LoginForm] Email:', email())
-    console.log('[LoginForm] Password length:', password().length)
-
     await preSendValidate(email(), 'email')
     await preSendValidate(password(), 'password')
 

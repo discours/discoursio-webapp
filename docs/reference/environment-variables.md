@@ -1,99 +1,36 @@
-# 🔧 Environment Variables
+# Environment variables
 
-## 📋 Полный список используемых переменных окружения
+Copy `.env.example` to `.env` for local configuration. `.env` files are ignored. Never commit credentials or use production accounts in tests.
 
-### 🌐 **PUBLIC переменные (доступны в браузере)**
+## Browser-visible configuration
 
-#### **API Endpoints**
-```bash
-PUBLIC_CDN_URL=https://files.dscrs.site          # CDN для статических файлов
-PUBLIC_CORE_API=https://v3.dscrs.site/graphql    # Основной GraphQL API
-PUBLIC_INBOX_API=https://inbox.dscrs.site        # Inbox API для чатов
-PUBLIC_REALTIME_EVENTS=https://connect.dscrs.site # SSE для real-time событий
-```
+These variables are bundled into client code and cannot contain secrets:
 
-#### **Analytics & Monitoring**
-```bash
-PUBLIC_GA_IDENTITY=G-LQ4B87H8C2                 # Google Analytics ID
-PUBLIC_GLITCHTIP_DSN=https://...                 # Error reporting (dev only)
-```
+- `PUBLIC_BASE_URL` — canonical application URL
+- `PUBLIC_CORE_API` — core GraphQL endpoint
+- `PUBLIC_INBOX_API` — inbox GraphQL endpoint
+- `PUBLIC_REALTIME_EVENTS` — server-sent-events endpoint
+- `PUBLIC_CDN_URL` — media base URL
+- `PUBLIC_GA_IDENTITY` — analytics property identifier
+- `PUBLIC_GLITCHTIP_DSN` — browser error-reporting DSN
 
-#### **Base URL (автоматически определяется)**
-```bash
-PUBLIC_BASE_URL=https://discours.io              # Fallback base URL
-VERCEL_PROJECT_PRODUCTION_URL=discours.io        # Vercel production URL
-VERCEL_URL=preview-branch.vercel.app             # Vercel preview URL
-```
+The code contains historical public fallbacks for several endpoints. Their presence does not prove availability. `npm run dev:demo` overrides the GraphQL endpoints locally and needs no `.env` file.
 
-### 🔒 **PRIVATE переменные (только на сервере)**
+## Server-only configuration
 
-#### **Email (Mailgun)**
-```bash
-MAILGUN_API_KEY=key-xxxxxxxxxxxxx               # Для feedback и newsletter
-```
+- `MAILGUN_API_KEY` — mail provider credential for feedback and newsletter handlers
+- `TOKEN_REFRESH_INTERVAL` — session refresh interval in minutes
+- `PORT` and `HOST` — local/server listener
+- `LOCAL_HTTPS` — use existing local certificate files when set to `true`
 
-#### **System**
-```bash
-NODE_ENV=production                              # Environment mode
-TOKEN_REFRESH_INTERVAL=30                       # Интервал обновления токенов (минуты)
-```
+Do not prefix secrets with `PUBLIC_`.
 
-#### **CI/CD**
-```bash
-CI=true                                          # CI environment flag
-GITHUB_ACTIONS=true                             # GitHub Actions flag
-VERCEL=1                                        # Vercel environment flag
-VERCEL_ENV=production                           # Vercel environment type
-NETLIFY=true                                    # Netlify environment flag
-```
+## Development and tests
 
-#### **Testing**
-```bash
-E2E_BASE_URL=https://localhost:3000             # Base URL для E2E тестов
-PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1              # Пропуск загрузки браузеров
-```
+- `GRAPHQL_SCHEMA_URL` — optional core codegen schema override; local schema is the default
+- `INBOX_GRAPHQL_SCHEMA_URL` — optional inbox codegen schema override
+- `E2E_BASE_URL` — target URL for service-dependent Playwright tests
+- `TEST_USERNAME` and `TEST_PASSWORD` — dedicated test-account credentials; both are required for authenticated tests
+- `CI` — enables CI-specific Playwright behaviour
 
-## 🏗️ **Использование по файлам**
-
-### **src/config.ts** - Основная конфигурация
-- `PUBLIC_CDN_URL` - CDN для файлов
-- `PUBLIC_CORE_API` - GraphQL API
-- `PUBLIC_INBOX_API` - Inbox API
-- `PUBLIC_REALTIME_EVENTS` - SSE события
-- `PUBLIC_GA_IDENTITY` - Google Analytics
-- `PUBLIC_BASE_URL` - Base URL
-- `VERCEL_PROJECT_PRODUCTION_URL` - Vercel production
-- `VERCEL_URL` - Vercel preview
-- `PUBLIC_GLITCHTIP_DSN` - Error reporting
-
-### **api/*.js** - API функции
-- `PUBLIC_CDN_URL` - для OG изображений
-- `MAILGUN_API_KEY` - для email отправки
-
-### **src/context/session.tsx** - Авторизация
-- `TOKEN_REFRESH_INTERVAL` - интервал обновления токенов
-
-### **Тестирование**
-- `CI` - флаг CI окружения
-- `E2E_BASE_URL` - URL для тестов
-- `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD` - оптимизация CI
-
-### **Build системы**
-- `NODE_ENV` - режим сборки
-- `VERCEL` / `NETLIFY` - определение платформы
-- `GITHUB_ACTIONS` - GitHub CI
-
-## 🚀 **Настройка для деплоя**
-
-```
-# Для email функций
-MAILGUN_API_KEY=key-xxxxxxxxxxxxx
-```
-
-## 🔍 **Автоматическое определение**
-
-Приложение автоматически определяет:
-- **Платформу**: Vercel, Netlify, или локальная разработка
-- **Base URL**: из VERCEL_URL, VERCEL_PROJECT_PRODUCTION_URL или fallback
-- **CI режим**: из CI, GITHUB_ACTIONS флагов
-- **Environment**: production, preview, development
+The presence of a variable should be checked without printing its value. Error output, process listings, fixtures, screenshots, and traces must also remain free of credentials and private data.

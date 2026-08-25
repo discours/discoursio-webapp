@@ -92,26 +92,8 @@ export const ProfileSecurityView = (_props: any) => {
   // Инициализируем email сразу при монтировании компонента
   createEffect(() => {
     const currentEmail = session()?.author?.email
-    console.log('[ProfileSecurity] Debug session:', {
-      hasSession: !!session(),
-      hasAuthor: !!session()?.author,
-      currentEmail,
-      formDataEmail: formData()['email'],
-      fullAuthor: session()?.author
-    })
-
-    // Подробное логирование полей автора
-    if (session()?.author) {
-      console.log('[ProfileSecurity] Author fields:', Object.keys(session()!.author))
-      console.log('[ProfileSecurity] Full author object:', JSON.stringify(session()!.author, null, 2))
-    }
-
-    // Временная заглушка пока backend не обновлен
-    const emailToUse = currentEmail || 'user@example.com' // TODO: убрать после обновления backend
-
-    if (emailToUse && !formData()['email']) {
-      console.log('[ProfileSecurity] Setting email from session:', emailToUse)
-      setFormData((prevData: FormData) => ({ ...prevData, email: emailToUse }) as FormData)
+    if (currentEmail && !formData()['email']) {
+      setFormData((prevData: FormData) => ({ ...prevData, email: currentEmail }) as FormData)
     }
   })
 

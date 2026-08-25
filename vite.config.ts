@@ -2,7 +2,8 @@ import { resolve } from 'node:path'
 import { CSSOptions, defineConfig, LightningCSSOptions } from 'vite'
 import { nodePolyfills, PolyfillOptions } from 'vite-plugin-node-polyfills'
 
-const isDev = process.env.NODE_ENV !== 'production' && !process.env.CI
+const isProductionBuild = process.env.NODE_ENV === 'production' || process.argv.slice(2).includes('build')
+const isDev = !isProductionBuild && !process.env.CI
 const isDebug = process.env.DEBUG_BUILD === 'true' // Для отладки prod сборки
 
 const polyfillOptions = {

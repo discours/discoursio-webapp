@@ -1,45 +1,60 @@
 import FormData from 'form-data'
 import Mailgun from 'mailgun.js'
+import { RequestValidationError, validateNewsletter } from './lib/request-validation.js'
 
-const mailgun = new Mailgun(FormData)
-const mg = mailgun.client({ username: 'discoursio', key: process.env.MAILGUN_API_KEY })
+const jsonHeaders = { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff' }
 
-// Vercel handler
-export default async (req, res) => {
-  const { email } = req.body
+function mailgunClient() {
+  if (!process.env.MAILGUN_API_KEY) throw new Error('MAIL_PROVIDER_NOT_CONFIGURED')
+  return new Mailgun(FormData).client({ username: 'discoursio', key: process.env.MAILGUN_API_KEY })
+}
+
+async function subscribe(body) {
+  const { email } = validateNewsletter(body)
+  await mailgunClient().lists.members.createMember('newsletter@discours.io', {
+    address: email,
+    subscribed: true,
+    upsert: 'yes'
+  })
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
-    const response = await mg.lists.members.createMember('newsletter@discours.io', {
-      address: email,
-      subscribed: true,
-      upsert: 'yes'
-    })
-
-    return res.status(200).json({
-      success: true,
-      message: 'Email was added to newsletter list',
-      response: JSON.stringify(response)
-    })
+    await subscribe(req.body)
+    return res.status(200).json({ success: true, message: 'Email was added to the newsletter' })
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message
-    })
+    if (error instanceof RequestValidationError) return res.status(422).json({ error: error.message })
+    if (error instanceof Error && error.message === 'MAIL_PROVIDER_NOT_CONFIGURED') {
+      return res.status(503).json({ error: 'Newsletter service is not configured' })
+    }
+    console.error('[newsletter] Mail provider request failed')
+    return res.status(502).json({ error: 'Newsletter service is temporarily unavailable' })
   }
 }
 
-// Netlify handler - простой адаптер
 export const netlifyHandler = async (event) => {
-  const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }
-
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' }
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: '{"error":"Method not allowed"}' }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: jsonHeaders, body: '' }
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers: jsonHeaders, body: '{"error":"Method not allowed"}' }
+  }
 
   try {
-    const { email } = JSON.parse(event.body)
-    await mg.lists.members.createMember('newsletter@discours.io', { address: email, subscribed: true, upsert: 'yes' })
-    return { statusCode: 200, headers, body: '{"success":true,"message":"Email added"}' }
+    await subscribe(event.body)
+    return { statusCode: 200, headers: jsonHeaders, body: '{"success":true}' }
   } catch (error) {
-    return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: error.message }) }
+    if (error instanceof RequestValidationError) {
+      return { statusCode: 422, headers: jsonHeaders, body: JSON.stringify({ error: error.message }) }
+    }
+    if (error instanceof Error && error.message === 'MAIL_PROVIDER_NOT_CONFIGURED') {
+      return { statusCode: 503, headers: jsonHeaders, body: '{"error":"Newsletter service is not configured"}' }
+    }
+    console.error('[newsletter] Mail provider request failed')
+    return {
+      statusCode: 502,
+      headers: jsonHeaders,
+      body: '{"error":"Newsletter service is temporarily unavailable"}'
+    }
   }
 }

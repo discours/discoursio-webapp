@@ -1,170 +1,54 @@
-# 🚀 Быстрый старт
+# Quick start
 
-## 📋 Предварительные требования
+## Prerequisites
 
-- **Node.js** 20+ или **npm** 1.0+
-- **Git** для управления версиями
-- **IDE** с поддержкой TypeScript (VS Code, Cursor, etc.)
+- Git
+- Node.js 20.19 or newer; Node 24 is used in CI
+- npm 10 or newer
 
-## ⚡ Установка проекта
+## Deterministic local demo
 
-### 1. Клонирование репозитория
 ```bash
-git clone https://github.com/discoursio/discoursio-webapp.git
+git clone https://github.com/discours/discoursio-webapp.git
 cd discoursio-webapp
+npm ci
+npm run dev:demo
 ```
 
-### 2. Установка зависимостей
+Open `http://localhost:3000`. This starts a read-only fixture API on the loopback interface. It is suitable for the application shell, public routes, empty states, and frontend work that does not require real content. It does not emulate authentication, writing, inbox, uploads, notifications, or production data.
+
+## Development with compatible services
+
+Copy `.env.example` to `.env`, configure only services you are authorised to use, then run:
+
 ```bash
-# Через npm (рекомендуется)
-npm install
-
-# Или через npm
-npm install
-```
-
-### 3. Настройка окружения
-```bash
-# Создать файл окружения
-cp .env.example .env
-
-# Отредактировать переменные
-nano .env
-```
-
-**Обязательные переменные:**
-```bash
-# GraphQL API
-PUBLIC_CORE_API=https://v3.dscrs.site/graphql
-
-# CDN для изображений
-PUBLIC_CDN_URL=https://files.dscrs.site
-
-# Inbox API (для чатов)
-PUBLIC_INBOX_API=https://inbox.dscrs.site
-
-# Real-time события
-PUBLIC_REALTIME_EVENTS=https://connect.dscrs.site
-```
-
-## 🏃‍♂️ Запуск разработки
-
-### Режим разработки
-```bash
-# Запуск dev сервера
-npm run dev
-
-# Или через npm
 npm run dev
 ```
 
-**Что происходит:**
-- ⚡ Vite запускает dev сервер на `http://localhost:3000`
-- 🔄 Hot Module Replacement для мгновенных обновлений
-- 📊 Автоматическая проверка типов TypeScript
-- 🎨 Lightning CSS обработка стилей
+The endpoints bundled as fallbacks in this historical snapshot may be unavailable or incompatible. A successful build proves frontend consistency, not live backend compatibility.
 
-### Сборка для продакшена
+Local HTTPS is optional. Install `mkcert` yourself and run `npm run setup:https`; normal startup never installs software or modifies your trust store.
+
+## Verify a change
+
 ```bash
-# Сборка оптимизированного бандла
+npm run codegen:check
+npm run check
 npm run build
-
-# Запуск production сервера
-npm run start
 ```
 
-## 🛠️ Основные команды
+For service-dependent Playwright scenarios:
 
-### Разработка
 ```bash
-npm run dev          # Запуск dev сервера
-npm run build        # Сборка для продакшена
-npm run preview      # Предпросмотр production сборки
-```
-
-### Качество кода
-```bash
-npm run lint         # Проверка кода (Biome)
-npm run fix          # Автоматическое исправление
-npm run format       # Форматирование кода
-npm run typecheck    # Проверка типов TypeScript
-npm run check        # Полная проверка (lint + types)
-```
-
-### Тестирование
-```bash
-npm run e2e:install  # Установка Playwright браузеров
-npm run e2e:tests    # Запуск E2E тестов
-npm run e2e:debug    # Тесты в режиме отладки
-```
-
-### GraphQL
-```bash
-npm run codegen      # Генерация типов из GraphQL схемы
-npm run templates    # Компиляция шаблонов
-```
-
-## 🔧 Структура проекта
-
-```
-src/
-├── components/     # UI компоненты
-│   ├── _shared/    # Переиспользуемые компоненты
-│   ├── Article/    # Компоненты статей
-│   ├── Feed/       # Компоненты ленты
-│   └── Views/      # Страницы приложения
-├── context/        # Контексты и провайдеры
-├── graphql/        # GraphQL запросы и типы
-├── routes/         # Маршрутизация (file-based)
-├── styles/         # Глобальные стили
-└── utils/          # Утилиты и хелперы
-
-public/
-├── icons/          # SVG иконки
-├── fonts/          # Шрифты (Muller)
-├── sw.js           # Service Worker
-└── offline.html    # Offline страница
-```
-
-## 🎯 Следующие шаги
-
-После запуска разработки:
-
-1. **Изучите архитектуру** - [Архитектура проекта](./../architecture/overview.md)
-2. **Настройте IDE** - установите расширения для SolidJS и TypeScript
-3. **Запустите тесты** - убедитесь что все работает
-4. **Изучите функциональность** - начните с [авторизации](./../features/auth.md)
-
-## 🚨 Распространенные проблемы
-
-### Проблема: GraphQL codegen не работает
-```bash
-# Решение: проверить доступность API
-curl -H "Content-Type: application/json" \
-     -d '{"query":"query{__typename}"}' \
-     https://v3.dscrs.site/graphql
-```
-
-### Проблема: CSS не компилируется
-```bash
-# Решение: очистить кэш и переустановить
-rm -rf node_modules .vinxi
-npm install
-```
-
-### Проблема: E2E тесты не запускаются
-```bash
-# Решение: установить браузеры
 npm run e2e:install
+npm run e2e
 ```
 
-## 📚 Полезные ресурсы
+Authenticated tests require `TEST_USERNAME` and `TEST_PASSWORD` for a dedicated test account. Do not use a personal or production account and never commit the values.
 
-- [SolidJS документация](https://www.solidjs.com/docs)
-- [Vite руководство](https://vitejs.dev/)
-- [Biome линтер](https://biomejs.dev/)
-- [GraphQL Codegen](https://the-guild.dev/graphql/codegen)
+## Common problems
 
----
-
-*Готово к разработке! Начните с изучения [архитектуры](./../architecture/overview.md)*
+- **Port already in use:** set `PORT` in `.env` or stop the other local process.
+- **Generated client differs:** run `npm run codegen:all`, review the schema/operation change, and commit the generated output.
+- **External API fails:** reproduce in `npm run dev:demo` first, then verify the configured service separately.
+- **Playwright browser missing:** run `npm run e2e:install`; browser installation is never a package lifecycle side effect.

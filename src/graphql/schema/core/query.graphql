@@ -1,0 +1,67 @@
+type Query {
+  # author
+  get_author(slug: String, author_id: Int): Author
+  get_author_id(user: String!): Author
+  get_authors_all: [Author]
+  load_authors_by(by: AuthorsBy!, limit: Int, offset: Int): [Author]
+  # search_authors(what: String!): [Author]
+
+  # community
+  get_community: Community
+  get_communities_all: [Community]
+  get_communities_by_author(slug: String, user: String, author_id: Int): [Community]
+
+  # follower
+  get_shout_followers(slug: String, shout_id: Int): [Author]
+  get_topic_followers(slug: String): [Author]
+  get_topic_authors(slug: String): [Author]
+  get_author_followers(slug: String, user: String, author_id: Int): [Author]
+  get_author_follows(slug: String, user: String, author_id: Int): CommonResult!
+  get_author_follows_topics(slug: String, user: String, author_id: Int): [Topic]
+  get_author_follows_authors(slug: String, user: String, author_id: Int): [Author]
+
+  # reaction
+  load_reactions_by(by: ReactionBy!, limit: Int, offset: Int): [Reaction]
+  load_shout_comments(shout: Int!, limit: Int, offset: Int): [Reaction]
+  load_shout_ratings(shout: Int!, limit: Int, offset: Int): [Reaction]
+  load_comment_ratings(comment: Int!, limit: Int, offset: Int): [Reaction]
+
+  # branched comments pagination
+  load_comments_branch(shout: Int!, parent_id: Int, limit: Int, offset: Int, sort: ReactionSort, children_limit: Int, children_offset: Int): [Reaction]
+
+  # reader
+  get_shout(slug: String, shout_id: Int): Shout
+  load_shouts_by(options: LoadShoutsOptions): [Shout]
+  load_shouts_search(text: String!, options: LoadShoutsOptions): [SearchResult]
+  load_shouts_bookmarked(options: LoadShoutsOptions): [Shout]
+
+  # rating
+  get_my_rates_shouts(shouts: [Int!]!): [MyRateShout]
+  get_my_rates_comments(comments: [Int!]!): [MyRateComment]
+
+  # public feeds
+  load_shouts_with_topic(slug: String, options: LoadShoutsOptions): [Shout] # topic feed
+  load_shouts_random_top(options: LoadShoutsOptions): [Shout] # random order, fixed filter, limit offset can be used
+  load_shouts_authored_by(slug: String, options: LoadShoutsOptions): [Shout] # author feed
+  load_shouts_followed_by(slug: String, options: LoadShoutsOptions): [Shout] # another author feed
+
+  # my feeds
+  load_shouts_feed(options: LoadShoutsOptions): [Shout]
+  load_shouts_unrated(options: LoadShoutsOptions): [Shout]
+  load_shouts_coauthored(options: LoadShoutsOptions): [Shout]
+  load_shouts_discussed(options: LoadShoutsOptions): [Shout]
+
+  # editor
+  get_my_shout(shout_id: Int!): CommonResult!
+  get_shouts_drafts: CommonResult!
+  load_drafts: CommonResult!
+
+  # topic
+  get_topic(slug: String!): Topic
+  get_topics_all: [Topic]
+  get_topics_by_author(slug: String, user: String, author_id: Int): [Topic]
+  get_topics_by_community(community_id: Int!, limit: Int, offset: Int): [Topic]
+
+  # notifier
+  load_notifications(after: Int!, limit: Int, offset: Int): NotificationsResult!
+}
