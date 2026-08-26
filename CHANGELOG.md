@@ -10,7 +10,7 @@
 
 - Deterministic read-only demo mode for first-run development without private services.
 - Local GraphQL schema snapshots and committed generated clients for reproducible builds.
-- Unit tests for static-file path confinement and public form validation.
+- Unit tests for static-file path confinement, public form validation, and sensitive upload-log regressions.
 - Standard contribution, security, conduct, maintainer, roadmap, issue, and pull-request documentation.
 
 ### Changed
@@ -22,11 +22,12 @@
 - Vite is pinned to the maintained 6.x line required by Vinxi 0.5; Vite 7 writes its manifest where this Vinxi version cannot read it.
 - Unused GraphQL codegen plugins were removed, and compatible Solid, Swiper, and form-data fixes were adopted to reduce the audited dependency surface.
 - Runtime dependencies were updated until `npm audit --omit=dev` reported no known vulnerabilities; dev-tooling findings remain tracked separately.
+- The browser session refresh override now uses the public `PUBLIC_TOKEN_REFRESH_INTERVAL` contract documented in `.env.example`.
 
 ### Security
 
 - Reject encoded and plain path traversal in the custom static-file server.
-- Remove OAuth token, authentication response, and session payload logging.
+- Remove OAuth/session payload logging and bearer-token previews from upload runtime diagnostics, including the public debug route.
 - Stop returning mail-provider responses and errors to public clients.
 
 ## [0.15.5]

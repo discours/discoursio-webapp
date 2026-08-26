@@ -8,7 +8,7 @@ Date: TBD
 
 ## Summary
 
-This candidate makes the historical SolidStart application reproducible for public contributors without requiring a reachable Discours backend. It also closes two concrete security flaws, replaces misleading setup/CI documentation, and establishes a minimal governance and maintenance surface.
+This candidate makes the historical SolidStart application reproducible for public contributors without requiring a reachable Discours backend. It also closes concrete security flaws, replaces misleading setup/CI documentation, and establishes a minimal governance and maintenance surface.
 
 ## Highlights
 
@@ -21,7 +21,7 @@ This candidate makes the historical SolidStart application reproducible for publ
 ## Security
 
 - Static file requests can no longer escape `.output/public` through plain or encoded traversal.
-- OAuth tokens, authentication responses, and session payloads are no longer written to browser logs.
+- OAuth/session payloads and upload bearer-token previews are no longer written to browser logs; a regression test covers both upload runtimes.
 - Feedback and newsletter handlers validate bounded input and hide mail-provider responses and errors.
 - Runtime dependencies report zero known vulnerabilities under `npm audit --omit=dev` at candidate validation time.
 
@@ -36,7 +36,7 @@ This candidate makes the historical SolidStart application reproducible for publ
 
 - Local GraphQL codegen: passed
 - TypeScript: passed
-- Unit tests: passed
+- Unit tests: passed (11)
 - Production build: passed
 - HTTP demo smoke: passed
 - Playwright Chromium demo smoke: passed

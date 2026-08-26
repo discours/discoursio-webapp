@@ -20,10 +20,7 @@ export default function DebugUpload() {
     // Проверяем сессию
     const currentSession = session()
     console.log('[DEBUG] Session:', {
-      hasToken: !!currentSession?.token,
-      hasAuthor: !!currentSession?.author,
-      token: `${currentSession?.token?.substring(0, 20)}...`,
-      cdnUrl
+      hasToken: !!currentSession?.token
     })
 
     if (!currentSession?.token) {

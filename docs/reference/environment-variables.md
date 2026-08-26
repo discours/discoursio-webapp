@@ -13,13 +13,13 @@ These variables are bundled into client code and cannot contain secrets:
 - `PUBLIC_CDN_URL` — media base URL
 - `PUBLIC_GA_IDENTITY` — analytics property identifier
 - `PUBLIC_GLITCHTIP_DSN` — browser error-reporting DSN
+- `PUBLIC_TOKEN_REFRESH_INTERVAL` — session refresh interval in minutes; defaults to `30`
 
 The code contains historical public fallbacks for several endpoints. Their presence does not prove availability. `npm run dev:demo` overrides the GraphQL endpoints locally and needs no `.env` file.
 
 ## Server-only configuration
 
 - `MAILGUN_API_KEY` — mail provider credential for feedback and newsletter handlers
-- `TOKEN_REFRESH_INTERVAL` — session refresh interval in minutes
 - `PORT` and `HOST` — local/server listener
 - `LOCAL_HTTPS` — use existing local certificate files when set to `true`
 

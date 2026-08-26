@@ -72,7 +72,7 @@ export const AUTH_TOKEN_KEY = 'auth-token'
 /**
  * Интервал обновления токена в минутах (по умолчанию 30 минут)
  */
-const TOKEN_REFRESH_INTERVAL = Number(process.env.TOKEN_REFRESH_INTERVAL) || 30
+const TOKEN_REFRESH_INTERVAL = Number(import.meta.env.PUBLIC_TOKEN_REFRESH_INTERVAL) || 30
 
 /**
  * Интерфейс токена авторизации

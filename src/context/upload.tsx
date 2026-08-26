@@ -118,13 +118,11 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
 
       // Set headers
       const currentToken = token()
-      console.log('[Upload] Token available:', !!currentToken, 'cdnUrl:', cdnUrl)
 
       const headers: Record<string, string> = { Accept: 'application/json' }
       if (currentToken) {
         const bearerToken = currentToken.startsWith('Bearer ') ? currentToken : `Bearer ${currentToken}`
         headers.Authorization = bearerToken
-        console.log(`[Upload] Authorization header set: ${bearerToken.substring(0, 20)}...`)
       } else {
         console.error('[Upload] NO TOKEN AVAILABLE!')
       }

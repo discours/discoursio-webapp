@@ -56,7 +56,7 @@ The codebase itself is substantial: 3,941 commits at the audited head, 203 TSX c
 ### Fixed in the candidate
 
 1. **Static path traversal — high.** The custom server joined a decoded request path to the public directory without confinement. Plain, encoded, and backslash traversal are now rejected and unit-tested.
-2. **Authentication data in logs — high.** The session module logged an OAuth token preview, full auth results, session objects, endpoint URLs, and token lengths. Token/payload logging was removed and diagnostics bounded.
+2. **Authentication data in logs — high.** The session and upload runtimes logged OAuth/bearer token previews, full auth results, session objects, endpoint URLs, and token lengths. Token/payload previews were removed, the public debug upload route now logs only a boolean `hasToken`, and a source-level runtime regression test covers both upload paths.
 3. **Mail endpoint leakage and abuse surface — medium.** Feedback/newsletter handlers accepted unbounded data and returned/logged provider objects and errors. They now validate methods and input, reject header injection, and return generic failures. Deployment-level rate limiting remains open.
 4. **Runtime dependencies — high.** Compatible direct dependencies were updated and unused codegen plugins removed. `npm audit --omit=dev` reports zero known findings at validation time.
 
@@ -64,7 +64,7 @@ The codebase itself is substantial: 3,941 commits at the audited head, 203 TSX c
 
 - Auth still supports browser token storage. Changing it safely needs a coordinated backend contract and rollout.
 - Other contexts contain verbose response/event logging and require a privacy-focused pass.
-- The public debug upload route needs a product/operations decision.
+- The public debug upload route remains available and needs a product/operations decision; its token preview and endpoint logging have been removed.
 - The operational Gitea workflow embeds a credential reference in a remote URL, prints remote configuration, and force-pushes. It was not changed without explicit deployment-owner review.
 - Secret scanning and push protection are disabled in GitHub settings.
 - Current-tree scanning found no high-confidence committed secret value. History includes a former E2E environment file with a credential-looking test value and a localhost certificate key. If the test credential was ever reusable, rotate it; do not rewrite history casually.
@@ -85,7 +85,7 @@ The codebase itself is substantial: 3,941 commits at the audited head, 203 TSX c
 | Local core + inbox GraphQL codegen | Passed |
 | TypeScript strict check | Passed |
 | Biome lint | Passed; generated code excluded |
-| Node unit tests | Passed |
+| Node unit tests | Passed (11) |
 | SolidStart/Vinxi production build | Passed |
 | Demo fixture HTTP request | 200, HTML returned, no internal-error marker |
 | Playwright Chromium demo smoke | Passed |
