@@ -29,6 +29,7 @@
 - Reject encoded and plain path traversal in the custom static-file server.
 - Remove OAuth/session payload logging and bearer-token previews from upload runtime diagnostics, including the public debug route.
 - Stop returning mail-provider responses and errors to public clients.
+- Keep GitHub sync credentials out of remote URLs and diagnostic output, and reject history-rewriting sync pushes.
 
 ## [0.15.5]
 
