@@ -63,9 +63,6 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
       xhr.addEventListener('load', async () => {
         console.log('[Upload] Response received:', {
           status: xhr.status,
-          statusText: xhr.statusText,
-          responseText: xhr.responseText,
-          responseLength: xhr.responseText.length,
           contentType: xhr.getResponseHeader('Content-Type')
         })
 
@@ -75,7 +72,7 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
             console.error('[Upload] Empty response from server')
             return reject(new Error(t('Empty response from server')))
           }
-          console.log('[Upload] Success:', filename)
+          console.log('[Upload] Upload succeeded')
           resolve(filename)
         } else if (xhr.status === 401 && retryWithRefresh) {
           // Токен истёк - обновляем и повторяем попытку
@@ -91,12 +88,12 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
                 reject(new Error(t('Session expired. Please sign in again.')))
               }
             })
-            .catch((refreshError) => {
-              console.error('[Upload] Error refreshing token:', refreshError)
+            .catch(() => {
+              console.error('[Upload] Error refreshing token')
               reject(new Error(t('Session expired. Please sign in again.')))
             })
         } else {
-          console.error('[Upload] Error:', xhr.status, xhr.responseText)
+          console.error('[Upload] Request failed with status:', xhr.status)
           const errorText = xhr.responseText || 'Unknown error'
           const statusErrors: Record<number, string> = {
             401: errorText.includes('Quota exceeded')
@@ -121,13 +118,11 @@ export const UploadProvider = (props: { children: JSX.Element }) => {
 
       // Set headers
       const currentToken = token()
-      console.log('[Upload] Token available:', !!currentToken, 'cdnUrl:', cdnUrl)
 
       const headers: Record<string, string> = { Accept: 'application/json' }
       if (currentToken) {
         const bearerToken = currentToken.startsWith('Bearer ') ? currentToken : `Bearer ${currentToken}`
         headers.Authorization = bearerToken
-        console.log(`[Upload] Authorization header set: ${bearerToken.substring(0, 20)}...`)
       } else {
         console.error('[Upload] NO TOKEN AVAILABLE!')
       }

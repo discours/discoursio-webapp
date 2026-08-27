@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible problem in the web application or contributor workflow
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, private content, or vulnerability details. Use SECURITY.md for security reports.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the observed result and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Provide the smallest safe sequence that reproduces the problem.
+      placeholder: |
+        1. Run ...
+        2. Open ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or branch
+      placeholder: dev or a commit SHA
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Data mode
+      options:
+        - Local demo fixture
+        - Configured external services
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node version, browser, and relevant non-secret configuration names.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, personal data, and private content.
+          required: true
+        - label: This is not a vulnerability report.
+          required: true

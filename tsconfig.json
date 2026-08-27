@@ -21,5 +21,14 @@
       "i18next": ["./src/types/i18next.d.ts"]
     }
   },
-  "exclude": ["./src/pages", "node_modules/i18next/typescript"]
+  "exclude": [
+    "./src/pages",
+    ".output",
+    ".vinxi",
+    "node_modules",
+    "node_modules/i18next/typescript",
+    "playwright-report",
+    "scripts/server.mjs",
+    "test-results"
+  ]
 }

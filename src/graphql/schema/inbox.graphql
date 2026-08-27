@@ -1,0 +1,86 @@
+type Chat {
+  admins: [Int]
+  created_at: Int!
+  created_by: Int!
+  description: String
+  id: String!
+  members: [ChatMember!]
+  messages: [Message!]
+  title: String
+  unread: Int
+  updated_at: Int!
+}
+
+input ChatInput {
+  description: String
+  id: String!
+  title: String
+}
+
+type ChatMember {
+  id: Int!
+  last_seen: Int!
+  name: String!
+  online: Boolean
+  pic: String
+  slug: String!
+}
+
+type Message {
+  body: String!
+  chat_id: String!
+  created_at: Int!
+  created_by: Int!
+  id: Int!
+  reply_to: Int
+  seen: Boolean
+  updated_at: Int
+}
+
+input MessageInput {
+  body: String
+  chat_id: String!
+  id: String!
+  seen: Boolean
+}
+
+enum MessageStatus {
+  DELETED
+  NEW
+  UPDATED
+}
+
+input MessagesBy {
+  body: String
+  chat: String
+  created_by: String
+  days: Int
+  order: String
+  stat: String
+}
+
+type ChatResult {
+  chat: Chat
+  chats: [Chat!]
+  error: String
+  members: [ChatMember!]
+  message: Message
+  messages: [Message!]
+}
+
+type Query {
+  load_chats(limit: Int, offset: Int): ChatResult!
+  load_messages_by(by: MessagesBy!, limit: Int, offset: Int): ChatResult!
+  search_messages(by: MessagesBy!, limit: Int, offset: Int): ChatResult!
+  search_recipients(query: String!, limit: Int, offset: Int): ChatResult!
+}
+
+type Mutation {
+  create_chat(title: String, members: [Int]!): ChatResult!
+  create_message(chat_id: String!, body: String!, reply_to: Int): ChatResult!
+  delete_chat(chat_id: String!): ChatResult!
+  delete_message(chat_id: String!, message_id: Int!): ChatResult!
+  mark_as_read(chat_id: String!, message_id: Int!): ChatResult!
+  update_chat(chat: ChatInput!): ChatResult!
+  update_message(message: MessageInput!): ChatResult!
+}

@@ -1,97 +1,37 @@
-# 🏗️ Обзор архитектуры
+# Architecture overview
 
-## 📋 Оглавление
+Discoursio Webapp is a server-rendered SolidStart application. The repository combines a public reading interface, author and topic discovery, discussions, account state, a rich editor, drafts, and auxiliary serverless handlers.
 
-- [🎯 Система и технологии](#-система-и-технологии)
-- [🏛️ Архитектурные принципы](#️-архитектурные-принципы)
-- [🌐 Слои приложения](#-слои-приложения)
-- [📊 Производительность](#-производительность)
-- [🔒 Безопасность](#-безопасность)
-- [🌍 Многоязычность](#-многоязычность)
-- [📱 Адаптивность](#-адаптивность)
+## Runtime layers
 
-## 🎯 Система и технологии
+1. **Routes and SSR** — `src/routes/`, `src/app.tsx`, and Vinxi/SolidStart produce server and browser bundles.
+2. **UI** — `src/components/` contains feature-oriented Solid components and SCSS.
+3. **State and orchestration** — `src/context/` coordinates sessions, feeds, authors, topics, reactions, drafts, uploads, inbox, and real-time events.
+4. **Data contracts** — URQL operations live under `src/graphql/query/` and `src/graphql/mutation/`; generated types live under `src/graphql/generated/`.
+5. **Local service handlers** — `src/routes/api/`, `api/`, and `.netlify/functions/` implement media, feedback, and newsletter endpoints for different hosting presets.
 
-**Discours.io** — платформа для публикации и обсуждения контента, построенная на современной архитектуре с акцентом на производительность и масштабируемость.
+## GraphQL boundary
 
-### 🛠️ Технологический стек
+Clean builds use local compatibility schemas in `src/graphql/schema/`. The core snapshot originates in the public Discours backend repository, with narrow additions required by operations already present here. Inbox compatibility comes from this repository's history. See the schema README for provenance and limitations.
 
-| Технология | Назначение | Версия |
-|------------|------------|---------|
-| **SolidJS** | Реактивный фреймворк | v1.8+ |
-| **SolidStart** | SSR фреймворк | v0.4+ |
-| **TypeScript** | Типизация | v5.2+ |
-| **GraphQL** | API слой | v16+ |
-| **SCSS** | Стили | v1.6+ |
-| **Lightning CSS** | CSS обработка | v1.2+ |
-| **URQL** | GraphQL клиент | v4+ |
-| **Biome** | Линтинг и форматирование | v2.2+ |
+Generated types are committed. CI regenerates them and fails on drift. This makes frontend changes reproducible without treating a reachable remote schema as proof of compatibility.
 
-### 🔗 Интеграции
+## Rendering and external services
 
-- **GraphQL API** — основной API (`https://v3.dscrs.site/graphql`)
-- **Real-time Events** — SSE уведомления (`https://connect.dscrs.site`)
-- **CDN** — оптимизация изображений (`https://files.dscrs.site`)
-- **Vercel** — деплой и глобальный CDN
+The app renders on the server and hydrates in the browser. Configurable external boundaries include core GraphQL, inbox GraphQL, server-sent events, CDN/media, analytics, error reporting, and a mail provider. Demo mode replaces only the GraphQL read boundary with deterministic empty data; it is not a full backend emulator.
 
-## 🏛️ Архитектурные принципы
+## Security boundaries
 
-- **Модульная архитектура** — независимые компоненты и контексты
-- **Реактивное управление состоянием** — SolidJS сигналы и ресурсы
-- **SSR-first подход** — серверный рендеринг с гидрацией
-- **Кеширование на всех уровнях** — память, localStorage, CDN
-- **Микросервисная организация** — разделение ответственности
+- Browser-exposed variables must use the `PUBLIC_` prefix and are never secrets.
+- Mail credentials remain server-only.
+- Static files are resolved inside the build's public directory and traversal is rejected.
+- Auth responses and OAuth tokens must never be logged.
+- Local HTTPS setup is an explicit developer action, not a startup side effect.
+- Deployment workflow changes require separate operational review; repository CI does not prove deployment.
 
-## 🌐 Слои приложения
+## Known architectural debt
 
-### Презентационный слой
-- **Views** — страницы приложения
-- **Components** — переиспользуемые элементы UI
-- **_shared** — базовые компоненты
-
-### Бизнес-логика слой
-- **Контексты** — управление состоянием (Session, Feed, Topics, Authors)
-- **Провайдеры** — поставщики данных и логики
-
-### Данные слой
-- **GraphQL клиент** — URQL с кастомными exchanges
-- **Кеширование** — многоуровневое кеширование
-- **Оффлайн** — Service Worker и локальное хранение
-
-### Инфраструктурный слой
-- **Vite** — сборка и HMR
-- **Vercel** — деплой и edge функции
-- **CI/CD** — автоматизированное тестирование
-
-## 📊 Производительность
-
-### Метрики
-- **Lighthouse Score**: 95+ для всех страниц
-- **Core Web Vitals**: LCP < 2.5s, FID < 100ms
-- **Bundle Size**: < 400KB gzipped
-- **SSR гидрация**: < 500ms
-
-### Оптимизации
-- **Lightning CSS** — сверхбыстрая обработка стилей
-- **Гранулярная реактивность** — только необходимые обновления
-- **Умное кеширование** — многоуровневое кеширование данных
-- **Оптимизированные изображения** — автоматическая обработка
-
-## 🔒 Безопасность
-
-- **Аутентификация** — JWT токены с httpOnly cookies
-- **Авторизация** — ролевая модель доступа (RBAC)
-- **Валидация** — серверная и клиентская проверка
-- **XSS защита** — экранирование контента
-
-## 🌍 Многоязычность
-
-- **i18next** — система интернационализации
-- **Поддержка языков** — русский, английский
-- **SSR переводы** — переводы доступны на сервере
-
-## 📱 Адаптивность
-
-- **Mobile-first** — дизайн для мобильных устройств
-- **Responsive** — адаптация под все размеры экранов
-- **PWA** — прогрессивное веб-приложение
+- Auth tokens are still stored client-side; migration requires a coordinated backend contract.
+- Many Playwright scenarios depend on external services and need separation from deterministic tests.
+- The `dev` and `main` branches have different histories and need a maintainer-led reconciliation plan.
+- Several older documentation pages describe unverified performance or deployment assumptions.

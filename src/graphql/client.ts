@@ -37,8 +37,6 @@ export function createQueryResource<T, Args extends readonly unknown[]>(
  */
 export const checkApiAvailability = async (): Promise<boolean> => {
   try {
-    console.log(`[API Test] Проверка подключения к API: ${coreApiUrl}`)
-
     const response = await fetch(coreApiUrl, {
       method: 'POST',
       headers: {
@@ -49,21 +47,16 @@ export const checkApiAvailability = async (): Promise<boolean> => {
       })
     })
 
-    console.log(`[API Test] Ответ API: ${response.status} ${response.statusText}`)
-
     if (!response.ok) {
-      const errorText = await response.text()
-      console.log(`[API Test] Ошибка API: ${errorText}`)
+      await response.text()
+      console.warn(`[API Test] API returned status ${response.status}`)
       return false
     }
 
-    const data = await response.json()
-    console.log('[API Test] Успешный ответ от API:', data)
+    await response.json()
     return true
-  } catch (error) {
-    console.log('[API Test] Ошибка подключения к API:', error)
-    console.log(`[API Test] Тип ошибки: ${error instanceof Error ? error.name : 'Unknown'}`)
-    console.log(`[API Test] Сообщение: ${error instanceof Error ? error.message : String(error)}`)
+  } catch {
+    console.warn('[API Test] Ошибка подключения к API')
     return false
   }
 }

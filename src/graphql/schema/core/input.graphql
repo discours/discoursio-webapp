@@ -1,0 +1,117 @@
+input MediaItemInput {
+  url: String
+  title: String
+  body: String
+  source: String
+  pic: String
+  date: String
+  genre: String
+  artist: String
+  lyrics: String
+}
+
+input AuthorInput {
+  id: Int!
+  slug: String
+}
+
+input TopicInput {
+  id: Int
+  slug: String!
+  title: String
+  body: String
+  pic: String
+}
+
+input DraftInput {
+  id: Int
+  # no created_at, updated_at, deleted_at, updated_by, deleted_by
+  layout: String
+  shout_id: Int  # Changed from shout: Shout
+  author_ids: [Int!]  # Changed from authors: [Author]
+  topic_ids: [Int!]  # Changed from topics: [Topic]
+  main_topic_id: Int  # Changed from main_topic: Topic
+  media: [MediaItemInput]  # Changed to use MediaItemInput
+  lead: String
+  description: String
+  subtitle: String
+  lang: String
+  seo: String
+  body: String
+  title: String
+  slug: String
+  cover: String
+  cover_caption: String
+}
+
+input ProfileInput {
+  slug: String
+  name: String
+  pic: String
+  links: [String]
+  bio: String
+  about: String
+}
+
+input ReactionInput {
+  id: Int
+  kind: ReactionKind!
+  shout: Int!
+  quote: String
+  body: String
+  reply_to: Int
+}
+
+input AuthorsBy {
+  last_seen: Int
+  created_at: Int
+  slug: String
+  name: String
+  topic: String
+  order: String
+  after: Int
+  stat: String
+}
+
+input LoadShoutsFilters {
+  topic: String
+  author: String
+  layouts: [String]
+  featured: Boolean
+  reacted: Boolean  # requires auth, used in load_shouts_feed
+  after: Int
+}
+
+input LoadShoutsOptions {
+  filters: LoadShoutsFilters
+  limit: Int!
+  random_limit: Int
+  offset: Int
+  order_by: ShoutsOrderBy
+  order_by_desc: Boolean
+}
+
+input ReactionBy {
+  shout: String
+  shouts: [String]
+  search: String
+  kinds: [ReactionKind]
+  reply_to: Int # filter
+  topic: String
+  created_by: Int
+  author: String
+  after: Int
+  sort: ReactionSort # sort
+}
+
+input NotificationSeenInput {
+  notifications: [Int]
+  thread: Int
+}
+
+input CommunityInput {
+  slug: String
+  name: String
+  desc: String
+  pic: String
+}

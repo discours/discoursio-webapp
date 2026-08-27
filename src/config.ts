@@ -1,5 +1,4 @@
 export const cdnUrl = import.meta.env.PUBLIC_CDN_URL || 'https://files.dscrs.site'
-console.log('[public cdn url]: ', cdnUrl)
 export const coreApiUrl = import.meta.env.PUBLIC_CORE_API || 'https://v3.dscrs.site/graphql'
 export const inboxApiUrl = import.meta.env.PUBLIC_INBOX_API || 'https://inbox.discours.io'
 export const sseUrl = import.meta.env.PUBLIC_REALTIME_EVENTS || 'https://connect.discours.io'

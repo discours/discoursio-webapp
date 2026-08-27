@@ -1,89 +1,59 @@
-# 🌟 Discours Webapp
+# Discours web application
 
-**Современный веб-интерфейс** для платформы Discours — открытого журнала о культуре, науке и обществе.
+[![CI](https://github.com/discours/discoursio-webapp/actions/workflows/node-ci.yml/badge.svg?branch=dev)](https://github.com/discours/discoursio-webapp/actions/workflows/node-ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 📋 Содержание
+The open-source SolidStart web application developed for [Discours](https://discours.io), an independent publishing platform with an open editorial model. Discours has operated since 2015; its wider publishing ecosystem has brought together more than 1,000 authors and contributors and published more than 4,000 works.
 
-- [🚀 Технологический стек](#-технологический-стек)
-- [🛠️ Разработка](#️-разработка)
-  - [📦 Подготовка окружения](#-подготовка-окружения)
-  - [🔐 Настройка HTTPS](#-настройка-https-для-локальной-разработки)
-  - [⚡ Основные команды](#-основные-команды)
-- [📚 Документация](#-документация)
-- [🤝 Участие в разработке](#-участие-в-разработке)
+This repository contains a substantial production-derived frontend: server-side rendering, a multilingual reader, feeds and profiles, a collaborative rich-text editor, drafts, reactions, threaded discussions, notifications, inbox UI, image handling, and GraphQL clients. It is useful both as a contribution target and as a reference for teams building public-interest publishing infrastructure with SolidJS.
 
-## 🛠️ Разработка
+> **Repository status:** `dev` is the contribution branch. The public services configured by this historical application snapshot are not guaranteed to be available. Use the deterministic demo mode for first-run development. The current website may differ from this codebase.
 
-### 📦 Подготовка окружения
+## Quick start
 
-```shell
-# Клонирование репозитория
-git clone https://github.com/discours/discoursio-webapp.git
-cd discoursio-webapp
-
-# Установка зависимостей
-npm install  # или bun/pnpm/yarn
-
-# Настройка переменных окружения
-cp .env.example .env
-```
-
-### 🔐 HTTPS для локальной разработки (автоматически)
-
-При первом запуске `npm run dev` приложение **автоматически**:
-1. Проверит и установит `mkcert` (macOS/Linux)
-2. Создаст локальный CA и сертификаты
-3. Запустится на `https://localhost:3000`
-
-```shell
-npm run dev  # 🔒 Автоматически настроит HTTPS (если mkcert установлен)
-             # 🌐 или HTTP (если mkcert не установлен)
-```
-
-**Windows:** При первом запуске увидите инструкцию:
-1. Установите [Chocolatey](https://chocolatey.org/install) (если нет)
-2. Запустите PowerShell **от администратора**
-3. Выполните: `choco install mkcert -y`
-4. Перезапустите `npm run dev`
-
-### ⚡ Основные команды
+Requirements: Git, Node.js 20.19+ (Node 24 recommended), and npm 10+.
 
 ```bash
-# Разработка
-npm run dev         # 🚀 Запуск сервера разработки
-npm run build       # 📦 Сборка для продакшена
-npm run preview     # 👀 Предпросмотр сборки
-
-# Качество кода
-npm run typecheck   # 🔍 Проверка типов TypeScript
-npm run lint        # 🧹 Линтинг кода
-npm run fix         # 🔧 Автоисправление стилей
-npm run format      # 💅 Форматирование кода
-
-# Дополнительно
-npm run storybook   # 📚 Запуск Storybook
-npm run analyze     # 📊 Анализ бандла
+git clone https://github.com/discours/discoursio-webapp.git
+cd discoursio-webapp
+npm ci
+npm run dev:demo
 ```
 
-### 📖 Важное
+Open `http://localhost:3000`. Demo mode starts a loopback-only, read-only GraphQL fixture and requires no account or secret. It supports the application shell and empty public states; authenticated and write flows require compatible external services.
 
-- 📚 **[Документация](docs/README.md)** — Полный обзор проекта
-- 🏗️ **[Архитектура](docs/architecture/overview.md)** — Структура и технологии
-- ⚡ **[Разработка](docs/development/workflow.md)** — Процессы разработки
-- 🎨 **[Функциональность](docs/features/auth.md)** — Основные возможности
-- 🛠️ **[Справочники](docs/reference/commands.md)** — Команды и настройки
-- 🧪 **[Тестирование](docs/development/testing.md)** — Автоматизация качества
+To connect your own services, copy `.env.example` to `.env`, set the relevant public endpoints, and run `npm run dev`. Local HTTPS is optional and explicit: install `mkcert`, then run `npm run setup:https` once.
 
----
+## Development
 
-## 🤝 Участие в разработке
+| Command | Purpose |
+| --- | --- |
+| `npm run dev:demo` | Start the app with deterministic local fixture data |
+| `npm run dev` | Start against endpoints configured in `.env` |
+| `npm run check` | Lint, type-check, and run unit tests |
+| `npm run codegen:check` | Verify committed GraphQL types match local schemas and operations |
+| `npm run build` | Create the production SSR build |
+| `npm run e2e:install` | Install the optional Playwright Chromium binary |
+| `npm run e2e` | Run integration E2E tests against configured services |
 
-**Мы приветствуем участие!** Пожалуйста, ознакомьтесь с [руководством по участию](docs/development/contributing.md) перед отправкой PR.
+The generated GraphQL client is committed so a clean checkout can build offline. The local schemas in `src/graphql/schema/` are compatibility snapshots, not proof of a currently deployed API contract. See their provenance note before changing operations.
 
-![Last Commit](https://img.shields.io/badge/dynamic/json?url=https://api.github.com/repos/discours/discoursio-webapp&query=$.updated_at&label=Last%20Update&color=blue&logo=github&logoColor=white)
-![Repository Size](https://img.shields.io/badge/dynamic/json?url=https://api.github.com/repos/discours/discoursio-webapp&query=$.size&label=Repo%20Size&color=informational&logo=github&logoColor=white)
+## Architecture at a glance
 
+- `src/routes/` — SolidStart file-based routes and server endpoints
+- `src/components/` — reader, feed, author, discussion, and editor UI
+- `src/context/` — application state and service orchestration
+- `src/graphql/` — operations, local schema snapshots, and generated client types
+- `api/` and `.netlify/functions/` — feedback, newsletter, and media handlers
+- `tests/e2e/` — service-dependent Playwright scenarios
+- `tests/unit/` — deterministic Node tests used in CI
 
-![Made with Love](https://img.shields.io/badge/Made%20with-❤️-gray?style=flat&logo=heart)
-![Open Source](https://img.shields.io/badge/Open-Source-gray?style=flat&logo=github&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-gray?style=flat&logo=license)
+The stack is SolidJS/SolidStart, TypeScript, Vinxi/Vite, URQL/GraphQL Code Generator, SCSS/Lightning CSS, Biome, and Playwright.
+
+## Contributing and governance
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md), the [roadmap](ROADMAP.md), and the [maintainer guide](MAINTAINERS.md). Beginner-friendly and help-wanted issues should state their scope and acceptance criteria. Please report vulnerabilities through [SECURITY.md](SECURITY.md), not a public issue.
+
+Discours is independently maintained. Useful contributions include reliable tests, accessibility fixes, documentation verified against code, and bounded improvements to the editor and public reading experience.
+
+Licensed under the [MIT License](LICENSE).

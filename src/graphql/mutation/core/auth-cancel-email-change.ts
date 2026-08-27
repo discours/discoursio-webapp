@@ -9,6 +9,7 @@ export default gql`
         id
         name
         slug
+        user
         email
         pic
         bio

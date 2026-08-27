@@ -6,11 +6,14 @@ export default gql`
       author {
         id
         slug
+        user
         name
         email
+        email_verified
         pic
         bio
         links
+        roles
       }
       token
     }
