@@ -3,11 +3,21 @@
 [![CI](https://github.com/discours/discoursio-webapp/actions/workflows/node-ci.yml/badge.svg?branch=dev)](https://github.com/discours/discoursio-webapp/actions/workflows/node-ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-The open-source SolidStart web application developed for [Discours](https://discours.io), an independent publishing platform with an open editorial model. Discours has operated since 2015; its wider publishing ecosystem has brought together more than 1,000 authors and contributors and published more than 4,000 works.
+The open-source SolidStart web application developed for [Discours](https://discours.io), an independent publishing platform with an open editorial model.
 
 This repository contains a substantial production-derived frontend: server-side rendering, a multilingual reader, feeds and profiles, a collaborative rich-text editor, drafts, reactions, threaded discussions, notifications, inbox UI, image handling, and GraphQL clients. It is useful both as a contribution target and as a reference for teams building public-interest publishing infrastructure with SolidJS.
 
 > **Repository status:** `dev` is the contribution branch. The public services configured by this historical application snapshot are not guaranteed to be available. Use the deterministic demo mode for first-run development. The current website may differ from this codebase.
+
+## Impact and stewardship
+
+Discours has operated since 2015 as public-interest infrastructure for independent journalism, culture, science, and open discussion. As of August 2026, its wider publishing ecosystem has:
+
+- brought together more than 1,000 authors and contributors;
+- published more than 4,000 works across formats, including more than 3,000 long-form pieces;
+- supported open editorial participation outside commercial platform incentives.
+
+These figures describe the Discours publishing ecosystem, not package downloads or this repository's GitHub adoption. The project is independently maintained, and current public maintenance priorities are tracked in the [roadmap](ROADMAP.md) and [issue backlog](https://github.com/discours/discoursio-webapp/issues).
 
 ## Quick start
 
