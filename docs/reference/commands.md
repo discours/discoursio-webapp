@@ -1,109 +1,51 @@
-# 📋 NPM команды
+# Command reference
 
-## 📋 Оглавление
+This is the short command map for contributors. See [npm scripts](../development/npm-scripts.md) for requirements, side effects, and the complete Playwright classification. `package.json` remains the source of truth.
 
-- [🚀 Разработка](#-разработка)
-- [🔍 Проверка качества](#-проверка-качества)
-- [🧪 Тестирование](#-тестирование)
-- [🛠️ Дополнительные инструменты](#️-дополнительные-инструменты)
-- [🔧 Отладка](#-отладка)
-- [📊 CI/CD команды](#-cicd-команды)
-- [🔄 Рабочий процесс](#-рабочий-процесс)
-- [🎯 Быстрые команды](#-быстрые-команды)
-- [📈 Оптимизации](#-оптимизации)
+## Common workflows
 
-## 🚀 Разработка
+| Goal | Commands | External requirements |
+| --- | --- | --- |
+| First local checkout | `npm ci`, then `npm run dev:demo` | None |
+| Develop against configured services | `npm ci`, then `npm run dev` | Compatible endpoints in `.env` |
+| Verify a normal change | `npm run codegen:check`, `npm run check`, `npm run build` | None |
+| Run deterministic browser smoke | `npm run e2e:install`, then `npm run e2e:demo` | Chromium download; no account |
+| Start the production build locally | `npm start` | Builds first through `prestart` |
 
-| Команда | Описание | Использование |
-|---------|----------|---------------|
-| `npm run dev` | Запуск сервера разработки с HMR | Основная команда разработки |
-| `npm run build` | Сборка для продакшена | Перед деплоем |
-| `npm run preview` | Предпросмотр сборки локально | Проверка production версии |
+## Read-only checks
 
-## 🔍 Проверка качества
+| Command | Checks |
+| --- | --- |
+| `npm run codegen:check` | GraphQL generated-client drift |
+| `npm run check` | Biome, TypeScript, and unit tests |
+| `npm run lint` | Biome lint rules |
+| `npm run typecheck` | TypeScript types |
+| `npm test` | Deterministic Node unit tests |
+| `npm run build` | Production SSR build |
 
-| Команда | Описание | Использование |
-|---------|----------|---------------|
-| `npm run typecheck` | Проверка TypeScript типов | Перед коммитом |
-| `npm run lint` | Линтинг кода Biome | Проверка стиля |
-| `npm run fix` | Автоисправление стиля | Исправление ошибок |
-| `npm run format` | Форматирование кода | Приведение к стандарту |
+## Commands that modify the checkout
 
-## 🧪 Тестирование
+| Command | Effect |
+| --- | --- |
+| `npm run codegen:all` | Rewrites generated GraphQL clients |
+| `npm run fix` | Applies Biome fixes and formatting |
+| `npm run format` | Applies Biome formatting |
+| `npm run clean` | Deletes generated build directories |
+| `npm run reset` | Cleans and reinstalls dependencies |
+| `npm run e2e:clean` | Deletes generated Playwright results |
 
-| Команда | Описание | Использование |
-|---------|----------|---------------|
-| `npm run e2e:install` | Установка Playwright браузеров | Первоначальная настройка |
-| `npm run e2e:tests` | Запуск E2E тестов | Полное тестирование |
-| `npm run e2e:debug` | Отладка тестов с UI | Разработка тестов |
-| `npm run e2e:headed` | Тесты с видимым браузером | Демонстрация |
+Review resulting diffs before committing them.
 
-## 🛠️ Дополнительные инструменты
+## Service-dependent testing
 
-| Команда | Описание | Использование |
-|---------|----------|---------------|
-| `npm run codegen` | Генерация GraphQL типов | После изменений схемы |
-| `npm run storybook` | Запуск Storybook | Разработка компонентов |
-| `npm run analyze` | Анализ бандла | Оптимизация размера |
-| `npm run templates` | Компиляция шаблонов | Обновление HTML шаблонов |
+`npm run e2e`, `npm run e2e:smoke`, `npm run e2e:auth`, and the `test:editor-*` scripts require compatible services; authenticated scenarios also require a dedicated test account. They should fail fast when prerequisites are missing and must never use personal or production credentials.
 
-## 🔧 Отладка
+Use `npm run e2e:demo` when a deterministic, account-free browser check is required.
 
-| Команда | Описание | Использование |
-|---------|----------|---------------|
-| `npm run dev:debug` | Разработка с отладчиком | Исследование проблем |
-| `npm run build:analyze` | Анализ сборки | Поиск узких мест |
-| `npm run check` | Полная проверка проекта | Перед PR |
+## Optional local setup
 
-## 📊 CI/CD команды
+- `npm run e2e:install` downloads Chromium for Playwright.
+- `npm run setup:https` uses `mkcert` and explicitly changes local certificate/trust configuration.
+- `npm run e2e:ui` and `npm run e2e:debug` open interactive Playwright tooling.
 
-| Команда | Описание | Использование |
-|---------|----------|---------------|
-| `npm run e2e:tests:ci` | Тесты для CI окружения | Автоматизированное тестирование |
-| `npm run build:netlify` | Сборка для Netlify | Альтернативный деплой |
-| `npm run test:coverage` | Покрытие кода тестами | Метрики качества |
-
-## 🔄 Рабочий процесс
-
-### Рекомендуемая последовательность
-```bash
-# Разработка
-npm run dev
-
-# Перед коммитом
-npm run typecheck
-npm run lint
-npm run fix
-
-# Тестирование
-npm run e2e:tests
-
-# Деплой
-npm run build
-```
-
-### Полная проверка
-```bash
-npm run check        # TypeScript + линтинг
-npm run e2e:tests    # E2E тесты
-npm run build        # Проверка сборки
-```
-
-## 🎯 Быстрые команды
-
-| Сценарий | Команды |
-|----------|---------|
-| **Начало работы** | `npm install && npm run dev` |
-| **Проверка кода** | `npm run check` |
-| **Исправление стиля** | `npm run fix` |
-| **Тестирование** | `npm run e2e:tests` |
-| **Сборка** | `npm run build` |
-
-## 📈 Оптимизации
-
-Команды используют современные инструменты для максимальной производительности:
-
-- **Lightning CSS** — сверхбыстрая обработка стилей
-- **Biome** — быстрый линтинг и форматирование
-- **Vite** — мгновенная пересборка при изменениях
-- **Playwright** — параллельное выполнение тестов
+No npm command in this repository publishes a release or deploys production by itself.
