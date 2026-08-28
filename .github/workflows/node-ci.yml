@@ -56,3 +56,32 @@ jobs:
       - uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+
+  demo-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies without lifecycle side effects
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Install the demo browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run deterministic demo smoke
+        run: npm run e2e:demo
+
+      - name: Upload demo failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-smoke-failure-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
