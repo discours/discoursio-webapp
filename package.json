@@ -47,7 +47,7 @@
     "e2e:ci": "cross-env CI=true npm run e2e:test",
     "e2e:install": "playwright install chromium",
     "test": "npm run test:unit",
-    "test:unit": "node --test tests/unit/static-files.test.mjs tests/unit/request-validation.test.mjs tests/unit/demo-api.test.mjs tests/unit/image-runtime.test.mjs tests/unit/runtime-auth-logging.test.mjs",
+    "test:unit": "node --test tests/unit/static-files.test.mjs tests/unit/request-validation.test.mjs tests/unit/demo-api.test.mjs tests/unit/image-runtime.test.mjs tests/unit/runtime-auth-logging.test.mjs tests/unit/gitea-workflow-security.test.mjs",
     "build:ci": "cross-env SASS_FORCE_JS=true npm run build",
     "templates": "node ./templates/compile.cjs",
     "setup:https": "node scripts/setup-https.mjs",
