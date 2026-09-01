@@ -108,7 +108,7 @@
   "dependencies": {
     "form-data": "^4.0.6",
     "mailgun.js": "^12.9.0",
-    "sharp": "0.35.3",
+    "sharp": "0.35.4",
     "solid-sonner": "0.2.8"
   },
   "overrides": {
