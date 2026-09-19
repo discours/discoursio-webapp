@@ -26,10 +26,20 @@ npm run check
 npm run build
 ```
 
-Playwright scenarios are optional unless your change affects their feature area. They require Chromium and, for authenticated tests, explicit test-only credentials:
+Unit tests need no services or credentials. Add a `*.test.mjs` file under `tests/unit/`; `npm test` discovers it automatically, including in subdirectories. The runner starts in `tests/unit/`, so resolve repository fixtures relative to `import.meta.url`, not the working directory. Playwright scenarios under `tests/e2e/` are not part of this command.
+
+For public shell or navigation changes, run the deterministic browser checks used in CI:
 
 ```bash
 npm run e2e:install
+npm run e2e:demo
+```
+
+This command starts and stops its own demo server. Leave ports 3000 and 4010 free; do not start `npm run dev:demo` separately. It requires no account, `.env` file, or live backend. The checks cover the public shell, navigation to the editorial guide, and opening and closing the mobile menu after deliberately delaying JavaScript. They do not verify authentication, publishing, or populated feeds.
+
+The historical integration suite remains separate. Run it only against compatible services you are authorised to use, with explicit test-only credentials for authenticated scenarios:
+
+```bash
 npm run e2e
 ```
 

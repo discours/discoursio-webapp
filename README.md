@@ -41,9 +41,11 @@ To connect your own services, copy `.env.example` to `.env`, set the relevant pu
 | `npm run dev:demo` | Start the app with deterministic local fixture data |
 | `npm run dev` | Start against endpoints configured in `.env` |
 | `npm run check` | Lint, type-check, and run unit tests |
+| `npm test` | Run automatically discovered unit tests; no services or credentials needed |
 | `npm run codegen:check` | Verify committed GraphQL types match local schemas and operations |
 | `npm run build` | Create the production SSR build |
 | `npm run e2e:install` | Install the optional Playwright Chromium binary |
+| `npm run e2e:demo` | Check the public shell, guide navigation, and mobile menu against local fixtures |
 | `npm run e2e` | Run integration E2E tests against configured services |
 
 The generated GraphQL client is committed so a clean checkout can build offline. The local schemas in `src/graphql/schema/` are compatibility snapshots, not proof of a currently deployed API contract. See their provenance note before changing operations.
@@ -56,6 +58,7 @@ The generated GraphQL client is committed so a clean checkout can build offline.
 - `src/graphql/` — operations, local schema snapshots, and generated client types
 - `api/` and `.netlify/functions/` — feedback, newsletter, and media handlers
 - `tests/e2e/` — service-dependent Playwright scenarios
+- `tests/demo-e2e/` — account-free browser checks using local fixtures
 - `tests/unit/` — deterministic Node tests used in CI
 
 The stack is SolidJS/SolidStart, TypeScript, Vinxi/Vite, URQL/GraphQL Code Generator, SCSS/Lightning CSS, Biome, and Playwright.

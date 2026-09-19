@@ -47,6 +47,7 @@ export const Header = (props: Props) => {
   const [getIsScrollingBottom, setIsScrollingBottom] = createSignal(false)
   const [getIsScrolled, setIsScrolled] = createSignal(false)
   const [fixed, setFixed] = createSignal(false)
+  const [isMenuReady, setIsMenuReady] = createSignal(false)
   const [isSharePopupVisible, setIsSharePopupVisible] = createSignal(false)
   const [isProfilePopupVisible, setIsProfilePopupVisible] = createSignal(false)
 
@@ -81,6 +82,7 @@ export const Header = (props: Props) => {
   })
 
   onMount(() => {
+    setIsMenuReady(true)
     let scrollTop = window.scrollY
 
     const handleScroll = () => {
@@ -179,6 +181,7 @@ export const Header = (props: Props) => {
                 aria-label={fixed() ? 'Закрыть меню' : 'Открыть меню'}
                 aria-expanded={fixed()}
                 aria-controls="main-navigation"
+                disabled={!isMenuReady()}
                 type="button"
               >
                 <div />
