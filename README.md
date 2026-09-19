@@ -64,6 +64,8 @@ The stack is SolidJS/SolidStart, TypeScript, Vinxi/Vite, URQL/GraphQL Code Gener
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), the [roadmap](ROADMAP.md), and the [maintainer guide](MAINTAINERS.md). Beginner-friendly and help-wanted issues should state their scope and acceptance criteria. Please report vulnerabilities through [SECURITY.md](SECURITY.md), not a public issue.
 
+New to the codebase? The [first-contribution guide](docs/development/first-contribution.md) starts with a test you can run without installing dependencies or connecting a backend. The [contribution backlog](docs/maintainers/issue-drafts.md) distinguishes open work, pending PRs, and proposals that have not been published as issues.
+
 Discours is independently maintained. Useful contributions include reliable tests, accessibility fixes, documentation verified against code, and bounded improvements to the editor and public reading experience.
 
 Licensed under the [MIT License](LICENSE).

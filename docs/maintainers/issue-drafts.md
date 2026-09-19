@@ -1,6 +1,21 @@
-# Proposed issue backlog
+# Contribution backlog
 
-These are reviewable drafts. No GitHub issues have been created. Labels use only labels that already exist in the repository.
+Some proposals below have GitHub issues or merged implementations; others remain drafts. Check the linked issue and PR before starting work. Suggested labels use existing repository labels and do not mean that a draft is already published or assigned.
+
+## Status checked on 13 September 2026
+
+| Work | Public record | Verified status / next step |
+| --- | --- | --- |
+| Synthetic demo article | [#540](https://github.com/discours/discoursio-webapp/issues/540) | Reopened after checking the acceptance criteria: `dev` still returns empty collections and null article/author/topic records. The demo foundation works; the populated article and its tests remain to be added. |
+| npm command reference | [#541](https://github.com/discours/discoursio-webapp/issues/541), [PR #547](https://github.com/discours/discoursio-webapp/pull/547) | Completed and merged. Do not recreate this task. |
+| Separate browser suites | [#542](https://github.com/discours/discoursio-webapp/issues/542), [PR #548](https://github.com/discours/discoursio-webapp/pull/548), [PR #552](https://github.com/discours/discoursio-webapp/pull/552) | Demo CI is merged. Expanded smoke coverage is ready for review in PR #552, not merged into `dev`. Historical test classification and named prerequisite checks remain open. |
+| Scoped accessibility baseline | [#543](https://github.com/discours/discoursio-webapp/issues/543), [PR #549](https://github.com/discours/discoursio-webapp/pull/549) | The HeaderControls button-type change is already in a draft PR; manual interaction checks remain. Do not duplicate that patch. |
+| GraphQL snapshot provenance | [#544](https://github.com/discours/discoursio-webapp/issues/544) | Open; authoritative backend ownership and update workflow still need agreement. |
+| Demo API HTTP tests | [#553](https://github.com/discours/discoursio-webapp/issues/553), [starter guide](../development/first-contribution.md#small-test-only-task) | Open `good first issue`: cover the local fixture's HTTP contract in one existing test file. No account or live backend needed. |
+
+The demo-article status above was checked against `dev` commit `573cac040463550a2766054e98c1261420d4fb22`, not inferred from a green CI badge. Merge, release, and deployment remain separate states.
+
+## Original proposals and acceptance criteria
 
 ## 1. Add one synthetic article to the local demo fixture
 
