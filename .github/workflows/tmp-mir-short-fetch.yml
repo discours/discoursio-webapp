@@ -1,0 +1,38 @@
+name: Temporary Mave asset fetch
+
+on:
+  push:
+    branches:
+      - tmp/mir-short-render-20261002
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch podcast audio and artwork
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          curl -L --fail --retry 3 --retry-delay 2 \
+            -A "Mozilla/5.0" \
+            "https://api.mave.digital/storage/podcasts/3c13b7b4-edb6-4e38-8076-c8b30a84bdad/episodes/5cdcf0ae-7029-488c-b070-7b7caac0c8fe.mp3" \
+            -o artifact/episode-163.mp3
+          curl -L --fail --retry 3 --retry-delay 2 \
+            -A "Mozilla/5.0" \
+            "https://cdn.mave.digital/storage/podcasts/3c13b7b4-edb6-4e38-8076-c8b30a84bdad/images/5cdcf0ae-7029-488c-b070-7b7caac0c8fe.jpg" \
+            -o artifact/episode-163-cover.jpg
+          ls -lh artifact
+          file artifact/episode-163.mp3 artifact/episode-163-cover.jpg
+
+      - name: Upload temporary assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: mir-163-assets
+          path: artifact/
+          retention-days: 1
+          compression-level: 0
