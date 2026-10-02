@@ -1,0 +1,34 @@
+name: Temporary Mave prototype assets
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch real Mave assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          curl -L --fail --retry 3 --retry-delay 2 -A 'Mozilla/5.0' \
+            'https://api.mave.digital/storage/podcasts/3c13b7b4-edb6-4e38-8076-c8b30a84bdad/episodes/5cdcf0ae-7029-488c-b070-7b7caac0c8fe.mp3' \
+            -o /tmp/source.mp3
+          curl -L --fail --retry 3 --retry-delay 2 -A 'Mozilla/5.0' \
+            'https://cdn.mave.digital/storage/podcasts/3c13b7b4-edb6-4e38-8076-c8b30a84bdad/images/5cdcf0ae-7029-488c-b070-7b7caac0c8fe.jpg' \
+            -o artifact/episode-163-cover.jpg
+          ffmpeg -y -hide_banner -loglevel error -i /tmp/source.mp3 -t 180 -ac 1 -ar 24000 -b:a 64k artifact/episode-163-first180.mp3
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 /tmp/source.mp3 > artifact/full-duration.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mir-163-real-assets
+          path: artifact/
+          retention-days: 1
+          compression-level: 0
