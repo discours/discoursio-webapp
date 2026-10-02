@@ -1,0 +1,47 @@
+name: Temporary Mave asset export
+
+on:
+  push:
+    branches:
+      - tmp/mir-short-render-20261002
+    paths-ignore:
+      - 'tmp-assets/**'
+
+permissions:
+  contents: write
+
+jobs:
+  export-assets:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp/mir-short-render-20261002
+
+      - name: Fetch and compact real Mave assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tmp-assets
+          curl -L --fail --retry 3 --retry-delay 2 -A 'Mozilla/5.0' \
+            'https://api.mave.digital/storage/podcasts/3c13b7b4-edb6-4e38-8076-c8b30a84bdad/episodes/5cdcf0ae-7029-488c-b070-7b7caac0c8fe.mp3' \
+            -o /tmp/source.mp3
+          curl -L --fail --retry 3 --retry-delay 2 -A 'Mozilla/5.0' \
+            'https://cdn.mave.digital/storage/podcasts/3c13b7b4-edb6-4e38-8076-c8b30a84bdad/images/5cdcf0ae-7029-488c-b070-7b7caac0c8fe.jpg' \
+            -o /tmp/cover.jpg
+          ffmpeg -y -hide_banner -loglevel error -i /tmp/source.mp3 -t 120 -ac 1 -ar 24000 -b:a 64k /tmp/first120.mp3
+          base64 -w0 /tmp/first120.mp3 > tmp-assets/episode-163-first120.mp3.b64
+          base64 -w0 /tmp/cover.jpg > tmp-assets/episode-163-cover.jpg.b64
+          printf '%s\n' 'Real Mave assets for temporary prototype; delete branch after use.' > tmp-assets/README.txt
+
+      - name: Commit temporary encoded assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tmp-assets/
+          git commit -m 'chore: export temporary Mave assets for prototype'
+          git push origin HEAD:tmp/mir-short-render-20261002
