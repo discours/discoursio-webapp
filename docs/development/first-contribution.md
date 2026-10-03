@@ -32,7 +32,7 @@ A finished contribution should verify:
 - `GET /graphql` and `POST /unknown` return 404 with the fixture's `Not found` response.
 - Test-context cleanup closes the listener even when an assertion fails; repeated runs exit normally without fixed-port conflicts.
 
-Keep these tests in the existing file so the current `dev` test command includes them. Automatic discovery is proposed in [PR #552](https://github.com/discours/discoursio-webapp/pull/552), but this task does not depend on it merging.
+Keep these tests in the existing file to keep the fixture's checks together. [PR #552](https://github.com/discours/discoursio-webapp/pull/552) is merged: `npm test` automatically discovers `*.test.mjs` files under `tests/unit/`, including subdirectories. The runner starts in `tests/unit/`, so resolve fixture paths relative to `import.meta.url`, not the working directory.
 
 Test the current behavior without changing the HTTP contract, implementing a GraphQL server, or using live services. If you find a mismatch, describe the reproduction before expanding the fix. Check that a deliberately broken expectation makes the test fail, then remove that temporary break before submitting your PR.
 
