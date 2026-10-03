@@ -2,18 +2,18 @@
 
 Some proposals below have GitHub issues or merged implementations; others remain drafts. Check the linked issue and PR before starting work. Suggested labels use existing repository labels and do not mean that a draft is already published or assigned.
 
-## Status checked on 13 September 2026
+## Status checked on 3 October 2026
 
 | Work | Public record | Verified status / next step |
 | --- | --- | --- |
-| Synthetic demo article | [#540](https://github.com/discours/discoursio-webapp/issues/540) | Reopened after checking the acceptance criteria: `dev` still returns empty collections and null article/author/topic records. The demo foundation works; the populated article and its tests remain to be added. |
+| Synthetic demo article | [#540](https://github.com/discours/discoursio-webapp/issues/540) | GitHub issue is closed, but current `dev` still returns empty collections and null article/author/topic records. A populated article and its tests are not implemented; issue closure is not evidence of that feature. Coordinate with a maintainer before starting this historical proposal. |
 | npm command reference | [#541](https://github.com/discours/discoursio-webapp/issues/541), [PR #547](https://github.com/discours/discoursio-webapp/pull/547) | Completed and merged. Do not recreate this task. |
-| Separate browser suites | [#542](https://github.com/discours/discoursio-webapp/issues/542), [PR #548](https://github.com/discours/discoursio-webapp/pull/548), [PR #552](https://github.com/discours/discoursio-webapp/pull/552) | Demo CI is merged. Expanded smoke coverage is ready for review in PR #552, not merged into `dev`. Historical test classification and named prerequisite checks remain open. |
+| Separate browser suites | [#542](https://github.com/discours/discoursio-webapp/issues/542), [PR #548](https://github.com/discours/discoursio-webapp/pull/548), [PR #552](https://github.com/discours/discoursio-webapp/pull/552) | Demo CI and expanded public-shell/mobile-menu smoke coverage are merged into `dev`. Historical test classification and named prerequisite checks remain open in #542. Do not duplicate the merged smoke work. |
 | Scoped accessibility baseline | [#543](https://github.com/discours/discoursio-webapp/issues/543), [PR #549](https://github.com/discours/discoursio-webapp/pull/549) | The HeaderControls button-type change is already in a draft PR; manual interaction checks remain. Do not duplicate that patch. |
 | GraphQL snapshot provenance | [#544](https://github.com/discours/discoursio-webapp/issues/544) | Open; authoritative backend ownership and update workflow still need agreement. |
-| Demo API HTTP tests | [#553](https://github.com/discours/discoursio-webapp/issues/553), [starter guide](../development/first-contribution.md#small-test-only-task) | Open `good first issue`: cover the local fixture's HTTP contract in one existing test file. No account or live backend needed. |
+| Demo API HTTP tests | [#553](https://github.com/discours/discoursio-webapp/issues/553), [starter guide](../development/first-contribution.md#small-test-only-task) | Open `good first issue`, with a contributor expressing interest and a maintainer follow-up awaiting a branch or PR. Check the latest issue comments and coordinate before starting. No account or live backend needed. |
 
-The demo-article status above was checked against `dev` commit `573cac040463550a2766054e98c1261420d4fb22`, not inferred from a green CI badge. Merge, release, and deployment remain separate states.
+The demo-article status above was checked against `dev` commit `baa733a4ef4f6811a0d11ec36f85e41386329041`, not inferred from issue closure or a green CI badge. Merge, release, and deployment remain separate states.
 
 ## Original proposals and acceptance criteria
 
