@@ -40,6 +40,18 @@
       "trailingCommas": "none"
     }
   },
+  "overrides": [
+    {
+      "includes": ["src/components/HeaderNav/HeaderControls.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useButtonType": "error"
+          }
+        }
+      }
+    }
+  ],
   "linter": {
     "enabled": true,
     "includes": ["**", "!**/*.scss", "!**/*.md", "!**/.DS_Store", "!**/*.svg", "!**/*.d.ts"],
