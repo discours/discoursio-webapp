@@ -1,7 +1,7 @@
 name: Native Safari frozen Sentry transport (loopback only)
 on:
   pull_request:
-    types: [opened]
+    types: [labeled]
     paths: ['.github/workflows/sentry-native-safari.yml']
 permissions: {}
 concurrency:
@@ -10,10 +10,13 @@ concurrency:
 jobs:
   native-safari:
     if: >-
+      github.event.label.name == 'native-safari-ci-v2-once' &&
       github.repository == 'discours/discoursio-webapp' &&
       github.event.repository.private == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      startsWith(github.head_ref, 'codex/sentry-native-safari-') &&
+      github.event.pull_request.number == 562 &&
+      github.base_ref == 'codex/sentry-native-safari-base-20261011' &&
+      github.head_ref == 'codex/sentry-native-safari-once-20261011' &&
       github.event.pull_request.draft == false &&
       github.run_attempt == 1
     runs-on: macos-15
@@ -40,6 +43,7 @@ jobs:
           import subprocess
           import threading
           import time
+          import urllib.error
           import urllib.request
 
           SOURCE = '60bd5584013a8a5384b72d8fbc0d1e56764c12c4'
@@ -75,15 +79,32 @@ jobs:
               cleanup_lock = threading.Lock()
               opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
               driver_origin = None
+              result['failureStage'] = 'PUBLIC_ASSET_HASH_FETCH'
+              result['driverReadinessPolls'] = 0
+              result['nativeSessionCreateInvocations'] = 0
+              result['osVersion'] = platform.mac_ver()[0]
 
-              def command(method, path, payload=None, cleanup=False):
+              def command(method, path, payload=None, cleanup=False, timeout=6):
                   if not cleanup and (stopping.is_set() or time.monotonic() - started > 95):
                       raise RuntimeError('WORK_DEADLINE')
                   data = None if payload is None else json.dumps(payload).encode()
                   request = urllib.request.Request(driver_origin + path, data=data, method=method,
                                                    headers={'Content-Type': 'application/json'})
-                  with opener.open(request, timeout=6) as response:
-                      body = response.read(131073)
+                  try:
+                      with opener.open(request, timeout=timeout) as response:
+                          body = response.read(131073)
+                  except urllib.error.HTTPError as error:
+                      result['driverHttpStatus'] = error.code
+                      try:
+                          diagnostic = json.loads(error.read(16385)).get('value', {})
+                          code = diagnostic.get('error')
+                          known = {'invalid argument', 'invalid session id', 'session not created', 'unknown error', 'timeout', 'unsupported operation', 'unknown command'}
+                          result['driverErrorCode'] = code if code in known else 'UNRECOGNIZED_ERROR_CODE'
+                          message = diagnostic.get('message', '').lower()
+                          result['driverErrorFamily'] = 'REMOTE_AUTOMATION_DISABLED' if 'remote automation' in message and ('enable' in message or 'allow' in message) else 'SESSION_ALREADY_PAIRED' if 'paired' in message or 'already' in message and 'session' in message else 'SESSION_START_TIMEOUT' if 'timed out' in message or 'timeout' in message else 'UNCLASSIFIED_RAW_SUPPRESSED'
+                      except Exception:
+                          result['driverErrorCode'] = 'ERROR_RESPONSE_SHAPE_UNVERIFIED'
+                      raise RuntimeError('DRIVER_HTTP_ERROR') from None
                   if len(body) > 131072:
                       raise RuntimeError('DRIVER_RESPONSE_BOUND')
                   value = json.loads(body).get('value')
@@ -103,7 +124,8 @@ jobs:
                           except Exception:
                               result['ownedSafariQuitAcknowledged'] = False
                       if driver is not None:
-                          driver.terminate()
+                          if driver.poll() is None:
+                              driver.terminate()
                           try:
                               driver.wait(timeout=2)
                           except subprocess.TimeoutExpired:
@@ -171,19 +193,30 @@ jobs:
                       probe.bind(('127.0.0.1', 0))
                       port = probe.getsockname()[1]
                   driver_origin = 'http://127.0.0.1:' + str(port)
+                  result['failureStage'] = 'START_OWNED_DRIVER'
                   driver = subprocess.Popen(['/usr/bin/safaridriver', '--port', str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                   # A bounded readiness wait is local; no browser command is retried.
-                  for unused in range(25):
+                  result['failureStage'] = 'DRIVER_READINESS'
+                  for unused in range(10):
+                      result['driverReadinessPolls'] += 1
                       try:
-                          command('GET', '/status')
-                          break
+                          readiness = command('GET', '/status', timeout=1)
+                          if isinstance(readiness, dict) and readiness.get('ready') is True:
+                              break
                       except Exception:
                           if stopping.is_set() or driver.poll() is not None:
+                              result['driverExitCode'] = driver.poll()
                               raise RuntimeError('DRIVER_NOT_READY')
-                          time.sleep(0.1)
+                      time.sleep(0.2)
                   else:
                       raise RuntimeError('DRIVER_NOT_READY')
-                  created = command('POST', '/session', {'capabilities': {'alwaysMatch': {'browserName': 'safari'}}})
+                  result['failureStage'] = 'CREATE_ONE_NATIVE_SESSION'
+                  result['nativeSessionCreateInvocations'] += 1
+                  created = command('POST', '/session', {'capabilities': {'alwaysMatch': {'browserName': 'safari'}}}, timeout=30)
+                  result['sessionResponseHasSessionId'] = isinstance(created, dict) and isinstance(created.get('sessionId'), str)
+                  result['sessionResponseHasCapabilities'] = isinstance(created, dict) and isinstance(created.get('capabilities'), dict)
+                  if not result['sessionResponseHasSessionId'] or not result['sessionResponseHasCapabilities']:
+                      raise RuntimeError('W3C_SESSION_RESPONSE_SHAPE')
                   session = created['sessionId']
                   capabilities = created['capabilities']
                   result['browserName'] = capabilities.get('browserName')
@@ -191,8 +224,10 @@ jobs:
                   if result['browserName'].lower() != 'safari' or not re.fullmatch(r'26\.6(?:\.\d+)*', result['browserVersion']):
                       raise RuntimeError('PINNED_NATIVE_SAFARI_VERSION_GUARD')
                   base = '/session/' + session
+                  result['failureStage'] = 'SET_SESSION_TIMEOUTS'
                   command('POST', base + '/timeouts', {'script': 12000, 'pageLoad': 8000, 'implicit': 0})
-                  command('POST', base + '/url', {'url': 'http://127.0.0.1:' + str(server.server_port) + ENDPOINT})
+                  result['failureStage'] = 'OWNED_LOOPBACK_NAVIGATION'
+                  command('POST', base + '/url', {'url': 'http://127.0.0.1:' + str(server.server_port) + ENDPOINT}, timeout=10)
                   script = """
           const done = arguments[arguments.length - 1];
           (async () => {
@@ -216,11 +251,14 @@ jobs:
            finally {document.cookie='sentry_ci_probe=; Max-Age=0; SameSite=Strict; Path=/api/telemetry';done(out);}
           })();
           """
-                  result['browser'] = command('POST', base + '/execute/async', {'script': script, 'args': []})
+                  result['failureStage'] = 'ONE_BROWSER_SCRIPT_INVOCATION'
+                  result['browser'] = command('POST', base + '/execute/async', {'script': script, 'args': []}, timeout=16)
                   browser = result['browser']
                   if browser.get('sdkSendInvocations') == 1 and browser.get('syntheticCookieControlPresent') and browser.get('responseStatus') == 400 and result['loopbackPosts'] == 1 and result.get('loopbackExactInvalidBody') and not any(result.get('loopbackSensitiveHeaderPresence', {'missing': True}).values()) and result['unexpectedLoopbackRequests'] == 0:
                       result['status'] = 'PASS_NATIVE_SAFARI_EXACT_BUNDLE_LOOPBACK_HEADERS'
+                      result['failureStage'] = 'NONE_TEST_COMPLETE'
               except Exception as error:
+                  result['errorType'] = type(error).__name__ if type(error).__name__ in {'RuntimeError', 'TimeoutError', 'URLError', 'JSONDecodeError', 'KeyError', 'TypeError', 'ValueError', 'OSError'} else 'OTHER_RAW_SUPPRESSED'
                   result['safeReason'] = str(error) if re.fullmatch('[A-Z_]+', str(error)) else 'NATIVE_CI_CHECK_FAILED_RAW_SUPPRESSED'
               finally:
                   cleanup()
