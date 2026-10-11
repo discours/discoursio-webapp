@@ -1,0 +1,236 @@
+name: Native Safari frozen Sentry transport (loopback only)
+on:
+  pull_request:
+    types: [opened]
+    paths: ['.github/workflows/sentry-native-safari.yml']
+permissions: {}
+concurrency:
+  group: sentry-native-safari-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+jobs:
+  native-safari:
+    if: >-
+      github.repository == 'discours/discoursio-webapp' &&
+      github.event.repository.private == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'codex/sentry-native-safari-') &&
+      github.event.pull_request.draft == false &&
+      github.run_attempt == 1
+    runs-on: macos-15
+    timeout-minutes: 4
+    steps:
+      - name: Enable Safari automation on this disposable macOS runner only
+        run: sudo -n /usr/bin/safaridriver --enable
+      - name: Test exact public bundle against owned loopback relay
+        shell: bash
+        run: |
+          python3 - --execute-native-loopback <<'OWNED_SAFARI_CI'
+          """Prepared native Safari CI test; no production POST, Sentry init or event.
+
+          Not executed. Two hash-pinned public asset GETs, then a loopback-only test.
+          Never log browser capabilities, raw errors, headers, body, environment or driver output.
+          """
+          import argparse
+          import hashlib
+          import http.server
+          import json
+          import platform
+          import re
+          import socket
+          import subprocess
+          import threading
+          import time
+          import urllib.request
+
+          SOURCE = '60bd5584013a8a5384b72d8fbc0d1e56764c12c4'
+          MODULES = {
+              'sentry-browser-sdk.B4qtZf53.js': (149904, 'd8ce222680bbdf4b5b1e90af5376c011a5651b1f5d6414587bc38ca2e6edab97'),
+              'web-vitals.Bus909x6.js': (8984, '3623466f9226d466a16d2cb6fbb06a13efdeb4f39dac3c7d3bd2a4127fea8f94'),
+          }
+          ENDPOINT = '/api/telemetry/sentry'
+          INVALID = b'{"event_id":"ROOT_INVALID_RELAY_PROBE"}\n{"type":"event"}\nROOT_INVALID_RELAY_PROBE'
+          SENSITIVE = ('cookie', 'authorization', 'proxy-authorization', 'referer', 'forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip', 'true-client-ip', 'x-client-ip')
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  raise RuntimeError('REDIRECT_BLOCKED')
+
+          def main():
+              parser = argparse.ArgumentParser()
+              parser.add_argument('--execute-native-loopback', action='store_true')
+              args = parser.parse_args()
+              if not args.execute_native_loopback:
+                  print(json.dumps({'status': 'PREPARED_NOT_EXECUTED', 'productionPosts': 0, 'validSentrySends': 0}))
+                  return 0
+              if platform.system() != 'Darwin':
+                  print(json.dumps({'status': 'STOP_NATIVE_MAC_REQUIRED'}))
+                  return 1
+              started = time.monotonic()
+              result = {'kind': 'NATIVE_SAFARI_EXACT_BUNDLE_LOOPBACK_CHECK', 'source': SOURCE,
+                        'status': 'UNVERIFIED', 'productionPosts': 0, 'validSentrySends': 0,
+                        'appSdkInit': False, 'productionRouteMeasured': False,
+                        'publicGets': 0, 'loopbackPosts': 0, 'unexpectedLoopbackRequests': 0}
+              assets, server, driver, session = {}, None, None, None
+              stopping, cleanup_done = threading.Event(), threading.Event()
+              cleanup_lock = threading.Lock()
+              opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+              driver_origin = None
+
+              def command(method, path, payload=None, cleanup=False):
+                  if not cleanup and (stopping.is_set() or time.monotonic() - started > 95):
+                      raise RuntimeError('WORK_DEADLINE')
+                  data = None if payload is None else json.dumps(payload).encode()
+                  request = urllib.request.Request(driver_origin + path, data=data, method=method,
+                                                   headers={'Content-Type': 'application/json'})
+                  with opener.open(request, timeout=6) as response:
+                      body = response.read(131073)
+                  if len(body) > 131072:
+                      raise RuntimeError('DRIVER_RESPONSE_BOUND')
+                  value = json.loads(body).get('value')
+                  if isinstance(value, dict) and 'error' in value:
+                      raise RuntimeError('DRIVER_COMMAND_FAILED')
+                  return value
+
+              def cleanup():
+                  with cleanup_lock:
+                      if cleanup_done.is_set():
+                          return
+                      stopping.set()
+                      if session:
+                          try:
+                              command('DELETE', '/session/' + session, cleanup=True)
+                              result['ownedSafariQuitAcknowledged'] = True
+                          except Exception:
+                              result['ownedSafariQuitAcknowledged'] = False
+                      if driver is not None:
+                          driver.terminate()
+                          try:
+                              driver.wait(timeout=2)
+                          except subprocess.TimeoutExpired:
+                              driver.kill()
+                              driver.wait(timeout=2)
+                          result['ownedDriverClosed'] = driver.poll() is not None
+                      if server is not None:
+                          server.shutdown()
+                          server.server_close()
+                          result['ownedLoopbackServerClosed'] = True
+                      result['elapsedSecondsIncludingCleanup'] = round(time.monotonic() - started, 3)
+                      result['total120SecondsProven'] = result['elapsedSecondsIncludingCleanup'] <= 120
+                      cleanup_done.set()
+
+              class Handler(http.server.BaseHTTPRequestHandler):
+                  def log_message(self, *args):
+                      pass
+
+                  def reply(self, status, body, content_type):
+                      self.send_response(status)
+                      self.send_header('Content-Type', content_type)
+                      self.send_header('Content-Length', str(len(body)))
+                      self.send_header('Cache-Control', 'no-store')
+                      self.end_headers()
+                      self.wfile.write(body)
+
+                  def do_GET(self):
+                      if self.path == ENDPOINT:
+                          self.reply(200, b'{}', 'text/html; charset=utf-8')
+                      elif self.path.startswith('/_astro/') and self.path[8:] in assets:
+                          self.reply(200, assets[self.path[8:]], 'text/javascript')
+                      elif self.path == '/favicon.ico':
+                          self.reply(204, b'', 'image/x-icon')
+                      else:
+                          result['unexpectedLoopbackRequests'] += 1
+                          self.reply(404, b'', 'text/plain')
+
+                  def do_POST(self):
+                      result['loopbackPosts'] += 1
+                      length = int(self.headers.get('Content-Length', '0'))
+                      self.connection.settimeout(3)
+                      body = self.rfile.read(length) if 0 < length <= 1024 else b''
+                      result['loopbackSensitiveHeaderPresence'] = {key: key in self.headers for key in SENSITIVE}
+                      result['loopbackExactInvalidBody'] = body == INVALID
+                      result['loopbackExactPath'] = self.path == ENDPOINT
+                      accepted = result['loopbackPosts'] == 1 and self.path == ENDPOINT and body == INVALID and not any(result['loopbackSensitiveHeaderPresence'].values())
+                      self.reply(400 if accepted else 409, b'{}', 'application/json')
+
+              timer = threading.Timer(105, cleanup)
+              timer.daemon = True
+              timer.start()
+              try:
+                  for name, (length, expected) in MODULES.items():
+                      result['publicGets'] += 1
+                      with opener.open('https://astro.discours.io/_astro/' + name, timeout=4) as response:
+                          if response.status != 200:
+                              raise RuntimeError('PUBLIC_ASSET_STATUS')
+                          data = response.read(length + 1)
+                      if len(data) != length or hashlib.sha256(data).hexdigest() != expected:
+                          raise RuntimeError('EXACT_PUBLIC_ASSET_GUARD')
+                      assets[name] = data
+                  server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+                  threading.Thread(target=lambda: server.serve_forever(poll_interval=0.1), daemon=True).start()
+                  with socket.socket() as probe:
+                      probe.bind(('127.0.0.1', 0))
+                      port = probe.getsockname()[1]
+                  driver_origin = 'http://127.0.0.1:' + str(port)
+                  driver = subprocess.Popen(['/usr/bin/safaridriver', '--port', str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                  # A bounded readiness wait is local; no browser command is retried.
+                  for unused in range(25):
+                      try:
+                          command('GET', '/status')
+                          break
+                      except Exception:
+                          if stopping.is_set() or driver.poll() is not None:
+                              raise RuntimeError('DRIVER_NOT_READY')
+                          time.sleep(0.1)
+                  else:
+                      raise RuntimeError('DRIVER_NOT_READY')
+                  created = command('POST', '/session', {'capabilities': {'alwaysMatch': {'browserName': 'safari'}}})
+                  session = created['sessionId']
+                  capabilities = created['capabilities']
+                  result['browserName'] = capabilities.get('browserName')
+                  result['browserVersion'] = capabilities.get('browserVersion')
+                  if result['browserName'].lower() != 'safari' or not re.fullmatch(r'26\.6(?:\.\d+)*', result['browserVersion']):
+                      raise RuntimeError('PINNED_NATIVE_SAFARI_VERSION_GUARD')
+                  base = '/session/' + session
+                  command('POST', base + '/timeouts', {'script': 12000, 'pageLoad': 8000, 'implicit': 0})
+                  command('POST', base + '/url', {'url': 'http://127.0.0.1:' + str(server.server_port) + ENDPOINT})
+                  script = """
+          const done = arguments[arguments.length - 1];
+          (async () => {
+           const out = {sdkSendInvocations:0, sdkInit:false};
+           try {
+            if (location.hostname !== '127.0.0.1' || location.pathname !== '/api/telemetry/sentry' || document.body.innerText.trim() !== '{}' || window.__nativeSafariLoopbackSpent) throw Error('ENTRY_GUARD');
+            window.__nativeSafariLoopbackSpent = true;
+            if (!/Version\\/26\\.6(?:[. ]|$)/.test(navigator.userAgent) || !/Macintosh/.test(navigator.userAgent) || /Chrome|Firefox/.test(navigator.userAgent)) throw Error('UA_GUARD');
+            const sdk = await import('/_astro/sentry-browser-sdk.B4qtZf53.js');
+            const candidates = Object.values(sdk).filter(value => typeof value === 'function' && Function.prototype.toString.call(value).includes('/api/telemetry/sentry'));
+            if (candidates.length !== 1) throw Error('EXPORT_GUARD');
+            document.cookie = 'sentry_ci_probe=synthetic; SameSite=Strict; Path=/api/telemetry';
+            out.syntheticCookieControlPresent = document.cookie.split(';').some(v => v.trim() === 'sentry_ci_probe=synthetic');
+            if (!out.syntheticCookieControlPresent) throw Error('COOKIE_CONTROL_GUARD');
+            const transport = candidates[0]({url:'https://synthetic.example.invalid/envelope/',recordDroppedEvent:()=>{}});
+            out.sdkSendInvocations++;
+            const response = await transport.send([{event_id:'ROOT_INVALID_RELAY_PROBE'},[[{type:'event'},'ROOT_INVALID_RELAY_PROBE']]]);
+            await transport.flush(2000);
+            out.responseStatus = response.statusCode;
+           } catch(error) {out.safeReason = /^[A-Z_]+$/.test(error.message) ? error.message : 'BROWSER_CHECK_FAILED';}
+           finally {document.cookie='sentry_ci_probe=; Max-Age=0; SameSite=Strict; Path=/api/telemetry';done(out);}
+          })();
+          """
+                  result['browser'] = command('POST', base + '/execute/async', {'script': script, 'args': []})
+                  browser = result['browser']
+                  if browser.get('sdkSendInvocations') == 1 and browser.get('syntheticCookieControlPresent') and browser.get('responseStatus') == 400 and result['loopbackPosts'] == 1 and result.get('loopbackExactInvalidBody') and not any(result.get('loopbackSensitiveHeaderPresence', {'missing': True}).values()) and result['unexpectedLoopbackRequests'] == 0:
+                      result['status'] = 'PASS_NATIVE_SAFARI_EXACT_BUNDLE_LOOPBACK_HEADERS'
+              except Exception as error:
+                  result['safeReason'] = str(error) if re.fullmatch('[A-Z_]+', str(error)) else 'NATIVE_CI_CHECK_FAILED_RAW_SUPPRESSED'
+              finally:
+                  cleanup()
+                  timer.cancel()
+              if not result.get('ownedSafariQuitAcknowledged') or not result.get('ownedDriverClosed') or not result.get('ownedLoopbackServerClosed') or not result.get('total120SecondsProven'):
+                  result['status'] = 'UNVERIFIED_CLEANUP_OR_DEADLINE'
+              print(json.dumps(result, sort_keys=True))
+              return 0 if result['status'].startswith('PASS_') else 1
+
+          if __name__ == '__main__':
+              raise SystemExit(main())
+
+          OWNED_SAFARI_CI
