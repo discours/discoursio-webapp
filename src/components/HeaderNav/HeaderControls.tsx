@@ -110,7 +110,7 @@ const EditingHeader = (props: Props) => {
 
       {/* Кнопка поиска согласно дизайну */}
       <div class={clsx(styles.userControlItem, styles.userControlItemSearch)}>
-        <button class={styles.button} onClick={handleSearchClick} title={t('Search')}>
+        <button type="button" class={styles.button} onClick={handleSearchClick} title={t('Search')}>
           <Icon name="search" />
         </button>
       </div>
@@ -121,7 +121,7 @@ const EditingHeader = (props: Props) => {
           containerCssClass={styles.control}
           trigger={
             <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
-              <button class={styles.button}>
+              <button type="button" class={styles.button}>
                 <div classList={{ entered: Boolean(matchProfile()) }}>
                   <Userpic
                     size={'L'}
@@ -184,7 +184,7 @@ const AuthorizedHeader = (props: Props) => {
   return (
     <>
       <div class={clsx(styles.userControlItem, styles.userControlItemSearch)}>
-        <button class={styles.button} onClick={handleSearchClick} title={t('Search')}>
+        <button type="button" class={styles.button} onClick={handleSearchClick} title={t('Search')}>
           <Icon name="search" />
         </button>
       </div>
@@ -197,7 +197,7 @@ const AuthorizedHeader = (props: Props) => {
           containerCssClass={styles.control}
           trigger={
             <div class={clsx(styles.userControlItem, styles.userControlItemUserpic)}>
-              <button class={styles.button}>
+              <button type="button" class={styles.button}>
                 <div classList={{ entered: Boolean(matchProfile()) }}>
                   <Userpic
                     size={'L'}
@@ -229,7 +229,7 @@ const GuestHeader = () => {
   return (
     <>
       <div class={clsx(styles.userControlItem, styles.userControlItemSearch)}>
-        <button class={styles.button} onClick={handleSearchClick} title={t('Search')}>
+        <button type="button" class={styles.button} onClick={handleSearchClick} title={t('Search')}>
           <Icon name="search" />
         </button>
       </div>
