@@ -19,6 +19,14 @@ Read these two short files together:
 
 For the full application and its checks, follow [CONTRIBUTING.md](../../CONTRIBUTING.md). `npm run e2e:demo` is the account-free browser suite; `npm run e2e` is the separate service-dependent suite.
 
+## Try the static-file path checks
+
+```bash
+node --test tests/unit/static-files.test.mjs
+```
+
+This is another dependency-free check you can run without installing the application. Read [scripts/static-files.mjs](../../scripts/static-files.mjs) alongside [its tests](../../tests/unit/static-files.test.mjs): they cover decoded filenames, query strings and fragments, traversal, null bytes, and malformed encoding. They test path resolution only, not HTTP serving, file permissions, or symbolic-link isolation.
+
 ## Small test-only task
 
 Add HTTP contract tests to the existing `tests/unit/demo-api.test.mjs`. [Issue #553](https://github.com/discours/discoursio-webapp/issues/553) has the scope and acceptance checklist; check its latest comments before starting to avoid duplicating another contributor's work.
